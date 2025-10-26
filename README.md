@@ -1,9 +1,10 @@
 # new-project-template
+
 A template repo for new CL projects
 
-# {{NEW-PROJECT}}
+# Litigant Portal
 
-{{NEW-PROJECT}} is an open source repository to ...
+Litigant Portal is an open source repository to ...
 It was built for use with Courtlistener.com.
 
 Its main goal is to ...
@@ -13,7 +14,7 @@ Further development is intended and all contributors, corrections and additions 
 
 ## Background
 
-Free Law Project built this ...  This project represents ...  
+Free Law Project built this ... This project represents ...  
 We believe to be the ....
 
 ## Quickstart
@@ -29,41 +30,37 @@ returns:
   ""EXAMPLE OUTPUT
 ```
 
-
-
 ## Some Notes ...
+
 Somethings to keep in mind as ....
 
 1. ...
 2. ...
 
-
 ## Fields
 
 1. `id` ==> string; Courtlistener Court Identifier
 2. `court_url` ==> string; url for court website
-3. `regex` ==>  array; regexes patterns to find courts
-
+3. `regex` ==> array; regexes patterns to find courts
 
 ## Installation
 
-Installing {{NEW-PROJECT}} is easy.
+Installing Litigant Portal is easy.
 
 ```sh
-pip install {{NEW-PROJECT}}
+pip install litigant-portal
 ```
-
 
 Or install the latest dev version from github
 
 ```sh
-pip install git+https://github.com/freelawproject/{{NEW-PROJECT}}.git@master
+pip install git+https://github.com/freelawproject/litigant-portal.git@master
 ```
 
 ## Future
 
-1) Continue to improve ...
-2) Future updates
+1. Continue to improve ...
+2. Future updates
 
 ## Deployment
 

@@ -3,6 +3,6 @@ revision = 2
 requires-python = ">=3.13, <4"
 
 [[package]]
-name = "project-name"
+name = "litigant-portal"
 version = "0.0.1"
 source = { editable = "." }

@@ -5,9 +5,9 @@ requires = [
 ]
 
 [project]
-name = "{{PROJECT_NAME}}"
+name = "Litigant Portal"
 version = "0.0.1"
-description = "{{PROJECT_DESCRIPTION}}"
+description = "Access to Justice Polrtal"
 authors = [{ name = "Free Law Project", email = "info@free.law" }]
 requires-python = ">=3.13"
 readme = "README.md"
@@ -29,11 +29,11 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
-urls.Repository = "https://github.com/freelawproject/{{PROJECT_NAME}}"
+urls.Repository = "https://github.com/freelawproject/litigant-portal"
 urls."Organisation Homepage" = "https://free.law/"
 
 [tool.setuptools]
-packages = [ "project_name" ]
+packages = [ "litigant_portal" ]
 
 [tool.ruff]
 line-length = 79
