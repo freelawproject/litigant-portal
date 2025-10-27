@@ -7,7 +7,7 @@ requires = [
 [project]
 name = "Litigant Portal"
 version = "0.0.1"
-description = "Access to Justice Polrtal"
+description = "Access to Justice Portal"
 authors = [{ name = "Free Law Project", email = "info@free.law" }]
 requires-python = ">=3.13"
 readme = "README.md"
