@@ -5,13 +5,15 @@ requires = [
 ]
 
 [project]
-name = "Litigant Portal"
+name = "litigant_portal"
 version = "0.0.1"
 description = "Access to Justice Portal"
 authors = [{ name = "Free Law Project", email = "info@free.law" }]
 requires-python = ">=3.13"
 readme = "README.md"
-license = "BSD-2-Clause"
+license = "AGPL-3.0-only"
+license-files = [ "LICENSE" ]
+
 keywords = [
     "legal",
     "courts",
@@ -31,6 +33,7 @@ classifiers = [
 
 urls.Repository = "https://github.com/freelawproject/litigant-portal"
 urls."Organisation Homepage" = "https://free.law/"
+
 
 [tool.setuptools]
 packages = [ "litigant_portal" ]
