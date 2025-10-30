@@ -40,11 +40,21 @@ packages = [ "litigant_portal" ]
 
 [tool.ruff]
 line-length = 79
-lint.extend-safe-fixes = [
+target-version = "py313"
+
+# Formatter configuration (replaces Black)
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+# Linting configuration
+[tool.ruff.lint]
+extend-safe-fixes = [
   # non-pep585-annotation
   "UP006",
 ]
-lint.select = [
+select = [
   # flake8-bugbear
   "B",
   # flake8-comprehensions
@@ -64,7 +74,7 @@ lint.select = [
   # Pyflakes warnings
   "W",
 ]
-lint.ignore = [
+ignore = [
   # flake8-bugbear opinionated rules
   "B9",
   # line-too-long
@@ -76,3 +86,36 @@ lint.ignore = [
   # printf-string-formatting
   "UP031",
 ]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = true
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+plugins = ["mypy_django_plugin.main"]
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+[tool.djlint]
+profile = "django"
+indent = 2
+max_line_length = 120
+format_css = true
+format_js = true
+# H006: img without alt, H030/H031: meta tags, H021: inline styles (needed for Alpine x-show)
+ignore = "H006,H021,H030,H031"
+extend_exclude = ".venv,node_modules,staticfiles"
+# Recognize Cotton components
+custom_blocks = "c-slot,c-vars"

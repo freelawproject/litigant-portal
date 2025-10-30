@@ -157,3 +157,26 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# Django static files
+staticfiles/
+media/
+
+# Vite
+.vite/
+dist/
+
+# TypeScript
+*.tsbuildinfo
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json

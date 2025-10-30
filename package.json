@@ -1,0 +1,39 @@
+{
+  "name": "litigant-portal",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Access to Justice Portal - Frontend",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint 'frontend/src/**/*.{ts,js}'",
+    "lint:fix": "eslint 'frontend/src/**/*.{ts,js}' --fix",
+    "format": "prettier --write 'frontend/src/**/*.{ts,js,css}'",
+    "format:check": "prettier --check 'frontend/src/**/*.{ts,js,css}'",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage"
+  },
+  "dependencies": {
+    "alpinejs": "^3.14.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.13",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitest/ui": "^1.6.0",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "happy-dom": "^14.12.3",
+    "postcss": "^8.4.49",
+    "prettier": "^3.3.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vitest": "^1.6.0"
+  }
+}

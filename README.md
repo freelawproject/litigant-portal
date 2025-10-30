@@ -1,91 +1,114 @@
-# new-project-template
-
-A template repo for new CL projects
-
 # Litigant Portal
 
-Litigant Portal is an open source repository to ...
-It was built for use with Courtlistener.com.
+An open-source web application to democratize access to justice by empowering self-represented litigants with AI-augmented legal guidance, education, and document preparation tools.
 
-Its main goal is to ...
-It incldues mechanisms to ...
+Built by [Free Law Project](https://free.law) for use with CourtListener.com.
 
-Further development is intended and all contributors, corrections and additions are welcome.
+## Vision
 
-## Background
+To ensure that lack of financial resources never prevents anyone from understanding and exercising their legal rights.
 
-Free Law Project built this ... This project represents ...  
-We believe to be the ....
+See [VISION.md](./VISION.md) for our complete vision and mission statement.
 
-## Quickstart
+## Tech Stack
 
-You can feed in a X as ... .. ...
+Modern, type-safe web stack following best practices:
 
-```
-IMPORTS
+- **Backend**: Django 5.2+ with django-cotton components
+- **Frontend**: AlpineJS (TypeScript) + Tailwind CSS
+- **Build Tool**: Vite with Hot Module Replacement
+- **Testing**: pytest (Python) + Vitest (TypeScript)
+- **Code Quality**: Ruff + mypy (Python), ESLint + Prettier (TypeScript)
 
-CALL EXAMPLE
+See [TECH_STACK.md](./TECH_STACK.md) for technical decisions and architecture.
 
-returns:
-  ""EXAMPLE OUTPUT
-```
+## Quick Start
 
-## Some Notes ...
+```bash
+# Prerequisites: Python 3.13+, uv, fnm (for Node.js)
 
-Somethings to keep in mind as ....
+# Install Node.js (uses .node-version file)
+fnm install
 
-1. ...
-2. ...
+# Setup Python environment
+uv venv && source .venv/bin/activate
+make install
+make migrate
 
-## Fields
-
-1. `id` ==> string; Courtlistener Court Identifier
-2. `court_url` ==> string; url for court website
-3. `regex` ==> array; regexes patterns to find courts
-
-## Installation
-
-Installing Litigant Portal is easy.
-
-```sh
-pip install litigant-portal
+# Start development
+make dev
 ```
 
-Or install the latest dev version from github
+Visit http://localhost:8000
 
-```sh
-pip install git+https://github.com/freelawproject/litigant-portal.git@master
+**📚 Detailed guides:**
+- [Quick Start Guide](./docs/QUICKSTART.md)
+- [Development Guide](./docs/DEVELOPMENT.md)
+- [Setup Complete Reference](./docs/SETUP-COMPLETE.md)
+
+## Development
+
+```bash
+# Run tests
+make test              # All tests
+make test-py          # Python only
+make test-js          # TypeScript only
+
+# Code quality
+make lint             # Lint all code
+make format           # Format all code
+make type-check       # TypeScript type checking
+
+# See all commands
+make help
 ```
 
-## Future
+## Architecture
 
-1. Continue to improve ...
-2. Future updates
+This project uses a **CSP-compliant architecture** following patterns from [CourtListener](https://github.com/freelawproject/courtlistener):
 
-## Deployment
+- **Django Cotton** - Reusable component system
+- **AlpineJS** - Lightweight reactivity (no inline scripts)
+- **TypeScript** - Type-safe frontend code
+- **Tailwind CSS** - Utility-first styling
+- **Vite** - Modern build pipeline
 
-If you wish to create a new version manually, the process is:
+See [docs/CourtListener-Frontend-Architecture.md](./docs/CourtListener-Frontend-Architecture.md) for detailed patterns.
 
-1. Update version info in `setup.py`
+## Project Status
 
-2. Install the requirements using `poetry install`
+**Current Phase**: Initial development and prototype
 
-3. Set up a config file at `~/.pypirc`
+- ✅ Tech stack configured
+- ✅ Development environment set up
+- ✅ Example components implemented
+- 🚧 Core features in development
 
-4. Generate a universal distribution that works in py2 and py3 (see setup.cfg)
+## Contributing
 
-```sh
-python setup.py sdist bdist_wheel
-```
+Contributions welcome! This project aims to improve access to justice globally.
 
-5. Upload the distributions
+1. Read the [Development Guide](./docs/DEVELOPMENT.md)
+2. Check existing issues or create a new one
+3. Fork and create a feature branch
+4. Submit a pull request
 
-```sh
-twine upload dist/* -r pypi (or pypitest)
-```
+## Documentation
+
+- **[Quick Start](./docs/QUICKSTART.md)** - Get started in minutes
+- **[Development Guide](./docs/DEVELOPMENT.md)** - Comprehensive development documentation
+- **[CSP & Linting Guide](./docs/CSP-AND-LINTING.md)** - Content Security Policy and template linting
+- **[Vision](./VISION.md)** - Project vision and principles
+- **[Tech Stack](./TECH_STACK.md)** - Technical decisions and architecture
+- **[Setup Complete](./docs/SETUP-COMPLETE.md)** - What's been configured
+- **[Setup Review](./docs/SETUP-REVIEW.md)** - Issues found and fixed during setup
 
 ## License
 
-This repository is available under the permissive BSD license, making it easy and safe to incorporate in your own libraries.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+See [LICENSE](./LICENSE) for full details.
+
+Copyright 2025, Brian Carver and Michael Lissner.
 
 Pull and feature requests welcome. Online editing in GitHub is possible (and easy!)

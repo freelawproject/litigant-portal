@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Litigant Portal{% endblock title %}</title>
+
+    {% load django_vite %}
+
+    {# Load Vite-compiled CSS and JS #}
+    {% vite_asset 'frontend/src/css/input.css' %}
+    {% vite_asset 'frontend/src/ts/main.ts' %}
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen">
+        {% block content %}{% endblock content %}
+    </div>
+</body>
+</html>

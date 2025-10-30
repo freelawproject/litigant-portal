@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Home - Litigant Portal{% endblock title %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-4xl font-bold text-gray-900 mb-8">
+        Welcome to Litigant Portal
+    </h1>
+
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-4">
+            Example: Dropdown Component
+        </h2>
+
+        <p class="text-gray-600 mb-4">
+            This demonstrates Django Cotton + AlpineJS + TypeScript + Tailwind CSS working together.
+        </p>
+
+        {# Using the dropdown Cotton component #}
+        <c-dropdown button_text="Open Menu">
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                Profile
+            </a>
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                Settings
+            </a>
+            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                Logout
+            </a>
+        </c-dropdown>
+    </div>
+
+    <div class="bg-blue-50 border-l-4 border-blue-400 p-4">
+        <div class="flex">
+            <div class="flex-shrink-0">
+                <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                </svg>
+            </div>
+            <div class="ml-3">
+                <p class="text-sm text-blue-700">
+                    Tech Stack: Django + django-cotton + AlpineJS (TypeScript) + Tailwind CSS + Vite
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}

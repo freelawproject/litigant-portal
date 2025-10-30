@@ -1,0 +1,25 @@
+/**
+ * Main CSS entry point
+ * Following CourtListener pattern: Minimize custom styles, use Tailwind utilities
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Custom styles should be minimal
+ * Add third-party CSS imports here if used globally
+ */
+
+@layer base {
+  /* Add minimal custom base styles if needed */
+}
+
+@layer components {
+  /* Add reusable component classes if necessary */
+}
+
+@layer utilities {
+  /* Add custom utility classes if needed */
+}
