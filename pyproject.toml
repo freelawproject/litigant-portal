@@ -14,6 +14,14 @@ readme = "README.md"
 license = "AGPL-3.0-only"
 license-files = [ "LICENSE" ]
 
+dependencies = [
+    "django>=5.2",
+    "django-cotton",
+    "django-vite",
+    "django-csp",
+    "whitenoise",
+]
+
 keywords = [
     "legal",
     "courts",
@@ -34,6 +42,14 @@ classifiers = [
 urls.Repository = "https://github.com/freelawproject/litigant-portal"
 urls."Organisation Homepage" = "https://free.law/"
 
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-django",
+    "mypy",
+    "django-stubs",
+    "djlint",
+]
 
 [tool.setuptools]
 packages = [ "litigant_portal" ]

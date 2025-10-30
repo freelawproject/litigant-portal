@@ -46,7 +46,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.middleware.csp.ContentSecurityPolicyMiddleware',  # CSP enforcement
+    'csp.middleware.CSPMiddleware',  # CSP enforcement
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -156,11 +156,24 @@ DJANGO_VITE = {
 
 # Use Report-Only mode in development to catch violations without breaking the site
 # Switch to enforcement mode (CONTENT_SECURITY_POLICY) in production
+
+# Build CSP directives based on environment
+CSP_SCRIPT_SRC = ["'self'"]
+CSP_STYLE_SRC = ["'self'"]
+
+if DEBUG:
+    # In development: allow inline source maps for debugging unminified sources
+    # This enables full debugging of AlpineJS and other dependencies
+    CSP_SCRIPT_SRC.append("'unsafe-eval'")  # Required for Vite HMR and source maps
+    CSP_STYLE_SRC.append("'unsafe-inline'")  # Required for Vite injected styles
+
 CONTENT_SECURITY_POLICY_REPORT_ONLY = {
     "DIRECTIVES": {
         "default-src": ["'self'"],
-        "script-src": ["'self'"],
-        "style-src": ["'self'"],
+        "script-src": CSP_SCRIPT_SRC,
+        "script-src-elem": CSP_SCRIPT_SRC + ["http://localhost:5173"] if DEBUG else CSP_SCRIPT_SRC,
+        "style-src": CSP_STYLE_SRC,
+        "style-src-elem": CSP_STYLE_SRC + ["http://localhost:5173"] if DEBUG else CSP_STYLE_SRC,
         "img-src": ["'self'", "data:", "https:"],
         "font-src": ["'self'"],
         "connect-src": [

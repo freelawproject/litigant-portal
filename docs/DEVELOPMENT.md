@@ -41,22 +41,30 @@ npm --version
 
 ## Initial Setup
 
+All setup commands are **idempotent** and safe to re-run. If you've already completed setup, you can skip directly to [Running the Development Servers](#running-the-development-servers).
+
 ```bash
-# Create virtual environment
+# Create virtual environment (safe to re-run if .venv already exists)
 uv venv
 
 # Activate virtual environment
 source .venv/bin/activate
 
-# Install dependencies
+# Install dependencies (safe to re-run - will skip if already installed)
 make install
 
-# Run migrations
+# Run migrations (safe to re-run - will only apply new migrations)
 make migrate
 
-# Build frontend assets
+# Build frontend assets (safe to re-run - will rebuild quickly)
 npm run build
 ```
+
+**Note**: All these commands are designed to be idempotent:
+- `uv venv` will show a warning if `.venv` exists but won't break anything
+- `make install` (uses `uv sync --extra dev`) quickly checks and only installs missing packages
+- `make migrate` only applies unapplied migrations
+- `npm run build` rebuilds efficiently with Vite's caching
 
 ## Development Workflow
 
@@ -277,6 +285,17 @@ This project enforces a **strict Content Security Policy** to prevent XSS attack
 2. Open browser DevTools → Console
 3. Look for `[Report Only]` CSP violation messages
 4. Fix violations by moving code to external files
+
+### Debugging with Unminified Sources
+
+In development mode, all JavaScript dependencies are served **unminified** with **source maps enabled**:
+
+- **AlpineJS**: Uses unminified `module.esm.js` (3,407 lines) instead of minified version (5 lines)
+- **Source Maps**: Generated for all built assets via `vite.config.ts`
+- **CSP Relaxations**: Development mode allows `'unsafe-eval'` and `'unsafe-inline'` for debugging
+- **Browser DevTools**: Can show original TypeScript source code with breakpoints
+
+These debugging features are automatically disabled in production (`DEBUG = False`).
 
 ## Template Linting with djLint
 

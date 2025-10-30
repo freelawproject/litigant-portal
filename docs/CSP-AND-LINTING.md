@@ -41,7 +41,9 @@ Our policy enforces:
 ```python
 "default-src": ["'self'"]           # Only load resources from same origin
 "script-src": ["'self'"]            # No inline scripts, only external files
+                                    # + "'unsafe-eval'" in dev for source maps
 "style-src": ["'self'"]             # No inline styles, only external files
+                                    # + "'unsafe-inline'" in dev for Vite HMR
 "img-src": ["'self'", "data:", "https:"]  # Images from same origin, data URIs, HTTPS
 "font-src": ["'self'"]              # Fonts from same origin
 "connect-src": ["'self'", "ws://localhost:5173"]  # Allow Vite HMR in dev
@@ -50,6 +52,22 @@ Our policy enforces:
 "form-action": ["'self'"]           # Forms can only submit to same origin
 "frame-ancestors": ["'none'"]       # Prevent clickjacking
 ```
+
+### Development Mode CSP Relaxations
+
+In development mode (`DEBUG = True`), the CSP is slightly relaxed to enable debugging:
+
+- **`'unsafe-eval'` for `script-src`**: Enables source maps and Vite HMR
+- **`'unsafe-inline'` for `style-src`**: Allows Vite to inject styles during development
+
+These relaxations are **automatically removed in production** when `DEBUG = False`.
+
+**Why this matters for debugging**:
+- All JavaScript dependencies (AlpineJS, etc.) are served **unminified** in dev mode
+- Source maps are generated for all built assets (`vite.config.ts` has `sourcemap: true`)
+- Browser DevTools can show original TypeScript source code, not compiled JS
+- You can set breakpoints in your original `.ts` files
+- AlpineJS uses the unminified `module.esm.js` (3,407 lines) instead of `module.esm.min.js` (5 lines)
 
 ### What CSP Blocks
 

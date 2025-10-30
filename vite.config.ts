@@ -7,6 +7,8 @@ export default defineConfig({
   build: {
     manifest: true,
     outDir: resolve(__dirname, 'staticfiles'),
+    // Generate source maps for debugging
+    sourcemap: true,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'frontend/src/ts/main.ts'),

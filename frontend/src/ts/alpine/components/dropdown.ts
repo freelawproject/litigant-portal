@@ -35,3 +35,69 @@ Alpine.data('dropdown', (): DropdownComponent => ({
     console.log('Dropdown component destroyed')
   },
 }))
+
+/**
+ * Selectable Dropdown Alpine Component
+ *
+ * A dropdown that tracks selected value and displays it in the button.
+ *
+ * Usage in templates:
+ * <div x-data="selectableDropdown({ options: ['Option 1', 'Option 2'], selected: 'Option 1' })">
+ *   <button x-on:click="toggle" x-text="selected"></button>
+ *   <div x-show="open">
+ *     <template x-for="option in options">
+ *       <button x-on:click="select(option)" x-text="option"></button>
+ *     </template>
+ *   </div>
+ * </div>
+ */
+export interface SelectableDropdownComponent extends AlpineComponent {
+  open: boolean
+  selected: string
+  options: string[]
+  toggle(): void
+  close(): void
+  select(value: string): void
+}
+
+interface AlpineComponent {
+  init?(): void
+  destroy?(): void
+}
+
+Alpine.data(
+  'selectableDropdown',
+  ({
+    options = [],
+    selected = '',
+  }: {
+    options?: string[]
+    selected?: string
+  }): SelectableDropdownComponent => ({
+    open: false,
+    selected: selected || (options.length > 0 ? options[0] : ''),
+    options,
+
+    init() {
+      console.log('Selectable dropdown initialized with:', this.options)
+    },
+
+    toggle() {
+      this.open = !this.open
+    },
+
+    close() {
+      this.open = false
+    },
+
+    select(value: string) {
+      this.selected = value
+      this.close()
+      console.log('Selected:', value)
+    },
+
+    destroy() {
+      console.log('Selectable dropdown destroyed')
+    },
+  }),
+)
