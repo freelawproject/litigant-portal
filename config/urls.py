@@ -7,5 +7,6 @@ from portal import views
 
 urlpatterns = [
     path("", views.index, name="index"),
+    path("camera/", views.camera_demo, name="camera_demo"),
     path("admin/", admin.site.urls),
 ]

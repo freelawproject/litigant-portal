@@ -25,15 +25,15 @@
   ></div>
 
   <!-- Camera Controls -->
-  <div class="camera-controls mb-4 flex gap-2">
+  <div class="camera-controls mb-4 flex gap-2 flex-wrap">
     <button
       x-show="!cameraActive"
       x-on:click="startCamera"
-      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+      class="px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 text-sm sm:text-base"
       :disabled="isProcessing"
     >
       <span class="inline-flex items-center gap-2">
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -44,7 +44,7 @@
     <button
       x-show="cameraActive"
       x-on:click="stopCamera"
-      class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+      class="px-3 sm:px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 text-sm sm:text-base"
     >
       Stop Camera
     </button>
@@ -93,16 +93,16 @@
 
   <!-- Captured Pages Display -->
   <div x-show="pages.length > 0" class="captured-pages">
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-semibold text-gray-900">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <h3 class="text-base sm:text-lg font-semibold text-gray-900">
         Captured Pages (<span x-text="pages.length"></span>)
       </h3>
 
-      <div class="flex gap-2">
+      <div class="flex gap-2 flex-wrap">
         <button
           x-on:click="saveDocument()"
           :disabled="isProcessing || pages.length === 0"
-          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-sm"
+          class="px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-xs sm:text-sm whitespace-nowrap"
         >
           Save Document
         </button>
@@ -110,14 +110,14 @@
         <button
           x-on:click="clearPages"
           :disabled="isProcessing"
-          class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 text-sm"
+          class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 text-xs sm:text-sm whitespace-nowrap"
         >
           Clear All
         </button>
       </div>
     </div>
 
-    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
       <template x-for="(page, index) in pages" :key="page.id">
         <div class="relative group">
           <div class="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden shadow-md">

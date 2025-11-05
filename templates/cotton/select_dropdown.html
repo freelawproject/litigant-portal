@@ -30,6 +30,7 @@
     {# Dropdown menu with options #}
     <div
         x-show="open"
+        x-cloak
         x-on:click.outside="close()"
         x-transition:enter="transition ease-out duration-100"
         x-transition:enter-start="transform opacity-0 scale-95"
@@ -38,7 +39,6 @@
         x-transition:leave-start="transform opacity-100 scale-100"
         x-transition:leave-end="transform opacity-0 scale-95"
         class="absolute right-0 z-10 mt-2 w-full origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
-        style="display: none;"
     >
         <div class="py-1">
             <template x-for="option in options" x-bind:key="option">
