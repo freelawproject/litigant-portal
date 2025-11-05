@@ -1,0 +1,168 @@
+<!--
+  Document Camera Component (Django Cotton)
+
+  A mobile-optimized camera component for capturing legal documents.
+  Features:
+  - Multi-page document capture
+  - OCR-optimized resolution (2048x2732)
+  - Local/cloud storage abstraction
+  - CSP-compliant implementation
+
+  Usage:
+  {% c-component 'document_camera' %}
+-->
+
+<div
+  x-data="documentCamera"
+  class="document-camera-container w-full max-w-4xl mx-auto p-4"
+>
+  <!-- Error Display -->
+  <div
+    x-show="error"
+    x-text="error"
+    class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4"
+    role="alert"
+  ></div>
+
+  <!-- Camera Controls -->
+  <div class="camera-controls mb-4 flex gap-2">
+    <button
+      x-show="!cameraActive"
+      x-on:click="startCamera"
+      class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+      :disabled="isProcessing"
+    >
+      <span class="inline-flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        Start Camera
+      </span>
+    </button>
+
+    <button
+      x-show="cameraActive"
+      x-on:click="stopCamera"
+      class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500"
+    >
+      Stop Camera
+    </button>
+  </div>
+
+  <!-- Camera View -->
+  <div
+    x-show="cameraActive"
+    class="camera-view mb-4 relative bg-black rounded-lg overflow-hidden"
+  >
+    <video
+      x-ref="video"
+      autoplay
+      playsinline
+      class="w-full h-auto"
+    ></video>
+
+    <!-- Capture Button Overlay -->
+    <div class="absolute bottom-4 left-0 right-0 flex justify-center">
+      <button
+        x-on:click="captureImage"
+        :disabled="isProcessing"
+        class="w-16 h-16 bg-white rounded-full shadow-lg hover:bg-gray-100 focus:outline-none focus:ring-4 focus:ring-blue-500 disabled:opacity-50 flex items-center justify-center"
+      >
+        <svg class="w-8 h-8 text-gray-800" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Processing Indicator -->
+    <div
+      x-show="isProcessing"
+      class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+    >
+      <div class="bg-white rounded-lg p-4 text-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p class="text-sm text-gray-700">Processing...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Canvas for Image Processing -->
+  <canvas x-ref="canvas" class="hidden"></canvas>
+
+  <!-- Captured Pages Display -->
+  <div x-show="pages.length > 0" class="captured-pages">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold text-gray-900">
+        Captured Pages (<span x-text="pages.length"></span>)
+      </h3>
+
+      <div class="flex gap-2">
+        <button
+          x-on:click="saveDocument()"
+          :disabled="isProcessing || pages.length === 0"
+          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 text-sm"
+        >
+          Save Document
+        </button>
+
+        <button
+          x-on:click="clearPages"
+          :disabled="isProcessing"
+          class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50 text-sm"
+        >
+          Clear All
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <template x-for="(page, index) in pages" :key="page.id">
+        <div class="relative group">
+          <div class="aspect-[3/4] bg-gray-100 rounded-lg overflow-hidden shadow-md">
+            <img
+              :src="page.dataUrl"
+              :alt="'Page ' + (index + 1)"
+              class="w-full h-full object-cover"
+            />
+          </div>
+
+          <!-- Page Number Badge -->
+          <div class="absolute top-2 left-2 bg-blue-600 text-white text-xs font-semibold px-2 py-1 rounded">
+            <span x-text="index + 1"></span>
+          </div>
+
+          <!-- Remove Button -->
+          <button
+            x-on:click="removePage(page.id)"
+            class="absolute top-2 right-2 w-8 h-8 bg-red-600 text-white rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500 flex items-center justify-center"
+            :aria-label="'Remove page ' + (index + 1)"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <!-- Page Info -->
+          <div class="mt-2 text-xs text-gray-600">
+            <div x-text="'Size: ' + (page.blob.size / 1024).toFixed(0) + ' KB'"></div>
+            <div x-text="'Resolution: ' + page.width + 'x' + page.height"></div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Empty State -->
+  <div
+    x-show="!cameraActive && pages.length === 0"
+    class="empty-state text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300"
+  >
+    <svg class="w-16 h-16 mx-auto mb-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+    <h3 class="text-lg font-medium text-gray-900 mb-2">No Pages Captured</h3>
+    <p class="text-gray-600 mb-4">Start the camera to capture document pages</p>
+  </div>
+</div>
