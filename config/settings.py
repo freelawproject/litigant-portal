@@ -174,8 +174,9 @@ CONTENT_SECURITY_POLICY_REPORT_ONLY = {
         "script-src-elem": CSP_SCRIPT_SRC + ["http://localhost:5173"] if DEBUG else CSP_SCRIPT_SRC,
         "style-src": CSP_STYLE_SRC,
         "style-src-elem": CSP_STYLE_SRC + ["http://localhost:5173"] if DEBUG else CSP_STYLE_SRC,
-        "img-src": ["'self'", "data:", "https:"],
+        "img-src": ["'self'", "data:", "blob:", "https:"],  # blob: for camera captures
         "font-src": ["'self'"],
+        "media-src": ["'self'", "blob:"],  # Allow video/audio from camera
         "connect-src": [
             "'self'",
             "ws://localhost:5173",  # Vite HMR in dev
