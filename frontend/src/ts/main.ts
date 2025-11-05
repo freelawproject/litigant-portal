@@ -16,6 +16,7 @@ import Alpine from 'alpinejs'
 
 // Import Alpine components
 import './alpine/components/dropdown'
+import './alpine/components/documentCamera'
 // Import more components as they are created
 
 // Import Alpine composables (shared utilities)
