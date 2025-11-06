@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -45,7 +46,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third-party apps
     'django_cotton',
-    'django_vite',
     # Local apps
     'portal',
 ]
@@ -146,16 +146,6 @@ STORAGES = {
     },
 }
 
-# Django Vite configuration
-DJANGO_VITE = {
-    "default": {
-        "dev_mode": DEBUG,
-        "dev_server_host": "localhost",
-        "dev_server_port": 5173,
-        "manifest_path": STATIC_ROOT / "manifest.json",
-    }
-}
-
 # Content Security Policy (CSP) for strict security
 # No inline scripts or styles - everything must be in separate files
 # Django 5.2+ built-in CSP support
@@ -173,21 +163,18 @@ if DEBUG:
     CSP_SCRIPT_SRC.append("'unsafe-eval'")  # Required for Vite HMR and source maps
     CSP_STYLE_SRC.append("'unsafe-inline'")  # Required for Vite injected styles
 
+# With nginx proxying, Vite assets come from the same origin, so no need for separate URLs
 CONTENT_SECURITY_POLICY_REPORT_ONLY = {
     "DIRECTIVES": {
         "default-src": ["'self'"],
         "script-src": CSP_SCRIPT_SRC,
-        "script-src-elem": CSP_SCRIPT_SRC + ["http://localhost:5173"] if DEBUG else CSP_SCRIPT_SRC,
+        "script-src-elem": CSP_SCRIPT_SRC,
         "style-src": CSP_STYLE_SRC,
-        "style-src-elem": CSP_STYLE_SRC + ["http://localhost:5173"] if DEBUG else CSP_STYLE_SRC,
+        "style-src-elem": CSP_STYLE_SRC,
         "img-src": ["'self'", "data:", "blob:", "https:"],  # blob: for camera captures
         "font-src": ["'self'"],
         "media-src": ["'self'", "blob:"],  # Allow video/audio from camera
-        "connect-src": [
-            "'self'",
-            "ws://localhost:5173",  # Vite HMR in dev
-            "http://localhost:5173",  # Vite dev server
-        ],
+        "connect-src": ["'self'", "ws:", "wss:"],  # Allow WebSocket for Vite HMR
         "object-src": ["'none'"],
         "base-uri": ["'self'"],
         "form-action": ["'self'"],
