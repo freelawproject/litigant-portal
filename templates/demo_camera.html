@@ -4,106 +4,20 @@
 
 {% block content %}
 <div class="container mx-auto px-4 py-6 sm:py-8">
-  <header class="mb-6 sm:mb-8">
-    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Document Camera Demo</h1>
-    <p class="text-gray-600">
-      Capture high-quality images of legal documents using your mobile device camera.
-      Optimized for OCR processing and multi-page document scanning.
+  <header class="mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Document Camera</h1>
+    <p class="text-sm sm:text-base text-gray-600">
+      Capture documents with your camera. Multiple pages will be saved as a single PDF.
     </p>
   </header>
 
-  <!-- Feature Overview -->
-  <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
-    <h2 class="text-lg sm:text-xl font-semibold text-blue-900 mb-3">Features</h2>
-    <ul class="space-y-2 text-blue-800">
-      <li class="flex items-start gap-2">
-        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-        </svg>
-        <span><strong>OCR-Optimized:</strong> 2048x2732 resolution (300 DPI equivalent) for excellent text recognition</span>
-      </li>
-      <li class="flex items-start gap-2">
-        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-        </svg>
-        <span><strong>Multi-Page Support:</strong> Capture and stitch multiple pages into a single document</span>
-      </li>
-      <li class="flex items-start gap-2">
-        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-        </svg>
-        <span><strong>Cloud-Ready:</strong> Storage abstraction layer ready for AWS S3 integration</span>
-      </li>
-      <li class="flex items-start gap-2">
-        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-        </svg>
-        <span><strong>Optimized Storage:</strong> JPEG compression (85% quality) balances quality and file size</span>
-      </li>
-      <li class="flex items-start gap-2">
-        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-        </svg>
-        <span><strong>CSP-Compliant:</strong> Fully secure implementation following Content Security Policy</span>
-      </li>
-    </ul>
-  </div>
-
-  <!-- Usage Instructions -->
-  <div class="bg-gray-50 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
-    <h2 class="text-lg sm:text-xl font-semibold text-gray-900 mb-3">How to Use</h2>
-    <ol class="list-decimal list-inside space-y-2 text-gray-700">
-      <li>Click "Start Camera" to activate your device's camera (back camera preferred)</li>
-      <li>Position your document within the camera view</li>
-      <li>Click the circular capture button to take a photo</li>
-      <li>Repeat for additional pages if needed</li>
-      <li>Review captured pages and remove any unwanted images</li>
-      <li>Click "Save Document" to store your multi-page document</li>
-    </ol>
-    <p class="mt-4 text-sm text-gray-600">
-      <strong>Note:</strong> This demo uses local storage. In production, documents will be saved to secure cloud storage (AWS S3).
-    </p>
+  <!-- Troubleshooting -->
+  <div class="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-6 text-sm">
+    <p class="font-semibold text-yellow-900 mb-1">Camera not working?</p>
+    <p class="text-yellow-800">On Brave: Tap the Shields icon and disable for this site. Then refresh.</p>
   </div>
 
   <!-- Document Camera Component -->
   {% include 'components/document_camera.html' %}
-
-  <!-- Technical Details -->
-  <details class="mt-6 sm:mt-8 bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
-    <summary class="text-base sm:text-lg font-semibold text-gray-900 cursor-pointer">Technical Details</summary>
-    <div class="mt-4 space-y-4 text-gray-700">
-      <div>
-        <h3 class="font-semibold text-gray-900">Image Resolution</h3>
-        <p>Images are captured at 2048x2732 pixels, equivalent to 300 DPI on a standard letter-sized document (8.5" x 11"). This resolution provides excellent OCR accuracy while maintaining reasonable file sizes.</p>
-      </div>
-      <div>
-        <h3 class="font-semibold text-gray-900">Compression</h3>
-        <p>JPEG format with 85% quality factor. This balances image quality (sufficient for OCR) with file size optimization. Typical page sizes range from 200-500 KB depending on document complexity.</p>
-      </div>
-      <div>
-        <h3 class="font-semibold text-gray-900">Storage Architecture</h3>
-        <p>The component uses an abstraction layer for storage operations. Current implementation uses browser localStorage for development. Production deployment can easily switch to:</p>
-        <ul class="list-disc list-inside ml-4 mt-2 space-y-1">
-          <li>AWS S3 for object storage</li>
-          <li>DynamoDB for document metadata</li>
-          <li>Lambda for serverless processing (OCR, PDF generation)</li>
-          <li>CloudFront for fast content delivery</li>
-        </ul>
-      </div>
-      <div>
-        <h3 class="font-semibold text-gray-900">Browser Compatibility</h3>
-        <p>Requires modern browser with MediaDevices API support (getUserMedia). Works on:</p>
-        <ul class="list-disc list-inside ml-4 mt-2 space-y-1">
-          <li>iOS Safari 11+ and Chrome</li>
-          <li>Android Chrome 53+</li>
-          <li>Desktop Chrome, Firefox, Safari, Edge (latest versions)</li>
-        </ul>
-      </div>
-      <div>
-        <h3 class="font-semibold text-gray-900">Security</h3>
-        <p>Fully CSP-compliant implementation with no inline scripts or styles. Camera access requires explicit user permission. All operations use secure HTTPS in production.</p>
-      </div>
-    </div>
-  </details>
 </div>
 {% endblock content %}
