@@ -18,7 +18,8 @@
     "test:coverage": "vitest --coverage"
   },
   "dependencies": {
-    "alpinejs": "^3.14.8"
+    "alpinejs": "^3.14.8",
+    "jspdf": "^3.0.3"
   },
   "devDependencies": {
     "@types/node": "^20.19.24",
