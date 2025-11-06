@@ -64,15 +64,38 @@ Alpine.data('documentCamera', (): DocumentCameraComponent => ({
     try {
       this.error = null
 
-      // Check if MediaDevices API is available
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera API not supported in this browser')
+      // Check if we're on HTTPS (required for camera access)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        throw new Error('Camera access requires HTTPS. Please use a secure connection.')
       }
 
-      // Request camera access
-      this.currentStream = await navigator.mediaDevices.getUserMedia(
-        this.cameraConstraints
-      )
+      // Check if MediaDevices API is available
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera API not supported in this browser. Please use a modern browser like Chrome, Firefox, or Safari.')
+      }
+
+      // Request camera access with detailed error handling
+      try {
+        this.currentStream = await navigator.mediaDevices.getUserMedia(
+          this.cameraConstraints
+        )
+      } catch (mediaErr: unknown) {
+        // Provide user-friendly error messages based on error type
+        if (mediaErr instanceof Error) {
+          if (mediaErr.name === 'NotAllowedError' || mediaErr.name === 'PermissionDeniedError') {
+            throw new Error('Camera permission denied. Please allow camera access in your browser settings and try again.')
+          } else if (mediaErr.name === 'NotFoundError' || mediaErr.name === 'DevicesNotFoundError') {
+            throw new Error('No camera found. Please ensure your device has a camera.')
+          } else if (mediaErr.name === 'NotReadableError' || mediaErr.name === 'TrackStartError') {
+            throw new Error('Camera is already in use by another application. Please close other apps using the camera.')
+          } else if (mediaErr.name === 'OverconstrainedError') {
+            throw new Error('Camera does not support the requested settings. Trying with default settings...')
+          } else if (mediaErr.name === 'SecurityError') {
+            throw new Error('Camera access blocked by security policy. Please check browser permissions.')
+          }
+        }
+        throw mediaErr
+      }
 
       // Attach stream to video element
       const video = this.$refs.video as HTMLVideoElement
@@ -84,6 +107,15 @@ Alpine.data('documentCamera', (): DocumentCameraComponent => ({
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'Failed to access camera'
       console.error('Camera error:', err)
+
+      // Log additional debugging info
+      console.log('Browser info:', {
+        userAgent: navigator.userAgent,
+        protocol: location.protocol,
+        hostname: location.hostname,
+        hasMediaDevices: !!navigator.mediaDevices,
+        hasGetUserMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+      })
     }
   },
 
@@ -214,8 +246,7 @@ Alpine.data('documentCamera', (): DocumentCameraComponent => ({
   },
 
   /**
-   * Save document to storage (local filesystem or cloud)
-   * Returns the storage path/URL
+   * Save document and trigger download as PDF
    */
   async saveDocument(filename?: string): Promise<string> {
     if (this.pages.length === 0) {
@@ -226,17 +257,11 @@ Alpine.data('documentCamera', (): DocumentCameraComponent => ({
       this.isProcessing = true
       this.error = null
 
-      const docFilename = filename || `document_${Date.now()}.json`
+      const timestamp = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+      const baseName = filename || `document_${timestamp}`
 
-      // Use storage service (abstracted for future cloud integration)
-      const storageService = await this.getStorageService()
-      const documentPath = await storageService.saveDocument({
-        filename: docFilename,
-        pages: this.pages,
-      })
-
-      console.log(`Document saved: ${documentPath}`)
-      return documentPath
+      await this.downloadAsPDF(baseName)
+      return `${baseName}.pdf`
     } catch (err) {
       this.error = err instanceof Error ? err.message : 'Failed to save document'
       console.error('Save error:', err)
@@ -247,25 +272,48 @@ Alpine.data('documentCamera', (): DocumentCameraComponent => ({
   },
 
   /**
-   * Get storage service (abstraction layer for local/cloud storage)
-   * This allows easy migration to AWS S3 or other cloud services
+   * Download document as multi-page PDF
+   * Uses jsPDF library for PDF generation
    */
-  async getStorageService() {
-    // For now, use local filesystem storage
-    // In production, this would check environment and return appropriate service
-    // (e.g., S3StorageService, AzureStorageService, etc.)
-    return (await import('../../services/storage/localStorageService')).default
+  async downloadAsPDF(baseName: string): Promise<void> {
+    // Dynamic import of jsPDF for code splitting
+    const { jsPDF } = await import('jspdf')
+
+    // Create PDF in portrait orientation, letter size (8.5" x 11")
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'in',
+      format: 'letter',
+      compress: true
+    })
+
+    // Add each page as an image
+    for (let i = 0; i < this.pages.length; i++) {
+      const page = this.pages[i]
+
+      if (i > 0) {
+        pdf.addPage() // Add new page for all but first image
+      }
+
+      // Add image to PDF (fit to page with margins)
+      // Letter size: 8.5" x 11", leave 0.5" margins
+      pdf.addImage(
+        page.dataUrl,
+        'JPEG',
+        0.5, // x position
+        0.5, // y position
+        7.5, // width
+        10,  // height
+        undefined,
+        'FAST' // Compression
+      )
+    }
+
+    // Save PDF
+    pdf.save(`${baseName}.pdf`)
+    console.log(`Downloaded PDF: ${baseName}.pdf (${this.pages.length} pages)`)
   },
 
-  /**
-   * Export document as multi-page PDF (future enhancement)
-   * This would stitch pages together into a single PDF
-   */
-  async exportAsPDF(): Promise<Blob> {
-    // TODO: Implement PDF generation using a library like jsPDF
-    // For now, throw not implemented
-    throw new Error('PDF export not yet implemented')
-  },
 
   destroy() {
     // Cleanup: stop camera if active
