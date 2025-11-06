@@ -29,10 +29,18 @@ export default defineConfig({
   },
 
   server: {
-    host: 'localhost',
+    host: '0.0.0.0', // Allow external connections (needed for ngrok)
     port: 5173,
-    origin: 'http://localhost:5173',
+    origin: process.env.VITE_ORIGIN || 'http://localhost:5173',
     strictPort: true,
+    // Allow all hosts (needed for ngrok dynamic URLs)
+    allowedHosts: ['.ngrok-free.dev', '.ngrok.io', '.ngrok-free.app'],
+    // Allow ngrok and other external hosts
+    hmr: {
+      protocol: 'ws',
+      host: process.env.VITE_HMR_HOST || 'localhost',
+      port: 5173,
+    },
   },
 
   resolve: {
