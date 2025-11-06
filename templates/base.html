@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Litigant Portal{% endblock title %}</title>
 
-    {% load django_vite %}
-
-    {# Load Vite-compiled CSS and JS #}
-    {% vite_asset 'frontend/src/css/input.css' %}
-    {% vite_asset 'frontend/src/ts/main.ts' %}
+    {# Load Vite assets directly - nginx will proxy to Vite dev server #}
+    <script type="module" src="/static/frontend/src/css/input.css"></script>
+    <script type="module" src="/static/frontend/src/ts/main.ts"></script>
 </head>
 <body class="bg-gray-50">
     <div class="min-h-screen">
