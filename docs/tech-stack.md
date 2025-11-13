@@ -94,17 +94,17 @@
 
 ## Configuration File Summary
 
-| Tool | Config File | Location |
-|------|-------------|----------|
-| SvelteKit | `svelte.config.js` | Root |
-| Vite | `vite.config.ts` | Root |
-| UnoCSS | `uno.config.ts` | Root |
-| TypeScript | `tsconfig.json` | Root |
-| ESLint | `eslint.config.js` | Root |
-| Prettier | `.prettierrc` | Root |
-| Vitest | `vite.config.ts` (test section) | Root |
-| Playwright | `playwright.config.ts` | Root |
-| Storybook | `.storybook/main.ts`, `.storybook/preview.ts` | `.storybook/` |
+| Tool       | Config File                                   | Location      |
+| ---------- | --------------------------------------------- | ------------- |
+| SvelteKit  | `svelte.config.js`                            | Root          |
+| Vite       | `vite.config.ts`                              | Root          |
+| UnoCSS     | `uno.config.ts`                               | Root          |
+| TypeScript | `tsconfig.json`                               | Root          |
+| ESLint     | `eslint.config.js`                            | Root          |
+| Prettier   | `.prettierrc`                                 | Root          |
+| Vitest     | `vite.config.ts` (test section)               | Root          |
+| Playwright | `playwright.config.ts`                        | Root          |
+| Storybook  | `.storybook/main.ts`, `.storybook/preview.ts` | `.storybook/` |
 
 ## Package Scripts
 
