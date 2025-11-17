@@ -17,7 +17,7 @@
 		"test:e2e": "playwright test",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
 		"storybook": "storybook dev -p 6006",
-		"build-storybook": "storybook build"
+		"build:storybook": "storybook build"
 	},
 	"devDependencies": {
 		"@chromatic-com/storybook": "^4.1.2",

@@ -1,0 +1,896 @@
+/* style-guide.css - Clean Showcase Styles Only */
+
+/* ============================================ */
+/* === STYLE GUIDE LAYOUT === */
+/* ============================================ */
+
+/* Section Layout */
+.sg-section {
+	max-width: 1400px;
+	margin: 0 auto;
+	padding: var(--cr-space-6) var(--cr-space-4);
+	background-color: var(--cr-paper);
+}
+
+/* Component Grid - Consistent 2-column layout */
+.sg-component-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--cr-space-6);
+}
+
+/* Example Cards - Clean, borderless sections */
+.sg-example-card {
+	background-color: transparent;
+	border: none;
+	padding: 0;
+}
+
+.sg-example-card h4,
+.sg-card-title {
+	font: var(--cr-nav-support);
+	color: var(--cr-default-700);
+	margin: 0 0 var(--cr-space-3) 0;
+	padding-bottom: var(--cr-space-2);
+	border-bottom: 1px solid var(--cr-default-200);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+/* Cards */
+.sg-card {
+	background-color: var(--cr-paper);
+	border: 1px solid var(--cr-default-200);
+	border-radius: var(--cr-space-2);
+	padding: var(--cr-space-4);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.sg-card-content {
+	color: var(--cr-ink);
+}
+
+/* ============================================ */
+/* === STYLE GUIDE GROUPINGS === */
+/* ============================================ */
+
+/* Color Groups */
+.sg-color-group {
+	margin-bottom: var(--cr-space-8);
+}
+
+/* Support Color Subtitles */
+.sg-color-subtitle {
+	font: var(--cr-nav-support);
+	color: var(--cr-default-700);
+	margin: var(--cr-space-4) 0 var(--cr-space-3) 0;
+	padding-bottom: var(--cr-space-2);
+	border-bottom: 1px solid var(--cr-default-200);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	font-weight: 600;
+}
+
+.sg-color-subtitle:first-of-type {
+	margin-top: var(--cr-space-2);
+}
+
+/* Texture Groups */
+.sg-texture-group {
+	margin-bottom: var(--cr-space-8);
+}
+
+/* Spacing Groups */
+.sg-spacing-section {
+	margin-bottom: var(--cr-space-8);
+}
+
+/* ============================================ */
+/* === STYLE GUIDE SWATCHES & GRIDS === */
+/* ============================================ */
+
+/* Color Swatches Container - Horizontal Layout */
+.sg-color-swatches {
+	display: flex;
+	flex-direction: row;
+	gap: var(--cr-space-4);
+	flex-wrap: wrap;
+}
+
+/* Individual Color Swatch */
+.sg-color-swatch {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--cr-space-2);
+	min-width: 120px;
+}
+
+/* Color Rectangles */
+.sg-color-rectangle {
+	width: 120px;
+	height: 80px;
+	border-radius: var(--cr-space-2);
+	border: 1px solid var(--cr-default-200);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Texture Swatches Container - Horizontal Layout */
+.sg-texture-swatches {
+	display: flex;
+	flex-direction: row;
+	gap: var(--cr-space-4);
+	flex-wrap: wrap;
+}
+
+/* Individual Texture Swatch */
+.sg-texture-swatch {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: var(--cr-space-2);
+	min-width: 120px;
+}
+
+/* Texture Rectangles */
+.sg-texture-rectangle {
+	width: 120px;
+	height: 80px;
+	border-radius: var(--cr-space-2);
+	border: 1px solid var(--cr-default-200);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Light border for light-colored swatches */
+.sg-border-light {
+	border: 2px solid var(--cr-default-300);
+}
+
+/* ============================================ */
+/* === STYLE GUIDE INFORMATION & LABELS === */
+/* ============================================ */
+
+/* Color & Texture Information */
+.sg-color-info,
+.sg-texture-info {
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--cr-space-1) / 2);
+}
+
+.sg-color-name,
+.sg-texture-name {
+	font: var(--cr-nav-support);
+	color: var(--cr-ink);
+}
+
+.sg-color-value,
+.sg-texture-value {
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+	color: var(--cr-default-500);
+	font-weight: 400;
+}
+
+/* ============================================ */
+/* === STYLE GUIDE SPACING SYSTEM === */
+/* ============================================ */
+
+/* Spacing Grid - Clean list format */
+.sg-spacing-grid {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cr-space-1);
+}
+
+.sg-spacing-row {
+	display: flex;
+	align-items: center;
+	gap: var(--cr-space-3);
+	padding: var(--cr-space-2) 0;
+	border-bottom: 1px solid var(--cr-default-100);
+}
+
+.sg-spacing-row:last-child {
+	border-bottom: none;
+}
+
+/* Spacing Labels */
+.sg-spacing-label,
+.sg-spacing-label-wide {
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+	color: var(--cr-ink);
+	font-weight: 500;
+	min-width: 80px;
+	flex-shrink: 0;
+}
+
+.sg-spacing-label-wide {
+	min-width: 100px;
+}
+
+/* Spacing Bars - Visual representation */
+.sg-spacing-bar,
+.sg-spacing-bar-secondary {
+	background-color: var(--cr-primary-500);
+	border-radius: 2px;
+	height: 8px;
+	flex-shrink: 0;
+}
+
+.sg-spacing-bar-secondary {
+	background-color: var(--cr-secondary-500);
+}
+
+/* Spacing Bar Sizes */
+.sg-spacing-bar-xs,
+.sg-spacing-bar-secondary.sg-spacing-bar-xs {
+	width: 4px;
+}
+
+.sg-spacing-bar-sm,
+.sg-spacing-bar-secondary.sg-spacing-bar-sm {
+	width: 8px;
+}
+
+.sg-spacing-bar-3,
+.sg-spacing-bar-secondary.sg-spacing-bar-3 {
+	width: 12px;
+}
+
+.sg-spacing-bar-md,
+.sg-spacing-bar-secondary.sg-spacing-bar-md {
+	width: 16px;
+}
+
+.sg-spacing-bar-lg,
+.sg-spacing-bar-secondary.sg-spacing-bar-lg {
+	width: 24px;
+}
+
+.sg-spacing-bar-xl,
+.sg-spacing-bar-secondary.sg-spacing-bar-xl {
+	width: 32px;
+}
+
+.sg-spacing-bar-2xl,
+.sg-spacing-bar-secondary.sg-spacing-bar-2xl {
+	width: 48px;
+}
+
+.sg-spacing-bar-3xl,
+.sg-spacing-bar-secondary.sg-spacing-bar-3xl {
+	width: 64px;
+}
+
+/* Spacing Values */
+.sg-spacing-value {
+	font: var(--cr-nav-support);
+	color: var(--cr-default-500);
+	flex: 1;
+}
+
+/* Spacing Applications and Examples */
+.sg-spacing-examples {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cr-space-4);
+}
+
+.sg-spacing-example {
+	display: flex;
+	flex-direction: column;
+	gap: var(--cr-space-2);
+}
+
+.sg-eyebrow {
+	font: var(--cr-title-eyebrow);
+	color: var(--cr-default-700);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+/* Demo Elements */
+.sg-flex-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	border-radius: var(--cr-space-1);
+}
+
+.sg-gap-sm {
+	gap: var(--cr-space-2);
+}
+
+.sg-gap-md {
+	gap: var(--cr-space-4);
+}
+
+.sg-gap-lg {
+	gap: var(--cr-space-6);
+}
+
+.sg-padding-sm {
+	padding: var(--cr-space-2);
+}
+
+.sg-padding-md {
+	padding: var(--cr-space-4);
+}
+
+.sg-bg-secondary-light {
+	background-color: var(--cr-secondary-100);
+	border: 1px solid var(--cr-secondary-200);
+}
+
+.sg-bg-input {
+	background-color: var(--cr-default-100);
+	border: 1px solid var(--cr-default-200);
+}
+
+.sg-spacing-demo-box {
+	background-color: var(--cr-primary-500);
+	color: var(--cr-paper);
+	padding: var(--cr-space-2) var(--cr-space-3);
+	border-radius: var(--cr-space-1);
+	font: var(--cr-nav-support);
+	text-align: center;
+	flex-shrink: 0;
+}
+
+.sg-flex-item {
+	flex: 1;
+	min-width: 0;
+}
+
+/* ============================================ */
+/* === STYLE GUIDE TYPOGRAPHY === */
+/* ============================================ */
+
+/* Font Family Samples - Clean rows */
+.sg-font-antonio,
+.sg-font-roboto-serif,
+.sg-font-roboto {
+	padding: var(--cr-space-2) 0;
+	border-bottom: 1px solid var(--cr-default-100);
+	display: flex;
+	align-items: baseline;
+	gap: var(--cr-space-3);
+}
+
+.sg-font-antonio:last-child,
+.sg-font-roboto-serif:last-child,
+.sg-font-roboto:last-child {
+	border-bottom: none;
+}
+
+.sg-font-info {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	width: 100%;
+	gap: var(--cr-space-3);
+}
+
+.sg-font-antonio {
+	font-family: var(--cr-font-antonio);
+}
+
+.sg-font-roboto-serif {
+	font-family: 'Roboto Serif', serif;
+}
+
+.sg-font-roboto {
+	font-family: 'Roboto', sans-serif;
+}
+
+/* Font links styling */
+.sg-font-link {
+	font: var(--cr-nav-support);
+	color: var(--cr-primary-700);
+	text-decoration: none;
+	padding: calc(var(--cr-space-1) / 2) var(--cr-space-2);
+	border: 1px solid var(--cr-primary-300);
+	border-radius: calc(var(--cr-space-1) / 2);
+	background-color: var(--cr-paper);
+	white-space: nowrap;
+}
+
+.sg-font-link:hover {
+	background-color: var(--cr-primary-700);
+	color: var(--cr-paper);
+	border-color: var(--cr-primary-700);
+	text-decoration: none;
+}
+
+/* Remove the boxy font-sample class */
+.sg-font-sample {
+	margin-bottom: var(--cr-space-2);
+	padding: 0;
+	background-color: transparent;
+	border-radius: 0;
+	flex-direction: column;
+}
+
+/* Title Hierarchy - Clean list style */
+.sg-section .cr-title-2xl,
+.sg-section .cr-title-xl,
+.sg-section .cr-title-lg,
+.sg-section .cr-title-md,
+.sg-section .cr-title-sm,
+.sg-section .cr-title-xs,
+.sg-section .cr-title-2xs,
+.sg-section .cr-title-eyebrow {
+	padding: var(--cr-space-2) 0;
+	border-bottom: 1px solid var(--cr-default-100);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.sg-section .cr-title-2xl:last-child,
+.sg-section .cr-title-xl:last-child,
+.sg-section .cr-title-lg:last-child,
+.sg-section .cr-title-md:last-child,
+.sg-section .cr-title-sm:last-child,
+.sg-section .cr-title-xs:last-child,
+.sg-section .cr-title-2xs:last-child,
+.sg-section .cr-title-eyebrow:last-child {
+	border-bottom: none;
+}
+
+/* Add CSS variable info after each title */
+.sg-section .cr-title-2xl::after {
+	content: 'var(--cr-title-2xl)';
+}
+.sg-section .cr-title-xl::after {
+	content: 'var(--cr-title-xl)';
+}
+.sg-section .cr-title-lg::after {
+	content: 'var(--cr-title-lg)';
+}
+.sg-section .cr-title-md::after {
+	content: 'var(--cr-title-md)';
+}
+.sg-section .cr-title-sm::after {
+	content: 'var(--cr-title-sm)';
+}
+.sg-section .cr-title-xs::after {
+	content: 'var(--cr-title-xs)';
+}
+.sg-section .cr-title-2xs::after {
+	content: 'var(--cr-title-2xs)';
+}
+.sg-section .cr-title-eyebrow::after {
+	content: 'var(--cr-title-eyebrow)';
+}
+
+.sg-font-sample::after {
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+	color: var(--cr-default-500);
+	font-weight: normal;
+	font-size: 14px;
+	margin-top: 12px;
+	text-transform: none;
+	/* background-color: white; */
+}
+
+/* Body Text Styles - Clean spacing */
+.sg-section .cr-body-lg,
+.sg-section .cr-body-reg,
+.sg-section .cr-body-sm,
+.sg-section .cr-body-xs {
+	padding: var(--cr-space-2) 0;
+	border-bottom: 1px solid var(--cr-default-100);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.sg-section .cr-body-lg:last-child,
+.sg-section .cr-body-reg:last-child,
+.sg-section .cr-body-sm:last-child,
+.sg-section .cr-body-xs:last-child {
+	border-bottom: none;
+}
+
+/* Add variable names */
+.sg-section .cr-body-lg::after {
+	content: 'var(--cr-body-lg)';
+}
+.sg-section .cr-body-reg::after {
+	content: 'var(--cr-body-reg)';
+}
+.sg-section .cr-body-sm::after {
+	content: 'var(--cr-body-sm)';
+}
+.sg-section .cr-body-xs::after {
+	content: 'var(--cr-body-xs)';
+}
+
+.sg-section .cr-body-lg::after,
+.sg-section .cr-body-reg::after,
+.sg-section .cr-body-sm::after,
+.sg-section .cr-body-xs::after {
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+	color: var(--cr-default-500);
+	font-weight: normal;
+}
+
+/* Navigation & Player Styles - List format */
+.sg-section .cr-nav1,
+.sg-section .cr-nav2,
+.sg-section .cr-nav3,
+.sg-section .cr-nav-support,
+.sg-section .cr-player-song,
+.sg-section .cr-player-artist,
+.sg-section .cr-player-album,
+.sg-section .cr-player-label,
+.sg-section .cr-player-dj {
+	padding: var(--cr-space-2) 0;
+	border-bottom: 1px solid var(--cr-default-100);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.sg-section .cr-nav1:last-child,
+.sg-section .cr-nav2:last-child,
+.sg-section .cr-nav3:last-child,
+.sg-section .cr-nav-support:last-child,
+.sg-section .cr-player-song:last-child,
+.sg-section .cr-player-artist:last-child,
+.sg-section .cr-player-album:last-child,
+.sg-section .cr-player-label:last-child,
+.sg-section .cr-player-dj:last-child {
+	border-bottom: none;
+}
+
+/* Add variable names */
+.sg-section .cr-nav1::after {
+	content: 'var(--cr-nav1)';
+}
+.sg-section .cr-nav2::after {
+	content: 'var(--cr-nav2)';
+}
+.sg-section .cr-nav3::after {
+	content: 'var(--cr-nav3)';
+}
+.sg-section .cr-nav-support::after {
+	content: 'var(--cr-nav-support)';
+}
+.sg-section .cr-player-song::after {
+	content: 'var(--cr-player-song)';
+}
+.sg-section .cr-player-artist::after {
+	content: 'var(--cr-player-artist)';
+}
+.sg-section .cr-player-album::after {
+	content: 'var(--cr-player-album)';
+}
+.sg-section .cr-player-label::after {
+	content: 'var(--cr-player-label)';
+}
+.sg-section .cr-player-dj::after {
+	content: 'var(--cr-player-dj)';
+}
+
+.sg-section .cr-nav1::after,
+.sg-section .cr-nav2::after,
+.sg-section .cr-nav3::after,
+.sg-section .cr-nav-support::after,
+.sg-section .cr-player-song::after,
+.sg-section .cr-player-artist::after,
+.sg-section .cr-player-album::after,
+.sg-section .cr-player-label::after,
+.sg-section .cr-player-dj::after {
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+	color: var(--cr-default-500);
+	font-weight: normal;
+}
+
+/* ============================================ */
+/* === STYLE GUIDE INTERACTIVE ELEMENTS === */
+/* ============================================ */
+
+/* Icon Controls */
+.sg-icon-controls {
+	display: flex;
+	gap: var(--cr-space-6);
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.sg-control-group {
+	display: flex;
+	align-items: center;
+	gap: var(--cr-space-2);
+}
+
+.sg-control-label {
+	font: var(--cr-nav-support);
+	color: var(--cr-ink);
+	min-width: 40px;
+}
+
+.sg-range-input {
+	width: 120px;
+	height: 6px;
+	background: var(--cr-default-200);
+	border-radius: var(--cr-space-1);
+	outline: none;
+	border: none;
+}
+
+.sg-range-input::-webkit-slider-thumb {
+	appearance: none;
+	width: 18px;
+	height: 18px;
+	background: var(--cr-primary-500);
+	border-radius: 50%;
+	cursor: pointer;
+}
+
+.sg-range-input::-moz-range-thumb {
+	width: 18px;
+	height: 18px;
+	background: var(--cr-primary-500);
+	border-radius: 50%;
+	cursor: pointer;
+	border: none;
+}
+
+.sg-select-input {
+	padding: var(--cr-space-1) var(--cr-space-2);
+	border: 1px solid var(--cr-default-300);
+	border-radius: var(--cr-space-1);
+	font: var(--cr-nav-support);
+	background-color: var(--cr-paper);
+	color: var(--cr-ink);
+	min-width: 140px;
+}
+
+.sg-size-display {
+	font: var(--cr-nav-support);
+	color: var(--cr-default-500);
+	min-width: 32px;
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* ============================================ */
+/* === STYLE GUIDE SPACING UTILITIES === */
+/* ============================================ */
+
+.sg-margin-bottom {
+	margin-bottom: var(--cr-space-3);
+}
+
+.sg-margin-bottom-lg {
+	margin-bottom: var(--cr-space-6);
+}
+
+.sg-margin-top-lg {
+	margin-top: var(--cr-space-6);
+}
+
+/* ============================================ */
+/* === STYLE GUIDE CODE & TIP BOXES === */
+/* ============================================ */
+
+/* Code Box */
+.sg-code-box {
+	background-color: var(--cr-default-900);
+	color: var(--cr-paper);
+	padding: var(--cr-space-3);
+	border-radius: var(--cr-space-2);
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+	line-height: 1.4;
+	margin: var(--cr-space-3) 0;
+}
+
+/* Code Examples */
+.sg-code-example {
+	background-color: var(--cr-default-100);
+	border: 1px solid var(--cr-default-200);
+	border-radius: var(--cr-space-1);
+	padding: var(--cr-space-3);
+	overflow-x: auto;
+}
+
+.sg-code-example pre {
+	margin: 0;
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+	color: var(--cr-ink);
+	line-height: 1.4;
+	white-space: pre-wrap;
+}
+
+/* Tip Box */
+.sg-tip-box {
+	background-color: var(--cr-secondary-100);
+	border: 1px solid var(--cr-secondary-300);
+	border-radius: var(--cr-space-2);
+	padding: var(--cr-space-3);
+}
+
+.sg-tip-text {
+	font: var(--cr-nav-support);
+	color: var(--cr-ink);
+	margin: 0;
+	line-height: 1.5;
+}
+
+/* Text Utilities */
+.text-muted {
+	color: var(--cr-default-500);
+}
+
+/* Icons Grid */
+.sg-icons-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	gap: var(--cr-space-4);
+}
+
+/* Icon Demo */
+.sg-icon-demo {
+	display: flex;
+	align-items: center;
+	gap: var(--cr-space-3);
+	padding: var(--cr-space-3);
+	border: 1px solid var(--cr-default-200);
+	border-radius: var(--cr-space-1);
+	background-color: var(--cr-paper);
+}
+
+.sg-icon-demo__visual {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 48px;
+	height: 48px;
+	border-radius: var(--cr-space-1);
+	background-color: var(--cr-default-100);
+	flex-shrink: 0;
+}
+
+.sg-icon-demo__info {
+	flex: 1;
+}
+
+.sg-icon-demo__name {
+	font: var(--cr-nav-support);
+	color: var(--cr-ink);
+	margin: 0 0 var(--cr-space-1) 0;
+}
+
+.sg-icon-demo__usage {
+	font: var(--cr-nav-support);
+	color: var(--cr-default-500);
+	margin: 0;
+}
+
+/* Category Description */
+.sg-category-description {
+	font: var(--cr-nav-support);
+	color: var(--cr-default-600);
+	margin: 0 0 var(--cr-space-4) 0;
+	line-height: 1.5;
+}
+
+/* ============================================ */
+/* === STYLE GUIDE RESPONSIVE === */
+/* ============================================ */
+
+@media (max-width: 968px) {
+	.sg-component-grid,
+	.sg-icons-grid {
+		grid-template-columns: 1fr;
+		gap: var(--cr-space-4);
+	}
+
+	.sg-icon-controls {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--cr-space-3);
+	}
+}
+
+@media (max-width: 768px) {
+	.sg-section {
+		padding: var(--cr-space-4) var(--cr-space-3);
+	}
+
+	.sg-color-swatches,
+	.sg-texture-swatches {
+		gap: var(--cr-space-3);
+	}
+
+	.sg-color-rectangle,
+	.sg-texture-rectangle {
+		width: 100px;
+		height: 70px;
+	}
+
+	.sg-color-swatch,
+	.sg-texture-swatch {
+		min-width: 100px;
+	}
+
+	.sg-spacing-row {
+		gap: var(--cr-space-2);
+	}
+
+	.sg-spacing-label,
+	.sg-spacing-label-wide {
+		min-width: 60px;
+	}
+
+	.sg-icon-demo {
+		flex-direction: column;
+		text-align: center;
+	}
+
+	.sg-icon-demo__visual {
+		align-self: center;
+	}
+
+	/* Hide variable names on mobile */
+	.sg-section .cr-title-2xl::after,
+	.sg-section .cr-title-xl::after,
+	.sg-section .cr-title-lg::after,
+	.sg-section .cr-title-md::after,
+	.sg-section .cr-title-sm::after,
+	.sg-section .cr-title-xs::after,
+	.sg-section .cr-title-2xs::after,
+	.sg-section .cr-title-eyebrow::after,
+	.sg-section .cr-body-lg::after,
+	.sg-section .cr-body-reg::after,
+	.sg-section .cr-body-sm::after,
+	.sg-section .cr-body-xs::after,
+	.sg-section .cr-nav1::after,
+	.sg-section .cr-nav2::after,
+	.sg-section .cr-nav3::after,
+	.sg-section .cr-nav-support::after,
+	.sg-section .cr-player-song::after,
+	.sg-section .cr-player-artist::after,
+	.sg-section .cr-player-album::after,
+	.sg-section .cr-player-label::after,
+	.sg-section .cr-player-dj::after {
+		display: none;
+	}
+}
+
+@media (max-width: 480px) {
+	.sg-section {
+		padding: var(--cr-space-3) var(--cr-space-2);
+	}
+
+	.sg-color-swatches,
+	.sg-texture-swatches {
+		flex-direction: column;
+		gap: var(--cr-space-3);
+	}
+
+	.sg-color-rectangle,
+	.sg-texture-rectangle {
+		width: 80px;
+		height: 60px;
+	}
+
+	.sg-spacing-row {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--cr-space-1);
+	}
+
+	.sg-control-group {
+		flex-direction: column;
+		align-items: flex-start;
+		width: 100%;
+	}
+
+	.sg-range-input,
+	.sg-select-input {
+		width: 100%;
+	}
+}

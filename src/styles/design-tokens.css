@@ -1,0 +1,217 @@
+/* === LP SVELTE DESIGN SYSTEM === */
+/* Based on CHIRP Radio Design Tokens */
+
+:root {
+	/* === TYPOGRAPHY === */
+	/* Font Families */
+	--cr-font-antonio: 'Antonio', sans-serif;
+	--cr-font-roboto: 'Roboto', sans-serif;
+	--cr-font-roboto-serif: 'Roboto Serif', serif;
+
+	/* Titles - Antonio Font Family */
+	--cr-title-2xl: 100 38px/1.6 var(--cr-font-antonio); /* Thin */
+	--cr-title-xl: 400 33px/1.6 var(--cr-font-antonio); /* Bold */
+	--cr-title-lg: 600 28px/1.6 var(--cr-font-antonio); /* Bold */
+	--cr-title-md: 700 24px/1.6 var(--cr-font-antonio); /* Bold */
+	--cr-title-sm: 600 21px/1.4 var(--cr-font-antonio); /* Bold */
+	--cr-title-xs: 600 18px/1.4 var(--cr-font-antonio); /* Bold */
+	--cr-title-2xs: 700 16px/1.4 var(--cr-font-antonio); /* Bold */
+	--cr-title-eyebrow: 300 16px/1 var(--cr-font-antonio); /* Light */
+
+	/* Body Text - Roboto Serif */
+	--cr-body-lg: 400 21px/1.4 var(--cr-font-roboto-serif);
+	--cr-body-reg: 400 16px/1.4 var(--cr-font-roboto-serif);
+	--cr-body-sm: 400 14px/1.6 var(--cr-font-roboto-serif);
+	--cr-body-xs: 600 12px/1.8 var(--cr-font-roboto-serif);
+
+	/* Navigation - Roboto */
+	--cr-nav1: 700 23px/1 var(--cr-font-roboto);
+	--cr-nav2: 600 19px/1 var(--cr-font-roboto); /* Medium */
+	--cr-nav3: 500 14px/1 var(--cr-font-roboto); /* SemiBold */
+	--cr-nav-support: 500 14px/1 var(--cr-font-roboto);
+
+	/* Player Styles - Roboto */
+	--cr-player-song: 600 21px/1 var(--cr-font-roboto); /* Bold */
+	--cr-player-artist: 400 18px/1 var(--cr-font-roboto); /* Regular */
+	--cr-player-album: 700 16px/1 var(--cr-font-roboto); /* Bold Italic */
+	--cr-player-label: 300 14px/1 var(--cr-font-roboto); /* Light */
+	--cr-player-dj: 900 16px/1 var(--cr-font-roboto); /* SemiBold */
+
+	/* Button Text - Antonio */
+	--cr-btn-txt-lg: 600 24px/1 var(--cr-font-antonio);
+	--cr-btn-text-md: 400 20px/1 var(--cr-font-antonio);
+	--cr-btn-text-sm: 400 16px/1 var(--cr-font-antonio);
+	--cr-btn-text-xs: 600 14px/1 var(--cr-font-antonio);
+
+	/* === SURFACE COLORS === */
+	--cr-paper: #fafafa;
+	--cr-ink: #18181b;
+
+	/* === BRAND COLORS === */
+	/* Primary Red - CHIRP Brand Color */
+	--cr-primary-100: #f6e3e6;
+	--cr-primary-200: #fcc4ca;
+	--cr-primary-300: #ff9999;
+	--cr-primary-500: #ea1c2c;
+	--cr-primary-700: #a20c1d;
+	--cr-primary-900: #5f0711;
+
+	/* Secondary Blue - "Chicago Blue" */
+	--cr-secondary-100: #e3f0f6;
+	--cr-secondary-200: #c8e1ed;
+	--cr-secondary-300: #a7d8f0;
+	--cr-secondary-500: #41b6e6;
+	--cr-secondary-700: #15769e;
+	--cr-secondary-900: #0c435a;
+
+	/* Accent Yellow */
+	--cr-accent-100: #fff1cc;
+	--cr-accent-500: #ffc72c;
+	--cr-accent-800: #664b00;
+
+	/* === NEUTRAL COLORS === */
+	--cr-default-100: #f4f4f5;
+	--cr-default-200: #e4e4e7;
+	--cr-default-300: #d4d4d8;
+	--cr-default-500: #7b7b84;
+	--cr-default-600: #64646d;
+	--cr-default-700: #4d4d56;
+	--cr-default-900: #3f3f46;
+
+	/* === SUPPORT COLORS === */
+	--cr-support-info-bg: #d5f2ff;
+	--cr-support-info-fg: #008bcc;
+	--cr-support-success-bg: #d1eec6;
+	--cr-support-success-fg: #067a46;
+	--cr-support-warning-bg: #ffeee0;
+	--cr-support-warning-fg: #f4a261;
+	--cr-support-error-bg: #f0d7fe;
+	--cr-support-error-fg: #8207c5;
+
+	/* === SEMANTIC ALIASES === */
+	--cr-background: var(--cr-paper);
+	--cr-foreground: var(--cr-ink);
+	--cr-primary: var(--cr-primary-500);
+	--cr-secondary: var(--cr-secondary-500);
+	--cr-accent: var(--cr-accent-500);
+	--cr-muted: var(--cr-default-500);
+	--cr-border: var(--cr-default-300);
+	--cr-input: var(--cr-default-100);
+
+	/* === SPACING SYSTEM === */
+	/* Base spacing unit - 4px */
+	--cr-space-base: 4px;
+
+	/* Spacing Scale */
+	--cr-space-1: calc(var(--cr-space-base) * 1); /* 4px */
+	--cr-space-2: calc(var(--cr-space-base) * 2); /* 8px */
+	--cr-space-3: calc(var(--cr-space-base) * 3); /* 12px */
+	--cr-space-4: calc(var(--cr-space-base) * 4); /* 16px */
+	--cr-space-5: calc(var(--cr-space-base) * 5); /* 20px */
+	--cr-space-6: calc(var(--cr-space-base) * 6); /* 24px */
+	--cr-space-8: calc(var(--cr-space-base) * 8); /* 32px */
+	--cr-space-10: calc(var(--cr-space-base) * 10); /* 40px */
+	--cr-space-12: calc(var(--cr-space-base) * 12); /* 48px */
+	--cr-space-16: calc(var(--cr-space-base) * 16); /* 64px */
+	--cr-space-20: calc(var(--cr-space-base) * 20); /* 80px */
+	--cr-space-24: calc(var(--cr-space-base) * 24); /* 96px */
+	--cr-space-32: calc(var(--cr-space-base) * 32); /* 128px */
+
+	/* Semantic Spacing Aliases */
+	--cr-space-xs: var(--cr-space-1); /* 4px - Tight spacing */
+	--cr-space-sm: var(--cr-space-2); /* 8px - Small spacing */
+	--cr-space-md: var(--cr-space-4); /* 16px - Medium spacing */
+	--cr-space-lg: var(--cr-space-6); /* 24px - Large spacing */
+	--cr-space-xl: var(--cr-space-8); /* 32px - Extra large spacing */
+	--cr-space-2xl: var(--cr-space-12); /* 48px - 2X large spacing */
+	--cr-space-3xl: var(--cr-space-16); /* 64px - 3X large spacing */
+
+	/* Component-specific spacing */
+	--cr-space-component-padding: var(--cr-space-md); /* 16px */
+	--cr-space-component-margin: var(--cr-space-lg); /* 24px */
+	--cr-space-section-gap: var(--cr-space-2xl); /* 48px */
+	--cr-space-page-margin: var(--cr-space-xl); /* 32px */
+}
+
+/* === DARK MODE === */
+[data-theme='dark'] {
+	--cr-paper: #18181b;
+	--cr-ink: #fafafa;
+
+	/* Adjust colors for dark mode if needed */
+	--cr-default-100: #27272a;
+	--cr-default-200: #3f3f46;
+	--cr-default-300: #52525b;
+	--cr-default-500: #a1a1aa;
+	--cr-default-600: #d4d4d8;
+	--cr-default-700: #e4e4e7;
+	--cr-default-900: #f4f4f5;
+}
+
+/* === TYPOGRAPHY UTILITY CLASSES === */
+.cr-title-2xl {
+	font: var(--cr-title-2xl);
+}
+.cr-title-xl {
+	font: var(--cr-title-xl);
+}
+.cr-title-lg {
+	font: var(--cr-title-lg);
+}
+.cr-title-md {
+	font: var(--cr-title-md);
+}
+.cr-title-sm {
+	font: var(--cr-title-sm);
+}
+.cr-title-xs {
+	font: var(--cr-title-xs);
+}
+.cr-title-2xs {
+	font: var(--cr-title-2xs);
+}
+.cr-title-eyebrow {
+	font: var(--cr-title-eyebrow);
+}
+
+.cr-body-lg {
+	font: var(--cr-body-lg);
+}
+.cr-body-reg {
+	font: var(--cr-body-reg);
+}
+.cr-body-sm {
+	font: var(--cr-body-sm);
+}
+.cr-body-xs {
+	font: var(--cr-body-xs);
+}
+
+.cr-nav1 {
+	font: var(--cr-nav1);
+}
+.cr-nav2 {
+	font: var(--cr-nav2);
+}
+.cr-nav3 {
+	font: var(--cr-nav3);
+}
+.cr-nav-support {
+	font: var(--cr-nav-support);
+}
+
+.cr-player-song {
+	font: var(--cr-player-song);
+}
+.cr-player-artist {
+	font: var(--cr-player-artist);
+}
+.cr-player-album {
+	font: var(--cr-player-album);
+}
+.cr-player-label {
+	font: var(--cr-player-label);
+}
+.cr-player-dj {
+	font: var(--cr-player-dj);
+}
