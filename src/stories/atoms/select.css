@@ -1,0 +1,156 @@
+/* Select Component Styles - Mobile First */
+
+.select-wrapper {
+	position: relative;
+	display: inline-block;
+	width: 100%;
+}
+
+.select {
+	/* Base styles */
+	width: 100%;
+	font: var(--cr-body-reg);
+	color: var(--cr-foreground);
+	background-color: var(--cr-paper);
+	border: 2px solid var(--cr-border);
+	border-radius: 4px;
+	padding: var(--cr-space-3) var(--cr-space-10) var(--cr-space-3) var(--cr-space-4);
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease,
+		background-color 0.2s ease;
+
+	/* Mobile-first sizing - WCAG 2.1 minimum touch target */
+	min-height: 44px;
+
+	/* Remove default arrow */
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+
+	/* Cursor */
+	cursor: pointer;
+}
+
+/* Custom chevron icon */
+.select-icon {
+	position: absolute;
+	right: var(--cr-space-3);
+	top: 50%;
+	transform: translateY(-50%);
+	pointer-events: none;
+	color: var(--cr-default-700);
+	transition: color 0.2s ease;
+}
+
+/* Focus state - WCAG 2.1 compliant */
+.select:focus {
+	outline: none;
+	border-color: var(--cr-primary-500);
+	box-shadow: 0 0 0 3px rgba(65, 182, 230, 0.1);
+}
+
+.select:focus + .select-icon {
+	color: var(--cr-primary-500);
+}
+
+/* Hover state */
+.select:hover:not(:disabled) {
+	border-color: var(--cr-default-500);
+}
+
+/* Error state */
+.select-wrapper--error .select {
+	border-color: var(--cr-support-error-fg);
+	background-color: var(--cr-support-error-bg);
+}
+
+.select-wrapper--error .select:focus {
+	border-color: var(--cr-support-error-fg);
+	box-shadow: 0 0 0 3px rgba(130, 7, 197, 0.1);
+}
+
+.select-wrapper--error .select-icon {
+	color: var(--cr-support-error-fg);
+}
+
+/* Success state */
+.select-wrapper--success .select {
+	border-color: var(--cr-support-success-fg);
+	background-color: var(--cr-support-success-bg);
+}
+
+.select-wrapper--success .select:focus {
+	border-color: var(--cr-support-success-fg);
+	box-shadow: 0 0 0 3px rgba(6, 122, 70, 0.1);
+}
+
+.select-wrapper--success .select-icon {
+	color: var(--cr-support-success-fg);
+}
+
+/* Disabled state */
+.select:disabled,
+.select-wrapper--disabled .select {
+	background-color: var(--cr-default-100);
+	color: var(--cr-muted);
+	border-color: var(--cr-default-300);
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.select-wrapper--disabled .select-icon {
+	color: var(--cr-muted);
+	opacity: 0.6;
+}
+
+/* Placeholder/first option styling */
+.select option:first-child {
+	color: var(--cr-muted);
+}
+
+/* High Contrast Mode Support for WCAG compliance */
+@media (prefers-contrast: high) {
+	.select {
+		border-width: 2px;
+	}
+
+	.select:focus {
+		outline: 2px solid;
+		outline-offset: 2px;
+	}
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+	.select,
+	.select-icon {
+		transition: none;
+	}
+}
+
+/* Tablet and up - slightly larger padding */
+@media (min-width: 768px) {
+	.select {
+		padding: var(--cr-space-3) var(--cr-space-10) var(--cr-space-3) var(--cr-space-5);
+	}
+}
+
+/* Dark mode support */
+[data-theme='dark'] .select {
+	background-color: var(--cr-default-900);
+	border-color: var(--cr-default-700);
+	color: var(--cr-paper);
+}
+
+[data-theme='dark'] .select:focus {
+	border-color: var(--cr-primary-300);
+}
+
+[data-theme='dark'] .select-icon {
+	color: var(--cr-default-500);
+}
+
+[data-theme='dark'] .select:focus + .select-icon {
+	color: var(--cr-primary-300);
+}
