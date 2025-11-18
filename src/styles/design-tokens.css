@@ -1,5 +1,5 @@
 /* === LP SVELTE DESIGN SYSTEM === */
-/* Based on CHIRP Radio Design Tokens */
+/* Litigant Portal Design Tokens */
 
 :root {
 	/* === TYPOGRAPHY === */
@@ -48,21 +48,21 @@
 	--cr-ink: #18181b;
 
 	/* === BRAND COLORS === */
-	/* Primary Red - CHIRP Brand Color */
-	--cr-primary-100: #f6e3e6;
-	--cr-primary-200: #fcc4ca;
-	--cr-primary-300: #ff9999;
-	--cr-primary-500: #ea1c2c;
-	--cr-primary-700: #a20c1d;
-	--cr-primary-900: #5f0711;
+	/* Primary Blue - "Chicago Blue" */
+	--cr-primary-100: #e3f0f6;
+	--cr-primary-200: #c8e1ed;
+	--cr-primary-300: #a7d8f0;
+	--cr-primary-500: #41b6e6;
+	--cr-primary-700: #15769e;
+	--cr-primary-900: #0c435a;
 
-	/* Secondary Blue - "Chicago Blue" */
-	--cr-secondary-100: #e3f0f6;
-	--cr-secondary-200: #c8e1ed;
-	--cr-secondary-300: #a7d8f0;
-	--cr-secondary-500: #41b6e6;
-	--cr-secondary-700: #15769e;
-	--cr-secondary-900: #0c435a;
+	/* Secondary Red */
+	--cr-secondary-100: #f6e3e6;
+	--cr-secondary-200: #fcc4ca;
+	--cr-secondary-300: #ff9999;
+	--cr-secondary-500: #ea1c2c;
+	--cr-secondary-700: #a20c1d;
+	--cr-secondary-900: #5f0711;
 
 	/* Accent Yellow */
 	--cr-accent-100: #fff1cc;

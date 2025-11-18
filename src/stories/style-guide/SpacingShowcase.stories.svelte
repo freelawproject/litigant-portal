@@ -25,7 +25,7 @@
 			<h3>Spacing System Overview</h3>
 			<div class="sg-card-content">
 				<p class="cr-body-reg sg-margin-bottom">
-					CHIRP Radio uses a consistent 4px base spacing unit to create harmonious layouts. All
+					Litigant Portal uses a consistent 4px base spacing unit to create harmonious layouts. All
 					spacing values are multiples of this base unit, ensuring visual rhythm and consistency
 					across the interface.
 				</p>
