@@ -1,0 +1,137 @@
+/* Link Component Styles - Mobile First */
+
+.link {
+	/* Base styles */
+	display: inline-flex;
+	align-items: center;
+	gap: var(--cr-space-1);
+	font: var(--cr-body-reg);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+	transition:
+		color 0.2s ease,
+		text-decoration-color 0.2s ease;
+	cursor: pointer;
+
+	/* WCAG 2.1 - Minimum touch target size for mobile */
+	min-height: 24px;
+}
+
+/* Default variant - inherits color */
+.link--default {
+	color: var(--cr-primary-500);
+	text-decoration-color: var(--cr-primary-300);
+}
+
+.link--default:hover {
+	color: var(--cr-primary-700);
+	text-decoration-color: var(--cr-primary-700);
+}
+
+.link--default:focus-visible {
+	outline: 2px solid var(--cr-primary-500);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* Primary variant - bold style */
+.link--primary {
+	color: var(--cr-primary-500);
+	font-weight: 600;
+	text-decoration-thickness: 2px;
+}
+
+.link--primary:hover {
+	color: var(--cr-primary-700);
+}
+
+.link--primary:focus-visible {
+	outline: 2px solid var(--cr-primary-500);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* Secondary variant - subtle style */
+.link--secondary {
+	color: var(--cr-default-700);
+	text-decoration-color: var(--cr-default-300);
+}
+
+.link--secondary:hover {
+	color: var(--cr-default-900);
+	text-decoration-color: var(--cr-default-700);
+}
+
+.link--secondary:focus-visible {
+	outline: 2px solid var(--cr-default-500);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* Unstyled variant - minimal styling */
+.link--unstyled {
+	color: inherit;
+	text-decoration: none;
+}
+
+.link--unstyled:hover {
+	text-decoration: underline;
+}
+
+.link--unstyled:focus-visible {
+	outline: 2px solid var(--cr-primary-500);
+	outline-offset: 2px;
+	border-radius: 2px;
+}
+
+/* External link icon */
+.link-external-icon {
+	flex-shrink: 0;
+	margin-left: var(--cr-space-1);
+}
+
+/* Visited state */
+.link:visited {
+	opacity: 0.8;
+}
+
+/* Active state */
+.link:active {
+	opacity: 0.9;
+}
+
+/* High Contrast Mode Support for WCAG compliance */
+@media (prefers-contrast: high) {
+	.link {
+		text-decoration-thickness: 2px;
+	}
+
+	.link:focus-visible {
+		outline-width: 3px;
+	}
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+	.link {
+		transition: none;
+	}
+}
+
+/* Dark mode support */
+[data-theme='dark'] .link--default {
+	color: var(--cr-primary-300);
+	text-decoration-color: var(--cr-primary-500);
+}
+
+[data-theme='dark'] .link--default:hover {
+	color: var(--cr-primary-100);
+}
+
+[data-theme='dark'] .link--secondary {
+	color: var(--cr-default-300);
+}
+
+[data-theme='dark'] .link--secondary:hover {
+	color: var(--cr-default-100);
+}
