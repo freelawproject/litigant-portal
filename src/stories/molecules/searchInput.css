@@ -1,0 +1,126 @@
+/* Search Input Molecule Styles - Mobile First */
+
+.search-input {
+	position: relative;
+	display: inline-flex;
+	width: 100%;
+	align-items: center;
+}
+
+.search-input__icon {
+	position: absolute;
+	left: var(--cr-space-4);
+	color: var(--cr-default-600);
+	pointer-events: none;
+	transition: color 0.2s ease;
+}
+
+.search-input__field {
+	/* Base styles */
+	width: 100%;
+	font: var(--cr-body-reg);
+	color: var(--cr-foreground);
+	background-color: var(--cr-paper);
+	border: 2px solid var(--cr-border);
+	border-radius: 4px;
+	padding: var(--cr-space-3) var(--cr-space-4) var(--cr-space-3) var(--cr-space-10);
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease,
+		background-color 0.2s ease;
+
+	/* Mobile-first sizing - WCAG 2.1 minimum touch target */
+	min-height: 44px;
+
+	/* Remove default search styling */
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+}
+
+/* Remove search input clear button on webkit browsers */
+.search-input__field::-webkit-search-cancel-button {
+	-webkit-appearance: none;
+	appearance: none;
+}
+
+/* Focus state - WCAG 2.1 compliant */
+.search-input__field:focus {
+	outline: none;
+	border-color: var(--cr-primary-500);
+	box-shadow: 0 0 0 3px rgba(65, 182, 230, 0.1);
+}
+
+.search-input:has(.search-input__field:focus) .search-input__icon {
+	color: var(--cr-primary-500);
+}
+
+/* Hover state */
+.search-input__field:hover:not(:disabled) {
+	border-color: var(--cr-default-500);
+}
+
+/* Disabled state */
+.search-input__field:disabled {
+	background-color: var(--cr-default-100);
+	color: var(--cr-muted);
+	border-color: var(--cr-default-300);
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.search-input:has(.search-input__field:disabled) .search-input__icon {
+	color: var(--cr-muted);
+	opacity: 0.6;
+}
+
+/* Placeholder styling */
+.search-input__field::placeholder {
+	color: var(--cr-muted);
+}
+
+/* High Contrast Mode Support for WCAG compliance */
+@media (prefers-contrast: high) {
+	.search-input__field {
+		border-width: 2px;
+	}
+
+	.search-input__field:focus {
+		outline: 2px solid;
+		outline-offset: 2px;
+	}
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+	.search-input__field,
+	.search-input__icon {
+		transition: none;
+	}
+}
+
+/* Tablet and up - slightly larger padding */
+@media (min-width: 768px) {
+	.search-input__field {
+		padding: var(--cr-space-3) var(--cr-space-5) var(--cr-space-3) var(--cr-space-10);
+	}
+}
+
+/* Dark mode support */
+[data-theme='dark'] .search-input__field {
+	background-color: var(--cr-default-900);
+	border-color: var(--cr-default-700);
+	color: var(--cr-paper);
+}
+
+[data-theme='dark'] .search-input__field:focus {
+	border-color: var(--cr-primary-300);
+}
+
+[data-theme='dark'] .search-input__icon {
+	color: var(--cr-default-500);
+}
+
+[data-theme='dark'] .search-input:has(.search-input__field:focus) .search-input__icon {
+	color: var(--cr-primary-300);
+}
