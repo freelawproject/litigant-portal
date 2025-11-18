@@ -1,0 +1,123 @@
+/* Input Component Styles - Mobile First */
+
+.input {
+	/* Base styles */
+	width: 100%;
+	font: var(--cr-body-reg);
+	color: var(--cr-foreground);
+	background-color: var(--cr-paper);
+	border: 2px solid var(--cr-border);
+	border-radius: 4px;
+	padding: var(--cr-space-3) var(--cr-space-4);
+	transition:
+		border-color 0.2s ease,
+		box-shadow 0.2s ease,
+		background-color 0.2s ease;
+
+	/* Mobile-first sizing */
+	min-height: 44px; /* WCAG 2.1 - Minimum touch target size */
+}
+
+/* Placeholder styling */
+.input::placeholder {
+	color: var(--cr-muted);
+	opacity: 1;
+}
+
+/* Focus state - WCAG 2.1 compliant */
+.input:focus {
+	outline: none;
+	border-color: var(--cr-primary-500);
+	box-shadow: 0 0 0 3px rgba(234, 28, 44, 0.1);
+}
+
+/* Hover state */
+.input:hover:not(:disabled):not(:readonly) {
+	border-color: var(--cr-default-500);
+}
+
+/* Error state */
+.input--error {
+	border-color: var(--cr-support-error-fg);
+	background-color: var(--cr-support-error-bg);
+}
+
+.input--error:focus {
+	border-color: var(--cr-support-error-fg);
+	box-shadow: 0 0 0 3px rgba(130, 7, 197, 0.1);
+}
+
+/* Success state */
+.input--success {
+	border-color: var(--cr-support-success-fg);
+	background-color: var(--cr-support-success-bg);
+}
+
+.input--success:focus {
+	border-color: var(--cr-support-success-fg);
+	box-shadow: 0 0 0 3px rgba(6, 122, 70, 0.1);
+}
+
+/* Disabled state */
+.input:disabled,
+.input--disabled {
+	background-color: var(--cr-default-100);
+	color: var(--cr-muted);
+	border-color: var(--cr-default-300);
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+/* Readonly state */
+.input:read-only,
+.input--readonly {
+	background-color: var(--cr-default-100);
+	border-color: var(--cr-default-300);
+	cursor: default;
+}
+
+/* Required field indicator support */
+.input:required {
+	/* Style can be added via parent label with asterisk */
+}
+
+/* High Contrast Mode Support for WCAG compliance */
+@media (prefers-contrast: high) {
+	.input {
+		border-width: 2px;
+	}
+
+	.input:focus {
+		outline: 2px solid;
+		outline-offset: 2px;
+	}
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+	.input {
+		transition: none;
+	}
+}
+
+/* Tablet and up - slightly larger padding */
+@media (min-width: 768px) {
+	.input {
+		padding: var(--cr-space-3) var(--cr-space-5);
+	}
+}
+
+/* Dark mode support */
+[data-theme='dark'] .input {
+	background-color: var(--cr-default-900);
+	border-color: var(--cr-default-700);
+	color: var(--cr-paper);
+}
+
+[data-theme='dark'] .input:focus {
+	border-color: var(--cr-primary-300);
+}
+
+[data-theme='dark'] .input::placeholder {
+	color: var(--cr-default-500);
+}
