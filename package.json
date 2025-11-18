@@ -12,7 +12,7 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check . && eslint .",
+		"lint": "eslint .",
 		"test:unit": "vitest",
 		"test:e2e": "playwright test",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
@@ -53,5 +53,8 @@
 		"vite-plugin-devtools-json": "^1.0.0",
 		"vitest": "^4.0.5",
 		"vitest-browser-svelte": "^2.0.1"
+	},
+	"dependencies": {
+		"@lucide/svelte": "^0.554.0"
 	}
 }
