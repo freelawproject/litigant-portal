@@ -32,6 +32,19 @@ Temporary Items
 
 # End of https://www.toptal.com/developers/gitignore/api/macos
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Vite
+static/.vite/
+static/css/
+static/js/
+static/assets/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
