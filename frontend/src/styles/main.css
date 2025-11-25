@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base layer - Design tokens and element defaults */
+@layer base {
+  :root {
+    /* Color tokens */
+    --color-primary: theme('colors.primary.500');
+    --color-secondary: theme('colors.secondary.500');
+    --color-accent: theme('colors.accent.500');
+
+    /* Font families */
+    --font-title: theme('fontFamily.antonio');
+    --font-body: theme('fontFamily.roboto');
+    --font-serif: theme('fontFamily.roboto-serif');
+  }
+
+  html {
+    @apply font-roboto text-gray-900 antialiased;
+  }
+
+  /* Typography defaults */
+  h1 { @apply font-antonio text-title-1; }
+  h2 { @apply font-antonio text-title-2; }
+  h3 { @apply font-antonio text-title-3; }
+  h4 { @apply font-antonio text-title-4; }
+  h5 { @apply font-antonio text-title-5; }
+  h6 { @apply font-antonio text-title-6; }
+
+  /* Accessible focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  /* Minimum touch targets for accessibility (WCAG 2.5.5) */
+  button, a, input, select, textarea {
+    @apply min-h-[44px];
+  }
+}
+
+/* Component layer - Reusable component styles */
+@layer components {
+  /* Add component-specific styles here if needed beyond Tailwind */
+}
+
+/* Utility layer - Custom utilities */
+@layer utilities {
+  /* Mobile-first utilities */
+  .container-mobile {
+    @apply px-4 mx-auto;
+  }
+
+  .container-desktop {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+}
