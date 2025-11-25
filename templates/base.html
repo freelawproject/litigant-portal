@@ -1,0 +1,42 @@
+{% load django_vite %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_description %}Litigant Portal - Access to Justice{% endblock %}">
+    <title>{% block title %}Litigant Portal{% endblock %}</title>
+
+    {# Additional CSS #}
+    {% block extra_css %}{% endblock %}
+
+    {# Vite assets (CSS and JS) #}
+    {% vite_asset 'frontend/src/main.js' %}
+</head>
+<body class="min-h-screen bg-gray-50">
+    {% block body %}
+    <div class="flex flex-col min-h-screen">
+        {% block header %}
+        {# Header will go here #}
+        {% endblock %}
+
+        <main class="flex-1 container-desktop py-8">
+            {% block content %}{% endblock %}
+        </main>
+
+        {% block footer %}
+        <footer class="bg-gray-800 text-white py-6 mt-auto">
+            <div class="container-desktop">
+                <p class="text-sm text-center">
+                    &copy; {% now "Y" %} Litigant Portal. All rights reserved.
+                </p>
+            </div>
+        </footer>
+        {% endblock %}
+    </div>
+    {% endblock body %}
+
+    {# Additional JavaScript #}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
