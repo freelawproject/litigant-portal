@@ -1,6 +1,6 @@
 # Django-Cotton Conversion Status
 
-**Last Updated:** 2025-11-24
+**Last Updated:** 2025-11-25
 **Project:** ~/work/litigant-portal
 **Source Repo:** ~/projects/lp-svelte (SvelteKit + UnoCSS)
 **Target Stack:** Django-Cotton + Tailwind + AlpineJS
@@ -12,7 +12,7 @@
 ```bash
 cd ~/work/litigant-portal
 ./dev.sh                    # Start both servers
-# Visit: http://localhost:8000/demo/
+# Visit: http://localhost:8000/components/
 ```
 
 **Other Commands:**
@@ -28,22 +28,20 @@ python manage.py shell     # Django shell
 ## ✅ Completed (Phases 1 & 2)
 
 ### Phase 1: Django Foundation
-- ✅ Django 4.2.25 project created (Python 3.13)
+- ✅ Django 5.2.7 project created (Python 3.13)
 - ✅ Project structure: `config/` + apps (`portal`, `litigant_portal`)
 - ✅ Database migrated (SQLite for development)
-- ✅ **django-cotton** (2.1.3) - Component system configured
-- ✅ **django-pattern-library** (1.5.0) - Component docs at `/pattern-library/`
-- ✅ **django-vite** (3.1.0) - Frontend asset integration
-- ✅ **djangorestframework** - REST API ready
+- ✅ **django-cotton** - Component system configured
+- ✅ **django-vite** - Frontend asset integration
 - ✅ **django-allauth** - Authentication system
-- ✅ **django-csp** (4.0) - Content Security Policy configured
+- ✅ **django-csp** - Content Security Policy configured
 
 **URLs Configured:**
+- `/` - Home (placeholder for future app)
+- `/components/` - Component library
+- `/style-guide/` - Design tokens documentation
 - `/admin/` - Django admin
 - `/accounts/` - Authentication (allauth)
-- `/api/` - REST API endpoints
-- `/pattern-library/` - Component library (DEBUG only)
-- `/demo/` - Tech stack demo page
 
 ### Phase 2: Frontend Build Pipeline
 - ✅ **Vite 6.0.7** - Fast bundler with HMR
@@ -68,8 +66,10 @@ python manage.py shell     # Django shell
 
 **Templates Created:**
 - `templates/base.html` - Main layout with Vite asset loading
-- `templates/templates/mobile_base.html` - Mobile-optimized layout
-- `templates/pages/demo.html` - Tech stack test page
+- `templates/layouts/mobile_base.html` - Mobile-optimized layout
+- `templates/pages/home.html` - Home placeholder
+- `templates/pages/components.html` - Component library
+- `templates/pages/style_guide.html` - Design tokens documentation
 
 ---
 
@@ -86,40 +86,36 @@ python manage.py shell     # Django shell
 │   ├── views.py               # View functions
 │   └── urls.py                # App URLs
 │
-├── litigant_portal/            # Component app
+├── litigant_portal/            # Future app code (placeholder)
 │
-├── templates/                  # Django templates (Atomic Design)
+├── templates/                  # Django templates
 │   ├── base.html              # Base layout
-│   ├── atoms/                 # Ready for components
-│   ├── molecules/
-│   ├── organisms/
-│   ├── templates/
-│   │   └── mobile_base.html
+│   ├── cotton/                # Django-Cotton components
+│   │   └── button.html        # Button component
+│   ├── layouts/
+│   │   └── mobile_base.html   # Mobile layout
 │   └── pages/
-│       └── demo.html
+│       ├── home.html          # Home placeholder
+│       ├── components.html    # Component library
+│       └── style_guide.html   # Design tokens
 │
 ├── frontend/                   # Frontend source (pre-build)
 │   └── src/
 │       ├── main.js            # AlpineJS entry point
 │       ├── styles/
-│       │   └── main.css       # Tailwind + design tokens
+│       │   ├── main.css       # Entry point
+│       │   ├── base/          # Reset, typography, layout
+│       │   ├── components/    # Button styles, etc.
+│       │   └── utilities/     # Overrides
 │       └── scripts/
-│           ├── components/    # Alpine components
-│           └── stores/        # Alpine stores
+│           └── stores/        # Alpine stores (theme)
 │
 ├── static/                     # Vite build output
-│   ├── .vite/
-│   │   └── manifest.json
+│   ├── .vite/manifest.json
 │   ├── css/
 │   └── js/
 │
 ├── docs/                       # Project documentation
-│   ├── ATOMIC_DESIGN_ARCHITECTURE.md
-│   ├── requirements-summary.md
-│   └── CONVERSION_STATUS.md   # This file
-│
-├── .venv/                      # Python virtual environment
-├── node_modules/               # npm dependencies
 │
 ├── dev.sh                      # Start both servers
 ├── Makefile                    # Development commands
@@ -127,9 +123,7 @@ python manage.py shell     # Django shell
 ├── package.json                # npm dependencies
 ├── vite.config.ts              # Vite configuration
 ├── tailwind.config.js          # Tailwind + design tokens
-├── postcss.config.js           # PostCSS config
-├── pyproject.toml              # Python project metadata
-└── .pre-commit-config.yaml     # Pre-commit hooks
+└── postcss.config.js           # PostCSS config
 ```
 
 ---
@@ -144,10 +138,11 @@ python manage.py shell     # Django shell
 INSTALLED_APPS = [
     'django_cotton',           # Component system
     'django_vite',             # Asset integration
-    'pattern_library',         # Component docs
-    'rest_framework',          # REST API
     'allauth',                 # Authentication
 ]
+
+# Cotton components in templates/cotton/
+COTTON_DIR = "cotton"
 
 # Vite integration
 DJANGO_VITE_DEV_MODE = DEBUG
@@ -162,7 +157,6 @@ CSP_SCRIPT_SRC = ("'self'", "http://localhost:5173" if DEBUG else None)
 TEMPLATES[0]['DIRS'] = [BASE_DIR / 'templates']
 TEMPLATES[0]['OPTIONS']['builtins'] = [
     'django_cotton.templatetags.cotton',
-    'pattern_library.loader_tags',
 ]
 ```
 
@@ -223,51 +217,54 @@ python manage.py collectstatic
 ```
 
 ### Testing the Setup
-Visit http://localhost:8000/demo/ to verify:
+Visit http://localhost:8000/components/ to verify:
 - ✅ Tailwind colors display correctly
-- ✅ AlpineJS counter works (reactivity test)
+- ✅ Button variants render (primary, secondary, tertiary, ghost)
+- ✅ Dark mode toggle works (AlpineJS theme store)
 - ✅ Focus rings visible (WCAG compliance)
 - ✅ No CSP violations in console
-- ✅ Mobile responsive grid
+
+Visit http://localhost:8000/style-guide/ to verify:
+- ✅ Color palette displays
+- ✅ Typography scale shows
+- ✅ Spacing tokens render
 
 ---
 
 ## 📝 Next Steps (Phase 3)
 
-### Immediate Tasks
-1. **Convert Button atom** from lp-svelte
-   - Source: `~/projects/lp-svelte/src/stories/atoms/button/`
-   - Target: `templates/atoms/button/button.html`
-   - Add Pattern Library fixture: `templates/atoms/button/button.yaml`
+### ✅ Completed
+1. **Button component** - `templates/cotton/button.html`
+   - Variants: primary, secondary, tertiary, ghost
+   - Supports: disabled, full_width, custom classes
+   - CSS in `frontend/src/styles/components/buttons.css`
 
-2. **Convert Input atom**
+### Remaining Tasks
+1. **Convert Input component**
    - Source: `~/projects/lp-svelte/src/stories/atoms/input/`
-   - Target: `templates/atoms/input/input.html`
+   - Target: `templates/cotton/input.html`
 
-3. **Convert remaining atoms** (Link, Select, Icon)
+2. **Convert remaining atoms** (Link, Select, Icon)
 
-4. **Convert molecules** (CategoryCard, SearchInput, etc.)
+3. **Convert molecules** (FormField, Card, Alert)
 
-5. **Convert organisms** (Header)
+4. **Convert organisms** (Header, SingleQuestionForm)
 
-### Component Conversion Pattern
+### Component Pattern
 For each component:
 1. Read Svelte source in `~/projects/lp-svelte/src/stories/`
-2. Create Cotton template in `templates/[atoms|molecules|organisms]/[component]/`
-3. Convert styles to Tailwind utility classes
+2. Create Cotton template in `templates/cotton/[component].html`
+3. Add CSS classes in `frontend/src/styles/components/`
 4. Add AlpineJS for reactivity (if needed)
-5. Create Pattern Library fixture (YAML)
-6. Document usage in markdown
-7. Test in `/pattern-library/`
+5. Add example to `/components/` page
 
-### Co-located Component Structure
-Each component folder should contain:
+### Component Structure
 ```
-templates/atoms/button/
-├── button.html         # Cotton component template
-├── button.yaml         # Pattern Library fixture
-├── button.md           # Usage documentation
-└── __init__.py         # Python module marker
+templates/cotton/
+├── button.html         # <c-button>
+├── input.html          # <c-input>
+├── link.html           # <c-link>
+└── ...
 ```
 
 ---
@@ -332,15 +329,17 @@ npm run build
 - ✅ Django server running
 - ✅ Vite dev server with HMR
 - ✅ Tailwind compiling correctly
-- ✅ AlpineJS reactive
+- ✅ AlpineJS reactive (theme store working)
 - ✅ CSP compliant
 - ✅ Mobile-first responsive
+- ✅ Button component converted
 
 **Next Milestones:**
-- [ ] 5 atoms converted (Button, Input, Link, Select, Icon)
-- [ ] 5 molecules converted (CategoryCard, SearchInput, etc.)
-- [ ] 1 organism converted (Header)
-- [ ] All components documented in Pattern Library
+- [x] Button atom converted
+- [ ] Input atom converted
+- [ ] 3 more atoms (Link, Select, Icon)
+- [ ] 5 molecules (FormField, Card, Alert, Badge, ProgressIndicator)
+- [ ] 1 organism (Header or SingleQuestionForm)
 - [ ] WCAG AA compliance tested
 
 ---
@@ -349,33 +348,29 @@ npm run build
 
 | Category | Technology | Version | Purpose |
 |----------|-----------|---------|---------|
-| **Backend** | Django | 4.2.25 | Web framework |
+| **Backend** | Django | 5.2.7 | Web framework |
 | | Python | 3.13 | Language |
-| | django-cotton | 2.1.3 | Component system |
-| | django-pattern-library | 1.5.0 | Component docs |
-| | djangorestframework | 3.16.1 | REST API |
-| | django-allauth | 65.13.1 | Authentication |
-| | django-csp | 4.0 | Security headers |
-| **Frontend** | Vite | 6.0.7 | Build tool |
-| | Tailwind CSS | 3.4.17 | Styling |
-| | AlpineJS | 3.14.3 | Reactivity |
-| **Dev Tools** | concurrently | 9.2.1 | Multi-process runner |
-| | ruff | 0.14.6 | Python linting |
-| | pre-commit | 4.5.0 | Git hooks |
+| | django-cotton | - | Component system |
+| | django-allauth | - | Authentication |
+| | django-csp | - | Security headers |
+| **Frontend** | Vite | 6.x | Build tool |
+| | Tailwind CSS | 3.4.x | Styling |
+| | AlpineJS | 3.14.x | Reactivity |
 
 ---
 
 ## 🔗 Quick Links
 
-- **Demo Page:** http://localhost:8000/demo/
-- **Pattern Library:** http://localhost:8000/pattern-library/
+- **Home:** http://localhost:8000/
+- **Component Library:** http://localhost:8000/components/
+- **Style Guide:** http://localhost:8000/style-guide/
 - **Django Admin:** http://localhost:8000/admin/
 - **Vite Dev Server:** http://localhost:5173/ (assets only)
 
 ---
 
-**Status:** ✅ **Foundation Complete - Ready for Component Migration**
-**Next Session:** Start with Button atom conversion from `~/projects/lp-svelte/src/stories/atoms/button/`
+**Status:** ✅ **Foundation Complete - Button Component Done**
+**Next Session:** Convert Input component from `~/projects/lp-svelte/src/stories/atoms/input/`
 
 ---
 
