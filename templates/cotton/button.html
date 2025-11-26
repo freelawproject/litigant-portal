@@ -1,0 +1,16 @@
+<c-vars type="button" variant="primary" />
+<button
+    type="{{ type }}"
+    {% if id %}id="{{ id }}"{% endif %}
+    {% if disabled %}disabled{% endif %}
+    {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
+    class="
+        {% if variant == 'primary' %}btn-primary
+        {% elif variant == 'secondary' %}btn-secondary
+        {% elif variant == 'tertiary' %}btn-tertiary
+        {% elif variant == 'ghost' %}btn-ghost
+        {% else %}btn-primary{% endif %}
+        {% if full_width %}btn-full-width{% endif %}
+        {{ class }}"
+    {{ attrs }}
+>{{ slot }}</button>

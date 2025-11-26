@@ -1,0 +1,13 @@
+<c-vars variant="default" />
+<a
+    href="{{ href }}"
+    {% if target %}target="{{ target }}"{% endif %}
+    {% if target == '_blank' or href|slice:":4" == "http" %}rel="noopener noreferrer"{% endif %}
+    class="link
+        {% if variant == 'primary' %}link-primary
+        {% elif variant == 'secondary' %}link-secondary
+        {% elif variant == 'unstyled' %}link-unstyled
+        {% else %}link-default{% endif %}
+        {{ class }}"
+    {{ attrs }}
+>{{ slot }}{% if external_icon and target == '_blank' %}<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="link-external-icon" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>{% endif %}</a>

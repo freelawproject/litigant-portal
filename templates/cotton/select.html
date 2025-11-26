@@ -1,0 +1,18 @@
+<div class="select-wrapper
+    {% if error %}select-wrapper-error{% endif %}
+    {% if success %}select-wrapper-success{% endif %}
+    {% if disabled %}select-wrapper-disabled{% endif %}
+    {{ class }}">
+    <select
+        {% if name %}name="{{ name }}"{% endif %}
+        {% if id %}id="{{ id }}"{% endif %}
+        {% if disabled %}disabled{% endif %}
+        {% if required %}required{% endif %}
+        {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
+        {% if aria_describedby %}aria-describedby="{{ aria_describedby }}"{% endif %}
+        {% if error %}aria-invalid="true"{% endif %}
+        class="select"
+        {{ attrs }}
+    >{{ slot }}</select>
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="select-icon" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+</div>
