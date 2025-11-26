@@ -1,0 +1,102 @@
+/**
+ * Components Layer - Buttons
+ * Button component classes with variants
+ * WCAG AA compliant with 44px minimum touch targets
+ */
+
+@layer components {
+  /* Base button styles - shared across all variants */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply font-semibold rounded;
+    @apply transition-all duration-200 ease-in-out;
+    @apply border-2;
+
+    /* Mobile-first sizing - WCAG 2.1 minimum touch target */
+    @apply min-h-[44px] px-6 py-3;
+
+    /* Tablet and up - larger padding */
+    @apply md:px-8;
+
+    /* Disabled state */
+    @apply disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300;
+    @apply disabled:cursor-not-allowed disabled:opacity-60;
+
+    /* Active state */
+    @apply active:scale-[0.98];
+
+    /* Focus state */
+    @apply focus:outline-none focus:ring-4;
+
+    /* Reduced motion support */
+    @apply motion-reduce:transition-none;
+
+    /* High contrast mode */
+    @apply contrast-more:border-2;
+  }
+
+  /* Primary variant - Main CTA */
+  .btn-primary {
+    @apply btn;
+    @apply bg-primary-500 text-white border-primary-500;
+    @apply hover:bg-primary-600 hover:border-primary-600;
+    @apply active:bg-primary-700 active:border-primary-700;
+    @apply focus:ring-primary-500/30;
+  }
+
+  /* Dark mode for primary */
+  .dark .btn-primary {
+    @apply bg-primary-400 border-primary-400 text-gray-900;
+    @apply hover:bg-primary-300 hover:border-primary-300;
+  }
+
+  /* Secondary variant - Secondary actions */
+  .btn-secondary {
+    @apply btn;
+    @apply bg-secondary-500 text-white border-secondary-500;
+    @apply hover:bg-secondary-600 hover:border-secondary-600;
+    @apply active:bg-secondary-700 active:border-secondary-700;
+    @apply focus:ring-secondary-500/30;
+  }
+
+  /* Dark mode for secondary */
+  .dark .btn-secondary {
+    @apply bg-secondary-400 border-secondary-400 text-gray-900;
+    @apply hover:bg-secondary-300 hover:border-secondary-300;
+  }
+
+  /* Tertiary variant - Outlined */
+  .btn-tertiary {
+    @apply btn;
+    @apply bg-transparent text-primary-500 border-primary-500;
+    @apply hover:bg-primary-50 hover:border-primary-600 hover:text-primary-600;
+    @apply active:bg-primary-100;
+    @apply focus:ring-primary-500/20;
+  }
+
+  /* Dark mode for tertiary */
+  .dark .btn-tertiary {
+    @apply text-primary-300 border-primary-300;
+    @apply hover:bg-primary-900 hover:border-primary-200 hover:text-primary-200;
+  }
+
+  /* Ghost variant - Minimal */
+  .btn-ghost {
+    @apply btn;
+    @apply bg-transparent text-gray-900 border-transparent;
+    @apply hover:bg-gray-100;
+    @apply active:bg-gray-200;
+    @apply focus:ring-gray-900/10;
+  }
+
+  /* Dark mode for ghost */
+  .dark .btn-ghost {
+    @apply text-white;
+    @apply hover:bg-gray-800;
+  }
+
+  /* Full width modifier */
+  .btn-full-width {
+    @apply w-full;
+  }
+}

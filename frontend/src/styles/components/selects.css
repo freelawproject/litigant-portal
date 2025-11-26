@@ -1,0 +1,151 @@
+/* Select Component Styles - Mobile First, WCAG AA Compliant */
+
+.select-wrapper {
+    @apply relative inline-block w-full;
+}
+
+.select {
+    @apply w-full;
+    @apply text-base text-gray-900;
+    @apply bg-white;
+    @apply border-2 border-gray-300;
+    @apply rounded;
+    @apply py-3 pl-4 pr-10;
+    @apply transition-colors duration-200;
+    @apply cursor-pointer;
+
+    /* WCAG 2.5.5 - Minimum touch target */
+    min-height: 44px;
+
+    /* Remove default arrow */
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+}
+
+/* Custom chevron icon */
+.select-icon {
+    @apply absolute right-3 top-1/2 -translate-y-1/2;
+    @apply pointer-events-none;
+    @apply text-gray-500;
+    @apply transition-colors duration-200;
+}
+
+/* Hover state */
+.select:hover:not(:disabled) {
+    @apply border-gray-400;
+}
+
+/* Focus state - WCAG compliant */
+.select:focus {
+    @apply outline-none;
+    @apply border-primary-500;
+    @apply ring-4 ring-primary-500/20;
+}
+
+.select:focus + .select-icon {
+    @apply text-primary-500;
+}
+
+/* Error state */
+.select-wrapper-error .select {
+    @apply border-secondary-500;
+    @apply bg-secondary-50;
+}
+
+.select-wrapper-error .select:focus {
+    @apply border-secondary-500;
+    @apply ring-4 ring-secondary-500/20;
+}
+
+.select-wrapper-error .select-icon {
+    @apply text-secondary-500;
+}
+
+/* Success state */
+.select-wrapper-success .select {
+    @apply border-green-500;
+    @apply bg-green-50;
+}
+
+.select-wrapper-success .select:focus {
+    @apply border-green-500;
+    @apply ring-4 ring-green-500/20;
+}
+
+.select-wrapper-success .select-icon {
+    @apply text-green-500;
+}
+
+/* Disabled state */
+.select:disabled,
+.select-wrapper-disabled .select {
+    @apply bg-gray-100;
+    @apply text-gray-500;
+    @apply border-gray-300;
+    @apply cursor-not-allowed;
+    @apply opacity-60;
+}
+
+.select-wrapper-disabled .select-icon {
+    @apply text-gray-400;
+    @apply opacity-60;
+}
+
+/* Dark mode */
+.dark .select {
+    @apply bg-gray-800;
+    @apply border-gray-600;
+    @apply text-gray-100;
+}
+
+.dark .select:hover:not(:disabled) {
+    @apply border-gray-500;
+}
+
+.dark .select:focus {
+    @apply border-primary-400;
+}
+
+.dark .select-icon {
+    @apply text-gray-400;
+}
+
+.dark .select:focus + .select-icon {
+    @apply text-primary-400;
+}
+
+.dark .select-wrapper-error .select {
+    @apply border-secondary-400;
+    @apply bg-secondary-900/20;
+}
+
+.dark .select-wrapper-success .select {
+    @apply border-green-400;
+    @apply bg-green-900/20;
+}
+
+.dark .select:disabled {
+    @apply bg-gray-700;
+    @apply text-gray-500;
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    .select {
+        @apply border-2;
+    }
+
+    .select:focus {
+        outline: 2px solid;
+        outline-offset: 2px;
+    }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .select,
+    .select-icon {
+        @apply transition-none;
+    }
+}
