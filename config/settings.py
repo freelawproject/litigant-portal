@@ -40,13 +40,12 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Third-party apps
-    "rest_framework",
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
     "django_cotton",
     "django_vite",
-    "pattern_library",
+    "heroicons",
     # Local apps
     "portal",
     "litigant_portal",
@@ -82,7 +81,6 @@ TEMPLATES = [
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",
-                "pattern_library.loader_tags",
             ],
         },
     },
@@ -149,30 +147,8 @@ DJANGO_VITE_DEV_SERVER_HOST = "localhost"
 DJANGO_VITE_DEV_SERVER_PORT = 5173
 
 # Django Cotton configuration
-COTTON_DIR = "templates"
-
-# Django Pattern Library configuration (required by storybook-django)
-PATTERN_LIBRARY = {
-    "SECTIONS": (
-        ("atoms", ["atoms"]),
-        ("molecules", ["molecules"]),
-        ("organisms", ["organisms"]),
-        ("layouts", ["layouts"]),
-    ),
-    "TEMPLATE_DIR": BASE_DIR / "templates",
-    "TEMPLATE_SUFFIX": ".html",
-    "BASE_TEMPLATE_NAMES": ["templates/base.html"],
-}
-
-# Django REST Framework configuration
-REST_FRAMEWORK = {
-    "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.AllowAny",
-    ],
-    "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
-    ],
-}
+# Default: components in templates/cotton/ (e.g., <c-button> → templates/cotton/button.html)
+COTTON_DIR = "cotton"
 
 # Django Allauth configuration
 AUTHENTICATION_BACKENDS = [
