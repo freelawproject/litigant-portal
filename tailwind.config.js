@@ -4,6 +4,7 @@ export default {
     './templates/**/*.html',
     './frontend/src/**/*.{js,ts}',
   ],
+  darkMode: 'class', // Enable class-based dark mode
   theme: {
     extend: {
       colors: {
