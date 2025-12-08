@@ -1,8 +1,16 @@
 # Storybook Integration Plan
 
-**Created:** 2025-12-08
-**Status:** Planning
 **Branch:** `django-atomic`
+
+---
+
+## Current Status
+
+- [x] Planning complete
+- [x] Docs consolidated
+- [ ] **Next:** Install django-pattern-library (Task 1.1)
+
+**To resume:** Read `docs/README.md` for project context, then continue with Task 1.1 below.
 
 ---
 

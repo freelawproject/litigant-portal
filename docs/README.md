@@ -22,9 +22,9 @@ python manage.py shell     # Django shell
 | Django Foundation | Done |
 | Frontend Pipeline (Vite + Tailwind + Alpine) | Done |
 | Core Atoms (Button, Input, Link, Select, Icon) | Done |
-| Storybook Integration | Planning |
+| Storybook Integration | **Next** - see [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md) |
 
-**Current Branch:** `django-atomic`
+**Branch:** `django-atomic`
 
 ---
 
