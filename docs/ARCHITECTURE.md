@@ -19,9 +19,8 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 | ------------------ | ---------------------------------- | --------------------------------------- |
 | **Backend**        | Django                             | Team expertise, proven at scale         |
 | **Components**     | Django Cotton                      | Server-rendered, no JS framework needed |
-| **Styling**        | Tailwind CSS                       | Utility-first, mobile-responsive        |
-| **Reactivity**     | AlpineJS                           | Lightweight (15KB), CSP-safe            |
-| **Build**          | Vite                               | Fast HMR, simple config                 |
+| **Styling**        | Tailwind CSS (CLI)                 | Utility-first, no bundler needed        |
+| **Reactivity**     | AlpineJS (CDN)                     | Lightweight (15KB), CSP-safe            |
 | **Component Docs** | Storybook + django-pattern-library | A11y testing, viewport testing          |
 
 ---
@@ -102,12 +101,13 @@ Django renders initial state, Alpine handles client reactivity:
 
 ## Key Files
 
-| File                      | Purpose                       |
-| ------------------------- | ----------------------------- |
-| `config/settings.py`      | Django + Cotton + Vite config |
-| `tailwind.config.js`      | Design tokens, colors, fonts  |
-| `frontend/src/main.js`    | AlpineJS entry + stores       |
-| `templates/cotton/*.html` | Component library             |
+| File                      | Purpose                      |
+| ------------------------- | ---------------------------- |
+| `config/settings.py`      | Django + Cotton config       |
+| `tailwind.config.js`      | Design tokens, colors, fonts |
+| `static/css/main.css`     | Tailwind CSS source          |
+| `static/js/theme.js`      | Alpine theme store           |
+| `templates/cotton/*.html` | Component library            |
 
 ---
 

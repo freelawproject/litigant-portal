@@ -35,8 +35,8 @@ repos:
     rev: v4.0.0-alpha.8
     hooks:
       - id: prettier
-        types_or: [javascript, json, markdown, yaml]
-        exclude: ^(node_modules/|\.venv/|static/|package-lock\.json|uv\.lock)
+        types_or: [javascript, json, markdown, yaml, css]
+        exclude: ^(node_modules/|\.venv/|staticfiles/|static/css/main\.built\.css|package-lock\.json|uv\.lock)
 
   - repo: https://github.com/djlint/djLint
     rev: v1.36.4

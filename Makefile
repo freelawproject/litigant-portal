@@ -10,42 +10,26 @@ install: ## Install Python and npm dependencies
 	.venv/bin/uv pip install -e .
 	npm install
 
-dev: ## Start Django + Vite dev servers (requires tmux or run in separate terminals)
-	@echo "Starting development servers..."
-	@echo "Django: http://localhost:8000"
-	@echo "Vite: http://localhost:5173"
-	@echo ""
-	@if command -v tmux >/dev/null 2>&1; then \
-		tmux new-session -d -s litigant-portal 'source .venv/bin/activate && python manage.py runserver'; \
-		tmux split-window -v 'npm run dev'; \
-		tmux attach -t litigant-portal; \
-	else \
-		echo "tmux not found. Run these commands in separate terminals:"; \
-		echo "  Terminal 1: make django"; \
-		echo "  Terminal 2: make vite"; \
-	fi
+dev: ## Start Django + Tailwind CSS watch
+	./dev.sh
 
 django: ## Start Django dev server only
 	source .venv/bin/activate && python manage.py runserver
 
-vite: ## Start Vite dev server only
-	npm run dev
+css: ## Start Tailwind CSS watch only
+	npm run watch:css
 
-build: ## Build production assets
-	npm run build
+build: ## Build production CSS
+	npm run build:css
 
 migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
 
 test: ## Run tests
 	source .venv/bin/activate && python manage.py test
-	npm run test
 
 clean: ## Clean build artifacts
-	rm -rf static/.vite
-	rm -rf static/css
-	rm -rf static/js
-	rm -rf node_modules/.vite
+	rm -f static/css/main.built.css
 
 superuser: ## Create Django superuser
 	source .venv/bin/activate && python manage.py createsuperuser
@@ -53,12 +37,12 @@ superuser: ## Create Django superuser
 shell: ## Open Django shell
 	source .venv/bin/activate && python manage.py shell
 
-format: ## Format all code (Python, JS, HTML templates)
+format: ## Format all code (Python, JS, CSS, HTML templates)
 	source .venv/bin/activate && ruff format .
 	source .venv/bin/activate && djlint templates/ --reformat
 	npm run format
 
-lint: ## Lint all code (Python, JS, HTML templates)
+lint: ## Lint all code (Python, HTML templates)
 	source .venv/bin/activate && ruff check .
 	source .venv/bin/activate && djlint templates/ --lint
 	npm run format:check

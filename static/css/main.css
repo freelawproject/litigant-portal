@@ -1,0 +1,661 @@
+/**
+ * Main Stylesheet - Tailwind CLI Input
+ * Processed with: npx tailwindcss -i static/css/main.css -o static/css/main.built.css
+ */
+
+/* Tailwind directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   BASE LAYER - Reset & Normalize
+   ========================================================================== */
+
+@layer base {
+  /* Box sizing reset */
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  /* Remove default margins */
+  * {
+    margin: 0;
+  }
+
+  /* HTML & Body defaults */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    line-height: 1.5;
+  }
+
+  /* Media defaults */
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  /* Form defaults */
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  /* Text overflow */
+  p,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    overflow-wrap: break-word;
+  }
+
+  /* Remove button styling */
+  button {
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+  }
+}
+
+/* ==========================================================================
+   BASE LAYER - Typography
+   ========================================================================== */
+
+@layer base {
+  /* Base font family */
+  html {
+    @apply font-roboto text-gray-900 antialiased;
+  }
+
+  /* Heading defaults - Antonio font */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-antonio font-bold;
+  }
+
+  h1 {
+    @apply text-title-1;
+  }
+  h2 {
+    @apply text-title-2;
+  }
+  h3 {
+    @apply text-title-3;
+  }
+  h4 {
+    @apply text-title-4;
+  }
+  h5 {
+    @apply text-title-5;
+  }
+  h6 {
+    @apply text-title-6;
+  }
+
+  /* Focus visible styles - WCAG 2.1 AA */
+  :focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2;
+  }
+
+  /* WCAG 2.5.5 - Minimum touch target size */
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    @apply min-h-[44px];
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER - Typography Classes
+   ========================================================================== */
+
+@layer components {
+  .heading-1 {
+    @apply text-title-1 font-antonio font-bold;
+  }
+  .heading-2 {
+    @apply text-title-2 font-antonio font-bold;
+  }
+  .heading-3 {
+    @apply text-title-3 font-antonio font-bold;
+  }
+  .heading-4 {
+    @apply text-title-4 font-antonio font-bold;
+  }
+  .heading-5 {
+    @apply text-title-5 font-antonio font-bold;
+  }
+  .heading-6 {
+    @apply text-title-6 font-antonio font-bold;
+  }
+
+  .body-text {
+    @apply text-base font-roboto;
+  }
+  .body-text-sm {
+    @apply text-sm font-roboto;
+  }
+  .caption {
+    @apply text-xs font-roboto text-gray-600;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER - Layout
+   ========================================================================== */
+
+@layer components {
+  .container-desktop {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .container-mobile {
+    @apply max-w-md mx-auto px-4;
+  }
+  .container-full {
+    @apply w-full px-4 sm:px-6 lg:px-8;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER - Buttons
+   ========================================================================== */
+
+@layer components {
+  /* Base button styles */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2;
+    @apply font-semibold rounded;
+    @apply transition-all duration-200 ease-in-out;
+    @apply border-2;
+    @apply min-h-[44px] px-6 py-3;
+    @apply md:px-8;
+    @apply disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-300;
+    @apply disabled:cursor-not-allowed disabled:opacity-60;
+    @apply active:scale-[0.98];
+    @apply focus:outline-none focus:ring-4;
+    @apply motion-reduce:transition-none;
+    @apply contrast-more:border-2;
+  }
+
+  .btn-primary {
+    @apply btn;
+    @apply bg-primary-500 text-white border-primary-500;
+    @apply hover:bg-primary-600 hover:border-primary-600;
+    @apply active:bg-primary-700 active:border-primary-700;
+    @apply focus:ring-primary-500/30;
+  }
+
+  .dark .btn-primary {
+    @apply bg-primary-400 border-primary-400 text-gray-900;
+    @apply hover:bg-primary-300 hover:border-primary-300;
+  }
+
+  .btn-secondary {
+    @apply btn;
+    @apply bg-secondary-500 text-white border-secondary-500;
+    @apply hover:bg-secondary-600 hover:border-secondary-600;
+    @apply active:bg-secondary-700 active:border-secondary-700;
+    @apply focus:ring-secondary-500/30;
+  }
+
+  .dark .btn-secondary {
+    @apply bg-secondary-400 border-secondary-400 text-gray-900;
+    @apply hover:bg-secondary-300 hover:border-secondary-300;
+  }
+
+  .btn-tertiary {
+    @apply btn;
+    @apply bg-transparent text-primary-500 border-primary-500;
+    @apply hover:bg-primary-50 hover:border-primary-600 hover:text-primary-600;
+    @apply active:bg-primary-100;
+    @apply focus:ring-primary-500/20;
+  }
+
+  .dark .btn-tertiary {
+    @apply text-primary-300 border-primary-300;
+    @apply hover:bg-primary-900 hover:border-primary-200 hover:text-primary-200;
+  }
+
+  .btn-ghost {
+    @apply btn;
+    @apply bg-transparent text-gray-900 border-transparent;
+    @apply hover:bg-gray-100;
+    @apply active:bg-gray-200;
+    @apply focus:ring-gray-900/10;
+  }
+
+  .dark .btn-ghost {
+    @apply text-white;
+    @apply hover:bg-gray-800;
+  }
+
+  .btn-full-width {
+    @apply w-full;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER - Inputs
+   ========================================================================== */
+
+.input {
+  @apply w-full;
+  @apply text-base text-gray-900;
+  @apply bg-white;
+  @apply border-2 border-gray-300;
+  @apply rounded;
+  @apply px-4 py-3;
+  @apply transition-colors duration-200;
+  min-height: 44px;
+}
+
+.input::placeholder {
+  @apply text-gray-500;
+}
+
+.input:hover:not(:disabled):not(:read-only) {
+  @apply border-gray-400;
+}
+
+.input:focus {
+  @apply outline-none;
+  @apply border-primary-500;
+  @apply ring-4 ring-primary-500/20;
+}
+
+.input-error {
+  @apply border-secondary-500;
+  @apply bg-secondary-50;
+}
+
+.input-error:focus {
+  @apply border-secondary-500;
+  @apply ring-4 ring-secondary-500/20;
+}
+
+.input-success {
+  @apply border-green-500;
+  @apply bg-green-50;
+}
+
+.input-success:focus {
+  @apply border-green-500;
+  @apply ring-4 ring-green-500/20;
+}
+
+.input:disabled {
+  @apply bg-gray-100;
+  @apply text-gray-500;
+  @apply border-gray-300;
+  @apply cursor-not-allowed;
+  @apply opacity-60;
+}
+
+.input:read-only {
+  @apply bg-gray-100;
+  @apply border-gray-300;
+  @apply cursor-default;
+}
+
+.dark .input {
+  @apply bg-gray-800;
+  @apply border-gray-600;
+  @apply text-gray-100;
+}
+
+.dark .input::placeholder {
+  @apply text-gray-400;
+}
+
+.dark .input:hover:not(:disabled):not(:read-only) {
+  @apply border-gray-500;
+}
+
+.dark .input:focus {
+  @apply border-primary-400;
+}
+
+.dark .input-error {
+  @apply border-secondary-400;
+  @apply bg-secondary-900/20;
+}
+
+.dark .input-success {
+  @apply border-green-400;
+  @apply bg-green-900/20;
+}
+
+.dark .input:disabled {
+  @apply bg-gray-700;
+  @apply text-gray-500;
+}
+
+.dark .input:read-only {
+  @apply bg-gray-700;
+}
+
+@media (prefers-contrast: high) {
+  .input {
+    @apply border-2;
+  }
+  .input:focus {
+    outline: 2px solid;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .input {
+    @apply transition-none;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER - Links
+   ========================================================================== */
+
+.link {
+  @apply inline-flex items-center gap-1;
+  @apply underline;
+  @apply transition-colors duration-200;
+  @apply cursor-pointer;
+  text-underline-offset: 2px;
+  min-height: 24px;
+}
+
+.link-default {
+  @apply text-primary-500;
+  text-decoration-color: theme('colors.primary.300');
+}
+
+.link-default:hover {
+  @apply text-primary-700;
+  text-decoration-color: theme('colors.primary.700');
+}
+
+.link-default:focus-visible {
+  @apply outline-2 outline-primary-500 outline-offset-2 rounded-sm;
+}
+
+.link-primary {
+  @apply text-primary-500 font-semibold;
+  text-decoration-thickness: 2px;
+}
+
+.link-primary:hover {
+  @apply text-primary-700;
+}
+
+.link-primary:focus-visible {
+  @apply outline-2 outline-primary-500 outline-offset-2 rounded-sm;
+}
+
+.link-secondary {
+  @apply text-gray-700;
+  text-decoration-color: theme('colors.gray.300');
+}
+
+.link-secondary:hover {
+  @apply text-gray-900;
+  text-decoration-color: theme('colors.gray.700');
+}
+
+.link-secondary:focus-visible {
+  @apply outline-2 outline-gray-500 outline-offset-2 rounded-sm;
+}
+
+.link-unstyled {
+  @apply text-inherit no-underline;
+}
+
+.link-unstyled:hover {
+  @apply underline;
+}
+
+.link-unstyled:focus-visible {
+  @apply outline-2 outline-primary-500 outline-offset-2 rounded-sm;
+}
+
+.link-external-icon {
+  @apply flex-shrink-0 ml-1;
+}
+
+.link:visited {
+  @apply opacity-80;
+}
+
+.link:active {
+  @apply opacity-90;
+}
+
+.dark .link-default {
+  @apply text-primary-300;
+  text-decoration-color: theme('colors.primary.500');
+}
+
+.dark .link-default:hover {
+  @apply text-primary-100;
+}
+
+.dark .link-secondary {
+  @apply text-gray-300;
+}
+
+.dark .link-secondary:hover {
+  @apply text-gray-100;
+}
+
+@media (prefers-contrast: high) {
+  .link {
+    text-decoration-thickness: 2px;
+  }
+  .link:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .link {
+    @apply transition-none;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER - Selects
+   ========================================================================== */
+
+.select-wrapper {
+  @apply relative inline-block w-full;
+}
+
+.select {
+  @apply w-full;
+  @apply text-base text-gray-900;
+  @apply bg-white;
+  @apply border-2 border-gray-300;
+  @apply rounded;
+  @apply py-3 pl-4 pr-10;
+  @apply transition-colors duration-200;
+  @apply cursor-pointer;
+  min-height: 44px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.select-icon {
+  @apply absolute right-3 top-1/2 -translate-y-1/2;
+  @apply pointer-events-none;
+  @apply text-gray-500;
+  @apply transition-colors duration-200;
+}
+
+.select:hover:not(:disabled) {
+  @apply border-gray-400;
+}
+
+.select:focus {
+  @apply outline-none;
+  @apply border-primary-500;
+  @apply ring-4 ring-primary-500/20;
+}
+
+.select:focus + .select-icon {
+  @apply text-primary-500;
+}
+
+.select-wrapper-error .select {
+  @apply border-secondary-500;
+  @apply bg-secondary-50;
+}
+
+.select-wrapper-error .select:focus {
+  @apply border-secondary-500;
+  @apply ring-4 ring-secondary-500/20;
+}
+
+.select-wrapper-error .select-icon {
+  @apply text-secondary-500;
+}
+
+.select-wrapper-success .select {
+  @apply border-green-500;
+  @apply bg-green-50;
+}
+
+.select-wrapper-success .select:focus {
+  @apply border-green-500;
+  @apply ring-4 ring-green-500/20;
+}
+
+.select-wrapper-success .select-icon {
+  @apply text-green-500;
+}
+
+.select:disabled,
+.select-wrapper-disabled .select {
+  @apply bg-gray-100;
+  @apply text-gray-500;
+  @apply border-gray-300;
+  @apply cursor-not-allowed;
+  @apply opacity-60;
+}
+
+.select-wrapper-disabled .select-icon {
+  @apply text-gray-400;
+  @apply opacity-60;
+}
+
+.dark .select {
+  @apply bg-gray-800;
+  @apply border-gray-600;
+  @apply text-gray-100;
+}
+
+.dark .select:hover:not(:disabled) {
+  @apply border-gray-500;
+}
+
+.dark .select:focus {
+  @apply border-primary-400;
+}
+
+.dark .select-icon {
+  @apply text-gray-400;
+}
+
+.dark .select:focus + .select-icon {
+  @apply text-primary-400;
+}
+
+.dark .select-wrapper-error .select {
+  @apply border-secondary-400;
+  @apply bg-secondary-900/20;
+}
+
+.dark .select-wrapper-success .select {
+  @apply border-green-400;
+  @apply bg-green-900/20;
+}
+
+.dark .select:disabled {
+  @apply bg-gray-700;
+  @apply text-gray-500;
+}
+
+@media (prefers-contrast: high) {
+  .select {
+    @apply border-2;
+  }
+  .select:focus {
+    outline: 2px solid;
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .select,
+  .select-icon {
+    @apply transition-none;
+  }
+}
+
+/* ==========================================================================
+   UTILITIES LAYER - Custom Utilities
+   ========================================================================== */
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+}
+
+/* ==========================================================================
+   DESIGN TOKENS - CSS Variables
+   ========================================================================== */
+
+@layer base {
+  :root {
+    --color-primary: theme('colors.primary.500');
+    --color-secondary: theme('colors.secondary.500');
+    --color-accent: theme('colors.accent.500');
+    --font-title: theme('fontFamily.antonio');
+    --font-body: theme('fontFamily.roboto');
+    --font-serif: theme('fontFamily.roboto-serif');
+  }
+}

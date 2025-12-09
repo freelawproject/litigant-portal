@@ -4,23 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "vite": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
     "dev": "./dev.sh",
-    "format": "prettier --write 'frontend/**/*.js' '*.config.js' '*.json' '*.md' 'docs/**/*.md'",
-    "format:check": "prettier --check 'frontend/**/*.js' '*.config.js' '*.json' '*.md' 'docs/**/*.md'"
-  },
-  "dependencies": {
-    "alpinejs": "^3.14.3"
+    "build:css": "npx tailwindcss -i static/css/main.css -o static/css/main.built.css --minify",
+    "watch:css": "npx tailwindcss -i static/css/main.css -o static/css/main.built.css --watch",
+    "format": "prettier --write 'static/**/*.js' 'static/**/*.css' '*.config.js' '*.json' '*.md' 'docs/**/*.md'",
+    "format:check": "prettier --check 'static/**/*.js' 'static/**/*.css' '*.config.js' '*.json' '*.md' 'docs/**/*.md'"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.9",
-    "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",
-    "postcss": "^8.4.49",
     "prettier": "^3.7.4",
-    "tailwindcss": "^3.4.17",
-    "vite": "^6.0.7"
+    "tailwindcss": "^3.4.17"
   }
 }

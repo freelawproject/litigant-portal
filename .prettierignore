@@ -2,9 +2,9 @@
 node_modules/
 .venv/
 
-# Build outputs
-static/
+# Build outputs (not source)
 staticfiles/
+static/css/main.built.css
 *.min.js
 *.min.css
 

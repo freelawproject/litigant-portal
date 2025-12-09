@@ -39,11 +39,15 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Vite
+# Build artifacts
 static/.vite/
-static/css/
-static/js/
 static/assets/
+
+# Tailwind CLI output (source is static/css/main.css)
+static/css/main.built.css
+
+# Django collectstatic output
+staticfiles/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

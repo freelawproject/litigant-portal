@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "django_cotton",
-    "django_vite",
     "heroicons",
     "pattern_library",
     # Local apps
@@ -141,11 +140,17 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
-# Django Vite configuration
-DJANGO_VITE_ASSETS_PATH = BASE_DIR / "static"
-DJANGO_VITE_DEV_MODE = DEBUG
-DJANGO_VITE_DEV_SERVER_HOST = "localhost"
-DJANGO_VITE_DEV_SERVER_PORT = 5173
+# Use ManifestStaticFilesStorage in production for cache busting
+# In development (DEBUG=True), Django uses the default storage
+if not DEBUG:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+        },
+    }
 
 # Django Cotton configuration
 # Default: components in templates/cotton/ (e.g., <c-button> → templates/cotton/button.html)
@@ -161,27 +166,16 @@ SITE_ID = 1
 
 # Content Security Policy (django-csp)
 CSP_DEFAULT_SRC: tuple[str, ...] = ("'self'",)
-CSP_SCRIPT_SRC: tuple[str, ...] = tuple(
-    filter(
-        None,
-        (
-            "'self'",
-            # Vite dev server (development only)
-            "http://localhost:5173" if DEBUG else None,
-        ),
-    )
+
+# Alpine.js CDN
+ALPINE_CDN = "https://cdn.jsdelivr.net"
+
+CSP_SCRIPT_SRC: tuple[str, ...] = (
+    "'self'",
+    ALPINE_CDN,  # Alpine.js CDN
 )
 
-CSP_STYLE_SRC: tuple[str, ...] = tuple(
-    filter(
-        None,
-        (
-            "'self'",
-            # Vite dev server (development only)
-            "http://localhost:5173" if DEBUG else None,
-        ),
-    )
-)
+CSP_STYLE_SRC: tuple[str, ...] = ("'self'",)
 
 CSP_IMG_SRC: tuple[str, ...] = (
     "'self'",
@@ -194,17 +188,7 @@ CSP_FONT_SRC: tuple[str, ...] = (
     "data:",  # Allow data URIs for fonts
 )
 
-CSP_CONNECT_SRC: tuple[str, ...] = tuple(
-    filter(
-        None,
-        (
-            "'self'",
-            # Vite dev server HMR (development only)
-            "ws://localhost:5173" if DEBUG else None,
-            "http://localhost:5173" if DEBUG else None,
-        ),
-    )
-)
+CSP_CONNECT_SRC: tuple[str, ...] = ("'self'",)
 
 # AlpineJS is CSP-compatible by default (no eval needed)
 # No need for 'unsafe-eval' or 'unsafe-inline' for scripts

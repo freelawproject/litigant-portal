@@ -3,14 +3,15 @@
 ## Quick Start
 
 ```bash
-./dev.sh                    # Start Django + Vite dev servers
-# Visit: http://localhost:8000/components/
+./dev.sh                    # Start Django + Tailwind CSS watch
+# Visit: http://localhost:8000/pattern-library/
 ```
 
 **Other Commands:**
 
 ```bash
-npm run build              # Build production assets
+npm run build:css          # Build production CSS (minified)
+npm run watch:css          # Watch CSS for changes
 python manage.py shell     # Django shell
 ```
 
@@ -21,7 +22,7 @@ python manage.py shell     # Django shell
 | Phase                                          | Status                                                                |
 | ---------------------------------------------- | --------------------------------------------------------------------- |
 | Django Foundation                              | Done                                                                  |
-| Frontend Pipeline (Vite + Tailwind + Alpine)   | Done                                                                  |
+| Frontend Pipeline (Tailwind CLI + Alpine CDN)  | Done                                                                  |
 | Core Atoms (Button, Input, Link, Select, Icon) | Done                                                                  |
 | Storybook Integration                          | **Next** - see [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md) |
 
@@ -31,13 +32,11 @@ python manage.py shell     # Django shell
 
 ## URLs (Development)
 
-| URL                                | Purpose                  |
-| ---------------------------------- | ------------------------ |
-| http://localhost:8000/             | Home                     |
-| http://localhost:8000/components/  | Component library        |
-| http://localhost:8000/style-guide/ | Design tokens            |
-| http://localhost:8000/admin/       | Django admin             |
-| http://localhost:5173/             | Vite dev server (assets) |
+| URL                                    | Purpose         |
+| -------------------------------------- | --------------- |
+| http://localhost:8000/                 | Home            |
+| http://localhost:8000/pattern-library/ | Pattern library |
+| http://localhost:8000/admin/           | Django admin    |
 
 ---
 
@@ -50,13 +49,15 @@ litigant-portal/
 ├── templates/
 │   ├── base.html          # Base layout
 │   ├── cotton/            # Django-Cotton components
+│   ├── patterns/          # Pattern library wrappers
 │   ├── layouts/           # Layout templates
 │   └── pages/             # Page templates
-├── frontend/src/
-│   ├── main.js            # AlpineJS entry
-│   ├── styles/            # Tailwind CSS
-│   └── scripts/stores/    # Alpine stores
-├── static/                # Vite build output
+├── static/
+│   ├── css/
+│   │   ├── main.css       # Tailwind source
+│   │   └── main.built.css # Tailwind output
+│   └── js/
+│       └── theme.js       # Alpine theme store
 └── docs/                  # This folder
 ```
 
@@ -80,9 +81,8 @@ litigant-portal/
 | ---------- | ----------------------- |
 | Backend    | Django 5.2, Python 3.13 |
 | Components | Django Cotton           |
-| Styling    | Tailwind CSS 3.4        |
-| Reactivity | AlpineJS 3.14           |
-| Build      | Vite 6                  |
+| Styling    | Tailwind CSS 3.4 (CLI)  |
+| Reactivity | AlpineJS 3.14 (CDN)     |
 | Auth       | django-allauth          |
 | Security   | django-csp              |
 
