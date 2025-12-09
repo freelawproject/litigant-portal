@@ -2,31 +2,44 @@
 # See https://pre-commit.com/hooks.html for more hooks
 exclude: migrations
 default_language_version:
-  python: "python3.13"
+  python: 'python3.13'
 ci:
   autoupdate_schedule: quarterly
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-     - id: check-added-large-files
-     - id: check-ast
-     - id: check-json
-     - id: check-merge-conflict
-     - id: check-toml
-     - id: check-xml
-     - id: check-yaml
-     - id: debug-statements
-     - id: detect-private-key
-     - id: fix-byte-order-marker
-     - id: fix-encoding-pragma
-       args: [--remove]
-     - id: trailing-whitespace
-       args: [--markdown-linebreak-ext=md]
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: check-xml
+      - id: check-yaml
+      - id: debug-statements
+      - id: detect-private-key
+      - id: fix-byte-order-marker
+      - id: fix-encoding-pragma
+        args: [--remove]
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.8
     hooks:
       - id: ruff
-        args: [ --fix ]
+        args: [--fix]
       - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-prettier
+    rev: v4.0.0-alpha.8
+    hooks:
+      - id: prettier
+        types_or: [javascript, json, markdown, yaml]
+        exclude: ^(node_modules/|\.venv/|static/|package-lock\.json|uv\.lock)
+
+  - repo: https://github.com/djlint/djLint
+    rev: v1.36.4
+    hooks:
+      - id: djlint-reformat-django
+      - id: djlint-django

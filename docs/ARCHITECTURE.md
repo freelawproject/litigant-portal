@@ -5,6 +5,7 @@
 Democratize access to justice by empowering self-represented litigants with AI-augmented legal guidance, education, and document preparation tools.
 
 **Core Principles:**
+
 - Global by design (i18n from the start)
 - WCAG AA accessibility as requirement
 - Mobile-first (users on older phones)
@@ -14,14 +15,14 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 
 ## Tech Stack Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| **Backend** | Django | Team expertise, proven at scale |
-| **Components** | Django Cotton | Server-rendered, no JS framework needed |
-| **Styling** | Tailwind CSS | Utility-first, mobile-responsive |
-| **Reactivity** | AlpineJS | Lightweight (15KB), CSP-safe |
-| **Build** | Vite | Fast HMR, simple config |
-| **Component Docs** | Storybook + django-pattern-library | A11y testing, viewport testing |
+| Decision           | Choice                             | Rationale                               |
+| ------------------ | ---------------------------------- | --------------------------------------- |
+| **Backend**        | Django                             | Team expertise, proven at scale         |
+| **Components**     | Django Cotton                      | Server-rendered, no JS framework needed |
+| **Styling**        | Tailwind CSS                       | Utility-first, mobile-responsive        |
+| **Reactivity**     | AlpineJS                           | Lightweight (15KB), CSP-safe            |
+| **Build**          | Vite                               | Fast HMR, simple config                 |
+| **Component Docs** | Storybook + django-pattern-library | A11y testing, viewport testing          |
 
 ---
 
@@ -74,6 +75,7 @@ Django renders initial state, Alpine handles client reactivity:
 ## Mobile-First Strategy
 
 **Breakpoints:**
+
 - Default: Mobile
 - `sm:` 640px (small tablets)
 - `md:` 768px (tablets)
@@ -84,7 +86,7 @@ Django renders initial state, Alpine handles client reactivity:
 ```html
 <!-- Mobile: full screen question -->
 <!-- Desktop: sidebar + main content -->
-<div class="px-4 md:px-6 lg:max-w-2xl lg:mx-auto">
+<div class="px-4 md:px-6 lg:max-w-2xl lg:mx-auto"></div>
 ```
 
 ---
@@ -100,12 +102,12 @@ Django renders initial state, Alpine handles client reactivity:
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `config/settings.py` | Django + Cotton + Vite config |
-| `tailwind.config.js` | Design tokens, colors, fonts |
-| `frontend/src/main.js` | AlpineJS entry + stores |
-| `templates/cotton/*.html` | Component library |
+| File                      | Purpose                       |
+| ------------------------- | ----------------------------- |
+| `config/settings.py`      | Django + Cotton + Vite config |
+| `tailwind.config.js`      | Design tokens, colors, fonts  |
+| `frontend/src/main.js`    | AlpineJS entry + stores       |
+| `templates/cotton/*.html` | Component library             |
 
 ---
 

@@ -8,9 +8,11 @@
 
 - [x] Planning complete
 - [x] Docs consolidated
-- [ ] **Next:** Install django-pattern-library (Task 1.1)
+- [x] Task 1.1: django-pattern-library installed and configured
+- [x] Task 1.2: Cotton compatibility verified (Button atom working)
+- [ ] **Next:** Create remaining atom patterns (Input, Link, Select, Icon)
 
-**To resume:** Read `docs/README.md` for project context, then continue with Task 1.1 below.
+**To resume:** Read `docs/README.md` for project context, then continue with Task 1.3 below.
 
 ---
 
@@ -50,13 +52,13 @@ Integrate [storybook-django](https://github.com/torchbox/storybook-django) with 
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| **Folder structure** | Keep `cotton/`, add YAML alongside | Minimal disruption, can reorganize later |
-| **Storybook framework** | HTML (not React) | No React in project, simpler setup |
-| **Pattern library tool** | django-pattern-library | Required by storybook-django |
-| **A11y testing** | @storybook/addon-a11y | axe-core WCAG validation |
-| **Viewport testing** | @storybook/addon-viewport | Device presets for mobile testing |
+| Decision                 | Choice                             | Rationale                                |
+| ------------------------ | ---------------------------------- | ---------------------------------------- |
+| **Folder structure**     | Keep `cotton/`, add YAML alongside | Minimal disruption, can reorganize later |
+| **Storybook framework**  | HTML (not React)                   | No React in project, simpler setup       |
+| **Pattern library tool** | django-pattern-library             | Required by storybook-django             |
+| **A11y testing**         | @storybook/addon-a11y              | axe-core WCAG validation                 |
+| **Viewport testing**     | @storybook/addon-viewport          | Device presets for mobile testing        |
 
 ---
 
@@ -64,27 +66,28 @@ Integrate [storybook-django](https://github.com/torchbox/storybook-django) with 
 
 ### Phase 1: Django Pattern Library Setup
 
-- [ ] **1.1** Configure pattern-library to use `cotton/` folder
-  - Add `django-pattern-library` to Python dependencies
-  - Configure `PATTERN_LIBRARY` settings
-  - Add URL routes for `/pattern-library/`
-  - Create base pattern template
+- [x] **1.1** Configure pattern-library ✓
+  - Added `django-pattern-library>=1.5.0` to dependencies
+  - Configured `PATTERN_LIBRARY` settings in `config/settings.py`
+  - Added URL routes for `/pattern-library/` (DEBUG only)
+  - Created `templates/patterns/base.html` wrapper template
 
-- [ ] **1.2** Test Cotton compatibility
-  - Verify `<c-button>`, `<c-input>` etc. render
-  - Mock Cotton template tags if needed
-  - Test heroicons integration
+- [x] **1.2** Test Cotton compatibility ✓
+  - Cotton components render correctly via wrapper templates
+  - **Key learning:** Use separate pattern files per state (not YAML booleans)
+  - Boolean attrs like `disabled: false` → string `"False"` (truthy) - use explicit templates instead
 
-- [ ] **1.3** Create YAML context files
-  - `templates/cotton/button.yaml`
-  - `templates/cotton/input.yaml`
-  - `templates/cotton/link.yaml`
-  - `templates/cotton/select.yaml`
-  - `templates/cotton/icon.yaml`
+- [ ] **1.3** Create remaining atom patterns
+  - [x] `templates/patterns/atoms/buttons/` (Primary, Secondary, Disabled)
+  - [ ] `templates/patterns/atoms/inputs/`
+  - [ ] `templates/patterns/atoms/links/`
+  - [ ] `templates/patterns/atoms/selects/`
+  - [ ] `templates/patterns/atoms/icons/`
 
 ### Phase 2: Storybook Setup
 
 - [ ] **2.1** Install Storybook with HTML framework
+
   ```bash
   npx storybook@latest init --type html --no-dev
   npm install --save-dev storybook-django
@@ -105,22 +108,27 @@ Integrate [storybook-django](https://github.com/torchbox/storybook-django) with 
 ### Phase 3: Testing Addons
 
 - [ ] **3.1** Add @storybook/addon-a11y
+
   ```bash
   npx storybook add @storybook/addon-a11y
   ```
+
   - Configure WCAG 2.1 AA rules
   - Add to all stories
 
 - [ ] **3.2** Add @storybook/addon-viewport
+
   ```bash
   npx storybook add @storybook/addon-viewport
   ```
+
   - Configure mobile-first presets
   - Add older device sizes (Galaxy S5, iPhone SE)
 
 ### Phase 4: Development Integration
 
 - [ ] **4.1** Update dev.sh
+
   ```bash
   # Run Django + Vite + Storybook concurrently
   npx concurrently \
@@ -131,6 +139,7 @@ Integrate [storybook-django](https://github.com/torchbox/storybook-django) with 
   ```
 
 - [ ] **4.2** Update package.json scripts
+
   ```json
   {
     "scripts": {
@@ -145,6 +154,7 @@ Integrate [storybook-django](https://github.com/torchbox/storybook-django) with 
 ### Phase 5: Stretch Goal
 
 - [ ] **5.1** Reorganize to full atomic design
+
   ```
   templates/
     patterns/
@@ -154,13 +164,38 @@ Integrate [storybook-django](https://github.com/torchbox/storybook-django) with 
       molecules/
       organisms/
   ```
+
   - Update `COTTON_DIR` setting
   - Update `PATTERN_LIBRARY['SECTIONS']`
   - Update all story imports
 
 ---
 
-## File Structure (After Implementation)
+## File Structure (Current)
+
+```
+litigant-portal/
+├── templates/
+│   ├── cotton/              # Cotton components (source)
+│   │   ├── button.html
+│   │   ├── input.html
+│   │   ├── link.html
+│   │   ├── select.html
+│   │   └── icon.html
+│   │
+│   └── patterns/            # Pattern library wrappers
+│       ├── base.html        # Pattern wrapper (loads Vite assets)
+│       └── atoms/
+│           └── buttons/
+│               ├── button.html + .yaml      # Primary
+│               ├── button_secondary.html + .yaml
+│               └── button_disabled.html + .yaml
+│
+└── config/
+    └── settings.py          # PATTERN_LIBRARY config
+```
+
+## File Structure (After Storybook)
 
 ```
 litigant-portal/
@@ -172,26 +207,10 @@ litigant-portal/
 ├── stories/
 │   └── atoms/
 │       ├── Button.stories.js
-│       ├── Input.stories.js
-│       ├── Link.stories.js
-│       ├── Select.stories.js
-│       └── Icon.stories.js
+│       └── ...
 │
-├── templates/
-│   └── cotton/
-│       ├── button.html      # Existing
-│       ├── button.yaml      # NEW: context for pattern-library
-│       ├── input.html       # Existing
-│       ├── input.yaml       # NEW
-│       ├── link.html        # Existing
-│       ├── link.yaml        # NEW
-│       ├── select.html      # Existing
-│       ├── select.yaml      # NEW
-│       ├── icon.html        # Existing
-│       └── icon.yaml        # NEW
-│
-└── config/
-    └── settings.py          # Add PATTERN_LIBRARY config
+├── templates/patterns/      # (as above)
+└── ...
 ```
 
 ---
@@ -208,29 +227,32 @@ INSTALLED_APPS = [
 
 PATTERN_LIBRARY = {
     'SECTIONS': (
-        ('cotton', ['cotton']),  # Point to templates/cotton/
+        ('atoms', ['patterns/atoms']),  # Wrapper templates
     ),
     'TEMPLATE_SUFFIX': '.html',
     'PATTERN_BASE_TEMPLATE_NAME': 'patterns/base.html',
-    'BASE_TEMPLATE_NAMES': ['base.html'],
+    'BASE_TEMPLATE_NAMES': ['base.html', 'patterns/base.html'],
 }
+
+# URL (in config/urls.py, DEBUG only):
+# path('pattern-library/', include('pattern_library.urls'))
 ```
 
 ### Storybook Middleware (.storybook/middleware.js)
 
 ```javascript
-const { createDjangoAPIMiddleware } = require('storybook-django/src/middleware');
+const { createDjangoAPIMiddleware } = require('storybook-django/src/middleware')
 
 module.exports = createDjangoAPIMiddleware({
   origin: 'http://localhost:8000',
   apiPath: ['/pattern-library/'],
-});
+})
 ```
 
 ### Example Story (stories/atoms/Button.stories.js)
 
 ```javascript
-import { renderPattern } from 'storybook-django';
+import { renderPattern } from 'storybook-django'
 
 export default {
   title: 'Atoms/Button',
@@ -239,21 +261,21 @@ export default {
       url: '/pattern-library/render-pattern/cotton/button/',
     },
   },
-};
+}
 
 export const Primary = {
   args: {
     variant: 'primary',
     slot: 'Primary Button',
   },
-};
+}
 
 export const Secondary = {
   args: {
     variant: 'secondary',
     slot: 'Secondary Button',
   },
-};
+}
 
 export const Disabled = {
   args: {
@@ -261,7 +283,7 @@ export const Disabled = {
     slot: 'Disabled',
     disabled: true,
   },
-};
+}
 ```
 
 ### Example YAML Context (templates/cotton/button.yaml)
@@ -282,11 +304,11 @@ tags: {}
 
 ## Development URLs
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| Django | http://localhost:8000 | Main app |
-| Vite | http://localhost:5173 | Asset HMR |
-| Storybook | http://localhost:6006 | Component library |
+| Service         | URL                                    | Purpose            |
+| --------------- | -------------------------------------- | ------------------ |
+| Django          | http://localhost:8000                  | Main app           |
+| Vite            | http://localhost:5173                  | Asset HMR          |
+| Storybook       | http://localhost:6006                  | Component library  |
 | Pattern Library | http://localhost:8000/pattern-library/ | Django pattern API |
 
 ---
@@ -296,6 +318,7 @@ tags: {}
 ### A11y (WCAG 2.1 AA)
 
 For each component in Storybook:
+
 - [ ] No axe-core violations (check a11y panel)
 - [ ] Color contrast 4.5:1 minimum
 - [ ] Touch targets 44x44px minimum
@@ -306,6 +329,7 @@ For each component in Storybook:
 ### Viewport Testing
 
 Test each component at these sizes:
+
 - [ ] iPhone SE (375x667) - small phone
 - [ ] iPhone 12 (390x844) - standard phone
 - [ ] Galaxy Fold (280x653) - narrow foldable
@@ -340,12 +364,12 @@ django-pattern-library>=1.0.0
 
 ## Risks & Mitigations
 
-| Risk | Mitigation |
-|------|------------|
-| Cotton tag mocking complexity | Test early in Phase 1; fallback to wrapper templates if needed |
-| storybook-django experimental | Actively maintained (July 2025); can fork if needed |
-| Three dev servers (Django+Vite+Storybook) | Already using concurrently; add third process |
-| CSP conflicts with Storybook | Add localhost:6006 to dev CSP whitelist |
+| Risk                                      | Mitigation                                                     |
+| ----------------------------------------- | -------------------------------------------------------------- |
+| Cotton tag mocking complexity             | Test early in Phase 1; fallback to wrapper templates if needed |
+| storybook-django experimental             | Actively maintained (July 2025); can fork if needed            |
+| Three dev servers (Django+Vite+Storybook) | Already using concurrently; add third process                  |
+| CSP conflicts with Storybook              | Add localhost:6006 to dev CSP whitelist                        |
 
 ---
 
@@ -361,5 +385,6 @@ django-pattern-library>=1.0.0
 
 ## Status
 
-**Current:** Planning complete, ready for implementation
-**Next:** Task 1.1 - Install and configure django-pattern-library
+**Current:** Phase 1 in progress - django-pattern-library working with Cotton
+**Completed:** Tasks 1.1, 1.2 (Button atom patterns)
+**Next:** Task 1.3 - Create remaining atom patterns (Input, Link, Select, Icon)

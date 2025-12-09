@@ -1,19 +1,14 @@
 <c-vars type="text" />
-<input
-    type="{{ type }}"
-    {% if name %}name="{{ name }}"{% endif %}
-    {% if id %}id="{{ id }}"{% endif %}
-    {% if value %}value="{{ value }}"{% endif %}
-    {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
-    {% if disabled %}disabled{% endif %}
-    {% if readonly %}readonly{% endif %}
-    {% if required %}required{% endif %}
-    {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
-    {% if aria_describedby %}aria-describedby="{{ aria_describedby }}"{% endif %}
-    {% if error %}aria-invalid="true"{% endif %}
-    class="input
-        {% if error %}input-error{% endif %}
-        {% if success %}input-success{% endif %}
-        {{ class }}"
-    {{ attrs }}
-/>
+<input type="{{ type }}"
+       {% if name %}name="{{ name }}"{% endif %}
+       {% if id %}id="{{ id }}"{% endif %}
+       {% if value %}value="{{ value }}"{% endif %}
+       {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
+       {% if disabled %}disabled{% endif %}
+       {% if readonly %}readonly{% endif %}
+       {% if required %}required{% endif %}
+       {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
+       {% if aria_describedby %}aria-describedby="{{ aria_describedby }}"{% endif %}
+       {% if error %}aria-invalid="true"{% endif %}
+       class="input {% if error %}input-error{% endif %} {% if success %}input-success{% endif %} {{ class }}"
+       {{ attrs }} />

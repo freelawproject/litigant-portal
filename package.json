@@ -7,7 +7,9 @@
     "vite": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "dev": "./dev.sh"
+    "dev": "./dev.sh",
+    "format": "prettier --write 'frontend/**/*.js' '*.config.js' '*.json' '*.md' 'docs/**/*.md'",
+    "format:check": "prettier --check 'frontend/**/*.js' '*.config.js' '*.json' '*.md' 'docs/**/*.md'"
   },
   "dependencies": {
     "alpinejs": "^3.14.3"
@@ -17,6 +19,7 @@
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.2.1",
     "postcss": "^8.4.49",
+    "prettier": "^3.7.4",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.7"
   }

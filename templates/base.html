@@ -1,43 +1,45 @@
 {% load django_vite %}
 <!DOCTYPE html>
 <html lang="en">
-<head>
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="{% block meta_description %}Litigant Portal - Access to Justice{% endblock %}">
-    <meta name="keywords" content="{% block meta_keywords %}litigant, portal, legal, access to justice{% endblock %}">
-    <title>{% block title %}Litigant Portal{% endblock %}</title>
-
+    <meta name="description"
+          content="{% block meta_description %}Litigant Portal - Access to Justice{% endblock meta_description %}">
+    <meta name="keywords"
+          content="{% block meta_keywords %}litigant, portal, legal, access to justice{% endblock meta_keywords %}">
+    <title>
+      {% block title %}
+        Litigant Portal
+      {% endblock title %}
+    </title>
     {# Additional CSS #}
-    {% block extra_css %}{% endblock %}
-
+    {% block extra_css %}
+    {% endblock extra_css %}
     {# Vite assets (CSS and JS) #}
     {% vite_asset 'frontend/src/main.js' %}
-</head>
-<body class="min-h-screen bg-gray-50">
+  </head>
+  <body class="min-h-screen bg-gray-50">
     {% block body %}
-    <div class="flex flex-col min-h-screen">
+      <div class="flex flex-col min-h-screen">
         {% block header %}
-        {# Header will go here #}
-        {% endblock %}
-
+          {# Header will go here #}
+        {% endblock header %}
         <main class="flex-1 container-desktop py-8">
-            {% block content %}{% endblock %}
+          {% block content %}
+          {% endblock content %}
         </main>
-
         {% block footer %}
-        <footer class="bg-gray-800 text-white py-6 mt-auto">
+          <footer class="bg-gray-800 text-white py-6 mt-auto">
             <div class="container-desktop">
-                <p class="text-sm text-center">
-                    © {% now "Y" %} Litigant Portal. All rights reserved.
-                </p>
+              <p class="text-sm text-center">© {% now "Y" %} Litigant Portal. All rights reserved.</p>
             </div>
-        </footer>
-        {% endblock %}
-    </div>
+          </footer>
+        {% endblock footer %}
+      </div>
     {% endblock body %}
-
     {# Additional JavaScript #}
-    {% block extra_js %}{% endblock %}
-</body>
+    {% block extra_js %}
+    {% endblock extra_js %}
+  </body>
 </html>

@@ -1,187 +1,177 @@
 {% extends "base.html" %}
-
-{% block title %}Style Guide - Litigant Portal{% endblock %}
-
+{% block title %}
+  Style Guide - Litigant Portal
+{% endblock title %}
 {% block content %}
-<div class="container-desktop py-8 space-y-12">
+  <div class="container-desktop py-8 space-y-12">
     {# Header #}
     <header class="text-center py-8 border-b border-gray-200">
-        <h1 class="heading-1 text-primary-500 mb-2">Style Guide</h1>
-        <p class="body-text text-gray-600">Design tokens, themes, and Tailwind configuration</p>
-
-        {# Dark mode toggle using Alpine store #}
-        <div class="mt-6">
-            <button
-                @click="$store.theme.toggle()"
-                class="btn-ghost"
-            >
-                <span x-show="$store.theme.isLight">Dark Mode</span>
-                <span x-show="$store.theme.isDark">Light Mode</span>
-            </button>
-        </div>
+      <h1 class="heading-1 text-primary-500 mb-2">Style Guide</h1>
+      <p class="body-text text-gray-600">Design tokens, themes, and Tailwind configuration</p>
+      {# Dark mode toggle using Alpine store #}
+      <div class="mt-6">
+        <button @click="$store.theme.toggle()" class="btn-ghost">
+          <span x-show="$store.theme.isLight">Dark Mode</span>
+          <span x-show="$store.theme.isDark">Light Mode</span>
+        </button>
+      </div>
     </header>
-
     {# Color Palette #}
     <section>
-        <h2 class="heading-2 text-gray-900 mb-6">Color Palette</h2>
-        <div class="space-y-6">
-            {# Primary Colors #}
-            <div>
-                <h3 class="heading-4 text-gray-700 mb-3">Primary (Chicago Blue)</h3>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div class="space-y-2">
-                        <div class="h-24 bg-primary-50 rounded-lg"></div>
-                        <p class="caption">primary-50</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-primary-100 rounded-lg"></div>
-                        <p class="caption">primary-100</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-primary-500 rounded-lg"></div>
-                        <p class="caption">primary-500</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-primary-700 rounded-lg"></div>
-                        <p class="caption">primary-700</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-primary-900 rounded-lg"></div>
-                        <p class="caption">primary-900</p>
-                    </div>
-                </div>
+      <h2 class="heading-2 text-gray-900 mb-6">Color Palette</h2>
+      <div class="space-y-6">
+        {# Primary Colors #}
+        <div>
+          <h3 class="heading-4 text-gray-700 mb-3">Primary (Chicago Blue)</h3>
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="space-y-2">
+              <div class="h-24 bg-primary-50 rounded-lg"></div>
+              <p class="caption">primary-50</p>
             </div>
-
-            {# Secondary Colors #}
-            <div>
-                <h3 class="heading-4 text-gray-700 mb-3">Secondary (Red)</h3>
-                <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div class="space-y-2">
-                        <div class="h-24 bg-secondary-50 rounded-lg"></div>
-                        <p class="caption">secondary-50</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-secondary-400 rounded-lg"></div>
-                        <p class="caption">secondary-400</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-secondary-500 rounded-lg"></div>
-                        <p class="caption">secondary-500</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-secondary-700 rounded-lg"></div>
-                        <p class="caption">secondary-700</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-secondary-900 rounded-lg"></div>
-                        <p class="caption">secondary-900</p>
-                    </div>
-                </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-primary-100 rounded-lg"></div>
+              <p class="caption">primary-100</p>
             </div>
-
-            {# Accent Colors #}
-            <div>
-                <h3 class="heading-4 text-gray-700 mb-3">Accent (Yellow)</h3>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    <div class="space-y-2">
-                        <div class="h-24 bg-accent-300 rounded-lg"></div>
-                        <p class="caption">accent-300</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-accent-400 rounded-lg"></div>
-                        <p class="caption">accent-400</p>
-                    </div>
-                    <div class="space-y-2">
-                        <div class="h-24 bg-accent-500 rounded-lg"></div>
-                        <p class="caption">accent-500</p>
-                    </div>
-                </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-primary-500 rounded-lg"></div>
+              <p class="caption">primary-500</p>
             </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-primary-700 rounded-lg"></div>
+              <p class="caption">primary-700</p>
+            </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-primary-900 rounded-lg"></div>
+              <p class="caption">primary-900</p>
+            </div>
+          </div>
         </div>
+        {# Secondary Colors #}
+        <div>
+          <h3 class="heading-4 text-gray-700 mb-3">Secondary (Red)</h3>
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div class="space-y-2">
+              <div class="h-24 bg-secondary-50 rounded-lg"></div>
+              <p class="caption">secondary-50</p>
+            </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-secondary-400 rounded-lg"></div>
+              <p class="caption">secondary-400</p>
+            </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-secondary-500 rounded-lg"></div>
+              <p class="caption">secondary-500</p>
+            </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-secondary-700 rounded-lg"></div>
+              <p class="caption">secondary-700</p>
+            </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-secondary-900 rounded-lg"></div>
+              <p class="caption">secondary-900</p>
+            </div>
+          </div>
+        </div>
+        {# Accent Colors #}
+        <div>
+          <h3 class="heading-4 text-gray-700 mb-3">Accent (Yellow)</h3>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div class="space-y-2">
+              <div class="h-24 bg-accent-300 rounded-lg"></div>
+              <p class="caption">accent-300</p>
+            </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-accent-400 rounded-lg"></div>
+              <p class="caption">accent-400</p>
+            </div>
+            <div class="space-y-2">
+              <div class="h-24 bg-accent-500 rounded-lg"></div>
+              <p class="caption">accent-500</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
-
     {# Typography #}
     <section>
-        <h2 class="heading-2 text-gray-900 mb-6">Typography</h2>
-        <div class="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg">
-            <div>
-                <h1 class="heading-1">Heading 1 - .heading-1</h1>
-                <code class="caption bg-gray-100 px-2 py-1 rounded">.heading-1 or &lt;h1&gt;</code>
-            </div>
-            <div>
-                <h2 class="heading-2">Heading 2 - .heading-2</h2>
-                <code class="caption bg-gray-100 px-2 py-1 rounded">.heading-2 or &lt;h2&gt;</code>
-            </div>
-            <div>
-                <h3 class="heading-3">Heading 3 - .heading-3</h3>
-                <code class="caption bg-gray-100 px-2 py-1 rounded">.heading-3 or &lt;h3&gt;</code>
-            </div>
-            <div>
-                <p class="body-text">Body Text - .body-text</p>
-                <code class="caption bg-gray-100 px-2 py-1 rounded">.body-text</code>
-            </div>
-            <div>
-                <p class="caption">Caption Text - .caption</p>
-                <code class="caption bg-gray-100 px-2 py-1 rounded">.caption</code>
-            </div>
+      <h2 class="heading-2 text-gray-900 mb-6">Typography</h2>
+      <div class="space-y-4 bg-white dark:bg-gray-800 p-6 rounded-lg">
+        <div>
+          <h1 class="heading-1">Heading 1 - .heading-1</h1>
+          <code class="caption bg-gray-100 px-2 py-1 rounded">.heading-1 or &lt;h1&gt;</code>
         </div>
+        <div>
+          <h2 class="heading-2">Heading 2 - .heading-2</h2>
+          <code class="caption bg-gray-100 px-2 py-1 rounded">.heading-2 or &lt;h2&gt;</code>
+        </div>
+        <div>
+          <h3 class="heading-3">Heading 3 - .heading-3</h3>
+          <code class="caption bg-gray-100 px-2 py-1 rounded">.heading-3 or &lt;h3&gt;</code>
+        </div>
+        <div>
+          <p class="body-text">Body Text - .body-text</p>
+          <code class="caption bg-gray-100 px-2 py-1 rounded">.body-text</code>
+        </div>
+        <div>
+          <p class="caption">Caption Text - .caption</p>
+          <code class="caption bg-gray-100 px-2 py-1 rounded">.caption</code>
+        </div>
+      </div>
     </section>
-
     {# Spacing #}
     <section>
-        <h2 class="heading-2 text-gray-900 mb-6">Spacing Scale</h2>
-        <p class="body-text text-gray-600 mb-4">4px base unit spacing system</p>
-        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg">
-            <div class="space-y-4">
-                <div class="flex items-center gap-4">
-                    <div class="w-xs h-8 bg-primary-500"></div>
-                    <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">xs (4px)</code>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="w-sm h-8 bg-primary-500"></div>
-                    <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">sm (8px)</code>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="w-md h-8 bg-primary-500"></div>
-                    <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">md (16px)</code>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="w-lg h-8 bg-primary-500"></div>
-                    <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">lg (24px)</code>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="w-xl h-8 bg-primary-500"></div>
-                    <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">xl (32px)</code>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="w-2xl h-8 bg-primary-500"></div>
-                    <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">2xl (48px)</code>
-                </div>
-                <div class="flex items-center gap-4">
-                    <div class="w-3xl h-8 bg-primary-500"></div>
-                    <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">3xl (64px)</code>
-                </div>
-            </div>
+      <h2 class="heading-2 text-gray-900 mb-6">Spacing Scale</h2>
+      <p class="body-text text-gray-600 mb-4">4px base unit spacing system</p>
+      <div class="bg-white dark:bg-gray-800 p-6 rounded-lg">
+        <div class="space-y-4">
+          <div class="flex items-center gap-4">
+            <div class="w-xs h-8 bg-primary-500"></div>
+            <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">xs (4px)</code>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-sm h-8 bg-primary-500"></div>
+            <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">sm (8px)</code>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-md h-8 bg-primary-500"></div>
+            <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">md (16px)</code>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-lg h-8 bg-primary-500"></div>
+            <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">lg (24px)</code>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-xl h-8 bg-primary-500"></div>
+            <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">xl (32px)</code>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-2xl h-8 bg-primary-500"></div>
+            <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">2xl (48px)</code>
+          </div>
+          <div class="flex items-center gap-4">
+            <div class="w-3xl h-8 bg-primary-500"></div>
+            <code class="caption bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">3xl (64px)</code>
+          </div>
         </div>
+      </div>
     </section>
-
     {# Layout Containers #}
     <section>
-        <h2 class="heading-2 text-gray-900 mb-6">Layout Containers</h2>
-        <div class="space-y-4">
-            <div>
-                <h3 class="heading-4 mb-2">.container-desktop</h3>
-                <code class="caption bg-gray-100 px-2 py-1 rounded">Max-width 7xl with responsive padding</code>
-            </div>
-            <div>
-                <h3 class="heading-4 mb-2">.container-mobile</h3>
-                <code class="caption bg-gray-100 px-2 py-1 rounded">Max-width md, optimized for mobile</code>
-            </div>
-            <div>
-                <h3 class="heading-4 mb-2">.container-full</h3>
-                <code class="caption bg-gray-100 px-2 py-1 rounded">Full width with responsive padding</code>
-            </div>
+      <h2 class="heading-2 text-gray-900 mb-6">Layout Containers</h2>
+      <div class="space-y-4">
+        <div>
+          <h3 class="heading-4 mb-2">.container-desktop</h3>
+          <code class="caption bg-gray-100 px-2 py-1 rounded">Max-width 7xl with responsive padding</code>
         </div>
+        <div>
+          <h3 class="heading-4 mb-2">.container-mobile</h3>
+          <code class="caption bg-gray-100 px-2 py-1 rounded">Max-width md, optimized for mobile</code>
+        </div>
+        <div>
+          <h3 class="heading-4 mb-2">.container-full</h3>
+          <code class="caption bg-gray-100 px-2 py-1 rounded">Full width with responsive padding</code>
+        </div>
+      </div>
     </section>
-</div>
-{% endblock %}
+  </div>
+{% endblock content %}

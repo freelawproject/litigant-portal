@@ -8,6 +8,7 @@
 ```
 
 **Other Commands:**
+
 ```bash
 npm run build              # Build production assets
 python manage.py shell     # Django shell
@@ -17,12 +18,12 @@ python manage.py shell     # Django shell
 
 ## Project Status
 
-| Phase | Status |
-|-------|--------|
-| Django Foundation | Done |
-| Frontend Pipeline (Vite + Tailwind + Alpine) | Done |
-| Core Atoms (Button, Input, Link, Select, Icon) | Done |
-| Storybook Integration | **Next** - see [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md) |
+| Phase                                          | Status                                                                |
+| ---------------------------------------------- | --------------------------------------------------------------------- |
+| Django Foundation                              | Done                                                                  |
+| Frontend Pipeline (Vite + Tailwind + Alpine)   | Done                                                                  |
+| Core Atoms (Button, Input, Link, Select, Icon) | Done                                                                  |
+| Storybook Integration                          | **Next** - see [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md) |
 
 **Branch:** `django-atomic`
 
@@ -30,13 +31,13 @@ python manage.py shell     # Django shell
 
 ## URLs (Development)
 
-| URL | Purpose |
-|-----|---------|
-| http://localhost:8000/ | Home |
-| http://localhost:8000/components/ | Component library |
-| http://localhost:8000/style-guide/ | Design tokens |
-| http://localhost:8000/admin/ | Django admin |
-| http://localhost:5173/ | Vite dev server (assets) |
+| URL                                | Purpose                  |
+| ---------------------------------- | ------------------------ |
+| http://localhost:8000/             | Home                     |
+| http://localhost:8000/components/  | Component library        |
+| http://localhost:8000/style-guide/ | Design tokens            |
+| http://localhost:8000/admin/       | Django admin             |
+| http://localhost:5173/             | Vite dev server (assets) |
 
 ---
 
@@ -63,27 +64,27 @@ litigant-portal/
 
 ## Documentation Index
 
-| Doc | Purpose |
-|-----|---------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Tech stack, key decisions, patterns |
-| [REQUIREMENTS.md](./REQUIREMENTS.md) | Product requirements, UX principles |
-| [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md) | Storybook implementation plan |
-| [CHANGES.md](./CHANGES.md) | Changelog |
-| [SECURITY.md](./SECURITY.md) | Vulnerability disclosure |
+| Doc                                                    | Purpose                             |
+| ------------------------------------------------------ | ----------------------------------- |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)                   | Tech stack, key decisions, patterns |
+| [REQUIREMENTS.md](./REQUIREMENTS.md)                   | Product requirements, UX principles |
+| [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md) | Storybook implementation plan       |
+| [CHANGES.md](./CHANGES.md)                             | Changelog                           |
+| [SECURITY.md](./SECURITY.md)                           | Vulnerability disclosure            |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Backend | Django 5.2, Python 3.13 |
-| Components | Django Cotton |
-| Styling | Tailwind CSS 3.4 |
-| Reactivity | AlpineJS 3.14 |
-| Build | Vite 6 |
-| Auth | django-allauth |
-| Security | django-csp |
+| Layer      | Technology              |
+| ---------- | ----------------------- |
+| Backend    | Django 5.2, Python 3.13 |
+| Components | Django Cotton           |
+| Styling    | Tailwind CSS 3.4        |
+| Reactivity | AlpineJS 3.14           |
+| Build      | Vite 6                  |
+| Auth       | django-allauth          |
+| Security   | django-csp              |
 
 ---
 
@@ -106,8 +107,7 @@ litigant-portal/
 </c-select>
 
 <!-- Icon (Heroicons) -->
-{% load heroicons %}
-{% heroicon "check-circle" %}
+{% load heroicons %} {% heroicon "check-circle" %}
 ```
 
 ---

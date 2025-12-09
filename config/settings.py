@@ -27,7 +27,7 @@ SECRET_KEY = (
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS: list[str] = []
 
 
 # Application definition
@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     "django_cotton",
     "django_vite",
     "heroicons",
+    "pattern_library",
     # Local apps
     "portal",
     "litigant_portal",
@@ -159,39 +160,51 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = 1
 
 # Content Security Policy (django-csp)
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = (
-    "'self'",
-    # Vite dev server (development only)
-    "http://localhost:5173" if DEBUG else None,
+CSP_DEFAULT_SRC: tuple[str, ...] = ("'self'",)
+CSP_SCRIPT_SRC: tuple[str, ...] = tuple(
+    filter(
+        None,
+        (
+            "'self'",
+            # Vite dev server (development only)
+            "http://localhost:5173" if DEBUG else None,
+        ),
+    )
 )
-CSP_SCRIPT_SRC = tuple(filter(None, CSP_SCRIPT_SRC))
 
-CSP_STYLE_SRC = (
-    "'self'",
-    # Vite dev server (development only)
-    "http://localhost:5173" if DEBUG else None,
+CSP_STYLE_SRC: tuple[str, ...] = tuple(
+    filter(
+        None,
+        (
+            "'self'",
+            # Vite dev server (development only)
+            "http://localhost:5173" if DEBUG else None,
+        ),
+    )
 )
-CSP_STYLE_SRC = tuple(filter(None, CSP_STYLE_SRC))
 
-CSP_IMG_SRC = (
+CSP_IMG_SRC: tuple[str, ...] = (
     "'self'",
     "data:",  # Allow data URIs for inline images
     "blob:",  # Allow blob URLs for camera/file uploads
 )
 
-CSP_FONT_SRC = (
+CSP_FONT_SRC: tuple[str, ...] = (
     "'self'",
     "data:",  # Allow data URIs for fonts
 )
 
-CSP_CONNECT_SRC = (
-    "'self'",
-    # Vite dev server HMR (development only)
-    "ws://localhost:5173" if DEBUG else None,
-    "http://localhost:5173" if DEBUG else None,
+CSP_CONNECT_SRC: tuple[str, ...] = tuple(
+    filter(
+        None,
+        (
+            "'self'",
+            # Vite dev server HMR (development only)
+            "ws://localhost:5173" if DEBUG else None,
+            "http://localhost:5173" if DEBUG else None,
+        ),
+    )
 )
-CSP_CONNECT_SRC = tuple(filter(None, CSP_CONNECT_SRC))
 
 # AlpineJS is CSP-compatible by default (no eval needed)
 # No need for 'unsafe-eval' or 'unsafe-inline' for scripts
@@ -200,3 +213,11 @@ CSP_CONNECT_SRC = tuple(filter(None, CSP_CONNECT_SRC))
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Django Pattern Library configuration
+PATTERN_LIBRARY = {
+    "SECTIONS": (("atoms", ["patterns/atoms"]),),
+    "TEMPLATE_SUFFIX": ".html",
+    "PATTERN_BASE_TEMPLATE_NAME": "patterns/base.html",
+    "BASE_TEMPLATE_NAMES": ["base.html", "patterns/base.html"],
+}

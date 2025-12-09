@@ -1,359 +1,333 @@
 {% extends "base.html" %}
 {% load heroicons %}
-
-{% block title %}Component Library - Litigant Portal{% endblock %}
-
+{% block title %}
+  Component Library - Litigant Portal
+{% endblock title %}
 {% block content %}
-<div class="space-y-12">
+  <div class="space-y-12">
     {# Header #}
     <header class="mb-12">
-        <div class="flex items-center justify-between mb-4">
-            <h1 class="text-4xl font-antonio font-bold text-primary-500">Component Library</h1>
-            <button @click="$store.theme.toggle()" class="btn-ghost text-sm">
-                <span x-show="$store.theme.isLight">Dark</span>
-                <span x-show="$store.theme.isDark">Light</span>
-            </button>
-        </div>
-        <p class="text-gray-600 dark:text-gray-400">
-            Living documentation for Cotton components with Tailwind CSS component classes
-        </p>
+      <div class="flex items-center justify-between mb-4">
+        <h1 class="text-4xl font-antonio font-bold text-primary-500">Component Library</h1>
+        <button @click="$store.theme.toggle()" class="btn-ghost text-sm">
+          <span x-show="$store.theme.isLight">Dark</span>
+          <span x-show="$store.theme.isDark">Light</span>
+        </button>
+      </div>
+      <p class="text-gray-600 dark:text-gray-400">
+        Living documentation for Cotton components with Tailwind CSS component classes
+      </p>
     </header>
-
-        {# Button Component #}
-        <section class="mb-12">
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-                <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Button</h2>
-                <p class="text-gray-600 dark:text-gray-400 mb-6">
-                    Accessible button component with multiple variants. WCAG 2.1 AA compliant.
-                </p>
-
-                {# Primary #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Primary</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="flex flex-wrap gap-4">
-                            <c-button variant="primary">Primary Button</c-button>
-                            <c-button variant="primary" disabled>Disabled</c-button>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="primary"&gt;Primary Button&lt;/c-button&gt;</code></pre>
-                    </div>
-                </div>
-
-                {# Secondary #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Secondary</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="flex flex-wrap gap-4">
-                            <c-button variant="secondary">Secondary Button</c-button>
-                            <c-button variant="secondary" disabled>Disabled</c-button>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="secondary"&gt;Secondary Button&lt;/c-button&gt;</code></pre>
-                    </div>
-                </div>
-
-                {# Tertiary #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Tertiary</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="flex flex-wrap gap-4">
-                            <c-button variant="tertiary">Tertiary Button</c-button>
-                            <c-button variant="tertiary" disabled>Disabled</c-button>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="tertiary"&gt;Tertiary Button&lt;/c-button&gt;</code></pre>
-                    </div>
-                </div>
-
-                {# Ghost #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Ghost</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="flex flex-wrap gap-4">
-                            <c-button variant="ghost">Ghost Button</c-button>
-                            <c-button variant="ghost" disabled>Disabled</c-button>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="ghost"&gt;Ghost Button&lt;/c-button&gt;</code></pre>
-                    </div>
-                </div>
-
-                {# Full Width #}
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Full Width</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <c-button variant="primary" full_width>Full Width Button</c-button>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="primary" full_width&gt;Full Width Button&lt;/c-button&gt;</code></pre>
-                    </div>
-                </div>
+    {# Button Component #}
+    <section class="mb-12">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Button</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          Accessible button component with multiple variants. WCAG 2.1 AA compliant.
+        </p>
+        {# Primary #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Primary</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="flex flex-wrap gap-4">
+              <c-button variant="primary">Primary Button</c-button>
+              <c-button variant="primary" disabled>Disabled</c-button>
             </div>
-        </section>
-
-        {# Input Component #}
-        <section class="mb-12">
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-                <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Input</h2>
-                <p class="text-gray-600 dark:text-gray-400 mb-6">
-                    Accessible input component with error and success states. WCAG 2.1 AA compliant.
-                </p>
-
-                {# Default #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Default</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <c-input placeholder="Enter your name" />
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input placeholder="Enter your name" /&gt;</code></pre>
-                    </div>
-                </div>
-
-                {# With Types #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Input Types</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <c-input type="email" placeholder="Email address" />
-                            <c-input type="tel" placeholder="Phone number" />
-                            <c-input type="password" placeholder="Password" />
-                            <c-input type="search" placeholder="Search..." />
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input type="email" placeholder="Email address" /&gt;</code></pre>
-                    </div>
-                </div>
-
-                {# States #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">States</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="grid gap-4">
-                            <c-input placeholder="Error state" error />
-                            <c-input placeholder="Success state" success />
-                            <c-input placeholder="Disabled" disabled />
-                            <c-input value="Read only value" readonly />
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input placeholder="Error state" error /&gt;
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="primary"&gt;Primary Button&lt;/c-button&gt;</code></pre>
+          </div>
+        </div>
+        {# Secondary #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Secondary</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="flex flex-wrap gap-4">
+              <c-button variant="secondary">Secondary Button</c-button>
+              <c-button variant="secondary" disabled>Disabled</c-button>
+            </div>
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="secondary"&gt;Secondary Button&lt;/c-button&gt;</code></pre>
+          </div>
+        </div>
+        {# Tertiary #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Tertiary</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="flex flex-wrap gap-4">
+              <c-button variant="tertiary">Tertiary Button</c-button>
+              <c-button variant="tertiary" disabled>Disabled</c-button>
+            </div>
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="tertiary"&gt;Tertiary Button&lt;/c-button&gt;</code></pre>
+          </div>
+        </div>
+        {# Ghost #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Ghost</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="flex flex-wrap gap-4">
+              <c-button variant="ghost">Ghost Button</c-button>
+              <c-button variant="ghost" disabled>Disabled</c-button>
+            </div>
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="ghost"&gt;Ghost Button&lt;/c-button&gt;</code></pre>
+          </div>
+        </div>
+        {# Full Width #}
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Full Width</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <c-button variant="primary" full_width>Full Width Button</c-button>
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="primary" full_width&gt;Full Width Button&lt;/c-button&gt;</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+    {# Input Component #}
+    <section class="mb-12">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Input</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          Accessible input component with error and success states. WCAG 2.1 AA compliant.
+        </p>
+        {# Default #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Default</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <c-input placeholder="Enter your name" />
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input placeholder="Enter your name" /&gt;</code></pre>
+          </div>
+        </div>
+        {# With Types #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Input Types</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="grid gap-4 md:grid-cols-2">
+              <c-input type="email" placeholder="Email address" />
+              <c-input type="tel" placeholder="Phone number" />
+              <c-input type="password" placeholder="Password" />
+              <c-input type="search" placeholder="Search..." />
+            </div>
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input type="email" placeholder="Email address" /&gt;</code></pre>
+          </div>
+        </div>
+        {# States #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">States</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="grid gap-4">
+              <c-input placeholder="Error state" error />
+              <c-input placeholder="Success state" success />
+              <c-input placeholder="Disabled" disabled />
+              <c-input value="Read only value" readonly />
+            </div>
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input placeholder="Error state" error /&gt;
 &lt;c-input placeholder="Success state" success /&gt;
 &lt;c-input placeholder="Disabled" disabled /&gt;
 &lt;c-input value="Read only" readonly /&gt;</code></pre>
-                    </div>
-                </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    {# Link Component #}
+    <section class="mb-12">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Link</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          Accessible link component with multiple variants. Auto-handles external link security.
+        </p>
+        {# Variants #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Variants</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="flex flex-wrap gap-6">
+              <c-link href="#" variant="default">Default Link</c-link>
+              <c-link href="#" variant="primary">Primary Link</c-link>
+              <c-link href="#" variant="secondary">Secondary Link</c-link>
+              <c-link href="#" variant="unstyled">Unstyled Link</c-link>
             </div>
-        </section>
-
-        {# Link Component #}
-        <section class="mb-12">
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-                <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Link</h2>
-                <p class="text-gray-600 dark:text-gray-400 mb-6">
-                    Accessible link component with multiple variants. Auto-handles external link security.
-                </p>
-
-                {# Variants #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Variants</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="flex flex-wrap gap-6">
-                            <c-link href="#" variant="default">Default Link</c-link>
-                            <c-link href="#" variant="primary">Primary Link</c-link>
-                            <c-link href="#" variant="secondary">Secondary Link</c-link>
-                            <c-link href="#" variant="unstyled">Unstyled Link</c-link>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-link href="#" variant="default"&gt;Default&lt;/c-link&gt;
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-link href="#" variant="default"&gt;Default&lt;/c-link&gt;
 &lt;c-link href="#" variant="primary"&gt;Primary&lt;/c-link&gt;
 &lt;c-link href="#" variant="secondary"&gt;Secondary&lt;/c-link&gt;</code></pre>
-                    </div>
-                </div>
-
-                {# External Link #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">External Links</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="flex flex-wrap gap-6">
-                            <c-link href="https://example.com" target="_blank" external_icon>External Link</c-link>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-link href="https://..." target="_blank" external_icon&gt;External&lt;/c-link&gt;</code></pre>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">Auto-adds rel="noopener noreferrer" for security</p>
-                    </div>
-                </div>
+          </div>
+        </div>
+        {# External Link #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">External Links</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="flex flex-wrap gap-6">
+              <c-link href="https://example.com" target="_blank" external_icon>External Link</c-link>
             </div>
-        </section>
-
-        {# Select Component #}
-        <section class="mb-12">
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-                <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Select</h2>
-                <p class="text-gray-600 dark:text-gray-400 mb-6">
-                    Accessible select dropdown with custom styling and states.
-                </p>
-
-                {# Default #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Default</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <c-select>
-                            <option value="">Select an option</option>
-                            <option value="1">Option 1</option>
-                            <option value="2">Option 2</option>
-                            <option value="3">Option 3</option>
-                        </c-select>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-select&gt;
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-link href="https://..." target="_blank" external_icon&gt;External&lt;/c-link&gt;</code></pre>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Auto-adds rel="noopener noreferrer" for security</p>
+          </div>
+        </div>
+      </div>
+    </section>
+    {# Select Component #}
+    <section class="mb-12">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Select</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">Accessible select dropdown with custom styling and states.</p>
+        {# Default #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Default</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <c-select>
+            <option value="">Select an option</option>
+            <option value="1">Option 1</option>
+            <option value="2">Option 2</option>
+            <option value="3">Option 3</option>
+            </c-select>
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-select&gt;
   &lt;option value=""&gt;Select an option&lt;/option&gt;
   &lt;option value="1"&gt;Option 1&lt;/option&gt;
 &lt;/c-select&gt;</code></pre>
-                    </div>
-                </div>
-
-                {# States #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">States</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="grid gap-4">
-                            <c-select error>
-                                <option value="">Error state</option>
-                            </c-select>
-                            <c-select success>
-                                <option value="">Success state</option>
-                            </c-select>
-                            <c-select disabled>
-                                <option value="">Disabled</option>
-                            </c-select>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-select error&gt;...&lt;/c-select&gt;
+          </div>
+        </div>
+        {# States #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">States</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="grid gap-4">
+              <c-select error>
+              <option value="">Error state</option>
+              </c-select>
+              <c-select success>
+              <option value="">Success state</option>
+              </c-select>
+              <c-select disabled>
+              <option value="">Disabled</option>
+              </c-select>
+            </div>
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-select error&gt;...&lt;/c-select&gt;
 &lt;c-select success&gt;...&lt;/c-select&gt;
 &lt;c-select disabled&gt;...&lt;/c-select&gt;</code></pre>
-                    </div>
-                </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    {# Icon Component #}
+    <section class="mb-12">
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Icon</h2>
+        <p class="text-gray-600 dark:text-gray-400 mb-6">
+          Icons via <a href="https://heroicons.com" target="_blank" class="link-default">Heroicons</a> (django-heroicons). Outline and solid styles.
+        </p>
+        {# Common Icons #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Common Icons (Outline)</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
+            <div class="flex flex-wrap gap-6 items-center text-gray-700 dark:text-gray-300">
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "search" %}</span>
+                <p class="text-xs mt-1">search</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "home" %}</span>
+                <p class="text-xs mt-1">home</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "user" %}</span>
+                <p class="text-xs mt-1">user</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "mail" %}</span>
+                <p class="text-xs mt-1">mail</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "check-circle" %}</span>
+                <p class="text-xs mt-1">check-circle</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "exclamation-circle" %}</span>
+                <p class="text-xs mt-1">exclamation-circle</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "x" %}</span>
+                <p class="text-xs mt-1">x</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "chevron-down" %}</span>
+                <p class="text-xs mt-1">chevron-down</p>
+              </div>
             </div>
-        </section>
-
-        {# Icon Component #}
-        <section class="mb-12">
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-                <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Icon</h2>
-                <p class="text-gray-600 dark:text-gray-400 mb-6">
-                    Icons via <a href="https://heroicons.com" target="_blank" class="link-default">Heroicons</a> (django-heroicons). Outline and solid styles.
-                </p>
-
-                {# Common Icons #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Common Icons (Outline)</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-                        <div class="flex flex-wrap gap-6 items-center text-gray-700 dark:text-gray-300">
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "search" %}</span>
-                                <p class="text-xs mt-1">search</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "home" %}</span>
-                                <p class="text-xs mt-1">home</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "user" %}</span>
-                                <p class="text-xs mt-1">user</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "mail" %}</span>
-                                <p class="text-xs mt-1">mail</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "check-circle" %}</span>
-                                <p class="text-xs mt-1">check-circle</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "exclamation-circle" %}</span>
-                                <p class="text-xs mt-1">exclamation-circle</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "x" %}</span>
-                                <p class="text-xs mt-1">x</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "chevron-down" %}</span>
-                                <p class="text-xs mt-1">chevron-down</p>
-                            </div>
-                        </div>
-                        <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>{% verbatim %}{% load heroicons %}
+            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>{% verbatim %}{% load heroicons %}
 {% heroicon "search" %}
 {% heroicon "check-circle" style="solid" %}{% endverbatim %}</code></pre>
-                    </div>
-                </div>
-
-                {# Sizes #}
-                <div class="mb-8">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Sizes (wrap in sized container)</h3>
-                    <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg">
-                        <div class="flex flex-wrap gap-6 items-end text-gray-700 dark:text-gray-300">
-                            <div class="text-center">
-                                <span class="w-4 h-4 inline-block">{% heroicon "star" %}</span>
-                                <p class="text-xs mt-1">w-4</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-5 h-5 inline-block">{% heroicon "star" %}</span>
-                                <p class="text-xs mt-1">w-5</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-6 h-6 inline-block">{% heroicon "star" %}</span>
-                                <p class="text-xs mt-1">w-6</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-8 h-8 inline-block">{% heroicon "star" %}</span>
-                                <p class="text-xs mt-1">w-8</p>
-                            </div>
-                            <div class="text-center">
-                                <span class="w-10 h-10 inline-block">{% heroicon "star" %}</span>
-                                <p class="text-xs mt-1">w-10</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+          </div>
+        </div>
+        {# Sizes #}
+        <div class="mb-8">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Sizes (wrap in sized container)</h3>
+          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg">
+            <div class="flex flex-wrap gap-6 items-end text-gray-700 dark:text-gray-300">
+              <div class="text-center">
+                <span class="w-4 h-4 inline-block">{% heroicon "star" %}</span>
+                <p class="text-xs mt-1">w-4</p>
+              </div>
+              <div class="text-center">
+                <span class="w-5 h-5 inline-block">{% heroicon "star" %}</span>
+                <p class="text-xs mt-1">w-5</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon "star" %}</span>
+                <p class="text-xs mt-1">w-6</p>
+              </div>
+              <div class="text-center">
+                <span class="w-8 h-8 inline-block">{% heroicon "star" %}</span>
+                <p class="text-xs mt-1">w-8</p>
+              </div>
+              <div class="text-center">
+                <span class="w-10 h-10 inline-block">{% heroicon "star" %}</span>
+                <p class="text-xs mt-1">w-10</p>
+              </div>
             </div>
-        </section>
-
-        {# CSS Classes Reference #}
-        <section>
-            <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-                <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">CSS Component Classes</h2>
-
-                <div class="mb-6">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Buttons</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                        <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/buttons.css</code>
-                    </p>
-                    <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
-                        <li>.btn-primary, .btn-secondary, .btn-tertiary, .btn-ghost</li>
-                        <li>.btn-full-width</li>
-                    </ul>
-                </div>
-
-                <div class="mb-6">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Inputs</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                        <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/inputs.css</code>
-                    </p>
-                    <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
-                        <li>.input - Base input styles</li>
-                        <li>.input-error - Error state</li>
-                        <li>.input-success - Success state</li>
-                    </ul>
-                </div>
-
-                <div class="mb-6">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Links</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                        <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/links.css</code>
-                    </p>
-                    <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
-                        <li>.link-default, .link-primary, .link-secondary, .link-unstyled</li>
-                    </ul>
-                </div>
-
-                <div>
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Selects</h3>
-                    <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
-                        <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/selects.css</code>
-                    </p>
-                    <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
-                        <li>.select-wrapper, .select</li>
-                        <li>.select-wrapper-error, .select-wrapper-success</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-</div>
-{% endblock %}
+          </div>
+        </div>
+      </div>
+    </section>
+    {# CSS Classes Reference #}
+    <section>
+      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
+        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">CSS Component Classes</h2>
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Buttons</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
+            <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/buttons.css</code>
+          </p>
+          <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
+            <li>.btn-primary, .btn-secondary, .btn-tertiary, .btn-ghost</li>
+            <li>.btn-full-width</li>
+          </ul>
+        </div>
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Inputs</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
+            <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/inputs.css</code>
+          </p>
+          <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
+            <li>.input - Base input styles</li>
+            <li>.input-error - Error state</li>
+            <li>.input-success - Success state</li>
+          </ul>
+        </div>
+        <div class="mb-6">
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Links</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
+            <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/links.css</code>
+          </p>
+          <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
+            <li>.link-default, .link-primary, .link-secondary, .link-unstyled</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Selects</h3>
+          <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
+            <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/selects.css</code>
+          </p>
+          <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
+            <li>.select-wrapper, .select</li>
+            <li>.select-wrapper-error, .select-wrapper-success</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </div>
+{% endblock content %}

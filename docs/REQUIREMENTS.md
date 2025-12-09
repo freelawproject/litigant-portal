@@ -11,6 +11,7 @@ Self-represented litigants facing barriers to justice (financial, time, mobility
 ## MVP Scope
 
 ### Core Systems
+
 - User authentication + save/resume
 - Guided form-filling with external tool integration (A2J Author, HotDocs, DocAssemble)
 - Plain-language case type, document type, party role selection
@@ -21,6 +22,7 @@ Self-represented litigants facing barriers to justice (financial, time, mobility
 - WCAG accessibility compliance
 
 ### Supporting Features
+
 - Legal information by case type
 - Courthouse locations (Google Maps integration)
 - Courtroom preparation guidance
@@ -45,23 +47,23 @@ Self-represented litigants facing barriers to justice (financial, time, mobility
 
 ### Key Patterns
 
-| Pattern | Implementation |
-|---------|----------------|
-| **Document Scanning** | Bank check deposit UX - edge detection, auto-capture, quality feedback |
-| **Case Type Selection** | Decision tree, not dropdown - plain language questions |
-| **Form Filling** | One question per screen, progress indicator, auto-save |
-| **Payment** | Apple/Google Pay, fee waiver check first, one-tap pay |
-| **Dashboard** | To-do list with status indicators, action buttons |
-| **Errors** | Human language ("Payment didn't go through") not codes |
-| **Document Status** | Package tracking pattern with push notifications |
+| Pattern                 | Implementation                                                         |
+| ----------------------- | ---------------------------------------------------------------------- |
+| **Document Scanning**   | Bank check deposit UX - edge detection, auto-capture, quality feedback |
+| **Case Type Selection** | Decision tree, not dropdown - plain language questions                 |
+| **Form Filling**        | One question per screen, progress indicator, auto-save                 |
+| **Payment**             | Apple/Google Pay, fee waiver check first, one-tap pay                  |
+| **Dashboard**           | To-do list with status indicators, action buttons                      |
+| **Errors**              | Human language ("Payment didn't go through") not codes                 |
+| **Document Status**     | Package tracking pattern with push notifications                       |
 
 ---
 
 ## Success Metrics
 
-| Metric | Target |
-|--------|--------|
-| Time to first filing | < 15 min (simple case) |
-| Mobile completion rate | ≥ desktop |
-| Abandonment rate | Track per step |
-| Help contact rate | Lower = better UX |
+| Metric                 | Target                 |
+| ---------------------- | ---------------------- |
+| Time to first filing   | < 15 min (simple case) |
+| Mobile completion rate | ≥ desktop              |
+| Abandonment rate       | Track per step         |
+| Help contact rate      | Lower = better UX      |

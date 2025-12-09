@@ -1,4 +1,4 @@
-.PHONY: help dev build clean install migrate test
+.PHONY: help dev build clean install migrate test format lint
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -52,3 +52,13 @@ superuser: ## Create Django superuser
 
 shell: ## Open Django shell
 	source .venv/bin/activate && python manage.py shell
+
+format: ## Format all code (Python, JS, HTML templates)
+	source .venv/bin/activate && ruff format .
+	source .venv/bin/activate && djlint templates/ --reformat
+	npm run format
+
+lint: ## Lint all code (Python, JS, HTML templates)
+	source .venv/bin/activate && ruff check .
+	source .venv/bin/activate && djlint templates/ --lint
+	npm run format:check

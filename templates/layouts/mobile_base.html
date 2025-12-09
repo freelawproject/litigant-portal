@@ -1,37 +1,36 @@
 {% extends "base.html" %}
-
 {% block body %}
-<div class="flex flex-col min-h-screen bg-white">
+  <div class="flex flex-col min-h-screen bg-white">
     {% block mobile_header %}
-    {# Mobile-optimized header will go here #}
-    <header class="bg-primary-500 text-white shadow-lg sticky top-0 z-50">
+      {# Mobile-optimized header will go here #}
+      <header class="bg-primary-500 text-white shadow-lg sticky top-0 z-50">
         <div class="px-4 py-3 flex items-center justify-between">
-            <h1 class="text-xl font-antonio font-bold">
-                {% block mobile_header_title %}Litigant Portal{% endblock %}
-            </h1>
-            <button
-                type="button"
-                aria-label="Menu"
-                class="p-2 hover:bg-primary-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white">
-                {# Menu icon #}
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                </svg>
-            </button>
+          <h1 class="text-xl font-antonio font-bold">
+            {% block mobile_header_title %}
+              Litigant Portal
+            {% endblock mobile_header_title %}
+          </h1>
+          <button type="button"
+                  aria-label="Menu"
+                  class="p-2 hover:bg-primary-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-white">
+            {# Menu icon #}
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
         </div>
-    </header>
-    {% endblock %}
-
+      </header>
+    {% endblock mobile_header %}
     <main class="flex-1">
-        {% block mobile_content %}
+      {% block mobile_content %}
         <div class="px-4 py-6">
-            {% block content %}{% endblock %}
+          {% block content %}
+          {% endblock content %}
         </div>
-        {% endblock %}
+      {% endblock mobile_content %}
     </main>
-
     {% block mobile_footer %}
-    {# Optional mobile footer - often hidden on mobile #}
-    {% endblock %}
-</div>
+      {# Optional mobile footer - often hidden on mobile #}
+    {% endblock mobile_footer %}
+  </div>
 {% endblock body %}
