@@ -9,7 +9,20 @@
   - Created pattern wrapper templates (`templates/patterns/`)
   - Button atom patterns working (Primary, Secondary, Disabled)
   - See [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md)
-  - **Next:** Remaining atom patterns, then Storybook setup
+
+- **Completed:** Formatting and linting toolchain
+  - Added Prettier for JS/JSON/MD/YAML (no semicolons)
+  - Added djlint for Django template linting/formatting
+  - Updated pre-commit config with prettier and djlint hooks
+  - Added `make format` and `make lint` targets
+  - Fixed all templates to use named endblocks (Django best practice)
+  - Fixed mypy type errors in CSP settings
+
+- **Pending:**
+  - Fix djlint pre-commit hook (multiprocessing permission issue in sandbox)
+    - Solution: Use local hooks instead of repo hooks
+  - Remaining atom patterns (Input, Link, Select, Icon)
+  - Storybook setup (Phase 2)
 
 ## Past
 
