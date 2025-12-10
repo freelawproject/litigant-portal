@@ -1,8 +1,8 @@
-<c-vars type="button" variant="primary" />
+<c-vars type="button" variant="primary" size="" />
 <button type="{{ type }}"
         {% if id %}id="{{ id }}"{% endif %}
         {% if disabled %}disabled{% endif %}
         {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
-        class=" {% if variant == 'primary' %}btn-primary {% elif variant == 'secondary' %}btn-secondary {% elif variant == 'tertiary' %}btn-tertiary {% elif variant == 'ghost' %}btn-ghost {% else %}btn-primary{% endif %} {% if full_width %}btn-full-width{% endif %} {{ class }}"
+        class="{% if variant == 'primary' %}btn-primary{% elif variant == 'outline' %}btn-outline{% elif variant == 'dark' %}btn-dark{% elif variant == 'ghost' %}btn-ghost{% elif variant == 'danger' %}btn-danger{% else %}btn-primary{% endif %}{% if size == 'xl' %} btn-xl{% elif size == 'sm' %} btn-sm{% endif %}{% if full_width %} w-full{% endif %} {{ class }}"
         {{ attrs }}>{{ slot }}
 </button>
