@@ -45,7 +45,6 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "django_cotton",
     "heroicons",
-    "pattern_library",
     # Local apps
     "portal",
     "litigant_portal",
@@ -198,10 +197,3 @@ CSP_CONNECT_SRC: tuple[str, ...] = ("'self'",)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Django Pattern Library configuration
-PATTERN_LIBRARY = {
-    "SECTIONS": (("atoms", ["patterns/atoms"]),),
-    "TEMPLATE_SUFFIX": ".html",
-    "PATTERN_BASE_TEMPLATE_NAME": "patterns/base.html",
-    "BASE_TEMPLATE_NAMES": ["base.html", "patterns/base.html"],
-}

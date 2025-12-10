@@ -1,333 +1,399 @@
 {% extends "base.html" %}
 {% load heroicons %}
-{% block title %}
-  Component Library - Litigant Portal
-{% endblock title %}
+{% block title %}Component Library - Litigant Portal{% endblock title %}
+
 {% block content %}
-  <div class="space-y-12">
+<div class="flex flex-col md:flex-row gap-8">
+  {# Navigation Sidebar #}
+  <nav class="md:w-64 md:flex-shrink-0">
+    <div class="md:sticky md:top-8">
+      <h2 class="text-sm font-semibold text-greyscale-500 uppercase tracking-wider mb-4">Components</h2>
+      <ul class="space-y-1 list-none pl-0">
+        <li><a href="#buttons" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Buttons</a></li>
+        <li><a href="#inputs" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Inputs</a></li>
+        <li><a href="#selects" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Selects</a></li>
+        <li><a href="#links" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Links</a></li>
+        <li><a href="#icons" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Icons</a></li>
+        <li><a href="#alerts" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Alerts</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  {# Main Content #}
+  <div class="flex-1 max-w-3xl">
     {# Header #}
     <header class="mb-12">
-      <div class="flex items-center justify-between mb-4">
-        <h1 class="text-4xl font-antonio font-bold text-primary-500">Component Library</h1>
-        <button @click="$store.theme.toggle()" class="btn-ghost text-sm">
-          <span x-show="$store.theme.isLight">Dark</span>
-          <span x-show="$store.theme.isDark">Light</span>
-        </button>
-      </div>
-      <p class="text-gray-600 dark:text-gray-400">
-        Living documentation for Cotton components with Tailwind CSS component classes
+      <p class="text-sm font-semibold text-primary-600 uppercase mb-2">Litigant Portal</p>
+      <h1>Component Library</h1>
+      <p class="mt-4 text-greyscale-600">
+        Living documentation for Cotton components with Tailwind CSS. These components are available
+        to all templates via <code>&lt;c-componentname&gt;</code> syntax.
+      </p>
+      <p class="mt-2 text-greyscale-600">
+        We use <a href="https://django-cotton.com/docs/usage-patterns" target="_blank" rel="noopener noreferrer" class="underline">Django Cotton</a> for components,
+        <a href="https://alpinejs.dev" target="_blank" rel="noopener noreferrer" class="underline">Alpine.js</a> for interactivity, and
+        <a href="https://tailwindcss.com" target="_blank" rel="noopener noreferrer" class="underline">Tailwind CSS</a> for styling.
       </p>
     </header>
-    {# Button Component #}
-    <section class="mb-12">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Button</h2>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
-          Accessible button component with multiple variants. WCAG 2.1 AA compliant.
-        </p>
-        {# Primary #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Primary</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="flex flex-wrap gap-4">
-              <c-button variant="primary">Primary Button</c-button>
-              <c-button variant="primary" disabled>Disabled</c-button>
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="primary"&gt;Primary Button&lt;/c-button&gt;</code></pre>
-          </div>
+
+    {# ========== BUTTONS ========== #}
+    <section id="buttons" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Buttons</h2>
+      <p class="text-greyscale-600 mb-6">Accessible button component with multiple variants. WCAG 2.1 AA compliant.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="flex flex-wrap gap-3 mb-6">
+        <c-button variant="primary">Primary</c-button>
+        <c-button variant="outline">Outline</c-button>
+        <c-button variant="dark">Dark</c-button>
+        <c-button variant="ghost">Ghost</c-button>
+        <c-button variant="danger">Danger</c-button>
+      </div>
+
+      <div class="flex flex-wrap gap-3 mb-6">
+        <c-button variant="primary" size="sm">Small</c-button>
+        <c-button variant="primary">Default</c-button>
+        <c-button variant="primary" size="xl">Extra Large</c-button>
+      </div>
+
+      <div class="mb-6">
+        <c-button variant="primary" disabled>Disabled</c-button>
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+          <span class="p-2.5">"primary" | "outline" | "dark" | "ghost" | "danger". Default: "primary"</span>
         </div>
-        {# Secondary #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Secondary</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="flex flex-wrap gap-4">
-              <c-button variant="secondary">Secondary Button</c-button>
-              <c-button variant="secondary" disabled>Disabled</c-button>
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="secondary"&gt;Secondary Button&lt;/c-button&gt;</code></pre>
-          </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
+          <span class="p-2.5">"sm" | "" | "xl". Default: "" (normal size)</span>
         </div>
-        {# Tertiary #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Tertiary</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="flex flex-wrap gap-4">
-              <c-button variant="tertiary">Tertiary Button</c-button>
-              <c-button variant="tertiary" disabled>Disabled</c-button>
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="tertiary"&gt;Tertiary Button&lt;/c-button&gt;</code></pre>
-          </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type</code></span>
+          <span class="p-2.5">"button" | "submit" | "reset". Default: "button"</span>
         </div>
-        {# Ghost #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Ghost</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="flex flex-wrap gap-4">
-              <c-button variant="ghost">Ghost Button</c-button>
-              <c-button variant="ghost" disabled>Disabled</c-button>
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="ghost"&gt;Ghost Button&lt;/c-button&gt;</code></pre>
-          </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Disables the button.</span>
         </div>
-        {# Full Width #}
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Full Width</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <c-button variant="primary" full_width>Full Width Button</c-button>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-button variant="primary" full_width&gt;Full Width Button&lt;/c-button&gt;</code></pre>
-          </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>full_width</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Makes button full width.</span>
         </div>
       </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>&lt;c-button variant="primary"&gt;Primary&lt;/c-button&gt;
+&lt;c-button variant="outline"&gt;Outline&lt;/c-button&gt;
+&lt;c-button variant="dark"&gt;Dark&lt;/c-button&gt;
+&lt;c-button variant="ghost"&gt;Ghost&lt;/c-button&gt;
+&lt;c-button variant="danger"&gt;Danger&lt;/c-button&gt;
+
+&lt;c-button variant="primary" size="sm"&gt;Small&lt;/c-button&gt;
+&lt;c-button variant="primary" size="xl"&gt;Extra Large&lt;/c-button&gt;
+
+&lt;c-button variant="primary" disabled&gt;Disabled&lt;/c-button&gt;</code></pre>
+      </details>
     </section>
-    {# Input Component #}
-    <section class="mb-12">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Input</h2>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
-          Accessible input component with error and success states. WCAG 2.1 AA compliant.
-        </p>
-        {# Default #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Default</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <c-input placeholder="Enter your name" />
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input placeholder="Enter your name" /&gt;</code></pre>
-          </div>
+
+    {# ========== INPUTS ========== #}
+    <section id="inputs" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Inputs</h2>
+      <p class="text-greyscale-600 mb-6">Accessible input component with error and success states.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="space-y-4 mb-6 max-w-md">
+        <c-input placeholder="Default input" />
+        <c-input type="email" placeholder="Email input" />
+        <c-input placeholder="Error state" error />
+        <c-input placeholder="Success state" success />
+        <c-input placeholder="Disabled" disabled />
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type</code></span>
+          <span class="p-2.5">"text" | "email" | "password" | "tel" | etc. Default: "text"</span>
         </div>
-        {# With Types #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Input Types</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="grid gap-4 md:grid-cols-2">
-              <c-input type="email" placeholder="Email address" />
-              <c-input type="tel" placeholder="Phone number" />
-              <c-input type="password" placeholder="Password" />
-              <c-input type="search" placeholder="Search..." />
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input type="email" placeholder="Email address" /&gt;</code></pre>
-          </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Form field name</span>
         </div>
-        {# States #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">States</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="grid gap-4">
-              <c-input placeholder="Error state" error />
-              <c-input placeholder="Success state" success />
-              <c-input placeholder="Disabled" disabled />
-              <c-input value="Read only value" readonly />
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-input placeholder="Error state" error /&gt;
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>placeholder</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Placeholder text</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>error</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Shows error state styling.</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>success</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Shows success state styling.</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Disables the input.</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>&lt;c-input placeholder="Default input" /&gt;
+&lt;c-input type="email" placeholder="Email input" /&gt;
+&lt;c-input placeholder="Error state" error /&gt;
 &lt;c-input placeholder="Success state" success /&gt;
-&lt;c-input placeholder="Disabled" disabled /&gt;
-&lt;c-input value="Read only" readonly /&gt;</code></pre>
-          </div>
+&lt;c-input placeholder="Disabled" disabled /&gt;</code></pre>
+      </details>
+    </section>
+
+    {# ========== SELECTS ========== #}
+    <section id="selects" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Selects</h2>
+      <p class="text-greyscale-600 mb-6">Accessible select dropdown with custom styling.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="space-y-4 mb-6 max-w-md">
+        <c-select>
+          <option value="">Select an option</option>
+          <option value="1">Option 1</option>
+          <option value="2">Option 2</option>
+          <option value="3">Option 3</option>
+        </c-select>
+        <c-select error>
+          <option value="">Error state</option>
+        </c-select>
+        <c-select disabled>
+          <option value="">Disabled</option>
+        </c-select>
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Form field name</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>error</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Shows error state styling.</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Disables the select.</span>
         </div>
       </div>
-    </section>
-    {# Link Component #}
-    <section class="mb-12">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Link</h2>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
-          Accessible link component with multiple variants. Auto-handles external link security.
-        </p>
-        {# Variants #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Variants</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="flex flex-wrap gap-6">
-              <c-link href="#" variant="default">Default Link</c-link>
-              <c-link href="#" variant="primary">Primary Link</c-link>
-              <c-link href="#" variant="secondary">Secondary Link</c-link>
-              <c-link href="#" variant="unstyled">Unstyled Link</c-link>
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-link href="#" variant="default"&gt;Default&lt;/c-link&gt;
-&lt;c-link href="#" variant="primary"&gt;Primary&lt;/c-link&gt;
-&lt;c-link href="#" variant="secondary"&gt;Secondary&lt;/c-link&gt;</code></pre>
-          </div>
-        </div>
-        {# External Link #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">External Links</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="flex flex-wrap gap-6">
-              <c-link href="https://example.com" target="_blank" external_icon>External Link</c-link>
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-link href="https://..." target="_blank" external_icon&gt;External&lt;/c-link&gt;</code></pre>
-            <p class="text-sm text-gray-500 dark:text-gray-400">Auto-adds rel="noopener noreferrer" for security</p>
-          </div>
+
+      {# Slot #}
+      <h4 class="mt-8">Slot</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium">Default</span>
+          <span class="p-2.5"><code>&lt;option&gt;</code> elements for the select dropdown.</span>
         </div>
       </div>
-    </section>
-    {# Select Component #}
-    <section class="mb-12">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Select</h2>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">Accessible select dropdown with custom styling and states.</p>
-        {# Default #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Default</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <c-select>
-            <option value="">Select an option</option>
-            <option value="1">Option 1</option>
-            <option value="2">Option 2</option>
-            <option value="3">Option 3</option>
-            </c-select>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-select&gt;
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>&lt;c-select&gt;
   &lt;option value=""&gt;Select an option&lt;/option&gt;
   &lt;option value="1"&gt;Option 1&lt;/option&gt;
-&lt;/c-select&gt;</code></pre>
-          </div>
-        </div>
-        {# States #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">States</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="grid gap-4">
-              <c-select error>
-              <option value="">Error state</option>
-              </c-select>
-              <c-select success>
-              <option value="">Success state</option>
-              </c-select>
-              <c-select disabled>
-              <option value="">Disabled</option>
-              </c-select>
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>&lt;c-select error&gt;...&lt;/c-select&gt;
-&lt;c-select success&gt;...&lt;/c-select&gt;
+  &lt;option value="2"&gt;Option 2&lt;/option&gt;
+&lt;/c-select&gt;
+
+&lt;c-select error&gt;...&lt;/c-select&gt;
 &lt;c-select disabled&gt;...&lt;/c-select&gt;</code></pre>
-          </div>
+      </details>
+    </section>
+
+    {# ========== LINKS ========== #}
+    <section id="links" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Links</h2>
+      <p class="text-greyscale-600 mb-6">Accessible link component. Auto-handles external link security with rel="noopener noreferrer".</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="flex flex-wrap gap-6 mb-6">
+        <c-link href="#" variant="default">Default Link</c-link>
+        <c-link href="#" variant="primary">Primary Link</c-link>
+        <c-link href="#" variant="secondary">Secondary Link</c-link>
+        <c-link href="#" variant="unstyled">Unstyled Link</c-link>
+      </div>
+      <div class="mb-6">
+        <c-link href="https://free.law" target="_blank" external_icon>External Link</c-link>
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+          <span class="p-2.5">URL for the link</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+          <span class="p-2.5">"default" | "primary" | "secondary" | "unstyled". Default: "default"</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>target</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">"_blank" to open in new tab</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>external_icon</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Shows external link icon (use with target="_blank")</span>
         </div>
       </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>&lt;c-link href="#" variant="default"&gt;Default&lt;/c-link&gt;
+&lt;c-link href="#" variant="primary"&gt;Primary&lt;/c-link&gt;
+&lt;c-link href="#" variant="secondary"&gt;Secondary&lt;/c-link&gt;
+&lt;c-link href="#" variant="unstyled"&gt;Unstyled&lt;/c-link&gt;
+
+&lt;c-link href="https://..." target="_blank" external_icon&gt;External&lt;/c-link&gt;</code></pre>
+      </details>
     </section>
-    {# Icon Component #}
-    <section class="mb-12">
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">Icon</h2>
-        <p class="text-gray-600 dark:text-gray-400 mb-6">
-          Icons via <a href="https://heroicons.com" target="_blank" class="link-default">Heroicons</a> (django-heroicons). Outline and solid styles.
-        </p>
-        {# Common Icons #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Common Icons (Outline)</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg space-y-4">
-            <div class="flex flex-wrap gap-6 items-center text-gray-700 dark:text-gray-300">
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "search" %}</span>
-                <p class="text-xs mt-1">search</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "home" %}</span>
-                <p class="text-xs mt-1">home</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "user" %}</span>
-                <p class="text-xs mt-1">user</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "mail" %}</span>
-                <p class="text-xs mt-1">mail</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "check-circle" %}</span>
-                <p class="text-xs mt-1">check-circle</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "exclamation-circle" %}</span>
-                <p class="text-xs mt-1">exclamation-circle</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "x" %}</span>
-                <p class="text-xs mt-1">x</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "chevron-down" %}</span>
-                <p class="text-xs mt-1">chevron-down</p>
-              </div>
-            </div>
-            <pre class="bg-gray-800 text-gray-100 p-4 rounded text-sm overflow-x-auto"><code>{% verbatim %}{% load heroicons %}
+
+    {# ========== ICONS ========== #}
+    <section id="icons" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Icons</h2>
+      <p class="text-greyscale-600 mb-6">
+        Icons via <a href="https://heroicons.com" target="_blank" rel="noopener noreferrer" class="underline">Heroicons</a>
+        using the django-heroicons package. Supports outline (default) and solid styles.
+      </p>
+
+      {# Demo #}
+      <h4 class="mb-3">Common Icons (Outline)</h4>
+      <div class="flex flex-wrap gap-6 items-center text-greyscale-700 mb-6">
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon "search" %}</span>
+          <p class="text-xs mt-1">search</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon "home" %}</span>
+          <p class="text-xs mt-1">home</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon "user" %}</span>
+          <p class="text-xs mt-1">user</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon "check-circle" %}</span>
+          <p class="text-xs mt-1">check-circle</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon "exclamation-circle" %}</span>
+          <p class="text-xs mt-1">exclamation-circle</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon "x" %}</span>
+          <p class="text-xs mt-1">x</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon "chevron-down" %}</span>
+          <p class="text-xs mt-1">chevron-down</p>
+        </div>
+      </div>
+
+      <h4 class="mb-3">Using c-icon component</h4>
+      <div class="flex flex-wrap gap-6 items-center text-greyscale-700 mb-6">
+        <c-icon name="check-circle" class="w-6 h-6" />
+        <c-icon name="check-circle" style="solid" class="w-6 h-6 text-green-600" />
+        <c-icon name="exclamation" class="w-6 h-6" />
+        <c-icon name="exclamation" style="solid" class="w-6 h-6 text-yellow-500" />
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props (c-icon)</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
+          <span class="p-2.5">Heroicon name (e.g., "check-circle", "home")</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>style</code></span>
+          <span class="p-2.5">"outline" | "solid". Default: "outline"</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>class</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">CSS classes for sizing and color (e.g., "w-6 h-6 text-primary-600")</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{# Direct heroicon template tag #}
+{% load heroicons %}
 {% heroicon "search" %}
-{% heroicon "check-circle" style="solid" %}{% endverbatim %}</code></pre>
-          </div>
+{% heroicon "check-circle" style="solid" %}
+
+{# Using c-icon component #}
+&lt;c-icon name="check-circle" class="w-6 h-6" /&gt;
+&lt;c-icon name="check-circle" style="solid" class="w-6 h-6 text-green-600" /&gt;{% endverbatim %}</code></pre>
+      </details>
+    </section>
+
+    {# ========== ALERTS ========== #}
+    <section id="alerts" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Alerts</h2>
+      <p class="text-greyscale-600 mb-6">Alert components for displaying messages. Use CSS classes directly.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="space-y-4 mb-6">
+        <div class="alert-info">This is an info alert.</div>
+        <div class="alert-success">This is a success alert.</div>
+        <div class="alert-warning">This is a warning alert.</div>
+        <div class="alert-danger">This is a danger/error alert.</div>
+      </div>
+
+      {# CSS Classes #}
+      <h4 class="mt-8">CSS Classes</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>.alert-info</code></span>
+          <span class="p-2.5">Blue/purple info alert</span>
         </div>
-        {# Sizes #}
-        <div class="mb-8">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Sizes (wrap in sized container)</h3>
-          <div class="bg-gray-50 dark:bg-gray-900 p-6 rounded-lg">
-            <div class="flex flex-wrap gap-6 items-end text-gray-700 dark:text-gray-300">
-              <div class="text-center">
-                <span class="w-4 h-4 inline-block">{% heroicon "star" %}</span>
-                <p class="text-xs mt-1">w-4</p>
-              </div>
-              <div class="text-center">
-                <span class="w-5 h-5 inline-block">{% heroicon "star" %}</span>
-                <p class="text-xs mt-1">w-5</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon "star" %}</span>
-                <p class="text-xs mt-1">w-6</p>
-              </div>
-              <div class="text-center">
-                <span class="w-8 h-8 inline-block">{% heroicon "star" %}</span>
-                <p class="text-xs mt-1">w-8</p>
-              </div>
-              <div class="text-center">
-                <span class="w-10 h-10 inline-block">{% heroicon "star" %}</span>
-                <p class="text-xs mt-1">w-10</p>
-              </div>
-            </div>
-          </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>.alert-success</code></span>
+          <span class="p-2.5">Green success alert</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>.alert-warning</code></span>
+          <span class="p-2.5">Yellow warning alert</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>.alert-danger</code></span>
+          <span class="p-2.5">Red danger/error alert</span>
         </div>
       </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>&lt;div class="alert-info"&gt;Info message&lt;/div&gt;
+&lt;div class="alert-success"&gt;Success message&lt;/div&gt;
+&lt;div class="alert-warning"&gt;Warning message&lt;/div&gt;
+&lt;div class="alert-danger"&gt;Error message&lt;/div&gt;</code></pre>
+      </details>
     </section>
-    {# CSS Classes Reference #}
-    <section>
-      <div class="bg-white dark:bg-gray-800 rounded-lg p-8 shadow-sm border border-gray-200 dark:border-gray-700">
-        <h2 class="text-2xl font-antonio font-bold text-gray-900 dark:text-gray-100 mb-4">CSS Component Classes</h2>
-        <div class="mb-6">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Buttons</h3>
-          <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
-            <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/buttons.css</code>
-          </p>
-          <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
-            <li>.btn-primary, .btn-secondary, .btn-tertiary, .btn-ghost</li>
-            <li>.btn-full-width</li>
-          </ul>
-        </div>
-        <div class="mb-6">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Inputs</h3>
-          <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
-            <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/inputs.css</code>
-          </p>
-          <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
-            <li>.input - Base input styles</li>
-            <li>.input-error - Error state</li>
-            <li>.input-success - Success state</li>
-          </ul>
-        </div>
-        <div class="mb-6">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Links</h3>
-          <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
-            <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/links.css</code>
-          </p>
-          <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
-            <li>.link-default, .link-primary, .link-secondary, .link-unstyled</li>
-          </ul>
-        </div>
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Selects</h3>
-          <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">
-            <code class="font-mono bg-gray-100 dark:bg-gray-900 px-2 py-1 rounded">frontend/src/styles/components/selects.css</code>
-          </p>
-          <ul class="space-y-1 text-gray-900 dark:text-gray-100 font-mono text-sm">
-            <li>.select-wrapper, .select</li>
-            <li>.select-wrapper-error, .select-wrapper-success</li>
-          </ul>
-        </div>
-      </div>
-    </section>
+
   </div>
+</div>
 {% endblock content %}

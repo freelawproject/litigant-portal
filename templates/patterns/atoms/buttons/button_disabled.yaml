@@ -1,4 +1,0 @@
-name: 'Button (Disabled)'
-context:
-  variant: 'primary'
-  slot: 'Disabled Button'

@@ -1,4 +1,0 @@
-name: 'Button (Primary)'
-context:
-  variant: 'primary'
-  slot: 'Click me'

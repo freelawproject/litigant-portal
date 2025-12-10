@@ -1,0 +1,283 @@
+# Component Library & Testing
+
+**Branch:** `django-atomic`
+
+---
+
+## Current Status
+
+- [x] Build simplification (Tailwind standalone CLI + Alpine CDN)
+- [x] Node.js removed - zero JS build dependencies
+- [x] Tailwind v4 CSS-based config (no tailwind.config.js needed)
+- [x] CourtListener color scheme adopted
+- [x] Custom component library page at `/components/`
+- [x] Cotton components documented (Button, Input, Select, Link, Icon, Alerts)
+- [x] A11y testing via browser DevTools (Lighthouse, axe extension)
+
+---
+
+## Overview
+
+Our design system uses a Django-native approach:
+
+- **Component Library** - Custom page at `/components/` for developer documentation
+- **A11y Testing** - axe-core via npm scripts (roll-our-own, not Storybook)
+- **Viewport Testing** - Browser DevTools + manual testing
+
+This approach was chosen over Storybook for simplicity and to stay Django-native.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│              Component Library Page                      │
+│  /components/ - Live demos, props docs, code examples   │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│                 Django Cotton                           │
+│  templates/cotton/*.html - Reusable components          │
+└─────────────────────┬───────────────────────────────────┘
+                      │
+                      ▼
+┌─────────────────────────────────────────────────────────┐
+│              Tailwind CSS + Alpine.js                   │
+│  static/css/main.css + CDN Alpine                       │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Key Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Component docs** | Custom Django page | Django-native, full control |
+| **A11y testing** | axe-core npm scripts | Lightweight, no Storybook overhead |
+| **Pattern library** | None (removed django-pattern-library) | Custom page is sufficient |
+| **Storybook** | Removed from plan | Overkill for current needs |
+
+---
+
+## Component Library
+
+### URL
+
+- Development: http://localhost:8000/components/
+- Template: `templates/pages/components.html`
+- View: `portal/views.py::components()`
+
+### Structure
+
+Each component section includes:
+- **Description** - What the component does, accessibility notes
+- **Demo** - Live rendered component with variants
+- **Props table** - All available props with types and defaults
+- **Slots table** - Named slots (if applicable)
+- **Code example** - Collapsible code snippet
+
+### Adding a New Component
+
+1. Create Cotton component: `templates/cotton/my_component.html`
+2. Add CSS classes to `static/css/main.css` if needed
+3. Add section to `templates/pages/components.html`:
+
+```html
+{# ========== MY COMPONENT ========== #}
+<section id="my-component" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+  <h2 class="mb-4">My Component</h2>
+  <p class="text-greyscale-600 mb-6">Description here.</p>
+
+  {# Demo #}
+  <h4 class="mb-3">Demo</h4>
+  <div class="mb-6">
+    <c-my-component>Content</c-my-component>
+  </div>
+
+  {# Props #}
+  <h4 class="mt-8">Props</h4>
+  <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+    <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+      <span class="p-2.5 md:w-48 font-medium"><code>prop_name</code></span>
+      <span class="p-2.5">Description. Default: "value"</span>
+    </div>
+  </div>
+
+  {# Code #}
+  <details class="mt-4">
+    <summary class="cursor-pointer text-sm font-medium text-greyscale-600">Show code</summary>
+    <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4"><code>&lt;c-my-component&gt;Content&lt;/c-my-component&gt;</code></pre>
+  </details>
+</section>
+```
+
+4. Add navigation link to sidebar
+
+---
+
+## Current Components
+
+### Atoms
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Button | `cotton/button.html` | Primary, outline, dark, ghost, danger variants |
+| Input | `cotton/input.html` | Text inputs with error/success states |
+| Select | `cotton/select.html` | Dropdown with custom styling |
+| Link | `cotton/link.html` | Styled links with external icon option |
+| Icon | `cotton/icon.html` | Heroicons wrapper (uses v1 names: `search`, `x`, `exclamation`) |
+| Alerts | CSS classes | `.alert-info`, `.alert-success`, `.alert-warning`, `.alert-danger` |
+
+### CSS Component Classes
+
+Defined in `static/css/main.css`:
+
+```css
+/* Buttons */
+.btn-primary, .btn-outline, .btn-dark, .btn-ghost, .btn-danger
+.btn-xl, .btn-sm
+
+/* Inputs */
+.input, .input-error, .input-success
+
+/* Selects */
+.select-wrapper, .select, .select-icon
+.select-wrapper-error, .select-wrapper-disabled
+
+/* Links */
+.link, .link-default, .link-primary, .link-secondary, .link-unstyled
+
+/* Alerts */
+.alert, .alert-info, .alert-success, .alert-warning, .alert-danger
+
+/* Layout */
+.container-desktop, .container-mobile, .capped-width
+```
+
+---
+
+## A11y Testing
+
+### Approach
+
+Browser-based A11y testing (no Node.js required):
+
+1. **Chrome DevTools Lighthouse** - Built-in accessibility audit
+2. **axe DevTools Extension** - [Chrome](https://chrome.google.com/webstore/detail/axe-devtools/lhdoppojpmngadmnindnejefpokejbdd) / [Firefox](https://addons.mozilla.org/en-US/firefox/addon/axe-devtools/)
+3. **Manual testing** - Keyboard navigation, screen reader
+
+### Manual Checklist
+
+For each component:
+- [ ] Color contrast 4.5:1 minimum (use browser DevTools)
+- [ ] Touch targets 44x44px minimum
+- [ ] Keyboard navigable (Tab, Enter, Space)
+- [ ] Focus indicators visible
+- [ ] ARIA labels where needed
+- [ ] Screen reader tested
+
+---
+
+## Viewport Testing
+
+### Manual Testing Sizes
+
+Test components at these breakpoints:
+
+| Device | Width | Notes |
+|--------|-------|-------|
+| Small phone | 375px | iPhone SE |
+| Standard phone | 390px | iPhone 12/13/14 |
+| Large phone | 428px | iPhone Pro Max |
+| Tablet | 768px | iPad |
+| Desktop | 1024px+ | Laptop/Desktop |
+
+### Browser DevTools
+
+1. Open DevTools (F12)
+2. Toggle device toolbar (Ctrl+Shift+M / Cmd+Shift+M)
+3. Select device preset or enter custom dimensions
+4. Test component at each size
+
+---
+
+## File Structure
+
+```
+litigant-portal/
+├── static/
+│   ├── css/
+│   │   ├── main.css              # Tailwind source
+│   │   └── main.built.css        # Generated CSS
+│   └── js/
+│       └── theme.js              # Alpine theme store
+│
+├── templates/
+│   ├── cotton/                   # Cotton components
+│   │   ├── button.html
+│   │   ├── input.html
+│   │   ├── link.html
+│   │   ├── select.html
+│   │   └── icon.html
+│   │
+│   ├── pages/
+│   │   └── components.html       # Component library page
+│   │
+│   └── base.html                 # Base template
+│
+├── portal/
+│   ├── views.py                  # components() view
+│   └── urls.py                   # /components/ route
+│
+└── config/
+    └── settings.py
+```
+
+---
+
+## Design System Source
+
+Our Tailwind config and CSS patterns are adapted from [CourtListener](https://github.com/freelawproject/courtlistener), using their:
+
+- Color palette (greyscale, primary coral/red, brand purple)
+- Typography (Inter, Cooper Hewitt fonts)
+- Spacing scale
+- Component patterns (buttons, inputs, alerts, etc.)
+
+---
+
+## Development Workflow
+
+```bash
+# Start dev server with CSS watching
+./dev.sh
+
+# Or manually:
+python manage.py runserver &
+tailwindcss -i static/css/main.css -o static/css/main.built.css --watch
+
+# Production build (minified)
+tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
+```
+
+**Requirements:** Python 3.13+, Tailwind CSS (`brew install tailwindcss`)
+
+**Note:** We use Tailwind v4 with CSS-based configuration. Theme tokens are defined
+in `@theme { }` blocks within `static/css/main.css` - no `tailwind.config.js` needed.
+
+Visit http://localhost:8000/components/ to view component library.
+
+---
+
+## Future Considerations
+
+If browser-based testing proves insufficient, consider:
+
+1. **Playwright** - Automated viewport screenshots (Python, no Node needed)
+2. **Storybook** - More comprehensive but requires Node.js
+3. **Percy/Chromatic** - Visual regression testing
+
+For now, browser DevTools + manual testing provides sufficient coverage for MVP.
