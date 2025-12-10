@@ -1,10 +1,26 @@
 {% extends "base.html" %}
-{% block title %}
-  Litigant Portal
-{% endblock title %}
+{% block title %}Litigant Portal{% endblock title %}
 {% block content %}
   <div class="text-center py-16">
-    <h1 class="text-3xl font-bold text-gray-900 mb-4">Litigant Portal</h1>
-    <p class="text-gray-600">Coming soon</p>
+    <h1>Litigant Portal</h1>
+    <p class="text-greyscale-600 mt-4 mb-8">Coming soon</p>
+
+    <div class="max-w-md mx-auto">
+      <h4 class="text-greyscale-500 uppercase text-sm tracking-wider mb-4">Available Pages</h4>
+      <ul class="list-none pl-0 space-y-2">
+        <li>
+          <a href="{% url 'portal:components' %}" class="link link-default">Component Library</a>
+          <span class="text-greyscale-400 text-sm">- Design system documentation</span>
+        </li>
+        <li>
+          <a href="{% url 'portal:style_guide' %}" class="link link-default">Style Guide</a>
+          <span class="text-greyscale-400 text-sm">- Colors, typography, spacing</span>
+        </li>
+        <li>
+          <a href="{% url 'admin:index' %}" class="link link-default">Admin</a>
+          <span class="text-greyscale-400 text-sm">- Django admin panel</span>
+        </li>
+      </ul>
+    </div>
   </div>
 {% endblock content %}
