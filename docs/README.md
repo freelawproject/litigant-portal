@@ -4,27 +4,30 @@
 
 ```bash
 ./dev.sh                    # Start Django + Tailwind CSS watch
-# Visit: http://localhost:8000/pattern-library/
+# Visit: http://localhost:8000/components/
 ```
 
 **Other Commands:**
 
 ```bash
-npm run build:css          # Build production CSS (minified)
-npm run watch:css          # Watch CSS for changes
-python manage.py shell     # Django shell
+tailwindcss -i static/css/main.css -o static/css/main.built.css --minify  # Build production CSS
+tailwindcss -i static/css/main.css -o static/css/main.built.css --watch   # Watch CSS
+python manage.py shell                                                      # Django shell
 ```
+
+**Requirements:** Python 3.13+, Tailwind CSS (`brew install tailwindcss`)
 
 ---
 
 ## Project Status
 
-| Phase                                          | Status                                                                |
-| ---------------------------------------------- | --------------------------------------------------------------------- |
-| Django Foundation                              | Done                                                                  |
-| Frontend Pipeline (Tailwind CLI + Alpine CDN)  | Done                                                                  |
-| Core Atoms (Button, Input, Link, Select, Icon) | Done                                                                  |
-| Storybook Integration                          | **Next** - see [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md) |
+| Phase | Status |
+|-------|--------|
+| Django Foundation | Done |
+| Frontend Pipeline (Tailwind CLI + Alpine CDN) | Done |
+| Core Atoms (Button, Input, Link, Select, Icon) | Done |
+| Component Library Page | Done |
+| A11y Testing | Next |
 
 **Branch:** `django-atomic`
 
@@ -32,11 +35,12 @@ python manage.py shell     # Django shell
 
 ## URLs (Development)
 
-| URL                                    | Purpose         |
-| -------------------------------------- | --------------- |
-| http://localhost:8000/                 | Home            |
-| http://localhost:8000/pattern-library/ | Pattern library |
-| http://localhost:8000/admin/           | Django admin    |
+| URL | Purpose |
+|-----|---------|
+| http://localhost:8000/ | Home |
+| http://localhost:8000/components/ | Component library |
+| http://localhost:8000/style-guide/ | Style guide |
+| http://localhost:8000/admin/ | Django admin |
 
 ---
 
@@ -49,7 +53,6 @@ litigant-portal/
 ├── templates/
 │   ├── base.html          # Base layout
 │   ├── cotton/            # Django-Cotton components
-│   ├── patterns/          # Pattern library wrappers
 │   ├── layouts/           # Layout templates
 │   └── pages/             # Page templates
 ├── static/
@@ -65,26 +68,28 @@ litigant-portal/
 
 ## Documentation Index
 
-| Doc                                                    | Purpose                             |
-| ------------------------------------------------------ | ----------------------------------- |
-| [ARCHITECTURE.md](./ARCHITECTURE.md)                   | Tech stack, key decisions, patterns |
-| [REQUIREMENTS.md](./REQUIREMENTS.md)                   | Product requirements, UX principles |
-| [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md) | Storybook implementation plan       |
-| [CHANGES.md](./CHANGES.md)                             | Changelog                           |
-| [SECURITY.md](./SECURITY.md)                           | Vulnerability disclosure            |
+| Doc | Purpose |
+|-----|---------|
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Tech stack, key decisions, patterns |
+| [REQUIREMENTS.md](./REQUIREMENTS.md) | Product requirements, UX principles |
+| [COMPONENT_LIBRARY.md](./COMPONENT_LIBRARY.md) | Component library & testing guide |
+| [CHANGES.md](./CHANGES.md) | Changelog |
+| [SECURITY.md](./SECURITY.md) | Vulnerability disclosure |
 
 ---
 
 ## Tech Stack
 
-| Layer      | Technology              |
-| ---------- | ----------------------- |
-| Backend    | Django 5.2, Python 3.13 |
-| Components | Django Cotton           |
-| Styling    | Tailwind CSS 3.4 (CLI)  |
-| Reactivity | AlpineJS 3.14 (CDN)     |
-| Auth       | django-allauth          |
-| Security   | django-csp              |
+| Layer | Technology |
+|-------|------------|
+| Backend | Django 5.2, Python 3.13 |
+| Components | Django Cotton |
+| Styling | Tailwind CSS 4.x (Homebrew: `brew install tailwindcss`) |
+| Reactivity | AlpineJS 3.14 (CDN) |
+| Auth | django-allauth |
+| Security | django-csp |
+
+**No Node.js required** - Tailwind via Homebrew, Alpine via CDN.
 
 ---
 
@@ -93,13 +98,15 @@ litigant-portal/
 ```html
 <!-- Button -->
 <c-button variant="primary">Submit</c-button>
-<c-button variant="secondary" disabled>Cancel</c-button>
+<c-button variant="outline">Cancel</c-button>
+<c-button variant="danger" disabled>Delete</c-button>
 
 <!-- Input -->
 <c-input type="email" placeholder="Email" error />
 
 <!-- Link -->
 <c-link href="/dashboard" variant="primary">Dashboard</c-link>
+<c-link href="https://example.com" target="_blank" external_icon>External</c-link>
 
 <!-- Select -->
 <c-select name="state">
@@ -107,8 +114,20 @@ litigant-portal/
 </c-select>
 
 <!-- Icon (Heroicons) -->
-{% load heroicons %} {% heroicon "check-circle" %}
+<c-icon name="check-circle" class="w-6 h-6" />
+<c-icon name="check-circle" style="solid" class="w-6 h-6 text-green-600" />
 ```
+
+---
+
+## Design System
+
+Colors and patterns adapted from CourtListener:
+- **Primary:** Coral/red (`primary-600: #B5362D`)
+- **Greyscale:** Warm greys (`greyscale-900: #1C1814`)
+- **Brand:** Purple accents (`brand-600: #7F56D9`)
+
+See `/components/` for live examples and full documentation.
 
 ---
 

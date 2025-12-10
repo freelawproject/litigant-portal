@@ -19,9 +19,10 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 | ------------------ | ---------------------------------- | --------------------------------------- |
 | **Backend**        | Django                             | Team expertise, proven at scale         |
 | **Components**     | Django Cotton                      | Server-rendered, no JS framework needed |
-| **Styling**        | Tailwind CSS (CLI)                 | Utility-first, no bundler needed        |
+| **Styling**        | Tailwind CSS (standalone CLI)      | Utility-first, no Node.js needed        |
 | **Reactivity**     | AlpineJS (CDN)                     | Lightweight (15KB), CSP-safe            |
-| **Component Docs** | Storybook + django-pattern-library | A11y testing, viewport testing          |
+| **Component Docs** | Custom `/components/` page         | Django-native, living documentation     |
+| **A11y Testing**   | Browser DevTools + Lighthouse      | No dependencies, built into browsers    |
 
 ---
 
@@ -67,7 +68,7 @@ Django renders initial state, Alpine handles client reactivity:
 4. **Touch targets** - 44x44px minimum
 5. **ARIA labels** - For icon-only buttons, form associations
 
-**Testing:** Storybook addon-a11y with axe-core
+**Testing:** Browser DevTools (Lighthouse, axe extension) + manual testing
 
 ---
 
@@ -101,13 +102,12 @@ Django renders initial state, Alpine handles client reactivity:
 
 ## Key Files
 
-| File                      | Purpose                      |
-| ------------------------- | ---------------------------- |
-| `config/settings.py`      | Django + Cotton config       |
-| `tailwind.config.js`      | Design tokens, colors, fonts |
-| `static/css/main.css`     | Tailwind CSS source          |
-| `static/js/theme.js`      | Alpine theme store           |
-| `templates/cotton/*.html` | Component library            |
+| File                      | Purpose                                  |
+| ------------------------- | ---------------------------------------- |
+| `config/settings.py`      | Django + Cotton config                   |
+| `static/css/main.css`     | Tailwind v4 CSS source + theme tokens    |
+| `static/js/theme.js`      | Alpine theme store                       |
+| `templates/cotton/*.html` | Component library                        |
 
 ---
 

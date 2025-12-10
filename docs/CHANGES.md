@@ -4,11 +4,18 @@
 
 ### Unreleased
 
-- **In Progress:** Storybook integration with django-pattern-library
-  - Added `django-pattern-library` 1.5.0
-  - Created pattern wrapper templates (`templates/patterns/`)
-  - Button atom patterns working (Primary, Secondary, Disabled)
-  - See [STORYBOOK_INTEGRATION.md](./STORYBOOK_INTEGRATION.md)
+- **Completed:** Build simplification
+  - Removed Node.js dependency entirely
+  - Tailwind CSS via Homebrew standalone CLI (`brew install tailwindcss`)
+  - Alpine.js via CDN
+  - Migrated to Tailwind v4 CSS-based configuration (@theme blocks)
+  - Removed `tailwind.config.js` in favor of `static/css/main.css` theme tokens
+
+- **Completed:** Component library overhaul
+  - Removed `django-pattern-library` (custom page is sufficient)
+  - Removed Storybook from project plan
+  - Created custom `/components/` page with CourtListener-style layout
+  - A11y testing via browser DevTools (Lighthouse, axe extension)
 
 - **Completed:** Formatting and linting toolchain
   - Added Prettier for JS/JSON/MD/YAML (no semicolons)
@@ -21,8 +28,6 @@
 - **Pending:**
   - Fix djlint pre-commit hook (multiprocessing permission issue in sandbox)
     - Solution: Use local hooks instead of repo hooks
-  - Remaining atom patterns (Input, Link, Select, Icon)
-  - Storybook setup (Phase 2)
 
 ## Past
 
