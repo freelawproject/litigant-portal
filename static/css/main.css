@@ -432,6 +432,170 @@
   .textbox {
     @apply text-md font-normal py-3 px-4 rounded-lg border border-greyscale-300;
   }
+
+  /* ==========================================================================
+     LANDING PAGE COMPONENTS
+     ========================================================================== */
+
+  /* Search Input */
+  .search-input-wrapper {
+    @apply relative flex-1;
+  }
+
+  .search-input-icon {
+    @apply absolute left-4 top-1/2 -translate-y-1/2 text-greyscale-400 pointer-events-none;
+  }
+
+  .search-input {
+    @apply w-full text-md font-normal py-3.5 pl-12 pr-4 rounded-lg;
+    @apply border border-greyscale-300 bg-white text-greyscale-900;
+    @apply placeholder:text-greyscale-400;
+    @apply transition-colors duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600;
+    min-height: 48px; /* 44px touch target + padding */
+  }
+
+  /* Logo */
+  .logo {
+    @apply inline-flex items-center gap-2 no-underline;
+    @apply text-greyscale-900 font-cooper font-semibold text-lg;
+    @apply hover:text-primary-600 transition-colors;
+  }
+
+  .logo-sm {
+    @apply text-md;
+  }
+
+  .logo-lg {
+    @apply text-xl;
+  }
+
+  .logo-image {
+    @apply h-8 w-auto;
+  }
+
+  .logo-sm .logo-image {
+    @apply h-6;
+  }
+
+  /* Search Bar */
+  .search-bar {
+    @apply flex gap-2 w-full;
+  }
+
+  /* Topic Card */
+  .topic-card {
+    @apply flex items-center gap-4 p-4 rounded-xl no-underline;
+    @apply bg-white border border-greyscale-200;
+    @apply text-greyscale-900 transition-all duration-200;
+    @apply hover:border-primary-300 hover:shadow-sm;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2;
+    min-height: 72px; /* Good touch target */
+  }
+
+  .topic-card-icon {
+    @apply flex-shrink-0 w-12 h-12 rounded-lg;
+    @apply bg-primary-50 text-primary-600;
+    @apply flex items-center justify-center;
+  }
+
+  .topic-card-content {
+    @apply flex-1 min-w-0;
+  }
+
+  .topic-card-title {
+    @apply text-md font-semibold text-greyscale-900 m-0;
+  }
+
+  .topic-card-description {
+    @apply text-sm text-greyscale-500 mt-0.5 m-0;
+    @apply line-clamp-1;
+  }
+
+  .topic-card-arrow {
+    @apply flex-shrink-0 text-greyscale-400;
+  }
+
+  /* Mobile Header */
+  .mobile-header {
+    @apply bg-white border-b border-greyscale-200;
+  }
+
+  .mobile-header-sticky {
+    @apply sticky top-0 z-40;
+  }
+
+  .mobile-header-inner {
+    @apply flex items-center justify-between px-4 py-3;
+    @apply max-w-content mx-auto;
+  }
+
+  .mobile-header-menu-btn {
+    @apply p-2 -mr-2; /* Extend touch target */
+  }
+
+  /* Hero Section */
+  .hero {
+    @apply px-4 py-12 md:py-16 lg:py-20;
+    @apply bg-greyscale-50;
+  }
+
+  .hero-content {
+    @apply max-w-xl mx-auto text-center;
+  }
+
+  .hero-heading {
+    @apply text-display-sm md:text-display-md lg:text-display-lg;
+    @apply font-cooper font-semibold text-greyscale-900;
+    @apply mb-3;
+  }
+
+  .hero-subheading {
+    @apply text-md md:text-lg text-greyscale-600;
+    @apply mb-8;
+  }
+
+  /* Topic Grid */
+  .topic-grid-section {
+    @apply px-4 py-10 md:py-12;
+  }
+
+  .topic-grid-heading {
+    @apply text-display-xs font-semibold text-greyscale-900;
+    @apply mb-6 text-center md:text-left;
+    @apply max-w-content mx-auto;
+  }
+
+  .topic-grid {
+    @apply grid gap-3 md:gap-4;
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+    @apply max-w-content mx-auto;
+  }
+
+  /* Mobile Footer */
+  .mobile-footer {
+    @apply bg-greyscale-100 border-t border-greyscale-200;
+    @apply px-4 py-8;
+  }
+
+  .mobile-footer-inner {
+    @apply max-w-content mx-auto text-center;
+  }
+
+  .mobile-footer-nav {
+    @apply flex flex-wrap justify-center gap-4 md:gap-6;
+    @apply mb-4;
+  }
+
+  .mobile-footer-link {
+    @apply text-sm text-greyscale-600 no-underline;
+    @apply hover:text-primary-600 hover:underline;
+    @apply transition-colors;
+  }
+
+  .mobile-footer-copyright {
+    @apply text-xs text-greyscale-500;
+  }
 }
 
 /* ==========================================================================

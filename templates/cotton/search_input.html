@@ -1,0 +1,12 @@
+<c-vars placeholder="Search..." />
+<div class="search-input-wrapper">
+  <c-icon name="search" class="search-input-icon" />
+  <input type="search"
+         {% if id %}id="{{ id }}"{% endif %}
+         {% if name %}name="{{ name }}"{% endif %}
+         placeholder="{{ placeholder }}"
+         {% if disabled %}disabled{% endif %}
+         {% if aria_label %}aria-label="{{ aria_label }}"{% else %}aria-label="{{ placeholder }}"{% endif %}
+         class="search-input {{ class }}"
+         {{ attrs }} />
+</div>

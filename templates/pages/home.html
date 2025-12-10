@@ -1,26 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Litigant Portal{% endblock title %}
-{% block content %}
-  <div class="text-center py-16">
-    <h1>Litigant Portal</h1>
-    <p class="text-greyscale-600 mt-4 mb-8">Coming soon</p>
+{% block title %}Litigant Portal - Free Legal Help{% endblock title %}
 
-    <div class="max-w-md mx-auto">
-      <h4 class="text-greyscale-500 uppercase text-sm tracking-wider mb-4">Available Pages</h4>
-      <ul class="list-none pl-0 space-y-2">
-        <li>
-          <a href="{% url 'portal:components' %}" class="link link-default">Component Library</a>
-          <span class="text-greyscale-400 text-sm">- Design system documentation</span>
-        </li>
-        <li>
-          <a href="{% url 'portal:style_guide' %}" class="link link-default">Style Guide</a>
-          <span class="text-greyscale-400 text-sm">- Colors, typography, spacing</span>
-        </li>
-        <li>
-          <a href="{% url 'admin:index' %}" class="link link-default">Admin</a>
-          <span class="text-greyscale-400 text-sm">- Django admin panel</span>
-        </li>
-      </ul>
+{% block content %}
+{% include "organisms/mobile_header.html" %}
+
+{% include "organisms/hero.html" %}
+
+{% include "organisms/topic_grid.html" %}
+
+{# Development links - remove in production #}
+<section class="px-4 py-8 bg-greyscale-50 border-t border-greyscale-200">
+  <div class="max-w-content mx-auto">
+    <h4 class="text-greyscale-500 uppercase text-xs tracking-wider mb-4 text-center">Developer Tools</h4>
+    <div class="flex flex-wrap justify-center gap-4">
+      <a href="{% url 'portal:components' %}" class="link link-secondary text-sm">Component Library</a>
+      <a href="{% url 'portal:style_guide' %}" class="link link-secondary text-sm">Style Guide</a>
+      <a href="{% url 'admin:index' %}" class="link link-secondary text-sm">Admin</a>
     </div>
   </div>
+</section>
+
+{% include "organisms/mobile_footer.html" %}
 {% endblock content %}

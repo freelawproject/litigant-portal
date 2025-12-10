@@ -25,7 +25,19 @@
   - Fixed all templates to use named endblocks (Django best practice)
   - Fixed mypy type errors in CSP settings
 
+- **Completed:** Mobile-first landing page (Issue #28)
+  - Added atomic design structure: atoms → molecules → organisms
+  - New atom: `search_input` (search input with icon)
+  - New molecules: `logo`, `search_bar`, `topic_card`
+  - New organisms: `mobile_header`, `hero`, `topic_grid`, `mobile_footer`
+  - Updated `home.html` to use new landing page components
+  - 6 topic categories: Housing, Family, Small Claims, Consumer, Expungement, Traffic
+  - Responsive grid: 1 col mobile → 2 col tablet → 3 col desktop
+  - Component library updated with all new components
+
 - **Pending:**
+  - Wire up search functionality (currently placeholder)
+  - Add logo image (user to provide `static/images/logo.svg`)
   - Fix djlint pre-commit hook (multiprocessing permission issue in sandbox)
     - Solution: Use local hooks instead of repo hooks
 

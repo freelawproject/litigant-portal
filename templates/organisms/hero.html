@@ -1,0 +1,12 @@
+<c-vars
+  heading="How can we help you today?"
+  subheading="Free legal help for self-represented litigants"
+  search_placeholder="What do you need help with?" />
+<section class="hero {{ class }}" {{ attrs }}>
+  <div class="hero-content">
+    <h1 class="hero-heading">{{ heading }}</h1>
+    <p class="hero-subheading">{{ subheading }}</p>
+
+    {% include "molecules/search_bar.html" with placeholder=search_placeholder %}
+  </div>
+</section>

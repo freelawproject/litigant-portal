@@ -126,10 +126,28 @@ Each component section includes:
 |-----------|------|-------------|
 | Button | `cotton/button.html` | Primary, outline, dark, ghost, danger variants |
 | Input | `cotton/input.html` | Text inputs with error/success states |
+| Search Input | `cotton/search_input.html` | Search input with icon, large touch target |
 | Select | `cotton/select.html` | Dropdown with custom styling |
 | Link | `cotton/link.html` | Styled links with external icon option |
 | Icon | `cotton/icon.html` | Heroicons wrapper (uses v1 names: `search`, `x`, `exclamation`) |
 | Alerts | CSS classes | `.alert-info`, `.alert-success`, `.alert-warning`, `.alert-danger` |
+
+### Molecules
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Logo | `molecules/logo.html` | Portal logo/branding, links to home |
+| Search Bar | `molecules/search_bar.html` | Search input + submit button combo |
+| Topic Card | `molecules/topic_card.html` | Tappable card with icon, title, description |
+
+### Organisms
+
+| Component | File | Description |
+|-----------|------|-------------|
+| Mobile Header | `organisms/mobile_header.html` | Sticky header with logo + menu toggle |
+| Hero | `organisms/hero.html` | Heading + subheading + search bar |
+| Topic Grid | `organisms/topic_grid.html` | Responsive grid of topic cards |
+| Mobile Footer | `organisms/mobile_footer.html` | Simple footer with nav links |
 
 ### CSS Component Classes
 
@@ -216,14 +234,27 @@ litigant-portal/
 │       └── theme.js              # Alpine theme store
 │
 ├── templates/
-│   ├── cotton/                   # Cotton components
+│   ├── cotton/                   # Atoms (Cotton components)
 │   │   ├── button.html
 │   │   ├── input.html
+│   │   ├── search_input.html
 │   │   ├── link.html
 │   │   ├── select.html
 │   │   └── icon.html
 │   │
+│   ├── molecules/                # Molecules (component combinations)
+│   │   ├── logo.html
+│   │   ├── search_bar.html
+│   │   └── topic_card.html
+│   │
+│   ├── organisms/                # Organisms (complex sections)
+│   │   ├── mobile_header.html
+│   │   ├── hero.html
+│   │   ├── topic_grid.html
+│   │   └── mobile_footer.html
+│   │
 │   ├── pages/
+│   │   ├── home.html             # Landing page
 │   │   └── components.html       # Component library page
 │   │
 │   └── base.html                 # Base template

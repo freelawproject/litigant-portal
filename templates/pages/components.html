@@ -7,14 +7,30 @@
   {# Navigation Sidebar #}
   <nav class="md:w-64 md:flex-shrink-0">
     <div class="md:sticky md:top-8">
-      <h2 class="text-sm font-semibold text-greyscale-500 uppercase tracking-wider mb-4">Components</h2>
-      <ul class="space-y-1 list-none pl-0">
+      <h2 class="text-sm font-semibold text-greyscale-500 uppercase tracking-wider mb-4">Atoms</h2>
+      <ul class="space-y-1 list-none pl-0 mb-6">
         <li><a href="#buttons" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Buttons</a></li>
         <li><a href="#inputs" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Inputs</a></li>
+        <li><a href="#search-input" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Search Input</a></li>
         <li><a href="#selects" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Selects</a></li>
         <li><a href="#links" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Links</a></li>
         <li><a href="#icons" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Icons</a></li>
         <li><a href="#alerts" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Alerts</a></li>
+      </ul>
+
+      <h2 class="text-sm font-semibold text-greyscale-500 uppercase tracking-wider mb-4">Molecules</h2>
+      <ul class="space-y-1 list-none pl-0 mb-6">
+        <li><a href="#logo" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Logo</a></li>
+        <li><a href="#search-bar" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Search Bar</a></li>
+        <li><a href="#topic-card" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Topic Card</a></li>
+      </ul>
+
+      <h2 class="text-sm font-semibold text-greyscale-500 uppercase tracking-wider mb-4">Organisms</h2>
+      <ul class="space-y-1 list-none pl-0">
+        <li><a href="#mobile-header" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Mobile Header</a></li>
+        <li><a href="#hero" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Hero</a></li>
+        <li><a href="#topic-grid" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Topic Grid</a></li>
+        <li><a href="#mobile-footer" class="block py-1.5 text-sm text-greyscale-600 hover:text-primary-600">Mobile Footer</a></li>
       </ul>
     </div>
   </nav>
@@ -154,6 +170,42 @@
 &lt;c-input placeholder="Error state" error /&gt;
 &lt;c-input placeholder="Success state" success /&gt;
 &lt;c-input placeholder="Disabled" disabled /&gt;</code></pre>
+      </details>
+    </section>
+
+    {# ========== SEARCH INPUT ========== #}
+    <section id="search-input" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Search Input</h2>
+      <p class="text-greyscale-600 mb-6">Search-specific input with built-in magnifying glass icon. Larger touch target for mobile.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="space-y-4 mb-6 max-w-md">
+        <c-search-input placeholder="What do you need help with?" />
+        <c-search-input placeholder="Search cases..." />
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>placeholder</code></span>
+          <span class="p-2.5">Placeholder text. Default: "Search..."</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Form field name</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Disables the input.</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>&lt;c-search-input placeholder="What do you need help with?" /&gt;</code></pre>
       </details>
     </section>
 
@@ -391,6 +443,235 @@
 &lt;div class="alert-success"&gt;Success message&lt;/div&gt;
 &lt;div class="alert-warning"&gt;Warning message&lt;/div&gt;
 &lt;div class="alert-danger"&gt;Error message&lt;/div&gt;</code></pre>
+      </details>
+    </section>
+
+    {# ========================================================================
+       MOLECULES - Combinations of atoms
+       ======================================================================== #}
+
+    {# ========== LOGO ========== #}
+    <section id="logo" class="mb-16 pt-4 border-t-2 border-primary-200">
+      <h2 class="mb-4">Logo</h2>
+      <p class="text-greyscale-600 mb-6">Portal logo/branding component. Links to home page.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="flex flex-wrap gap-6 items-center mb-6">
+        {% include "molecules/logo.html" %}
+        {% include "molecules/logo.html" with size="sm" %}
+        {% include "molecules/logo.html" with size="lg" %}
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
+          <span class="p-2.5">"sm" | "" | "lg". Default: "" (normal)</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>show_image</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Boolean. Shows logo image (requires static/images/logo.svg)</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{% include "molecules/logo.html" %}
+{% include "molecules/logo.html" with size="sm" %}
+{% include "molecules/logo.html" with size="lg" %}{% endverbatim %}</code></pre>
+      </details>
+    </section>
+
+    {# ========== SEARCH BAR ========== #}
+    <section id="search-bar" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Search Bar</h2>
+      <p class="text-greyscale-600 mb-6">Combines search input with submit button. Form wrapper for search functionality.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="max-w-xl mb-6">
+        {% include "molecules/search_bar.html" %}
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>placeholder</code></span>
+          <span class="p-2.5">Search input placeholder. Default: "What do you need help with?"</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>action</code></span>
+          <span class="p-2.5">Form action URL. Default: ""</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>method</code></span>
+          <span class="p-2.5">"get" | "post". Default: "get"</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{% include "molecules/search_bar.html" %}
+{% include "molecules/search_bar.html" with placeholder="Search cases..." action="/search/" %}{% endverbatim %}</code></pre>
+      </details>
+    </section>
+
+    {# ========== TOPIC CARD ========== #}
+    <section id="topic-card" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Topic Card</h2>
+      <p class="text-greyscale-600 mb-6">Tappable card for topic navigation. Icon + title + description with chevron indicator.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="grid gap-3 max-w-md mb-6">
+        {% include "molecules/topic_card.html" with icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense" href="#" %}
+        {% include "molecules/topic_card.html" with icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" %}
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+          <span class="p-2.5">Heroicon name. Default: "question-mark-circle"</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
+          <span class="p-2.5">Card title text</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>description</code><br><span class="font-normal text-xs">(optional)</span></span>
+          <span class="p-2.5">Brief description text</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+          <span class="p-2.5">Link URL. Default: "#"</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{% include "molecules/topic_card.html" with icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense" href="/topics/housing/" %}{% endverbatim %}</code></pre>
+      </details>
+    </section>
+
+    {# ========================================================================
+       ORGANISMS - Complex component sections
+       ======================================================================== #}
+
+    {# ========== MOBILE HEADER ========== #}
+    <section id="mobile-header" class="mb-16 pt-4 border-t-2 border-primary-200">
+      <h2 class="mb-4">Mobile Header</h2>
+      <p class="text-greyscale-600 mb-6">Sticky header with logo and menu toggle. Mobile-first design.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+        {% include "organisms/mobile_header.html" with sticky="" %}
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>sticky</code></span>
+          <span class="p-2.5">Boolean. Makes header sticky at top. Default: true</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{% include "organisms/mobile_header.html" %}
+{% include "organisms/mobile_header.html" with sticky="" %}{% endverbatim %}</code></pre>
+      </details>
+    </section>
+
+    {# ========== HERO ========== #}
+    <section id="hero" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Hero</h2>
+      <p class="text-greyscale-600 mb-6">Hero section with heading, subheading, and search bar. Clean, centered layout.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+        {% include "organisms/hero.html" %}
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>heading</code></span>
+          <span class="p-2.5">Main heading text. Default: "How can we help you today?"</span>
+        </div>
+        <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>subheading</code></span>
+          <span class="p-2.5">Subheading text. Default: "Free legal help for self-represented litigants"</span>
+        </div>
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>search_placeholder</code></span>
+          <span class="p-2.5">Search input placeholder. Default: "What do you need help with?"</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{% include "organisms/hero.html" %}
+{% include "organisms/hero.html" with heading="Welcome" subheading="Your custom subtitle" %}{% endverbatim %}</code></pre>
+      </details>
+    </section>
+
+    {# ========== TOPIC GRID ========== #}
+    <section id="topic-grid" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Topic Grid</h2>
+      <p class="text-greyscale-600 mb-6">Responsive grid of topic cards. 1 column on mobile, 2 on tablet, 3 on desktop.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+        {% include "organisms/topic_grid.html" %}
+      </div>
+
+      {# Props #}
+      <h4 class="mt-8">Props</h4>
+      <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+        <div class="flex flex-col md:flex-row">
+          <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>heading</code></span>
+          <span class="p-2.5">Section heading. Default: "Browse by Topic"</span>
+        </div>
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{% include "organisms/topic_grid.html" %}
+{% include "organisms/topic_grid.html" with heading="Common Topics" %}{% endverbatim %}</code></pre>
+      </details>
+    </section>
+
+    {# ========== MOBILE FOOTER ========== #}
+    <section id="mobile-footer" class="mb-16 pt-4 border-t-2 border-greyscale-200">
+      <h2 class="mb-4">Mobile Footer</h2>
+      <p class="text-greyscale-600 mb-6">Simple footer with navigation links and copyright. Mobile-optimized layout.</p>
+
+      {# Demo #}
+      <h4 class="mb-3">Demo</h4>
+      <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+        {% include "organisms/mobile_footer.html" %}
+      </div>
+
+      {# Code #}
+      <details class="mt-4">
+        <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{% include "organisms/mobile_footer.html" %}{% endverbatim %}</code></pre>
       </details>
     </section>
 
