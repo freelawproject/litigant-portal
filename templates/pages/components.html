@@ -333,31 +333,63 @@
       <h4 class="mb-3">Common Icons (Outline)</h4>
       <div class="flex flex-wrap gap-6 items-center text-greyscale-700 mb-6">
         <div class="text-center">
-          <span class="w-6 h-6 inline-block">{% heroicon "search" %}</span>
-          <p class="text-xs mt-1">search</p>
+          <span class="w-6 h-6 inline-block">{% heroicon_outline "magnifying-glass" %}</span>
+          <p class="text-xs mt-1">magnifying-glass</p>
         </div>
         <div class="text-center">
-          <span class="w-6 h-6 inline-block">{% heroicon "home" %}</span>
+          <span class="w-6 h-6 inline-block">{% heroicon_outline "home" %}</span>
           <p class="text-xs mt-1">home</p>
         </div>
         <div class="text-center">
-          <span class="w-6 h-6 inline-block">{% heroicon "user" %}</span>
+          <span class="w-6 h-6 inline-block">{% heroicon_outline "user" %}</span>
           <p class="text-xs mt-1">user</p>
         </div>
         <div class="text-center">
-          <span class="w-6 h-6 inline-block">{% heroicon "check-circle" %}</span>
+          <span class="w-6 h-6 inline-block">{% heroicon_outline "check-circle" %}</span>
           <p class="text-xs mt-1">check-circle</p>
         </div>
         <div class="text-center">
-          <span class="w-6 h-6 inline-block">{% heroicon "exclamation-circle" %}</span>
+          <span class="w-6 h-6 inline-block">{% heroicon_outline "exclamation-circle" %}</span>
           <p class="text-xs mt-1">exclamation-circle</p>
         </div>
         <div class="text-center">
-          <span class="w-6 h-6 inline-block">{% heroicon "x" %}</span>
-          <p class="text-xs mt-1">x</p>
+          <span class="w-6 h-6 inline-block">{% heroicon_outline "x-mark" %}</span>
+          <p class="text-xs mt-1">x-mark</p>
         </div>
         <div class="text-center">
-          <span class="w-6 h-6 inline-block">{% heroicon "chevron-down" %}</span>
+          <span class="w-6 h-6 inline-block">{% heroicon_outline "chevron-down" %}</span>
+          <p class="text-xs mt-1">chevron-down</p>
+        </div>
+      </div>
+
+            <h4 class="mb-3">Common Icons (Solid)</h4>
+      <div class="flex flex-wrap gap-6 items-center text-greyscale-700 mb-6">
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon_solid "magnifying-glass" %}</span>
+          <p class="text-xs mt-1">magnifying-glass</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon_solid "home" %}</span>
+          <p class="text-xs mt-1">home</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon_solid "user" %}</span>
+          <p class="text-xs mt-1">user</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon_solid "check-circle" %}</span>
+          <p class="text-xs mt-1">check-circle</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon_solid "exclamation-circle" %}</span>
+          <p class="text-xs mt-1">exclamation-circle</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon_solid "x-mark" %}</span>
+          <p class="text-xs mt-1">x-mark</p>
+        </div>
+        <div class="text-center">
+          <span class="w-6 h-6 inline-block">{% heroicon_solid "chevron-down" %}</span>
           <p class="text-xs mt-1">chevron-down</p>
         </div>
       </div>
@@ -366,8 +398,8 @@
       <div class="flex flex-wrap gap-6 items-center text-greyscale-700 mb-6">
         <c-icon name="check-circle" class="w-6 h-6" />
         <c-icon name="check-circle" style="solid" class="w-6 h-6 text-green-600" />
-        <c-icon name="exclamation" class="w-6 h-6" />
-        <c-icon name="exclamation" style="solid" class="w-6 h-6 text-yellow-500" />
+        <c-icon name="exclamation-triangle" class="w-6 h-6" />
+        <c-icon name="exclamation-triangle" style="solid" class="w-6 h-6 text-yellow-500" />
       </div>
 
       {# Props #}
@@ -390,10 +422,10 @@
       {# Code #}
       <details class="mt-4">
         <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
-        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{# Direct heroicon template tag #}
+        <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4 overflow-x-auto text-sm"><code>{% verbatim %}{# Direct heroicon template tags (v2) #}
 {% load heroicons %}
-{% heroicon "search" %}
-{% heroicon "check-circle" style="solid" %}
+{% heroicon_outline "magnifying-glass" %}
+{% heroicon_solid "check-circle" %}
 
 {# Using c-icon component #}
 &lt;c-icon name="check-circle" class="w-6 h-6" /&gt;
