@@ -129,7 +129,7 @@ Each component section includes:
 | Search Input | `cotton/search_input.html` | Search input with icon, large touch target |
 | Select | `cotton/select.html` | Dropdown with custom styling |
 | Link | `cotton/link.html` | Styled links with external icon option |
-| Icon | `cotton/icon.html` | Heroicons wrapper (uses v1 names: `search`, `x`, `exclamation`) |
+| Icon | `cotton/icon.html` | Heroicons v2 wrapper (`magnifying-glass`, `x-mark`, `exclamation-triangle`, `bars-3`) |
 | Alerts | CSS classes | `.alert-info`, `.alert-success`, `.alert-warning`, `.alert-danger` |
 
 ### Molecules

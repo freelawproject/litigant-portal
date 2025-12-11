@@ -82,12 +82,12 @@ litigant-portal/
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Django 5.2, Python 3.13 |
+| Backend | Django 6.0, Python 3.13 |
 | Components | Django Cotton |
 | Styling | Tailwind CSS 4.x (Homebrew: `brew install tailwindcss`) |
-| Reactivity | AlpineJS 3.14 (CDN) |
+| Reactivity | AlpineJS 3.15.1 (CDN) |
 | Auth | django-allauth |
-| Security | django-csp |
+| Security | Django built-in CSP |
 
 **No Node.js required** - Tailwind via Homebrew, Alpine via CDN.
 

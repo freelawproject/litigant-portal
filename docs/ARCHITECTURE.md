@@ -95,7 +95,7 @@ Django renders initial state, Alpine handles client reactivity:
 
 - **CSP configured** - No unsafe-eval/inline needed
 - **AlpineJS 3** - CSP-safe by default
-- **django-csp** - Header management
+- **Django built-in CSP** - Header management via `SECURE_CSP` setting
 - **VDP:** [free.law/vulnerability-disclosure-policy](https://free.law/vulnerability-disclosure-policy/)
 
 ---
