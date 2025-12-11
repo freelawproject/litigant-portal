@@ -79,17 +79,28 @@ wheels = [
 ]
 
 [[package]]
-name = "django-pattern-library"
-version = "1.5.0"
+name = "django-allauth"
+version = "65.13.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "asgiref" },
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/b7/42a048ba1dedbb6b553f5376a6126b1c753c10c70d1edab8f94c560c8066/django_allauth-65.13.1.tar.gz", hash = "sha256:2af0d07812f8c1a8e3732feaabe6a9db5ecf3fad6b45b6a0f7fd825f656c5a15", size = 1983857, upload-time = "2025-11-20T16:34:40.811Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d8/98/9d44ae1468abfdb521d651fb67f914165c7812dfdd97be16190c9b1cc246/django_allauth-65.13.1-py3-none-any.whl", hash = "sha256:2887294beedfd108b4b52ebd182e0ed373deaeb927fc5a22f77bbde3174704a6", size = 1787349, upload-time = "2025-11-20T16:34:37.354Z" },
+]
+
+[[package]]
+name = "django-cotton"
+version = "2.5.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
-    { name = "markdown" },
-    { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/27/2f/eac9fb7ed72462174558936a19de6f9f7763c3460be7ba3c47f0231c5059/django_pattern_library-1.5.0.tar.gz", hash = "sha256:ce84a2d8c7e35eda58d86714d76da7850250db7fdde07160669739585b7ea7f3", size = 31191, upload-time = "2025-04-08T16:28:06.06Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/a9/ec7c6172beb4adb67278df3b58ea4e9e3b21a1987b3a5b972d53dd7d3837/django_cotton-2.5.1.tar.gz", hash = "sha256:b2dbd346d0aced774de0c212d2f6c4e5f30cb8e14521379e60e16b448934af0e", size = 30284, upload-time = "2025-12-08T07:55:53.727Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/80/87/2000cb4112f342f043aabe24d6e23a2d79255a074f11735d95ee6ec831e6/django_pattern_library-1.5.0-py3-none-any.whl", hash = "sha256:7d133eca05b06bc7097f5709d967d503a09e0dc6aa37aea68dc29dc934400b01", size = 34582, upload-time = "2025-04-08T16:28:04.885Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/b7/587d364f59543962e2e2540adc0e323174107bdba89ec073a5c9acbee7e9/django_cotton-2.5.1-py3-none-any.whl", hash = "sha256:b03fb57dde097e771aa47ee15f377d9b757b6a058ee8fcd9cef9914d1093c169", size = 29681, upload-time = "2025-12-08T07:55:52.492Z" },
 ]
 
 [[package]]
@@ -135,6 +146,15 @@ wheels = [
 ]
 
 [[package]]
+name = "heroicons"
+version = "2.13.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c6/b4/ebcb01d7bbca3ef6d7076138383eb01ea83c540204ae6c2e296ce246d986/heroicons-2.13.0.tar.gz", hash = "sha256:c49d919ee3fa19c79bbfc7c111b4849fe8fc3640e4904dfdc538ff592e18b452", size = 420755, upload-time = "2025-09-18T11:25:58.012Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f1/09/80edcba5288b66d54611e978a2afaa406219a9e6637fc8adc43872088838/heroicons-2.13.0-py3-none-any.whl", hash = "sha256:682e3a61ede41cd9b78644977f2988d444ffb02626fe66cccd296d9fc3f4e465", size = 414973, upload-time = "2025-09-18T11:25:55.996Z" },
+]
+
+[[package]]
 name = "identify"
 version = "2.6.15"
 source = { registry = "https://pypi.org/simple" }
@@ -170,26 +190,28 @@ name = "litigant-portal"
 version = "0.0.1"
 source = { editable = "." }
 dependencies = [
-    { name = "django-pattern-library" },
+    { name = "django" },
+    { name = "django-allauth" },
+    { name = "django-cotton" },
+    { name = "heroicons" },
+]
+
+[package.optional-dependencies]
+dev = [
     { name = "djlint" },
     { name = "pre-commit" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "django-pattern-library", specifier = ">=1.5.0" },
-    { name = "djlint", specifier = ">=1.36.4" },
-    { name = "pre-commit", specifier = ">=4.5.0" },
+    { name = "django", specifier = ">=5.2" },
+    { name = "django-allauth", specifier = ">=65.0" },
+    { name = "django-cotton", specifier = ">=1.0" },
+    { name = "djlint", marker = "extra == 'dev'", specifier = ">=1.36.4" },
+    { name = "heroicons", specifier = ">=2.0" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.5.0" },
 ]
-
-[[package]]
-name = "markdown"
-version = "3.10"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/7d/ab/7dd27d9d863b3376fcf23a5a13cb5d024aed1db46f963f1b5735ae43b3be/markdown-3.10.tar.gz", hash = "sha256:37062d4f2aa4b2b6b32aefb80faa300f82cc790cb949a35b8caede34f2b68c0e", size = 364931, upload-time = "2025-11-03T19:51:15.007Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/81/54e3ce63502cd085a0c556652a4e1b919c45a446bd1e5300e10c44c8c521/markdown-3.10-py3-none-any.whl", hash = "sha256:b5b99d6951e2e4948d939255596523444c0e677c669700b1d17aa4a8a464cb7c", size = 107678, upload-time = "2025-11-03T19:51:13.887Z" },
-]
+provides-extras = ["dev"]
 
 [[package]]
 name = "nodeenv"

@@ -34,6 +34,14 @@ classifiers = [
 urls.Repository = "https://github.com/freelawproject/litigant-portal"
 urls."Organisation Homepage" = "https://free.law/"
 dependencies = [
+    "Django>=5.2",
+    "django-allauth>=65.0",
+    "django-cotton>=1.0",
+    "heroicons>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
     "djlint>=1.36.4",
     "pre-commit>=4.5.0",
 ]
