@@ -2,7 +2,7 @@
 
 ## Current
 
-### Unreleased
+### 0.1.0
 
 - **Completed:** Atomic Design restructure
   - Reorganized templates into `cotton/{atoms,molecules,organisms}/` subdirectories
@@ -61,8 +61,6 @@
 
 - **Pending:**
   - Wire up search functionality (currently placeholder)
-  - Fix djlint pre-commit hook (multiprocessing permission issue in sandbox)
-    - Solution: Use local hooks instead of repo hooks
 
 ## Past
 
