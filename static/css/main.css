@@ -4,7 +4,7 @@
  * Build: tailwindcss -i static/css/main.css -o static/css/main.built.css
  */
 
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ==========================================================================
    THEME - Custom design tokens
@@ -31,60 +31,60 @@
   --spacing-70: 17.5rem;
 
   /* Fonts */
-  --font-sans: "Inter", sans-serif;
-  --font-cooper: "Cooper Hewitt", sans-serif;
-  --font-mono: "DM Mono", monospace;
+  --font-sans: 'Inter', sans-serif;
+  --font-cooper: 'Cooper Hewitt', sans-serif;
+  --font-mono: 'DM Mono', monospace;
 
   /* Greyscale colors */
-  --color-greyscale-25: #FDFCFB;
-  --color-greyscale-50: #FBFAF8;
-  --color-greyscale-100: #F5F3EF;
-  --color-greyscale-200: #E8E4DE;
-  --color-greyscale-300: #D6D0C6;
-  --color-greyscale-400: #A8A091;
-  --color-greyscale-500: #776F61;
-  --color-greyscale-600: #574F40;
-  --color-greyscale-700: #453F35;
-  --color-greyscale-800: #29261F;
-  --color-greyscale-900: #1C1814;
+  --color-greyscale-25: #fdfcfb;
+  --color-greyscale-50: #fbfaf8;
+  --color-greyscale-100: #f5f3ef;
+  --color-greyscale-200: #e8e4de;
+  --color-greyscale-300: #d6d0c6;
+  --color-greyscale-400: #a8a091;
+  --color-greyscale-500: #776f61;
+  --color-greyscale-600: #574f40;
+  --color-greyscale-700: #453f35;
+  --color-greyscale-800: #29261f;
+  --color-greyscale-900: #1c1814;
   --color-greyscale-950: #171411;
 
   /* Primary colors (coral/red) */
-  --color-primary-25: #FDF9F7;
-  --color-primary-50: #FBF4EF;
-  --color-primary-100: #F7E6DE;
-  --color-primary-200: #EFCBBD;
-  --color-primary-300: #E19684;
-  --color-primary-400: #D56958;
-  --color-primary-500: #CD4137;
-  --color-primary-600: #B5362D;
-  --color-primary-700: #9B2E27;
+  --color-primary-25: #fdf9f7;
+  --color-primary-50: #fbf4ef;
+  --color-primary-100: #f7e6de;
+  --color-primary-200: #efcbbd;
+  --color-primary-300: #e19684;
+  --color-primary-400: #d56958;
+  --color-primary-500: #cd4137;
+  --color-primary-600: #b5362d;
+  --color-primary-700: #9b2e27;
   --color-primary-800: #832720;
-  --color-primary-900: #6A201A;
-  --color-primary-950: #4E1713;
+  --color-primary-900: #6a201a;
+  --color-primary-950: #4e1713;
 
   /* Brand colors (purple) */
-  --color-brand-100: #F4EBFF;
-  --color-brand-300: #D6BBFB;
-  --color-brand-600: #7F56D9;
-  --color-brand-700: #6941C6;
+  --color-brand-100: #f4ebff;
+  --color-brand-300: #d6bbfb;
+  --color-brand-600: #7f56d9;
+  --color-brand-700: #6941c6;
 
   /* Accent colors */
-  --color-yellow-50: #FFFAEB;
-  --color-yellow-400: #FDB022;
-  --color-yellow-700: #B54708;
-  --color-blue-700: #004EEB;
-  --color-red-100: #FEE4E2;
-  --color-red-200: #FECDCA;
-  --color-red-300: #FDA29B;
-  --color-red-400: #FF692E;
-  --color-red-500: #E62E05;
-  --color-red-600: #D92D20;
-  --color-red-700: #B42318;
-  --color-green-100: #D1FADF;
-  --color-green-500: #12B76A;
+  --color-yellow-50: #fffaeb;
+  --color-yellow-400: #fdb022;
+  --color-yellow-700: #b54708;
+  --color-blue-700: #004eeb;
+  --color-red-100: #fee4e2;
+  --color-red-200: #fecdca;
+  --color-red-300: #fda29b;
+  --color-red-400: #ff692e;
+  --color-red-500: #e62e05;
+  --color-red-600: #d92d20;
+  --color-red-700: #b42318;
+  --color-green-100: #d1fadf;
+  --color-green-500: #12b76a;
   --color-green-600: #039855;
-  --color-green-700: #027A48;
+  --color-green-700: #027a48;
 
   /* Font sizes with line heights */
   --text-xs: 0.75rem;
@@ -176,7 +176,7 @@
   }
 
   tr {
-    @apply border-b border-greyscale-200 text-sm font-normal;
+    @apply border-b border-greyscale-200 text-base font-normal;
   }
 
   th {
@@ -241,25 +241,25 @@
     @apply focus-visible:outline focus-visible:outline-primary-900 z-50;
   }
 
-  /* Alerts */
+  /* Alerts - text-base (16px) for WCAG 2.x readability */
   .alert {
-    @apply px-4 py-3 text-sm rounded-lg border;
+    @apply px-4 py-3 text-base rounded-lg border;
   }
 
   .alert-warning {
-    @apply px-4 py-3 text-sm rounded-lg border text-yellow-700 bg-yellow-50 border-yellow-400;
+    @apply px-4 py-3 text-base rounded-lg border text-yellow-700 bg-yellow-50 border-yellow-400;
   }
 
   .alert-danger {
-    @apply px-4 py-3 text-sm rounded-lg border bg-red-100 text-red-700 border-red-500;
+    @apply px-4 py-3 text-base rounded-lg border bg-red-100 text-red-700 border-red-500;
   }
 
   .alert-info {
-    @apply px-4 py-3 text-sm rounded-lg border bg-brand-100 text-brand-700 border-brand-300;
+    @apply px-4 py-3 text-base rounded-lg border bg-brand-100 text-brand-700 border-brand-300;
   }
 
   .alert-success {
-    @apply px-4 py-3 text-sm rounded-lg border bg-green-100 text-green-700 border-green-500;
+    @apply px-4 py-3 text-base rounded-lg border bg-green-100 text-green-700 border-green-500;
   }
 
   /* Buttons - base styles */
@@ -463,15 +463,15 @@
   }
 
   .logo-image {
-    @apply h-8 w-auto; /* 32px - default */
+    @apply h-10 w-auto; /* 40px - default */
   }
 
   .logo-sm .logo-image {
-    @apply h-6; /* 24px - compact (mobile header) */
+    @apply h-8; /* 32px - compact (mobile header) */
   }
 
   .logo-lg .logo-image {
-    @apply h-10; /* 40px - prominent (footer, hero) */
+    @apply h-15; /* 60px - prominent (footer, hero) */
   }
 
   /* Search Bar */
@@ -571,7 +571,7 @@
   /* Mobile Footer */
   .mobile-footer {
     @apply bg-greyscale-100 border-t border-greyscale-200;
-    @apply px-4 py-8;
+    @apply px-4 py-4; /* 16px vertical padding */
   }
 
   .mobile-footer-inner {
@@ -584,13 +584,13 @@
   }
 
   .mobile-footer-link {
-    @apply text-sm text-greyscale-600 no-underline;
+    @apply text-base text-greyscale-600 no-underline; /* 16px for WCAG 2.x */
     @apply hover:text-primary-600 hover:underline;
     @apply transition-colors;
   }
 
   .mobile-footer-copyright {
-    @apply text-xs text-greyscale-500;
+    @apply text-sm text-greyscale-500; /* 14px ok for secondary text */
   }
 }
 
