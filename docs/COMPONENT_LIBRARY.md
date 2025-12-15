@@ -53,12 +53,12 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
 
 ## Key Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| **Component docs** | Custom Django page | Django-native, full control |
-| **A11y testing** | axe-core npm scripts | Lightweight, no Storybook overhead |
-| **Pattern library** | None (removed django-pattern-library) | Custom page is sufficient |
-| **Storybook** | Removed from plan | Overkill for current needs |
+| Decision            | Choice                                | Rationale                          |
+| ------------------- | ------------------------------------- | ---------------------------------- |
+| **Component docs**  | Custom Django page                    | Django-native, full control        |
+| **A11y testing**    | axe-core npm scripts                  | Lightweight, no Storybook overhead |
+| **Pattern library** | None (removed django-pattern-library) | Custom page is sufficient          |
+| **Storybook**       | Removed from plan                     | Overkill for current needs         |
 
 ---
 
@@ -73,6 +73,7 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
 ### Structure
 
 Each component section includes:
+
 - **Description** - What the component does, accessibility notes
 - **Demo** - Live rendered component with variants
 - **Props table** - All available props with types and defaults
@@ -111,8 +112,12 @@ Each component section includes:
 
   {# Code #}
   <details class="mt-4">
-    <summary class="cursor-pointer text-sm font-medium text-greyscale-600">Show code</summary>
-    <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4"><code>&lt;c-my-component&gt;Content&lt;/c-my-component&gt;</code></pre>
+    <summary class="cursor-pointer text-sm font-medium text-greyscale-600">
+      Show code
+    </summary>
+    <pre
+      class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-[10px] p-4"
+    ><code>&lt;c-my-component&gt;Content&lt;/c-my-component&gt;</code></pre>
   </details>
 </section>
 ```
@@ -125,32 +130,32 @@ Each component section includes:
 
 ### Atoms
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Button | `cotton/button.html` | Primary, outline, dark, ghost, danger variants |
-| Input | `cotton/input.html` | Text inputs with error/success states |
-| Search Input | `cotton/search_input.html` | Search input with icon, large touch target |
-| Select | `cotton/select.html` | Dropdown with custom styling |
-| Link | `cotton/link.html` | Styled links with external icon option |
-| Icon | `cotton/icon.html` | Heroicons v2 wrapper (`magnifying-glass`, `x-mark`, `exclamation-triangle`, `bars-3`) |
-| Alerts | CSS classes | `.alert-info`, `.alert-success`, `.alert-warning`, `.alert-danger` |
+| Component    | File                       | Description                                                                           |
+| ------------ | -------------------------- | ------------------------------------------------------------------------------------- |
+| Button       | `cotton/button.html`       | Primary, outline, dark, ghost, danger variants                                        |
+| Input        | `cotton/input.html`        | Text inputs with error/success states                                                 |
+| Search Input | `cotton/search_input.html` | Search input with icon, large touch target                                            |
+| Select       | `cotton/select.html`       | Dropdown with custom styling                                                          |
+| Link         | `cotton/link.html`         | Styled links with external icon option                                                |
+| Icon         | `cotton/icon.html`         | Heroicons v2 wrapper (`magnifying-glass`, `x-mark`, `exclamation-triangle`, `bars-3`) |
+| Alerts       | CSS classes                | `.alert-info`, `.alert-success`, `.alert-warning`, `.alert-danger`                    |
 
 ### Molecules
 
-| Component | File | Description |
-|-----------|------|-------------|
-| Logo | `molecules/logo.html` | Portal logo/branding, links to home |
-| Search Bar | `molecules/search_bar.html` | Search input + submit button combo |
+| Component  | File                        | Description                                 |
+| ---------- | --------------------------- | ------------------------------------------- |
+| Logo       | `molecules/logo.html`       | Portal logo/branding, links to home         |
+| Search Bar | `molecules/search_bar.html` | Search input + submit button combo          |
 | Topic Card | `molecules/topic_card.html` | Tappable card with icon, title, description |
 
 ### Organisms
 
-| Component | File | Description |
-|-----------|------|-------------|
+| Component     | File                           | Description                           |
+| ------------- | ------------------------------ | ------------------------------------- |
 | Mobile Header | `organisms/mobile_header.html` | Sticky header with logo + menu toggle |
-| Hero | `organisms/hero.html` | Heading + subheading + search bar |
-| Topic Grid | `organisms/topic_grid.html` | Responsive grid of topic cards |
-| Mobile Footer | `organisms/mobile_footer.html` | Simple footer with nav links |
+| Hero          | `organisms/hero.html`          | Heading + subheading + search bar     |
+| Topic Grid    | `organisms/topic_grid.html`    | Responsive grid of topic cards        |
+| Mobile Footer | `organisms/mobile_footer.html` | Simple footer with nav links          |
 
 ### CSS Component Classes
 
@@ -193,6 +198,7 @@ Browser-based A11y testing (no Node.js required):
 ### Manual Checklist
 
 For each component:
+
 - [ ] Color contrast 4.5:1 minimum (use browser DevTools)
 - [ ] Touch targets 44x44px minimum
 - [ ] Keyboard navigable (Tab, Enter, Space)
@@ -208,13 +214,13 @@ For each component:
 
 Test components at these breakpoints:
 
-| Device | Width | Notes |
-|--------|-------|-------|
-| Small phone | 375px | iPhone SE |
-| Standard phone | 390px | iPhone 12/13/14 |
-| Large phone | 428px | iPhone Pro Max |
-| Tablet | 768px | iPad |
-| Desktop | 1024px+ | Laptop/Desktop |
+| Device         | Width   | Notes           |
+| -------------- | ------- | --------------- |
+| Small phone    | 375px   | iPhone SE       |
+| Standard phone | 390px   | iPhone 12/13/14 |
+| Large phone    | 428px   | iPhone Pro Max  |
+| Tablet         | 768px   | iPad            |
+| Desktop        | 1024px+ | Laptop/Desktop  |
 
 ### Browser DevTools
 

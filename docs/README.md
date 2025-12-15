@@ -21,13 +21,13 @@ python manage.py shell                                                      # Dj
 
 ## Project Status
 
-| Phase | Status |
-|-------|--------|
-| Django Foundation | Done |
-| Frontend Pipeline (Tailwind CLI + Alpine CDN) | Done |
-| Core Atoms (Button, Input, Link, Select, Icon) | Done |
-| Component Library Page | Done |
-| A11y Testing | Next |
+| Phase                                          | Status |
+| ---------------------------------------------- | ------ |
+| Django Foundation                              | Done   |
+| Frontend Pipeline (Tailwind CLI + Alpine CDN)  | Done   |
+| Core Atoms (Button, Input, Link, Select, Icon) | Done   |
+| Component Library Page                         | Done   |
+| A11y Testing                                   | Next   |
 
 **Branch:** `django-atomic`
 
@@ -35,12 +35,12 @@ python manage.py shell                                                      # Dj
 
 ## URLs (Development)
 
-| URL | Purpose |
-|-----|---------|
-| http://localhost:8000/ | Home |
-| http://localhost:8000/components/ | Component library |
-| http://localhost:8000/style-guide/ | Style guide |
-| http://localhost:8000/admin/ | Django admin |
+| URL                                | Purpose           |
+| ---------------------------------- | ----------------- |
+| http://localhost:8000/             | Home              |
+| http://localhost:8000/components/  | Component library |
+| http://localhost:8000/style-guide/ | Style guide       |
+| http://localhost:8000/admin/       | Django admin      |
 
 ---
 
@@ -71,26 +71,26 @@ litigant-portal/
 
 ## Documentation Index
 
-| Doc | Purpose |
-|-----|---------|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Tech stack, key decisions, patterns |
-| [REQUIREMENTS.md](./REQUIREMENTS.md) | Product requirements, UX principles |
-| [COMPONENT_LIBRARY.md](./COMPONENT_LIBRARY.md) | Component library & testing guide |
-| [CHANGES.md](./CHANGES.md) | Changelog |
-| [SECURITY.md](./SECURITY.md) | Vulnerability disclosure |
+| Doc                                            | Purpose                             |
+| ---------------------------------------------- | ----------------------------------- |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)           | Tech stack, key decisions, patterns |
+| [REQUIREMENTS.md](./REQUIREMENTS.md)           | Product requirements, UX principles |
+| [COMPONENT_LIBRARY.md](./COMPONENT_LIBRARY.md) | Component library & testing guide   |
+| [CHANGES.md](./CHANGES.md)                     | Changelog                           |
+| [SECURITY.md](./SECURITY.md)                   | Vulnerability disclosure            |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Backend | Django 6.0, Python 3.13 |
-| Components | Django Cotton |
-| Styling | Tailwind CSS 4.x (Homebrew: `brew install tailwindcss`) |
-| Reactivity | AlpineJS 3.15.1 (CDN) |
-| Auth | django-allauth |
-| Security | Django built-in CSP |
+| Layer      | Technology                                              |
+| ---------- | ------------------------------------------------------- |
+| Backend    | Django 6.0, Python 3.13                                 |
+| Components | Django Cotton                                           |
+| Styling    | Tailwind CSS 4.x (Homebrew: `brew install tailwindcss`) |
+| Reactivity | AlpineJS 3.15.1 (CDN)                                   |
+| Auth       | django-allauth                                          |
+| Security   | Django built-in CSP                                     |
 
 **No Node.js required** - Tailwind via Homebrew, Alpine via CDN.
 
@@ -109,7 +109,9 @@ litigant-portal/
 
 <!-- Link -->
 <c-link href="/dashboard" variant="primary">Dashboard</c-link>
-<c-link href="https://example.com" target="_blank" external_icon>External</c-link>
+<c-link href="https://example.com" target="_blank" external_icon
+  >External</c-link
+>
 
 <!-- Select -->
 <c-select name="state">
@@ -126,6 +128,7 @@ litigant-portal/
 ## Design System
 
 Colors and patterns adapted from CourtListener:
+
 - **Primary:** Coral/red (`primary-600: #B5362D`)
 - **Greyscale:** Warm greys (`greyscale-900: #1C1814`)
 - **Brand:** Purple accents (`brand-600: #7F56D9`)
