@@ -4,6 +4,30 @@
 
 ### Unreleased
 
+- **Completed:** Atomic Design restructure
+  - Reorganized templates into `cotton/{atoms,molecules,organisms}/` subdirectories
+  - Component syntax now uses dot notation: `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`
+  - Consolidated to single responsive `base.html` layout (removed `mobile_base.html`)
+  - Renamed `mobile_header` → `header`, `mobile_footer` → `footer` (responsive via Tailwind breakpoints)
+
+- **Completed:** WCAG 2.x accessibility compliance
+  - Updated text sizes to minimum 16px (`text-base`) for body content
+  - Fixed alerts, table rows, and footer links from `text-sm` (14px) to `text-base` (16px)
+  - Added `aria-hidden="true"` to decorative icons
+  - Footer padding adjusted from 32px to 16px
+
+- **Completed:** Build tooling cleanup
+  - Updated Makefile to use Tailwind CLI directly (`make css`, `make css-watch`, `make css-prod`)
+  - Removed stale npm references (no Node.js required)
+  - Added logo to `static/images/logo.svg`
+  - Logo component uses explicit height sizing (`h-6`, `h-8`, `h-10`)
+
+- **Completed:** Footer improvements
+  - CSS Grid layout for true center alignment
+  - "Powered By" label, centered logo, copyright in 3-column layout
+  - Developer tools section only visible when `DEBUG=True`
+  - Fixed `{% now "Y" %}` template tag for dynamic year
+
 - **Completed:** Build simplification
   - Removed Node.js dependency entirely
   - Tailwind CSS via Homebrew standalone CLI (`brew install tailwindcss`)
@@ -37,7 +61,6 @@
 
 - **Pending:**
   - Wire up search functionality (currently placeholder)
-  - Add logo image (user to provide `static/images/logo.svg`)
   - Fix djlint pre-commit hook (multiprocessing permission issue in sandbox)
     - Solution: Use local hooks instead of repo hooks
 

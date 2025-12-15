@@ -32,12 +32,15 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 
 ```
 templates/
-├── cotton/           # Atoms: button, input, link, select, icon
-├── molecules/        # Combinations: form_field, card, alert
-├── organisms/        # Complex: header, single_question_form
-├── layouts/          # Page layouts
-└── pages/            # Full pages
+├── cotton/                    # Django Cotton components
+│   ├── atoms/                 # Basic elements: button, input, link, select, icon
+│   ├── molecules/             # Combinations: logo, search_bar, topic_card
+│   └── organisms/             # Complex sections: header, footer, hero, topic_grid
+├── pages/                     # Full pages (extend base.html)
+└── base.html                  # Responsive base layout
 ```
+
+**Component syntax:** `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`
 
 ### Naming Conventions
 
@@ -107,7 +110,7 @@ Django renders initial state, Alpine handles client reactivity:
 | `config/settings.py`      | Django + Cotton config                   |
 | `static/css/main.css`     | Tailwind v4 CSS source + theme tokens    |
 | `static/js/theme.js`      | Alpine theme store                       |
-| `templates/cotton/*.html` | Component library                        |
+| `templates/cotton/*/`     | Component library (atoms, molecules, organisms) |
 
 ---
 

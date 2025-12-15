@@ -38,8 +38,8 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────┐
-│                 Django Cotton                           │
-│  templates/cotton/*.html - Reusable components          │
+│                 Django Cotton (Atomic Design)           │
+│  templates/cotton/{atoms,molecules,organisms}/*.html    │
 └─────────────────────┬───────────────────────────────────┘
                       │
                       ▼
@@ -81,7 +81,10 @@ Each component section includes:
 
 ### Adding a New Component
 
-1. Create Cotton component: `templates/cotton/my_component.html`
+1. Create Cotton component in the appropriate atomic level:
+   - Atoms: `templates/cotton/atoms/my_component.html` (basic elements)
+   - Molecules: `templates/cotton/molecules/my_component.html` (combinations of atoms)
+   - Organisms: `templates/cotton/organisms/my_component.html` (complex sections)
 2. Add CSS classes to `static/css/main.css` if needed
 3. Add section to `templates/pages/components.html`:
 
@@ -229,39 +232,43 @@ litigant-portal/
 ├── static/
 │   ├── css/
 │   │   ├── main.css              # Tailwind source
-│   │   └── main.built.css        # Generated CSS
+│   │   └── main.built.css        # Generated CSS (gitignored)
+│   ├── images/
+│   │   └── logo.svg              # Site logo
 │   └── js/
 │       └── theme.js              # Alpine theme store
 │
 ├── templates/
-│   ├── cotton/                   # Atoms (Cotton components)
-│   │   ├── button.html
-│   │   ├── input.html
-│   │   ├── search_input.html
-│   │   ├── link.html
-│   │   ├── select.html
-│   │   └── icon.html
-│   │
-│   ├── molecules/                # Molecules (component combinations)
-│   │   ├── logo.html
-│   │   ├── search_bar.html
-│   │   └── topic_card.html
-│   │
-│   ├── organisms/                # Organisms (complex sections)
-│   │   ├── mobile_header.html
-│   │   ├── hero.html
-│   │   ├── topic_grid.html
-│   │   └── mobile_footer.html
+│   ├── cotton/                   # Django Cotton components (Atomic Design)
+│   │   ├── atoms/                # Basic elements
+│   │   │   ├── button.html
+│   │   │   ├── input.html
+│   │   │   ├── search_input.html
+│   │   │   ├── link.html
+│   │   │   ├── select.html
+│   │   │   └── icon.html
+│   │   │
+│   │   ├── molecules/            # Combinations of atoms
+│   │   │   ├── logo.html
+│   │   │   ├── search_bar.html
+│   │   │   └── topic_card.html
+│   │   │
+│   │   └── organisms/            # Complex sections
+│   │       ├── header.html
+│   │       ├── footer.html
+│   │       ├── hero.html
+│   │       └── topic_grid.html
 │   │
 │   ├── pages/
 │   │   ├── home.html             # Landing page
-│   │   └── components.html       # Component library page
+│   │   ├── components.html       # Component library page
+│   │   └── style_guide.html      # Style guide page
 │   │
-│   └── base.html                 # Base template
+│   └── base.html                 # Base template (responsive layout)
 │
 ├── portal/
-│   ├── views.py                  # components() view
-│   └── urls.py                   # /components/ route
+│   ├── views.py                  # Page views
+│   └── urls.py                   # URL routes
 │
 └── config/
     └── settings.py

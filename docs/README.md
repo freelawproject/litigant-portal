@@ -51,14 +51,17 @@ litigant-portal/
 ├── config/                 # Django settings
 ├── portal/                 # Main Django app
 ├── templates/
-│   ├── base.html          # Base layout
-│   ├── cotton/            # Django-Cotton components
-│   ├── layouts/           # Layout templates
+│   ├── base.html          # Base layout (responsive)
+│   ├── cotton/            # Django-Cotton components (Atomic Design)
+│   │   ├── atoms/         # Basic elements (button, input, link, etc.)
+│   │   ├── molecules/     # Combinations (logo, search_bar, topic_card)
+│   │   └── organisms/     # Complex sections (header, footer, hero)
 │   └── pages/             # Page templates
 ├── static/
 │   ├── css/
 │   │   ├── main.css       # Tailwind source
-│   │   └── main.built.css # Tailwind output
+│   │   └── main.built.css # Tailwind output (gitignored)
+│   ├── images/            # Static images (logo.svg)
 │   └── js/
 │       └── theme.js       # Alpine theme store
 └── docs/                  # This folder
