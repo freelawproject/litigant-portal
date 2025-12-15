@@ -91,6 +91,7 @@ litigant-portal/
 | Reactivity | AlpineJS 3.15.1 (CDN)                                   |
 | Auth       | django-allauth                                          |
 | Security   | Django built-in CSP                                     |
+| Deployment | django-distill → GitHub Pages                           |
 
 **No Node.js required** - Tailwind via Homebrew, Alpine via CDN.
 
@@ -134,6 +135,22 @@ Colors and patterns adapted from CourtListener:
 - **Brand:** Purple accents (`brand-600: #7F56D9`)
 
 See `/components/` for live examples and full documentation.
+
+---
+
+## Deployment
+
+**GitHub Pages (Static Demo):**
+
+Live site: https://freelawproject.github.io/litigant-portal/
+
+Deploys automatically on push to `main` via GitHub Actions. Uses `django-distill` to pre-render pages as static HTML.
+
+```bash
+# Generate static site locally
+uv run python manage.py collectstatic --noinput
+uv run python manage.py distill-local dist --force
+```
 
 ---
 
