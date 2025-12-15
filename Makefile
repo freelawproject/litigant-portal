@@ -1,14 +1,15 @@
-.PHONY: help dev build clean install migrate test format lint
+.PHONY: help dev build css clean install migrate test format lint
 
 help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install Python and npm dependencies
+install: ## Install Python dependencies
 	python -m venv .venv
 	.venv/bin/pip install --upgrade pip
-	.venv/bin/uv pip install -e .
-	npm install
+	.venv/bin/pip install -e ".[dev]"
+	@echo ""
+	@echo "NOTE: Tailwind CSS CLI required (brew install tailwindcss)"
 
 dev: ## Start Django + Tailwind CSS watch
 	./dev.sh
@@ -16,11 +17,14 @@ dev: ## Start Django + Tailwind CSS watch
 django: ## Start Django dev server only
 	source .venv/bin/activate && python manage.py runserver
 
-css: ## Start Tailwind CSS watch only
-	npm run watch:css
+css: ## Build Tailwind CSS (one-time)
+	tailwindcss -i static/css/main.css -o static/css/main.built.css
 
-build: ## Build production CSS
-	npm run build:css
+css-watch: ## Watch Tailwind CSS for changes
+	tailwindcss -i static/css/main.css -o static/css/main.built.css --watch
+
+css-prod: ## Build production CSS (minified)
+	tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
 
 migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
@@ -37,12 +41,10 @@ superuser: ## Create Django superuser
 shell: ## Open Django shell
 	source .venv/bin/activate && python manage.py shell
 
-format: ## Format all code (Python, JS, CSS, HTML templates)
+format: ## Format all code (Python + HTML templates)
 	source .venv/bin/activate && ruff format .
 	source .venv/bin/activate && djlint templates/ --reformat
-	npm run format
 
-lint: ## Lint all code (Python, HTML templates)
+lint: ## Lint all code (Python + HTML templates)
 	source .venv/bin/activate && ruff check .
 	source .venv/bin/activate && djlint templates/ --lint
-	npm run format:check
