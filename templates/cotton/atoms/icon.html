@@ -1,5 +1,9 @@
 {% load heroicons %}
 <span class="icon inline-flex items-center justify-center {{ class }}"
       {{ attrs }}>
-  {% if style == "solid" %}{% heroicon_solid name %}{% else %}{% heroicon_outline name %}{% endif %}
+  {% if style == "solid" %}
+    {% heroicon_solid name %}
+  {% else %}
+    {% heroicon_outline name %}
+  {% endif %}
 </span>

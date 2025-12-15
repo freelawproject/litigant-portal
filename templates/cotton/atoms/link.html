@@ -1,0 +1,11 @@
+<c-vars variant="default" />
+{% load heroicons %}
+<a href="{{ href }}"
+   {% if target %}target="{{ target }}"{% endif %}
+   {% if target == '_blank' or href|slice:":4" == "http" %}rel="noopener noreferrer"{% endif %}
+   class="link {% if variant == 'primary' %}link-primary {% elif variant == 'secondary' %}link-secondary {% elif variant == 'unstyled' %}link-unstyled {% else %}link-default{% endif %} {{ class }}"
+   {{ attrs }}>{{ slot }}
+  {% if external_icon and target == '_blank' %}
+    <span class="link-external-icon w-3.5 h-3.5" aria-hidden="true">{% heroicon_outline "arrow-top-right-on-square" %}</span>
+  {% endif %}
+</a>
