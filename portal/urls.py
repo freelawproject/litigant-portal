@@ -1,11 +1,11 @@
-from django.urls import path
+from django_distill import distill_path
 
 from . import views
 
 app_name = "portal"
 
 urlpatterns = [
-    path("", views.home, name="home"),
-    path("components/", views.components, name="components"),
-    path("style-guide/", views.style_guide, name="style_guide"),
+    distill_path("", views.home, name="home"),
+    distill_path("components/", views.components, name="components"),
+    distill_path("style-guide/", views.style_guide, name="style_guide"),
 ]

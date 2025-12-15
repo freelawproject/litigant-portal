@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -45,6 +46,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "django_cotton",
     "heroicons",
+    "django_distill",
     # Local apps
     "portal",
     "litigant_portal",
@@ -133,7 +135,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = "/static/"
+# STATIC_URL can be overridden for GitHub Pages (e.g., /litigant-portal/static/)
+STATIC_URL = os.environ.get("STATIC_URL", "/static/")
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "static",
@@ -154,6 +157,9 @@ if not DEBUG:
 # Django Cotton configuration
 # Default: components in templates/cotton/ (e.g., <c-button> → templates/cotton/button.html)
 COTTON_DIR = "cotton"
+
+# Django Distill configuration (static site generation)
+DISTILL_DIR = BASE_DIR / "dist"
 
 # Django Allauth configuration
 AUTHENTICATION_BACKENDS = [
