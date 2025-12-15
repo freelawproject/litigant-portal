@@ -1,24 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Litigant Portal - Free Legal Help{% endblock title %}
-
+{% block title %}
+  Litigant Portal - Free Legal Help
+{% endblock title %}
 {% block content %}
-{% include "organisms/mobile_header.html" %}
-
-{% include "organisms/hero.html" %}
-
-{% include "organisms/topic_grid.html" %}
-
-{# Development links - remove in production #}
-<section class="px-4 py-8 bg-greyscale-50 border-t border-greyscale-200">
-  <div class="max-w-content mx-auto">
-    <h4 class="text-greyscale-500 uppercase text-xs tracking-wider mb-4 text-center">Developer Tools</h4>
-    <div class="flex flex-wrap justify-center gap-4">
-      <a href="{% url 'portal:components' %}" class="link link-secondary text-sm">Component Library</a>
-      <a href="{% url 'portal:style_guide' %}" class="link link-secondary text-sm">Style Guide</a>
-      <a href="{% url 'admin:index' %}" class="link link-secondary text-sm">Admin</a>
-    </div>
-  </div>
-</section>
-
-{% include "organisms/mobile_footer.html" %}
+  <c-organisms.hero />
+  <c-organisms.topic-grid />
 {% endblock content %}

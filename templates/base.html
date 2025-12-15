@@ -19,36 +19,29 @@
     {% block extra_css %}
     {% endblock extra_css %}
   </head>
-  <body class="min-h-screen bg-gray-50">
-    {% block body %}
-      <div class="flex flex-col min-h-screen">
-        {% block header %}
-          {# Header will go here #}
-        {% endblock header %}
-        <main class="flex-1 container-desktop py-8">
-          {% block content %}
-          {% endblock content %}
-        </main>
-        {% block footer %}
-          <footer class="bg-gray-800 text-white py-6 mt-auto">
-            <div class="container-desktop">
-              <p class="text-sm text-center">© {% now "Y" %} Litigant Portal. All rights reserved.</p>
-            </div>
-          </footer>
-        {% endblock footer %}
-      </div>
-    {% endblock body %}
-
+  <body class="min-h-screen">
+    <div class="flex flex-col min-h-screen bg-greyscale-25">
+      {% block header %}
+        <c-organisms.header />
+      {% endblock header %}
+      <main class="flex-1">
+        {% block content %}
+        {% endblock content %}
+      </main>
+      {% block footer %}
+        <c-organisms.footer />
+      {% endblock footer %}
+    </div>
     {# Theme store - must load before Alpine #}
     <script src="{% static 'js/theme.js' %}"></script>
-
     {# Alpine.js from CDN - use debug version in development #}
     {% if debug %}
-    <script defer src="https://cdn.jsdelivr.net/npm/[email protected]/dist/cdn.js"></script>
+      <script defer
+              src="https://cdn.jsdelivr.net/npm/[email protected]/dist/cdn.js"></script>
     {% else %}
-    <script defer src="https://cdn.jsdelivr.net/npm/[email protected]/dist/cdn.min.js"></script>
+      <script defer
+              src="https://cdn.jsdelivr.net/npm/[email protected]/dist/cdn.min.js"></script>
     {% endif %}
-
     {# Additional JavaScript #}
     {% block extra_js %}
     {% endblock extra_js %}
