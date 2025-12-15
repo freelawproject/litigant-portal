@@ -169,7 +169,11 @@ SECURE_CSP = {
     "default-src": ["'self'"],
     "script-src": ["'self'", "https://cdn.jsdelivr.net"],  # Alpine.js CDN
     "style-src": ["'self'"],
-    "img-src": ["'self'", "data:", "blob:"],  # data: for inline, blob: for camera/uploads
+    "img-src": [
+        "'self'",
+        "data:",
+        "blob:",
+    ],  # data: for inline, blob: for camera/uploads
     "font-src": ["'self'", "data:"],
     "connect-src": ["'self'"],
 }
@@ -179,4 +183,3 @@ SECURE_CSP = {
 # https://docs.djangoproject.com/en/6.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-

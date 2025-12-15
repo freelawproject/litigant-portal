@@ -23,4 +23,3 @@ urlpatterns = [
     path("accounts/", include("allauth.urls")),
     path("", include("portal.urls")),
 ]
-
