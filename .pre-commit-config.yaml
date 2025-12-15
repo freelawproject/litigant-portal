@@ -5,6 +5,7 @@ default_language_version:
   python: 'python3.13'
 ci:
   autoupdate_schedule: quarterly
+  skip: [uv-lock-check]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
