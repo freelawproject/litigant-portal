@@ -43,3 +43,12 @@ repos:
     hooks:
       - id: djlint-reformat-django
       - id: djlint-django
+
+  - repo: local
+    hooks:
+      - id: uv-lock-check
+        name: uv lock sync
+        entry: uv lock --check
+        language: system
+        files: ^pyproject\.toml$
+        pass_filenames: false
