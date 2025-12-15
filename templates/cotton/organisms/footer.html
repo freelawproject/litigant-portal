@@ -1,21 +1,20 @@
 <footer class="mobile-footer {{ class }}" {{ attrs }}>
   <div class="max-w-content mx-auto px-4">
     {# Navigation row #}
-    <nav class="flex flex-wrap items-center justify-center gap-4 md:gap-6 py-6" aria-label="Footer navigation">
+    <nav class="flex flex-wrap items-center justify-center gap-4 md:gap-6 py-6"
+         aria-label="Footer navigation">
       <a href="#about" class="mobile-footer-link">About</a>
       <a href="#contact" class="mobile-footer-link">Contact</a>
       <a href="#privacy" class="mobile-footer-link">Privacy</a>
       <a href="#accessibility" class="mobile-footer-link">Accessibility</a>
     </nav>
-
     {# Divider #}
     <hr class="border-greyscale-200">
-
     {# Bottom row: Powered By | Copyright | Logo #}
     <div class="flex flex-col md:flex-row items-center justify-between gap-4 py-6">
       <span class="text-xs text-greyscale-500 uppercase tracking-wide">Powered By</span>
       <p class="text-sm text-greyscale-600">© {% now "Y" %} Free Law Project</p>
-      <c-molecules.logo size="sm" show_image />
+      <c-molecules.logo size="lg" show_image />
     </div>
   </div>
   {# Developer tools - only shown in debug mode #}

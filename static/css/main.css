@@ -458,24 +458,20 @@
   /* Logo */
   .logo {
     @apply inline-flex items-center gap-2 no-underline;
-    @apply text-greyscale-900 font-cooper font-semibold text-lg;
+    @apply text-greyscale-900 font-cooper font-semibold;
     @apply hover:text-primary-600 transition-colors;
   }
 
-  .logo-sm {
-    @apply text-md;
-  }
-
-  .logo-lg {
-    @apply text-xl;
-  }
-
   .logo-image {
-    @apply h-8 w-auto;
+    @apply h-8 w-auto; /* 32px - default */
   }
 
   .logo-sm .logo-image {
-    @apply h-6;
+    @apply h-6; /* 24px - compact (mobile header) */
+  }
+
+  .logo-lg .logo-image {
+    @apply h-10; /* 40px - prominent (footer, hero) */
   }
 
   /* Search Bar */
