@@ -1,100 +1,59 @@
-# new-project-template
-
-A template repo for new CL projects
-
 # Litigant Portal
 
-Litigant Portal is an open source repository to ...
-It was built for use with Courtlistener.com.
+Access to justice portal for self-represented litigants. Built by [Free Law Project](https://free.law).
 
-Its main goal is to ...
-It incldues mechanisms to ...
+## Quick Start
 
-Further development is intended and all contributors, corrections and additions are welcome.
+### Local Development (without Docker)
 
-## Background
+```bash
+# Install dependencies
+python -m venv .venv
+source .venv/bin/activate
+pip install -e ".[dev]"
 
-Free Law Project built this ... This project represents ...  
-We believe to be the ....
-
-## Quickstart
-
-You can feed in a X as ... .. ...
-
-```
-IMPORTS
-
-CALL EXAMPLE
-
-returns:
-  ""EXAMPLE OUTPUT
+# Start dev server (Django + Tailwind watch)
+./dev.sh
 ```
 
-## Some Notes ...
+Requires: Python 3.13+, [Tailwind CLI](https://tailwindcss.com/blog/standalone-cli) (`brew install tailwindcss`)
 
-Somethings to keep in mind as ....
+### Docker Development
 
-1. ...
-2. ...
-
-## Fields
-
-1. `id` ==> string; Courtlistener Court Identifier
-2. `court_url` ==> string; url for court website
-3. `regex` ==> array; regexes patterns to find courts
-
-## Installation
-
-Installing Litigant Portal is easy.
-
-```sh
-pip install litigant-portal
+```bash
+cp .env.example .env
+make docker-dev
 ```
 
-Or install the latest dev version from github
+Visit: http://localhost:8000
 
-```sh
-pip install git+https://github.com/freelawproject/litigant-portal.git@master
+### Docker Production
+
+```bash
+# Create secrets (see secrets/README.md)
+mkdir -p secrets
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > secrets/django_secret_key.txt
+echo "your-db-password" > secrets/db_password.txt
+
+make docker-prod
 ```
 
-## Development
+## Documentation
 
-Start the development server (Django + Tailwind watch):
+| Doc                                     | Description                      |
+| --------------------------------------- | -------------------------------- |
+| [Architecture](docs/ARCHITECTURE.md)    | Tech stack, patterns, Docker     |
+| [Components](docs/COMPONENT_LIBRARY.md) | UI component library             |
+| [Security](docs/SECURITY.md)            | CSP, secrets, production headers |
 
-```sh
-./dev.sh            # DEBUG=True (default)
-./dev.sh --no-debug # DEBUG=False
-```
+## Tech Stack
 
-## Future
-
-1. Continue to improve ...
-2. Future updates
-
-## Deployment
-
-If you wish to create a new version manually, the process is:
-
-1. Update version info in `setup.py`
-
-2. Install the requirements using `poetry install`
-
-3. Set up a config file at `~/.pypirc`
-
-4. Generate a universal distribution that works in py2 and py3 (see setup.cfg)
-
-```sh
-python setup.py sdist bdist_wheel
-```
-
-5. Upload the distributions
-
-```sh
-twine upload dist/* -r pypi (or pypitest)
-```
+- **Backend:** Django 5.2 LTS
+- **Components:** Django Cotton (server-rendered)
+- **Styling:** Tailwind CSS (standalone CLI)
+- **Reactivity:** Alpine.js (CSP build)
+- **Database:** PostgreSQL (Docker) / SQLite (local dev)
 
 ## License
 
-This repository is available under the permissive BSD license, making it easy and safe to incorporate in your own libraries.
-
-Pull and feature requests welcome. Online editing in GitHub is possible (and easy!)
+AGPL-3.0. See [LICENSE](LICENSE).

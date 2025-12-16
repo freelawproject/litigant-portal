@@ -105,12 +105,60 @@ Django renders initial state, Alpine handles client reactivity:
 
 ## Key Files
 
-| File                  | Purpose                                         |
-| --------------------- | ----------------------------------------------- |
-| `config/settings.py`  | Django + Cotton config                          |
-| `static/css/main.css` | Tailwind v4 CSS source + theme tokens           |
-| `static/js/theme.js`  | Alpine theme store                              |
-| `templates/cotton/*/` | Component library (atoms, molecules, organisms) |
+| File                   | Purpose                                         |
+| ---------------------- | ----------------------------------------------- |
+| `config/settings.py`   | Django + Cotton config                          |
+| `static/css/main.css`  | Tailwind v4 CSS source + theme tokens           |
+| `static/js/theme.js`   | Alpine theme store                              |
+| `templates/cotton/*/`  | Component library (atoms, molecules, organisms) |
+| `Dockerfile`           | Multi-stage build (dev + prod)                  |
+| `docker-compose.yml`   | Dev/prod profiles with Docker secrets           |
+| `docker-entrypoint.sh` | Container startup commands                      |
+
+---
+
+## Docker
+
+### Development
+
+```bash
+cp .env.example .env
+docker compose --profile dev up
+# or: make docker-dev
+```
+
+- Mounts source code for hot reload
+- Tailwind CSS watch mode
+- PostgreSQL with default credentials
+- Auto-generates `SECRET_KEY`
+
+### Production
+
+```bash
+# Create secrets (see secrets/README.md)
+docker compose --profile prod up
+# or: make docker-prod
+```
+
+- Gunicorn WSGI server
+- Docker secrets for credentials
+- Pre-built CSS (minified)
+- Non-root container user
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│ docker-compose.yml                          │
+├─────────────────────────────────────────────┤
+│ Profile: dev          Profile: prod         │
+│ ┌───────────┐ ┌────┐  ┌───────────┐ ┌────┐  │
+│ │django-dev │ │db- │  │django-prod│ │db- │  │
+│ │ runserver │ │dev │  │ gunicorn  │ │prod│  │
+│ │ + tailwind│ │    │  │           │ │    │  │
+│ └───────────┘ └────┘  └───────────┘ └────┘  │
+└─────────────────────────────────────────────┘
+```
 
 ---
 

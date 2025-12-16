@@ -6,6 +6,47 @@ VDP: https://free.law/vulnerability-disclosure-policy/
 
 ---
 
+## Production Security Headers
+
+When `DEBUG=False`, Django enables these security settings:
+
+| Setting                          | Value         | Purpose                 |
+| -------------------------------- | ------------- | ----------------------- |
+| `SECURE_SSL_REDIRECT`            | `True`        | Force HTTPS             |
+| `SECURE_HSTS_SECONDS`            | 31536000      | HSTS for 1 year         |
+| `SECURE_HSTS_INCLUDE_SUBDOMAINS` | `True`        | Apply to subdomains     |
+| `SECURE_HSTS_PRELOAD`            | `True`        | Allow preload list      |
+| `SESSION_COOKIE_SECURE`          | `True`        | Cookies over HTTPS only |
+| `CSRF_COOKIE_SECURE`             | `True`        | CSRF cookie HTTPS only  |
+| `SECURE_CONTENT_TYPE_NOSNIFF`    | `True`        | Prevent MIME sniffing   |
+| `SECURE_REFERRER_POLICY`         | `same-origin` | Control referrer        |
+
+---
+
+## Secrets Management
+
+### Development
+
+- `SECRET_KEY` auto-generated at runtime (dev.sh or Docker entrypoint)
+- Database credentials in `.env` file (gitignored)
+
+### Production
+
+- Uses Docker secrets mounted at `/run/secrets/`
+- Never stored on disk or in environment variables visible to `docker inspect`
+
+```bash
+# Create production secrets
+mkdir -p secrets
+python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > secrets/django_secret_key.txt
+echo "your-secure-password" > secrets/db_password.txt
+chmod 600 secrets/*.txt
+```
+
+See `secrets/README.md` for details.
+
+---
+
 ## Content Security Policy (CSP)
 
 CSP prevents XSS attacks by controlling which resources can load.
