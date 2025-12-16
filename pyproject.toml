@@ -35,11 +35,13 @@ urls.Repository = "https://github.com/freelawproject/litigant-portal"
 urls."Organisation Homepage" = "https://free.law/"
 dependencies = [
     "Django>=5.2",
+    "dj-database-url>=2.3",
     "django-allauth>=65.0",
     "django-cotton>=1.0",
     "django-csp>=3.8",
-    "django-distill>=3.0",  # TODO: Remove when switching to Docker deployment
+    "gunicorn>=23.0",
     "heroicons>=2.0",
+    "psycopg[binary]>=3.2",
 ]
 
 [project.optional-dependencies]

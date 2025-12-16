@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+import dj_database_url
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,17 +23,32 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = (
-    "django-insecure-q@e2_$5d-)84%24cq9+300e*m1jafs2(t2-)$-=g@0)+5o44vp"
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "django-insecure-q@e2_$5d-)84%24cq9+300e*m1jafs2(t2-)$-=g@0)+5o44vp",
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DEBUG", "").lower() in ("true", "1")
+# Defaults to True for development; set DEBUG=false in production
+DEBUG = os.environ.get("DEBUG", "true").lower() not in ("false", "0")
 
-ALLOWED_HOSTS: list[str] = []
+# Parse ALLOWED_HOSTS from env (comma-separated), default to localhost in debug
+ALLOWED_HOSTS = [
+    h.strip()
+    for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
+    if h.strip()
+] or (["localhost", "127.0.0.1", "0.0.0.0"] if DEBUG else [])
 
 # Required for Django's debug context processor to expose 'debug' in templates
-INTERNAL_IPS = ["127.0.0.1"]
+if DEBUG:
+    # In DEBUG mode, treat all IPs as internal (for Docker networking)
+    class AllIPs:
+        def __contains__(self, item):
+            return True
+
+    INTERNAL_IPS = AllIPs()
+else:
+    INTERNAL_IPS = ["127.0.0.1"]
 
 
 # Application definition
@@ -49,7 +66,6 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "django_cotton",
     "heroicons",
-    "django_distill",  # TODO: Remove when switching to Docker deployment
     # Local apps
     "portal",
     "litigant_portal",
@@ -95,12 +111,14 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# Supports DATABASE_URL env var, falls back to SQLite for local development
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
-    }
+    "default": dj_database_url.config(
+        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 
@@ -160,9 +178,6 @@ if not DEBUG:
 # Django Cotton configuration
 # Default: components in templates/cotton/ (e.g., <c-button> → templates/cotton/button.html)
 COTTON_DIR = "cotton"
-
-# Django Distill configuration (static site generation)
-DISTILL_DIR = BASE_DIR / "dist"
 
 # Django Allauth configuration
 AUTHENTICATION_BACKENDS = [

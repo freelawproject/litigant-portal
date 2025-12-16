@@ -1,0 +1,72 @@
+# Litigant Portal Docker Compose
+# Usage:
+#   Development: docker compose --profile dev up
+#   Production:  docker compose --profile prod up
+
+services:
+  # PostgreSQL Database (shared by dev and prod)
+  db:
+    image: postgres:16-alpine
+    profiles: ['dev', 'prod']
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-litigant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-litigant}
+      POSTGRES_DB: ${POSTGRES_DB:-litigant_portal}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-litigant} -d ${POSTGRES_DB:-litigant_portal}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '5432:5432'
+
+  # Development Django Server
+  django-dev:
+    build:
+      context: .
+      target: development
+    profiles: ['dev']
+    command: web-dev
+    environment:
+      - DEBUG=true
+      - SECRET_KEY=${SECRET_KEY:-django-insecure-dev-key-not-for-production}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-litigant}:${POSTGRES_PASSWORD:-litigant}@db:5432/${POSTGRES_DB:-litigant_portal}
+      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+    volumes:
+      - .:/app
+    ports:
+      - '8000:8000'
+    depends_on:
+      db:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  # Production Django Server
+  django-prod:
+    build:
+      context: .
+      target: production
+    profiles: ['prod']
+    command: web-prod
+    environment:
+      - DEBUG=false
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-litigant}:${POSTGRES_PASSWORD:-litigant}@db:5432/${POSTGRES_DB:-litigant_portal}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
+      - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
+    ports:
+      - '8000:8000'
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
