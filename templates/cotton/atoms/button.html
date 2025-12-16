@@ -1,8 +1,11 @@
 <c-vars type="button" variant="primary" size="" />
+{# Base: shared across all variants #}
+{# Variant: primary|outline|dark|ghost|danger #}
+{# Size: sm|xl (default is medium) #}
 <button type="{{ type }}"
         {% if id %}id="{{ id }}"{% endif %}
         {% if disabled %}disabled{% endif %}
         {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
-        class="{% if variant == 'primary' %}btn-primary{% elif variant == 'outline' %}btn-outline{% elif variant == 'dark' %}btn-dark{% elif variant == 'ghost' %}btn-ghost{% elif variant == 'danger' %}btn-danger{% else %}btn-primary{% endif %}{% if size == 'xl' %} btn-xl{% elif size == 'sm' %} btn-sm{% endif %}{% if full_width %} w-full{% endif %} {{ class }}"
+        class="{% if size == 'sm' %}py-1.5 px-2.5 text-xs{% elif size == 'xl' %}py-3 px-4.5 text-md{% else %}py-2.5 px-3.5 text-sm{% endif %} rounded-lg w-fit font-normal flex gap-1 items-center transition-colors duration-200 disabled:cursor-not-allowed {% if variant == 'primary' %}text-white bg-primary-600 hover:bg-primary-700 outline-none focus-visible:ring-4 focus-visible:ring-primary-300 disabled:bg-primary-100 disabled:text-primary-400{% elif variant == 'outline' %}bg-white text-greyscale-700 border border-greyscale-300 hover:bg-greyscale-100 outline-none focus-visible:ring-4 focus-visible:ring-greyscale-300 disabled:border-greyscale-200 disabled:text-greyscale-400{% elif variant == 'dark' %}text-white bg-greyscale-900 hover:bg-greyscale-800 outline-none focus-visible:ring-4 focus-visible:ring-greyscale-400 disabled:bg-greyscale-400 disabled:text-greyscale-200{% elif variant == 'ghost' %}text-greyscale-700 hover:bg-greyscale-100 focus-visible:ring-4 focus-visible:ring-greyscale-200 disabled:text-greyscale-400{% elif variant == 'danger' %}text-white bg-red-500 hover:bg-red-600 outline-none focus-visible:ring-4 focus-visible:ring-red-300 disabled:bg-red-200 disabled:text-red-400{% else %}text-white bg-primary-600 hover:bg-primary-700 outline-none focus-visible:ring-4 focus-visible:ring-primary-300 disabled:bg-primary-100 disabled:text-primary-400{% endif %}{% if full_width %} w-full{% endif %} {{ class }}"
         {{ attrs }}>{{ slot }}
 </button>

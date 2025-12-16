@@ -1,0 +1,6 @@
+<c-vars variant="info" />
+{# Alert variants: info|success|warning|danger #}
+<div role="alert"
+     class="px-4 py-3 text-base rounded-lg border {% if variant == 'success' %}bg-green-100 text-green-700 border-green-500{% elif variant == 'warning' %}text-yellow-700 bg-yellow-50 border-yellow-400{% elif variant == 'danger' %}bg-red-100 text-red-700 border-red-500{% else %}bg-brand-100 text-brand-700 border-brand-300{% endif %} {{ class }}"
+     {{ attrs }}>{{ slot }}
+</div>
