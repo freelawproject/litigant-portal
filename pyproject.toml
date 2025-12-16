@@ -37,6 +37,7 @@ dependencies = [
     "Django>=5.2",
     "django-allauth>=65.0",
     "django-cotton>=1.0",
+    "django-csp>=3.8",
     "django-distill>=3.0",
     "heroicons>=2.0",
 ]

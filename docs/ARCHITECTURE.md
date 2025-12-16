@@ -20,7 +20,7 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 | **Backend**        | Django                        | Team expertise, proven at scale         |
 | **Components**     | Django Cotton                 | Server-rendered, no JS framework needed |
 | **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed        |
-| **Reactivity**     | AlpineJS (CDN)                | Lightweight (15KB), CSP-safe            |
+| **Reactivity**     | AlpineJS CSP build (CDN)      | Lightweight, CSP-compatible             |
 | **Component Docs** | Custom `/components/` page    | Django-native, living documentation     |
 | **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers    |
 
@@ -97,8 +97,8 @@ Django renders initial state, Alpine handles client reactivity:
 ## Security
 
 - **CSP configured** - No unsafe-eval/inline needed
-- **AlpineJS 3** - CSP-safe by default
-- **Django built-in CSP** - Header management via `SECURE_CSP` setting
+- **AlpineJS CSP build** - Standard build requires unsafe-eval
+- **django-csp** - Header management via `CSP_*` settings
 - **VDP:** [free.law/vulnerability-disclosure-policy](https://free.law/vulnerability-disclosure-policy/)
 
 ---

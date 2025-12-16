@@ -34,13 +34,14 @@
     </div>
     {# Theme store - must load before Alpine #}
     <script src="{% static 'js/theme.js' %}"></script>
-    {# Alpine.js from CDN - use debug version in development #}
+    {# Alpine.js CSP build - required for Content Security Policy compliance #}
+    {# https://alpinejs.dev/advanced/csp #}
     {% if debug %}
       <script defer
-              src="https://cdn.jsdelivr.net/npm/[email protected]/dist/cdn.js"></script>
+              src="https://cdn.jsdelivr.net/npm/@alpinejs/[email protected]/dist/cdn.js"></script>
     {% else %}
       <script defer
-              src="https://cdn.jsdelivr.net/npm/[email protected]/dist/cdn.min.js"></script>
+              src="https://cdn.jsdelivr.net/npm/@alpinejs/[email protected]/dist/cdn.min.js"></script>
     {% endif %}
     {# Additional JavaScript #}
     {% block extra_js %}
