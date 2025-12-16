@@ -1,7 +1,19 @@
 #!/bin/bash
 
 # Start Django and Tailwind CSS watch
-# Usage: ./dev.sh
+# Usage: ./dev.sh [--no-debug]
+
+# Parse arguments
+DEBUG_MODE="true"
+for arg in "$@"; do
+  case $arg in
+    --no-debug)
+      DEBUG_MODE=""
+      ;;
+  esac
+done
+
+export DEBUG="${DEBUG_MODE}"
 
 # Colors for output
 GREEN='\033[0;32m'

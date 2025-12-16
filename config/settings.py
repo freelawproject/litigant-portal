@@ -26,9 +26,12 @@ SECRET_KEY = (
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get("DEBUG", "").lower() in ("true", "1")
 
 ALLOWED_HOSTS: list[str] = []
+
+# Required for Django's debug context processor to expose 'debug' in templates
+INTERNAL_IPS = ["127.0.0.1"]
 
 
 # Application definition

@@ -19,17 +19,4 @@
       <p class="text-sm text-greyscale-600 text-center md:text-right">© {% now "Y" %} Free Law Project</p>
     </div>
   </div>
-  {# Developer tools - only shown in debug mode #}
-  {% if debug %}
-    <section class="px-4 py-8 bg-greyscale-50 border-t border-greyscale-200">
-      <div class="max-w-content mx-auto">
-        <h4 class="text-greyscale-500 uppercase text-xs tracking-wider mb-4 text-center">Developer Tools</h4>
-        <div class="flex flex-wrap justify-center gap-4">
-          <c-atoms.link href="{% url 'portal:components' %}" variant="secondary" class="text-sm">Component Library</c-atoms.link>
-          <c-atoms.link href="{% url 'portal:style_guide' %}" variant="secondary" class="text-sm">Style Guide</c-atoms.link>
-          <c-atoms.link href="{% url 'admin:index' %}" variant="secondary" class="text-sm">Admin</c-atoms.link>
-        </div>
-      </div>
-    </section>
-  {% endif %}
 </footer>

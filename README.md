@@ -57,6 +57,15 @@ Or install the latest dev version from github
 pip install git+https://github.com/freelawproject/litigant-portal.git@master
 ```
 
+## Development
+
+Start the development server (Django + Tailwind watch):
+
+```sh
+./dev.sh            # DEBUG=True (default)
+./dev.sh --no-debug # DEBUG=False
+```
+
 ## Future
 
 1. Continue to improve ...
