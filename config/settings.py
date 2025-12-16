@@ -49,7 +49,7 @@ INSTALLED_APPS = [
     "allauth.socialaccount",
     "django_cotton",
     "heroicons",
-    "django_distill",
+    "django_distill",  # TODO: Remove when switching to Docker deployment
     # Local apps
     "portal",
     "litigant_portal",

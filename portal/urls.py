@@ -1,3 +1,4 @@
+# TODO: Replace distill_path with django.urls.path when switching to Docker
 from django_distill import distill_path
 
 from . import views

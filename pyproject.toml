@@ -38,7 +38,7 @@ dependencies = [
     "django-allauth>=65.0",
     "django-cotton>=1.0",
     "django-csp>=3.8",
-    "django-distill>=3.0",
+    "django-distill>=3.0",  # TODO: Remove when switching to Docker deployment
     "heroicons>=2.0",
 ]
 
