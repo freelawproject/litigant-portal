@@ -53,3 +53,10 @@ repos:
         language: system
         files: ^pyproject\.toml$
         pass_filenames: false
+
+      - id: csp-inline-check
+        name: CSP inline handler check
+        entry: bash -c 'grep -rE "on(click|load|error|submit|change|input|focus|blur|keyup|keydown|mouseover)=" templates/ && echo "ERROR - Inline event handlers violate CSP. Use Alpine x-on directives." && exit 1 || exit 0'
+        language: system
+        files: ^templates/.*\.html$
+        pass_filenames: false
