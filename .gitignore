@@ -155,6 +155,9 @@ celerybeat.pid
 # Environments
 .env
 .venv
+
+# Docker secrets (never commit)
+secrets/*.txt
 env/
 venv/
 ENV/

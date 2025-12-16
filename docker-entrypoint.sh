@@ -4,6 +4,26 @@ set -e
 # Docker entrypoint for Litigant Portal
 # Commands: web-dev, web-prod, migrate, collectstatic, shell, test
 
+# ---------------------------------------------------------------------------
+# Handle secrets from files (_FILE pattern for Docker secrets)
+# ---------------------------------------------------------------------------
+
+# SECRET_KEY: auto-generate for dev, or read from file for prod
+if [ "$SECRET_KEY" = "auto" ]; then
+    export SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
+elif [ -n "$SECRET_KEY_FILE" ] && [ -f "$SECRET_KEY_FILE" ]; then
+    export SECRET_KEY=$(cat "$SECRET_KEY_FILE")
+fi
+
+# Build DATABASE_URL from individual vars + secret file (for prod)
+if [ -z "$DATABASE_URL" ] && [ -n "$POSTGRES_HOST" ]; then
+    POSTGRES_PASSWORD_VALUE="$POSTGRES_PASSWORD"
+    if [ -n "$POSTGRES_PASSWORD_FILE" ] && [ -f "$POSTGRES_PASSWORD_FILE" ]; then
+        POSTGRES_PASSWORD_VALUE=$(cat "$POSTGRES_PASSWORD_FILE")
+    fi
+    export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD_VALUE}@${POSTGRES_HOST}:5432/${POSTGRES_DB}"
+fi
+
 wait_for_db() {
     if [ -z "$DATABASE_URL" ]; then
         return 0

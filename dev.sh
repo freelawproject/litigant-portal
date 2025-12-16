@@ -15,6 +15,11 @@ done
 
 export DEBUG="${DEBUG_MODE}"
 
+# Generate a random SECRET_KEY for dev if not set
+if [ -z "$SECRET_KEY" ]; then
+  export SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
+fi
+
 # Colors for output
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
