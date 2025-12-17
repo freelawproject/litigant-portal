@@ -16,13 +16,17 @@ services:
     image: postgres:16-alpine
     profiles: ['dev']
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-litigant}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-litigant}
+      POSTGRES_USER: ${POSTGRES_USER:-litigant_portal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-litigant_dev}
       POSTGRES_DB: ${POSTGRES_DB:-litigant_portal}
     volumes:
       - postgres_data_dev:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-litigant}']
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-litigant_portal} -d ${POSTGRES_DB:-litigant_portal}',
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -36,7 +40,7 @@ services:
     image: postgres:16-alpine
     profiles: ['prod']
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-litigant}
+      POSTGRES_USER: ${POSTGRES_USER:-litigant_portal}
       POSTGRES_PASSWORD_FILE: /run/secrets/db_password
       POSTGRES_DB: ${POSTGRES_DB:-litigant_portal}
     secrets:
@@ -44,7 +48,11 @@ services:
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-litigant}']
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-litigant_portal} -d ${POSTGRES_DB:-litigant_portal}',
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -61,7 +69,7 @@ services:
     environment:
       - DEBUG=true
       - SECRET_KEY=${SECRET_KEY:-auto}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-litigant}:${POSTGRES_PASSWORD:-litigant}@db-dev:5432/${POSTGRES_DB:-litigant_portal}
+      - DATABASE_URL=postgres://${POSTGRES_USER:-litigant_portal}:${POSTGRES_PASSWORD:-litigant_dev}@db-dev:5432/${POSTGRES_DB:-litigant_portal}
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
     volumes:
       - .:/app
@@ -85,7 +93,7 @@ services:
     environment:
       - DEBUG=false
       - SECRET_KEY_FILE=/run/secrets/django_secret_key
-      - POSTGRES_USER=${POSTGRES_USER:-litigant}
+      - POSTGRES_USER=${POSTGRES_USER:-litigant_portal}
       - POSTGRES_DB=${POSTGRES_DB:-litigant_portal}
       - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
       - POSTGRES_HOST=db-prod
