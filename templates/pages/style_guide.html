@@ -360,7 +360,6 @@
           <section id="buttons" class="mb-12" aria-labelledby="buttons-heading">
             <h3 id="buttons-heading" class="mb-4">Buttons</h3>
             <p class="text-greyscale-600 mb-6">Accessible button component with multiple variants.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="flex flex-wrap gap-3 mb-6">
               <c-atoms.button variant="primary">Primary</c-atoms.button>
               <c-atoms.button variant="outline">Outline</c-atoms.button>
@@ -401,7 +400,6 @@
           <section id="inputs" class="mb-12" aria-labelledby="inputs-heading">
             <h3 id="inputs-heading" class="mb-4">Inputs</h3>
             <p class="text-greyscale-600 mb-6">Text input with error and success states.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="space-y-4 mb-6 max-w-md">
               <c-atoms.input placeholder="Default input" />
               <c-atoms.input placeholder="Error state" error />
@@ -429,7 +427,6 @@
                    aria-labelledby="search-input-heading">
             <h3 id="search-input-heading" class="mb-4">Search Input</h3>
             <p class="text-greyscale-600 mb-6">Search input with built-in icon.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="max-w-md mb-6">
               <c-atoms.search-input placeholder="What do you need help with?" />
             </div>
@@ -448,7 +445,6 @@
           <section id="selects" class="mb-12" aria-labelledby="selects-heading">
             <h3 id="selects-heading" class="mb-4">Selects</h3>
             <p class="text-greyscale-600 mb-6">Select dropdown with custom styling.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="space-y-4 mb-6 max-w-md">
               <c-atoms.select>
               <option value="">Select an option</option>
@@ -463,7 +459,6 @@
           <section id="links" class="mb-12" aria-labelledby="links-heading">
             <h3 id="links-heading" class="mb-4">Links</h3>
             <p class="text-greyscale-600 mb-6">Link component with external link handling.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="flex flex-wrap gap-6 mb-6">
               <c-atoms.link href="#" variant="default">Default</c-atoms.link>
               <c-atoms.link href="#" variant="primary">Primary</c-atoms.link>
@@ -481,14 +476,46 @@
               via django-heroicons.
             </p>
             <h4 class="mb-3">Outline</h4>
-            <div class="flex flex-wrap gap-6 items-center text-greyscale-700 mb-6">
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-greyscale-700 mb-6">
               <div class="text-center">
                 <span class="w-6 h-6 inline-block">{% heroicon_outline "magnifying-glass" %}</span>
                 <p class="text-xs mt-1">magnifying-glass</p>
               </div>
               <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "chevron-right" %}</span>
+                <p class="text-xs mt-1">chevron-right</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "bars-3" %}</span>
+                <p class="text-xs mt-1">bars-3</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "arrow-top-right-on-square" %}</span>
+                <p class="text-xs mt-1">arrow-top-right-on-square</p>
+              </div>
+              <div class="text-center">
                 <span class="w-6 h-6 inline-block">{% heroicon_outline "home" %}</span>
                 <p class="text-xs mt-1">home</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "users" %}</span>
+                <p class="text-xs mt-1">users</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "currency-dollar" %}</span>
+                <p class="text-xs mt-1">currency-dollar</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "shield-check" %}</span>
+                <p class="text-xs mt-1">shield-check</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "document-text" %}</span>
+                <p class="text-xs mt-1">document-text</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "truck" %}</span>
+                <p class="text-xs mt-1">truck</p>
               </div>
               <div class="text-center">
                 <span class="w-6 h-6 inline-block">{% heroicon_outline "check-circle" %}</span>
@@ -500,25 +527,60 @@
               </div>
             </div>
             <h4 class="mb-3">Solid</h4>
-            <div class="flex flex-wrap gap-6 items-center text-greyscale-700 mb-6">
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-greyscale-700 mb-6">
               <div class="text-center">
                 <span class="w-6 h-6 inline-block">{% heroicon_solid "magnifying-glass" %}</span>
                 <p class="text-xs mt-1">magnifying-glass</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "chevron-right" %}</span>
+                <p class="text-xs mt-1">chevron-right</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "bars-3" %}</span>
+                <p class="text-xs mt-1">bars-3</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "arrow-top-right-on-square" %}</span>
+                <p class="text-xs mt-1">arrow-top-right-on-square</p>
               </div>
               <div class="text-center">
                 <span class="w-6 h-6 inline-block">{% heroicon_solid "home" %}</span>
                 <p class="text-xs mt-1">home</p>
               </div>
               <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "users" %}</span>
+                <p class="text-xs mt-1">users</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "currency-dollar" %}</span>
+                <p class="text-xs mt-1">currency-dollar</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "shield-check" %}</span>
+                <p class="text-xs mt-1">shield-check</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "document-text" %}</span>
+                <p class="text-xs mt-1">document-text</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "truck" %}</span>
+                <p class="text-xs mt-1">truck</p>
+              </div>
+              <div class="text-center">
                 <span class="w-6 h-6 inline-block">{% heroicon_solid "check-circle" %}</span>
                 <p class="text-xs mt-1">check-circle</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "exclamation-circle" %}</span>
+                <p class="text-xs mt-1">exclamation-circle</p>
               </div>
             </div>
           </section>
           <section id="alerts" class="mb-12" aria-labelledby="alerts-heading">
             <h3 id="alerts-heading" class="mb-4">Alerts</h3>
             <p class="text-greyscale-600 mb-6">Status message alerts.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="space-y-4 mb-6">
               <c-atoms.alert variant="info">Info alert message.</c-atoms.alert>
               <c-atoms.alert variant="success">Success alert message.</c-atoms.alert>
@@ -533,7 +595,6 @@
           <section id="logo" class="mb-12" aria-labelledby="logo-heading">
             <h3 id="logo-heading" class="mb-4">Logo</h3>
             <p class="text-greyscale-600 mb-6">Portal branding component.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="flex flex-col gap-6 mb-6">
               <c-molecules.logo size="sm" show_image />
               <c-molecules.logo show_image />
@@ -543,7 +604,6 @@
           <section id="search-bar" class="mb-12" aria-labelledby="search-bar-heading">
             <h3 id="search-bar-heading" class="mb-4">Search Bar</h3>
             <p class="text-greyscale-600 mb-6">Search input with submit button.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="max-w-xl mb-6">
               <c-molecules.search-bar />
             </div>
@@ -551,7 +611,6 @@
           <section id="topic-card" class="mb-12" aria-labelledby="topic-card-heading">
             <h3 id="topic-card-heading" class="mb-4">Topic Card</h3>
             <p class="text-greyscale-600 mb-6">Navigation card with icon.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="grid gap-3 max-w-md mb-6">
               <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense" href="#" />
               <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" />
@@ -564,7 +623,6 @@
           <section id="header" class="mb-12" aria-labelledby="header-heading">
             <h3 id="header-heading" class="mb-4">Header</h3>
             <p class="text-greyscale-600 mb-6">Responsive sticky header.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.header sticky="" />
             </div>
@@ -572,7 +630,6 @@
           <section id="hero" class="mb-12" aria-labelledby="hero-heading">
             <h3 id="hero-heading" class="mb-4">Hero</h3>
             <p class="text-greyscale-600 mb-6">Hero section with search.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.hero />
             </div>
@@ -580,7 +637,6 @@
           <section id="topic-grid" class="mb-12" aria-labelledby="topic-grid-heading">
             <h3 id="topic-grid-heading" class="mb-4">Topic Grid</h3>
             <p class="text-greyscale-600 mb-6">Responsive grid of topic cards.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.topic-grid />
             </div>
@@ -588,7 +644,6 @@
           <section id="footer" class="mb-12" aria-labelledby="footer-heading">
             <h3 id="footer-heading" class="mb-4">Footer</h3>
             <p class="text-greyscale-600 mb-6">Site footer with navigation.</p>
-            <h4 class="mb-3">Demo</h4>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.footer />
             </div>
