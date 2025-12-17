@@ -135,6 +135,11 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Anchor scroll offset for sticky header */
+  [id] {
+    scroll-margin-top: 5rem;
+  }
+
   body {
     @apply font-sans text-greyscale-900 bg-greyscale-25;
   }
