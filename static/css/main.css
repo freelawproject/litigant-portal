@@ -433,6 +433,16 @@
   .mobile-footer-copyright {
     @apply text-sm text-greyscale-500; /* 14px ok for secondary text */
   }
+
+  /* Style Guide Navigation Accordion */
+  .nav-chevron {
+    transition: transform 0.2s ease;
+    transform-origin: center;
+  }
+
+  .nav-accordion[open] .nav-chevron {
+    transform: rotate(90deg);
+  }
 }
 
 /* ==========================================================================
