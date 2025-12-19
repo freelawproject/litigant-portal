@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+.venv/
+
+# Build outputs (not source)
+staticfiles/
+static/css/main.built.css
+*.min.js
+*.min.css
+
+# Django
+*.pyc
+__pycache__/
+db.sqlite3
+
+# Package locks (managed by package managers)
+package-lock.json
+uv.lock

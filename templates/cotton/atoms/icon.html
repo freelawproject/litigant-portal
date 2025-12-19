@@ -1,0 +1,10 @@
+{% load heroicons %}
+<span class="icon inline-flex items-center justify-center {{ class }}"
+      aria-hidden="true"
+      {{ attrs }}>
+  {% if style == "solid" %}
+    {% heroicon_solid name %}
+  {% else %}
+    {% heroicon_outline name %}
+  {% endif %}
+</span>

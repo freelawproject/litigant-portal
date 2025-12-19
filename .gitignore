@@ -32,6 +32,23 @@ Temporary Items
 
 # End of https://www.toptal.com/developers/gitignore/api/macos
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build artifacts
+static/.vite/
+static/assets/
+
+# Tailwind CLI output (source is static/css/main.css)
+static/css/main.built.css
+
+# Django collectstatic output
+staticfiles/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -138,6 +155,9 @@ celerybeat.pid
 # Environments
 .env
 .venv
+
+# Docker secrets (never commit)
+secrets/*.txt
 env/
 venv/
 ENV/

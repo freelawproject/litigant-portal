@@ -1,0 +1,28 @@
+# Whitelist approach - ignore everything, then allow specific files/dirs
+*
+
+# Python project files
+!pyproject.toml
+!uv.lock
+!manage.py
+
+# Application code
+!config/
+!portal/
+!litigant_portal/
+!templates/
+
+# Static files (source only - built CSS is generated in Docker)
+!static/
+static/css/main.built.css
+
+# Docker files
+!Dockerfile
+!docker-compose.yml
+!docker-entrypoint.sh
+
+# Ignore within allowed directories
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.DS_Store

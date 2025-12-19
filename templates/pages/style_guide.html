@@ -1,0 +1,655 @@
+{% extends "base.html" %}
+{% load heroicons %}
+{% block title %}
+  Style Guide - Litigant Portal
+{% endblock title %}
+{% block content %}
+  <div class="max-w-content mx-auto px-4 py-8">
+    <div class="flex flex-col md:flex-row gap-8">
+      <nav class="md:w-64 md:flex-shrink-0 md:sticky md:top-8 md:self-start md:max-h-[calc(100vh-4rem)] md:overflow-y-auto"
+           aria-label="Style guide navigation">
+        <details open class="mb-2 nav-accordion">
+          <summary class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-greyscale-500 uppercase tracking-wider hover:text-primary-600 list-none [&::-webkit-details-marker]:hidden">
+            <span class="w-4 h-4 flex-shrink-0 nav-chevron flex items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
+            <a href="#design-tokens" class="hover:text-primary-600">Design Tokens</a>
+          </summary>
+          <ul class="list-none pl-5 mt-1 border-l border-greyscale-200 ml-2">
+            <li>
+              <a href="#colors"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Colors</a>
+            </li>
+            <li>
+              <a href="#typography"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Typography</a>
+            </li>
+            <li>
+              <a href="#layout"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Layout</a>
+            </li>
+          </ul>
+        </details>
+        <details open class="mb-2 nav-accordion">
+          <summary class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-greyscale-500 uppercase tracking-wider hover:text-primary-600 list-none [&::-webkit-details-marker]:hidden">
+            <span class="w-4 h-4 flex-shrink-0 nav-chevron flex items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
+            <a href="#atoms" class="hover:text-primary-600">Atoms</a>
+          </summary>
+          <ul class="list-none pl-5 mt-1 border-l border-greyscale-200 ml-2">
+            <li>
+              <a href="#buttons"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Buttons</a>
+            </li>
+            <li>
+              <a href="#inputs"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Inputs</a>
+            </li>
+            <li>
+              <a href="#search-input"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Search Input</a>
+            </li>
+            <li>
+              <a href="#selects"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Selects</a>
+            </li>
+            <li>
+              <a href="#links"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Links</a>
+            </li>
+            <li>
+              <a href="#icons"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Icons</a>
+            </li>
+            <li>
+              <a href="#alerts"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Alerts</a>
+            </li>
+          </ul>
+        </details>
+        <details open class="mb-2 nav-accordion">
+          <summary class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-greyscale-500 uppercase tracking-wider hover:text-primary-600 list-none [&::-webkit-details-marker]:hidden">
+            <span class="w-4 h-4 flex-shrink-0 nav-chevron flex items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
+            <a href="#molecules" class="hover:text-primary-600">Molecules</a>
+          </summary>
+          <ul class="list-none pl-5 mt-1 border-l border-greyscale-200 ml-2">
+            <li>
+              <a href="#logo"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Logo</a>
+            </li>
+            <li>
+              <a href="#search-bar"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Search Bar</a>
+            </li>
+            <li>
+              <a href="#topic-card"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Topic Card</a>
+            </li>
+          </ul>
+        </details>
+        <details open class="mb-2 nav-accordion">
+          <summary class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-greyscale-500 uppercase tracking-wider hover:text-primary-600 list-none [&::-webkit-details-marker]:hidden">
+            <span class="w-4 h-4 flex-shrink-0 nav-chevron flex items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
+            <a href="#organisms" class="hover:text-primary-600">Organisms</a>
+          </summary>
+          <ul class="list-none pl-5 mt-1 border-l border-greyscale-200 ml-2">
+            <li>
+              <a href="#header"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Header</a>
+            </li>
+            <li>
+              <a href="#hero"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Hero</a>
+            </li>
+            <li>
+              <a href="#topic-grid"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Topic Grid</a>
+            </li>
+            <li>
+              <a href="#footer"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Footer</a>
+            </li>
+          </ul>
+        </details>
+      </nav>
+      <main class="flex-1 max-w-3xl">
+        <header class="mb-12">
+          <p class="text-sm font-semibold text-primary-600 uppercase mb-2">Litigant Portal</p>
+          <h1>Style Guide</h1>
+          <p class="mt-4 text-greyscale-600">
+            Design tokens and component library for the Litigant Portal. Components use
+            <a href="https://django-cotton.com"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="underline">Django Cotton</a>,
+            <a href="https://alpinejs.dev"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="underline">Alpine.js</a>, and
+            <a href="https://tailwindcss.com"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="underline">Tailwind CSS</a>.
+          </p>
+        </header>
+        <section id="design-tokens" aria-labelledby="design-tokens-heading">
+          <h2 id="design-tokens-heading"
+              class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Design Tokens</h2>
+          <section id="colors" class="mb-12" aria-labelledby="colors-heading">
+            <h3 id="colors-heading" class="mb-4">Colors</h3>
+            <p class="text-greyscale-600 mb-6">
+              Color tokens defined in <code>static/css/main.css</code> via Tailwind v4 <code>@theme</code>.
+            </p>
+            <div class="mb-8">
+              <h4 class="mb-3">Greyscale</h4>
+              <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+                <div>
+                  <div class="h-12 bg-greyscale-25 rounded border border-greyscale-200"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">25</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-50 rounded border border-greyscale-200"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">50</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-100 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">100</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-200 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">200</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-300 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">300</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-400 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">400</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-500 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">500</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-600 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">600</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-700 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">700</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-800 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">800</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-900 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">900</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-greyscale-950 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">950</p>
+                </div>
+              </div>
+            </div>
+            <div class="mb-8">
+              <h4 class="mb-3">Primary (Coral)</h4>
+              <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+                <div>
+                  <div class="h-12 bg-primary-25 rounded border border-greyscale-200"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">25</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-50 rounded border border-greyscale-200"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">50</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-100 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">100</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-200 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">200</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-300 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">300</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-400 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">400</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-500 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">500</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-600 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">600</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-700 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">700</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-800 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">800</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-900 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">900</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-primary-950 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">950</p>
+                </div>
+              </div>
+            </div>
+            <div class="mb-8">
+              <h4 class="mb-3">Brand (Purple)</h4>
+              <div class="grid grid-cols-4 gap-2 max-w-xs">
+                <div>
+                  <div class="h-12 bg-brand-100 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">100</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-brand-300 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">300</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-brand-600 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">600</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-brand-700 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">700</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4 class="mb-3">Semantic</h4>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-md">
+                <div>
+                  <div class="h-12 bg-green-600 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">Success</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-yellow-400 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">Warning</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-red-600 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">Danger</p>
+                </div>
+                <div>
+                  <div class="h-12 bg-blue-700 rounded"></div>
+                  <p class="text-xs mt-1 text-greyscale-500">Info</p>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section id="typography" class="mb-12" aria-labelledby="typography-heading">
+            <h3 id="typography-heading" class="mb-4">Typography</h3>
+            <div class="mb-8">
+              <h4 class="mb-3">Font Families</h4>
+              <div class="space-y-3">
+                <div class="p-4 bg-greyscale-50 rounded-lg">
+                  <p class="font-sans text-lg">Inter (font-sans) - Body text, UI</p>
+                </div>
+                <div class="p-4 bg-greyscale-50 rounded-lg">
+                  <p class="font-cooper text-lg font-semibold">Cooper Hewitt (font-cooper) - Headings</p>
+                </div>
+                <div class="p-4 bg-greyscale-50 rounded-lg">
+                  <p class="font-mono text-lg">DM Mono (font-mono) - Code</p>
+                </div>
+              </div>
+            </div>
+            <div class="mb-8">
+              <h4 class="mb-3">Headings</h4>
+              <div class="space-y-3 p-4 bg-greyscale-50 rounded-lg">
+                <h1>Heading 1</h1>
+                <h2>Heading 2</h2>
+                <h3>Heading 3</h3>
+                <h4>Heading 4</h4>
+              </div>
+            </div>
+            <div>
+              <h4 class="mb-3">Text Sizes</h4>
+              <div class="space-y-2">
+                <p class="text-xs">
+                  <code class="mr-2">text-xs</code> 12px
+                </p>
+                <p class="text-sm">
+                  <code class="mr-2">text-sm</code> 14px
+                </p>
+                <p class="text-md">
+                  <code class="mr-2">text-md</code> 16px
+                </p>
+                <p class="text-lg">
+                  <code class="mr-2">text-lg</code> 18px
+                </p>
+                <p class="text-xl">
+                  <code class="mr-2">text-xl</code> 20px
+                </p>
+              </div>
+            </div>
+          </section>
+          <section id="layout" class="mb-12" aria-labelledby="layout-heading">
+            <h3 id="layout-heading" class="mb-4">Layout</h3>
+            <div class="bg-greyscale-100 rounded-xl p-4">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>max-w-content</code></span>
+                <span class="p-2.5">948px - Main content width</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>.container-desktop</code></span>
+                <span class="p-2.5">Centered with responsive padding</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>.banner</code></span>
+                <span class="p-2.5">Rounded card with border</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>.card</code></span>
+                <span class="p-2.5">White card with border</span>
+              </div>
+            </div>
+          </section>
+        </section>
+        <section id="atoms" aria-labelledby="atoms-heading">
+          <h2 id="atoms-heading"
+              class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Atoms</h2>
+          <section id="buttons" class="mb-12" aria-labelledby="buttons-heading">
+            <h3 id="buttons-heading" class="mb-4">Buttons</h3>
+            <p class="text-greyscale-600 mb-6">Accessible button component with multiple variants.</p>
+            <div class="flex flex-wrap gap-3 mb-6">
+              <c-atoms.button variant="primary">Primary</c-atoms.button>
+              <c-atoms.button variant="outline">Outline</c-atoms.button>
+              <c-atoms.button variant="dark">Dark</c-atoms.button>
+              <c-atoms.button variant="ghost">Ghost</c-atoms.button>
+              <c-atoms.button variant="danger">Danger</c-atoms.button>
+            </div>
+            <div class="flex flex-wrap gap-3 mb-6">
+              <c-atoms.button variant="primary" size="sm">Small</c-atoms.button>
+              <c-atoms.button variant="primary">Default</c-atoms.button>
+              <c-atoms.button variant="primary" size="xl">Extra Large</c-atoms.button>
+            </div>
+            <div class="mb-6">
+              <c-atoms.button variant="primary" disabled>Disabled</c-atoms.button>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+                <span class="p-2.5">"primary" | "outline" | "dark" | "ghost" | "danger"</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
+                <span class="p-2.5">"sm" | "" | "xl"</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
+                <span class="p-2.5">Boolean</span>
+              </div>
+            </div>
+            <details class="mt-4">
+              <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+              <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-lg p-4 overflow-x-auto text-sm"><code>&lt;c-atoms.button variant="primary"&gt;Primary&lt;/c-atoms.button&gt;
+&lt;c-atoms.button variant="outline" size="sm"&gt;Small Outline&lt;/c-atoms.button&gt;
+&lt;c-atoms.button variant="danger" disabled&gt;Disabled&lt;/c-atoms.button&gt;</code></pre>
+            </details>
+          </section>
+          <section id="inputs" class="mb-12" aria-labelledby="inputs-heading">
+            <h3 id="inputs-heading" class="mb-4">Inputs</h3>
+            <p class="text-greyscale-600 mb-6">Text input with error and success states.</p>
+            <div class="space-y-4 mb-6 max-w-md">
+              <c-atoms.input placeholder="Default input" />
+              <c-atoms.input placeholder="Error state" error />
+              <c-atoms.input placeholder="Success state" success />
+              <c-atoms.input placeholder="Disabled" disabled />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type</code></span>
+                <span class="p-2.5">"text" | "email" | "password" | etc.</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>error</code></span>
+                <span class="p-2.5">Boolean - error styling</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>success</code></span>
+                <span class="p-2.5">Boolean - success styling</span>
+              </div>
+            </div>
+          </section>
+          <section id="search-input"
+                   class="mb-12"
+                   aria-labelledby="search-input-heading">
+            <h3 id="search-input-heading" class="mb-4">Search Input</h3>
+            <p class="text-greyscale-600 mb-6">Search input with built-in icon.</p>
+            <div class="max-w-md mb-6">
+              <c-atoms.search-input placeholder="What do you need help with?" />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>placeholder</code></span>
+                <span class="p-2.5">Placeholder text</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
+                <span class="p-2.5">Form field name</span>
+              </div>
+            </div>
+          </section>
+          <section id="selects" class="mb-12" aria-labelledby="selects-heading">
+            <h3 id="selects-heading" class="mb-4">Selects</h3>
+            <p class="text-greyscale-600 mb-6">Select dropdown with custom styling.</p>
+            <div class="space-y-4 mb-6 max-w-md">
+              <c-atoms.select>
+              <option value="">Select an option</option>
+              <option value="1">Option 1</option>
+              <option value="2">Option 2</option>
+              </c-atoms.select>
+              <c-atoms.select error>
+              <option value="">Error state</option>
+              </c-atoms.select>
+            </div>
+          </section>
+          <section id="links" class="mb-12" aria-labelledby="links-heading">
+            <h3 id="links-heading" class="mb-4">Links</h3>
+            <p class="text-greyscale-600 mb-6">Link component with external link handling.</p>
+            <div class="flex flex-wrap gap-6 mb-6">
+              <c-atoms.link href="#" variant="default">Default</c-atoms.link>
+              <c-atoms.link href="#" variant="primary">Primary</c-atoms.link>
+              <c-atoms.link href="#" variant="secondary">Secondary</c-atoms.link>
+              <c-atoms.link href="https://free.law" target="_blank" external_icon>External</c-atoms.link>
+            </div>
+          </section>
+          <section id="icons" class="mb-12" aria-labelledby="icons-heading">
+            <h3 id="icons-heading" class="mb-4">Icons</h3>
+            <p class="text-greyscale-600 mb-6">
+              <a href="https://heroicons.com"
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 class="underline">Heroicons</a>
+              via django-heroicons.
+            </p>
+            <h4 class="mb-3">Outline</h4>
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-greyscale-700 mb-6">
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "magnifying-glass" %}</span>
+                <p class="text-xs mt-1">magnifying-glass</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "chevron-right" %}</span>
+                <p class="text-xs mt-1">chevron-right</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "bars-3" %}</span>
+                <p class="text-xs mt-1">bars-3</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "arrow-top-right-on-square" %}</span>
+                <p class="text-xs mt-1">arrow-top-right-on-square</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "home" %}</span>
+                <p class="text-xs mt-1">home</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "users" %}</span>
+                <p class="text-xs mt-1">users</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "currency-dollar" %}</span>
+                <p class="text-xs mt-1">currency-dollar</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "shield-check" %}</span>
+                <p class="text-xs mt-1">shield-check</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "document-text" %}</span>
+                <p class="text-xs mt-1">document-text</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "truck" %}</span>
+                <p class="text-xs mt-1">truck</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "check-circle" %}</span>
+                <p class="text-xs mt-1">check-circle</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_outline "exclamation-circle" %}</span>
+                <p class="text-xs mt-1">exclamation-circle</p>
+              </div>
+            </div>
+            <h4 class="mb-3">Solid</h4>
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-greyscale-700 mb-6">
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "magnifying-glass" %}</span>
+                <p class="text-xs mt-1">magnifying-glass</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "chevron-right" %}</span>
+                <p class="text-xs mt-1">chevron-right</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "bars-3" %}</span>
+                <p class="text-xs mt-1">bars-3</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "arrow-top-right-on-square" %}</span>
+                <p class="text-xs mt-1">arrow-top-right-on-square</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "home" %}</span>
+                <p class="text-xs mt-1">home</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "users" %}</span>
+                <p class="text-xs mt-1">users</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "currency-dollar" %}</span>
+                <p class="text-xs mt-1">currency-dollar</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "shield-check" %}</span>
+                <p class="text-xs mt-1">shield-check</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "document-text" %}</span>
+                <p class="text-xs mt-1">document-text</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "truck" %}</span>
+                <p class="text-xs mt-1">truck</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "check-circle" %}</span>
+                <p class="text-xs mt-1">check-circle</p>
+              </div>
+              <div class="text-center">
+                <span class="w-6 h-6 inline-block">{% heroicon_solid "exclamation-circle" %}</span>
+                <p class="text-xs mt-1">exclamation-circle</p>
+              </div>
+            </div>
+          </section>
+          <section id="alerts" class="mb-12" aria-labelledby="alerts-heading">
+            <h3 id="alerts-heading" class="mb-4">Alerts</h3>
+            <p class="text-greyscale-600 mb-6">Status message alerts.</p>
+            <div class="space-y-4 mb-6">
+              <c-atoms.alert variant="info">Info alert message.</c-atoms.alert>
+              <c-atoms.alert variant="success">Success alert message.</c-atoms.alert>
+              <c-atoms.alert variant="warning">Warning alert message.</c-atoms.alert>
+              <c-atoms.alert variant="danger">Danger alert message.</c-atoms.alert>
+            </div>
+          </section>
+        </section>
+        <section id="molecules" aria-labelledby="molecules-heading">
+          <h2 id="molecules-heading"
+              class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Molecules</h2>
+          <section id="logo" class="mb-12" aria-labelledby="logo-heading">
+            <h3 id="logo-heading" class="mb-4">Logo</h3>
+            <p class="text-greyscale-600 mb-6">Portal branding component.</p>
+            <div class="flex flex-col gap-6 mb-6">
+              <c-molecules.logo size="sm" show_image />
+              <c-molecules.logo show_image />
+              <c-molecules.logo size="lg" show_image />
+            </div>
+          </section>
+          <section id="search-bar" class="mb-12" aria-labelledby="search-bar-heading">
+            <h3 id="search-bar-heading" class="mb-4">Search Bar</h3>
+            <p class="text-greyscale-600 mb-6">Search input with submit button.</p>
+            <div class="max-w-xl mb-6">
+              <c-molecules.search-bar />
+            </div>
+          </section>
+          <section id="topic-card" class="mb-12" aria-labelledby="topic-card-heading">
+            <h3 id="topic-card-heading" class="mb-4">Topic Card</h3>
+            <p class="text-greyscale-600 mb-6">Navigation card with icon.</p>
+            <div class="grid gap-3 max-w-md mb-6">
+              <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense" href="#" />
+              <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" />
+            </div>
+          </section>
+        </section>
+        <section id="organisms" aria-labelledby="organisms-heading">
+          <h2 id="organisms-heading"
+              class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Organisms</h2>
+          <section id="header" class="mb-12" aria-labelledby="header-heading">
+            <h3 id="header-heading" class="mb-4">Header</h3>
+            <p class="text-greyscale-600 mb-6">Responsive sticky header.</p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+              <c-organisms.header sticky="" />
+            </div>
+          </section>
+          <section id="hero" class="mb-12" aria-labelledby="hero-heading">
+            <h3 id="hero-heading" class="mb-4">Hero</h3>
+            <p class="text-greyscale-600 mb-6">Hero section with search.</p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+              <c-organisms.hero />
+            </div>
+          </section>
+          <section id="topic-grid" class="mb-12" aria-labelledby="topic-grid-heading">
+            <h3 id="topic-grid-heading" class="mb-4">Topic Grid</h3>
+            <p class="text-greyscale-600 mb-6">Responsive grid of topic cards.</p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+              <c-organisms.topic-grid />
+            </div>
+          </section>
+          <section id="footer" class="mb-12" aria-labelledby="footer-heading">
+            <h3 id="footer-heading" class="mb-4">Footer</h3>
+            <p class="text-greyscale-600 mb-6">Site footer with navigation.</p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+              <c-organisms.footer />
+            </div>
+          </section>
+        </section>
+      </main>
+    </div>
+  </div>
+{% endblock content %}

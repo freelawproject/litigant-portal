@@ -1,0 +1,489 @@
+/**
+ * Litigant Portal - Main Stylesheet (Tailwind v4)
+ * Based on CourtListener's design system
+ * Build: tailwindcss -i static/css/main.css -o static/css/main.built.css
+ */
+
+@import 'tailwindcss';
+
+/* ==========================================================================
+   THEME - Custom design tokens
+   ========================================================================== */
+
+@theme {
+  /* Breakpoints */
+  --breakpoint-xs: 392px;
+
+  /* Custom spacing */
+  --spacing-4_5: 1.125rem;
+  --spacing-7_5: 1.875rem;
+  --spacing-13: 3.25rem;
+  --spacing-15: 3.75rem;
+  --spacing-18: 4.5rem;
+  --spacing-21: 5.25rem;
+  --spacing-26: 6.5rem;
+  --spacing-35: 8.75rem;
+  --spacing-41: 10.25rem;
+  --spacing-42: 10.5rem;
+  --spacing-45: 11.25rem;
+  --spacing-53: 13.25rem;
+  --spacing-55: 13.75rem;
+  --spacing-70: 17.5rem;
+
+  /* Fonts */
+  --font-sans: 'Inter', sans-serif;
+  --font-cooper: 'Cooper Hewitt', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  /* Greyscale colors */
+  --color-greyscale-25: #fdfcfb;
+  --color-greyscale-50: #fbfaf8;
+  --color-greyscale-100: #f5f3ef;
+  --color-greyscale-200: #e8e4de;
+  --color-greyscale-300: #d6d0c6;
+  --color-greyscale-400: #a8a091;
+  --color-greyscale-500: #776f61;
+  --color-greyscale-600: #574f40;
+  --color-greyscale-700: #453f35;
+  --color-greyscale-800: #29261f;
+  --color-greyscale-900: #1c1814;
+  --color-greyscale-950: #171411;
+
+  /* Primary colors (coral/red) */
+  --color-primary-25: #fdf9f7;
+  --color-primary-50: #fbf4ef;
+  --color-primary-100: #f7e6de;
+  --color-primary-200: #efcbbd;
+  --color-primary-300: #e19684;
+  --color-primary-400: #d56958;
+  --color-primary-500: #cd4137;
+  --color-primary-600: #b5362d;
+  --color-primary-700: #9b2e27;
+  --color-primary-800: #832720;
+  --color-primary-900: #6a201a;
+  --color-primary-950: #4e1713;
+
+  /* Brand colors (purple) */
+  --color-brand-100: #f4ebff;
+  --color-brand-300: #d6bbfb;
+  --color-brand-600: #7f56d9;
+  --color-brand-700: #6941c6;
+
+  /* Accent colors */
+  --color-yellow-50: #fffaeb;
+  --color-yellow-400: #fdb022;
+  --color-yellow-700: #b54708;
+  --color-blue-700: #004eeb;
+  --color-red-100: #fee4e2;
+  --color-red-200: #fecdca;
+  --color-red-300: #fda29b;
+  --color-red-400: #ff692e;
+  --color-red-500: #e62e05;
+  --color-red-600: #d92d20;
+  --color-red-700: #b42318;
+  --color-green-100: #d1fadf;
+  --color-green-500: #12b76a;
+  --color-green-600: #039855;
+  --color-green-700: #027a48;
+
+  /* Font sizes with line heights */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-md: 1rem;
+  --text-md--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-display-xs: 1.5rem;
+  --text-display-xs--line-height: 2rem;
+  --text-display-sm: 1.875rem;
+  --text-display-sm--line-height: 2.375rem;
+  --text-display-md: 2rem;
+  --text-display-md--line-height: 2.5rem;
+  --text-display-lg: 2.5rem;
+  --text-display-lg--line-height: 3rem;
+  --text-display-xl: 2.75rem;
+  --text-display-xl--line-height: 3.25rem;
+
+  /* Max widths */
+  --container-content: 948px;
+}
+
+/* ==========================================================================
+   BASE LAYER - Element defaults
+   ========================================================================== */
+
+@layer base {
+  /* CSS Variables for responsive calculations */
+  :root {
+    --mobile-main-padding: 1rem;
+    --padded-full-width: calc(100vw - (2 * var(--mobile-main-padding)));
+    --content-max-width: 948px;
+  }
+
+  /* Alpine.js cloak - hide elements until Alpine initializes */
+  [x-cloak] {
+    display: none !important;
+  }
+
+  /* Base HTML element styles */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Anchor scroll offset for sticky header */
+  [id] {
+    scroll-margin-top: 5rem;
+  }
+
+  body {
+    @apply font-sans text-greyscale-900 bg-greyscale-25;
+  }
+
+  /* Headings */
+  h1 {
+    @apply font-cooper text-display-sm font-semibold md:text-display-lg;
+  }
+
+  h2 {
+    @apply text-display-xs font-semibold text-greyscale-900;
+  }
+
+  h3 {
+    @apply text-xl font-semibold text-greyscale-900;
+  }
+
+  h4 {
+    @apply text-lg font-semibold text-greyscale-900;
+  }
+
+  /* Lists */
+  ul {
+    @apply list-disc pl-6;
+  }
+
+  ol {
+    @apply list-decimal pl-6;
+  }
+
+  /* Blockquote */
+  blockquote {
+    @apply border-l-4 border-l-greyscale-200 pl-6 py-2 text-xl font-normal;
+  }
+
+  /* Tables */
+  table {
+    @apply w-full;
+  }
+
+  tr {
+    @apply border-b border-greyscale-200 text-base font-normal;
+  }
+
+  th {
+    @apply p-2 text-start text-greyscale-700 font-normal bg-greyscale-100;
+  }
+
+  td {
+    @apply p-2;
+  }
+
+  /* Code */
+  code {
+    @apply font-mono text-sm bg-brand-100 text-brand-600 border border-brand-300 rounded-sm px-1;
+  }
+
+  /* Custom Checkbox */
+  input[type='checkbox'] {
+    @apply relative appearance-none shrink-0 w-5 h-5 rounded border border-greyscale-300 bg-white;
+    @apply checked:border-primary-600 checked:bg-primary-600;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-600/60;
+    @apply disabled:border-greyscale-300 disabled:bg-greyscale-100 disabled:checked:bg-greyscale-100;
+    @apply before:absolute before:inset-0 before:m-auto before:w-4 before:h-4 before:bg-white;
+    @apply checked:before:scale-100 before:scale-0 before:transform before:duration-200 transition-colors;
+  }
+
+  input[type='checkbox']::before {
+    content: '';
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")
+      no-repeat center/contain;
+  }
+
+  /* Custom Radio */
+  input[type='radio'] {
+    @apply relative appearance-none shrink-0 w-5 h-5 rounded-full border border-greyscale-300;
+    @apply checked:border-primary-600 checked:bg-primary-600;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600/60;
+    @apply disabled:border-greyscale-300 disabled:bg-greyscale-100;
+    @apply before:absolute before:inset-0 before:m-auto before:w-2 before:h-2 before:rounded-full before:bg-white;
+    @apply before:scale-0 checked:before:scale-100 before:transform before:duration-200 transition-colors;
+    @apply disabled:checked:before:bg-greyscale-400;
+  }
+
+  /* Base select styling */
+  select {
+    @apply border bg-white py-3 px-3.5 rounded-lg text-sm font-medium text-greyscale-900;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER - Reusable component classes
+   ========================================================================== */
+
+@layer components {
+  /* Skip Link - Accessibility */
+  .skip-link {
+    @apply transition-all ease-in-out pointer-events-none;
+    @apply focus-visible:pointer-events-auto top-0 left-0;
+    @apply bg-primary-600 text-white absolute p-2 m-2;
+    @apply -translate-y-24 focus-visible:translate-y-0;
+    @apply focus-visible:opacity-100 opacity-0;
+    @apply focus-visible:ring-2 focus-visible:ring-primary-900;
+    @apply focus-visible:outline focus-visible:outline-primary-900 z-50;
+  }
+
+  /* Icons */
+  .icon {
+    @apply inline-flex items-center justify-center;
+  }
+
+  /* Banners & Cards */
+  .banner {
+    @apply flex flex-col gap-4 rounded-2xl bg-greyscale-100 border-2 border-greyscale-200 p-6;
+  }
+
+  .card {
+    @apply bg-white rounded-xl border border-greyscale-200 p-4;
+  }
+
+  /* Layout */
+  .container-desktop {
+    @apply max-w-content mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .container-mobile {
+    @apply max-w-md mx-auto px-4;
+  }
+
+  .capped-width {
+    @apply w-full mx-auto;
+    max-width: var(--content-max-width);
+  }
+
+  /* Text Box (for forms) */
+  .textbox {
+    @apply text-md font-normal py-3 px-4 rounded-lg border border-greyscale-300;
+  }
+
+  /* ==========================================================================
+     LANDING PAGE COMPONENTS
+     ========================================================================== */
+
+  /* Search Input */
+  .search-input-wrapper {
+    @apply relative flex-1;
+  }
+
+  .search-input-icon {
+    @apply absolute left-4 top-1/2 -translate-y-1/2 text-greyscale-400 pointer-events-none;
+  }
+
+  .search-input {
+    @apply w-full text-md font-normal py-3.5 pl-12 pr-4 rounded-lg;
+    @apply border border-greyscale-300 bg-white text-greyscale-900;
+    @apply placeholder:text-greyscale-400;
+    @apply transition-colors duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600;
+    min-height: 48px; /* 44px touch target + padding */
+  }
+
+  /* Logo */
+  .logo {
+    @apply inline-flex items-center gap-2 no-underline;
+    @apply text-greyscale-900 font-cooper font-semibold;
+    @apply hover:text-primary-600 transition-colors;
+  }
+
+  .logo-image {
+    @apply h-10 w-auto; /* 40px - default */
+  }
+
+  .logo-sm .logo-image {
+    @apply h-8; /* 32px - compact (mobile header) */
+  }
+
+  .logo-lg .logo-image {
+    @apply h-15; /* 60px - prominent (footer, hero) */
+  }
+
+  /* Search Bar */
+  .search-bar {
+    @apply flex gap-2 w-full;
+  }
+
+  /* Topic Card */
+  .topic-card {
+    @apply flex items-center gap-4 p-4 rounded-xl no-underline;
+    @apply bg-white border border-greyscale-200;
+    @apply text-greyscale-900 transition-all duration-200;
+    @apply hover:border-primary-300 hover:shadow-sm;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2;
+    min-height: 72px; /* Good touch target */
+  }
+
+  .topic-card-icon {
+    @apply flex-shrink-0 w-12 h-12 rounded-lg;
+    @apply bg-primary-50 text-primary-600;
+    @apply flex items-center justify-center;
+  }
+
+  .topic-card-content {
+    @apply flex-1 min-w-0;
+  }
+
+  .topic-card-title {
+    @apply text-md font-semibold text-greyscale-900 m-0;
+  }
+
+  .topic-card-description {
+    @apply text-sm text-greyscale-500 mt-0.5 m-0;
+    @apply line-clamp-1;
+  }
+
+  .topic-card-arrow {
+    @apply flex-shrink-0 text-greyscale-400;
+  }
+
+  /* Mobile Header */
+  .mobile-header {
+    @apply bg-white border-b border-greyscale-200;
+  }
+
+  .mobile-header-sticky {
+    @apply sticky top-0 z-40;
+  }
+
+  .mobile-header-inner {
+    @apply flex items-center justify-between px-4 py-3;
+    @apply max-w-content mx-auto;
+  }
+
+  .mobile-header-menu-btn {
+    @apply p-2 -mr-2; /* Extend touch target */
+  }
+
+  /* Hero Section */
+  .hero {
+    @apply px-4 py-12 md:py-16 lg:py-20;
+    @apply bg-greyscale-50;
+  }
+
+  .hero-content {
+    @apply max-w-xl mx-auto text-center;
+  }
+
+  .hero-heading {
+    @apply text-display-sm md:text-display-md lg:text-display-lg;
+    @apply font-cooper font-semibold text-greyscale-900;
+    @apply mb-3;
+  }
+
+  .hero-subheading {
+    @apply text-md md:text-lg text-greyscale-600;
+    @apply mb-8;
+  }
+
+  /* Topic Grid */
+  .topic-grid-section {
+    @apply px-4 py-10 md:py-12;
+  }
+
+  .topic-grid-heading {
+    @apply text-display-xs font-semibold text-greyscale-900;
+    @apply mb-6 text-center md:text-left;
+    @apply max-w-content mx-auto;
+  }
+
+  .topic-grid {
+    @apply grid gap-3 md:gap-4;
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+    @apply max-w-content mx-auto;
+  }
+
+  /* Mobile Footer */
+  .mobile-footer {
+    @apply bg-greyscale-100 border-t border-greyscale-200;
+    @apply px-4 py-4; /* 16px vertical padding */
+  }
+
+  .mobile-footer-inner {
+    @apply max-w-content mx-auto text-center;
+  }
+
+  .mobile-footer-nav {
+    @apply flex flex-wrap justify-center gap-4 md:gap-6;
+    @apply mb-4;
+  }
+
+  .mobile-footer-link {
+    @apply text-base text-greyscale-600 no-underline; /* 16px for WCAG 2.x */
+    @apply hover:text-primary-600 hover:underline;
+    @apply transition-colors;
+  }
+
+  .mobile-footer-copyright {
+    @apply text-sm text-greyscale-500; /* 14px ok for secondary text */
+  }
+
+  /* Style Guide Navigation Accordion */
+  .nav-chevron {
+    transition: transform 0.2s ease;
+    transform-origin: center;
+  }
+
+  .nav-accordion[open] .nav-chevron {
+    transform: rotate(90deg);
+  }
+}
+
+/* ==========================================================================
+   UTILITIES LAYER - Custom utilities
+   ========================================================================== */
+
+@layer utilities {
+  /* Lead text for intro paragraphs */
+  .lead {
+    @apply text-xl text-greyscale-700 font-normal;
+  }
+
+  /* Focus container - provides focus state when a child input is focused */
+  .focus-container {
+    @apply flex;
+  }
+
+  .focus-container:has(input:focus) {
+    @apply outline outline-2 outline-primary-600;
+  }
+
+  /* Scrollbar styling */
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-greyscale-300 rounded-full;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-greyscale-400;
+  }
+}

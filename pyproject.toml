@@ -6,7 +6,7 @@ requires = [
 
 [project]
 name = "litigant_portal"
-version = "0.0.1"
+version = "0.1.0"
 description = "Access to Justice Portal"
 authors = [{ name = "Free Law Project", email = "info@free.law" }]
 requires-python = ">=3.13"
@@ -33,6 +33,23 @@ classifiers = [
 
 urls.Repository = "https://github.com/freelawproject/litigant-portal"
 urls."Organisation Homepage" = "https://free.law/"
+dependencies = [
+    "Django>=5.2",
+    "dj-database-url>=2.3",
+    "django-allauth>=65.0",
+    "django-cotton>=1.0",
+    "django-csp>=3.8",
+    "gunicorn>=23.0",
+    "heroicons>=2.0",
+    "psycopg[binary]>=3.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "djlint>=1.36.4",
+    "pre-commit>=4.5.0",
+    "ruff>=0.11.8",
+]
 
 
 [tool.setuptools]
@@ -76,3 +93,11 @@ lint.ignore = [
   # printf-string-formatting
   "UP031",
 ]
+
+[tool.djlint]
+profile = "django"
+indent = 2
+max_line_length = 120
+format_css = true
+format_js = true
+ignore = "H006,H030,H031"  # img alt, meta description, meta keywords

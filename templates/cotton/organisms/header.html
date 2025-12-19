@@ -1,0 +1,23 @@
+<c-vars sticky="true" />
+<header class="mobile-header {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
+        {{ attrs }}>
+  <div class="mobile-header-inner">
+    <div class="flex items-center gap-4">
+      <c-molecules.logo size="sm" />
+      {% if debug %}
+        <nav class="flex items-center gap-1 text-xs">
+          <a href="{% url 'portal:style_guide' %}"
+             class="px-2 py-1 text-greyscale-500 hover:text-greyscale-700 hover:bg-greyscale-100 rounded transition-colors">Style Guide</a>
+          <a href="{% url 'admin:index' %}"
+             class="px-2 py-1 text-greyscale-500 hover:text-greyscale-700 hover:bg-greyscale-100 rounded transition-colors">Admin</a>
+        </nav>
+      {% endif %}
+    </div>
+    <button type="button"
+            class="mobile-header-menu-btn btn-ghost"
+            aria-label="Open menu"
+            aria-expanded="false">
+      <c-atoms.icon name="bars-3" class="w-6 h-6" />
+    </button>
+  </div>
+</header>
