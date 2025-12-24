@@ -42,12 +42,15 @@ dependencies = [
     "gunicorn>=23.0",
     "heroicons>=2.0",
     "psycopg[binary]>=3.2",
+    # AI Chat (Ollama uses OpenAI-compatible API)
+    "openai>=1.50",
 ]
 
 [project.optional-dependencies]
 dev = [
     "djlint>=1.36.4",
     "pre-commit>=4.5.0",
+    "pytailwindcss>=0.2",
     "ruff>=0.11.8",
 ]
 

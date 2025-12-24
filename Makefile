@@ -5,12 +5,10 @@ help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install Python dependencies
+install: ## Install Python dependencies (includes Tailwind CSS)
 	python -m venv .venv
 	.venv/bin/pip install --upgrade pip
 	.venv/bin/pip install -e ".[dev]"
-	@echo ""
-	@echo "NOTE: Tailwind CSS CLI required (brew install tailwindcss)"
 
 dev: ## Start Django + Tailwind CSS watch
 	./dev.sh

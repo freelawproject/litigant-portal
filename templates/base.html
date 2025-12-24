@@ -34,15 +34,11 @@
     </div>
     {# Theme store - must load before Alpine #}
     <script src="{% static 'js/theme.js' %}"></script>
+    {# Chat component - must load before Alpine #}
+    <script src="{% static 'js/chat.js' %}"></script>
     {# Alpine.js CSP build - required for Content Security Policy compliance #}
     {# https://alpinejs.dev/advanced/csp #}
-    {% if debug %}
-      <script defer
-              src="https://cdn.jsdelivr.net/npm/@alpinejs/[email protected]/dist/cdn.js"></script>
-    {% else %}
-      <script defer
-              src="https://cdn.jsdelivr.net/npm/@alpinejs/[email protected]/dist/cdn.min.js"></script>
-    {% endif %}
+    <script defer src="{% static 'js/alpine.min.js' %}"></script>
     {# Additional JavaScript #}
     {% block extra_js %}
     {% endblock extra_js %}

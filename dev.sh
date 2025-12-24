@@ -15,6 +15,9 @@ done
 
 export DEBUG="${DEBUG_MODE}"
 
+# Pin Tailwind CSS version (must match Dockerfile)
+export TAILWINDCSS_VERSION="v4.1.16"
+
 # Generate a random SECRET_KEY for dev if not set
 if [ -z "$SECRET_KEY" ]; then
   export SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')

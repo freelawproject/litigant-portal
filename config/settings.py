@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     # Third-party apps
     "allauth",
     "allauth.account",
@@ -69,6 +70,7 @@ INSTALLED_APPS = [
     # Local apps
     "portal",
     "litigant_portal",
+    "chat",
 ]
 
 MIDDLEWARE = [
@@ -190,7 +192,7 @@ SITE_ID = 1
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", "https://cdn.jsdelivr.net")  # Alpine.js CDN
+CSP_SCRIPT_SRC = ("'self'",)  # Alpine.js served locally
 CSP_STYLE_SRC = ("'self'",)
 CSP_IMG_SRC = (
     "'self'",
@@ -225,3 +227,17 @@ if not DEBUG:
     # Additional security headers
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = "same-origin"
+
+
+# AI Chat configuration
+CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
+CHAT_PROVIDER = os.environ.get("CHAT_PROVIDER", "ollama")
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "llama3.2:3b")
+CHAT_MAX_TOKENS = int(os.environ.get("CHAT_MAX_TOKENS", "1024"))
+CHAT_SYSTEM_PROMPT = """You are a helpful legal assistant for self-represented \
+litigants. Provide clear, accurate information about legal procedures, court \
+processes, and document preparation. Always recommend consulting with a licensed \
+attorney for specific legal advice. Be empathetic and use plain language.
+
+Format responses using markdown: **bold** for emphasis, bullet lists for steps, \
+and clear paragraph breaks. Keep responses concise and well-structured."""

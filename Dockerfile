@@ -36,7 +36,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM base AS tailwind
 
 ARG TARGETARCH
-ARG TAILWIND_VERSION=v4.1.8
+ARG TAILWIND_VERSION=v4.1.16
 RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "x64") \
     && curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-${ARCH} \
     && chmod +x tailwindcss-linux-${ARCH} \
@@ -61,7 +61,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project
 
 ARG TARGETARCH
-ARG TAILWIND_VERSION=v4.1.8
+ARG TAILWIND_VERSION=v4.1.16
 RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "x64") \
     && curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-${ARCH} \
     && chmod +x tailwindcss-linux-${ARCH} \

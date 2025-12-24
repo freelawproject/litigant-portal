@@ -1,0 +1,30 @@
+<c-vars title="" content="" category="" url="" />
+<article class="search-result-card {{ class }}" {{ attrs }}>
+  <div class="flex items-start gap-4">
+    <div class="flex-shrink-0">
+      <c-atoms.icon name="document-text" class="w-6 h-6 text-primary-600" />
+    </div>
+    <div class="flex-1 min-w-0">
+      <h4 class="font-medium text-greyscale-900 mb-1">
+        {% if url %}
+          <a href="{{ url }}" class="hover:text-primary-600">{{ title }}</a>
+        {% else %}
+          {{ title }}
+        {% endif %}
+      </h4>
+      {% if category %}
+        <span class="inline-block px-2 py-0.5 text-xs font-medium bg-greyscale-100 text-greyscale-600 rounded mb-2">
+          {{ category }}
+        </span>
+      {% endif %}
+      <p class="text-sm text-greyscale-600 line-clamp-2">
+        {{ content }}
+      </p>
+    </div>
+    {% if url %}
+      <div class="flex-shrink-0">
+        <c-atoms.icon name="arrow-top-right-on-square" class="w-5 h-5 text-greyscale-400" />
+      </div>
+    {% endif %}
+  </div>
+</article>

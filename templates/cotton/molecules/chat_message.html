@@ -1,0 +1,18 @@
+<c-vars role="user" content="" timestamp="" />
+<div class="chat-message chat-message-{{ role }} {{ class }}" {{ attrs }}>
+  <div class="chat-message-avatar">
+    {% if role == 'user' %}
+      <c-atoms.icon name="user-circle" class="w-8 h-8 text-greyscale-400" />
+    {% else %}
+      <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+    {% endif %}
+  </div>
+  <div class="chat-message-content">
+    <c-atoms.chat-bubble role="{{ role }}">
+      {% if content %}{{ content }}{% else %}{{ slot }}{% endif %}
+    </c-atoms.chat-bubble>
+    {% if timestamp %}
+      <span class="chat-message-time">{{ timestamp }}</span>
+    {% endif %}
+  </div>
+</div>
