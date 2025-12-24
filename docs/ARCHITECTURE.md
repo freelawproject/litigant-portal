@@ -162,10 +162,107 @@ docker compose --profile prod up
 
 ---
 
+## AI Chat
+
+The portal includes an AI chat feature using local LLMs via Ollama.
+
+### Architecture
+
+```
+User Input → POST /chat/send/ → Django creates message
+           → GET /chat/stream/<session_id>/ (SSE)
+           → Ollama API (OpenAI-compatible)
+           → StreamingHttpResponse → Alpine.js updates UI
+```
+
+### Ollama Setup
+
+#### macOS (recommended for dev)
+
+```bash
+# Install via Homebrew
+brew install ollama
+
+# Pull the model
+ollama pull llama3.2:3b
+
+# Start as background service
+brew services start ollama
+
+# Or run manually
+ollama serve
+```
+
+Ollama runs on `localhost:11434`. Django in Docker reaches it via `host.docker.internal:11434`.
+
+**Why local on Mac?** Docker on macOS cannot access Apple Silicon GPU. Running Ollama locally uses Metal acceleration for ~5-10x faster inference.
+
+#### Linux (with NVIDIA GPU)
+
+```bash
+# Install Ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull the model
+ollama pull llama3.2:3b
+
+# Start service
+sudo systemctl enable ollama
+sudo systemctl start ollama
+```
+
+For Docker deployment with GPU access:
+
+```yaml
+# docker-compose.yml
+services:
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+```
+
+#### Linux (CPU only)
+
+Same as above, but inference will be slower without GPU acceleration.
+
+### Configuration
+
+Environment variables in `.env` or `docker-compose.yml`:
+
+```bash
+CHAT_ENABLED=true           # Enable/disable chat feature
+CHAT_PROVIDER=ollama        # Provider: ollama (more coming)
+CHAT_MODEL=llama3.2:3b      # Model to use
+OLLAMA_HOST=localhost:11434 # Ollama API endpoint
+```
+
+### Testing
+
+```bash
+# Verify Ollama is running
+curl http://localhost:11434/api/tags
+
+# Test a prompt
+python scripts/test_markdown.py -p "What are tenant rights?"
+```
+
+---
+
 ## References
 
 - [Django Cotton](https://django-cotton.com/)
 - [AlpineJS](https://alpinejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
+- [Ollama](https://ollama.com/) - Local LLM runner
 - [WCAG 2.1 Quick Ref](https://www.w3.org/WAI/WCAG21/quickref/)
 - [CourtListener Frontend](https://github.com/freelawproject/courtlistener/wiki/New-Frontend-Architecture)
