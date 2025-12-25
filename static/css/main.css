@@ -368,7 +368,7 @@
   }
 
   .mobile-header-inner {
-    @apply flex items-center justify-between px-4 py-3;
+    @apply flex items-center justify-between px-4 py-2;
     @apply max-w-content mx-auto;
   }
 
@@ -378,8 +378,9 @@
 
   /* Hero Section */
   .hero {
-    @apply px-4 py-12 md:py-16 lg:py-20;
-    @apply bg-greyscale-50;
+    @apply px-4 bg-greyscale-50;
+    padding-top: 12vh;
+    padding-bottom: 4vh;
   }
 
   .hero-content {
@@ -394,17 +395,18 @@
 
   .hero-subheading {
     @apply text-md md:text-lg text-greyscale-600;
-    @apply mb-8;
+    @apply mb-4;
   }
 
   /* Topic Grid */
   .topic-grid-section {
-    @apply px-4 py-10 md:py-12;
+    @apply px-4 py-4 md:py-6;
+    transition: all 0.3s ease;
   }
 
   .topic-grid-heading {
     @apply text-display-xs font-semibold text-greyscale-900;
-    @apply mb-6 text-center md:text-left;
+    @apply mb-4 text-center md:text-left;
     @apply max-w-content mx-auto;
   }
 
@@ -414,10 +416,75 @@
     @apply max-w-content mx-auto;
   }
 
+  /* Topic Grid Collapsed State */
+  .topic-grid-collapsed {
+    @apply py-0;
+    @apply border-t border-greyscale-200 bg-greyscale-50;
+  }
+
+  .topic-grid-toggle {
+    @apply w-full flex items-center justify-between;
+    @apply px-4 py-3 max-w-content mx-auto;
+    @apply text-left cursor-pointer;
+    @apply hover:bg-greyscale-100 transition-colors;
+  }
+
+  /* ==========================================================================
+     HOME PAGE - CHAT MODE LAYOUT
+     ========================================================================== */
+
+  /* Container for home page - fills available space in main */
+  .home-container {
+    @apply flex flex-col flex-1 min-h-0;
+  }
+
+
+  /* Chat container - fills available space, constrained to viewport */
+  .chat-container {
+    @apply flex flex-col flex-1 min-h-0;
+    /* Constrain height: viewport minus header (~60px) and footer (~80px) */
+    max-height: calc(100dvh - 140px);
+  }
+
+  /* Chat header - compact title bar */
+  .chat-header {
+    @apply flex items-center justify-between;
+    @apply px-4 py-3 border-b border-greyscale-200 bg-greyscale-50;
+    @apply flex-shrink-0;
+  }
+
+  /* Chat messages - scrollable area that fills remaining space */
+  .chat-messages-area {
+    @apply flex-1 overflow-y-auto px-4 py-4;
+    @apply space-y-4;
+    @apply min-h-0; /* Critical for scroll to work in flex container */
+  }
+
+  /* Chat input area - stays at bottom of container */
+  .chat-input-area {
+    @apply flex-shrink-0;
+    @apply border-t border-greyscale-200 bg-white;
+    @apply px-4 py-3;
+  }
+
+  .chat-input-form {
+    @apply flex gap-2;
+    @apply max-w-3xl mx-auto;
+  }
+
+  .chat-input {
+    @apply w-full text-md font-normal py-3 px-4 rounded-lg;
+    @apply border border-greyscale-300 bg-white text-greyscale-900;
+    @apply placeholder:text-greyscale-400;
+    @apply transition-colors duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600;
+    min-height: 48px; /* 44px touch target + padding */
+  }
+
   /* Mobile Footer */
   .mobile-footer {
     @apply bg-greyscale-100 border-t border-greyscale-200;
-    @apply px-4 py-4; /* 16px vertical padding */
+    @apply px-4 py-2;
   }
 
   .mobile-footer-inner {
@@ -453,9 +520,11 @@
      CHAT COMPONENTS
      ========================================================================== */
 
-  /* Chat Window */
+  /* Chat Window - uses calc to fill available viewport minus header/footer/chrome */
   .chat-window {
-    @apply flex flex-col h-[500px] max-h-[70vh];
+    @apply flex flex-col;
+    height: calc(100dvh - 240px); /* viewport minus header, footer, page header, padding, disclaimer */
+    min-height: 300px;
     @apply bg-white rounded-xl border border-greyscale-200;
     @apply shadow-sm;
   }

@@ -240,38 +240,186 @@ document.addEventListener('alpine:init', () => {
   }))
 
   /**
-   * Hero Search Component
-   * Handles search form in hero section, redirects to chat page.
+   * Home Page Component
+   * Chat-first experience with AI assistance.
    */
-  Alpine.data('heroSearch', () => ({
-    query: '',
+  Alpine.data('homePage', () => ({
+    // State
+    sessionId: '',
+    messages: [],
+    inputText: '',
+    isStreaming: false,
 
-    handleSearch() {
-      if (!this.query.trim()) return
+    init() {
+      // Restore session from localStorage
+      this.sessionId = localStorage.getItem('chatSessionId') || ''
+    },
 
-      // Store query and redirect to chat
-      sessionStorage.setItem('initialChatQuery', this.query.trim())
-      window.location.href = '/chat/'
+    // Send a question
+    async askQuestion() {
+      const content = this.inputText.trim()
+      if (!content || this.isStreaming) return
+
+      this.inputText = ''
+
+      // Add user message
+      this.messages.push({
+        id: Date.now(),
+        role: 'user',
+        content: content,
+      })
+      this.scrollToBottom()
+
+      // Send to server and stream response
+      try {
+        const formData = new FormData()
+        formData.append('message', content)
+        formData.append('csrfmiddlewaretoken', this.getCsrfToken())
+
+        const response = await fetch('/chat/send/', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to send message')
+        }
+
+        const data = await response.json()
+        this.sessionId = data.session_id
+        localStorage.setItem('chatSessionId', this.sessionId)
+
+        await this.streamResponse()
+      } catch (error) {
+        console.error('Chat error:', error)
+        this.messages.push({
+          id: Date.now(),
+          role: 'assistant',
+          content: 'Sorry, I encountered an error. Please try again.',
+        })
+      }
+    },
+
+    // Stream AI response
+    async streamResponse() {
+      this.isStreaming = true
+
+      const messageId = Date.now()
+      const messageIndex = this.messages.length
+      this.messages.push({
+        id: messageId,
+        role: 'assistant',
+        content: '',
+      })
+      this.scrollToBottom()
+
+      let accumulatedContent = ''
+
+      try {
+        const response = await fetch(`/chat/stream/${this.sessionId}/`)
+        if (!response.ok) throw new Error('Stream failed')
+
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          const chunk = decoder.decode(value, { stream: true })
+          const lines = chunk.split('\n')
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim()
+              if (data === '[DONE]') break
+
+              try {
+                const parsed = JSON.parse(data)
+                if (parsed.token) {
+                  accumulatedContent += parsed.token
+                  this.messages[messageIndex] = {
+                    id: messageId,
+                    role: 'assistant',
+                    content: accumulatedContent,
+                  }
+                }
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Stream error:', error)
+        if (!accumulatedContent) {
+          this.messages[messageIndex] = {
+            id: messageId,
+            role: 'assistant',
+            content: 'Sorry, I encountered an error.',
+          }
+        }
+      } finally {
+        this.isStreaming = false
+      }
+    },
+
+    // Get CSRF token
+    getCsrfToken() {
+      const input = document.querySelector('[name=csrfmiddlewaretoken]')
+      if (input) return input.value
+      const cookies = document.cookie.split(';')
+      for (const cookie of cookies) {
+        const [name, value] = cookie.trim().split('=')
+        if (name === 'csrftoken') return value
+      }
+      return ''
+    },
+
+    // Escape HTML
+    escapeHtml(text) {
+      if (!text) return ''
+      return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+    },
+
+    // Clear chat and start new conversation
+    clearChat() {
+      this.messages = []
+      this.sessionId = ''
+      localStorage.removeItem('chatSessionId')
+    },
+
+    // Scroll to bottom of messages
+    scrollToBottom() {
+      this.$nextTick(() => {
+        if (this.$refs.messagesArea) {
+          this.$refs.messagesArea.scrollTop = this.$refs.messagesArea.scrollHeight
+        }
+      })
+    },
+
+    // Render markdown
+    renderMarkdown(text) {
+      if (!text) return ''
+      return text
+        .replace(/\\+/g, '')
+        .replace(/<!--.*?-->/g, '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/__(.+?)__/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/_([^_]+)_/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary-600 underline" target="_blank">$1</a>')
+        .replace(/^\d+[.\\]+\s+(.+)$/gm, '<li>$1</li>')
+        .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
+        .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc ml-4 my-2">$&</ul>')
+        .replace(/^###\s+(.+)$/gm, '<h4 class="font-semibold mt-3 mb-1">$1</h4>')
+        .replace(/^##\s+(.+)$/gm, '<h3 class="font-semibold text-lg mt-3 mb-1">$1</h3>')
+        .replace(/\n\n+/g, '</p><p class="my-2">')
+        .replace(/\n/g, '<br>')
     },
   }))
-})
-
-// Auto-send initial query if coming from hero search
-document.addEventListener('alpine:init', () => {
-  const initialQuery = sessionStorage.getItem('initialChatQuery')
-  if (initialQuery) {
-    sessionStorage.removeItem('initialChatQuery')
-
-    // Wait for Alpine to fully initialize components
-    document.addEventListener('alpine:initialized', () => {
-      setTimeout(() => {
-        const chatWindow = document.querySelector('[x-data*="chatWindow"]')
-        if (chatWindow && chatWindow._x_dataStack) {
-          const component = chatWindow._x_dataStack[0]
-          component.inputText = initialQuery
-          component.sendMessage()
-        }
-      }, 50)
-    })
-  }
 })
