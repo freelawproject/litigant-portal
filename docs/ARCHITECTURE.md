@@ -21,7 +21,7 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 | **Components**     | Django Cotton                 | Server-rendered, no JS framework needed |
 | **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed        |
 | **Reactivity**     | AlpineJS CSP build (CDN)      | Lightweight, CSP-compatible             |
-| **Component Docs** | Custom `/components/` page    | Django-native, living documentation     |
+| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation     |
 | **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers    |
 
 ---
@@ -41,6 +41,32 @@ templates/
 ```
 
 **Component syntax:** `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`
+
+### Page Layout
+
+Single-page chat-first design:
+
+```
+┌─────────────────────────────────────────┐
+│ Header: [Logo] ... [Browse by Topic] [☰]│
+├─────────────────────────────────────────┤
+│                                         │
+│   How can we help you today?            │
+│   [________search________] [Ask]        │
+│                                         │
+├─────────────────────────────────────────┤
+│                                         │
+│   Chat messages appear here             │
+│   (AI streaming responses)              │
+│                                         │
+├─────────────────────────────────────────┤
+│ Footer                                  │
+└─────────────────────────────────────────┘
+```
+
+- **Hero + Chat** on home page (no separate `/chat/` page)
+- **Browse by Topic** in slide-out menu (hamburger)
+- **Topic cards** accessible via menu, chat is primary focus
 
 ### Naming Conventions
 
@@ -110,7 +136,9 @@ Django renders initial state, Alpine handles client reactivity:
 | `config/settings.py`   | Django + Cotton config                          |
 | `static/css/main.css`  | Tailwind v4 CSS source + theme tokens           |
 | `static/js/theme.js`   | Alpine theme store                              |
+| `static/js/chat.js`    | Alpine chat components (homePage, chatWindow)   |
 | `templates/cotton/*/`  | Component library (atoms, molecules, organisms) |
+| `templates/pages/home.html` | Main page with chat interface               |
 | `Dockerfile`           | Multi-stage build (dev + prod)                  |
 | `docker-compose.yml`   | Dev/prod profiles with Docker secrets           |
 | `docker-entrypoint.sh` | Container startup commands                      |
