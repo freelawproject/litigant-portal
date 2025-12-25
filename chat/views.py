@@ -9,26 +9,6 @@ from .services.chat_service import chat_service
 from .services.search_service import search_service
 
 
-def chat_home(request: HttpRequest):
-    """
-    Chat page view.
-
-    Renders the full chat interface with conversation history.
-    """
-    session = chat_service.get_or_create_session(request)
-    messages = session.messages.exclude(content="").order_by("created_at")
-
-    return render(
-        request,
-        "pages/chat.html",
-        {
-            "session_id": str(session.id),
-            "messages": messages,
-            "chat_enabled": settings.CHAT_ENABLED,
-        },
-    )
-
-
 @require_POST
 def send_message(request: HttpRequest) -> JsonResponse:
     """
