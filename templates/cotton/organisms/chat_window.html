@@ -3,14 +3,12 @@
      x-init="init()"
      class="chat-window {{ class }}"
      {{ attrs }}>
-
   {# Messages container #}
   <div class="chat-messages"
        x-ref="messages"
        role="log"
        aria-live="polite"
        aria-label="Chat messages">
-
     {# All messages rendered dynamically via Alpine #}
     <template x-for="msg in dynamicMessages" :key="msg.id">
       <div class="chat-message"
@@ -27,14 +25,14 @@
         <div class="chat-message-content">
           <div class="chat-bubble"
                x-bind:class="msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'"
-               x-html="msg.role === 'assistant' ? renderMarkdown(msg.content) : escapeHtml(msg.content)">
-          </div>
+               x-html="msg.role === 'assistant' ? renderMarkdown(msg.content) : escapeHtml(msg.content)"></div>
         </div>
       </div>
     </template>
-
     {# Typing indicator #}
-    <div x-show="isStreaming" x-cloak class="chat-message chat-message-assistant">
+    <div x-show="isStreaming"
+         x-cloak
+         class="chat-message chat-message-assistant">
       <div class="chat-message-avatar">
         <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
       </div>
@@ -43,34 +41,18 @@
       </div>
     </div>
   </div>
-
   {# Input form #}
   <form x-on:submit.prevent="sendMessage"
         method="POST"
         action="{% url 'chat:send' %}"
         class="chat-input-form">
     {% csrf_token %}
-    <c-atoms.input
-      x-model="inputText"
-      x-bind:disabled="isStreaming"
-      type="text"
-      name="message"
-      placeholder="Ask a legal question..."
-      aria_label="Chat message"
-      class="flex-1"
-    />
-    <c-atoms.button
-      type="submit"
-      variant="primary"
-      size="xl"
-      x-bind:disabled="isStreaming || !inputText.trim()"
-      aria_label="Send message"
-    >
-      <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
-      <span class="hidden sm:inline ml-2">Send</span>
+    <c-atoms.input x-model="inputText" x-bind:disabled="isStreaming" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" class="flex-1" />
+    <c-atoms.button type="submit" variant="primary" size="xl" x-bind:disabled="isStreaming || !inputText.trim()" aria_label="Send message">
+    <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
+    <span class="hidden sm:inline ml-2">Send</span>
     </c-atoms.button>
   </form>
-
   {# Fallback search link #}
   {% if not chat_enabled %}
     <div class="chat-fallback-notice">
