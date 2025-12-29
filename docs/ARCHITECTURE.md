@@ -20,7 +20,7 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 | **Backend**        | Django                        | Team expertise, proven at scale         |
 | **Components**     | Django Cotton                 | Server-rendered, no JS framework needed |
 | **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed        |
-| **Reactivity**     | AlpineJS CSP build (CDN)      | Lightweight, CSP-compatible             |
+| **Reactivity**     | AlpineJS (standard build)     | Lightweight, supports x-html for markdown |
 | **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation     |
 | **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers    |
 
@@ -33,9 +33,9 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 ```
 templates/
 ├── cotton/                    # Django Cotton components
-│   ├── atoms/                 # Basic elements: button, input, link, select, icon
-│   ├── molecules/             # Combinations: logo, search_bar, topic_card
-│   └── organisms/             # Complex sections: header, footer, hero, topic_grid
+│   ├── atoms/                 # Basic elements: alert, button, chat_bubble, icon, input, link, nav_link, search_input, select, typing_indicator
+│   ├── molecules/             # Combinations: chat_message, logo, search_bar, search_result, topic_card
+│   └── organisms/             # Complex sections: chat_window, footer, header, hero, topic_grid
 ├── pages/                     # Full pages (extend base.html)
 └── base.html                  # Responsive base layout
 ```
@@ -122,8 +122,8 @@ Django renders initial state, Alpine handles client reactivity:
 
 ## Security
 
-- **CSP configured** - No unsafe-eval/inline needed
-- **AlpineJS CSP build** - Standard build requires unsafe-eval
+- **CSP configured** - Inline handlers blocked, Alpine.js directives used
+- **AlpineJS standard build** - Currently using standard build for markdown rendering (x-html). CSP build planned for production hardening.
 - **django-csp** - Header management via `CSP_*` settings
 - **VDP:** [free.law/vulnerability-disclosure-policy](https://free.law/vulnerability-disclosure-policy/)
 

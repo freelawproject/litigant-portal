@@ -15,7 +15,7 @@ make format                 # Format Python (ruff) + HTML templates (djlint)
 make lint                   # Lint Python (ruff) + HTML templates (djlint)
 
 # Run a single test (venv must be active)
-SECRET_KEY=dev python manage.py test portal.tests.ViewSmokeTests.test_home_page
+SECRET_KEY=dev python manage.py test chat.tests.test_views.SendMessageValidationTests.test_rejects_empty_message
 
 # Django commands (outside of ./dev.sh, prefix with SECRET_KEY=dev)
 SECRET_KEY=dev python manage.py makemigrations
@@ -51,14 +51,14 @@ Components live in `templates/cotton/` using Atomic Design hierarchy:
 
 ```
 templates/cotton/
-├── atoms/      # Basic elements: button, input, link, select, icon
-├── molecules/  # Combinations: logo, search_bar, topic_card
-└── organisms/  # Complex sections: header, footer, hero, topic_grid
+├── atoms/      # Basic elements: alert, button, chat_bubble, icon, input, link, nav_link, search_input, select, typing_indicator
+├── molecules/  # Combinations: chat_message, logo, search_bar, search_result, topic_card
+└── organisms/  # Complex sections: chat_window, footer, header, hero, topic_grid
 ```
 
 **Syntax:** `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`
 
-Component library available at `/components/` during development.
+Style guide available at `/style-guide/` during development.
 
 ### State Flow
 
@@ -90,29 +90,23 @@ Build: `tailwindcss -i static/css/main.css -o static/css/main.built.css`
 
 Pre-commit hook enforces this (`csp-inline-check`).
 
-### Alpine.js (Standard Build)
+### Alpine.js (Standard Build - Local)
 
-Currently using standard Alpine.js (`static/js/alpine.min.js` v3.14.9) for markdown rendering support via `x-html`.
+Using Alpine.js standard build (`static/js/alpine.min.js` v3.14.9). Local files, no CDN.
+
+**Files:**
+- `static/js/alpine.min.js` - Minified (production)
+- `static/js/alpine.js` - Non-minified (debug mode, auto-selected when `DEBUG=True`)
 
 **All directives available:**
-- `x-html` - HTML content rendering (used for markdown)
+- `x-html` - HTML content rendering (used for markdown in demo)
 - `x-text` - Plain text content
 - `x-data`, `x-init`, `x-bind`, `x-on`, `x-show`, `x-if`, `x-for`, `x-model`, `x-ref`
 
-### Future: Re-enable CSP Build for Production
-
-For production hardening, switch back to CSP build:
-
-1. Download CSP build:
-   ```bash
-   curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js
-   ```
-
-2. Replace `x-html` with `x-text` + `whitespace-pre-wrap`
-
-3. Or implement server-side markdown rendering + DOMPurify sanitization
-
-**CSP build blocks:** `x-html`, `eval()`, property assignments in expressions
+**TODO: Switch to CSP build for production:**
+1. Implement server-side markdown rendering
+2. Download CSP build: `curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js`
+3. Replace `x-html` with `x-text`
 
 ### WCAG AA Accessibility
 
@@ -152,7 +146,7 @@ chat/
 │   └── factory.py   # Provider factory with caching
 ├── services/
 │   ├── chat_service.py   # Main chat orchestration + SSE streaming
-│   └── search_service.py # PostgreSQL full-text search fallback
+│   └── search_service.py # Keyword search fallback (icontains)
 ├── models.py        # ChatSession, Message, Document
 └── views.py         # API endpoints (send, stream, search)
 ```
@@ -180,9 +174,11 @@ Docker connects to host Ollama via `host.docker.internal:11434`.
 |------|---------|
 | `config/settings.py` | Django + Cotton + CSP + Chat config |
 | `static/css/main.css` | Tailwind v4 source + theme tokens |
+| `static/js/alpine.js` | Alpine.js standard build (debug) |
+| `static/js/alpine.min.js` | Alpine.js standard build (production) |
 | `static/js/chat.js` | Alpine.js chat component |
 | `templates/cotton/` | Component library (Atomic Design) |
-| `templates/pages/components.html` | Component documentation page |
+| `templates/pages/style_guide.html` | Style guide page |
 | `chat/` | AI chat app with providers and services |
 | `portal/views.py` | Main views |
 
@@ -207,12 +203,18 @@ The codebase supports both SQLite and PostgreSQL:
 
 ## Versioning
 
-### Pinned Dependencies
+### Pinned Dependencies (Local Assets)
+
+All frontend assets are local files, not CDN. Update these in sync when upgrading:
 
 | Tool | Version | Location |
 |------|---------|----------|
-| Tailwind CSS | v4.1.16 | `Dockerfile`, `dev.sh` |
-| Alpine.js | 3.14.9 (standard) | `static/js/alpine.min.js` |
+| Tailwind CSS | v4.1.16 (CLI) | `Dockerfile`, `dev.sh` |
+| Alpine.js | 3.14.9 (standard) | `static/js/alpine.js`, `static/js/alpine.min.js` |
 | Ollama model | llama3.2:3b | `chat/providers/ollama.py` |
 
-Update these in sync when upgrading.
+**Updating Alpine.js:**
+```bash
+curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.js" -o static/js/alpine.js
+curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js
+```
