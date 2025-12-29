@@ -14,12 +14,15 @@ make test                   # Run tests (builds CSS + collectstatic first)
 make format                 # Format Python (ruff) + HTML templates (djlint)
 make lint                   # Lint Python (ruff) + HTML templates (djlint)
 
+# Run a single test (venv must be active)
+SECRET_KEY=dev python manage.py test portal.tests.ViewSmokeTests.test_home_page
+
 # Django commands (outside of ./dev.sh, prefix with SECRET_KEY=dev)
 SECRET_KEY=dev python manage.py makemigrations
 SECRET_KEY=dev python manage.py migrate
 SECRET_KEY=dev python manage.py shell
 
-# Individual tools
+# Individual tools (run from activated venv)
 ruff format .               # Format Python
 ruff check --fix            # Lint Python with auto-fix
 djlint templates/ --reformat  # Format HTML templates
@@ -29,6 +32,16 @@ djlint templates/ --lint    # Lint HTML templates
 make docker-dev             # Start dev environment with PostgreSQL
 make docker-prod            # Start production environment
 ```
+
+## Pre-commit Hooks
+
+Pre-commit runs automatically on commit. Key hooks:
+- **ruff** - Python linting/formatting
+- **djlint** - HTML template linting/formatting
+- **prettier** - JS, JSON, CSS, Markdown, YAML formatting
+- **csp-inline-check** - Blocks inline event handlers (CSP compliance)
+
+Run all hooks manually: `pre-commit run --all-files`
 
 ## Architecture
 
