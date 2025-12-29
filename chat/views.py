@@ -4,17 +4,20 @@ from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
+from django_ratelimit.decorators import ratelimit
 
 from .services.chat_service import chat_service
 from .services.search_service import search_service
 
 
 @require_POST
+@ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def send_message(request: HttpRequest) -> JsonResponse:
     """
     Handle a new chat message from the user.
 
     Creates the message and returns the session ID for streaming.
+    Rate limited to 20 requests per minute per IP.
     """
     content = request.POST.get("message", "").strip()
 
@@ -38,12 +41,14 @@ def send_message(request: HttpRequest) -> JsonResponse:
 
 
 @require_GET
+@ratelimit(key="ip", rate="20/m", method="GET", block=True)
 def stream_response(request: HttpRequest, session_id: uuid.UUID):
     """
     Stream the AI response as Server-Sent Events.
 
     This endpoint is called after send_message to receive the
     streaming response from the AI provider.
+    Rate limited to 20 requests per minute per IP.
     """
     session = chat_service.get_session(str(session_id))
 
@@ -62,11 +67,13 @@ def stream_response(request: HttpRequest, session_id: uuid.UUID):
 
 
 @require_GET
+@ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def keyword_search(request: HttpRequest):
     """
     Fallback keyword search endpoint.
 
     Used when AI chat is unavailable or disabled.
+    Rate limited to 60 requests per minute per IP.
     """
     query = request.GET.get("q", "").strip()
     category = request.GET.get("category")
@@ -92,11 +99,13 @@ def keyword_search(request: HttpRequest):
 
 
 @require_GET
+@ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def chat_status(request: HttpRequest) -> JsonResponse:
     """
     Check if chat service is available.
 
     Returns the current status of the AI chat service.
+    Rate limited to 60 requests per minute per IP.
     """
     return JsonResponse(
         {

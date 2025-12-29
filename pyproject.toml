@@ -44,6 +44,8 @@ dependencies = [
     "psycopg[binary]>=3.2",
     # AI Chat (Ollama uses OpenAI-compatible API)
     "openai>=1.50",
+    # Rate limiting
+    "django-ratelimit>=4.1",
 ]
 
 [project.optional-dependencies]

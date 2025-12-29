@@ -8,6 +8,27 @@
        x-init="init()"
        class="home-container"
        x-bind:class="{ 'chat-mode': messages.length > 0 }">
+    {# Ollama unavailable warning #}
+    <div x-show="showUnavailableWarning"
+         x-cloak
+         class="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-full mx-4">
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-lg">
+        <div class="flex items-start gap-3">
+          <c-atoms.icon name="exclamation-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div class="flex-1">
+            <p class="text-sm font-medium text-amber-800">Chat service unavailable</p>
+            <p class="text-sm text-amber-700 mt-1">
+              Ollama is not running. Start it with <code class="bg-amber-100 px-1 rounded">ollama serve</code> to enable AI chat.
+            </p>
+          </div>
+          <button type="button"
+                  x-on:click="dismissWarning()"
+                  class="text-amber-600 hover:text-amber-800">
+            <c-atoms.icon name="x-mark" class="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+    </div>
     {# Hero Section - shows when no messages #}
     <section class="hero" x-show="messages.length === 0" x-cloak>
       <div class="hero-content">
