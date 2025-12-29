@@ -43,7 +43,7 @@
   </div>
   {# Input form #}
   <form x-on:submit.prevent="sendMessage"
-        method="POST"
+        method="post"
         action="{% url 'chat:send' %}"
         class="chat-input-form">
     {% csrf_token %}

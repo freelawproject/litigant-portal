@@ -31,7 +31,6 @@
         </form>
       </div>
     </section>
-
     {# Chat Mode - shows when messages exist #}
     <template x-if="messages.length > 0">
       <div class="chat-container">
@@ -40,11 +39,8 @@
           <h1 class="text-lg font-semibold text-greyscale-900">How can we help you today?</h1>
           <button type="button"
                   class="text-sm text-greyscale-500 hover:text-greyscale-700"
-                  x-on:click="clearChat()">
-            New conversation
-          </button>
+                  x-on:click="clearChat()">New conversation</button>
         </div>
-
         {# Chat Messages - scrollable area #}
         <div class="chat-messages-area" x-ref="messagesArea">
           <div class="max-w-3xl mx-auto">
@@ -80,10 +76,11 @@
             </div>
           </div>
         </div>
-
         {# Chat Input - fixed at bottom #}
         <div class="chat-input-area">
-          <form x-on:submit.prevent="askQuestion" class="chat-input-form" role="search">
+          <form x-on:submit.prevent="askQuestion"
+                class="chat-input-form"
+                role="search">
             {% csrf_token %}
             <div class="search-input-wrapper">
               <input type="text"
