@@ -10,7 +10,7 @@
 - [x] Node.js removed - zero JS build dependencies
 - [x] Tailwind v4 CSS-based config (no tailwind.config.js needed)
 - [x] CourtListener color scheme adopted
-- [x] Custom component library page at `/components/`
+- [x] Custom component library page at `/style-guide/`
 - [x] Cotton components documented (Button, Input, Select, Link, Icon, Alerts)
 - [x] A11y testing via browser DevTools (Lighthouse, axe extension)
 
@@ -20,7 +20,7 @@
 
 Our design system uses a Django-native approach:
 
-- **Component Library** - Custom page at `/components/` for developer documentation
+- **Component Library** - Custom page at `/style-guide/` for developer documentation
 - **A11y Testing** - axe-core via npm scripts (roll-our-own, not Storybook)
 - **Viewport Testing** - Browser DevTools + manual testing
 
@@ -33,7 +33,7 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
 ```
 ┌─────────────────────────────────────────────────────────┐
 │              Component Library Page                      │
-│  /components/ - Live demos, props docs, code examples   │
+│  /style-guide/ - Live demos, props docs, code examples  │
 └─────────────────────┬───────────────────────────────────┘
                       │
                       ▼
@@ -66,9 +66,9 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
 
 ### URL
 
-- Development: http://localhost:8000/components/
-- Template: `templates/pages/components.html`
-- View: `portal/views.py::components()`
+- Development: http://localhost:8000/style-guide/
+- Template: `templates/pages/style_guide.html`
+- View: `portal/views.py::style_guide()`
 
 ### Structure
 
@@ -87,7 +87,7 @@ Each component section includes:
    - Molecules: `templates/cotton/molecules/my_component.html` (combinations of atoms)
    - Organisms: `templates/cotton/organisms/my_component.html` (complex sections)
 2. Add CSS classes to `static/css/main.css` if needed
-3. Add section to `templates/pages/components.html`:
+3. Add section to `templates/pages/style_guide.html`:
 
 ```html
 {# ========== MY COMPONENT ========== #}
@@ -130,32 +130,38 @@ Each component section includes:
 
 ### Atoms
 
-| Component    | File                       | Description                                                                           |
-| ------------ | -------------------------- | ------------------------------------------------------------------------------------- |
-| Button       | `cotton/button.html`       | Primary, outline, dark, ghost, danger variants                                        |
-| Input        | `cotton/input.html`        | Text inputs with error/success states                                                 |
-| Search Input | `cotton/search_input.html` | Search input with icon, large touch target                                            |
-| Select       | `cotton/select.html`       | Dropdown with custom styling                                                          |
-| Link         | `cotton/link.html`         | Styled links with external icon option                                                |
-| Icon         | `cotton/icon.html`         | Heroicons v2 wrapper (`magnifying-glass`, `x-mark`, `exclamation-triangle`, `bars-3`) |
-| Alerts       | CSS classes                | `.alert-info`, `.alert-success`, `.alert-warning`, `.alert-danger`                    |
+| Component        | File                          | Description                                                                           |
+| ---------------- | ----------------------------- | ------------------------------------------------------------------------------------- |
+| Button           | `atoms/button.html`           | Primary, outline, dark, ghost, danger variants                                        |
+| Input            | `atoms/input.html`            | Text inputs with error/success states                                                 |
+| Search Input     | `atoms/search_input.html`     | Search input with icon, large touch target                                            |
+| Select           | `atoms/select.html`           | Dropdown with custom styling                                                          |
+| Link             | `atoms/link.html`             | Styled links with external icon option                                                |
+| Icon             | `atoms/icon.html`             | Heroicons v2 wrapper (`magnifying-glass`, `x-mark`, `exclamation-triangle`, `bars-3`) |
+| Alert            | `atoms/alert.html`            | Info, success, warning, danger alert styles                                           |
+| Chat Bubble      | `atoms/chat_bubble.html`      | Chat message bubble with role-based styling (user/assistant)                          |
+| Typing Indicator | `atoms/typing_indicator.html` | Animated typing dots for streaming responses                                          |
+| Nav Link         | `atoms/nav_link.html`         | Navigation link with active state styling                                             |
 
 ### Molecules
 
-| Component  | File                        | Description                                 |
-| ---------- | --------------------------- | ------------------------------------------- |
-| Logo       | `molecules/logo.html`       | Portal logo/branding, links to home         |
-| Search Bar | `molecules/search_bar.html` | Search input + submit button combo          |
-| Topic Card | `molecules/topic_card.html` | Tappable card with icon, title, description |
+| Component     | File                           | Description                                  |
+| ------------- | ------------------------------ | -------------------------------------------- |
+| Logo          | `molecules/logo.html`          | Portal logo/branding, links to home          |
+| Search Bar    | `molecules/search_bar.html`    | Search input + submit button combo           |
+| Topic Card    | `molecules/topic_card.html`    | Tappable card with icon, title, description  |
+| Chat Message  | `molecules/chat_message.html`  | Full chat message with bubble and metadata   |
+| Search Result | `molecules/search_result.html` | Search result card with title and excerpt    |
 
 ### Organisms
 
-| Component     | File                           | Description                           |
-| ------------- | ------------------------------ | ------------------------------------- |
-| Mobile Header | `organisms/mobile_header.html` | Sticky header with logo + menu toggle |
-| Hero          | `organisms/hero.html`          | Heading + subheading + search bar     |
-| Topic Grid    | `organisms/topic_grid.html`    | Responsive grid of topic cards        |
-| Mobile Footer | `organisms/mobile_footer.html` | Simple footer with nav links          |
+| Component   | File                        | Description                             |
+| ----------- | --------------------------- | --------------------------------------- |
+| Header      | `organisms/header.html`     | Sticky header with logo + menu toggle   |
+| Hero        | `organisms/hero.html`       | Heading + subheading + search bar       |
+| Topic Grid  | `organisms/topic_grid.html` | Responsive grid of topic cards          |
+| Footer      | `organisms/footer.html`     | Footer with nav links                   |
+| Chat Window | `organisms/chat_window.html`| Complete chat interface with SSE stream |
 
 ### CSS Component Classes
 
@@ -312,7 +318,7 @@ tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
 **Note:** We use Tailwind v4 with CSS-based configuration. Theme tokens are defined
 in `@theme { }` blocks within `static/css/main.css` - no `tailwind.config.js` needed.
 
-Visit http://localhost:8000/components/ to view component library.
+Visit http://localhost:8000/style-guide/ to view component library.
 
 ---
 

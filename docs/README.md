@@ -4,7 +4,7 @@
 
 ```bash
 ./dev.sh                    # Start Django + Tailwind CSS watch
-# Visit: http://localhost:8000/components/
+# Visit: http://localhost:8000/style-guide/
 ```
 
 **Other Commands:**
@@ -35,12 +35,11 @@ python manage.py shell                                                      # Dj
 
 ## URLs (Development)
 
-| URL                                | Purpose           |
-| ---------------------------------- | ----------------- |
-| http://localhost:8000/             | Home              |
-| http://localhost:8000/components/  | Component library |
-| http://localhost:8000/style-guide/ | Style guide       |
-| http://localhost:8000/admin/       | Django admin      |
+| URL                                | Purpose                   |
+| ---------------------------------- | ------------------------- |
+| http://localhost:8000/             | Home                      |
+| http://localhost:8000/style-guide/ | Component library / guide |
+| http://localhost:8000/admin/       | Django admin              |
 
 ---
 
@@ -88,7 +87,7 @@ litigant-portal/
 | Backend    | Django 5.2 LTS, Python 3.13                             |
 | Components | Django Cotton                                           |
 | Styling    | Tailwind CSS 4.x (Homebrew: `brew install tailwindcss`) |
-| Reactivity | AlpineJS CSP build 3.15.2 (CDN)                         |
+| Reactivity | AlpineJS 3.14.9 (standard build)                        |
 | Auth       | django-allauth                                          |
 | Security   | django-csp                                              |
 | Deployment | django-distill → GitHub Pages                           |
@@ -134,7 +133,7 @@ Colors and patterns adapted from CourtListener:
 - **Greyscale:** Warm greys (`greyscale-900: #1C1814`)
 - **Brand:** Purple accents (`brand-600: #7F56D9`)
 
-See `/components/` for live examples and full documentation.
+See `/style-guide/` for live examples and full documentation.
 
 ---
 
