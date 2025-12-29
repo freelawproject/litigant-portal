@@ -11,8 +11,7 @@ Access to justice portal for self-represented litigants. Django 5.2 with server-
 ```sh
 ./dev.sh                    # Start Django + Tailwind watch (main dev command)
 make test                   # Run tests (builds CSS + collectstatic first)
-make format                 # Format Python (ruff) + HTML templates (djlint)
-make lint                   # Lint Python (ruff) + HTML templates (djlint)
+make lint                   # Lint and format all code (via pre-commit)
 
 # Run a single test (venv must be active)
 SECRET_KEY=dev python manage.py test chat.tests.test_views.SendMessageValidationTests.test_rejects_empty_message
@@ -22,11 +21,11 @@ SECRET_KEY=dev python manage.py makemigrations
 SECRET_KEY=dev python manage.py migrate
 SECRET_KEY=dev python manage.py shell
 
-# Individual tools (run from activated venv)
-ruff format .               # Format Python
-ruff check --fix            # Lint Python with auto-fix
-djlint templates/ --reformat  # Format HTML templates
-djlint templates/ --lint    # Lint HTML templates
+# Individual tools (if needed)
+pre-commit run --all-files  # Run all linters/formatters
+ruff format .               # Format Python only
+ruff check --fix            # Lint Python only
+djlint templates/ --reformat  # Format HTML templates only
 
 # Docker
 make docker-dev             # Start dev environment with PostgreSQL
@@ -36,6 +35,7 @@ make docker-prod            # Start production environment
 ## Pre-commit Hooks
 
 Pre-commit runs automatically on commit. Key hooks:
+
 - **ruff** - Python linting/formatting
 - **djlint** - HTML template linting/formatting
 - **prettier** - JS, JSON, CSS, Markdown, YAML formatting
@@ -63,6 +63,7 @@ Style guide available at `/style-guide/` during development.
 ### State Flow
 
 Django renders initial state, Alpine.js handles client-side reactivity:
+
 ```html
 <div x-data="{ expanded: false }">
   <!-- Alpine handles UI state, Django handles data -->
@@ -80,12 +81,13 @@ Build: `tailwindcss -i static/css/main.css -o static/css/main.built.css`
 ### CSP Compliance (Content Security Policy)
 
 **No inline event handlers.** Use Alpine.js directives instead:
+
 ```html
 <!-- BAD: Violates CSP -->
 <button onclick="doSomething()">
-
-<!-- GOOD: CSP-compliant -->
-<button x-on:click="doSomething">
+  <!-- GOOD: CSP-compliant -->
+  <button x-on:click="doSomething"></button>
+</button>
 ```
 
 Pre-commit hook enforces this (`csp-inline-check`).
@@ -95,15 +97,18 @@ Pre-commit hook enforces this (`csp-inline-check`).
 Using Alpine.js standard build (`static/js/alpine.min.js` v3.14.9). Local files, no CDN.
 
 **Files:**
+
 - `static/js/alpine.min.js` - Minified (production)
 - `static/js/alpine.js` - Non-minified (debug mode, auto-selected when `DEBUG=True`)
 
 **All directives available:**
+
 - `x-html` - HTML content rendering (used for markdown in demo)
 - `x-text` - Plain text content
 - `x-data`, `x-init`, `x-bind`, `x-on`, `x-show`, `x-if`, `x-for`, `x-model`, `x-ref`
 
 **TODO: Switch to CSP build for production:**
+
 1. Implement server-side markdown rendering
 2. Download CSP build: `curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js`
 3. Replace `x-html` with `x-text`
@@ -111,6 +116,7 @@ Using Alpine.js standard build (`static/js/alpine.min.js` v3.14.9). Local files,
 ### WCAG AA Accessibility
 
 All components must have:
+
 - Keyboard navigation (Tab, Enter, Space, Arrows)
 - Focus indicators (`focus:ring-2 focus:ring-offset-2`)
 - Color contrast 4.5:1 minimum
@@ -120,6 +126,7 @@ All components must have:
 ### Mobile-First
 
 Default styles target mobile. Use breakpoints for larger screens:
+
 - `sm:` 640px, `md:` 768px, `lg:` 1024px
 
 ## AI Chat Feature
@@ -170,17 +177,17 @@ Docker connects to host Ollama via `host.docker.internal:11434`.
 
 ## Key Files
 
-| File | Purpose |
-|------|---------|
-| `config/settings.py` | Django + Cotton + CSP + Chat config |
-| `static/css/main.css` | Tailwind v4 source + theme tokens |
-| `static/js/alpine.js` | Alpine.js standard build (debug) |
-| `static/js/alpine.min.js` | Alpine.js standard build (production) |
-| `static/js/chat.js` | Alpine.js chat component |
-| `templates/cotton/` | Component library (Atomic Design) |
-| `templates/pages/style_guide.html` | Style guide page |
-| `chat/` | AI chat app with providers and services |
-| `portal/views.py` | Main views |
+| File                               | Purpose                                 |
+| ---------------------------------- | --------------------------------------- |
+| `config/settings.py`               | Django + Cotton + CSP + Chat config     |
+| `static/css/main.css`              | Tailwind v4 source + theme tokens       |
+| `static/js/alpine.js`              | Alpine.js standard build (debug)        |
+| `static/js/alpine.min.js`          | Alpine.js standard build (production)   |
+| `static/js/chat.js`                | Alpine.js chat component                |
+| `templates/cotton/`                | Component library (Atomic Design)       |
+| `templates/pages/style_guide.html` | Style guide page                        |
+| `chat/`                            | AI chat app with providers and services |
+| `portal/views.py`                  | Main views                              |
 
 ## Database
 
@@ -197,6 +204,7 @@ SECRET_KEY=dev python manage.py migrate
 ### Database Compatibility
 
 The codebase supports both SQLite and PostgreSQL:
+
 - Models avoid PostgreSQL-specific features for compatibility
 - Search service uses simple `icontains` queries (works everywhere)
 - PostgreSQL full-text search can be added later for production
@@ -207,13 +215,14 @@ The codebase supports both SQLite and PostgreSQL:
 
 All frontend assets are local files, not CDN. Update these in sync when upgrading:
 
-| Tool | Version | Location |
-|------|---------|----------|
-| Tailwind CSS | v4.1.16 (CLI) | `Dockerfile`, `dev.sh` |
-| Alpine.js | 3.14.9 (standard) | `static/js/alpine.js`, `static/js/alpine.min.js` |
-| Ollama model | llama3.2:3b | `chat/providers/ollama.py` |
+| Tool         | Version           | Location                                         |
+| ------------ | ----------------- | ------------------------------------------------ |
+| Tailwind CSS | v4.1.16 (CLI)     | `Dockerfile`, `dev.sh`                           |
+| Alpine.js    | 3.14.9 (standard) | `static/js/alpine.js`, `static/js/alpine.min.js` |
+| Ollama model | llama3.2:3b       | `chat/providers/ollama.py`                       |
 
 **Updating Alpine.js:**
+
 ```bash
 curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.js" -o static/js/alpine.js
 curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js

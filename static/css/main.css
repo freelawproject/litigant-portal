@@ -438,7 +438,6 @@
     @apply flex flex-col flex-1 min-h-0;
   }
 
-
   /* Chat container - fills available space, constrained to viewport */
   .chat-container {
     @apply flex flex-col flex-1 min-h-0;
@@ -523,7 +522,9 @@
   /* Chat Window - uses calc to fill available viewport minus header/footer/chrome */
   .chat-window {
     @apply flex flex-col;
-    height: calc(100dvh - 240px); /* viewport minus header, footer, page header, padding, disclaimer */
+    height: calc(
+      100dvh - 240px
+    ); /* viewport minus header, footer, page header, padding, disclaimer */
     min-height: 300px;
     @apply bg-white rounded-xl border border-greyscale-200;
     @apply shadow-sm;
@@ -648,5 +649,4 @@
   .focus-container:has(input:focus) {
     @apply outline outline-2 outline-primary-600;
   }
-
 }

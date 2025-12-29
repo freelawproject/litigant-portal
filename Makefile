@@ -1,4 +1,4 @@
-.PHONY: help dev build css clean install migrate test collectstatic format lint \
+.PHONY: help dev build css clean install migrate test collectstatic lint \
        docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-test docker-clean
 
 help: ## Show this help message
@@ -46,13 +46,8 @@ superuser: ## Create Django superuser
 shell: ## Open Django shell
 	source .venv/bin/activate && python manage.py shell
 
-format: ## Format all code (Python + HTML templates)
-	source .venv/bin/activate && ruff format .
-	source .venv/bin/activate && djlint templates/ --reformat
-
-lint: ## Lint all code (Python + HTML templates)
-	source .venv/bin/activate && ruff check .
-	source .venv/bin/activate && djlint templates/ --lint
+lint: ## Lint and format all code (via pre-commit)
+	pre-commit run --all-files
 
 # Docker targets
 docker-build: ## Build Docker images

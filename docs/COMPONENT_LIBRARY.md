@@ -145,23 +145,23 @@ Each component section includes:
 
 ### Molecules
 
-| Component     | File                           | Description                                  |
-| ------------- | ------------------------------ | -------------------------------------------- |
-| Logo          | `molecules/logo.html`          | Portal logo/branding, links to home          |
-| Search Bar    | `molecules/search_bar.html`    | Search input + submit button combo           |
-| Topic Card    | `molecules/topic_card.html`    | Tappable card with icon, title, description  |
-| Chat Message  | `molecules/chat_message.html`  | Full chat message with bubble and metadata   |
-| Search Result | `molecules/search_result.html` | Search result card with title and excerpt    |
+| Component     | File                           | Description                                 |
+| ------------- | ------------------------------ | ------------------------------------------- |
+| Logo          | `molecules/logo.html`          | Portal logo/branding, links to home         |
+| Search Bar    | `molecules/search_bar.html`    | Search input + submit button combo          |
+| Topic Card    | `molecules/topic_card.html`    | Tappable card with icon, title, description |
+| Chat Message  | `molecules/chat_message.html`  | Full chat message with bubble and metadata  |
+| Search Result | `molecules/search_result.html` | Search result card with title and excerpt   |
 
 ### Organisms
 
-| Component   | File                        | Description                             |
-| ----------- | --------------------------- | --------------------------------------- |
-| Header      | `organisms/header.html`     | Sticky header with logo + menu toggle   |
-| Hero        | `organisms/hero.html`       | Heading + subheading + search bar       |
-| Topic Grid  | `organisms/topic_grid.html` | Responsive grid of topic cards          |
-| Footer      | `organisms/footer.html`     | Footer with nav links                   |
-| Chat Window | `organisms/chat_window.html`| Complete chat interface with SSE stream |
+| Component   | File                         | Description                             |
+| ----------- | ---------------------------- | --------------------------------------- |
+| Header      | `organisms/header.html`      | Sticky header with logo + menu toggle   |
+| Hero        | `organisms/hero.html`        | Heading + subheading + search bar       |
+| Topic Grid  | `organisms/topic_grid.html`  | Responsive grid of topic cards          |
+| Footer      | `organisms/footer.html`      | Footer with nav links                   |
+| Chat Window | `organisms/chat_window.html` | Complete chat interface with SSE stream |
 
 ### CSS Component Classes
 

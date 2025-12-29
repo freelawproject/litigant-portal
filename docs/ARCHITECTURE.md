@@ -15,14 +15,14 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 
 ## Tech Stack Decisions
 
-| Decision           | Choice                        | Rationale                               |
-| ------------------ | ----------------------------- | --------------------------------------- |
-| **Backend**        | Django                        | Team expertise, proven at scale         |
-| **Components**     | Django Cotton                 | Server-rendered, no JS framework needed |
-| **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed        |
+| Decision           | Choice                        | Rationale                                 |
+| ------------------ | ----------------------------- | ----------------------------------------- |
+| **Backend**        | Django                        | Team expertise, proven at scale           |
+| **Components**     | Django Cotton                 | Server-rendered, no JS framework needed   |
+| **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed          |
 | **Reactivity**     | AlpineJS (standard build)     | Lightweight, supports x-html for markdown |
-| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation     |
-| **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers    |
+| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation       |
+| **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers      |
 
 ---
 
@@ -131,17 +131,17 @@ Django renders initial state, Alpine handles client reactivity:
 
 ## Key Files
 
-| File                   | Purpose                                         |
-| ---------------------- | ----------------------------------------------- |
-| `config/settings.py`   | Django + Cotton config                          |
-| `static/css/main.css`  | Tailwind v4 CSS source + theme tokens           |
-| `static/js/theme.js`   | Alpine theme store                              |
-| `static/js/chat.js`    | Alpine chat components (homePage, chatWindow)   |
-| `templates/cotton/*/`  | Component library (atoms, molecules, organisms) |
-| `templates/pages/home.html` | Main page with chat interface               |
-| `Dockerfile`           | Multi-stage build (dev + prod)                  |
-| `docker-compose.yml`   | Dev/prod profiles with Docker secrets           |
-| `docker-entrypoint.sh` | Container startup commands                      |
+| File                        | Purpose                                         |
+| --------------------------- | ----------------------------------------------- |
+| `config/settings.py`        | Django + Cotton config                          |
+| `static/css/main.css`       | Tailwind v4 CSS source + theme tokens           |
+| `static/js/theme.js`        | Alpine theme store                              |
+| `static/js/chat.js`         | Alpine chat components (homePage, chatWindow)   |
+| `templates/cotton/*/`       | Component library (atoms, molecules, organisms) |
+| `templates/pages/home.html` | Main page with chat interface                   |
+| `Dockerfile`                | Multi-stage build (dev + prod)                  |
+| `docker-compose.yml`        | Dev/prod profiles with Docker secrets           |
+| `docker-entrypoint.sh`      | Container startup commands                      |
 
 ---
 
@@ -247,7 +247,7 @@ services:
   ollama:
     image: ollama/ollama
     ports:
-      - "11434:11434"
+      - '11434:11434'
     volumes:
       - ollama_data:/root/.ollama
     deploy:

@@ -13,37 +13,45 @@
 // Copy of renderMarkdown from chat.js for testing
 function renderMarkdown(text) {
   if (!text) return ''
-  return text
-    // Strip LLM artifacts
-    .replace(/\\+/g, '')           // Backslash escapes
-    .replace(/<!--.*?-->/g, '')    // HTML comments
-    // Escape HTML first
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    // Bold: **text** or __text__
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/__(.+?)__/g, '<strong>$1</strong>')
-    // Italic: *text* or _text_
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-    .replace(/_([^_]+)_/g, '<em>$1</em>')
-    // Links: [text](url)
-    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary-600 underline" target="_blank" rel="noopener">$1</a>')
-    // Ordered lists: 1. item or 1\. item (escaped period)
-    .replace(/^\d+[.\\]+\s+(.+)$/gm, '<li>$1</li>')
-    // Unordered lists: * item or - item
-    .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
-    // Wrap consecutive <li> in <ul>
-    .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc ml-4 my-2">$&</ul>')
-    // Headers: ## text
-    .replace(/^###\s+(.+)$/gm, '<h4 class="font-semibold mt-3 mb-1">$1</h4>')
-    .replace(/^##\s+(.+)$/gm, '<h3 class="font-semibold text-lg mt-3 mb-1">$1</h3>')
-    // Paragraphs: double newlines
-    .replace(/\n\n+/g, '</p><p class="my-2">')
-    // Single newlines to <br>
-    .replace(/\n/g, '<br>')
-    // Wrap in paragraph
-    .replace(/^(.+)$/, '<p class="my-2">$1</p>')
+  return (
+    text
+      // Strip LLM artifacts
+      .replace(/\\+/g, '') // Backslash escapes
+      .replace(/<!--.*?-->/g, '') // HTML comments
+      // Escape HTML first
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      // Bold: **text** or __text__
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/__(.+?)__/g, '<strong>$1</strong>')
+      // Italic: *text* or _text_
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/_([^_]+)_/g, '<em>$1</em>')
+      // Links: [text](url)
+      .replace(
+        /\[([^\]]+)\]\(([^)]+)\)/g,
+        '<a href="$2" class="text-primary-600 underline" target="_blank" rel="noopener">$1</a>'
+      )
+      // Ordered lists: 1. item or 1\. item (escaped period)
+      .replace(/^\d+[.\\]+\s+(.+)$/gm, '<li>$1</li>')
+      // Unordered lists: * item or - item
+      .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
+      // Wrap consecutive <li> in <ul>
+      .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc ml-4 my-2">$&</ul>')
+      // Headers: ## text
+      .replace(/^###\s+(.+)$/gm, '<h4 class="font-semibold mt-3 mb-1">$1</h4>')
+      .replace(
+        /^##\s+(.+)$/gm,
+        '<h3 class="font-semibold text-lg mt-3 mb-1">$1</h3>'
+      )
+      // Paragraphs: double newlines
+      .replace(/\n\n+/g, '</p><p class="my-2">')
+      // Single newlines to <br>
+      .replace(/\n/g, '<br>')
+      // Wrap in paragraph
+      .replace(/^(.+)$/, '<p class="my-2">$1</p>')
+  )
 }
 
 // Test cases: [input, expected_to_contain, expected_not_to_contain]
@@ -85,56 +93,56 @@ const testCases = [
 
   // Combined
   ['**Bold** and *italic*', '<strong>Bold</strong>', ['**', '*italic*']],
-];
+]
 
 function testRenderMarkdown() {
-  console.log('Testing renderMarkdown function...\n');
-  let passed = 0;
-  let failed = 0;
+  console.log('Testing renderMarkdown function...\n')
+  let passed = 0
+  let failed = 0
 
   for (const [input, shouldContain, shouldNotContain = []] of testCases) {
-    const output = renderMarkdown(input);
-    let ok = true;
-    let reason = '';
+    const output = renderMarkdown(input)
+    let ok = true
+    let reason = ''
 
     // Check should contain
     if (!output.includes(shouldContain)) {
-      ok = false;
-      reason = `Missing: "${shouldContain}"`;
+      ok = false
+      reason = `Missing: "${shouldContain}"`
     }
 
     // Check should not contain
     for (const bad of shouldNotContain) {
       if (output.includes(bad)) {
-        ok = false;
-        reason = `Unwanted: "${bad}"`;
-        break;
+        ok = false
+        reason = `Unwanted: "${bad}"`
+        break
       }
     }
 
     if (ok) {
-      console.log(`✓ PASS: ${JSON.stringify(input).slice(0, 40)}`);
-      passed++;
+      console.log(`✓ PASS: ${JSON.stringify(input).slice(0, 40)}`)
+      passed++
     } else {
-      console.log(`✗ FAIL: ${JSON.stringify(input).slice(0, 40)}`);
-      console.log(`  Input:  ${input}`);
-      console.log(`  Output: ${output}`);
-      console.log(`  Reason: ${reason}`);
-      failed++;
+      console.log(`✗ FAIL: ${JSON.stringify(input).slice(0, 40)}`)
+      console.log(`  Input:  ${input}`)
+      console.log(`  Output: ${output}`)
+      console.log(`  Reason: ${reason}`)
+      failed++
     }
   }
 
-  console.log(`\n${passed}/${passed + failed} tests passed`);
-  return failed === 0;
+  console.log(`\n${passed}/${passed + failed} tests passed`)
+  return failed === 0
 }
 
 // Run if Node.js
 if (typeof module !== 'undefined' && require.main === module) {
-  const success = testRenderMarkdown();
-  process.exit(success ? 0 : 1);
+  const success = testRenderMarkdown()
+  process.exit(success ? 0 : 1)
 }
 
 // Export for browser
 if (typeof window !== 'undefined') {
-  window.testRenderMarkdown = testRenderMarkdown;
+  window.testRenderMarkdown = testRenderMarkdown
 }
