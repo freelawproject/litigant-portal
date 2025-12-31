@@ -1,23 +1,82 @@
+{% load static %}
 <c-vars sticky="true" />
-<header class="mobile-header {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
+<header x-data="{ menuOpen: false }"
+        class="mobile-header flex-shrink-0 {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
         {{ attrs }}>
   <div class="mobile-header-inner">
-    <div class="flex items-center gap-4">
-      <c-molecules.logo size="sm" />
-      {% if debug %}
-        <nav class="flex items-center gap-1 text-xs">
-          <a href="{% url 'portal:style_guide' %}"
-             class="px-2 py-1 text-greyscale-500 hover:text-greyscale-700 hover:bg-greyscale-100 rounded transition-colors">Style Guide</a>
-          <a href="{% url 'admin:index' %}"
-             class="px-2 py-1 text-greyscale-500 hover:text-greyscale-700 hover:bg-greyscale-100 rounded transition-colors">Admin</a>
-        </nav>
-      {% endif %}
+    <a href="{% url 'portal:home' %}" aria-label="Home">
+      <img src="{% static 'images/logo_powered.svg' %}"
+           alt="Litigant Portal - Powered by Free Law Project"
+           class="h-12" />
+    </a>
+    <div class="flex items-center gap-2">
+      <button type="button"
+              class="text-sm font-medium text-greyscale-600 hover:text-greyscale-900 transition-colors"
+              x-on:click="menuOpen = true">Browse by Topic</button>
+      <button type="button"
+              class="mobile-header-menu-btn btn-ghost"
+              aria-label="Open menu"
+              x-bind:aria-expanded="menuOpen"
+              x-on:click="menuOpen = true">
+        <c-atoms.icon name="bars-3" class="w-6 h-6" />
+      </button>
     </div>
-    <button type="button"
-            class="mobile-header-menu-btn btn-ghost"
-            aria-label="Open menu"
-            aria-expanded="false">
-      <c-atoms.icon name="bars-3" class="w-6 h-6" />
-    </button>
+  </div>
+  {# Menu Overlay #}
+  <div x-show="menuOpen"
+       x-cloak
+       class="fixed inset-0 z-50"
+       x-on:keydown.escape.window="menuOpen = false">
+    {# Backdrop #}
+    <div class="absolute inset-0 bg-black/50"
+         x-on:click="menuOpen = false"
+         x-show="menuOpen"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"></div>
+    {# Menu Panel #}
+    <nav class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl overflow-y-auto"
+         x-show="menuOpen"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="translate-x-full"
+         x-transition:enter-end="translate-x-0"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="translate-x-0"
+         x-transition:leave-end="translate-x-full"
+         role="dialog"
+         aria-modal="true"
+         aria-label="Browse by Topic">
+      <div class="flex items-center justify-between p-4 border-b border-greyscale-200">
+        <span class="font-semibold text-greyscale-900">Browse by Topic</span>
+        <button type="button"
+                class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700"
+                aria-label="Close menu"
+                x-on:click="menuOpen = false">
+          <c-atoms.icon name="x-mark" class="w-6 h-6" />
+        </button>
+      </div>
+      {# Topic Cards #}
+      <div class="p-4 space-y-3">
+        <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense, tenant rights" href="#housing" />
+        <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support, domestic issues" href="#family" />
+        <c-molecules.topic-card icon="currency-dollar" title="Small Claims" description="Disputes under $10,000, debt collection defense" href="#small-claims" />
+        <c-molecules.topic-card icon="shield-check" title="Consumer Rights" description="Scams, unfair business practices, contracts" href="#consumer" />
+        <c-molecules.topic-card icon="document-text" title="Expungement" description="Clear your record, seal court files" href="#expungement" />
+        <c-molecules.topic-card icon="truck" title="Traffic & Fines" description="Tickets, license issues, court fines" href="#traffic" />
+      </div>
+      {# Developer Section #}
+      {% if debug %}
+        <div class="p-4 border-t border-greyscale-200">
+          <span class="block px-1 py-1 text-xs font-medium text-greyscale-400 uppercase tracking-wide mb-2">Developer</span>
+          <div class="space-y-2">
+            <c-atoms.nav-link icon="swatch" href="{% url 'portal:style_guide' %}" icon_bg="bg-greyscale-100" icon_color="text-greyscale-600">Style Guide</c-atoms.nav-link>
+            <c-atoms.nav-link icon="cog-6-tooth" href="{% url 'admin:index' %}" icon_bg="bg-greyscale-100" icon_color="text-greyscale-600">Admin</c-atoms.nav-link>
+          </div>
+        </div>
+      {% endif %}
+    </nav>
   </div>
 </header>

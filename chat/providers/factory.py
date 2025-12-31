@@ -3,6 +3,7 @@ import logging
 from django.conf import settings
 
 from .base import BaseLLMProvider
+from .groq import GroqProvider
 from .ollama import OllamaProvider
 
 logger = logging.getLogger(__name__)
@@ -10,6 +11,7 @@ logger = logging.getLogger(__name__)
 # Provider registry
 _PROVIDERS: dict[str, type[BaseLLMProvider]] = {
     "ollama": OllamaProvider,
+    "groq": GroqProvider,
 }
 
 # Cached provider instance

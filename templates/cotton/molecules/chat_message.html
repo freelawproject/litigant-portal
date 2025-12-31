@@ -9,10 +9,12 @@
   </div>
   <div class="chat-message-content">
     <c-atoms.chat-bubble role="{{ role }}">
-      {% if content %}{{ content }}{% else %}{{ slot }}{% endif %}
-    </c-atoms.chat-bubble>
-    {% if timestamp %}
-      <span class="chat-message-time">{{ timestamp }}</span>
+    {% if content %}
+      {{ content }}
+    {% else %}
+      {{ slot }}
     {% endif %}
+    </c-atoms.chat-bubble>
+    {% if timestamp %}<span class="chat-message-time">{{ timestamp }}</span>{% endif %}
   </div>
 </div>

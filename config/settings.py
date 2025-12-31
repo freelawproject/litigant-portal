@@ -14,6 +14,11 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (for local development)
+# Docker Compose loads .env natively, so this is a no-op in containers
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -234,6 +239,9 @@ CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
 CHAT_PROVIDER = os.environ.get("CHAT_PROVIDER", "ollama")
 CHAT_MODEL = os.environ.get("CHAT_MODEL", "llama3.2:3b")
 CHAT_MAX_TOKENS = int(os.environ.get("CHAT_MAX_TOKENS", "1024"))
+
+# Provider-specific settings
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")  # Required for Groq provider
 CHAT_SYSTEM_PROMPT = """You are a helpful legal assistant for self-represented \
 litigants. Provide clear, accurate information about legal procedures, court \
 processes, and document preparation. Always recommend consulting with a licensed \

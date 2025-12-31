@@ -1,0 +1,9 @@
+<c-vars icon="home" href="#" icon_bg="bg-primary-50" icon_color="text-primary-600" />
+<a href="{{ href }}"
+   class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-greyscale-900 hover:bg-greyscale-50 transition-colors {{ class }}"
+   {{ attrs }}>
+  <span class="flex-shrink-0 w-10 h-10 rounded-lg {{ icon_bg }} {{ icon_color }} flex items-center justify-center">
+    <c-atoms.icon name="{{ icon }}" class="w-5 h-5" />
+  </span>
+  <span class="font-medium">{{ slot }}</span>
+</a>

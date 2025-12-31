@@ -32,7 +32,7 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}Starting Litigant Portal development servers...${NC}"
 echo ""
 echo -e "${YELLOW}Visit your app at: ${GREEN}http://localhost:8000/${NC}"
-echo -e "${CYAN}Component Library: http://localhost:8000/components/${NC}"
+echo -e "${CYAN}Style Guide: http://localhost:8000/style-guide/${NC}"
 echo ""
 echo -e "Press ${YELLOW}Ctrl+C${NC} to stop"
 echo ""
