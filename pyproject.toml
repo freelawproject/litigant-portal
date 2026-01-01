@@ -44,6 +44,8 @@ dependencies = [
     "psycopg[binary]>=3.2",
     # Environment variable loading
     "python-dotenv>=1.0",
+    # AI Chat (Ollama uses OpenAI-compatible API)
+    "openai>=1.50",
 ]
 
 [project.optional-dependencies]
