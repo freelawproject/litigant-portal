@@ -1,16 +1,14 @@
-.PHONY: help dev build css clean install migrate test collectstatic format lint \
+.PHONY: help dev build css clean install migrate test collectstatic lint \
        docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-test docker-clean
 
 help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install Python dependencies
+install: ## Install Python dependencies (includes Tailwind CSS)
 	python -m venv .venv
 	.venv/bin/pip install --upgrade pip
 	.venv/bin/pip install -e ".[dev]"
-	@echo ""
-	@echo "NOTE: Tailwind CSS CLI required (brew install tailwindcss)"
 
 dev: ## Start Django + Tailwind CSS watch
 	./dev.sh
@@ -48,13 +46,8 @@ superuser: ## Create Django superuser
 shell: ## Open Django shell
 	source .venv/bin/activate && python manage.py shell
 
-format: ## Format all code (Python + HTML templates)
-	source .venv/bin/activate && ruff format .
-	source .venv/bin/activate && djlint templates/ --reformat
-
-lint: ## Lint all code (Python + HTML templates)
-	source .venv/bin/activate && ruff check .
-	source .venv/bin/activate && djlint templates/ --lint
+lint: ## Lint and format all code (via pre-commit)
+	pre-commit run --all-files
 
 # Docker targets
 docker-build: ## Build Docker images

@@ -42,6 +42,8 @@ dependencies = [
     "gunicorn>=23.0",
     "heroicons>=2.0",
     "psycopg[binary]>=3.2",
+    # Environment variable loading
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]

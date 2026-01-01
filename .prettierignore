@@ -8,6 +8,9 @@ static/css/main.built.css
 *.min.js
 *.min.css
 
+# Vendored JS (from CDN, do not modify)
+static/js/alpine.js
+
 # Django
 *.pyc
 __pycache__/
