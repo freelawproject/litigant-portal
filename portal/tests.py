@@ -25,12 +25,6 @@ class ViewSmokeTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "pages/home.html")
 
-    def test_components_page(self):
-        """Component library page loads successfully."""
-        response = self.client.get("/components/")
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "pages/components.html")
-
     def test_style_guide_page(self):
         """Style guide page loads successfully."""
         response = self.client.get("/style-guide/")

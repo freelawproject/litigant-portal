@@ -1,0 +1,5 @@
+<c-vars role="user" />
+<div class="chat-bubble {% if role == 'user' %}chat-bubble-user{% elif role == 'assistant' %}chat-bubble-assistant{% else %}chat-bubble-system{% endif %} {{ class }}"
+     {{ attrs }}>
+  {{ slot }}
+</div>
