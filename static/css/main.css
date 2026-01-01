@@ -579,5 +579,4 @@
   .focus-container:has(input:focus) {
     @apply outline outline-2 outline-primary-600;
   }
-
 }

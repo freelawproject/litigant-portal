@@ -148,7 +148,8 @@ document.addEventListener('alpine:init', () => {
           this.dynamicMessages[messageIndex] = {
             id: messageId,
             role: 'assistant',
-            content: 'Sorry, I encountered an error while generating a response.',
+            content:
+              'Sorry, I encountered an error while generating a response.',
           }
         }
       } finally {
@@ -176,7 +177,8 @@ document.addEventListener('alpine:init', () => {
       this.$nextTick(() => {
         if (this.$refs.messages) {
           const el = this.$refs.messages
-          const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150
+          const isNearBottom =
+            el.scrollHeight - el.scrollTop - el.clientHeight < 150
           if (force || isNearBottom) {
             el.scrollTop = el.scrollHeight
           }
@@ -205,37 +207,51 @@ document.addEventListener('alpine:init', () => {
     // Simple markdown to HTML renderer
     renderMarkdown(text) {
       if (!text) return ''
-      return text
-        // Strip LLM artifacts
-        .replace(/\\+/g, '')           // Backslash escapes (e.g., \\Address:\\ → Address:)
-        .replace(/<!--.*?-->/g, '')    // HTML comments
-        // Escape HTML first
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        // Bold: **text** or __text__
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/__(.+?)__/g, '<strong>$1</strong>')
-        // Italic: *text* or _text_
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/_([^_]+)_/g, '<em>$1</em>')
-        // Links: [text](url)
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-primary-600 underline" target="_blank" rel="noopener">$1</a>')
-        // Ordered lists: 1. item or 1\. item (escaped period)
-        .replace(/^\d+[.\\]+\s+(.+)$/gm, '<li>$1</li>')
-        // Unordered lists: * item or - item
-        .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
-        // Wrap consecutive <li> in <ul> (works for both ol and ul for simplicity)
-        .replace(/(<li>.*<\/li>\n?)+/g, '<ul class="list-disc ml-4 my-2">$&</ul>')
-        // Headers: ## text
-        .replace(/^###\s+(.+)$/gm, '<h4 class="font-semibold mt-3 mb-1">$1</h4>')
-        .replace(/^##\s+(.+)$/gm, '<h3 class="font-semibold text-lg mt-3 mb-1">$1</h3>')
-        // Paragraphs: double newlines
-        .replace(/\n\n+/g, '</p><p class="my-2">')
-        // Single newlines to <br>
-        .replace(/\n/g, '<br>')
-        // Wrap in paragraph
-        .replace(/^(.+)$/, '<p class="my-2">$1</p>')
+      return (
+        text
+          // Strip LLM artifacts
+          .replace(/\\+/g, '') // Backslash escapes (e.g., \\Address:\\ → Address:)
+          .replace(/<!--.*?-->/g, '') // HTML comments
+          // Escape HTML first
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          // Bold: **text** or __text__
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/__(.+?)__/g, '<strong>$1</strong>')
+          // Italic: *text* or _text_
+          .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+          .replace(/_([^_]+)_/g, '<em>$1</em>')
+          // Links: [text](url)
+          .replace(
+            /\[([^\]]+)\]\(([^)]+)\)/g,
+            '<a href="$2" class="text-primary-600 underline" target="_blank" rel="noopener">$1</a>'
+          )
+          // Ordered lists: 1. item or 1\. item (escaped period)
+          .replace(/^\d+[.\\]+\s+(.+)$/gm, '<li>$1</li>')
+          // Unordered lists: * item or - item
+          .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
+          // Wrap consecutive <li> in <ul> (works for both ol and ul for simplicity)
+          .replace(
+            /(<li>.*<\/li>\n?)+/g,
+            '<ul class="list-disc ml-4 my-2">$&</ul>'
+          )
+          // Headers: ## text
+          .replace(
+            /^###\s+(.+)$/gm,
+            '<h4 class="font-semibold mt-3 mb-1">$1</h4>'
+          )
+          .replace(
+            /^##\s+(.+)$/gm,
+            '<h3 class="font-semibold text-lg mt-3 mb-1">$1</h3>'
+          )
+          // Paragraphs: double newlines
+          .replace(/\n\n+/g, '</p><p class="my-2">')
+          // Single newlines to <br>
+          .replace(/\n/g, '<br>')
+          // Wrap in paragraph
+          .replace(/^(.+)$/, '<p class="my-2">$1</p>')
+      )
     },
   }))
 
