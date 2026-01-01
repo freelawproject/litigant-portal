@@ -15,6 +15,9 @@ done
 
 export DEBUG="${DEBUG_MODE}"
 
+# Pin Tailwind CSS version (must match Dockerfile)
+export TAILWINDCSS_VERSION="v4.1.16"
+
 # Generate a random SECRET_KEY for dev if not set
 if [ -z "$SECRET_KEY" ]; then
   export SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
@@ -29,7 +32,7 @@ NC='\033[0m' # No Color
 echo -e "${GREEN}Starting Litigant Portal development servers...${NC}"
 echo ""
 echo -e "${YELLOW}Visit your app at: ${GREEN}http://localhost:8000/${NC}"
-echo -e "${CYAN}Component Library: http://localhost:8000/components/${NC}"
+echo -e "${CYAN}Style Guide: http://localhost:8000/style-guide/${NC}"
 echo ""
 echo -e "Press ${YELLOW}Ctrl+C${NC} to stop"
 echo ""
