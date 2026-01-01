@@ -34,6 +34,8 @@
     </div>
     {# Theme store - must load before Alpine #}
     <script src="{% static 'js/theme.js' %}"></script>
+    {# Chat component - must load before Alpine #}
+    <script src="{% static 'js/chat.js' %}"></script>
     {# Alpine.js - local build for CSP compliance #}
     {# Uses non-minified version in debug mode for easier debugging #}
     {% if debug %}
