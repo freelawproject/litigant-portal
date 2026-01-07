@@ -17,6 +17,9 @@
 !static/
 static/css/main.built.css
 
+# Tailwind source
+!src/
+
 # Docker files
 !Dockerfile
 !docker-compose.yml
