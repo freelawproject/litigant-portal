@@ -17,8 +17,9 @@ class OllamaProvider(BaseLLMProvider):
 
     def __init__(self):
         base_url = getattr(settings, "OLLAMA_BASE_URL", self.DEFAULT_BASE_URL)
+        api_key = getattr(settings, "OLLAMA_API_KEY", "ollama")
         self.client = openai.OpenAI(
-            api_key="ollama",  # Ollama doesn't need a real key
+            api_key=api_key,
             base_url=base_url,
         )
         self.model = self._get_model()
