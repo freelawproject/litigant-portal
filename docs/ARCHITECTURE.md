@@ -108,7 +108,7 @@ Django renders initial state, Alpine handles client reactivity:
 | File                   | Purpose                                         |
 | ---------------------- | ----------------------------------------------- |
 | `config/settings.py`   | Django + Cotton config                          |
-| `static/css/main.css`  | Tailwind v4 CSS source + theme tokens           |
+| `src/css/main.css`     | Tailwind v4 CSS source + theme tokens           |
 | `static/js/theme.js`   | Alpine theme store                              |
 | `templates/cotton/*/`  | Component library (atoms, molecules, organisms) |
 | `Dockerfile`           | Multi-stage build (dev + prod)                  |

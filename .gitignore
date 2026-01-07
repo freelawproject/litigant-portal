@@ -43,7 +43,7 @@ yarn-error.log*
 static/.vite/
 static/assets/
 
-# Tailwind CLI output (source is static/css/main.css)
+# Tailwind CLI output (source is src/css/main.css)
 static/css/main.built.css
 
 # Django collectstatic output

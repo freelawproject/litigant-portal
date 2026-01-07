@@ -45,7 +45,7 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
                       ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Tailwind CSS + Alpine.js                   │
-│  static/css/main.css + CDN Alpine                       │
+│  src/css/main.css + CDN Alpine                          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -86,7 +86,7 @@ Each component section includes:
    - Atoms: `templates/cotton/atoms/my_component.html` (basic elements)
    - Molecules: `templates/cotton/molecules/my_component.html` (combinations of atoms)
    - Organisms: `templates/cotton/organisms/my_component.html` (complex sections)
-2. Add CSS classes to `static/css/main.css` if needed
+2. Add CSS classes to `src/css/main.css` if needed
 3. Add section to `templates/pages/components.html`:
 
 ```html
@@ -159,7 +159,7 @@ Each component section includes:
 
 ### CSS Component Classes
 
-Defined in `static/css/main.css`:
+Defined in `src/css/main.css`:
 
 ```css
 /* Buttons */
@@ -301,16 +301,16 @@ Our Tailwind config and CSS patterns are adapted from [CourtListener](https://gi
 
 # Or manually:
 python manage.py runserver &
-tailwindcss -i static/css/main.css -o static/css/main.built.css --watch
+tailwindcss -i src/css/main.css -o static/css/main.built.css --watch
 
 # Production build (minified)
-tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
+tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 ```
 
 **Requirements:** Python 3.13+, Tailwind CSS (`brew install tailwindcss`)
 
 **Note:** We use Tailwind v4 with CSS-based configuration. Theme tokens are defined
-in `@theme { }` blocks within `static/css/main.css` - no `tailwind.config.js` needed.
+in `@theme { }` blocks within `src/css/main.css` - no `tailwind.config.js` needed.
 
 Visit http://localhost:8000/components/ to view component library.
 

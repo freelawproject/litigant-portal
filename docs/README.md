@@ -10,8 +10,8 @@
 **Other Commands:**
 
 ```bash
-tailwindcss -i static/css/main.css -o static/css/main.built.css --minify  # Build production CSS
-tailwindcss -i static/css/main.css -o static/css/main.built.css --watch   # Watch CSS
+tailwindcss -i src/css/main.css -o static/css/main.built.css --minify  # Build production CSS
+tailwindcss -i src/css/main.css -o static/css/main.built.css --watch   # Watch CSS
 python manage.py shell                                                      # Django shell
 ```
 
@@ -57,9 +57,11 @@ litigant-portal/
 │   │   ├── molecules/     # Combinations (logo, search_bar, topic_card)
 │   │   └── organisms/     # Complex sections (header, footer, hero)
 │   └── pages/             # Page templates
+├── src/
+│   └── css/
+│       └── main.css       # Tailwind source
 ├── static/
 │   ├── css/
-│   │   ├── main.css       # Tailwind source
 │   │   └── main.built.css # Tailwind output (gitignored)
 │   ├── images/            # Static images (logo.svg)
 │   └── js/

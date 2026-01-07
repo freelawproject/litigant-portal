@@ -33,7 +33,7 @@
   - Tailwind CSS via Homebrew standalone CLI (`brew install tailwindcss`)
   - Alpine.js via CDN
   - Migrated to Tailwind v4 CSS-based configuration (@theme blocks)
-  - Removed `tailwind.config.js` in favor of `static/css/main.css` theme tokens
+  - Removed `tailwind.config.js` in favor of `src/css/main.css` theme tokens
 
 - **Completed:** Component library overhaul
   - Removed `django-pattern-library` (custom page is sufficient)

@@ -1,7 +1,7 @@
 /**
  * Litigant Portal - Main Stylesheet (Tailwind v4)
  * Based on CourtListener's design system
- * Build: tailwindcss -i static/css/main.css -o static/css/main.built.css
+ * Build: tailwindcss -i src/css/main.css -o static/css/main.built.css
  */
 
 @import 'tailwindcss';

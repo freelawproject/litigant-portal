@@ -37,7 +37,7 @@ jobs:
       - name: Build Tailwind CSS
         run: |
           npm install -g tailwindcss
-          tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
+          tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 
       - name: Generate static site
         env:
