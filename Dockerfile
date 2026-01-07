@@ -27,8 +27,7 @@ FROM base AS dependencies
 
 COPY pyproject.toml uv.lock ./
 
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev
+RUN uv sync --frozen --no-install-project --no-dev
 
 # -----------------------------------------------------------------------------
 # Stage 3: Tailwind - download standalone CLI and build CSS
@@ -57,8 +56,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project
+RUN uv sync --frozen --no-install-project
 
 ARG TARGETARCH
 ARG TAILWIND_VERSION=v4.1.16

@@ -10,6 +10,7 @@
 !config/
 !portal/
 !litigant_portal/
+!chat/
 !templates/
 
 # Static files (source only - built CSS is generated in Docker)
