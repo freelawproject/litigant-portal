@@ -39,9 +39,11 @@ ALLOWED_HOSTS = [
     if h.strip()
 ] or (["localhost", "127.0.0.1", "0.0.0.0"] if DEBUG else [])
 
-# Railway auto-sets this env var with the public domain
+# Railway auto-sets these env vars with public and private domains
 if railway_domain := os.environ.get("RAILWAY_PUBLIC_DOMAIN"):
     ALLOWED_HOSTS.append(railway_domain)
+if railway_private := os.environ.get("RAILWAY_PRIVATE_DOMAIN"):
+    ALLOWED_HOSTS.append(railway_private)
 
 # Required for Django's debug context processor to expose 'debug' in templates
 if DEBUG:
