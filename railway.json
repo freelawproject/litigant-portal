@@ -5,7 +5,6 @@
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "web-prod",
     "healthcheckPath": "/",
     "healthcheckTimeout": 30
   }
