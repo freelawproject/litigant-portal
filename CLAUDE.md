@@ -72,9 +72,9 @@ Django renders initial state, Alpine.js handles client-side reactivity:
 
 ### Tailwind v4 CSS
 
-CSS-based configuration in `static/css/main.css` with `@theme { }` blocks. No `tailwind.config.js` needed.
+CSS-based configuration in `src/css/main.css` with `@theme { }` blocks. No `tailwind.config.js` needed.
 
-Build: `tailwindcss -i static/css/main.css -o static/css/main.built.css`
+Build: `tailwindcss -i src/css/main.css -o static/css/main.built.css`
 
 ## Critical Constraints
 
@@ -180,7 +180,7 @@ Docker connects to host Ollama via `host.docker.internal:11434`.
 | File                               | Purpose                                 |
 | ---------------------------------- | --------------------------------------- |
 | `config/settings.py`               | Django + Cotton + CSP + Chat config     |
-| `static/css/main.css`              | Tailwind v4 source + theme tokens       |
+| `src/css/main.css`              | Tailwind v4 source + theme tokens       |
 | `static/js/alpine.js`              | Alpine.js standard build (debug)        |
 | `static/js/alpine.min.js`          | Alpine.js standard build (production)   |
 | `static/js/chat.js`                | Alpine.js chat component                |

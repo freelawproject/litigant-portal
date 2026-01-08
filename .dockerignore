@@ -13,7 +13,10 @@
 !litigant_portal/
 !templates/
 
-# Static files (source only - built CSS is generated in Docker)
+# CSS source (Tailwind input - not collected by Django)
+!src/
+
+# Static files (built CSS output)
 !static/
 static/css/main.built.css
 

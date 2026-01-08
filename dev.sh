@@ -53,7 +53,7 @@ trap cleanup SIGINT SIGTERM
 source .venv/bin/activate
 
 # Start Tailwind CSS watch in background
-tailwindcss -i static/css/main.css -o static/css/main.built.css --watch &
+tailwindcss -i src/css/main.css -o static/css/main.built.css --watch &
 TAILWIND_PID=$!
 echo -e "${CYAN}[CSS]${NC} Tailwind watching..."
 
