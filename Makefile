@@ -28,14 +28,14 @@ css-prod: ## Build production CSS (minified)
 migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
 
-test: ## Run tests (builds CSS + collectstatic first)
+test: ## Run tests (builds CSS + collectstatic first, uses tox)
 	tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
-	source .venv/bin/activate && python manage.py collectstatic --noinput --clear
-	source .venv/bin/activate && python manage.py test
+	SECRET_KEY=test .venv/bin/python manage.py collectstatic --noinput --clear
+	tox
 
 collectstatic: ## Collect static files (builds CSS first)
 	tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
-	source .venv/bin/activate && python manage.py collectstatic --noinput --clear
+	SECRET_KEY=test .venv/bin/python manage.py collectstatic --noinput --clear
 
 clean: ## Clean build artifacts
 	rm -f static/css/main.built.css
