@@ -8,7 +8,7 @@
        x-init="init()"
        class="home-container"
        x-bind:class="{ 'chat-mode': messages.length > 0 }">
-    {# Ollama unavailable warning #}
+    {# Chat service unavailable warning #}
     <div x-show="showUnavailableWarning"
          x-cloak
          class="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-full mx-4">
@@ -18,7 +18,7 @@
           <div class="flex-1">
             <p class="text-sm font-medium text-amber-800">Chat service unavailable</p>
             <p class="text-sm text-amber-700 mt-1">
-              Ollama is not running. Start it with <code class="bg-amber-100 px-1 rounded">ollama serve</code> to enable AI chat.
+              The AI chat service is temporarily unavailable. Please try again later.
             </p>
           </div>
           <button type="button"
