@@ -42,10 +42,10 @@ RUN ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "x64") \
     && chmod +x tailwindcss-linux-${ARCH} \
     && mv tailwindcss-linux-${ARCH} /usr/local/bin/tailwindcss
 
-COPY static/css/main.css ./static/css/main.css
+COPY src/css/main.css ./src/css/main.css
 COPY templates/ ./templates/
 
-RUN tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
+RUN tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 
 # -----------------------------------------------------------------------------
 # Stage 4: Development image

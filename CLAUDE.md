@@ -72,9 +72,9 @@ Django renders initial state, Alpine.js handles client-side reactivity:
 
 ### Tailwind v4 CSS
 
-CSS-based configuration in `static/css/main.css` with `@theme { }` blocks. No `tailwind.config.js` needed.
+CSS-based configuration in `src/css/main.css` with `@theme { }` blocks. No `tailwind.config.js` needed.
 
-Build: `tailwindcss -i static/css/main.css -o static/css/main.built.css`
+Build: `tailwindcss -i src/css/main.css -o static/css/main.built.css`
 
 ## Critical Constraints
 
@@ -180,7 +180,7 @@ Docker connects to host Ollama via `host.docker.internal:11434`.
 | File                               | Purpose                                 |
 | ---------------------------------- | --------------------------------------- |
 | `config/settings.py`               | Django + Cotton + CSP + Chat config     |
-| `static/css/main.css`              | Tailwind v4 source + theme tokens       |
+| `src/css/main.css`                 | Tailwind v4 source + theme tokens       |
 | `static/js/alpine.js`              | Alpine.js standard build (debug)        |
 | `static/js/alpine.min.js`          | Alpine.js standard build (production)   |
 | `static/js/chat.js`                | Alpine.js chat component                |
@@ -226,4 +226,37 @@ All frontend assets are local files, not CDN. Update these in sync when upgradin
 ```bash
 curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.js" -o static/js/alpine.js
 curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js
+```
+
+## Deployment (Fly.io)
+
+QA/staging environment deployed on Fly.io. Configuration in `fly.toml`.
+
+### Deploy Commands
+
+```bash
+fly deploy              # Deploy latest changes
+fly logs                # View logs
+fly status              # Check app status
+fly ssh console         # SSH into container
+```
+
+### Environment Variables
+
+Set via `fly secrets set KEY=value`:
+
+| Variable       | Description                       |
+| -------------- | --------------------------------- |
+| `SECRET_KEY`   | Django secret key                 |
+| `GROQ_API_KEY` | Groq API key for AI chat          |
+| `DATABASE_URL` | Auto-set by `fly postgres attach` |
+
+Non-secret env vars configured in `fly.toml` under `[env]`.
+
+### Database
+
+PostgreSQL via Fly Postgres (development tier).
+
+```bash
+fly postgres connect -a litigant-portal-qa-db  # Connect to database
 ```

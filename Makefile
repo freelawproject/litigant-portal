@@ -17,25 +17,25 @@ django: ## Start Django dev server only
 	source .venv/bin/activate && python manage.py runserver
 
 css: ## Build Tailwind CSS (one-time)
-	tailwindcss -i static/css/main.css -o static/css/main.built.css
+	tailwindcss -i src/css/main.css -o static/css/main.built.css
 
 css-watch: ## Watch Tailwind CSS for changes
-	tailwindcss -i static/css/main.css -o static/css/main.built.css --watch
+	tailwindcss -i src/css/main.css -o static/css/main.built.css --watch
 
 css-prod: ## Build production CSS (minified)
-	tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
+	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 
 migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
 
-test: ## Run tests (builds CSS + collectstatic first)
-	tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
-	source .venv/bin/activate && python manage.py collectstatic --noinput --clear
-	source .venv/bin/activate && python manage.py test
+test: ## Run tests (builds CSS + collectstatic first, uses tox)
+	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
+	SECRET_KEY=test .venv/bin/python manage.py collectstatic --noinput --clear
+	tox
 
 collectstatic: ## Collect static files (builds CSS first)
-	tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
-	source .venv/bin/activate && python manage.py collectstatic --noinput --clear
+	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
+	SECRET_KEY=test .venv/bin/python manage.py collectstatic --noinput --clear
 
 clean: ## Clean build artifacts
 	rm -f static/css/main.built.css
