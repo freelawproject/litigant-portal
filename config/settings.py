@@ -39,11 +39,9 @@ ALLOWED_HOSTS = [
     if h.strip()
 ] or (["localhost", "127.0.0.1", "0.0.0.0"] if DEBUG else [])
 
-# Railway auto-sets these env vars with public and private domains
-if railway_domain := os.environ.get("RAILWAY_PUBLIC_DOMAIN"):
-    ALLOWED_HOSTS.append(railway_domain)
-if railway_private := os.environ.get("RAILWAY_PRIVATE_DOMAIN"):
-    ALLOWED_HOSTS.append(railway_private)
+# Fly.io auto-sets FLY_APP_NAME
+if fly_app := os.environ.get("FLY_APP_NAME"):
+    ALLOWED_HOSTS.append(f"{fly_app}.fly.dev")
 
 # Required for Django's debug context processor to expose 'debug' in templates
 if DEBUG:

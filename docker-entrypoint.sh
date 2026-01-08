@@ -83,7 +83,7 @@ case "$1" in
     web-prod)
         echo "Starting production server..."
         wait_for_db
-        run_migrations
+        # Migrations handled by fly.toml release_command (or run separately)
         run_collectstatic
 
         exec gunicorn config.wsgi:application \
