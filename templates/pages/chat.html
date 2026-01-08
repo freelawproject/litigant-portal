@@ -1,53 +1,45 @@
 {% extends "base.html" %}
 {% load cotton %}
-
-{% block title %}Chat - Litigant Portal{% endblock %}
-
+{% block title %}
+  Chat - Litigant Portal
+{% endblock title %}
 {% block content %}
-<main class="flex-1">
-  {# Page Header #}
-  <div class="bg-greyscale-50 border-b border-greyscale-200">
-    <div class="container-desktop py-6">
-      <h1 class="text-display-xs md:text-display-sm font-cooper font-semibold text-greyscale-900 mb-2">
-        Legal Help Chat
-      </h1>
-      <p class="text-md text-greyscale-600">
-        Ask questions about legal procedures, court processes, and document preparation.
-      </p>
-    </div>
-  </div>
-
-  {# Chat Interface #}
-  <div class="container-desktop py-8">
-    <div class="max-w-3xl mx-auto">
-      <c-organisms.chat-window
-        session_id="{{ session_id }}"
-        chat_enabled="{{ chat_enabled }}"
-      />
-
-      {# Disclaimer #}
-      <div class="mt-6 p-4 bg-greyscale-50 rounded-lg border border-greyscale-200">
-        <div class="flex gap-3">
-          <c-atoms.icon name="information-circle" class="w-5 h-5 text-greyscale-500 flex-shrink-0 mt-0.5" />
-          <div class="text-sm text-greyscale-600">
-            <p class="font-medium text-greyscale-700 mb-1">Important Notice</p>
-            <p>
-              This AI assistant provides general legal information, not legal advice.
-              For specific legal matters, please consult with a licensed attorney.
-              Your conversations may be used to improve our services.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {# Fallback Search Option #}
-      <div class="mt-4 text-center">
-        <p class="text-sm text-greyscale-500">
-          Prefer to search our knowledge base?
-          <a href="{% url 'chat:search' %}" class="link link-primary">Use keyword search</a>
+  <main class="flex-1">
+    {# Page Header #}
+    <div class="bg-greyscale-50 border-b border-greyscale-200">
+      <div class="container-desktop py-6">
+        <h1 class="text-display-xs md:text-display-sm font-cooper font-semibold text-greyscale-900 mb-2">Legal Help Chat</h1>
+        <p class="text-md text-greyscale-600">
+          Ask questions about legal procedures, court processes, and document preparation.
         </p>
       </div>
     </div>
-  </div>
-</main>
-{% endblock %}
+    {# Chat Interface #}
+    <div class="container-desktop py-8">
+      <div class="max-w-3xl mx-auto">
+        <c-organisms.chat-window session_id="{{ session_id }}" chat_enabled="{{ chat_enabled }}" />
+        {# Disclaimer #}
+        <div class="mt-6 p-4 bg-greyscale-50 rounded-lg border border-greyscale-200">
+          <div class="flex gap-3">
+            <c-atoms.icon name="information-circle" class="w-5 h-5 text-greyscale-500 flex-shrink-0 mt-0.5" />
+            <div class="text-sm text-greyscale-600">
+              <p class="font-medium text-greyscale-700 mb-1">Important Notice</p>
+              <p>
+                This AI assistant provides general legal information, not legal advice.
+                For specific legal matters, please consult with a licensed attorney.
+                Your conversations may be used to improve our services.
+              </p>
+            </div>
+          </div>
+        </div>
+        {# Fallback Search Option #}
+        <div class="mt-4 text-center">
+          <p class="text-sm text-greyscale-500">
+            Prefer to search our knowledge base?
+            <a href="{% url 'chat:search' %}" class="link link-primary">Use keyword search</a>
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+{% endblock content %}
