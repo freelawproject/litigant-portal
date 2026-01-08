@@ -36,13 +36,9 @@
     <script src="{% static 'js/theme.js' %}"></script>
     {# Chat component - must load before Alpine #}
     <script src="{% static 'js/chat.js' %}"></script>
-    {# Alpine.js - local build for CSP compliance #}
-    {# Uses non-minified version in debug mode for easier debugging #}
-    {% if debug %}
-      <script defer src="{% static 'js/alpine.js' %}"></script>
-    {% else %}
-      <script defer src="{% static 'js/alpine.min.js' %}"></script>
-    {% endif %}
+    {# Alpine.js CSP build - required for Content Security Policy compliance #}
+    {# https://alpinejs.dev/advanced/csp #}
+    <script defer src="{% static 'js/alpine.min.js' %}"></script>
     {# Additional JavaScript #}
     {% block extra_js %}
     {% endblock extra_js %}
