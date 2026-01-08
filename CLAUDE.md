@@ -180,7 +180,7 @@ Docker connects to host Ollama via `host.docker.internal:11434`.
 | File                               | Purpose                                 |
 | ---------------------------------- | --------------------------------------- |
 | `config/settings.py`               | Django + Cotton + CSP + Chat config     |
-| `src/css/main.css`              | Tailwind v4 source + theme tokens       |
+| `src/css/main.css`                 | Tailwind v4 source + theme tokens       |
 | `static/js/alpine.js`              | Alpine.js standard build (debug)        |
 | `static/js/alpine.min.js`          | Alpine.js standard build (production)   |
 | `static/js/chat.js`                | Alpine.js chat component                |
