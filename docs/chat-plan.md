@@ -96,7 +96,11 @@ GET /chat/stream/    → SSE stream via StreamingHttpResponse
 ### How it works
 
 ```html
-<div hx-ext="sse" sse-connect="/chat/stream/{{ session_id }}/" sse-swap="message">
+<div
+  hx-ext="sse"
+  sse-connect="/chat/stream/{{ session_id }}/"
+  sse-swap="message"
+>
   <!-- HTMX auto-swaps incoming HTML -->
 </div>
 ```
@@ -160,13 +164,13 @@ yield f'data: {{"html": "{escape(rendered_html)}"}}\n\n'
 
 ## Recommendation Summary
 
-| Approach              | Complexity | Benefit       | Recommendation  |
-| --------------------- | ---------- | ------------- | --------------- |
-| Current (SSE + Alpine) | Low        | Works well    | **Keep**        |
-| Django Channels       | High       | Overkill      | Skip            |
-| FastAPI microservice  | High       | Wrong scale   | Skip            |
-| HTMX SSE              | Medium     | Marginal      | Optional        |
-| Server-side markdown  | Low        | CSP + Security | **Do this**     |
+| Approach               | Complexity | Benefit        | Recommendation |
+| ---------------------- | ---------- | -------------- | -------------- |
+| Current (SSE + Alpine) | Low        | Works well     | **Keep**       |
+| Django Channels        | High       | Overkill       | Skip           |
+| FastAPI microservice   | High       | Wrong scale    | Skip           |
+| HTMX SSE               | Medium     | Marginal       | Optional       |
+| Server-side markdown   | Low        | CSP + Security | **Do this**    |
 
 ### Recommendation
 
@@ -193,12 +197,12 @@ When ready to switch to Alpine.js CSP build, here's the implementation plan:
 
 ### Files to Modify
 
-| File                                         | Change                                           |
-| -------------------------------------------- | ------------------------------------------------ |
-| `chat/services/chat_service.py`              | Add markdown rendering in `stream_response()`    |
-| `static/js/chat.js`                          | Remove `renderMarkdown()`, receive pre-rendered HTML |
-| `static/js/alpine.min.js`                    | Replace with CSP build                           |
-| `templates/cotton/organisms/chat_window.html` | Update binding                                   |
+| File                                          | Change                                               |
+| --------------------------------------------- | ---------------------------------------------------- |
+| `chat/services/chat_service.py`               | Add markdown rendering in `stream_response()`        |
+| `static/js/chat.js`                           | Remove `renderMarkdown()`, receive pre-rendered HTML |
+| `static/js/alpine.min.js`                     | Replace with CSP build                               |
+| `templates/cotton/organisms/chat_window.html` | Update binding                                       |
 
 ### Step 1: Add Python Markdown Rendering
 
