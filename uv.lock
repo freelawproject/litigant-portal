@@ -168,18 +168,6 @@ wheels = [
 ]
 
 [[package]]
-name = "django-lb-health-check"
-version = "1.0.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/cd/34/e2b99a5366cf1c31884c6027492877d22f68ecb0f104485d495773bd1aea/django-lb-health-check-1.0.1.tar.gz", hash = "sha256:44a93c37db22c3e27a0404c7e3881007d2b846a2f441626d22a96f28349b332e", size = 5516, upload-time = "2022-06-01T01:37:42.695Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/36/a1/cfc1983843b3b73d21c32b0cf9517972ac4a8812b61d19f23272c27548bd/django_lb_health_check-1.0.1-py3-none-any.whl", hash = "sha256:6ef16e2965a302853eb644006e16e972fb6ff8399c6b468c59a534002bf533df", size = 7092, upload-time = "2022-06-01T01:37:44.31Z" },
-]
-
-[[package]]
 name = "djlint"
 version = "1.36.4"
 source = { registry = "https://pypi.org/simple" }
@@ -380,7 +368,6 @@ dependencies = [
     { name = "django-allauth" },
     { name = "django-cotton" },
     { name = "django-csp" },
-    { name = "django-lb-health-check" },
     { name = "gunicorn" },
     { name = "heroicons" },
     { name = "openai" },
@@ -402,7 +389,6 @@ requires-dist = [
     { name = "django-allauth", specifier = ">=65.0" },
     { name = "django-cotton", specifier = ">=1.0" },
     { name = "django-csp", specifier = ">=3.8" },
-    { name = "django-lb-health-check", specifier = ">=1.0.1" },
     { name = "djlint", marker = "extra == 'dev'", specifier = ">=1.36.4" },
     { name = "gunicorn", specifier = ">=23.0" },
     { name = "heroicons", specifier = ">=2.0" },
