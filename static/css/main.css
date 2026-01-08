@@ -448,6 +448,117 @@
   .nav-accordion[open] .nav-chevron {
     transform: rotate(90deg);
   }
+
+  /* ==========================================================================
+     CHAT COMPONENTS
+     ========================================================================== */
+
+  /* Chat Window */
+  .chat-window {
+    @apply flex flex-col h-[500px] max-h-[70vh];
+    @apply bg-white rounded-xl border border-greyscale-200;
+    @apply shadow-sm;
+  }
+
+  .chat-messages {
+    @apply flex-1 overflow-y-auto p-4 space-y-4;
+  }
+
+  .chat-input-form {
+    @apply flex gap-2 p-4 border-t border-greyscale-200;
+    @apply bg-greyscale-50 rounded-b-xl;
+  }
+
+  .chat-fallback-notice {
+    @apply px-4 py-3 bg-yellow-50 border-t border-yellow-400 text-center;
+  }
+
+  /* Chat Message */
+  .chat-message {
+    @apply flex gap-3;
+  }
+
+  .chat-message-user {
+    @apply flex-row-reverse;
+  }
+
+  .chat-message-avatar {
+    @apply flex-shrink-0;
+  }
+
+  .chat-message-content {
+    @apply flex flex-col max-w-[80%];
+  }
+
+  .chat-message-user .chat-message-content {
+    @apply items-end;
+  }
+
+  .chat-message-time {
+    @apply text-xs text-greyscale-400 mt-1;
+  }
+
+  /* Chat Bubbles */
+  .chat-bubble {
+    @apply p-3 rounded-lg text-md;
+    @apply break-words whitespace-pre-wrap;
+  }
+
+  .chat-bubble-user {
+    @apply bg-primary-600 text-white;
+    @apply rounded-br-sm;
+  }
+
+  .chat-bubble-assistant {
+    @apply bg-greyscale-100 text-greyscale-900;
+    @apply rounded-bl-sm;
+  }
+
+  .chat-bubble-system {
+    @apply bg-yellow-50 text-yellow-700 border border-yellow-200;
+    @apply text-sm italic;
+  }
+
+  /* Typing Indicator */
+  .typing-indicator {
+    @apply flex gap-1 p-3 bg-greyscale-100 rounded-lg w-fit;
+  }
+
+  .typing-dot {
+    @apply w-2 h-2 bg-greyscale-400 rounded-full;
+    animation: typing-bounce 1.4s infinite ease-in-out both;
+  }
+
+  .typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+  }
+
+  .typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+  }
+
+  @keyframes typing-bounce {
+    0%,
+    80%,
+    100% {
+      transform: scale(0.8);
+      opacity: 0.5;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Search Results (fallback) */
+  .search-results {
+    @apply space-y-4;
+  }
+
+  .search-result-card {
+    @apply p-4 bg-white border border-greyscale-200 rounded-lg;
+    @apply hover:border-primary-300 hover:shadow-sm transition-all;
+  }
 }
 
 /* ==========================================================================
@@ -467,23 +578,5 @@
 
   .focus-container:has(input:focus) {
     @apply outline outline-2 outline-primary-600;
-  }
-
-  /* Scrollbar styling */
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-greyscale-300 rounded-full;
-  }
-
-  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    @apply bg-greyscale-400;
   }
 }

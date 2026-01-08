@@ -69,15 +69,21 @@ services:
     environment:
       - DEBUG=true
       - SECRET_KEY=${SECRET_KEY:-auto}
-      - DATABASE_URL=postgres://${POSTGRES_USER:-litigant_portal}:${POSTGRES_PASSWORD:-litigant_dev}@db-dev:5432/${POSTGRES_DB:-litigant_portal}
+      # SQLite for demo (easy reset: rm db.sqlite3)
+      # For PostgreSQL, uncomment below and use: docker compose --profile dev up
+      # - DATABASE_URL=postgres://${POSTGRES_USER:-litigant_portal}:${POSTGRES_PASSWORD:-litigant_dev}@db-dev:5432/${POSTGRES_DB:-litigant_portal}
       - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      # AI Chat configuration (uses Ollama on host)
+      - CHAT_ENABLED=${CHAT_ENABLED:-true}
+      - CHAT_PROVIDER=${CHAT_PROVIDER:-ollama}
     volumes:
       - .:/app
     ports:
       - '8000:8000'
-    depends_on:
-      db-dev:
-        condition: service_healthy
+    # Uncomment for PostgreSQL:
+    # depends_on:
+    #   db-dev:
+    #     condition: service_healthy
     stdin_open: true
     tty: true
 

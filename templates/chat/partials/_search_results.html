@@ -1,0 +1,20 @@
+{% load cotton %}
+<div class="search-results">
+  {% if query %}<h3 class="text-lg font-medium mb-4">Search results for "{{ query }}"</h3>{% endif %}
+  {% if results %}
+    <div class="space-y-4">
+      {% for doc in results %}
+        <c-molecules.search-result title="{{ doc.title }}" content="{{ doc.content|truncatewords:50 }}" category="{{ doc.category }}" url="{{ doc.source_url }}" />
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-8 text-greyscale-600">
+      {% if query %}
+        <p>No results found for "{{ query }}".</p>
+        <p class="mt-2 text-sm">Try different keywords or browse by topic.</p>
+      {% else %}
+        <p>Enter a search term to find legal resources.</p>
+      {% endif %}
+    </div>
+  {% endif %}
+</div>
