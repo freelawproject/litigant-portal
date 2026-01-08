@@ -46,6 +46,7 @@ dependencies = [
     "python-dotenv>=1.0",
     # AI Chat (Ollama uses OpenAI-compatible API)
     "openai>=1.50",
+    "django-lb-health-check>=1.0.1",
 ]
 
 [project.optional-dependencies]
