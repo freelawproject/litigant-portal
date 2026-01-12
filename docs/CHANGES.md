@@ -2,6 +2,36 @@
 
 ## Current
 
+### 0.2.0
+
+- **Completed:** Authentication (django-allauth)
+  - Email-based login/signup/logout
+  - Full-page auth screens (mobile-friendly, accessible)
+  - User menu component in header with dropdown
+  - New templates: `account/base.html`, `login.html`, `signup.html`, `logout.html`
+  - New molecule: `user_menu` (header auth badge/dropdown)
+
+- **Completed:** AI Chat with Groq
+  - Switched from Ollama to Groq API (llama-3.3-70b-versatile)
+  - No local LLM setup required
+  - Streaming responses via SSE
+
+- **Completed:** Docker-first development
+  - Removed `dev.sh` in favor of `make docker-dev`
+  - PostgreSQL for local development
+  - `portal.localhost:8000` for dev URLs (1Password friendly)
+
+- **Completed:** Form components
+  - New molecule: `form_field` (label + input + help/error display)
+  - New atom: `checkbox` (checkbox with optional label)
+  - Simplified approach: adjacent error messages (no complex aria-describedby wiring)
+
+- **Completed:** CI/CD improvements
+  - Tailwind standalone CLI in GitHub Actions (no npm)
+  - Fly.io auto-deploy on push to main
+
+## Past
+
 ### 0.1.0
 
 - **Completed:** Atomic Design restructure
@@ -30,8 +60,8 @@
 
 - **Completed:** Build simplification
   - Removed Node.js dependency entirely
-  - Tailwind CSS via Homebrew standalone CLI (`brew install tailwindcss`)
-  - Alpine.js via CDN
+  - Tailwind CSS via standalone CLI
+  - Alpine.js local files (standard build)
   - Migrated to Tailwind v4 CSS-based configuration (@theme blocks)
   - Removed `tailwind.config.js` in favor of `static/css/main.css` theme tokens
 

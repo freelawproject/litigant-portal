@@ -291,10 +291,24 @@ curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js" -o stati
 
 QA/staging environment deployed on Fly.io. Configuration in `fly.toml`.
 
-### Deploy Commands
+### Auto-Deploy
+
+Pushes to `main` auto-deploy via GitHub Actions (`.github/workflows/fly-deploy.yml`).
+
+### Manual Deploy (PR Testing)
+
+To test a branch on QA before merging:
 
 ```bash
-fly deploy              # Deploy latest changes
+git checkout your-branch
+fly deploy              # Deploys your local working directory
+```
+
+Note: This deploys local files, not the GitHub branch. After merge, `main` auto-deploys.
+
+### Other Commands
+
+```bash
 fly logs                # View logs
 fly status              # Check app status
 fly ssh console         # SSH into container
