@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+{% block header %}
+{% endblock header %}
+{% block footer %}
+{% endblock footer %}
+{% block content %}
+  <div class="min-h-dvh flex flex-col items-center justify-center px-4 py-8 bg-greyscale-50">
+    <div class="w-full max-w-md">
+      {# Logo #}
+      <div class="text-center mb-8">
+        <a href="{% url 'portal:home' %}" aria-label="Return to home">
+          <img src="{% static 'images/logo.svg' %}"
+               alt="Litigant Portal"
+               class="h-10 mx-auto" />
+        </a>
+      </div>
+      {# Auth Card #}
+      <div class="bg-white rounded-xl border border-greyscale-200 p-6 sm:p-8 shadow-sm">
+        {% block auth_content %}
+        {% endblock auth_content %}
+      </div>
+      {# Footer link #}
+      <div class="text-center mt-6">
+        {% block auth_footer %}
+        {% endblock auth_footer %}
+      </div>
+    </div>
+  </div>
+{% endblock content %}

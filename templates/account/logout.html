@@ -1,0 +1,25 @@
+{% extends "account/base.html" %}
+{% load static heroicons %}
+{% block title %}
+  Sign Out - Litigant Portal
+{% endblock title %}
+{% block auth_content %}
+  <div class="text-center">
+    {% heroicon_outline "arrow-right-start-on-rectangle" class="w-12 h-12 text-greyscale-400 mx-auto mb-4" %}
+    <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Sign out</h1>
+    <p class="text-greyscale-600 mb-6">Are you sure you want to sign out?</p>
+    <form method="post" action="{% url 'account_logout' %}">
+      {% csrf_token %}
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <a href="{% url 'portal:home' %}">
+          <c-atoms.button type="button" variant="outline" class="w-full sm:w-auto justify-center">
+          Cancel
+          </c-atoms.button>
+        </a>
+        <c-atoms.button type="submit" variant="primary" class="justify-center">
+        Sign out
+        </c-atoms.button>
+      </div>
+    </form>
+  </div>
+{% endblock auth_content %}

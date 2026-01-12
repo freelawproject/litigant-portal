@@ -193,6 +193,22 @@ AUTHENTICATION_BACKENDS = [
 
 SITE_ID = 1
 
+# Allauth account settings
+ACCOUNT_LOGIN_METHODS = {"email"}  # Email-based login (not username)
+ACCOUNT_SIGNUP_FIELDS = [
+    "email*",
+    "password1*",
+    "password2*",
+]  # Required fields
+ACCOUNT_EMAIL_VERIFICATION = "none"  # Disable email verification for now
+ACCOUNT_LOGOUT_ON_GET = False  # Require POST for CSRF protection
+LOGIN_REDIRECT_URL = "/"
+LOGOUT_REDIRECT_URL = "/"
+
+# Email backend (console for dev, configure SMTP for production)
+if DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/
 CSP_DEFAULT_SRC = ("'self'",)
@@ -235,8 +251,8 @@ if not DEBUG:
 
 # AI Chat configuration
 CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
-CHAT_PROVIDER = os.environ.get("CHAT_PROVIDER", "ollama")
-CHAT_MODEL = os.environ.get("CHAT_MODEL", "llama3.2:3b")
+CHAT_PROVIDER = os.environ.get("CHAT_PROVIDER", "groq")
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "llama-3.3-70b-versatile")
 CHAT_MAX_TOKENS = int(os.environ.get("CHAT_MAX_TOKENS", "1024"))
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 CHAT_SYSTEM_PROMPT = """You are a helpful legal assistant for self-represented \
