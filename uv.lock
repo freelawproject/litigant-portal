@@ -382,6 +382,7 @@ dependencies = [
     { name = "heroicons" },
     { name = "openai" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "python-dotenv" },
 ]
 
 [package.optional-dependencies]
