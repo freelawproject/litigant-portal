@@ -302,15 +302,12 @@ Our Tailwind config and CSS patterns are adapted from [CourtListener](https://gi
 ## Development Workflow
 
 ```bash
-# Start dev server with CSS watching
-./dev.sh
+# Start dev server (Docker)
+cp .env.example .env      # Add your GROQ_API_KEY
+make docker-dev
 
-# Or manually:
-python manage.py runserver &
-tailwindcss -i static/css/main.css -o static/css/main.built.css --watch
-
-# Production build (minified)
-tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
+# Production CSS build (minified)
+tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 ```
 
 **Requirements:** Python 3.13+, Tailwind CSS (`brew install tailwindcss`)

@@ -4,25 +4,9 @@ Access to justice portal for self-represented litigants. Built by [Free Law Proj
 
 ## Quick Start
 
-### Local Development (without Docker)
-
 ```bash
-# Install dependencies
-python -m venv .venv
-source .venv/bin/activate
-pip install -e ".[dev]"
-
-# Start dev server (Django + Tailwind watch)
-./dev.sh
-```
-
-Requires: Python 3.13+, [Tailwind CLI](https://tailwindcss.com/blog/standalone-cli) (`brew install tailwindcss`)
-
-### Docker Development
-
-```bash
-cp .env.example .env
-make docker-dev
+cp .env.example .env      # Add your GROQ_API_KEY
+make docker-dev           # Start dev environment
 ```
 
 Visit: http://localhost:8000

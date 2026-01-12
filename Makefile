@@ -1,4 +1,4 @@
-.PHONY: help dev build css clean install migrate test collectstatic lint \
+.PHONY: help build css clean install migrate test collectstatic lint \
        docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-test docker-clean
 
 help: ## Show this help message
@@ -9,12 +9,6 @@ install: ## Install Python dependencies (includes Tailwind CSS)
 	python -m venv .venv
 	.venv/bin/pip install --upgrade pip
 	.venv/bin/pip install -e ".[dev]"
-
-dev: ## Start Django + Tailwind CSS watch
-	./dev.sh
-
-django: ## Start Django dev server only
-	source .venv/bin/activate && python manage.py runserver
 
 css: ## Build Tailwind CSS (one-time)
 	tailwindcss -i src/css/main.css -o static/css/main.built.css

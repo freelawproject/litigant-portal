@@ -3,19 +3,20 @@
 ## Quick Start
 
 ```bash
-./dev.sh                    # Start Django + Tailwind CSS watch
+cp .env.example .env        # Add your GROQ_API_KEY
+make docker-dev             # Start dev environment
 # Visit: http://localhost:8000/style-guide/
 ```
 
 **Other Commands:**
 
 ```bash
-tailwindcss -i static/css/main.css -o static/css/main.built.css --minify  # Build production CSS
-tailwindcss -i static/css/main.css -o static/css/main.built.css --watch   # Watch CSS
-python manage.py shell                                                      # Django shell
+make docker-shell           # Shell into container
+make docker-down            # Stop containers
+make test                   # Run tests
 ```
 
-**Requirements:** Python 3.13+, Tailwind CSS (`brew install tailwindcss`)
+**Requirements:** Docker
 
 ---
 
