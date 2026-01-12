@@ -101,7 +101,9 @@ class LogoutPageTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123"
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
         )
 
     def test_logout_page_requires_login(self):
@@ -158,7 +160,9 @@ class UserMenuAuthenticatedTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123"
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
         )
         self.client.login(username="testuser", password="testpass123")
 
@@ -199,7 +203,9 @@ class SignupFlowTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "/")
         # User should be created
-        self.assertTrue(User.objects.filter(email="newuser@example.com").exists())
+        self.assertTrue(
+            User.objects.filter(email="newuser@example.com").exists()
+        )
 
 
 class LoginFlowTests(TestCase):
@@ -208,7 +214,9 @@ class LoginFlowTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123"
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
         )
 
     def test_login_redirects_to_home(self):
@@ -237,7 +245,9 @@ class LogoutFlowTests(TestCase):
     def setUp(self):
         self.client = Client()
         self.user = User.objects.create_user(
-            username="testuser", email="test@example.com", password="testpass123"
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
         )
         self.client.login(username="testuser", password="testpass123")
 

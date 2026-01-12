@@ -14,34 +14,9 @@
   {% endif %}
   <form method="post" action="{% url 'account_signup' %}" class="space-y-4">
     {% csrf_token %}
-    {# Email field #}
-    <div>
-      <label for="id_email"
-             class="block text-sm font-medium text-greyscale-700 mb-1.5">Email address</label>
-      <c-atoms.input type="email" name="email" id="id_email" placeholder="you@example.com" required autocomplete="email" value="{{ form.email.value|default:'' }}" error="{{ form.email.errors|yesno:'true,' }}" aria_describedby="{% if form.email.errors %}email-error{% endif %}" />
-      {% if form.email.errors %}
-        <p id="email-error" class="mt-1 text-sm text-red-600">{{ form.email.errors.0 }}</p>
-      {% endif %}
-    </div>
-    {# Password field #}
-    <div>
-      <label for="id_password1"
-             class="block text-sm font-medium text-greyscale-700 mb-1.5">Password</label>
-      <c-atoms.input type="password" name="password1" id="id_password1" placeholder="Create a password" required autocomplete="new-password" error="{{ form.password1.errors|yesno:'true,' }}" aria_describedby="password1-help {% if form.password1.errors %}password1-error{% endif %}" />
-      <p id="password1-help" class="mt-1 text-xs text-greyscale-500">At least 8 characters</p>
-      {% if form.password1.errors %}
-        <p id="password1-error" class="mt-1 text-sm text-red-600">{{ form.password1.errors.0 }}</p>
-      {% endif %}
-    </div>
-    {# Confirm password field #}
-    <div>
-      <label for="id_password2"
-             class="block text-sm font-medium text-greyscale-700 mb-1.5">Confirm password</label>
-      <c-atoms.input type="password" name="password2" id="id_password2" placeholder="Confirm your password" required autocomplete="new-password" error="{{ form.password2.errors|yesno:'true,' }}" aria_describedby="{% if form.password2.errors %}password2-error{% endif %}" />
-      {% if form.password2.errors %}
-        <p id="password2-error" class="mt-1 text-sm text-red-600">{{ form.password2.errors.0 }}</p>
-      {% endif %}
-    </div>
+    <c-molecules.form-field label="Email address" type="email" name="email" id="id_email" placeholder="you@example.com" required autocomplete="email" value="{{ form.email.value|default:'' }}" :errors="form.email.errors" />
+    <c-molecules.form-field label="Password" type="password" name="password1" id="id_password1" placeholder="Create a password" required autocomplete="new-password" help_text="At least 8 characters" :errors="form.password1.errors" />
+    <c-molecules.form-field label="Confirm password" type="password" name="password2" id="id_password2" placeholder="Confirm your password" required autocomplete="new-password" :errors="form.password2.errors" />
     {# Submit #}
     <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
     Create account

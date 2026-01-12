@@ -72,7 +72,7 @@ services:
       # SQLite for demo (easy reset: rm db.sqlite3)
       # For PostgreSQL, uncomment below and use: docker compose --profile dev up
       # - DATABASE_URL=postgres://${POSTGRES_USER:-litigant_portal}:${POSTGRES_PASSWORD:-litigant_dev}@db-dev:5432/${POSTGRES_DB:-litigant_portal}
-      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
+      - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
       # AI Chat configuration (Groq cloud LLM)
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
       - CHAT_PROVIDER=groq

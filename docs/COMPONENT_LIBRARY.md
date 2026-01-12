@@ -66,7 +66,7 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
 
 ### URL
 
-- Development: http://localhost:8000/style-guide/
+- Development: http://portal.localhost:8000/style-guide/
 - Template: `templates/pages/style_guide.html`
 - View: `portal/views.py::style_guide()`
 
@@ -133,6 +133,7 @@ Each component section includes:
 | Component        | File                          | Description                                                                           |
 | ---------------- | ----------------------------- | ------------------------------------------------------------------------------------- |
 | Button           | `atoms/button.html`           | Primary, outline, dark, ghost, danger variants                                        |
+| Checkbox         | `atoms/checkbox.html`         | Checkbox with optional label                                                          |
 | Input            | `atoms/input.html`            | Text inputs with error/success states                                                 |
 | Search Input     | `atoms/search_input.html`     | Search input with icon, large touch target                                            |
 | Select           | `atoms/select.html`           | Dropdown with custom styling                                                          |
@@ -147,11 +148,13 @@ Each component section includes:
 
 | Component     | File                           | Description                                 |
 | ------------- | ------------------------------ | ------------------------------------------- |
+| Form Field    | `molecules/form_field.html`    | Label + input + help text + error display   |
 | Logo          | `molecules/logo.html`          | Portal logo/branding, links to home         |
 | Search Bar    | `molecules/search_bar.html`    | Search input + submit button combo          |
 | Topic Card    | `molecules/topic_card.html`    | Tappable card with icon, title, description |
 | Chat Message  | `molecules/chat_message.html`  | Full chat message with bubble and metadata  |
 | Search Result | `molecules/search_result.html` | Search result card with title and excerpt   |
+| User Menu     | `molecules/user_menu.html`     | Header auth badge/dropdown                  |
 
 ### Organisms
 
@@ -315,7 +318,7 @@ tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 **Note:** We use Tailwind v4 with CSS-based configuration. Theme tokens are defined
 in `@theme { }` blocks within `static/css/main.css` - no `tailwind.config.js` needed.
 
-Visit http://localhost:8000/style-guide/ to view component library.
+Visit http://portal.localhost:8000/style-guide/ to view component library.
 
 ---
 

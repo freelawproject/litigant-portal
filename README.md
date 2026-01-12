@@ -9,7 +9,7 @@ cp .env.example .env      # Add your GROQ_API_KEY
 make docker-dev           # Start dev environment
 ```
 
-Visit: http://localhost:8000
+Visit: http://portal.localhost:8000
 
 ### Docker Production
 

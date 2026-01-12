@@ -14,33 +14,10 @@
   {% endif %}
   <form method="post" action="{% url 'account_login' %}" class="space-y-4">
     {% csrf_token %}
-    {# Email field #}
-    <div>
-      <label for="id_login"
-             class="block text-sm font-medium text-greyscale-700 mb-1.5">Email address</label>
-      <c-atoms.input type="email" name="login" id="id_login" placeholder="you@example.com" required autocomplete="email" value="{{ form.login.value|default:'' }}" error="{{ form.login.errors|yesno:'true,' }}" aria_describedby="{% if form.login.errors %}login-error{% endif %}" />
-      {% if form.login.errors %}
-        <p id="login-error" class="mt-1 text-sm text-red-600">{{ form.login.errors.0 }}</p>
-      {% endif %}
-    </div>
-    {# Password field #}
-    <div>
-      <label for="id_password"
-             class="block text-sm font-medium text-greyscale-700 mb-1.5">Password</label>
-      <c-atoms.input type="password" name="password" id="id_password" placeholder="Enter your password" required autocomplete="current-password" error="{{ form.password.errors|yesno:'true,' }}" aria_describedby="{% if form.password.errors %}password-error{% endif %}" />
-      {% if form.password.errors %}
-        <p id="password-error" class="mt-1 text-sm text-red-600">{{ form.password.errors.0 }}</p>
-      {% endif %}
-    </div>
+    <c-molecules.form-field label="Email address" type="email" name="login" id="id_login" placeholder="you@example.com" required autocomplete="email" value="{{ form.login.value|default:'' }}" :errors="form.login.errors" />
+    <c-molecules.form-field label="Password" type="password" name="password" id="id_password" placeholder="Enter your password" required autocomplete="current-password" :errors="form.password.errors" />
     {# Remember me #}
-    <div class="flex items-center gap-2">
-      <input type="checkbox"
-             name="remember"
-             id="id_remember"
-             checked
-             class="w-4 h-4 rounded border-greyscale-300 text-primary-600 focus:ring-primary-500" />
-      <label for="id_remember" class="text-sm text-greyscale-600">Remember me</label>
-    </div>
+    <c-atoms.checkbox name="remember" id="id_remember" checked label="Remember me" />
     {# Submit #}
     <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
     Sign in
