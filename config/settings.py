@@ -39,6 +39,10 @@ ALLOWED_HOSTS = [
     if h.strip()
 ] or (["localhost", "127.0.0.1", "0.0.0.0"] if DEBUG else [])
 
+# Fly.io auto-sets FLY_APP_NAME
+if fly_app := os.environ.get("FLY_APP_NAME"):
+    ALLOWED_HOSTS.append(f"{fly_app}.fly.dev")
+
 # Required for Django's debug context processor to expose 'debug' in templates
 if DEBUG:
     # In DEBUG mode, treat all IPs as internal (for Docker networking)
@@ -234,6 +238,7 @@ CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
 CHAT_PROVIDER = os.environ.get("CHAT_PROVIDER", "ollama")
 CHAT_MODEL = os.environ.get("CHAT_MODEL", "llama3.2:3b")
 CHAT_MAX_TOKENS = int(os.environ.get("CHAT_MAX_TOKENS", "1024"))
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 CHAT_SYSTEM_PROMPT = """You are a helpful legal assistant for self-represented \
 litigants. Provide clear, accurate information about legal procedures, court \
 processes, and document preparation. Always recommend consulting with a licensed \

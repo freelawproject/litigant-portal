@@ -72,7 +72,7 @@ case "$1" in
     web-dev)
         echo "Starting development server..."
         # Start Tailwind watch in background
-        tailwindcss -i static/css/main.css -o static/css/main.built.css --watch &
+        tailwindcss -i src/css/main.css -o static/css/main.built.css --watch &
 
         wait_for_db
         run_migrations
@@ -83,7 +83,7 @@ case "$1" in
     web-prod)
         echo "Starting production server..."
         wait_for_db
-        run_migrations
+        # Migrations handled by fly.toml release_command (or run separately)
         run_collectstatic
 
         exec gunicorn config.wsgi:application \
@@ -110,7 +110,7 @@ case "$1" in
         ;;
 
     test)
-        tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
+        tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
         run_collectstatic
         exec python manage.py test "${@:2}"
         ;;
