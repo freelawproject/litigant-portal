@@ -9,6 +9,7 @@
 # Application code
 !config/
 !portal/
+!chat/
 !litigant_portal/
 !templates/
 

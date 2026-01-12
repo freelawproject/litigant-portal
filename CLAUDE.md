@@ -150,7 +150,6 @@ chat/
 ├── providers/
 │   ├── base.py      # Abstract BaseLLMProvider class
 │   ├── ollama.py    # Ollama local LLM (OpenAI-compatible API)
-│   ├── groq.py      # Groq cloud LLM (fast inference)
 │   └── factory.py   # Provider factory with caching
 ├── services/
 │   ├── chat_service.py   # Main chat orchestration + SSE streaming
@@ -159,27 +158,16 @@ chat/
 └── views.py         # API endpoints (send, stream, search)
 ```
 
-### LLM Providers
-
-**Ollama (local, default for dev):**
+### Running Ollama
 
 ```bash
+# Install and start Ollama
 brew install ollama
 ollama pull llama3.2:3b
 ollama serve  # Runs on localhost:11434
 ```
 
 Docker connects to host Ollama via `host.docker.internal:11434`.
-
-**Groq (cloud, for deployment):**
-
-```bash
-export CHAT_PROVIDER=groq
-export GROQ_API_KEY=your-api-key  # Free at console.groq.com
-export CHAT_MODEL=llama-3.3-70b-versatile
-```
-
-Available Groq models: `llama-3.3-70b-versatile`, `llama-3.1-8b-instant`, `mixtral-8x7b-32768`
 
 ### Chat Endpoints
 

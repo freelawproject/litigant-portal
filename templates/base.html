@@ -19,24 +19,23 @@
     {% block extra_css %}
     {% endblock extra_css %}
   </head>
-  <body class="min-h-screen">
-    <div class="flex flex-col min-h-screen bg-greyscale-25">
-      {% block header %}
-        <c-organisms.header />
-      {% endblock header %}
-      <main class="flex-1">
-        {% block content %}
-        {% endblock content %}
-      </main>
-      {% block footer %}
-        <c-organisms.footer />
-      {% endblock footer %}
-    </div>
+  <body class="min-h-dvh flex flex-col bg-greyscale-25">
+    {% block header %}
+      <c-organisms.header />
+    {% endblock header %}
+    <main class="flex-1 min-h-0">
+      {% block content %}
+      {% endblock content %}
+    </main>
+    {% block footer %}
+      <c-organisms.footer />
+    {% endblock footer %}
     {# Theme store - must load before Alpine #}
     <script src="{% static 'js/theme.js' %}"></script>
     {# Chat component - must load before Alpine #}
     <script src="{% static 'js/chat.js' %}"></script>
-    {# Alpine.js - local build for CSP compliance #}
+    {# Alpine.js CSP build - required for Content Security Policy compliance #}
+    {# https://alpinejs.dev/advanced/csp #}
     {# Uses non-minified version in debug mode for easier debugging #}
     {% if debug %}
       <script defer src="{% static 'js/alpine.js' %}"></script>

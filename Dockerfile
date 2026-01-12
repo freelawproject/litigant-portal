@@ -87,6 +87,7 @@ COPY --from=tailwind /app/static/css/main.built.css ./static/css/main.built.css
 
 COPY config/ ./config/
 COPY portal/ ./portal/
+COPY chat/ ./chat/
 COPY litigant_portal/ ./litigant_portal/
 COPY chat/ ./chat/
 COPY templates/ ./templates/
