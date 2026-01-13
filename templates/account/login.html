@@ -1,0 +1,38 @@
+{% extends "account/base.html" %}
+{% load static %}
+{% block title %}
+  Sign In - Litigant Portal
+{% endblock title %}
+{% block auth_content %}
+  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Sign in</h1>
+  <p class="text-greyscale-600 mb-6">Access your legal assistance portal</p>
+  {# Error messages #}
+  {% if form.non_field_errors %}
+    <c-atoms.alert variant="danger" class="mb-4">
+    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </c-atoms.alert>
+  {% endif %}
+  <form method="post" action="{% url 'account_login' %}" class="space-y-4">
+    {% csrf_token %}
+    <c-molecules.form-field label="Email address" type="email" name="login" id="id_login" placeholder="you@example.com" required autocomplete="email" value="{{ form.login.value|default:'' }}" :errors="form.login.errors" />
+    <c-molecules.form-field label="Password" type="password" name="password" id="id_password" placeholder="Enter your password" required autocomplete="current-password" :errors="form.password.errors" />
+    {# Remember me #}
+    <c-atoms.checkbox name="remember" id="id_remember" checked label="Remember me" />
+    {# Submit #}
+    <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
+    Sign in
+    </c-atoms.button>
+  </form>
+  {# Forgot password link #}
+  <div class="mt-4 text-center">
+    <a href="{% url 'account_reset_password' %}"
+       class="text-sm text-primary-600 hover:text-primary-700 underline">Forgot your password?</a>
+  </div>
+{% endblock auth_content %}
+{% block auth_footer %}
+  <p class="text-sm text-greyscale-600">
+    Don't have an account?
+    <a href="{% url 'account_signup' %}"
+       class="text-primary-600 hover:text-primary-700 font-medium underline">Create one</a>
+  </p>
+{% endblock auth_footer %}

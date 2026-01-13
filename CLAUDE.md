@@ -6,30 +6,62 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Access to justice portal for self-represented litigants. Django 5.2 with server-rendered components (Django Cotton), Tailwind CSS v4, and Alpine.js for reactivity.
 
+## Environment Philosophy
+
+Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker everywhere.
+
+| Environment | Chat Provider | Config Source                              |
+| ----------- | ------------- | ------------------------------------------ |
+| Local dev   | Groq          | docker-compose.yml + `.env` (secrets only) |
+| CI/CD       | None (mocked) | tox.ini - tests mock all providers         |
+| QA (Fly.io) | Groq          | fly.toml + `fly secrets`                   |
+
+**Local dev setup:**
+
+```bash
+cp .env.example .env        # Add your GROQ_API_KEY
+make docker-dev             # Start dev environment
+```
+
+Future: LiteLLM will replace direct provider calls.
+
 ## Commands
 
+### Local Development (Docker)
+
 ```sh
-./dev.sh                    # Start Django + Tailwind watch (main dev command)
+cp .env.example .env        # Add your GROQ_API_KEY
+make docker-dev             # Start dev environment
+make docker-shell           # Shell into container
+make docker-down            # Stop containers
+```
+
+### Testing & Linting
+
+```sh
 make test                   # Run tests (builds CSS + collectstatic first)
 make lint                   # Lint and format all code (via pre-commit)
+```
 
-# Run a single test (venv must be active)
-SECRET_KEY=dev python manage.py test chat.tests.test_views.SendMessageValidationTests.test_rejects_empty_message
+### Direct Python commands (use .venv/bin/python)
 
-# Django commands (outside of ./dev.sh, prefix with SECRET_KEY=dev)
-SECRET_KEY=dev python manage.py makemigrations
-SECRET_KEY=dev python manage.py migrate
-SECRET_KEY=dev python manage.py shell
+For commands outside Docker:
 
-# Individual tools (if needed)
-pre-commit run --all-files  # Run all linters/formatters
-ruff format .               # Format Python only
-ruff check --fix            # Lint Python only
-djlint templates/ --reformat  # Format HTML templates only
+```sh
+# Django management commands
+SECRET_KEY=dev .venv/bin/python manage.py check
+SECRET_KEY=dev .venv/bin/python manage.py makemigrations
+SECRET_KEY=dev .venv/bin/python manage.py migrate
+SECRET_KEY=dev .venv/bin/python manage.py shell
 
-# Docker
-make docker-dev             # Start dev environment with PostgreSQL
-make docker-prod            # Start production environment
+# Run tests directly (faster than make test, skips CSS build)
+SECRET_KEY=test .venv/bin/python manage.py test
+SECRET_KEY=test .venv/bin/python manage.py test chat.tests.test_views
+
+# Individual linting tools
+.venv/bin/ruff format .
+.venv/bin/ruff check --fix
+.venv/bin/djlint templates/ --reformat
 ```
 
 ## Pre-commit Hooks
@@ -43,6 +75,15 @@ Pre-commit runs automatically on commit. Key hooks:
 
 Run all hooks manually: `pre-commit run --all-files`
 
+### Before Committing
+
+Always run before commits (especially after rebases or batch edits):
+
+```bash
+make lint    # Format + lint all code
+make test    # Run test suite
+```
+
 ## Architecture
 
 ### Component System (Django Cotton + Atomic Design)
@@ -51,8 +92,8 @@ Components live in `templates/cotton/` using Atomic Design hierarchy:
 
 ```
 templates/cotton/
-├── atoms/      # Basic elements: alert, button, chat_bubble, icon, input, link, nav_link, search_input, select, typing_indicator
-├── molecules/  # Combinations: chat_message, logo, search_bar, search_result, topic_card
+├── atoms/      # Basic elements: alert, button, chat_bubble, checkbox, icon, input, link, nav_link, search_input, select, typing_indicator
+├── molecules/  # Combinations: chat_message, form_field, logo, search_bar, search_result, topic_card, user_menu
 └── organisms/  # Complex sections: chat_window, footer, header, hero, topic_grid
 ```
 
@@ -129,6 +170,29 @@ Default styles target mobile. Use breakpoints for larger screens:
 
 - `sm:` 640px, `md:` 768px, `lg:` 1024px
 
+### Form Fields Pattern
+
+**Always use `<c-molecules.form-field>` for form inputs.** This component handles:
+
+- Label + input + error message layout
+- `aria-invalid="true"` when errors present
+- Help text and error message display
+
+```html
+<c-molecules.form-field
+  label="Email address"
+  type="email"
+  name="email"
+  id="id_email"
+  placeholder="you@example.com"
+  required
+  autocomplete="email"
+  value="{{ form.email.value|default:'' }}"
+  help_text="We'll never share your email"
+  :errors="form.email.errors"
+/>
+```
+
 ## AI Chat Feature
 
 The portal includes an AI-powered chat for legal assistance with streaming responses.
@@ -158,16 +222,11 @@ chat/
 └── views.py         # API endpoints (send, stream, search)
 ```
 
-### Running Ollama
+### LLM Provider
 
-```bash
-# Install and start Ollama
-brew install ollama
-ollama pull llama3.2:3b
-ollama serve  # Runs on localhost:11434
-```
+Currently using **Groq** (cloud) for dev and QA. Configured via `GROQ_API_KEY` in `.env`.
 
-Docker connects to host Ollama via `host.docker.internal:11434`.
+Future: LiteLLM will provide a unified interface for multiple providers.
 
 ### Chat Endpoints
 
@@ -198,7 +257,7 @@ Docker connects to host Ollama via `host.docker.internal:11434`.
 
 ```bash
 rm db.sqlite3
-SECRET_KEY=dev python manage.py migrate
+SECRET_KEY=dev .venv/bin/python manage.py migrate
 ```
 
 ### Database Compatibility
@@ -215,11 +274,11 @@ The codebase supports both SQLite and PostgreSQL:
 
 All frontend assets are local files, not CDN. Update these in sync when upgrading:
 
-| Tool         | Version           | Location                                         |
-| ------------ | ----------------- | ------------------------------------------------ |
-| Tailwind CSS | v4.1.16 (CLI)     | `Dockerfile`, `dev.sh`                           |
-| Alpine.js    | 3.14.9 (standard) | `static/js/alpine.js`, `static/js/alpine.min.js` |
-| Ollama model | llama3.2:3b       | `chat/providers/ollama.py`                       |
+| Tool         | Version                 | Location                                         |
+| ------------ | ----------------------- | ------------------------------------------------ |
+| Tailwind CSS | v4.1.16 (CLI)           | `Dockerfile`                                     |
+| Alpine.js    | 3.14.9 (standard)       | `static/js/alpine.js`, `static/js/alpine.min.js` |
+| Groq model   | llama-3.3-70b-versatile | `docker-compose.yml`, `fly.toml`                 |
 
 **Updating Alpine.js:**
 

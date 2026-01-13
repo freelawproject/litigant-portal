@@ -27,8 +27,8 @@ When `DEBUG=False`, Django enables these security settings:
 
 ### Development
 
-- `SECRET_KEY` auto-generated at runtime (dev.sh or Docker entrypoint)
-- Database credentials in `.env` file (gitignored)
+- `SECRET_KEY` auto-generated at runtime (Docker entrypoint)
+- `GROQ_API_KEY` in `.env` file (gitignored)
 
 ### Production
 

@@ -1,0 +1,37 @@
+{% extends "account/base.html" %}
+{% load static %}
+{% block title %}
+  Create Account - Litigant Portal
+{% endblock title %}
+{% block auth_content %}
+  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Create account</h1>
+  <p class="text-greyscale-600 mb-6">Get free legal assistance today</p>
+  {# Error messages #}
+  {% if form.non_field_errors %}
+    <c-atoms.alert variant="danger" class="mb-4">
+    {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+    </c-atoms.alert>
+  {% endif %}
+  <form method="post" action="{% url 'account_signup' %}" class="space-y-4">
+    {% csrf_token %}
+    <c-molecules.form-field label="Email address" type="email" name="email" id="id_email" placeholder="you@example.com" required autocomplete="email" value="{{ form.email.value|default:'' }}" :errors="form.email.errors" />
+    <c-molecules.form-field label="Password" type="password" name="password1" id="id_password1" placeholder="Create a password" required autocomplete="new-password" help_text="At least 8 characters" :errors="form.password1.errors" />
+    <c-molecules.form-field label="Confirm password" type="password" name="password2" id="id_password2" placeholder="Confirm your password" required autocomplete="new-password" :errors="form.password2.errors" />
+    {# Submit #}
+    <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
+    Create account
+    </c-atoms.button>
+  </form>
+  <p class="mt-4 text-xs text-greyscale-500 text-center">
+    By creating an account, you agree to our
+    <a href="#" class="underline">Terms of Service</a> and
+    <a href="#" class="underline">Privacy Policy</a>.
+  </p>
+{% endblock auth_content %}
+{% block auth_footer %}
+  <p class="text-sm text-greyscale-600">
+    Already have an account?
+    <a href="{% url 'account_login' %}"
+       class="text-primary-600 hover:text-primary-700 font-medium underline">Sign in</a>
+  </p>
+{% endblock auth_footer %}

@@ -34,10 +34,14 @@ jobs:
       - name: Install dependencies
         run: uv pip install --system -e .
 
-      - name: Build Tailwind CSS
+      - name: Install Tailwind CSS standalone CLI
         run: |
-          npm install -g tailwindcss
-          tailwindcss -i static/css/main.css -o static/css/main.built.css --minify
+          curl -sLO https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.16/tailwindcss-linux-x64
+          chmod +x tailwindcss-linux-x64
+          sudo mv tailwindcss-linux-x64 /usr/local/bin/tailwindcss
+
+      - name: Build Tailwind CSS
+        run: tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 
       - name: Generate static site
         env:
