@@ -22,15 +22,15 @@ make test                   # Run tests
 
 ## Project Status
 
-| Phase                                          | Status |
-| ---------------------------------------------- | ------ |
-| Django Foundation                              | Done   |
-| Frontend Pipeline (Tailwind CLI + Alpine CDN)  | Done   |
-| Core Atoms (Button, Input, Link, Select, Icon) | Done   |
-| Component Library Page                         | Done   |
-| A11y Testing                                   | Next   |
-
-**Branch:** `django-atomic`
+| Phase                                           | Status |
+| ----------------------------------------------- | ------ |
+| Django Foundation                               | Done   |
+| Frontend Pipeline (Tailwind CLI + Alpine local) | Done   |
+| Core Atoms (Button, Input, Link, Select, Icon)  | Done   |
+| Component Library Page                          | Done   |
+| Auth (Login/Signup/Logout)                      | Done   |
+| AI Chat with Groq                               | Done   |
+| A11y Testing                                    | Next   |
 
 ---
 
@@ -83,17 +83,18 @@ litigant-portal/
 
 ## Tech Stack
 
-| Layer      | Technology                                              |
-| ---------- | ------------------------------------------------------- |
-| Backend    | Django 5.2 LTS, Python 3.13                             |
-| Components | Django Cotton                                           |
-| Styling    | Tailwind CSS 4.x (Homebrew: `brew install tailwindcss`) |
-| Reactivity | AlpineJS 3.14.9 (standard build)                        |
-| Auth       | django-allauth                                          |
-| Security   | django-csp                                              |
-| Deployment | django-distill → GitHub Pages                           |
+| Layer      | Technology                               |
+| ---------- | ---------------------------------------- |
+| Backend    | Django 5.2 LTS, Python 3.13              |
+| Components | Django Cotton                            |
+| Styling    | Tailwind CSS 4.x (standalone CLI)        |
+| Reactivity | Alpine.js 3.14.9 (local, standard build) |
+| Auth       | django-allauth                           |
+| AI Chat    | Groq (llama-3.3-70b-versatile)           |
+| Security   | django-csp                               |
+| Deployment | Fly.io (QA), GitHub Pages (static demo)  |
 
-**No Node.js required** - Tailwind via Homebrew, Alpine via CDN.
+**No Node.js required** - Tailwind via standalone CLI, Alpine.js local files.
 
 ---
 
@@ -101,27 +102,43 @@ litigant-portal/
 
 ```html
 <!-- Button -->
-<c-button variant="primary">Submit</c-button>
-<c-button variant="outline">Cancel</c-button>
-<c-button variant="danger" disabled>Delete</c-button>
+<c-atoms.button variant="primary">Submit</c-atoms.button>
+<c-atoms.button variant="outline">Cancel</c-atoms.button>
+<c-atoms.button variant="danger" disabled>Delete</c-atoms.button>
 
 <!-- Input -->
-<c-input type="email" placeholder="Email" error />
+<c-atoms.input type="email" placeholder="Email" error />
+
+<!-- Form Field (label + input + errors) -->
+<c-molecules.form-field
+  label="Email"
+  type="email"
+  name="email"
+  id="id_email"
+  required
+/>
 
 <!-- Link -->
-<c-link href="/dashboard" variant="primary">Dashboard</c-link>
-<c-link href="https://example.com" target="_blank" external_icon
-  >External</c-link
->
+<c-atoms.link href="/dashboard" variant="primary">Dashboard</c-atoms.link>
+<c-atoms.link href="https://example.com" target="_blank" external_icon>
+  External
+</c-atoms.link>
 
 <!-- Select -->
-<c-select name="state">
+<c-atoms.select name="state">
   <option value="">Select...</option>
-</c-select>
+</c-atoms.select>
 
 <!-- Icon (Heroicons) -->
-<c-icon name="check-circle" class="w-6 h-6" />
-<c-icon name="check-circle" style="solid" class="w-6 h-6 text-green-600" />
+<c-atoms.icon name="check-circle" class="w-6 h-6" />
+<c-atoms.icon
+  name="check-circle"
+  style="solid"
+  class="w-6 h-6 text-green-600"
+/>
+
+<!-- Checkbox -->
+<c-atoms.checkbox name="remember" id="remember" label="Remember me" />
 ```
 
 ---

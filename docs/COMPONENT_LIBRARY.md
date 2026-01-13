@@ -6,7 +6,7 @@
 
 ## Current Status
 
-- [x] Build simplification (Tailwind standalone CLI + Alpine CDN)
+- [x] Build simplification (Tailwind standalone CLI + Alpine.js local files)
 - [x] Node.js removed - zero JS build dependencies
 - [x] Tailwind v4 CSS-based config (no tailwind.config.js needed)
 - [x] CourtListener color scheme adopted
@@ -45,7 +45,7 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
                       ▼
 ┌─────────────────────────────────────────────────────────┐
 │              Tailwind CSS + Alpine.js                   │
-│  static/css/main.css + CDN Alpine                       │
+│  static/css/main.css + static/js/alpine.min.js          │
 └─────────────────────────────────────────────────────────┘
 ```
 
