@@ -27,6 +27,10 @@ Future: LiteLLM will replace direct provider calls.
 
 ## Commands
 
+**Always use `make` commands** for linting and testing. Don't run `ruff`, `djlint`, `pytest`, or `pre-commit` directly — use `make lint` and `make test`. These ensure correct environment setup and consistent behavior.
+
+**Note:** `make lint` and `make test` often hit sandbox restrictions. Ask the user to run them manually rather than attempting and failing.
+
 ### Local Development (Docker)
 
 ```sh
@@ -45,10 +49,9 @@ make lint                   # Lint and format all code (via pre-commit)
 
 ### Direct Python commands (use .venv/bin/python)
 
-For commands outside Docker:
+For Django management commands outside Docker:
 
 ```sh
-# Django management commands
 SECRET_KEY=dev .venv/bin/python manage.py check
 SECRET_KEY=dev .venv/bin/python manage.py makemigrations
 SECRET_KEY=dev .venv/bin/python manage.py migrate
@@ -56,12 +59,7 @@ SECRET_KEY=dev .venv/bin/python manage.py shell
 
 # Run tests directly (faster than make test, skips CSS build)
 SECRET_KEY=test .venv/bin/python manage.py test
-SECRET_KEY=test .venv/bin/python manage.py test chat.tests.test_views
-
-# Individual linting tools
-.venv/bin/ruff format .
-.venv/bin/ruff check --fix
-.venv/bin/djlint templates/ --reformat
+SECRET_KEY=test .venv/bin/python manage.py test portal.tests.ProfileViewTests
 ```
 
 ## Pre-commit Hooks
