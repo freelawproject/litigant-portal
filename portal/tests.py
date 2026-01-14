@@ -264,3 +264,140 @@ class LogoutFlowTests(TestCase):
         response = self.client.get("/")
         self.assertContains(response, "Sign in")
         self.assertNotContains(response, "test@example.com")
+
+
+# =============================================================================
+# Profile Tests
+# =============================================================================
+
+
+class UserProfileModelTests(TestCase):
+    """Tests for UserProfile model custom logic."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+        )
+
+    def test_str_with_name(self):
+        """__str__ should show name and email when name is set."""
+        from portal.models import UserProfile
+
+        profile = UserProfile.objects.create(user=self.user, name="Jane Doe")
+        self.assertEqual(str(profile), "Jane Doe (test@example.com)")
+
+    def test_str_without_name(self):
+        """__str__ should show 'Unnamed' when name is empty."""
+        from portal.models import UserProfile
+
+        profile = UserProfile.objects.create(user=self.user)
+        self.assertEqual(str(profile), "Unnamed (test@example.com)")
+
+    def test_full_address_empty_when_no_address(self):
+        """full_address should return empty string when no address_line1."""
+        from portal.models import UserProfile
+
+        profile = UserProfile.objects.create(user=self.user, city="Boston")
+        self.assertEqual(profile.full_address, "")
+
+    def test_full_address_single_line(self):
+        """full_address should return just street when no city/state."""
+        from portal.models import UserProfile
+
+        profile = UserProfile.objects.create(
+            user=self.user, address_line1="123 Main St"
+        )
+        self.assertEqual(profile.full_address, "123 Main St")
+
+    def test_full_address_with_unit(self):
+        """full_address should include address_line2 when present."""
+        from portal.models import UserProfile
+
+        profile = UserProfile.objects.create(
+            user=self.user,
+            address_line1="123 Main St",
+            address_line2="Apt 4B",
+        )
+        self.assertEqual(profile.full_address, "123 Main St\nApt 4B")
+
+    def test_full_address_complete(self):
+        """full_address should format complete address correctly."""
+        from portal.models import UserProfile
+
+        profile = UserProfile.objects.create(
+            user=self.user,
+            address_line1="123 Main St",
+            address_line2="Apt 4B",
+            city="Boston",
+            state="MA",
+            zip_code="02101",
+        )
+        self.assertEqual(
+            profile.full_address,
+            "123 Main St\nApt 4B\nBoston, MA 02101",
+        )
+
+
+class ProfileViewTests(TestCase):
+    """Tests for profile views."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username="testuser",
+            email="test@example.com",
+            password="testpass123",
+        )
+
+    def test_profile_requires_login(self):
+        """Profile page should redirect anonymous users."""
+        response = self.client.get("/profile/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_profile_edit_requires_login(self):
+        """Profile edit page should redirect anonymous users."""
+        response = self.client.get("/profile/edit/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_profile_creates_profile_if_missing(self):
+        """Viewing profile should create one if user doesn't have one."""
+        from portal.models import UserProfile
+
+        self.client.login(username="testuser", password="testpass123")
+        self.assertFalse(UserProfile.objects.filter(user=self.user).exists())
+
+        response = self.client.get("/profile/")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(UserProfile.objects.filter(user=self.user).exists())
+
+    def test_profile_displays_user_email(self):
+        """Profile page should display the user's email."""
+        self.client.login(username="testuser", password="testpass123")
+        response = self.client.get("/profile/")
+        self.assertContains(response, "test@example.com")
+
+    def test_profile_edit_saves_data(self):
+        """Profile edit should save form data."""
+        from portal.models import UserProfile
+
+        self.client.login(username="testuser", password="testpass123")
+        response = self.client.post(
+            "/profile/edit/",
+            {
+                "name": "Jane Doe",
+                "phone": "555-1234",
+                "city": "Boston",
+                "state": "MA",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        profile = UserProfile.objects.get(user=self.user)
+        self.assertEqual(profile.name, "Jane Doe")
+        self.assertEqual(profile.phone, "555-1234")
+        self.assertEqual(profile.city, "Boston")
+        self.assertEqual(profile.state, "MA")

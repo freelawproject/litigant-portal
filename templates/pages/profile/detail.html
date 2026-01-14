@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load cotton %}
+{% load heroicons %}
+{% block title %}
+  Profile - Litigant Portal
+{% endblock title %}
+{% block content %}
+  <div class="max-w-2xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold text-greyscale-900">Your Profile</h1>
+      <a href="{% url 'portal:profile_edit' %}"
+         class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-greyscale-700 bg-white border border-greyscale-300 rounded-lg hover:bg-greyscale-50 transition-colors">
+        {% heroicon_outline "pencil" class="w-4 h-4" %}
+        Edit
+      </a>
+    </div>
+    {# Success message #}
+    {% if messages %}
+      {% for message in messages %}
+        <c-atoms.alert variant="success" class="mb-6">{{ message }}</c-atoms.alert>
+      {% endfor %}
+    {% endif %}
+    {# Profile sections #}
+    <div class="space-y-6">
+      {# Contact #}
+      <section class="bg-white rounded-lg border border-greyscale-200 p-6">
+        <h2 class="text-lg font-medium text-greyscale-900 mb-4">Contact Information</h2>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm text-greyscale-500">Name</dt>
+            <dd class="text-greyscale-900">{{ profile.name|default:"Not provided" }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm text-greyscale-500">Phone</dt>
+            <dd class="text-greyscale-900">{{ profile.phone|default:"Not provided" }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm text-greyscale-500">Email</dt>
+            <dd class="text-greyscale-900">{{ user.email }}</dd>
+          </div>
+        </dl>
+      </section>
+      {# Address #}
+      <section class="bg-white rounded-lg border border-greyscale-200 p-6">
+        <h2 class="text-lg font-medium text-greyscale-900 mb-4">Address</h2>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm text-greyscale-500">Address</dt>
+            <dd class="text-greyscale-900 whitespace-pre-line">{{ profile.full_address|default:"Not provided" }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm text-greyscale-500">County</dt>
+            <dd class="text-greyscale-900">{{ profile.county|default:"Not provided" }}</dd>
+          </div>
+        </dl>
+      </section>
+    </div>
+  </div>
+{% endblock content %}
