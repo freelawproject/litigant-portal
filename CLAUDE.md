@@ -168,6 +168,20 @@ Default styles target mobile. Use breakpoints for larger screens:
 
 - `sm:` 640px, `md:` 768px, `lg:` 1024px
 
+### djlint Formatting
+
+djlint reformats Django templates. **Never put conditionals inside component attributes** - djlint will break them by inserting whitespace.
+
+```html
+<!-- BAD: djlint breaks this -->
+<c-atoms.alert variant="{% if x %}danger{% else %}info{% endif %}">
+  <!-- GOOD: map in Python first -->
+  <c-atoms.alert variant="{{ variant }}"></c-atoms.alert
+></c-atoms.alert>
+```
+
+If tempted to use `{# djlint:off #}`, it's a smell - move the logic to a model or context processor.
+
 ### Form Fields Pattern
 
 **Always use `<c-molecules.form-field>` for form inputs.** This component handles:
