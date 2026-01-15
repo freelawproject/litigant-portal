@@ -82,6 +82,14 @@
               <a href="#topic-card"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Topic Card</a>
             </li>
+            <li>
+              <a href="#form-field"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Field</a>
+            </li>
+            <li>
+              <a href="#form-field-select"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Field Select</a>
+            </li>
           </ul>
         </details>
         <details open class="mb-2 nav-accordion">
@@ -614,6 +622,77 @@
             <div class="grid gap-3 max-w-md mb-6">
               <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense" href="#" />
               <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" />
+            </div>
+          </section>
+          <section id="form-field" class="mb-12" aria-labelledby="form-field-heading">
+            <h3 id="form-field-heading" class="mb-4">Form Field</h3>
+            <p class="text-greyscale-600 mb-6">Label + input + error message wrapper. Use for all text inputs in forms.</p>
+            <div class="space-y-4 max-w-md mb-6">
+              <c-molecules.form-field label="Email address" type="email" name="email" id="demo_email" placeholder="you@example.com" help_text="We'll never share your email" />
+              <c-molecules.form-field label="With error" type="text" name="error_demo" id="demo_error" value="Bad value" :errors="['This field is required']" />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
+                <span class="p-2.5">Field label text</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type</code></span>
+                <span class="p-2.5">"text" | "email" | "tel" | "password" | etc.</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name, id</code></span>
+                <span class="p-2.5">Form field name and ID</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>help_text</code></span>
+                <span class="p-2.5">Optional helper text below input</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:errors</code></span>
+                <span class="p-2.5">Error list (shows first error)</span>
+              </div>
+            </div>
+          </section>
+          <section id="form-field-select"
+                   class="mb-12"
+                   aria-labelledby="form-field-select-heading">
+            <h3 id="form-field-select-heading" class="mb-4">Form Field Select</h3>
+            <p class="text-greyscale-600 mb-6">Label + select + error message wrapper. Use for dropdowns in forms.</p>
+            <div class="space-y-4 max-w-md mb-6">
+              <c-molecules.form-field-select label="State" name="state" id="demo_state">
+              <option value="">Select a state</option>
+              <option value="CA">California</option>
+              <option value="NY">New York</option>
+              <option value="TX">Texas</option>
+              </c-molecules.form-field-select>
+              <c-molecules.form-field-select label="With error" name="error_select" id="demo_error_select" :errors="['Please select an option']">
+              <option value="">Select an option</option>
+              </c-molecules.form-field-select>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
+                <span class="p-2.5">Field label text</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name, id</code></span>
+                <span class="p-2.5">Form field name and ID</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>help_text</code></span>
+                <span class="p-2.5">Optional helper text below select</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:errors</code></span>
+                <span class="p-2.5">Error list (shows first error)</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
+                <span class="p-2.5">Option elements</span>
+              </div>
             </div>
           </section>
         </section>

@@ -1,0 +1,11 @@
+{# Toast container - renders flash messages as auto-dismissing overlays #}
+{# Usage: <c-molecules.toast-container :messages="toast_messages" /> #}
+{% if messages %}
+  <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+    {% for message in messages %}
+      <c-atoms.auto-dismiss>
+      <c-atoms.alert variant="{{ message.variant }}" class="mb-2 shadow-lg">{{ message.text }}</c-atoms.alert>
+      </c-atoms.auto-dismiss>
+    {% endfor %}
+  </div>
+{% endif %}

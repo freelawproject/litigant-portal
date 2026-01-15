@@ -27,6 +27,10 @@ Future: LiteLLM will replace direct provider calls.
 
 ## Commands
 
+**Always use `make` commands** for linting and testing. Don't run `ruff`, `djlint`, `pytest`, or `pre-commit` directly — use `make lint` and `make test`. These ensure correct environment setup and consistent behavior.
+
+**Note:** `make lint` and `make test` often hit sandbox restrictions. Ask the user to run them manually rather than attempting and failing.
+
 ### Local Development (Docker)
 
 ```sh
@@ -45,10 +49,9 @@ make lint                   # Lint and format all code (via pre-commit)
 
 ### Direct Python commands (use .venv/bin/python)
 
-For commands outside Docker:
+For Django management commands outside Docker:
 
 ```sh
-# Django management commands
 SECRET_KEY=dev .venv/bin/python manage.py check
 SECRET_KEY=dev .venv/bin/python manage.py makemigrations
 SECRET_KEY=dev .venv/bin/python manage.py migrate
@@ -56,12 +59,7 @@ SECRET_KEY=dev .venv/bin/python manage.py shell
 
 # Run tests directly (faster than make test, skips CSS build)
 SECRET_KEY=test .venv/bin/python manage.py test
-SECRET_KEY=test .venv/bin/python manage.py test chat.tests.test_views
-
-# Individual linting tools
-.venv/bin/ruff format .
-.venv/bin/ruff check --fix
-.venv/bin/djlint templates/ --reformat
+SECRET_KEY=test .venv/bin/python manage.py test portal.tests.ProfileViewTests
 ```
 
 ## Pre-commit Hooks
@@ -92,8 +90,8 @@ Components live in `templates/cotton/` using Atomic Design hierarchy:
 
 ```
 templates/cotton/
-├── atoms/      # Basic elements: alert, button, chat_bubble, checkbox, icon, input, link, nav_link, search_input, select, typing_indicator
-├── molecules/  # Combinations: chat_message, form_field, logo, search_bar, search_result, topic_card, user_menu
+├── atoms/      # Basic elements: alert, auto_dismiss, button, chat_bubble, checkbox, icon, input, link, nav_link, search_input, select, typing_indicator
+├── molecules/  # Combinations: chat_message, form_field, form_field_select, logo, search_bar, search_result, toast_container, topic_card, user_menu
 └── organisms/  # Complex sections: chat_window, footer, header, hero, topic_grid
 ```
 
@@ -169,6 +167,20 @@ All components must have:
 Default styles target mobile. Use breakpoints for larger screens:
 
 - `sm:` 640px, `md:` 768px, `lg:` 1024px
+
+### djlint Formatting
+
+djlint reformats Django templates. **Never put conditionals inside component attributes** - djlint will break them by inserting whitespace.
+
+```html
+<!-- BAD: djlint breaks this -->
+<c-atoms.alert variant="{% if x %}danger{% else %}info{% endif %}">
+  <!-- GOOD: map in Python first -->
+  <c-atoms.alert variant="{{ variant }}"></c-atoms.alert
+></c-atoms.alert>
+```
+
+If tempted to use `{# djlint:off #}`, it's a smell - move the logic to a model or context processor.
 
 ### Form Fields Pattern
 

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load cotton %}
+{% load heroicons %}
+{% block title %}
+  Edit Profile - Litigant Portal
+{% endblock title %}
+{% block content %}
+  <div class="max-w-2xl mx-auto px-4 py-8">
+    <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Your Profile</h1>
+    <p class="text-greyscale-600 mb-6">
+      All fields are optional. The more you share, the more personalized assistance we can provide.
+    </p>
+    {# Form errors #}
+    {% if form.non_field_errors %}
+      <c-atoms.alert variant="danger" class="mb-4">
+      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+      </c-atoms.alert>
+    {% endif %}
+    <form method="post" class="space-y-8">
+      {% csrf_token %}
+      {# Contact Information #}
+      <fieldset>
+        <legend class="text-lg font-medium text-greyscale-900 mb-4">Contact Information</legend>
+        <div class="space-y-4">
+          <c-molecules.form-field label="Full Legal Name" type="text" name="name" id="id_name" placeholder="Your full legal name" autocomplete="name" value="{{ form.name.value|default:'' }}" :errors="form.name.errors" help_text="Used for official documents and forms" />
+          <c-molecules.form-field label="Phone Number" type="tel" name="phone" id="id_phone" placeholder="(555) 123-4567" autocomplete="tel" value="{{ form.phone.value|default:'' }}" :errors="form.phone.errors" />
+        </div>
+      </fieldset>
+      {# Address Information #}
+      <fieldset>
+        <legend class="text-lg font-medium text-greyscale-900 mb-4">Address</legend>
+        <div class="space-y-4">
+          <c-molecules.form-field label="Street Address" type="text" name="address_line1" id="id_address_line1" placeholder="123 Main Street" autocomplete="address-line1" value="{{ form.address_line1.value|default:'' }}" :errors="form.address_line1.errors" />
+          <c-molecules.form-field label="Address Line 2" type="text" name="address_line2" id="id_address_line2" placeholder="Apartment, suite, unit, etc." autocomplete="address-line2" value="{{ form.address_line2.value|default:'' }}" :errors="form.address_line2.errors" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <c-molecules.form-field label="City" type="text" name="city" id="id_city" placeholder="City" autocomplete="address-level2" value="{{ form.city.value|default:'' }}" :errors="form.city.errors" />
+            <c-molecules.form-field-select label="State" name="state" id="id_state" :errors="form.state.errors">
+            <option value="">Select state</option>
+            {% for code, name in form.fields.state.choices %}
+              <option value="{{ code }}"
+                      {% if form.state.value == code %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+            </c-molecules.form-field-select>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <c-molecules.form-field label="ZIP Code" type="text" name="zip_code" id="id_zip_code" placeholder="12345" autocomplete="postal-code" value="{{ form.zip_code.value|default:'' }}" :errors="form.zip_code.errors" />
+            <c-molecules.form-field label="County" type="text" name="county" id="id_county" placeholder="e.g., Los Angeles County" value="{{ form.county.value|default:'' }}" :errors="form.county.errors" />
+          </div>
+        </div>
+      </fieldset>
+      {# Submit #}
+      <div class="flex flex-col sm:flex-row gap-4">
+        <c-atoms.button type="submit" variant="primary" size="xl">Save Profile</c-atoms.button>
+        <a href="{% url 'portal:profile' %}"
+           class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-greyscale-700 hover:text-greyscale-900 transition-colors">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock content %}

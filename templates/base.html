@@ -23,6 +23,7 @@
     {% block header %}
       <c-organisms.header />
     {% endblock header %}
+    <c-molecules.toast-container :messages="toast_messages" />
     <main class="flex-1 min-h-0">
       {% block content %}
       {% endblock content %}

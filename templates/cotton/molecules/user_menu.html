@@ -26,6 +26,12 @@
          class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
          role="menu"
          aria-orientation="vertical">
+      <a href="{% url 'portal:profile' %}"
+         class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100"
+         role="menuitem">
+        {% heroicon_outline "user" class="w-5 h-5 text-greyscale-500" %}
+        Profile
+      </a>
       <a href="{% url 'account_logout' %}"
          class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100"
          role="menuitem">
