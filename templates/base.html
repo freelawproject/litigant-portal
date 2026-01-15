@@ -24,6 +24,13 @@
       <c-organisms.header />
     {% endblock header %}
     <main class="flex-1 min-h-0">
+      {% if messages %}
+        <div class="max-w-2xl mx-auto px-4 pt-4">
+          {% for message in messages %}
+            <c-atoms.alert variant="{% if message.tags == 'error' %}danger{% elif message.tags %}{{ message.tags }}{% else %}info{% endif %}" class="mb-2">{{ message }}</c-atoms.alert>
+          {% endfor %}
+        </div>
+      {% endif %}
       {% block content %}
       {% endblock content %}
     </main>
