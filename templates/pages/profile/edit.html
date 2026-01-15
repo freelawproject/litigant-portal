@@ -10,12 +10,6 @@
     <p class="text-greyscale-600 mb-6">
       All fields are optional. The more you share, the more personalized assistance we can provide.
     </p>
-    {# Success message #}
-    {% if messages %}
-      {% for message in messages %}
-        <c-atoms.alert variant="success" class="mb-4">{{ message }}</c-atoms.alert>
-      {% endfor %}
-    {% endif %}
     {# Form errors #}
     {% if form.non_field_errors %}
       <c-atoms.alert variant="danger" class="mb-4">
