@@ -90,8 +90,8 @@ Components live in `templates/cotton/` using Atomic Design hierarchy:
 
 ```
 templates/cotton/
-├── atoms/      # Basic elements: alert, button, chat_bubble, checkbox, icon, input, link, nav_link, search_input, select, typing_indicator
-├── molecules/  # Combinations: chat_message, form_field, logo, search_bar, search_result, topic_card, user_menu
+├── atoms/      # Basic elements: alert, auto_dismiss, button, chat_bubble, checkbox, icon, input, link, nav_link, search_input, select, typing_indicator
+├── molecules/  # Combinations: chat_message, form_field, form_field_select, logo, search_bar, search_result, toast_container, topic_card, user_menu
 └── organisms/  # Complex sections: chat_window, footer, header, hero, topic_grid
 ```
 
