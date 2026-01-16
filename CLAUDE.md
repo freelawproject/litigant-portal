@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Access to justice portal for self-represented litigants. Django 5.2 with server-rendered components (Django Cotton), Tailwind CSS v4, and Alpine.js for reactivity.
 
+## Current Focus: ITC Demo (Jan 2026)
+
+Building a clickable demo for ITC San Antonio. Key docs:
+
+- [Demo Flow](docs/demo-flow-jane.md) - Jane's 7-step user journey
+- [Retro Notes](docs/itc-demo-retro.md) - Append lessons learned here
+- [Milestone](https://github.com/freelawproject/litigant-portal/milestone/1) - 13 issues tracked
+
 ## Environment Philosophy
 
 Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker everywhere.
