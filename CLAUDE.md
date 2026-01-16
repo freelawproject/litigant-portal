@@ -180,6 +180,17 @@ Default styles target mobile. Use breakpoints for larger screens:
 
 djlint reformats Django templates. **Never put conditionals inside component attributes** - djlint will break them by inserting whitespace.
 
+**Use UTF-8 characters, not HTML entities.** Modern browsers handle UTF-8 natively:
+
+```html
+<!-- BAD: HTML entity -->
+<span>Eviction &middot; Bexar County</span>
+<!-- GOOD: UTF-8 character -->
+<span>Eviction · Bexar County</span>
+```
+
+Exceptions: Use `&amp;`, `&lt;`, `&gt;` when escaping is required (URLs, code examples).
+
 ```html
 <!-- BAD: djlint breaks this -->
 <c-atoms.alert variant="{% if x %}danger{% else %}info{% endif %}">
