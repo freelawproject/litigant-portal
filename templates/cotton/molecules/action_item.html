@@ -1,11 +1,7 @@
 <c-vars title="" description="" completed="false" href="" />
 {# Action item - checkbox-style item with optional link #}
-<div
-  class="flex items-start gap-3 p-3 rounded-lg hover:bg-greyscale-50 transition-colors {{ class }}"
-  {{
-  attrs
-  }}
-  >
+<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-greyscale-50 transition-colors {{ class }}"
+     {{ attrs }}>
   <div class="flex-shrink-0 mt-0.5">
     {% if completed == "true" %}
       <c-atoms.icon name="check-circle" style="solid" class="w-5 h-5 text-green-500" />
