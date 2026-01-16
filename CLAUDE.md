@@ -178,7 +178,28 @@ Default styles target mobile. Use breakpoints for larger screens:
 
 ### djlint Formatting
 
-djlint reformats Django templates. **Never put conditionals inside component attributes** - djlint will break them by inserting whitespace.
+djlint reformats Django templates. **Never put conditionals inside HTML/component attributes:**
+
+1. djlint may reformat them, inserting whitespace into attribute values
+2. Multi-line conditionals add literal newlines/spaces to the rendered output
+
+Compute conditional values before the element instead:
+
+```html
+<!-- BAD: conditional in attribute -->
+<span class="{% if urgent %}text-red-500{% else %}text-gray-500{% endif %}">
+
+<!-- GOOD: compute before element -->
+{% if urgent %}
+  {% with color="text-red-500" %}
+{% else %}
+  {% with color="text-gray-500" %}
+{% endif %}
+<span class="{{ color }}">
+{% endwith %}
+```
+
+If tempted to use `{# djlint:off #}`, it's a smell - move the logic out of the attribute.
 
 **Use UTF-8 characters, not HTML entities.** Modern browsers handle UTF-8 natively:
 
@@ -190,16 +211,6 @@ djlint reformats Django templates. **Never put conditionals inside component att
 ```
 
 Exceptions: Use `&amp;`, `&lt;`, `&gt;` when escaping is required (URLs, code examples).
-
-```html
-<!-- BAD: djlint breaks this -->
-<c-atoms.alert variant="{% if x %}danger{% else %}info{% endif %}">
-  <!-- GOOD: map in Python first -->
-  <c-atoms.alert variant="{{ variant }}"></c-atoms.alert
-></c-atoms.alert>
-```
-
-If tempted to use `{# djlint:off #}`, it's a smell - move the logic to a model or context processor.
 
 ### Form Fields Pattern
 
