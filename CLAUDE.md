@@ -170,6 +170,20 @@ All components must have:
 - Touch targets 44x44px minimum
 - ARIA labels for icon-only buttons
 
+### Static Layout, Dynamic Content
+
+Page layouts should remain **structurally stable** - components don't appear/disappear or move around. Only the **content within** sections updates dynamically.
+
+**Why:**
+
+- Reduces cognitive load for users
+- Critical for accessibility (screen readers, motor impairments)
+- Prevents visual distraction during interactions
+
+**Example:** For logged-in users, the home page shows the sidebar from the start (with empty state), and content populates as the chat progresses. The sidebar doesn't suddenly appear mid-conversation.
+
+**Note:** Case tracking (sidebar) requires login. Anonymous users can chat and get information, but must save/download it themselves.
+
 ### Mobile-First
 
 Default styles target mobile. Use breakpoints for larger screens:
@@ -183,23 +197,25 @@ djlint reformats Django templates. **Never put conditionals inside HTML/componen
 1. djlint may reformat them, inserting whitespace into attribute values
 2. Multi-line conditionals add literal newlines/spaces to the rendered output
 
-Compute conditional values before the element instead:
+Keep attribute conditionals on a **single line** to prevent djlint from expanding them:
 
 ```html
-<!-- BAD: conditional in attribute -->
-<span class="{% if urgent %}text-red-500{% else %}text-gray-500{% endif %}">
-
-<!-- GOOD: compute before element -->
-{% if urgent %}
-  {% with color="text-red-500" %}
+<!-- BAD: multi-line conditional in attribute (djlint will break it) -->
+<span
+  class="{% if urgent %}
+  text-red-500
 {% else %}
-  {% with color="text-gray-500" %}
-{% endif %}
-<span class="{{ color }}">
-{% endwith %}
+  text-gray-500
+{% endif %}"
+>
+  <!-- GOOD: single-line conditional (djlint leaves it alone) -->
+  <span
+    class="{% if urgent %}text-red-500{% else %}text-gray-500{% endif %}"
+  ></span
+></span>
 ```
 
-If tempted to use `{# djlint:off #}`, it's a smell - move the logic out of the attribute.
+If a conditional is too long for one line, consider mapping the value in Python/view code instead.
 
 **Use UTF-8 characters, not HTML entities.** Modern browsers handle UTF-8 natively:
 

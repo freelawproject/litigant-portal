@@ -752,7 +752,9 @@
               </div>
             </div>
           </section>
-          <section id="deadline-card" class="mb-12" aria-labelledby="deadline-card-heading">
+          <section id="deadline-card"
+                   class="mb-12"
+                   aria-labelledby="deadline-card-heading">
             <h3 id="deadline-card-heading" class="mb-4">Deadline Card</h3>
             <p class="text-greyscale-600 mb-6">Displays a deadline with date and status badge.</p>
             <div class="space-y-3 max-w-sm mb-6">
@@ -808,17 +810,19 @@
               </div>
             </div>
           </section>
-          <section id="sidebar-section" class="mb-12" aria-labelledby="sidebar-section-heading">
+          <section id="sidebar-section"
+                   class="mb-12"
+                   aria-labelledby="sidebar-section-heading">
             <h3 id="sidebar-section-heading" class="mb-4">Sidebar Section</h3>
             <p class="text-greyscale-600 mb-6">Collapsible section with title and optional count badge.</p>
             <div class="max-w-sm mb-6 space-y-4">
               <c-molecules.sidebar-section title="Deadlines" icon="calendar" count="2">
-                <c-molecules.deadline-card title="File Answer" date="Due Jan 20" status="urgent" />
-                <c-molecules.deadline-card title="Review Docs" date="Due Jan 25" status="pending" />
+              <c-molecules.deadline-card title="File Answer" date="Due Jan 20" status="urgent" />
+              <c-molecules.deadline-card title="Review Docs" date="Due Jan 25" status="pending" />
               </c-molecules.sidebar-section>
               <c-molecules.sidebar-section title="Action Items" icon="clipboard-document-check" collapsible="true">
-                <c-molecules.action-item title="Gather documents" />
-                <c-molecules.action-item title="Review lease" completed="true" />
+              <c-molecules.action-item title="Gather documents" />
+              <c-molecules.action-item title="Review lease" completed="true" />
               </c-molecules.sidebar-section>
             </div>
             <h4 class="mt-8">Props</h4>
@@ -873,20 +877,22 @@
               <c-organisms.footer />
             </div>
           </section>
-          <section id="case-sidebar" class="mb-12" aria-labelledby="case-sidebar-heading">
+          <section id="case-sidebar"
+                   class="mb-12"
+                   aria-labelledby="case-sidebar-heading">
             <h3 id="case-sidebar-heading" class="mb-4">Case Sidebar</h3>
             <p class="text-greyscale-600 mb-6">Sidebar displaying case info, deadlines, and action items.</p>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.case-sidebar case_type="Eviction" county="Bexar County" class="w-80">
-                <c-molecules.sidebar-section title="Deadlines" icon="calendar" count="2">
-                  <c-molecules.deadline-card title="File Answer" date="Due Jan 20, 2026" status="urgent" />
-                  <c-molecules.deadline-card title="Court Hearing" date="Feb 5, 2026" status="pending" />
-                </c-molecules.sidebar-section>
-                <c-molecules.sidebar-section title="Action Items" icon="clipboard-document-check" collapsible="true">
-                  <c-molecules.action-item title="Gather income documents" description="Pay stubs, tax returns" />
-                  <c-molecules.action-item title="Review lease agreement" />
-                  <c-molecules.action-item title="Submit initial paperwork" completed="true" />
-                </c-molecules.sidebar-section>
+              <c-molecules.sidebar-section title="Deadlines" icon="calendar" count="2">
+              <c-molecules.deadline-card title="File Answer" date="Due Jan 20, 2026" status="urgent" />
+              <c-molecules.deadline-card title="Court Hearing" date="Feb 5, 2026" status="pending" />
+              </c-molecules.sidebar-section>
+              <c-molecules.sidebar-section title="Action Items" icon="clipboard-document-check" collapsible="true">
+              <c-molecules.action-item title="Gather income documents" description="Pay stubs, tax returns" />
+              <c-molecules.action-item title="Review lease agreement" />
+              <c-molecules.action-item title="Submit initial paperwork" completed="true" />
+              </c-molecules.sidebar-section>
               </c-organisms.case-sidebar>
             </div>
             <h4 class="mt-8">Props</h4>
