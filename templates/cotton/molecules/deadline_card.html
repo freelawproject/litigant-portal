@@ -1,17 +1,25 @@
 <c-vars title="" date="" status="pending" icon="calendar" />
 {# Deadline card - displays a deadline with date and status #}
 {# status: urgent|pending|completed #}
+
+{# Compute status-dependent values outside attributes #}
+{% if status == 'urgent' %}
+  {% with icon_color="text-red-500" badge_label="Urgent" %}
+{% elif status == 'completed' %}
+  {% with icon_color="text-green-500" badge_label="Done" %}
+{% else %}
+  {% with icon_color="text-greyscale-400" badge_label="Pending" %}
+{% endif %}
+
 <div class="flex items-start gap-3 p-3 rounded-lg bg-greyscale-50 border border-greyscale-200 {{ class }}"
      {{ attrs }}>
   <div class="flex-shrink-0 mt-0.5">
-    <c-atoms.icon name="{{ icon }}" class="w-5 h-5 {% if status == 'urgent' %}text-red-500{% elif status == 'completed' %}text-green-500{% else %}text-greyscale-400{% endif %}" />
+    <c-atoms.icon name="{{ icon }}" class="w-5 h-5 {{ icon_color }}" />
   </div>
   <div class="flex-1 min-w-0">
     <div class="flex items-center justify-between gap-2">
       <p class="text-sm font-medium text-greyscale-800 truncate">{{ title }}</p>
-      <c-atoms.badge variant="{{ status }}">
-        {% if status == 'urgent' %}Urgent{% elif status == 'completed' %}Done{% else %}Pending{% endif %}
-      </c-atoms.badge>
+      <c-atoms.badge variant="{{ status }}">{{ badge_label }}</c-atoms.badge>
     </div>
     {% if date %}
       <p class="mt-1 text-xs text-greyscale-500">
@@ -20,3 +28,5 @@
     {% endif %}
   </div>
 </div>
+
+{% endwith %}
