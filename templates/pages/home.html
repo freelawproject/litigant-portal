@@ -32,32 +32,50 @@
         </div>
       </div>
     </div>
-    {# Hero Section - shows when no messages #}
-    <section class="hero" x-show="messages.length === 0" x-cloak>
-      <div class="hero-content">
-        <h1 class="hero-heading">How can we help you today?</h1>
-        <p class="hero-subheading">Free legal help for self-represented litigants</p>
-        <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
-          {% csrf_token %}
-          <div class="search-input-wrapper">
-            <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
-            <input type="search"
-                   x-model="inputText"
-                   name="q"
-                   placeholder="What do you need help with?"
-                   class="search-input"
-                   aria-label="Search or ask a question" />
+
+    {# Case Sidebar - logged-in users only, LEFT side, desktop #}
+    {% if user.is_authenticated %}
+      <div class="hidden lg:block w-80 flex-shrink-0 border-r border-greyscale-200">
+        <c-organisms.case-sidebar class="h-full">
+          <div class="text-center py-8 px-4">
+            <c-atoms.icon name="folder-open" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
+            <p class="text-sm font-medium text-greyscale-600 mb-2">No active case</p>
+            <p class="text-xs text-greyscale-500">
+              As you chat, we'll track your case details, deadlines, and action items here.
+            </p>
           </div>
-          <c-atoms.button type="submit" variant="primary" size="xl" aria_label="Ask" x-bind:disabled="isStreaming">
-          <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
-          <span class="hidden sm:inline">Ask</span>
-          </c-atoms.button>
-        </form>
+        </c-organisms.case-sidebar>
       </div>
-    </section>
-    {# Chat Mode - shows when messages exist #}
-    <template x-if="messages.length > 0">
-      <div class="chat-container">
+    {% endif %}
+
+    {# Main Content Area - centered #}
+    <div class="flex-1 min-w-0 flex flex-col">
+      {# Hero Section - shows when no messages #}
+      <section class="hero flex-1" x-show="messages.length === 0" x-cloak>
+        <div class="hero-content">
+          <h1 class="hero-heading">How can we help you today?</h1>
+          <p class="hero-subheading">Free legal help for self-represented litigants</p>
+          <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
+            {% csrf_token %}
+            <div class="search-input-wrapper">
+              <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
+              <input type="search"
+                     x-model="inputText"
+                     name="q"
+                     placeholder="What do you need help with?"
+                     class="search-input"
+                     aria-label="Search or ask a question" />
+            </div>
+            <c-atoms.button type="submit" variant="primary" size="xl" aria_label="Ask" x-bind:disabled="isStreaming">
+            <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
+            <span class="hidden sm:inline">Ask</span>
+            </c-atoms.button>
+          </form>
+        </div>
+      </section>
+
+      {# Chat Mode - shows when messages exist #}
+      <div class="chat-area flex-1 flex flex-col" x-show="messages.length > 0" x-cloak>
         {# Chat Header #}
         <div class="chat-header">
           <h1 class="text-lg font-semibold text-greyscale-900">How can we help you today?</h1>
@@ -120,6 +138,11 @@
           </form>
         </div>
       </div>
-    </template>
+    </div>
+
+    {# Spacer to balance sidebar and keep chat centered - logged-in users only #}
+    {% if user.is_authenticated %}
+      <div class="hidden lg:block w-80 flex-shrink-0"></div>
+    {% endif %}
   </div>
 {% endblock content %}
