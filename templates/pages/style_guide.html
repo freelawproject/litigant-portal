@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% load heroicons %}
 {% block title %}
-  Style Guide - Litigant Portal
+  Style Guide -
+  Litigant Portal
 {% endblock title %}
 {% block content %}
   <div class="max-w-content mx-auto px-4 py-8">
@@ -122,7 +123,8 @@
           <p class="text-sm font-semibold text-primary-600 uppercase mb-2">Litigant Portal</p>
           <h1>Style Guide</h1>
           <p class="mt-4 text-greyscale-600">
-            Design tokens and component library for the Litigant Portal. Components use
+            Design tokens and component library for the Litigant Portal.
+            Components use
             <a href="https://django-cotton.com"
                target="_blank"
                rel="noopener noreferrer"
@@ -143,7 +145,8 @@
           <section id="colors" class="mb-12" aria-labelledby="colors-heading">
             <h3 id="colors-heading" class="mb-4">Colors</h3>
             <p class="text-greyscale-600 mb-6">
-              Color tokens defined in <code>static/css/main.css</code> via Tailwind v4 <code>@theme</code>.
+              Color tokens defined in <code>static/css/main.css</code> via
+              Tailwind v4 <code>@theme</code>.
             </p>
             <div class="mb-8">
               <h4 class="mb-3">Greyscale</h4>
@@ -626,7 +629,10 @@
           </section>
           <section id="form-field" class="mb-12" aria-labelledby="form-field-heading">
             <h3 id="form-field-heading" class="mb-4">Form Field</h3>
-            <p class="text-greyscale-600 mb-6">Label + input + error message wrapper. Use for all text inputs in forms.</p>
+            <p class="text-greyscale-600 mb-6">
+              Label + input + error message wrapper. Use for all text inputs in
+              forms.
+            </p>
             <div class="space-y-4 max-w-md mb-6">
               <c-molecules.form-field label="Email address" type="email" name="email" id="demo_email" placeholder="you@example.com" help_text="We'll never share your email" />
               <c-molecules.form-field label="With error" type="text" name="error_demo" id="demo_error" value="Bad value" :errors="['This field is required']" />

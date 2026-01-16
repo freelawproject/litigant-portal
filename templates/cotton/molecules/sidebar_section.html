@@ -1,0 +1,26 @@
+<c-vars title="" icon="" count="" collapsible="false" />
+{# Sidebar section - collapsible section with title and optional count badge #}
+{% if collapsible == "true" %}
+  <div x-data="{ open: true }" class="{{ class }}" {{ attrs }}>
+    <button x-on:click="open = !open"
+            type="button"
+            class="flex items-center justify-between w-full text-left group">
+      <div class="flex items-center gap-2">
+        {% if icon %}<c-atoms.icon name="{{ icon }}" class="w-4 h-4 text-greyscale-400" />{% endif %}
+        <h3 class="text-sm font-semibold text-greyscale-700 uppercase tracking-wide">{{ title }}</h3>
+        {% if count %}<span class="text-xs text-greyscale-400">({{ count }})</span>{% endif %}
+      </div>
+      <c-atoms.icon name="chevron-down" class="w-4 h-4 text-greyscale-400 transition-transform" x-bind:class="{ 'rotate-180': !open }" />
+    </button>
+    <div x-show="open" x-collapse class="mt-3 space-y-2">{{ slot }}</div>
+  </div>
+{% else %}
+  <div class="{{ class }}" {{ attrs }}>
+    <div class="flex items-center gap-2 mb-3">
+      {% if icon %}<c-atoms.icon name="{{ icon }}" class="w-4 h-4 text-greyscale-400" />{% endif %}
+      <h3 class="text-sm font-semibold text-greyscale-700 uppercase tracking-wide">{{ title }}</h3>
+      {% if count %}<span class="text-xs text-greyscale-400">({{ count }})</span>{% endif %}
+    </div>
+    <div class="space-y-2">{{ slot }}</div>
+  </div>
+{% endif %}
