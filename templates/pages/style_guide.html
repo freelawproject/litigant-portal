@@ -68,6 +68,10 @@
               <a href="#alerts"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Alerts</a>
             </li>
+            <li>
+              <a href="#badges"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Badges</a>
+            </li>
           </ul>
         </details>
         <details open class="mb-2 nav-accordion">
@@ -96,6 +100,18 @@
               <a href="#form-field-select"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Field Select</a>
             </li>
+            <li>
+              <a href="#deadline-card"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Deadline Card</a>
+            </li>
+            <li>
+              <a href="#action-item"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Action Item</a>
+            </li>
+            <li>
+              <a href="#sidebar-section"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Sidebar Section</a>
+            </li>
           </ul>
         </details>
         <details open class="mb-2 nav-accordion">
@@ -119,6 +135,10 @@
             <li>
               <a href="#footer"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Footer</a>
+            </li>
+            <li>
+              <a href="#case-sidebar"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Case Sidebar</a>
             </li>
           </ul>
         </details>
@@ -604,6 +624,32 @@
               <c-atoms.alert variant="danger">Danger alert message.</c-atoms.alert>
             </div>
           </section>
+          <section id="badges" class="mb-12" aria-labelledby="badges-heading">
+            <h3 id="badges-heading" class="mb-4">Badges</h3>
+            <p class="text-greyscale-600 mb-6">Status indicator badges for deadlines and tasks.</p>
+            <div class="flex flex-wrap gap-3 mb-6">
+              <c-atoms.badge variant="urgent">Urgent</c-atoms.badge>
+              <c-atoms.badge variant="pending">Pending</c-atoms.badge>
+              <c-atoms.badge variant="completed">Completed</c-atoms.badge>
+              <c-atoms.badge variant="info">Info</c-atoms.badge>
+            </div>
+            <h4 class="mb-3">Sizes</h4>
+            <div class="flex flex-wrap items-center gap-3 mb-6">
+              <c-atoms.badge variant="info" size="sm">Small (default)</c-atoms.badge>
+              <c-atoms.badge variant="info" size="md">Medium</c-atoms.badge>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+                <span class="p-2.5">"urgent" | "pending" | "completed" | "info"</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
+                <span class="p-2.5">"sm" (default) | "md"</span>
+              </div>
+            </div>
+          </section>
         </section>
         <section id="molecules" aria-labelledby="molecules-heading">
           <h2 id="molecules-heading"
@@ -706,6 +752,95 @@
               </div>
             </div>
           </section>
+          <section id="deadline-card" class="mb-12" aria-labelledby="deadline-card-heading">
+            <h3 id="deadline-card-heading" class="mb-4">Deadline Card</h3>
+            <p class="text-greyscale-600 mb-6">Displays a deadline with date and status badge.</p>
+            <div class="space-y-3 max-w-sm mb-6">
+              <c-molecules.deadline-card title="File Answer" date="Due Jan 20, 2026" status="urgent" />
+              <c-molecules.deadline-card title="Review Documents" date="Due Jan 25, 2026" status="pending" />
+              <c-molecules.deadline-card title="Initial Consultation" date="Completed Jan 10" status="completed" />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
+                <span class="p-2.5">Deadline title</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>date</code></span>
+                <span class="p-2.5">Date text (e.g., "Due Jan 20, 2026")</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>status</code></span>
+                <span class="p-2.5">"urgent" | "pending" | "completed"</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+                <span class="p-2.5">Heroicon name (default: "calendar")</span>
+              </div>
+            </div>
+          </section>
+          <section id="action-item" class="mb-12" aria-labelledby="action-item-heading">
+            <h3 id="action-item-heading" class="mb-4">Action Item</h3>
+            <p class="text-greyscale-600 mb-6">Checkbox-style action item with optional link.</p>
+            <div class="space-y-2 max-w-sm mb-6">
+              <c-molecules.action-item title="Gather income documents" description="Pay stubs, tax returns" />
+              <c-molecules.action-item title="Review lease agreement" href="#" />
+              <c-molecules.action-item title="Submit initial paperwork" completed="true" />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
+                <span class="p-2.5">Action item title</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>description</code></span>
+                <span class="p-2.5">Optional description text</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+                <span class="p-2.5">Optional link URL</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>completed</code></span>
+                <span class="p-2.5">"true" | "false" (default)</span>
+              </div>
+            </div>
+          </section>
+          <section id="sidebar-section" class="mb-12" aria-labelledby="sidebar-section-heading">
+            <h3 id="sidebar-section-heading" class="mb-4">Sidebar Section</h3>
+            <p class="text-greyscale-600 mb-6">Collapsible section with title and optional count badge.</p>
+            <div class="max-w-sm mb-6 space-y-4">
+              <c-molecules.sidebar-section title="Deadlines" icon="calendar" count="2">
+                <c-molecules.deadline-card title="File Answer" date="Due Jan 20" status="urgent" />
+                <c-molecules.deadline-card title="Review Docs" date="Due Jan 25" status="pending" />
+              </c-molecules.sidebar-section>
+              <c-molecules.sidebar-section title="Action Items" icon="clipboard-document-check" collapsible="true">
+                <c-molecules.action-item title="Gather documents" />
+                <c-molecules.action-item title="Review lease" completed="true" />
+              </c-molecules.sidebar-section>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
+                <span class="p-2.5">Section title</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+                <span class="p-2.5">Optional heroicon name</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>count</code></span>
+                <span class="p-2.5">Optional count badge</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>collapsible</code></span>
+                <span class="p-2.5">"true" | "false" (default)</span>
+              </div>
+            </div>
+          </section>
         </section>
         <section id="organisms" aria-labelledby="organisms-heading">
           <h2 id="organisms-heading"
@@ -736,6 +871,38 @@
             <p class="text-greyscale-600 mb-6">Site footer with navigation.</p>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.footer />
+            </div>
+          </section>
+          <section id="case-sidebar" class="mb-12" aria-labelledby="case-sidebar-heading">
+            <h3 id="case-sidebar-heading" class="mb-4">Case Sidebar</h3>
+            <p class="text-greyscale-600 mb-6">Sidebar displaying case info, deadlines, and action items.</p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+              <c-organisms.case-sidebar case_type="Eviction" county="Bexar County" class="w-80">
+                <c-molecules.sidebar-section title="Deadlines" icon="calendar" count="2">
+                  <c-molecules.deadline-card title="File Answer" date="Due Jan 20, 2026" status="urgent" />
+                  <c-molecules.deadline-card title="Court Hearing" date="Feb 5, 2026" status="pending" />
+                </c-molecules.sidebar-section>
+                <c-molecules.sidebar-section title="Action Items" icon="clipboard-document-check" collapsible="true">
+                  <c-molecules.action-item title="Gather income documents" description="Pay stubs, tax returns" />
+                  <c-molecules.action-item title="Review lease agreement" />
+                  <c-molecules.action-item title="Submit initial paperwork" completed="true" />
+                </c-molecules.sidebar-section>
+              </c-organisms.case-sidebar>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>case_type</code></span>
+                <span class="p-2.5">Type of case (e.g., "Eviction")</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>county</code></span>
+                <span class="p-2.5">County name</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
+                <span class="p-2.5">Sidebar sections content</span>
+              </div>
             </div>
           </section>
         </section>
