@@ -1,50 +1,62 @@
 {% load static %}
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-          content="{% block meta_description %}Litigant Portal - Access to Justice{% endblock meta_description %}">
-    <meta name="keywords"
-          content="{% block meta_keywords %}litigant, portal, legal, access to justice{% endblock meta_keywords %}">
-    <title>
-      {% block title %}
-        Litigant Portal
-      {% endblock title %}
-    </title>
-    {# Tailwind CSS #}
-    <link rel="stylesheet" href="{% static 'css/main.built.css' %}">
-    {# Additional CSS #}
-    {% block extra_css %}
-    {% endblock extra_css %}
-  </head>
-  <body class="min-h-dvh flex flex-col bg-greyscale-25">
-    {% block header %}
-      <c-organisms.header />
-    {% endblock header %}
-    <c-molecules.toast-container :messages="toast_messages" />
-    <main class="flex-1 min-h-0">
-      {% block content %}
-      {% endblock content %}
-    </main>
-    {% block footer %}
-      <c-organisms.footer />
-    {% endblock footer %}
-    {# Theme store - must load before Alpine #}
-    <script src="{% static 'js/theme.js' %}"></script>
-    {# Chat component - must load before Alpine #}
-    <script src="{% static 'js/chat.js' %}"></script>
-    {# Alpine.js CSP build - required for Content Security Policy compliance #}
-    {# https://alpinejs.dev/advanced/csp #}
-    {# Uses non-minified version in debug mode for easier debugging #}
-    {% if debug %}
-      <script defer src="{% static 'js/alpine.js' %}"></script>
-    {% else %}
-      <script defer src="{% static 'js/alpine.min.js' %}"></script>
-    {% endif %}
-    {# Additional JavaScript #}
-    {% block extra_js %}
-    {% endblock extra_js %}
-  </body>
-</html>
+    <meta name="description" content="{% block meta_description %}
+       Litigant Portal - Access to Justice{% endblock meta_description %}">
+      <meta name="keywords" content="{% block meta_keywords %}
+         litigant, portal, legal, access to justice{% endblock meta_keywords %} ">
+        <title>
+          {% block title %}
+
+            Litigant Portal
+          {% endblock title %}
+
+        </title>
+        {# Tailwind CSS #}
+        <link rel="stylesheet" href="{% static 'css/main.built.css' %}">
+        {# Additional CSS #}
+        {% block extra_css %}
+
+        {% endblock extra_css %}
+
+      </head>
+      <body class="min-h-dvh flex flex-col bg-greyscale-25">
+        {% block header %}
+
+          <c-organisms.header />
+        {% endblock header %}
+
+        <c-molecules.toast-container :messages="toast_messages" />
+        <main class="flex-1 min-h-0">
+          {% block content %}
+
+          {% endblock content %}
+        </main>
+        {% block footer %}
+
+          <c-organisms.footer />
+        {% endblock footer %}
+
+        {# Theme store - must load before Alpine #}
+        <script src="{% static 'js/theme.js' %}"></script>
+        {# Chat component - must load before Alpine #}
+        <script src="{% static 'js/chat.js' %}"></script>
+        {# Alpine.js CSP build - required for Content Security Policy compliance #}
+        {# https://alpinejs.dev/advanced/csp #}
+        {# Uses non-minified version in debug mode for easier debugging #}
+        {% if debug %}
+          <script defer src="{% static 'js/alpine.js' %}"></script>
+        {% else %}
+          <script defer src="{% static 'js/alpine.min.js' %}"></script>
+        {% endif %}
+        {# Additional JavaScript #}
+        {% block extra_js %}
+
+        {% endblock extra_js %}
+
+      </body>
+    </html>
