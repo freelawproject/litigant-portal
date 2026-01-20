@@ -132,19 +132,13 @@
           <p class="hero-subheading">Free legal help for self-represented litigants</p>
           <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
             {% csrf_token %}
-            <c-atoms.button type="button"
-                            variant="outline"
-                            size="icon-xl"
-                            aria_label="Upload PDF document"
-                            x-on:click="triggerFileInput()"
-                            x-bind:disabled="isUploading"
-                            title="Upload a legal document (PDF)">
-              <template x-if="!isUploading">
-                <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
-              </template>
-              <template x-if="isUploading">
-                <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
-              </template>
+            <c-atoms.button type="button" variant="outline" size="icon-xl" aria_label="Upload PDF document" x-on:click="triggerFileInput()" x-bind:disabled="isUploading" title="Upload a legal document (PDF)">
+            <template x-if="!isUploading">
+              <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
+            </template>
+            <template x-if="isUploading">
+              <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
+            </template>
             </c-atoms.button>
             <div class="search-input-wrapper">
               <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
@@ -238,19 +232,13 @@
                 class="chat-input-form"
                 role="search">
             {% csrf_token %}
-            <c-atoms.button type="button"
-                            variant="outline"
-                            size="icon"
-                            aria_label="Upload PDF document"
-                            x-on:click="triggerFileInput()"
-                            x-bind:disabled="isUploading"
-                            title="Upload a legal document (PDF)">
-              <template x-if="!isUploading">
-                <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
-              </template>
-              <template x-if="isUploading">
-                <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
-              </template>
+            <c-atoms.button type="button" variant="outline" size="icon" aria_label="Upload PDF document" x-on:click="triggerFileInput()" x-bind:disabled="isUploading" title="Upload a legal document (PDF)">
+            <template x-if="!isUploading">
+              <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
+            </template>
+            <template x-if="isUploading">
+              <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
+            </template>
             </c-atoms.button>
             <div class="search-input-wrapper">
               <input type="text"
