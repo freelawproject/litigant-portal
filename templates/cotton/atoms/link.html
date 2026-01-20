@@ -1,5 +1,6 @@
 <c-vars variant="default" />
 {% load heroicons %}
+
 <a href="{{ href }}"
    {% if target %}target="{{ target }}"{% endif %}
    {% if target == '_blank' or href|slice:":4" == "http" %}rel="noopener noreferrer"{% endif %}

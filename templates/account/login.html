@@ -1,9 +1,14 @@
 {% extends "account/base.html" %}
+
 {% load static %}
+
 {% block title %}
+
   Sign In - Litigant Portal
 {% endblock title %}
+
 {% block auth_content %}
+
   <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Sign in</h1>
   <p class="text-greyscale-600 mb-6">Access your legal assistance portal</p>
   {# Error messages #}
@@ -29,7 +34,9 @@
        class="text-sm text-primary-600 hover:text-primary-700 underline">Forgot your password?</a>
   </div>
 {% endblock auth_content %}
+
 {% block auth_footer %}
+
   <p class="text-sm text-greyscale-600">
     Don't have an account?
     <a href="{% url 'account_signup' %}"
