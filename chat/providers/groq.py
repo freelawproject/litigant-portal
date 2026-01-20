@@ -1,5 +1,7 @@
+import json
 import logging
 from collections.abc import Iterator
+from typing import Any
 
 import openai
 from django.conf import settings
@@ -95,6 +97,32 @@ class GroqProvider(BaseLLMProvider):
                 messages=formatted_messages,
             )
             return response.choices[0].message.content
+        except openai.APIError as e:
+            logger.error(f"Groq API error: {e}")
+            raise
+
+    def generate_json_response(
+        self,
+        messages: list[ChatMessage],
+        system_prompt: str,
+    ) -> dict[str, Any]:
+        """Generate a JSON response from Groq using JSON mode."""
+        formatted_messages = [{"role": "system", "content": system_prompt}] + [
+            {"role": m.role, "content": m.content} for m in messages
+        ]
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                max_tokens=self.max_tokens,
+                messages=formatted_messages,
+                response_format={"type": "json_object"},
+            )
+            content = response.choices[0].message.content
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JSON response: {e}")
+            raise ValueError(f"Invalid JSON response from LLM: {e}")
         except openai.APIError as e:
             logger.error(f"Groq API error: {e}")
             raise
