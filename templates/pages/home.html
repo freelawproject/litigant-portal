@@ -13,6 +13,13 @@
        x-init="init()"
        class="home-container"
        x-bind:class="{ 'chat-mode': messages.length > 0 }">
+    {# Hidden file input for PDF upload #}
+    <input type="file"
+           x-ref="fileInput"
+           x-on:change="handleFileSelect($event)"
+           accept=".pdf,application/pdf"
+           class="hidden"
+           aria-label="Upload PDF document" />
     {# Chat service unavailable warning #}
     <div x-show="showUnavailableWarning"
          x-cloak
@@ -36,10 +43,82 @@
     {% if user.is_authenticated %}
       <div class="hidden lg:block w-80 flex-shrink-0 border-r border-greyscale-200">
         <c-organisms.case-sidebar class="h-full">
-        <div class="text-center py-8 px-4">
+        {# Empty state - no case info #}
+        <div x-show="!caseInfo" class="text-center py-8 px-4">
           <c-atoms.icon name="folder-open" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
           <p class="text-sm font-medium text-greyscale-600 mb-2">No active case</p>
-          <p class="text-xs text-greyscale-500">As you chat, we'll track your case details, deadlines, and action items here.</p>
+          <p class="text-xs text-greyscale-500">
+            Upload a legal document to get started. We'll track your case details, deadlines, and action items here.
+          </p>
+        </div>
+        {# Case info display #}
+        <div x-show="caseInfo" x-cloak class="p-4 space-y-4">
+          {# Case type header #}
+          <div class="border-b border-greyscale-200 pb-3">
+            <h3 class="text-sm font-semibold text-greyscale-900"
+                x-text="caseInfo?.case_type || 'Your Case'"></h3>
+            <p class="text-xs text-greyscale-500 mt-1"
+               x-show="caseInfo?.court_info?.case_number"
+               x-text="'Case #' + caseInfo?.court_info?.case_number"></p>
+          </div>
+          {# Court info #}
+          <div x-show="caseInfo?.court_info?.court_name || caseInfo?.court_info?.county"
+               class="space-y-1">
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Court</h4>
+            <p class="text-sm text-greyscale-700"
+               x-text="caseInfo?.court_info?.court_name"></p>
+            <p class="text-xs text-greyscale-500"
+               x-show="caseInfo?.court_info?.county"
+               x-text="caseInfo?.court_info?.county"></p>
+          </div>
+          {# Parties #}
+          <div x-show="caseInfo?.parties?.opposing_party || caseInfo?.parties?.user_name"
+               class="space-y-1">
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Parties</h4>
+            <p class="text-sm text-greyscale-700"
+               x-show="caseInfo?.parties?.opposing_party">
+              <span class="text-greyscale-500">v.</span>
+              <span x-text="caseInfo?.parties?.opposing_party"></span>
+            </p>
+          </div>
+          {# Key deadlines #}
+          <template x-if="caseInfo?.key_dates?.filter(d => d.is_deadline).length > 0">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Deadlines</h4>
+              <template x-for="deadline in caseInfo.key_dates.filter(d => d.is_deadline)"
+                        :key="deadline.label">
+                <div class="flex items-start gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
+                  <c-atoms.icon name="exclamation-circle" class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
+                    <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          {# Other dates #}
+          <template x-if="caseInfo?.key_dates?.filter(d => !d.is_deadline).length > 0">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Other Dates</h4>
+              <template x-for="date in caseInfo.key_dates.filter(d => !d.is_deadline)"
+                        :key="date.label">
+                <div class="flex items-start gap-2">
+                  <c-atoms.icon name="calendar" class="w-4 h-4 text-greyscale-400 flex-shrink-0 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-sm text-greyscale-700" x-text="date.date"></p>
+                    <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          {# Clear case button #}
+          <div class="pt-3 border-t border-greyscale-200">
+            <button type="button"
+                    x-on:click="clearCaseInfo()"
+                    class="text-xs text-greyscale-500 hover:text-greyscale-700">Clear case info</button>
+          </div>
         </div>
         </c-organisms.case-sidebar>
       </div>
@@ -53,6 +132,20 @@
           <p class="hero-subheading">Free legal help for self-represented litigants</p>
           <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
             {% csrf_token %}
+            <c-atoms.button type="button"
+                            variant="outline"
+                            size="icon-xl"
+                            aria_label="Upload PDF document"
+                            x-on:click="triggerFileInput()"
+                            x-bind:disabled="isUploading"
+                            title="Upload a legal document (PDF)">
+              <template x-if="!isUploading">
+                <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
+              </template>
+              <template x-if="isUploading">
+                <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
+              </template>
+            </c-atoms.button>
             <div class="search-input-wrapper">
               <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
               <input type="search"
@@ -113,6 +206,30 @@
                 <c-atoms.typing-indicator />
               </div>
             </div>
+            {# Confirmation buttons for extraction #}
+            <div x-show="showConfirmation"
+                 x-cloak
+                 class="chat-message chat-message-assistant">
+              <div class="chat-message-avatar">
+                <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+              </div>
+              <div class="chat-message-content">
+                <div class="flex flex-wrap gap-2">
+                  <button type="button"
+                          x-on:click="confirmExtraction()"
+                          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                    <c-atoms.icon name="check" class="w-4 h-4" />
+                    Looks correct
+                  </button>
+                  <button type="button"
+                          x-on:click="requestClarification()"
+                          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-greyscale-700 bg-white border border-greyscale-300 rounded-lg hover:bg-greyscale-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                    <c-atoms.icon name="pencil" class="w-4 h-4" />
+                    Let me clarify
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         {# Chat Input - fixed at bottom #}
@@ -121,6 +238,20 @@
                 class="chat-input-form"
                 role="search">
             {% csrf_token %}
+            <c-atoms.button type="button"
+                            variant="outline"
+                            size="icon"
+                            aria_label="Upload PDF document"
+                            x-on:click="triggerFileInput()"
+                            x-bind:disabled="isUploading"
+                            title="Upload a legal document (PDF)">
+              <template x-if="!isUploading">
+                <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
+              </template>
+              <template x-if="isUploading">
+                <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
+              </template>
+            </c-atoms.button>
             <div class="search-input-wrapper">
               <input type="text"
                      x-model="inputText"
