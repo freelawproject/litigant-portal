@@ -46,6 +46,8 @@ dependencies = [
     "openai>=1.50",
     # Rate limiting
     "django-ratelimit>=4.1",
+    # PDF text extraction
+    "pdfplumber>=0.11",
 ]
 
 [project.optional-dependencies]
