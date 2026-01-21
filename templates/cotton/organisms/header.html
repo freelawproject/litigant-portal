@@ -18,7 +18,7 @@
           Style Guide
         </a>
         <button type="button"
-                x-on:click="localStorage.clear(); location.reload()"
+                x-on:click="localStorage.removeItem('chatSessionId'); localStorage.removeItem('caseInfo'); localStorage.removeItem('caseTimeline'); location.reload()"
                 class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 transition-colors">
           Clear Demo
         </button>
