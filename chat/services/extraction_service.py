@@ -15,13 +15,24 @@ Return a JSON object with the following structure:
 {
     "case_type": "string - The type of legal matter (e.g., 'Eviction', 'Small Claims', 'Divorce', 'Child Custody', 'Debt Collection')",
     "court_info": {
-        "county": "string - The county name if mentioned",
-        "court_name": "string - The full court name if mentioned",
-        "case_number": "string or null - The case/cause number if present"
+        "county": "string or null - The county name if mentioned",
+        "court_name": "string or null - The full court name if mentioned",
+        "case_number": "string or null - The case/cause number if present",
+        "address": "string or null - Full street address of the courthouse",
+        "phone": "string or null - Court phone number",
+        "email": "string or null - Court email or clerk email"
     },
     "parties": {
         "user_name": "string or null - The name of the person who likely received this document (defendant in eviction, respondent, etc.)",
-        "opposing_party": "string or null - The other party (plaintiff, petitioner, landlord, etc.)"
+        "user_address": "string or null - User's address if shown",
+        "opposing_party": "string or null - The other party (plaintiff, petitioner, landlord, etc.)",
+        "opposing_address": "string or null - Opposing party's address",
+        "opposing_phone": "string or null - Opposing party's phone number",
+        "opposing_email": "string or null - Opposing party's email",
+        "opposing_website": "string or null - Opposing party's website if shown",
+        "attorney_name": "string or null - Attorney name if represented",
+        "attorney_phone": "string or null - Attorney phone",
+        "attorney_email": "string or null - Attorney email"
     },
     "key_dates": [
         {
@@ -30,7 +41,7 @@ Return a JSON object with the following structure:
             "is_deadline": "boolean - True if this is a deadline the user needs to act on"
         }
     ],
-    "summary": "string - A 2-3 sentence plain-language summary of what this document is about and what it means for the recipient. Write as if explaining to someone with no legal background.",
+    "summary": "string - A concise, actionable summary with SPECIFIC details: what action is required, exact deadline dates, court address if shown, and consequences of not acting. Example: 'You must appear at 505 N County Farm Rd, Wheaton IL on Feb 14, 2026 at 9:00 AM for your eviction hearing. If you don't appear, the judge may rule against you.' Include actual dates, addresses, amounts - not vague descriptions.",
     "confidence": "number between 0 and 1 - How confident you are in the extraction accuracy"
 }
 
@@ -58,6 +69,9 @@ class CourtInfo:
     county: str | None = None
     court_name: str | None = None
     case_number: str | None = None
+    address: str | None = None
+    phone: str | None = None
+    email: str | None = None
 
 
 @dataclass
@@ -65,7 +79,15 @@ class Parties:
     """Parties involved in the case."""
 
     user_name: str | None = None
+    user_address: str | None = None
     opposing_party: str | None = None
+    opposing_address: str | None = None
+    opposing_phone: str | None = None
+    opposing_email: str | None = None
+    opposing_website: str | None = None
+    attorney_name: str | None = None
+    attorney_phone: str | None = None
+    attorney_email: str | None = None
 
 
 @dataclass
@@ -90,10 +112,21 @@ class ExtractionResult:
                 "county": self.court_info.county,
                 "court_name": self.court_info.court_name,
                 "case_number": self.court_info.case_number,
+                "address": self.court_info.address,
+                "phone": self.court_info.phone,
+                "email": self.court_info.email,
             },
             "parties": {
                 "user_name": self.parties.user_name,
+                "user_address": self.parties.user_address,
                 "opposing_party": self.parties.opposing_party,
+                "opposing_address": self.parties.opposing_address,
+                "opposing_phone": self.parties.opposing_phone,
+                "opposing_email": self.parties.opposing_email,
+                "opposing_website": self.parties.opposing_website,
+                "attorney_name": self.parties.attorney_name,
+                "attorney_phone": self.parties.attorney_phone,
+                "attorney_email": self.parties.attorney_email,
             },
             "key_dates": [
                 {
@@ -165,13 +198,24 @@ class ExtractionService:
                 county=court_data.get("county"),
                 court_name=court_data.get("court_name"),
                 case_number=court_data.get("case_number"),
+                address=court_data.get("address"),
+                phone=court_data.get("phone"),
+                email=court_data.get("email"),
             )
 
             # Parse parties
             parties_data = raw_result.get("parties", {})
             parties = Parties(
                 user_name=parties_data.get("user_name"),
+                user_address=parties_data.get("user_address"),
                 opposing_party=parties_data.get("opposing_party"),
+                opposing_address=parties_data.get("opposing_address"),
+                opposing_phone=parties_data.get("opposing_phone"),
+                opposing_email=parties_data.get("opposing_email"),
+                opposing_website=parties_data.get("opposing_website"),
+                attorney_name=parties_data.get("attorney_name"),
+                attorney_phone=parties_data.get("attorney_phone"),
+                attorney_email=parties_data.get("attorney_email"),
             )
 
             # Parse key dates

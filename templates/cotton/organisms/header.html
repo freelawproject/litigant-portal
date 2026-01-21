@@ -101,7 +101,9 @@
                      x-text="new Date(event.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })">
                   </p>
                 </div>
-                <p x-show="event.title" class="text-sm font-medium text-greyscale-800" x-text="event.title"></p>
+                <p x-show="event.title"
+                   class="text-sm font-medium text-greyscale-800"
+                   x-text="event.title"></p>
                 <p class="text-sm text-greyscale-600"
                    x-bind:class="{ 'line-clamp-2': !expanded, 'mt-0.5': event.title }"
                    x-text="event.content"></p>
