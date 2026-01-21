@@ -1,7 +1,8 @@
 {% load static %}
 
 <c-vars sticky="true" />
-<header x-data="{ menuOpen: false }"
+<header x-data="{ menuOpen: false, timeline: [] }"
+        x-effect="if (menuOpen) timeline = JSON.parse(localStorage.getItem('caseTimeline') || '[]')"
         class="mobile-header flex-shrink-0 {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
         {{ attrs }}>
   <div class="mobile-header-inner">
@@ -11,13 +12,21 @@
            class="h-12" />
     </a>
     <div class="flex items-center gap-1 sm:gap-2">
+      {% if debug %}
+        <a href="{% url 'portal:style_guide' %}"
+           class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-greyscale-600 transition-colors">
+          Style Guide
+        </a>
+        <button type="button"
+                x-on:click="localStorage.clear(); location.reload()"
+                class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 transition-colors">
+          Clear Demo
+        </button>
+      {% endif %}
       <c-molecules.user-menu class="hidden sm:flex" />
       <button type="button"
-              class="text-sm font-medium text-greyscale-600 hover:text-greyscale-900 transition-colors"
-              x-on:click="menuOpen = true">Browse by Topic</button>
-      <button type="button"
               class="mobile-header-menu-btn btn-ghost"
-              aria-label="Open menu"
+              aria-label="Open activity timeline"
               x-bind:aria-expanded="menuOpen"
               x-on:click="menuOpen = true">
         <c-atoms.icon name="bars-3" class="w-6 h-6" />
@@ -50,9 +59,9 @@
          x-transition:leave-end="translate-x-full"
          role="dialog"
          aria-modal="true"
-         aria-label="Browse by Topic">
+         aria-label="Activity timeline">
       <div class="flex items-center justify-between p-4 border-b border-greyscale-200">
-        <span class="font-semibold text-greyscale-900">Browse by Topic</span>
+        <span class="font-semibold text-greyscale-900">Activity</span>
         <button type="button"
                 class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700"
                 aria-label="Close menu"
@@ -60,25 +69,49 @@
           <c-atoms.icon name="x-mark" class="w-6 h-6" />
         </button>
       </div>
-      {# Topic Cards #}
+      {# Timeline - refreshes from localStorage when menu opens #}
       <div class="p-4 space-y-3">
-        <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense, tenant rights" href="#housing" />
-        <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support, domestic issues" href="#family" />
-        <c-molecules.topic-card icon="currency-dollar" title="Small Claims" description="Disputes under $10,000, debt collection defense" href="#small-claims" />
-        <c-molecules.topic-card icon="shield-check" title="Consumer Rights" description="Scams, unfair business practices, contracts" href="#consumer" />
-        <c-molecules.topic-card icon="document-text" title="Expungement" description="Clear your record, seal court files" href="#expungement" />
-        <c-molecules.topic-card icon="truck" title="Traffic & Fines" description="Tickets, license issues, court fines" href="#traffic" />
-      </div>
-      {# Developer Section #}
-      {% if debug %}
-        <div class="p-4 border-t border-greyscale-200">
-          <span class="block px-1 py-1 text-xs font-medium text-greyscale-400 uppercase tracking-wide mb-2">Developer</span>
-          <div class="space-y-2">
-            <c-atoms.nav-link icon="swatch" href="{% url 'portal:style_guide' %}" icon_bg="bg-greyscale-100" icon_color="text-greyscale-600">Style Guide</c-atoms.nav-link>
-            <c-atoms.nav-link icon="cog-6-tooth" href="{% url 'admin:index' %}" icon_bg="bg-greyscale-100" icon_color="text-greyscale-600">Admin</c-atoms.nav-link>
+        {# Empty state #}
+        <template x-if="!timeline || timeline.length === 0">
+          <div class="text-center py-8">
+            <c-atoms.icon name="clock" class="w-10 h-10 text-greyscale-300 mx-auto mb-3" />
+            <p class="text-sm text-greyscale-500">No activity yet</p>
+            <p class="text-xs text-greyscale-400 mt-1">Upload documents and chat to see your history here</p>
           </div>
-        </div>
-      {% endif %}
+        </template>
+        {# Timeline events #}
+        <template x-if="timeline && timeline.length > 0">
+          <div class="space-y-3">
+            <template x-for="event in timeline.slice().reverse()" :key="event.id">
+              <div class="p-3 border-l-2 cursor-pointer"
+                   x-data="{ expanded: false }"
+                   x-on:click="expanded = !expanded"
+                   x-bind:class="{ 'border-primary-300 bg-primary-50/50': event.type === 'upload', 'border-blue-300 bg-blue-50/50': event.type === 'summary', 'border-greyscale-300 bg-greyscale-50': event.type === 'change' }">
+                <div class="flex items-center gap-2 mb-1">
+                  <template x-if="event.type === 'upload'">
+                    <c-atoms.icon name="document-arrow-up" class="w-4 h-4 text-primary-500" />
+                  </template>
+                  <template x-if="event.type === 'summary'">
+                    <c-atoms.icon name="chat-bubble-left-right" class="w-4 h-4 text-blue-500" />
+                  </template>
+                  <template x-if="event.type === 'change'">
+                    <c-atoms.icon name="pencil-square" class="w-4 h-4 text-greyscale-500" />
+                  </template>
+                  <p class="text-xs text-greyscale-500"
+                     x-text="new Date(event.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })">
+                  </p>
+                </div>
+                <p x-show="event.title"
+                   class="text-sm font-medium text-greyscale-800"
+                   x-text="event.title"></p>
+                <p class="text-sm text-greyscale-600"
+                   x-bind:class="{ 'line-clamp-2': !expanded, 'mt-0.5': event.title }"
+                   x-text="event.content"></p>
+              </div>
+            </template>
+          </div>
+        </template>
+      </div>
       {# Account Section (mobile) #}
       <div class="p-4 border-t border-greyscale-200 sm:hidden">
         {% if user.is_authenticated %}

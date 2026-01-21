@@ -1,3 +1,4 @@
+import json
 import uuid
 
 from django.conf import settings
@@ -163,3 +164,37 @@ def upload_document(request: HttpRequest) -> JsonResponse:
             "extracted_data": extraction_result.to_dict(),
         }
     )
+
+
+@require_POST
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def summarize_conversation(request: HttpRequest) -> JsonResponse:
+    """
+    Generate a summary of a conversation.
+
+    Accepts a list of messages and returns an LLM-generated summary.
+    Rate limited to 10 requests per minute per IP.
+    """
+    messages_raw = request.POST.get("messages", "")
+
+    if not messages_raw:
+        return JsonResponse({"error": "Messages are required"}, status=400)
+
+    try:
+        messages = json.loads(messages_raw)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid messages format"}, status=400)
+
+    if not isinstance(messages, list) or len(messages) < 2:
+        return JsonResponse(
+            {"error": "At least 2 messages required for summary"}, status=400
+        )
+
+    summary = chat_service.generate_summary(messages)
+
+    if summary is None:
+        return JsonResponse(
+            {"error": "Failed to generate summary"}, status=500
+        )
+
+    return JsonResponse({"summary": summary})

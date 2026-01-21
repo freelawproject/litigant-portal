@@ -11,4 +11,5 @@ urlpatterns = [
     path("search/", views.keyword_search, name="search"),
     path("status/", views.chat_status, name="status"),
     path("upload/", views.upload_document, name="upload"),
+    path("summarize/", views.summarize_conversation, name="summarize"),
 ]

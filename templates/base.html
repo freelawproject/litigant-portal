@@ -24,14 +24,14 @@
         {% endblock extra_css %}
 
       </head>
-      <body class="min-h-dvh flex flex-col bg-greyscale-25">
+      <body class="h-dvh flex flex-col bg-greyscale-25 overflow-hidden">
         {% block header %}
 
           <c-organisms.header />
         {% endblock header %}
 
         <c-molecules.toast-container :messages="toast_messages" />
-        <main class="flex-1 min-h-0">
+        <main class="flex-1 min-h-0 flex flex-col">
           {% block content %}
 
           {% endblock content %}

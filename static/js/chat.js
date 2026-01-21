@@ -308,6 +308,9 @@ document.addEventListener('alpine:init', () => {
     caseInfo: null,
     showConfirmation: false,
     _documentContextSent: false,
+    _isClearingChat: false,
+    // Timeline state
+    caseTimeline: [],
 
     async init() {
       // Restore session from localStorage
@@ -320,6 +323,16 @@ document.addEventListener('alpine:init', () => {
           this.caseInfo = JSON.parse(savedCaseInfo)
         } catch (e) {
           localStorage.removeItem('caseInfo')
+        }
+      }
+
+      // Restore timeline from localStorage
+      const savedTimeline = localStorage.getItem('caseTimeline')
+      if (savedTimeline) {
+        try {
+          this.caseTimeline = JSON.parse(savedTimeline)
+        } catch (e) {
+          localStorage.removeItem('caseTimeline')
         }
       }
 
@@ -445,12 +458,68 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Clear chat and start new conversation
-    clearChat() {
-      this.messages = []
-      this.sessionId = ''
-      this.extractedData = null
-      this._documentContextSent = false
-      localStorage.removeItem('chatSessionId')
+    async clearChat() {
+      // Prevent double execution
+      if (this._isClearingChat) return
+      this._isClearingChat = true
+
+      try {
+        // Generate summary if there are substantive messages (at least user + assistant)
+        if (this.messages.length >= 2) {
+          const summary = await this.generateChatSummary()
+          // Only add to timeline if there were actual user questions
+          if (summary && !summary.toLowerCase().includes('no user questions')) {
+            this.addTimelineEvent('summary', '', summary)
+          }
+        }
+
+        // Clear chat state
+        this.messages = []
+        this.sessionId = ''
+        this.extractedData = null
+        this._documentContextSent = false
+        localStorage.removeItem('chatSessionId')
+      } finally {
+        this._isClearingChat = false
+      }
+    },
+
+    // Generate a summary of the current chat via backend
+    async generateChatSummary() {
+      if (this.messages.length < 2) return null
+
+      try {
+        const formData = new FormData()
+        formData.append('messages', JSON.stringify(this.messages))
+        formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+
+        const response = await fetch('/chat/summarize/', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) return null
+
+        const data = await response.json()
+        return data.summary || null
+      } catch (e) {
+        console.error('Failed to generate summary:', e)
+        return null
+      }
+    },
+
+    // Add an event to the timeline
+    addTimelineEvent(type, title, content, metadata = {}) {
+      const event = {
+        id: Date.now(),
+        type, // 'upload' | 'summary' | 'change'
+        timestamp: new Date().toISOString(),
+        title,
+        content,
+        metadata,
+      }
+      this.caseTimeline.push(event)
+      localStorage.setItem('caseTimeline', JSON.stringify(this.caseTimeline))
     },
 
     // Scroll to bottom of messages
@@ -500,6 +569,7 @@ document.addEventListener('alpine:init', () => {
 
       this.isUploading = true
       this.uploadError = null
+      const fileName = this.selectedFile.name
 
       try {
         const formData = new FormData()
@@ -517,9 +587,22 @@ document.addEventListener('alpine:init', () => {
           throw new Error(data.error || 'Upload failed')
         }
 
+        // Add upload event to timeline
+        const uploadSummary =
+          data.extracted_data?.summary || `${data.page_count} page document`
+        this.addTimelineEvent(
+          'upload',
+          `Uploaded: ${fileName}`,
+          uploadSummary,
+          { filename: fileName, page_count: data.page_count }
+        )
+
         // Store extracted data for later use
         this.extractedText = data.text_preview
         this.extractedData = data.extracted_data
+
+        // Reset document context flag so new info is sent in next message
+        this._documentContextSent = false
 
         // Build the response message
         let messageContent = ''
@@ -621,8 +704,12 @@ document.addEventListener('alpine:init', () => {
     confirmExtraction() {
       if (!this.extractedData) return
 
-      // Save to caseInfo and localStorage
-      this.caseInfo = this.extractedData
+      // Merge into existing caseInfo or set new
+      if (this.caseInfo) {
+        this.mergeCaseInfo(this.extractedData)
+      } else {
+        this.caseInfo = this.extractedData
+      }
       localStorage.setItem('caseInfo', JSON.stringify(this.caseInfo))
       this.showConfirmation = false
 
@@ -634,6 +721,72 @@ document.addEventListener('alpine:init', () => {
           "Great! I've saved your case information. You can see it in the sidebar. What would you like help with?",
       })
       this.scrollToBottom()
+    },
+
+    // Merge new extracted data into existing caseInfo
+    mergeCaseInfo(newData) {
+      if (!newData) return
+
+      // Track changes for timeline
+      const changes = []
+
+      // Update case_type if different
+      if (newData.case_type && newData.case_type !== this.caseInfo.case_type) {
+        changes.push(`Case type: ${newData.case_type}`)
+        this.caseInfo.case_type = newData.case_type
+      }
+
+      // Merge court_info (update non-empty fields)
+      if (newData.court_info) {
+        if (!this.caseInfo.court_info) {
+          this.caseInfo.court_info = {}
+        }
+        for (const [key, value] of Object.entries(newData.court_info)) {
+          if (value && value !== this.caseInfo.court_info[key]) {
+            changes.push(`Court ${key}: ${value}`)
+            this.caseInfo.court_info[key] = value
+          }
+        }
+      }
+
+      // Merge parties (update non-empty fields)
+      if (newData.parties) {
+        if (!this.caseInfo.parties) {
+          this.caseInfo.parties = {}
+        }
+        for (const [key, value] of Object.entries(newData.parties)) {
+          if (value && value !== this.caseInfo.parties[key]) {
+            changes.push(`Party ${key}: ${value}`)
+            this.caseInfo.parties[key] = value
+          }
+        }
+      }
+
+      // Append new key_dates (avoid duplicates by label+date)
+      if (newData.key_dates && newData.key_dates.length > 0) {
+        if (!this.caseInfo.key_dates) {
+          this.caseInfo.key_dates = []
+        }
+        for (const newDate of newData.key_dates) {
+          const exists = this.caseInfo.key_dates.some(
+            (d) => d.label === newDate.label && d.date === newDate.date
+          )
+          if (!exists) {
+            changes.push(`New date: ${newDate.label} - ${newDate.date}`)
+            this.caseInfo.key_dates.push(newDate)
+          }
+        }
+      }
+
+      // Update summary if provided
+      if (newData.summary) {
+        this.caseInfo.summary = newData.summary
+      }
+
+      // Add timeline event for changes
+      if (changes.length > 0) {
+        this.addTimelineEvent('change', 'Case info updated', changes.join('; '))
+      }
     },
 
     requestClarification() {
@@ -649,10 +802,14 @@ document.addEventListener('alpine:init', () => {
       this.scrollToBottom()
     },
 
+    // Clear all case data and timeline
     clearCaseInfo() {
       this.caseInfo = null
       this.extractedData = null
+      this.caseTimeline = []
+      this._documentContextSent = false
       localStorage.removeItem('caseInfo')
+      localStorage.removeItem('caseTimeline')
     },
   }))
 })
