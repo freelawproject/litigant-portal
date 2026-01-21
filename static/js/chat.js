@@ -454,43 +454,26 @@ document.addEventListener('alpine:init', () => {
         }
       } finally {
         this.isStreaming = false
+        // Summarize this Q&A exchange and add to timeline
+        this.summarizeLastExchange()
       }
     },
 
-    // Clear chat and start new conversation
-    async clearChat() {
-      // Prevent double execution
-      if (this._isClearingChat) return
-      this._isClearingChat = true
+    // Summarize the last Q&A exchange and add to timeline
+    async summarizeLastExchange() {
+      // Get last user message and last assistant message
+      const userMsgs = this.messages.filter((m) => m.role === 'user')
+      const assistantMsgs = this.messages.filter((m) => m.role === 'assistant')
+      if (!userMsgs.length || !assistantMsgs.length) return
 
-      try {
-        // Generate summary if there are substantive messages (at least user + assistant)
-        if (this.messages.length >= 2) {
-          const summary = await this.generateChatSummary()
-          // Only add to timeline if there were actual user questions
-          if (summary && !summary.toLowerCase().includes('no user questions')) {
-            this.addTimelineEvent('summary', '', summary)
-          }
-        }
-
-        // Clear chat state
-        this.messages = []
-        this.sessionId = ''
-        this.extractedData = null
-        this._documentContextSent = false
-        localStorage.removeItem('chatSessionId')
-      } finally {
-        this._isClearingChat = false
-      }
-    },
-
-    // Generate a summary of the current chat via backend
-    async generateChatSummary() {
-      if (this.messages.length < 2) return null
+      const lastExchange = [
+        userMsgs[userMsgs.length - 1],
+        assistantMsgs[assistantMsgs.length - 1],
+      ]
 
       try {
         const formData = new FormData()
-        formData.append('messages', JSON.stringify(this.messages))
+        formData.append('messages', JSON.stringify(lastExchange))
         formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
 
         const response = await fetch('/chat/summarize/', {
@@ -498,14 +481,25 @@ document.addEventListener('alpine:init', () => {
           body: formData,
         })
 
-        if (!response.ok) return null
+        if (!response.ok) return
 
         const data = await response.json()
-        return data.summary || null
+        const summary = data.summary
+        if (summary && !summary.toLowerCase().includes('no user questions')) {
+          this.addTimelineEvent('summary', '', summary)
+        }
       } catch (e) {
-        console.error('Failed to generate summary:', e)
-        return null
+        console.error('Failed to summarize exchange:', e)
       }
+    },
+
+    // Clear chat and start new conversation
+    clearChat() {
+      this.messages = []
+      this.sessionId = ''
+      this.extractedData = null
+      this._documentContextSent = false
+      localStorage.removeItem('chatSessionId')
     },
 
     // Add an event to the timeline
