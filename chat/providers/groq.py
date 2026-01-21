@@ -65,6 +65,7 @@ class GroqProvider(BaseLLMProvider):
                 max_tokens=self.max_tokens,
                 messages=formatted_messages,
                 stream=True,
+                temperature=0.3,
             )
             for chunk in stream:
                 if chunk.choices[0].delta.content:
@@ -95,6 +96,7 @@ class GroqProvider(BaseLLMProvider):
                 model=self.model,
                 max_tokens=self.max_tokens,
                 messages=formatted_messages,
+                temperature=0.3,
             )
             return response.choices[0].message.content
         except openai.APIError as e:
