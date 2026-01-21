@@ -5,6 +5,7 @@ from django.conf import settings
 from .base import BaseLLMProvider
 from .groq import GroqProvider
 from .ollama import OllamaProvider
+from .openai_provider import OpenAIProvider
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 _PROVIDERS: dict[str, type[BaseLLMProvider]] = {
     "ollama": OllamaProvider,
     "groq": GroqProvider,
+    "openai": OpenAIProvider,
 }
 
 # Cached provider instance
