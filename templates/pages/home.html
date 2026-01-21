@@ -4,8 +4,8 @@
   Litigant Portal - Free Legal Help
 {% endblock title %}
 {% block content %}
-  <div x-data="homePage()"
-       x-init="init()"
+  <div x-data="chat"
+       x-init="agentName = '{{ agent_name|default:'' }}'"
        class="home-container"
        x-bind:class="{ 'chat-mode': messages.length > 0 }">
     {# Chat service unavailable warning #}
