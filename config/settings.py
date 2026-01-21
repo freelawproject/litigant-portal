@@ -252,14 +252,6 @@ if not DEBUG:
 
 # AI Chat configuration
 CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
-CHAT_PROVIDER = os.environ.get("CHAT_PROVIDER", "groq")
-CHAT_MODEL = os.environ.get("CHAT_MODEL", "llama-3.3-70b-versatile")
-CHAT_MAX_TOKENS = int(os.environ.get("CHAT_MAX_TOKENS", "1024"))
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-CHAT_SYSTEM_PROMPT = """You are a helpful legal assistant for self-represented \
-litigants. Provide clear, accurate information about legal procedures, court \
-processes, and document preparation. Always recommend consulting with a licensed \
-attorney for specific legal advice. Be empathetic and use plain language.
-
-Format responses using markdown: **bold** for emphasis, bullet lists for steps, \
-and clear paragraph breaks. Keep responses concise and well-structured."""
+DEFAULT_CHAT_AGENT = os.environ.get(
+    "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
+)
