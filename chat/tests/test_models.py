@@ -48,8 +48,7 @@ class MessageStrTests(TestCase):
         content_50 = "x" * 50
         message = Message.objects.create(
             session=self.session,
-            role=Message.Role.USER,
-            content=content_50,
+            data={"role": "user", "content": content_50},
         )
 
         result = str(message)
@@ -62,8 +61,7 @@ class MessageStrTests(TestCase):
         content_51 = "x" * 51
         message = Message.objects.create(
             session=self.session,
-            role=Message.Role.USER,
-            content=content_51,
+            data={"role": "user", "content": content_51},
         )
 
         result = str(message)
@@ -77,8 +75,7 @@ class MessageStrTests(TestCase):
         """__str__ should include the message role."""
         message = Message.objects.create(
             session=self.session,
-            role=Message.Role.ASSISTANT,
-            content="Hello",
+            data={"role": "assistant", "content": "Hello"},
         )
 
         result = str(message)

@@ -5,25 +5,57 @@ Only tests custom code, not Django built-ins like @require_POST.
 """
 
 import json
-from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 
+from chat.agents import agent_registry
+from chat.agents.base import Agent
 from chat.models import ChatSession, Document, Message
 
 User = get_user_model()
 
 
-class SendMessageValidationTests(TestCase):
-    """Tests for custom message validation in send_message view."""
+class MockAgent(Agent):
+    """Mock agent for testing."""
+
+    default_model = "mock/model"
+    default_messages = [{"role": "system", "content": "Test assistant."}]
+
+    def ping(self) -> bool:
+        return True
+
+    def stream_run(self, messages=None, **kwargs):
+        # Add user message if provided
+        if messages is not None:
+            if isinstance(messages, str):
+                self.add_message({"role": "user", "content": messages})
+            else:
+                for msg in messages:
+                    self.add_message(msg)
+
+        # Add assistant response
+        self.add_message({"role": "assistant", "content": "Hello world"})
+
+        yield {"type": "content_delta", "content": "Hello"}
+        yield {"type": "content_delta", "content": " world"}
+        yield {"type": "done"}
+
+
+# Register mock agent
+agent_registry["MockAgent"] = MockAgent
+
+
+@override_settings(DEFAULT_CHAT_AGENT="MockAgent")
+class StreamValidationTests(TestCase):
+    """Tests for message validation in stream endpoint."""
 
     def setUp(self):
         self.client = Client()
 
     def test_rejects_empty_message(self):
         """Empty messages should be rejected with 400."""
-        response = self.client.post("/chat/send/", {"message": ""})
+        response = self.client.post("/chat/stream/", {"message": ""})
 
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.content)
@@ -31,14 +63,14 @@ class SendMessageValidationTests(TestCase):
 
     def test_rejects_whitespace_only_message(self):
         """Whitespace-only messages should be rejected."""
-        response = self.client.post("/chat/send/", {"message": "   "})
+        response = self.client.post("/chat/stream/", {"message": "   "})
 
         self.assertEqual(response.status_code, 400)
 
     def test_rejects_message_over_2000_chars(self):
         """Messages over 2000 characters should be rejected."""
         long_message = "x" * 2001
-        response = self.client.post("/chat/send/", {"message": long_message})
+        response = self.client.post("/chat/stream/", {"message": long_message})
 
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.content)
@@ -47,50 +79,67 @@ class SendMessageValidationTests(TestCase):
     def test_accepts_message_at_2000_chars(self):
         """Messages exactly 2000 characters should be accepted."""
         max_message = "x" * 2000
-        response = self.client.post("/chat/send/", {"message": max_message})
+        response = self.client.post("/chat/stream/", {"message": max_message})
 
+        # Should return streaming response, not error
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/event-stream")
 
 
-class SendMessageSessionTests(TestCase):
-    """Tests for session management in send_message view."""
+@override_settings(DEFAULT_CHAT_AGENT="MockAgent")
+class StreamSessionTests(TestCase):
+    """Tests for session management in stream endpoint."""
 
     def setUp(self):
         self.client = Client()
 
-    def test_returns_session_and_message_ids(self):
-        """Successful POST returns both IDs for client to use."""
-        response = self.client.post("/chat/send/", {"message": "Hello"})
+    def test_returns_session_id_in_stream(self):
+        """Stream should include session event with session_id."""
+        response = self.client.post("/chat/stream/", {"message": "Hello"})
 
-        data = json.loads(response.content)
-        self.assertIn("session_id", data)
-        self.assertIn("message_id", data)
-        # IDs should be valid UUIDs (36 chars with hyphens)
-        self.assertEqual(len(data["session_id"]), 36)
-        self.assertEqual(len(data["message_id"]), 36)
+        content = b"".join(response.streaming_content).decode()
+        self.assertIn('"type": "session"', content)
+        self.assertIn('"session_id"', content)
 
     def test_creates_message_with_user_content(self):
-        """The message content should match what was sent."""
-        self.client.post("/chat/send/", {"message": "Test message content"})
+        """The message content should be saved to the database."""
+        response = self.client.post(
+            "/chat/stream/", {"message": "Test message content"}
+        )
+        # Consume the stream
+        list(response.streaming_content)
 
-        message = Message.objects.first()
+        # Find the user message (first message is system prompt)
+        message = Message.objects.filter(data__role="user").first()
         self.assertEqual(message.content, "Test message content")
-        self.assertEqual(message.role, Message.Role.USER)
+        self.assertEqual(message.role, "user")
 
-    def test_reuses_session_for_same_client(self):
-        """Same client session should reuse the same ChatSession."""
-        response1 = self.client.post("/chat/send/", {"message": "First"})
-        session_id1 = json.loads(response1.content)["session_id"]
+    def test_reuses_session_when_session_id_provided(self):
+        """Providing session_id reuses that session."""
+        # First request creates session
+        response1 = self.client.post("/chat/stream/", {"message": "First"})
+        content1 = b"".join(response1.streaming_content).decode()
 
-        response2 = self.client.post("/chat/send/", {"message": "Second"})
-        session_id2 = json.loads(response2.content)["session_id"]
+        # Extract session_id from stream
+        import re
 
-        self.assertEqual(session_id1, session_id2)
+        match = re.search(r'"session_id":\s*"([^"]+)"', content1)
+        session_id = match.group(1)
+
+        # Second request with session_id
+        response2 = self.client.post(
+            "/chat/stream/", {"message": "Second", "session_id": session_id}
+        )
+        list(response2.streaming_content)
+
+        # Should have: 1 system message + 2 user messages + 2 assistant messages
+        user_messages = Message.objects.filter(data__role="user").count()
+        self.assertEqual(user_messages, 2)
         self.assertEqual(ChatSession.objects.count(), 1)
-        self.assertEqual(Message.objects.count(), 2)
 
 
-class SendMessageAuthTests(TestCase):
+@override_settings(DEFAULT_CHAT_AGENT="MockAgent")
+class StreamAuthTests(TestCase):
     """Tests for authenticated user session handling."""
 
     def setUp(self):
@@ -103,14 +152,16 @@ class SendMessageAuthTests(TestCase):
         """Authenticated user's session should be linked to their account."""
         self.client.login(username="testuser", password="testpass")
 
-        self.client.post("/chat/send/", {"message": "Hello"})
+        response = self.client.post("/chat/stream/", {"message": "Hello"})
+        list(response.streaming_content)
 
         session = ChatSession.objects.first()
         self.assertEqual(session.user, self.user)
 
 
-class StreamResponseOwnershipTests(TestCase):
-    """Tests for session ownership verification in stream_response."""
+@override_settings(DEFAULT_CHAT_AGENT="MockAgent")
+class StreamOwnershipTests(TestCase):
+    """Tests for session ownership verification."""
 
     def setUp(self):
         self.client = Client()
@@ -118,7 +169,9 @@ class StreamResponseOwnershipTests(TestCase):
     def test_404_for_nonexistent_session(self):
         """Non-existent session should return 404."""
         fake_uuid = "00000000-0000-0000-0000-000000000000"
-        response = self.client.get(f"/chat/stream/{fake_uuid}/")
+        response = self.client.post(
+            "/chat/stream/", {"message": "Hello", "session_id": fake_uuid}
+        )
 
         self.assertEqual(response.status_code, 404)
 
@@ -129,7 +182,10 @@ class StreamResponseOwnershipTests(TestCase):
             session_key="other-session-key"
         )
 
-        response = self.client.get(f"/chat/stream/{other_session.id}/")
+        response = self.client.post(
+            "/chat/stream/",
+            {"message": "Hello", "session_id": str(other_session.id)},
+        )
 
         self.assertEqual(response.status_code, 403)
 
@@ -143,12 +199,15 @@ class StreamResponseOwnershipTests(TestCase):
         User.objects.create_user(username="testuser", password="testpass")
         self.client.login(username="testuser", password="testpass")
 
-        response = self.client.get(f"/chat/stream/{other_session.id}/")
+        response = self.client.post(
+            "/chat/stream/",
+            {"message": "Hello", "session_id": str(other_session.id)},
+        )
 
         self.assertEqual(response.status_code, 403)
 
 
-class KeywordSearchTests(TestCase):
+class SearchTests(TestCase):
     """Tests for keyword search functionality."""
 
     def setUp(self):
@@ -163,7 +222,6 @@ class KeywordSearchTests(TestCase):
         response = self.client.get("/chat/search/", {"q": ""})
 
         self.assertEqual(response.status_code, 200)
-        # Template should render with empty results
         self.assertNotContains(response, "Test Doc")
 
     def test_category_filter_excludes_other_categories(self):
@@ -183,18 +241,15 @@ class KeywordSearchTests(TestCase):
         self.assertNotContains(response, "Tax Doc")
 
 
-@override_settings(CHAT_ENABLED=True, CHAT_PROVIDER="ollama")
-class ChatStatusTests(TestCase):
+@override_settings(CHAT_ENABLED=True, DEFAULT_CHAT_AGENT="MockAgent")
+class StatusTests(TestCase):
     """Tests for chat status endpoint."""
 
     def setUp(self):
         self.client = Client()
 
-    @patch("chat.views.chat_service")
-    def test_returns_availability_status(self, mock_service):
+    def test_returns_availability_status(self):
         """Status endpoint should return current availability."""
-        mock_service.is_available.return_value = True
-
         response = self.client.get("/chat/status/")
 
         data = json.loads(response.content)
