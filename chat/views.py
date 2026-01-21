@@ -7,6 +7,8 @@ from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
 from .services.chat_service import chat_service
+from .services.extraction_service import extraction_service
+from .services.pdf_service import pdf_service
 from .services.search_service import search_service
 
 
@@ -112,5 +114,52 @@ def chat_status(request: HttpRequest) -> JsonResponse:
             "enabled": settings.CHAT_ENABLED,
             "available": chat_service.is_available(),
             "provider": settings.CHAT_PROVIDER,
+        }
+    )
+
+
+@require_POST
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def upload_document(request: HttpRequest) -> JsonResponse:
+    """
+    Handle PDF document upload, text extraction, and LLM analysis.
+
+    Extracts text from uploaded PDF files and uses LLM to extract
+    structured case information.
+    In-memory processing only - no file storage.
+    Rate limited to 10 requests per minute per IP.
+    """
+    if "file" not in request.FILES:
+        return JsonResponse({"error": "No file uploaded"}, status=400)
+
+    uploaded_file = request.FILES["file"]
+
+    # Extract text from PDF
+    pdf_result = pdf_service.extract_text(uploaded_file)
+
+    if not pdf_result.success:
+        return JsonResponse({"error": pdf_result.error}, status=400)
+
+    # Extract structured data using LLM
+    extraction_result = extraction_service.extract_from_text(pdf_result.text)
+
+    if not extraction_result.success:
+        # Return partial success - text extracted but analysis failed
+        return JsonResponse(
+            {
+                "success": True,
+                "page_count": pdf_result.page_count,
+                "text_preview": pdf_result.text_preview,
+                "extracted_data": None,
+                "extraction_error": extraction_result.error,
+            }
+        )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "page_count": pdf_result.page_count,
+            "text_preview": pdf_result.text_preview,
+            "extracted_data": extraction_result.to_dict(),
         }
     )

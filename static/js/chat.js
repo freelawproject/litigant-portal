@@ -39,6 +39,8 @@ const chatUtils = {
   },
 
   // Simple markdown to HTML renderer
+  // SECURITY: HTML must be escaped BEFORE markdown transformations to prevent XSS.
+  // LLM output may contain malicious content - escaping first neutralizes it.
   renderMarkdown(text) {
     if (!text) return ''
     return (
@@ -46,7 +48,7 @@ const chatUtils = {
         // Strip LLM artifacts
         .replace(/\\+/g, '') // Backslash escapes (e.g., \\Address:\\ → Address:)
         .replace(/<!--.*?-->/g, '') // HTML comments
-        // Escape HTML first
+        // SECURITY: Escape HTML first (before markdown) to prevent XSS
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -296,10 +298,30 @@ document.addEventListener('alpine:init', () => {
     isStreaming: false,
     chatAvailable: true,
     showUnavailableWarning: false,
+    // Upload state
+    selectedFile: null,
+    isUploading: false,
+    uploadError: null,
+    extractedText: null,
+    extractedData: null,
+    // Case info (populated after user confirms extraction)
+    caseInfo: null,
+    showConfirmation: false,
+    _documentContextSent: false,
 
     async init() {
       // Restore session from localStorage
       this.sessionId = localStorage.getItem('chatSessionId') || ''
+
+      // Restore case info from localStorage
+      const savedCaseInfo = localStorage.getItem('caseInfo')
+      if (savedCaseInfo) {
+        try {
+          this.caseInfo = JSON.parse(savedCaseInfo)
+        } catch (e) {
+          localStorage.removeItem('caseInfo')
+        }
+      }
 
       // Check if chat service is available
       const status = await chatUtils.checkAvailability()
@@ -326,10 +348,38 @@ document.addEventListener('alpine:init', () => {
       })
       this.scrollToBottom()
 
+      // Build message with document context if available
+      let messageToSend = content
+      if (this.extractedData && !this._documentContextSent) {
+        // Include document context on first message after upload
+        const ctx = this.extractedData
+        let contextPrefix = '[Document Context]\n'
+        if (ctx.case_type) contextPrefix += `Case Type: ${ctx.case_type}\n`
+        if (ctx.summary) contextPrefix += `Summary: ${ctx.summary}\n`
+        if (ctx.court_info?.court_name)
+          contextPrefix += `Court: ${ctx.court_info.court_name}\n`
+        if (ctx.court_info?.case_number)
+          contextPrefix += `Case Number: ${ctx.court_info.case_number}\n`
+        if (ctx.parties?.opposing_party)
+          contextPrefix += `Opposing Party: ${ctx.parties.opposing_party}\n`
+        if (ctx.key_dates?.length > 0) {
+          const deadlines = ctx.key_dates.filter((d) => d.is_deadline)
+          if (deadlines.length > 0) {
+            contextPrefix += 'Deadlines:\n'
+            for (const d of deadlines) {
+              contextPrefix += `- ${d.label}: ${d.date}\n`
+            }
+          }
+        }
+        contextPrefix += '[End Document Context]\n\n'
+        messageToSend = contextPrefix + content
+        this._documentContextSent = true
+      }
+
       // Send to server and stream response
       try {
         const formData = new FormData()
-        formData.append('message', content)
+        formData.append('message', messageToSend)
         formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
 
         const response = await fetch('/chat/send/', {
@@ -398,6 +448,8 @@ document.addEventListener('alpine:init', () => {
     clearChat() {
       this.messages = []
       this.sessionId = ''
+      this.extractedData = null
+      this._documentContextSent = false
       localStorage.removeItem('chatSessionId')
     },
 
@@ -414,5 +466,193 @@ document.addEventListener('alpine:init', () => {
     // Delegate to shared utilities
     escapeHtml: chatUtils.escapeHtml,
     renderMarkdown: chatUtils.renderMarkdown,
+
+    // File upload methods
+    triggerFileInput() {
+      this.$refs.fileInput?.click()
+    },
+
+    handleFileSelect(event) {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        this.uploadError = 'Please select a PDF file'
+        event.target.value = ''
+        return
+      }
+
+      // Validate file size (10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        this.uploadError = 'File size must be less than 10MB'
+        event.target.value = ''
+        return
+      }
+
+      this.selectedFile = file
+      this.uploadError = null
+      this.uploadPdf()
+    },
+
+    async uploadPdf() {
+      if (!this.selectedFile || this.isUploading) return
+
+      this.isUploading = true
+      this.uploadError = null
+
+      try {
+        const formData = new FormData()
+        formData.append('file', this.selectedFile)
+        formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+
+        const response = await fetch('/chat/upload/', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Upload failed')
+        }
+
+        // Store extracted data for later use
+        this.extractedText = data.text_preview
+        this.extractedData = data.extracted_data
+
+        // Build the response message
+        let messageContent = ''
+
+        if (data.extracted_data) {
+          const ed = data.extracted_data
+          messageContent = `I've analyzed your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}).\n\n`
+
+          if (ed.case_type) {
+            messageContent += `**Case Type:** ${ed.case_type}\n\n`
+          }
+
+          if (ed.summary) {
+            messageContent += `**Summary:** ${ed.summary}\n\n`
+          }
+
+          if (ed.court_info?.county || ed.court_info?.court_name) {
+            messageContent += `**Court:** ${ed.court_info.court_name || ''}`
+            if (ed.court_info.county) {
+              messageContent += ` (${ed.court_info.county})`
+            }
+            if (ed.court_info.case_number) {
+              messageContent += `\n**Case Number:** ${ed.court_info.case_number}`
+            }
+            messageContent += '\n\n'
+          }
+
+          if (ed.parties?.user_name || ed.parties?.opposing_party) {
+            if (ed.parties.opposing_party) {
+              messageContent += `**Filed by:** ${ed.parties.opposing_party}\n`
+            }
+            if (ed.parties.user_name) {
+              messageContent += `**Against:** ${ed.parties.user_name}\n`
+            }
+            messageContent += '\n'
+          }
+
+          if (ed.key_dates && ed.key_dates.length > 0) {
+            const deadlines = ed.key_dates.filter((d) => d.is_deadline)
+            const otherDates = ed.key_dates.filter((d) => !d.is_deadline)
+
+            if (deadlines.length > 0) {
+              messageContent += '**Important Deadlines:**\n'
+              for (const d of deadlines) {
+                messageContent += `- ${d.label}: **${d.date}**\n`
+              }
+              messageContent += '\n'
+            }
+
+            if (otherDates.length > 0) {
+              messageContent += '**Other Dates:**\n'
+              for (const d of otherDates) {
+                messageContent += `- ${d.label}: ${d.date}\n`
+              }
+              messageContent += '\n'
+            }
+          }
+
+          messageContent += 'Does this information look correct?'
+
+          // Show confirmation buttons
+          this.showConfirmation = true
+        } else if (data.extraction_error) {
+          messageContent = `I've received your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}), but I had trouble analyzing it: ${data.extraction_error}\n\nYou can still ask me questions about your situation.`
+        } else {
+          messageContent = `I've received your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}). How can I help you with it?`
+        }
+
+        this.messages.push({
+          id: Date.now(),
+          role: 'assistant',
+          content: messageContent,
+        })
+        this.scrollToBottom()
+
+        // Clear file input
+        this.selectedFile = null
+        if (this.$refs.fileInput) {
+          this.$refs.fileInput.value = ''
+        }
+      } catch (error) {
+        console.error('Upload error:', error)
+        this.uploadError = error.message
+        this.messages.push({
+          id: Date.now(),
+          role: 'assistant',
+          content: `Sorry, I couldn't process your document: ${error.message}`,
+        })
+      } finally {
+        this.isUploading = false
+      }
+    },
+
+    clearUploadError() {
+      this.uploadError = null
+    },
+
+    // Confirmation methods for extracted data
+    confirmExtraction() {
+      if (!this.extractedData) return
+
+      // Save to caseInfo and localStorage
+      this.caseInfo = this.extractedData
+      localStorage.setItem('caseInfo', JSON.stringify(this.caseInfo))
+      this.showConfirmation = false
+
+      // Add confirmation message
+      this.messages.push({
+        id: Date.now(),
+        role: 'assistant',
+        content:
+          "Great! I've saved your case information. You can see it in the sidebar. What would you like help with?",
+      })
+      this.scrollToBottom()
+    },
+
+    requestClarification() {
+      this.showConfirmation = false
+
+      // Add clarification message
+      this.messages.push({
+        id: Date.now(),
+        role: 'assistant',
+        content:
+          "No problem! What information needs to be corrected? You can tell me what's wrong and I'll update it, or you can upload a different document.",
+      })
+      this.scrollToBottom()
+    },
+
+    clearCaseInfo() {
+      this.caseInfo = null
+      this.extractedData = null
+      localStorage.removeItem('caseInfo')
+    },
   }))
 })

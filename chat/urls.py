@@ -10,4 +10,5 @@ urlpatterns = [
     path("stream/<uuid:session_id>/", views.stream_response, name="stream"),
     path("search/", views.keyword_search, name="search"),
     path("status/", views.chat_status, name="status"),
+    path("upload/", views.upload_document, name="upload"),
 ]

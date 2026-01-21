@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Iterator
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -47,6 +48,26 @@ class BaseLLMProvider(ABC):
 
         Returns:
             The complete response text.
+        """
+        pass
+
+    @abstractmethod
+    def generate_json_response(
+        self,
+        messages: list[ChatMessage],
+        system_prompt: str,
+    ) -> dict[str, Any]:
+        """
+        Generate a JSON response from the LLM.
+
+        Uses JSON mode to ensure valid JSON output.
+
+        Args:
+            messages: List of chat messages in the conversation.
+            system_prompt: System prompt with JSON schema instructions.
+
+        Returns:
+            Parsed JSON response as a dictionary.
         """
         pass
 
