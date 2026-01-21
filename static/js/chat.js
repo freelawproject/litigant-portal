@@ -39,6 +39,8 @@ const chatUtils = {
   },
 
   // Simple markdown to HTML renderer
+  // SECURITY: HTML must be escaped BEFORE markdown transformations to prevent XSS.
+  // LLM output may contain malicious content - escaping first neutralizes it.
   renderMarkdown(text) {
     if (!text) return ''
     return (
@@ -46,7 +48,7 @@ const chatUtils = {
         // Strip LLM artifacts
         .replace(/\\+/g, '') // Backslash escapes (e.g., \\Address:\\ → Address:)
         .replace(/<!--.*?-->/g, '') // HTML comments
-        // Escape HTML first
+        // SECURITY: Escape HTML first (before markdown) to prevent XSS
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')

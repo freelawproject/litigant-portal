@@ -311,3 +311,222 @@ class KeywordSearchCategoriesTests(TestCase):
         categories = self.service.get_categories()
 
         self.assertEqual(categories, ["criminal", "family", "tax"])
+
+
+class PDFServiceValidationTests(TestCase):
+    """Tests for PDF upload validation logic."""
+
+    def setUp(self):
+        from chat.services.pdf_service import PDFService
+
+        self.service = PDFService()
+
+    def _make_mock_file(
+        self, name="test.pdf", content_type="application/pdf", size=1024
+    ):
+        """Create a mock uploaded file."""
+        mock_file = MagicMock()
+        mock_file.name = name
+        mock_file.content_type = content_type
+        mock_file.size = size
+        return mock_file
+
+    def test_valid_pdf_passes_validation(self):
+        """Valid PDF file should pass all validation checks."""
+        mock_file = self._make_mock_file()
+
+        is_valid, error = self.service.validate_upload(mock_file)
+
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+
+    def test_rejects_non_pdf_content_type(self):
+        """Non-PDF content types should be rejected."""
+        mock_file = self._make_mock_file(content_type="image/png")
+
+        is_valid, error = self.service.validate_upload(mock_file)
+
+        self.assertFalse(is_valid)
+        self.assertIn("PDF", error)
+
+    def test_rejects_oversized_file(self):
+        """Files over 10MB should be rejected."""
+        mock_file = self._make_mock_file(size=11 * 1024 * 1024)
+
+        is_valid, error = self.service.validate_upload(mock_file)
+
+        self.assertFalse(is_valid)
+        self.assertIn("10MB", error)
+
+    def test_rejects_wrong_extension(self):
+        """Files without .pdf extension should be rejected."""
+        mock_file = self._make_mock_file(name="document.docx")
+
+        is_valid, error = self.service.validate_upload(mock_file)
+
+        self.assertFalse(is_valid)
+        self.assertIn(".pdf", error)
+
+    def test_accepts_uppercase_extension(self):
+        """Uppercase .PDF extension should be accepted."""
+        mock_file = self._make_mock_file(name="DOCUMENT.PDF")
+
+        is_valid, error = self.service.validate_upload(mock_file)
+
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+
+
+class ExtractionServiceInputTests(TestCase):
+    """Tests for extraction service input handling."""
+
+    def setUp(self):
+        from chat.services.extraction_service import ExtractionService
+
+        self.service = ExtractionService()
+
+    def test_empty_text_returns_error(self):
+        """Empty document text should return error result."""
+        result = self.service.extract_from_text("")
+
+        self.assertFalse(result.success)
+        self.assertIn("No document text", result.error)
+
+    def test_whitespace_only_returns_error(self):
+        """Whitespace-only text should return error result."""
+        result = self.service.extract_from_text("   \n\t  ")
+
+        self.assertFalse(result.success)
+        self.assertIn("No document text", result.error)
+
+    @patch("chat.services.extraction_service.get_provider")
+    def test_provider_exception_returns_error(self, mock_get_provider):
+        """Provider failure should return error result, not raise."""
+        mock_get_provider.side_effect = Exception("API error")
+
+        result = self.service.extract_from_text("Some document text")
+
+        self.assertFalse(result.success)
+        self.assertIn("Failed to analyze", result.error)
+
+
+class ExtractionServiceParsingTests(TestCase):
+    """Tests for extraction result parsing logic."""
+
+    def setUp(self):
+        from chat.services.extraction_service import ExtractionService
+
+        self.service = ExtractionService()
+
+    def test_parses_complete_result(self):
+        """Should correctly parse a complete LLM response."""
+        raw_result = {
+            "case_type": "Eviction",
+            "court_info": {
+                "county": "Bexar County",
+                "court_name": "Justice Court Precinct 1",
+                "case_number": "2024-CV-12345",
+            },
+            "parties": {
+                "user_name": "Jane Doe",
+                "opposing_party": "ABC Properties LLC",
+            },
+            "key_dates": [
+                {
+                    "label": "Court hearing",
+                    "date": "2024-02-15",
+                    "is_deadline": True,
+                },
+                {
+                    "label": "Filing date",
+                    "date": "2024-01-10",
+                    "is_deadline": False,
+                },
+            ],
+            "summary": "This is an eviction notice.",
+            "confidence": 0.85,
+        }
+
+        result = self.service._parse_extraction_result(raw_result)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.case_type, "Eviction")
+        self.assertEqual(result.court_info.county, "Bexar County")
+        self.assertEqual(result.court_info.case_number, "2024-CV-12345")
+        self.assertEqual(result.parties.user_name, "Jane Doe")
+        self.assertEqual(result.parties.opposing_party, "ABC Properties LLC")
+        self.assertEqual(len(result.key_dates), 2)
+        self.assertTrue(result.key_dates[0].is_deadline)
+        self.assertEqual(result.confidence, 0.85)
+
+    def test_handles_missing_optional_fields(self):
+        """Should handle missing optional fields gracefully."""
+        raw_result = {
+            "case_type": "Small Claims",
+            "summary": "A small claims case.",
+            "confidence": 0.5,
+        }
+
+        result = self.service._parse_extraction_result(raw_result)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.case_type, "Small Claims")
+        self.assertIsNone(result.court_info.county)
+        self.assertIsNone(result.parties.user_name)
+        self.assertEqual(result.key_dates, [])
+
+    def test_handles_empty_result(self):
+        """Should handle empty result dict without error."""
+        result = self.service._parse_extraction_result({})
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.case_type, "")
+        self.assertEqual(result.confidence, 0.0)
+
+
+class ExtractionResultSerializationTests(TestCase):
+    """Tests for ExtractionResult.to_dict() method."""
+
+    def test_to_dict_serializes_all_fields(self):
+        """to_dict should produce JSON-serializable output."""
+        from chat.services.extraction_service import (
+            CourtInfo,
+            ExtractionResult,
+            KeyDate,
+            Parties,
+        )
+
+        result = ExtractionResult(
+            success=True,
+            case_type="Eviction",
+            court_info=CourtInfo(
+                county="Travis", court_name="JP Court", case_number="123"
+            ),
+            parties=Parties(user_name="John", opposing_party="Landlord Inc"),
+            key_dates=[
+                KeyDate(label="Hearing", date="2024-03-01", is_deadline=True)
+            ],
+            summary="Test summary",
+            confidence=0.9,
+        )
+
+        output = result.to_dict()
+
+        self.assertEqual(output["success"], True)
+        self.assertEqual(output["case_type"], "Eviction")
+        self.assertEqual(output["court_info"]["county"], "Travis")
+        self.assertEqual(output["parties"]["user_name"], "John")
+        self.assertEqual(len(output["key_dates"]), 1)
+        self.assertEqual(output["key_dates"][0]["is_deadline"], True)
+
+    def test_to_dict_handles_none_values(self):
+        """to_dict should handle None values correctly."""
+        from chat.services.extraction_service import ExtractionResult
+
+        result = ExtractionResult(success=False, error="Test error")
+
+        output = result.to_dict()
+
+        self.assertEqual(output["success"], False)
+        self.assertEqual(output["error"], "Test error")
+        self.assertIsNone(output["court_info"]["county"])
