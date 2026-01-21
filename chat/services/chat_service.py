@@ -162,6 +162,70 @@ class ChatService:
             logger.warning(f"Chat service unavailable: {e}")
             return False
 
+    def generate_summary(self, messages: list[dict]) -> str | None:
+        """
+        Generate a summary of a conversation.
+
+        Args:
+            messages: List of message dicts with 'role' and 'content' keys.
+
+        Returns:
+            A 2-3 sentence summary of the conversation, or None on error.
+        """
+        if not messages:
+            return None
+
+        try:
+            provider = get_provider()
+
+            # Build conversation text
+            conversation_text = "\n".join(
+                f"{msg.get('role', 'unknown').upper()}: {msg.get('content', '')}"
+                for msg in messages
+                if msg.get("content")
+            )
+
+            # Create summary prompt
+            summary_prompt = ChatMessage(
+                role="user",
+                content=f"""Summarize ONLY the questions the USER explicitly typed and their answers.
+
+IMPORTANT RULES:
+- Only include questions that appear after "USER:" in the conversation
+- SKIP any document analysis (messages about "I've analyzed your document...")
+- SKIP questions the assistant generated or suggested
+- If the user only uploaded a file and didn't ask follow-up questions, respond with just: "No user questions asked."
+
+Format (only for actual user questions):
+Q: [The user's actual question]
+A: [Specific answer with details: addresses, costs, times, deadlines. If no specifics, note that.]
+
+Example - user asked a real question:
+Q: Where can I park at DuPage County Courthouse?
+A: Parking garage at 505 N County Farm Rd, $6/day. Street meters on County Farm Rd.
+
+Example - user only uploaded a file, no questions:
+No user questions asked.
+
+Conversation:
+{conversation_text}
+
+Summary:""",
+            )
+
+            # Generate summary (non-streaming)
+            response_parts = []
+            for token in provider.stream_response(
+                [summary_prompt], context=None
+            ):
+                response_parts.append(token)
+
+            return "".join(response_parts).strip()
+
+        except Exception as e:
+            logger.error(f"Error generating summary: {e}")
+            return None
+
 
 # Singleton instance
 chat_service = ChatService()
