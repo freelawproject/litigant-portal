@@ -73,11 +73,11 @@ services:
       # For PostgreSQL, uncomment below and use: docker compose --profile dev up
       # - DATABASE_URL=postgres://${POSTGRES_USER:-litigant_portal}:${POSTGRES_PASSWORD:-litigant_dev}@db-dev:5432/${POSTGRES_DB:-litigant_portal}
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
-      # AI Chat configuration (Groq cloud LLM)
+      # AI Chat configuration (OpenAI)
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_PROVIDER=groq
-      - CHAT_MODEL=llama-3.3-70b-versatile
-      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CHAT_PROVIDER=openai
+      - CHAT_MODEL=gpt-4o-mini
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - .:/app
     ports:

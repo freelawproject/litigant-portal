@@ -18,8 +18,8 @@ console_command = '/app/manage.py shell'
 [env]
   DEBUG = 'false'
   PORT = '8000'
-  CHAT_PROVIDER = 'groq'
-  CHAT_MODEL = 'llama-3.3-70b-versatile'
+  CHAT_PROVIDER = 'openai'
+  CHAT_MODEL = 'gpt-4o-mini'
 
 [http_service]
   internal_port = 8000
