@@ -3,6 +3,7 @@
 import logging
 from dataclasses import dataclass
 
+import pdfplumber
 from django.core.files.uploadedfile import InMemoryUploadedFile
 
 logger = logging.getLogger(__name__)
@@ -70,8 +71,6 @@ class PDFService:
             return PDFExtractionResult(success=False, error=error)
 
         try:
-            import pdfplumber
-
             # Open PDF from file-like object
             # pdfplumber can read from file-like objects directly
             with pdfplumber.open(file) as pdf:
