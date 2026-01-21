@@ -5,9 +5,7 @@ from . import views
 app_name = "chat"
 
 urlpatterns = [
-    # API endpoints (used by home page chat)
-    path("send/", views.send_message, name="send"),
-    path("stream/<uuid:session_id>/", views.stream_response, name="stream"),
-    path("search/", views.keyword_search, name="search"),
-    path("status/", views.chat_status, name="status"),
+    path("stream/", views.stream, name="stream"),
+    path("search/", views.search, name="search"),
+    path("status/", views.status, name="status"),
 ]
