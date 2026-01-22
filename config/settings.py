@@ -105,6 +105,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "portal.context_processors.toast_messages",
+                "portal.context_processors.build_info",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",

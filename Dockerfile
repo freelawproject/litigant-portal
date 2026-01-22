@@ -94,6 +94,9 @@ COPY templates/ ./templates/
 COPY static/ ./static/
 COPY manage.py ./
 
+# Capture build timestamp for QA visibility
+RUN date -u +%Y-%m-%dT%H:%M:%SZ > BUILD_TIMESTAMP
+
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

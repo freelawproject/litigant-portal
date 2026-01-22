@@ -1,4 +1,4 @@
-<footer class="mobile-footer flex-shrink-0 {{ class }}" {{ attrs }}>
+<footer class="mobile-footer relative flex-shrink-0 {{ class }}" {{ attrs }}>
   <div class="max-w-content mx-auto px-4">
     <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-1 py-2 text-xs text-greyscale-500">
       <a href="#about" class="hover:text-greyscale-700">About</a>
@@ -8,4 +8,7 @@
       <span>© {% now "Y" %} Free Law Project</span>
     </div>
   </div>
+  {% if build_timestamp %}
+    <span class="absolute right-4 bottom-2 text-xs text-greyscale-400">build: {{ build_timestamp }}</span>
+  {% endif %}
 </footer>
