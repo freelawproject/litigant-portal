@@ -36,9 +36,9 @@ Return a JSON object with the following structure:
     },
     "key_dates": [
         {
-            "label": "string - Description of what the date is for",
+            "label": "string - Short description (e.g., 'Court Hearing', 'Service Date')",
             "date": "string - The date in YYYY-MM-DD format if possible, otherwise as written",
-            "is_deadline": "boolean - True if this is a deadline the user needs to act on"
+            "is_deadline": "boolean - True ONLY for future dates requiring user action (court appearances, filing deadlines). False for past/historical dates like when documents were served or filed."
         }
     ],
     "summary": "string - A concise, actionable summary with SPECIFIC details: what action is required, exact deadline dates, court address if shown, and consequences of not acting. Example: 'You must appear at 505 N County Farm Rd, Wheaton IL on Feb 14, 2026 at 9:00 AM for your eviction hearing. If you don't appear, the judge may rule against you.' Include actual dates, addresses, amounts - not vague descriptions.",
@@ -48,7 +48,8 @@ Return a JSON object with the following structure:
 Guidelines:
 - If information is not found, use null for optional fields
 - For dates, try to parse them into YYYY-MM-DD format when possible
-- Focus on deadlines that require action from the document recipient
+- is_deadline should be TRUE only for future action dates (court hearings, filing deadlines, response due dates)
+- is_deadline should be FALSE for historical dates (service date, filing date, date document was signed)
 - The summary should be helpful and reassuring, not alarming
 - Be conservative with confidence scores - lower if text is unclear or partially extracted"""
 

@@ -215,7 +215,9 @@ def clear_session(request: HttpRequest) -> JsonResponse:
     deleted_count = 0
 
     if request.user.is_authenticated:
-        deleted_count, _ = ChatSession.objects.filter(user=request.user).delete()
+        deleted_count, _ = ChatSession.objects.filter(
+            user=request.user
+        ).delete()
     else:
         session_key = request.session.session_key
         if session_key:
