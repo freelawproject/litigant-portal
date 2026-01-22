@@ -198,3 +198,29 @@ def summarize_conversation(request: HttpRequest) -> JsonResponse:
         )
 
     return JsonResponse({"summary": summary})
+
+
+@require_POST
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def clear_session(request: HttpRequest) -> JsonResponse:
+    """
+    Clear the current user's chat session and all messages.
+
+    For authenticated users, deletes their session.
+    For anonymous users, deletes session by session_key.
+    Rate limited to 10 requests per minute per IP.
+    """
+    from .models import ChatSession
+
+    deleted_count = 0
+
+    if request.user.is_authenticated:
+        deleted_count, _ = ChatSession.objects.filter(user=request.user).delete()
+    else:
+        session_key = request.session.session_key
+        if session_key:
+            deleted_count, _ = ChatSession.objects.filter(
+                session_key=session_key
+            ).delete()
+
+    return JsonResponse({"success": True, "deleted": deleted_count})
