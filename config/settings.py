@@ -42,6 +42,11 @@ ALLOWED_HOSTS = [
 # Fly.io auto-sets FLY_APP_NAME
 if fly_app := os.environ.get("FLY_APP_NAME"):
     ALLOWED_HOSTS.append(f"{fly_app}.fly.dev")
+    # Allow internal health checks from Fly's private network
+    ALLOWED_HOSTS.append(".internal")
+    ALLOWED_HOSTS.append("*")  # Fly proxy handles host validation
+    # CSRF trusted origins for Fly
+    CSRF_TRUSTED_ORIGINS = [f"https://{fly_app}.fly.dev"]
 
 # Required for Django's debug context processor to expose 'debug' in templates
 if DEBUG:
