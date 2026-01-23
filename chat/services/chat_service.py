@@ -170,7 +170,7 @@ class ChatService:
             messages: List of message dicts with 'role' and 'content' keys.
 
         Returns:
-            A 2-3 sentence summary of the conversation, or None on error.
+            A Q&A summary of the conversation, or None on error.
         """
         if not messages:
             return None
@@ -185,42 +185,34 @@ class ChatService:
                 if msg.get("content")
             )
 
-            # Create summary prompt
-            summary_prompt = ChatMessage(
-                role="user",
-                content=f"""Summarize ONLY the questions the USER explicitly typed and their answers.
+            # Simple system prompt for summarization (not the chat prompt)
+            system_prompt = "You summarize conversations. Be concise."
 
-IMPORTANT RULES:
-- Only include questions that appear after "USER:" in the conversation
-- SKIP any document analysis (messages about "I've analyzed your document...")
-- SKIP questions the assistant generated or suggested
-- If the user only uploaded a file and didn't ask follow-up questions, respond with just: "No user questions asked."
+            user_prompt = f"""Summarize this Q&A exchange.
 
-Format (only for actual user questions):
-Q: [The user's actual question]
-A: [Specific answer with details: addresses, costs, times, deadlines. If no specifics, note that.]
+Format:
+Q: [user's question]
+A: [key points from the answer - specific details like names, numbers, addresses]
 
-Example - user asked a real question:
-Q: Where can I park at DuPage County Courthouse?
-A: Parking garage at 505 N County Farm Rd, $6/day. Street meters on County Farm Rd.
-
-Example - user only uploaded a file, no questions:
-No user questions asked.
+If the user message is just confirming document info (like "yes" or "looks correct"), respond: "No user questions asked."
 
 Conversation:
-{conversation_text}
+{conversation_text}"""
 
-Summary:""",
+            # Use provider's client directly to avoid chat system prompt
+            formatted_messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+
+            response = provider.client.chat.completions.create(
+                model=provider.model,
+                max_tokens=200,
+                messages=formatted_messages,
+                temperature=0.3,
             )
 
-            # Generate summary (non-streaming)
-            response_parts = []
-            for token in provider.stream_response(
-                [summary_prompt], context=None
-            ):
-                response_parts.append(token)
-
-            return "".join(response_parts).strip()
+            return response.choices[0].message.content.strip()
 
         except Exception as e:
             logger.error(f"Error generating summary: {e}")
