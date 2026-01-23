@@ -296,6 +296,7 @@
             {# Confirmation buttons for extraction #}
             <div x-show="showConfirmation"
                  x-cloak
+                 x-ref="confirmationButtons"
                  class="chat-message chat-message-assistant">
               <div class="chat-message-avatar">
                 <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
@@ -320,7 +321,7 @@
           </div>
         </div>
         {# Chat Input - fixed at bottom #}
-        <div class="chat-input-area">
+        <div class="chat-input-area" x-ref="chatInput">
           <form x-on:submit.prevent="askQuestion"
                 class="chat-input-form"
                 role="search">

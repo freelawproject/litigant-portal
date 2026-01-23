@@ -367,7 +367,7 @@ document.addEventListener('alpine:init', () => {
         role: 'user',
         content: content,
       })
-      this.scrollToBottom()
+      this.scrollToResponse()
 
       // Build message with document context if available
       let messageToSend = content
@@ -438,7 +438,7 @@ document.addEventListener('alpine:init', () => {
         role: 'assistant',
         content: '',
       })
-      this.scrollToBottom()
+      this.scrollToResponse()
 
       try {
         const response = await fetch(`/chat/stream/${this.sessionId}/`)
@@ -571,12 +571,57 @@ document.addEventListener('alpine:init', () => {
       localStorage.setItem('caseTimeline', JSON.stringify(this.caseTimeline))
     },
 
-    // Scroll to bottom of messages
+    // Scroll to show response, but stop when question reaches top of view
+    scrollToResponse() {
+      this.$nextTick(() => {
+        if (!this.$refs.messagesArea) return
+
+        const container = this.$refs.messagesArea
+        const userMessages = container.querySelectorAll('.chat-message-user')
+        if (userMessages.length === 0) return
+
+        const lastUserMessage = userMessages[userMessages.length - 1]
+        const questionTop = lastUserMessage.offsetTop
+
+        // Scroll so question is at top of visible area
+        // This shows the question + as much response as fits below
+        container.scrollTo({ top: questionTop, behavior: 'smooth' })
+      })
+    },
+
+    // Scroll confirmation buttons into view
+    scrollToConfirmation() {
+      // Use setTimeout to ensure Alpine has rendered the element
+      setTimeout(() => {
+        if (this.$refs.confirmationButtons) {
+          this.$refs.confirmationButtons.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+          })
+        }
+      }, 50)
+    },
+
+    // Scroll to input area
+    scrollToInput() {
+      this.$nextTick(() => {
+        if (this.$refs.chatInput) {
+          this.$refs.chatInput.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+          })
+        }
+      })
+    },
+
+    // Scroll to the very bottom of messages (for upload flow follow-ups)
     scrollToBottom() {
       this.$nextTick(() => {
         if (this.$refs.messagesArea) {
-          this.$refs.messagesArea.scrollTop =
-            this.$refs.messagesArea.scrollHeight
+          this.$refs.messagesArea.scrollTo({
+            top: this.$refs.messagesArea.scrollHeight,
+            behavior: 'smooth',
+          })
         }
       })
     },
@@ -732,7 +777,13 @@ document.addEventListener('alpine:init', () => {
           role: 'assistant',
           content: messageContent,
         })
-        this.scrollToBottom()
+
+        // Scroll confirmation buttons into view if showing, otherwise to input
+        if (this.showConfirmation) {
+          this.scrollToConfirmation()
+        } else {
+          this.scrollToInput()
+        }
 
         // Clear file input
         this.selectedFile = null
