@@ -3,7 +3,7 @@
 ## Quick Start
 
 ```bash
-cp .env.example .env        # Add your GROQ_API_KEY
+cp .env.example .env        # Add your OPENAI_API_KEY
 make docker-dev             # Start dev environment
 # Visit: http://portal.localhost:8000/style-guide/
 ```
@@ -29,7 +29,7 @@ make test                   # Run tests
 | Core Atoms (Button, Input, Link, Select, Icon)  | Done   |
 | Component Library Page                          | Done   |
 | Auth (Login/Signup/Logout)                      | Done   |
-| AI Chat with Groq                               | Done   |
+| AI Chat with OpenAI                             | Done   |
 | A11y Testing                                    | Next   |
 
 ---
@@ -90,7 +90,7 @@ litigant-portal/
 | Styling    | Tailwind CSS 4.x (standalone CLI)        |
 | Reactivity | Alpine.js 3.14.9 (local, standard build) |
 | Auth       | django-allauth                           |
-| AI Chat    | Groq (llama-3.3-70b-versatile)           |
+| AI Chat    | OpenAI (gpt-4o-mini)                     |
 | Security   | django-csp                               |
 | Deployment | Fly.io (QA), GitHub Pages (static demo)  |
 
