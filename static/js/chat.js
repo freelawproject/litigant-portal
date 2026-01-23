@@ -290,7 +290,7 @@ document.addEventListener('alpine:init', () => {
    * Home Page Component
    * Chat-first experience with AI assistance.
    */
-  Alpine.data('homePage', () => ({
+  Alpine.data('homePage', (isAuthenticated = false) => ({
     // State
     sessionId: '',
     messages: [],
@@ -298,6 +298,7 @@ document.addEventListener('alpine:init', () => {
     isStreaming: false,
     chatAvailable: true,
     showUnavailableWarning: false,
+    isAuthenticated: isAuthenticated,
     // Upload state
     selectedFile: null,
     isUploading: false,
@@ -308,6 +309,7 @@ document.addEventListener('alpine:init', () => {
     // Case info (populated after user confirms extraction)
     caseInfo: null,
     showConfirmation: false,
+    showClearConfirmation: false, // Modal for guest clear confirmation
     _documentContextSent: false,
     _isClearingChat: false,
     // Timeline state
@@ -341,6 +343,11 @@ document.addEventListener('alpine:init', () => {
       const status = await chatUtils.checkAvailability()
       this.chatAvailable = status.available
       this.showUnavailableWarning = !status.available
+    },
+
+    // Check if there's data that would be lost (for guest warning)
+    hasUnsavedData() {
+      return this.caseInfo || this.messages.length > 0
     },
 
     dismissWarning() {
@@ -495,19 +502,66 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Clear chat and start new conversation
+    // Guest: Full reset with confirmation modal
+    // Logged in: Chat-only reset, keep case/timeline
     clearChat() {
-      this.messages = []
-      this.sessionId = ''
-      this.extractedData = null
-      this._documentContextSent = false
-      localStorage.removeItem('chatSessionId')
+      if (!this.isAuthenticated && this.hasUnsavedData()) {
+        // Show confirmation modal for guests
+        this.showClearConfirmation = true
+        return
+      }
+
+      this.performClearChat()
+    },
+
+    // Actually perform the chat clear
+    performClearChat() {
+      if (this.isAuthenticated) {
+        // Logged in: Clear chat only, keep case info and timeline
+        this.messages = []
+        this.sessionId = ''
+        this.extractedData = null
+        this._documentContextSent = false
+        this.showConfirmation = false
+        localStorage.removeItem('chatSessionId')
+
+        // Add timeline event for new conversation
+        this.addTimelineEvent(
+          'new_chat',
+          'New conversation',
+          'Started a new conversation'
+        )
+      } else {
+        // Guest: Full reset
+        this.messages = []
+        this.sessionId = ''
+        this.extractedData = null
+        this._documentContextSent = false
+        this.showConfirmation = false
+        this.caseInfo = null
+        this.caseTimeline = []
+        localStorage.removeItem('chatSessionId')
+        localStorage.removeItem('caseInfo')
+        localStorage.removeItem('caseTimeline')
+      }
+    },
+
+    // Confirm clear for guests (from modal)
+    confirmClear() {
+      this.showClearConfirmation = false
+      this.performClearChat()
+    },
+
+    // Cancel clear (from modal)
+    cancelClear() {
+      this.showClearConfirmation = false
     },
 
     // Add an event to the timeline
     addTimelineEvent(type, title, content, metadata = {}) {
       const event = {
         id: Date.now(),
-        type, // 'upload' | 'summary' | 'change'
+        type, // 'upload' | 'summary' | 'change' | 'new_chat'
         timestamp: new Date().toISOString(),
         title,
         content,

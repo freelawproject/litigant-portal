@@ -18,7 +18,7 @@
           Style Guide
         </a>
         <button type="button"
-                x-on:click="fetch('{% url 'chat:clear' %}', {method: 'POST', headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'}}).finally(() => { localStorage.removeItem('chatSessionId'); localStorage.removeItem('caseInfo'); localStorage.removeItem('caseTimeline'); location.reload() })"
+                x-on:click="fetch('{% url 'chat:clear' %}', {method: 'POST', headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'}}).then(() => { localStorage.removeItem('chatSessionId'); localStorage.removeItem('caseInfo'); localStorage.removeItem('caseTimeline'); return fetch('{% url 'account_logout' %}', {method: 'POST', headers: {'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}'}}) }).finally(() => { window.location.href = '{% url 'portal:home' %}' })"
                 class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 transition-colors">
           Clear Demo
         </button>
@@ -86,7 +86,7 @@
               <div class="p-3 border-l-2 cursor-pointer"
                    x-data="{ expanded: false }"
                    x-on:click="expanded = !expanded"
-                   x-bind:class="{ 'border-primary-300 bg-primary-50/50': event.type === 'upload', 'border-blue-300 bg-blue-50/50': event.type === 'summary', 'border-greyscale-300 bg-greyscale-50': event.type === 'change' }">
+                   x-bind:class="{ 'border-primary-300 bg-primary-50/50': event.type === 'upload', 'border-blue-300 bg-blue-50/50': event.type === 'summary', 'border-greyscale-300 bg-greyscale-50': event.type === 'change', 'border-green-300 bg-green-50/50': event.type === 'new_chat' }">
                 <div class="flex items-center gap-2 mb-1">
                   <template x-if="event.type === 'upload'">
                     <c-atoms.icon name="document-arrow-up" class="w-4 h-4 text-primary-500" />
@@ -96,6 +96,9 @@
                   </template>
                   <template x-if="event.type === 'change'">
                     <c-atoms.icon name="pencil-square" class="w-4 h-4 text-greyscale-500" />
+                  </template>
+                  <template x-if="event.type === 'new_chat'">
+                    <c-atoms.icon name="plus-circle" class="w-4 h-4 text-green-500" />
                   </template>
                   <p class="text-xs text-greyscale-500"
                      x-text="new Date(event.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })">
