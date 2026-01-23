@@ -440,6 +440,10 @@ document.addEventListener('alpine:init', () => {
       })
       this.scrollToResponse()
 
+      // Throttled scroll during streaming
+      let lastScrollTime = 0
+      const scrollThrottleMs = 200
+
       try {
         const response = await fetch(`/chat/stream/${this.sessionId}/`)
         if (!response.ok) throw new Error('Stream failed')
@@ -449,6 +453,13 @@ document.addEventListener('alpine:init', () => {
             id: messageId,
             role: 'assistant',
             content: content,
+          }
+
+          // Throttled auto-scroll during streaming
+          const now = Date.now()
+          if (now - lastScrollTime > scrollThrottleMs) {
+            this.scrollIfNearBottom()
+            lastScrollTime = now
           }
         })
       } catch (error) {
@@ -593,10 +604,10 @@ document.addEventListener('alpine:init', () => {
     scrollToConfirmation() {
       // Use setTimeout to ensure Alpine has rendered the element
       setTimeout(() => {
-        if (this.$refs.confirmationButtons) {
-          this.$refs.confirmationButtons.scrollIntoView({
+        if (this.$refs.messagesArea) {
+          this.$refs.messagesArea.scrollTo({
+            top: this.$refs.messagesArea.scrollHeight,
             behavior: 'smooth',
-            block: 'end',
           })
         }
       }, 50)
@@ -624,6 +635,44 @@ document.addEventListener('alpine:init', () => {
           })
         }
       })
+    },
+
+    // Check if user is near bottom of messages area
+    isNearBottom() {
+      if (!this.$refs.messagesArea) return true
+      const el = this.$refs.messagesArea
+      const threshold = 150 // px from bottom to consider "near"
+      return el.scrollHeight - el.scrollTop - el.clientHeight < threshold
+    },
+
+    // Get max scroll position (keeps question visible at top)
+    getMaxScrollForQuestion() {
+      if (!this.$refs.messagesArea) return Infinity
+      const container = this.$refs.messagesArea
+      const userMessages = container.querySelectorAll('.chat-message-user')
+      if (userMessages.length === 0) return Infinity
+
+      const lastUserMessage = userMessages[userMessages.length - 1]
+      const containerRect = container.getBoundingClientRect()
+      const messageRect = lastUserMessage.getBoundingClientRect()
+
+      // Calculate where the message is relative to scroll position
+      const messageTopInContainer =
+        messageRect.top - containerRect.top + container.scrollTop
+      return messageTopInContainer
+    },
+
+    // Scroll to bottom only if user is near bottom (for streaming)
+    // Caps scroll so question stays visible at top
+    scrollIfNearBottom() {
+      if (!this.$refs.messagesArea || !this.isNearBottom()) return
+
+      const el = this.$refs.messagesArea
+      const maxScroll = this.getMaxScrollForQuestion()
+      const bottomScroll = el.scrollHeight - el.clientHeight
+      const targetScroll = Math.min(bottomScroll, maxScroll)
+
+      el.scrollTo({ top: targetScroll, behavior: 'smooth' })
     },
 
     // Delegate to shared utilities
