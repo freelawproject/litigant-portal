@@ -1,7 +1,7 @@
 # Litigant Portal Docker Compose
 #
 # Development: docker compose --profile dev up
-#   - Requires .env file with GROQ_API_KEY (copy from .env.example)
+#   - Requires .env file with OPENAI_API_KEY
 #   - Auto-generates SECRET_KEY if not set
 #
 # Production: docker compose --profile prod up

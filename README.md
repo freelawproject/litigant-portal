@@ -5,7 +5,7 @@ Access to justice portal for self-represented litigants. Built by [Free Law Proj
 ## Quick Start
 
 ```bash
-cp .env.example .env      # Add your GROQ_API_KEY
+cp .env.example .env      # Add your OPENAI_API_KEY
 make docker-dev           # Start dev environment
 ```
 

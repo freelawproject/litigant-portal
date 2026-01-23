@@ -20,14 +20,14 @@ Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker e
 
 | Environment | Chat Provider | Config Source                              |
 | ----------- | ------------- | ------------------------------------------ |
-| Local dev   | Groq          | docker-compose.yml + `.env` (secrets only) |
+| Local dev   | OpenAI        | docker-compose.yml + `.env` (secrets only) |
 | CI/CD       | None (mocked) | tox.ini - tests mock all providers         |
-| QA (Fly.io) | Groq          | fly.toml + `fly secrets`                   |
+| QA (Fly.io) | OpenAI        | fly.toml + `fly secrets`                   |
 
 **Local dev setup:**
 
 ```bash
-cp .env.example .env        # Add your GROQ_API_KEY
+cp .env.example .env        # Add your OPENAI_API_KEY
 make docker-dev             # Start dev environment
 ```
 
@@ -42,7 +42,7 @@ Future: LiteLLM will replace direct provider calls.
 ### Local Development (Docker)
 
 ```sh
-cp .env.example .env        # Add your GROQ_API_KEY
+cp .env.example .env        # Add your OPENAI_API_KEY
 make docker-dev             # Start dev environment
 make docker-shell           # Shell into container
 make docker-down            # Stop containers
@@ -282,9 +282,7 @@ chat/
 
 ### LLM Provider
 
-Currently using **Groq** (cloud) for dev and QA. Configured via `GROQ_API_KEY` in `.env`.
-
-Future: LiteLLM will provide a unified interface for multiple providers.
+Currently using **OpenAI** (gpt-4o-mini) for dev and QA. Configured via `OPENAI_API_KEY` in `.env`.
 
 ### Chat Endpoints
 
@@ -332,11 +330,11 @@ The codebase supports both SQLite and PostgreSQL:
 
 All frontend assets are local files, not CDN. Update these in sync when upgrading:
 
-| Tool         | Version                 | Location                                         |
-| ------------ | ----------------------- | ------------------------------------------------ |
-| Tailwind CSS | v4.1.16 (CLI)           | `Dockerfile`                                     |
-| Alpine.js    | 3.14.9 (standard)       | `static/js/alpine.js`, `static/js/alpine.min.js` |
-| Groq model   | llama-3.3-70b-versatile | `docker-compose.yml`, `fly.toml`                 |
+| Tool         | Version           | Location                                         |
+| ------------ | ----------------- | ------------------------------------------------ |
+| Tailwind CSS | v4.1.16 (CLI)     | `Dockerfile`                                     |
+| Alpine.js    | 3.14.9 (standard) | `static/js/alpine.js`, `static/js/alpine.min.js` |
+| OpenAI model | gpt-4o-mini       | `docker-compose.yml`, `fly.toml`                 |
 
 **Updating Alpine.js:**
 
@@ -376,11 +374,11 @@ fly ssh console         # SSH into container
 
 Set via `fly secrets set KEY=value`:
 
-| Variable       | Description                       |
-| -------------- | --------------------------------- |
-| `SECRET_KEY`   | Django secret key                 |
-| `GROQ_API_KEY` | Groq API key for AI chat          |
-| `DATABASE_URL` | Auto-set by `fly postgres attach` |
+| Variable         | Description                       |
+| ---------------- | --------------------------------- |
+| `SECRET_KEY`     | Django secret key                 |
+| `OPENAI_API_KEY` | OpenAI API key for AI chat        |
+| `DATABASE_URL`   | Auto-set by `fly postgres attach` |
 
 Non-secret env vars configured in `fly.toml` under `[env]`.
 
