@@ -39,6 +39,17 @@
         </div>
       </div>
     </div>
+    {# Upload progress overlay #}
+    <div x-show="isUploading"
+         x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-greyscale-900/70">
+      <div class="bg-white rounded-lg p-6 shadow-xl max-w-sm mx-4 text-center">
+        <c-atoms.icon name="arrow-path" class="w-10 h-10 text-primary-600 mx-auto mb-3 animate-spin" />
+        <p class="text-lg font-medium text-greyscale-900"
+           x-text="uploadStatus === 'analyzing' ? 'Analyzing document...' : 'Uploading document...'"></p>
+        <p class="text-sm text-greyscale-500 mt-1">This may take a moment</p>
+      </div>
+    </div>
     {# Case Sidebar - LEFT side, desktop #}
     <div class="hidden lg:block w-80 flex-shrink-0 border-r border-greyscale-200 overflow-y-auto">
       <c-organisms.case-sidebar class="h-full">

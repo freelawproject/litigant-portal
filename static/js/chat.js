@@ -301,6 +301,7 @@ document.addEventListener('alpine:init', () => {
     // Upload state
     selectedFile: null,
     isUploading: false,
+    uploadStatus: '', // 'uploading' | 'analyzing' | ''
     uploadError: null,
     extractedText: null,
     extractedData: null,
@@ -562,6 +563,7 @@ document.addEventListener('alpine:init', () => {
       if (!this.selectedFile || this.isUploading) return
 
       this.isUploading = true
+      this.uploadStatus = 'uploading'
       this.uploadError = null
       const fileName = this.selectedFile.name
 
@@ -570,11 +572,17 @@ document.addEventListener('alpine:init', () => {
         formData.append('file', this.selectedFile)
         formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
 
+        // Switch to analyzing after brief delay (upload completes quickly, analysis takes longer)
+        const analyzeTimer = setTimeout(() => {
+          this.uploadStatus = 'analyzing'
+        }, 800)
+
         const response = await fetch('/chat/upload/', {
           method: 'POST',
           body: formData,
         })
 
+        clearTimeout(analyzeTimer)
         const data = await response.json()
 
         if (!response.ok) {
@@ -687,6 +695,7 @@ document.addEventListener('alpine:init', () => {
         })
       } finally {
         this.isUploading = false
+        this.uploadStatus = ''
       }
     },
 
