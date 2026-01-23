@@ -47,7 +47,7 @@
         action="{% url 'chat:send' %}"
         class="chat-input-form">
     {% csrf_token %}
-    <c-atoms.input x-model="inputText" x-bind:disabled="isStreaming" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" class="flex-1" />
+    <c-atoms.input x-model="inputText" x-bind:disabled="isStreaming" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" autocomplete="off" class="flex-1" />
     <c-atoms.button type="submit" variant="primary" size="xl" x-bind:disabled="isStreaming || !inputText.trim()" aria_label="Send message">
     <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
     <span class="hidden sm:inline ml-2">Send</span>
