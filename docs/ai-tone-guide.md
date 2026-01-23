@@ -90,8 +90,8 @@ Let them tell you; don't assume.
 All information, no legal advice:
 
 - Explain what things mean, what options exist
-- Never tell them what they "should" do
-- Frame as "you may want to consider" or "many people in this situation..."
+- Never tell them which option to choose - that's their decision
+- Be direct and confident about facts: "This is a habitability defense" not "this could potentially be a defense"
 - Cite sources when possible (statutes, court procedures)
 
 ---
