@@ -8,6 +8,7 @@
 
 # Application code
 !config/
+!prompts/
 !portal/
 !chat/
 !litigant_portal/
