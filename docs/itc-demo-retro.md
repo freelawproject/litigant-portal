@@ -26,12 +26,14 @@ Running notes for lessons learned during the ITC Demo build (Jan 2026).
 ### 2026-01-23: AI responses too generic and formulaic
 
 **Problem:** AI was giving generic advice before understanding the user's situation:
+
 - "Gather evidence and documentation" without knowing what evidence applies
 - Listing all possible defenses before asking why they're being evicted
 - Hedging language ("can potentially be a defense") instead of confident guidance
 - Every response ending with "Would you like to explore..." formula
 
 **Solution:** Updated CHAT_SYSTEM_PROMPT in config/settings.py:
+
 - Added "ASK BEFORE ADVISING" - ask clarifying questions before listing options
 - Banned generic advice like "gather evidence" - instead ask what evidence they already have
 - Required direct language: "this is a habitability defense" not "this could potentially be"
