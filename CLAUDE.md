@@ -304,6 +304,13 @@ Currently using **OpenAI** (gpt-4o-mini) for dev and QA. Configured via `OPENAI_
 | `chat/`                            | AI chat app with providers and services |
 | `portal/views.py`                  | Main views                              |
 
+### Adding New Directories
+
+When adding a new top-level directory that needs to be in the Docker image, update **both**:
+
+1. `.dockerignore` - Add `!dirname/` to the whitelist (it ignores everything by default)
+2. `Dockerfile` - Add `COPY dirname/ ./dirname/` in the production stage
+
 ## Database
 
 - **Local dev / Demo:** SQLite (`db.sqlite3`)
