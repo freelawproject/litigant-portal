@@ -86,6 +86,7 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY --from=tailwind /app/static/css/main.built.css ./static/css/main.built.css
 
 COPY config/ ./config/
+COPY prompts/ ./prompts/
 COPY portal/ ./portal/
 COPY chat/ ./chat/
 COPY litigant_portal/ ./litigant_portal/
