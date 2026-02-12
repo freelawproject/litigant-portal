@@ -36,7 +36,6 @@
 Based on this feedback, we updated:
 
 1. **AI Tone Guide** (`docs/ai-tone-guide.md`)
-
    - Added "Don't Lead with Examples" anti-pattern
    - Added "Reference What They've Said" guidance
    - Added "Let Paperwork Do the Work" approach
