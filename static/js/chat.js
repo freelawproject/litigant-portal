@@ -339,13 +339,6 @@ function createHomePage() {
     uploadError: null,
     extractedText: null,
     extractedData: null,
-    // Case info (populated after user confirms extraction)
-    caseInfo: null,
-    showConfirmation: false,
-    _documentContextSent: false,
-    _isClearingChat: false,
-    // Timeline state
-    caseTimeline: [],
 
     // --- Upload state ---
     selectedFile: null,

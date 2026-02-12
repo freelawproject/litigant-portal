@@ -10,7 +10,6 @@ class MessageInline(admin.TabularInline):
         "id",
         "role_display",
         "content_preview",
-        "sources",
         "created_at",
     ]
     can_delete = False

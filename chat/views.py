@@ -50,8 +50,14 @@ def stream(request: HttpRequest):
         return chat.stream(message)
     except PermissionError:
         return JsonResponse({"error": "Unauthorized"}, status=403)
-    except ValueError as e:
-        return JsonResponse({"error": str(e)}, status=404)
+    except ValueError:
+        return JsonResponse(
+            {"error": "Error loading chat session"}, status=404
+        )
+    except KeyError:
+        return JsonResponse(
+            {"error": f"Agent {agent_name} not found"}, status=404
+        )
 
 
 @require_GET
@@ -127,7 +133,6 @@ def upload_document(request: HttpRequest) -> JsonResponse:
 
     # Extract structured data using LLM
     agent = agent_registry["DocumentExtractionAgent"]()
-    print(pdf_result.text)
     result = agent(pdf_result.text)
 
     if result is None:

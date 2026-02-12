@@ -1,7 +1,9 @@
 import json
 from typing import Any
 
-from .base import Agent, Field, Tool
+from pydantic import BaseModel, Field
+
+from .base import Agent
 
 SYSTEM_PROMPT = """\
 You are a legal document analyzer. Extract structured information from \
@@ -17,7 +19,7 @@ Guidelines:
 or partially extracted"""
 
 
-class KeyDate(Tool):
+class KeyDate(BaseModel):
     """A date extracted from a legal document."""
 
     label: str = Field("", description="Description of what the date is for")
@@ -32,7 +34,7 @@ class KeyDate(Tool):
     )
 
 
-class CourtInfo(Tool):
+class CourtInfo(BaseModel):
     """Court information extracted from a document."""
 
     county: str | None = Field(
@@ -51,7 +53,7 @@ class CourtInfo(Tool):
     email: str | None = Field(None, description="Court email or clerk email")
 
 
-class Parties(Tool):
+class Parties(BaseModel):
     """Parties involved in the case."""
 
     user_name: str | None = Field(
@@ -85,7 +87,7 @@ class Parties(Tool):
     attorney_email: str | None = Field(None, description="Attorney email")
 
 
-class CourtDocumentData(Tool):
+class CourtDocumentData(BaseModel):
     """Structured data extracted from a legal document."""
 
     case_type: str = Field(

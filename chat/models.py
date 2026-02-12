@@ -64,9 +64,6 @@ class Message(models.Model):
     data = SchemaField(
         schema=MessageSchema, default={"role": "system", "content": ""}
     )
-
-    # Source references for RAG responses
-    sources = models.JSONField(default=list, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
