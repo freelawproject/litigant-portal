@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}
+  Dashboard Demo - Litigant Portal
+{% endblock title %}
+{% block content %}
+  <c-organisms.hero />
+  <c-organisms.topic-grid />
+{% endblock content %}
+{% block footer %}
+  <footer class="mobile-footer {{ class }}" {{ attrs }}>
+    <div class="max-w-content mx-auto px-4">
+      {# Navigation row #}
+      <nav class="flex flex-wrap items-center justify-center gap-4 md:gap-6 py-6"
+           aria-label="Footer navigation">
+        <c-atoms.link href="#about" variant="secondary" class="no-underline text-sm">About</c-atoms.link>
+        <c-atoms.link href="#contact" variant="secondary" class="no-underline text-sm">Contact</c-atoms.link>
+        <c-atoms.link href="#privacy" variant="secondary" class="no-underline text-sm">Privacy</c-atoms.link>
+        <c-atoms.link href="#accessibility" variant="secondary" class="no-underline text-sm">Accessibility</c-atoms.link>
+      </nav>
+      {# Divider #}
+      <hr class="border-greyscale-200">
+      {# Bottom row: Powered By | Logo | Copyright #}
+      <div class="flex flex-col md:flex-row items-center justify-between gap-4 py-6">
+        <span class="text-xs text-greyscale-500 uppercase tracking-wide">Powered By</span>
+        <c-molecules.logo size="sm" show_image />
+        <p class="text-sm text-greyscale-600">© {% now "Y" %} Free Law Project</p>
+      </div>
+    </div>
+  </footer>
+{% endblock footer %}

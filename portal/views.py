@@ -28,6 +28,11 @@ def test_agent(request, agent_name):
     return render(request, "pages/home.html", {"agent_name": agent_name})
 
 
+def dashboard_demo(request):
+    """Recovered dashboard layout demo (pre-chat-first design)"""
+    return render(request, "pages/dashboard_demo.html")
+
+
 def style_guide(request):
     """Design tokens and component library"""
     return render(request, "pages/style_guide.html")
