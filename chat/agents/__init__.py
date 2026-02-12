@@ -17,12 +17,16 @@ from .base import (
     ToolResponseEvent,
     UserMessage,
 )
+from .chat_summarization import ChatSummarizationAgent
+from .document_extraction import DocumentExtractionAgent
 from .litigant_assistant import LitigantAssistantAgent
 from .weather import WeatherAgent
 
 # Register agent classes here
 agent_classes = [
+    DocumentExtractionAgent,
     LitigantAssistantAgent,
+    ChatSummarizationAgent,
     WeatherAgent,
 ]
 agent_registry = {cls.__name__: cls for cls in agent_classes}

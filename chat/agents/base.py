@@ -1,13 +1,13 @@
 import json
 import logging
 from collections.abc import Iterator
-from typing import Annotated, Any, ClassVar, Literal, TypedDict, TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypedDict
+from uuid import UUID
 
-from django.http import HttpRequest
 import litellm
+from django.http import HttpRequest
 from pydantic import BaseModel
 from pydantic import Field as PydanticField
-from uuid import UUID
 
 if TYPE_CHECKING:
     from chat.models import ChatSession
@@ -497,7 +497,12 @@ class Agent:
             return False
 
     @classmethod
-    def from_session_id(cls, request: HttpRequest, session_id: str | UUID | None = None, **kwargs: Any) -> "Agent":
+    def from_session_id(
+        cls,
+        request: HttpRequest,
+        session_id: str | UUID | None = None,
+        **kwargs: Any,
+    ) -> "Agent":
         """Create an agent from a session ID.
 
         If no session ID is provided, a new session is created.
@@ -511,7 +516,9 @@ class Agent:
         session_key = request.session.session_key if not user else ""
 
         if not session_id:
-            session = ChatSession.objects.create(user=user, session_key=session_key)
+            session = ChatSession.objects.create(
+                user=user, session_key=session_key
+            )
             agent = cls(session=session, **kwargs)
             for msg in agent.messages:
                 MessageModel.objects.create(session=session, data=msg)
@@ -528,6 +535,12 @@ class Agent:
             else:
                 if session.session_key != session_key:
                     raise PermissionError("Unauthorized access to session")
-            messages = [m.data for m in session.messages.order_by("created_at")]
+            messages = [
+                m.data for m in session.messages.order_by("created_at")
+            ]
             agent = cls(session=session, messages=messages, **kwargs)
             return agent
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        """Hook for custom workflow logic."""
+        pass
