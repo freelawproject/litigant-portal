@@ -1,18 +1,12 @@
-{% load heroicons %}
-
 <c-vars />
 {% if user.is_authenticated %}
   {# Logged in: show user menu with dropdown #}
   <div x-data="{ open: false }" class="relative {{ class }}" {{ attrs }}>
-    <button type="button"
-            x-on:click="open = !open"
-            x-bind:aria-expanded="open"
-            aria-haspopup="true"
-            class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-greyscale-700 hover:bg-greyscale-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600">
-      {% heroicon_outline "user-circle" class="w-6 h-6 text-greyscale-500" %}
-      <span class="hidden sm:inline max-w-[140px] truncate">{{ user.email }}</span>
-      {% heroicon_mini "chevron-down" class="w-4 h-4 text-greyscale-400" %}
-    </button>
+    <c-atoms.button type="button" variant="ghost" class="!px-3 !py-2 text-sm font-medium" x-on:click="open = !open" x-bind:aria-expanded="open" aria-haspopup="true">
+    <c-atoms.icon name="user-circle" class="w-6 h-6 text-greyscale-500" />
+    <span class="hidden sm:inline max-w-[140px] truncate">{{ user.email }}</span>
+    <c-atoms.icon name="chevron-down" style="solid" class="w-4 h-4 text-greyscale-400" />
+    </c-atoms.button>
     {# Dropdown menu #}
     <div x-show="open"
          x-cloak
@@ -30,13 +24,13 @@
       <a href="{% url 'portal:profile' %}"
          class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100"
          role="menuitem">
-        {% heroicon_outline "user" class="w-5 h-5 text-greyscale-500" %}
+        <c-atoms.icon name="user" class="w-5 h-5 text-greyscale-500" />
         Profile
       </a>
       <a href="{% url 'account_logout' %}"
          class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100"
          role="menuitem">
-        {% heroicon_outline "arrow-right-start-on-rectangle" class="w-5 h-5 text-greyscale-500" %}
+        <c-atoms.icon name="arrow-right-start-on-rectangle" class="w-5 h-5 text-greyscale-500" />
         Sign out
       </a>
     </div>
@@ -46,7 +40,7 @@
   <a href="{% url 'account_login' %}"
      class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-greyscale-700 hover:bg-greyscale-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 {{ class }}"
      {{ attrs }}>
-    {% heroicon_outline "arrow-right-end-on-rectangle" class="w-5 h-5" %}
+    <c-atoms.icon name="arrow-right-end-on-rectangle" class="w-5 h-5" />
     <span>Sign in</span>
   </a>
 {% endif %}

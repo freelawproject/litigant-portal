@@ -3,19 +3,6 @@
   <div class="hero-content">
     <h1 class="hero-heading">{{ heading }}</h1>
     <p class="hero-subheading">{{ subheading }}</p>
-    <form class="search-bar" role="search">
-      <div class="search-input-wrapper">
-        <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
-        <input type="search"
-               name="q"
-               placeholder="{{ search_placeholder }}"
-               class="search-input"
-               aria-label="Search or ask a question" />
-      </div>
-      <c-atoms.button type="submit" variant="primary" size="xl" aria_label="Search">
-      <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
-      <span class="hidden sm:inline">Ask</span>
-      </c-atoms.button>
-    </form>
+    <c-molecules.search-bar placeholder="{{ search_placeholder }}" />
   </div>
 </section>

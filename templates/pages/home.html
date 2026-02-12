@@ -31,11 +31,9 @@
             <p class="text-sm font-medium text-amber-800">Chat service unavailable</p>
             <p class="text-sm text-amber-700 mt-1">The AI chat service is temporarily unavailable. Please try again later.</p>
           </div>
-          <button type="button"
-                  x-on:click="dismissWarning()"
-                  class="text-amber-600 hover:text-amber-800">
-            <c-atoms.icon name="x-mark" class="w-5 h-5" />
-          </button>
+          <c-atoms.button type="button" variant="ghost" class="!p-0 text-amber-600 hover:text-amber-800" x-on:click="dismissWarning()">
+          <c-atoms.icon name="x-mark" class="w-5 h-5" />
+          </c-atoms.button>
         </div>
       </div>
     </div>
@@ -167,9 +165,7 @@
           </template>
           {# Clear case button #}
           <div class="pt-3 border-t border-greyscale-200">
-            <button type="button"
-                    x-on:click="clearCaseInfo()"
-                    class="text-xs text-greyscale-500 hover:text-greyscale-700">Clear case info</button>
+            <c-atoms.button type="button" variant="ghost" class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700" x-on:click="clearCaseInfo()">Clear case info</c-atoms.button>
           </div>
         </div>
         </c-organisms.case-sidebar>
@@ -215,9 +211,7 @@
         {# Chat Header #}
         <div class="chat-header">
           <h1 class="text-lg font-semibold text-greyscale-900">How can we help you today?</h1>
-          <button type="button"
-                  class="text-sm text-greyscale-500 hover:text-greyscale-700"
-                  x-on:click="clearChat()">New conversation</button>
+          <c-atoms.button type="button" variant="ghost" class="!p-0 text-sm text-greyscale-500 hover:text-greyscale-700" x-on:click="clearChat()">New conversation</c-atoms.button>
         </div>
         {# Chat Messages - scrollable area #}
         <div class="chat-messages-area" x-ref="messagesArea">
@@ -261,18 +255,14 @@
               </div>
               <div class="chat-message-content">
                 <div class="flex flex-wrap gap-2">
-                  <button type="button"
-                          x-on:click="confirmExtraction()"
-                          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
-                    <c-atoms.icon name="check" class="w-4 h-4" />
-                    Looks correct
-                  </button>
-                  <button type="button"
-                          x-on:click="requestClarification()"
-                          class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-greyscale-700 bg-white border border-greyscale-300 rounded-lg hover:bg-greyscale-50 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
-                    <c-atoms.icon name="pencil" class="w-4 h-4" />
-                    Let me clarify
-                  </button>
+                  <c-atoms.button type="button" variant="primary" x-on:click="confirmExtraction()">
+                  <c-atoms.icon name="check" class="w-4 h-4" />
+                  Looks correct
+                  </c-atoms.button>
+                  <c-atoms.button type="button" variant="outline" x-on:click="requestClarification()">
+                  <c-atoms.icon name="pencil" class="w-4 h-4" />
+                  Let me clarify
+                  </c-atoms.button>
                 </div>
               </div>
             </div>
