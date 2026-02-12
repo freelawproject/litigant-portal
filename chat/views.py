@@ -1,3 +1,5 @@
+import json
+
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import render
@@ -6,6 +8,7 @@ from django_ratelimit.decorators import ratelimit
 
 from .agents import agent_registry
 from .services.chat_service import ChatService
+from .services.pdf_service import pdf_service
 from .services.search_service import search_service
 
 
@@ -98,3 +101,93 @@ def status(request: HttpRequest) -> JsonResponse:
             "available": available,
         }
     )
+
+
+@require_POST
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def upload_document(request: HttpRequest) -> JsonResponse:
+    """
+    Handle PDF document upload, text extraction, and LLM analysis.
+
+    Extracts text from uploaded PDF files and uses LLM to extract
+    structured case information.
+    In-memory processing only - no file storage.
+    Rate limited to 10 requests per minute per IP.
+    """
+    if "file" not in request.FILES:
+        return JsonResponse({"error": "No file uploaded"}, status=400)
+
+    uploaded_file = request.FILES["file"]
+
+    # Extract text from PDF
+    pdf_result = pdf_service.extract_text(uploaded_file)
+
+    if not pdf_result.success:
+        return JsonResponse({"error": pdf_result.error}, status=400)
+
+    # Extract structured data using LLM
+    agent = agent_registry["DocumentExtractionAgent"]()
+    print(pdf_result.text)
+    result = agent(pdf_result.text)
+
+    if result is None:
+        # Return partial success - text extracted but analysis failed
+        return JsonResponse(
+            {
+                "success": True,
+                "page_count": pdf_result.page_count,
+                "text_preview": pdf_result.text_preview,
+                "extracted_data": None,
+                "extraction_error": "Failed to analyze document.",
+            }
+        )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "page_count": pdf_result.page_count,
+            "text_preview": pdf_result.text_preview,
+            "extracted_data": result,
+        }
+    )
+
+
+@require_POST
+@ratelimit(key="ip", rate="10/m", method="POST", block=True)
+def summarize_conversation(request: HttpRequest) -> JsonResponse:
+    """
+    Generate a summary of a conversation.
+
+    Accepts a list of messages and returns an LLM-generated summary.
+    Rate limited to 10 requests per minute per IP.
+    """
+    messages_raw = request.POST.get("messages", "")
+
+    if not messages_raw:
+        return JsonResponse({"error": "Messages are required"}, status=400)
+
+    try:
+        messages = json.loads(messages_raw)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid messages format"}, status=400)
+
+    if not isinstance(messages, list) or len(messages) < 2:
+        return JsonResponse(
+            {"error": "At least 2 messages required for summary"}, status=400
+        )
+
+    agent = agent_registry["ChatSummarizationAgent"]()
+
+    if not agent.ping():
+        return JsonResponse(
+            {"error": "Summarize agent is not available"}, status=500
+        )
+
+    summary = agent(messages)
+
+    if summary is None:
+        return JsonResponse(
+            {"error": "Failed to generate summary"}, status=500
+        )
+
+    return JsonResponse({"summary": summary})
