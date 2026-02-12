@@ -39,11 +39,13 @@ dependencies = [
     "django-allauth>=65.0",
     "django-cotton>=1.0",
     "django-csp>=3.8",
+    "django-pydantic-field>=0.5.1",
     "gunicorn>=23.0",
     "heroicons>=2.0",
     "psycopg[binary]>=3.2",
-    # AI Chat (Ollama uses OpenAI-compatible API)
-    "openai>=1.50",
+    # AI Chat
+    "litellm>=1.50",
+    "pydantic>=2.0",
     # Rate limiting
     "django-ratelimit>=4.1",
     # PDF text extraction
@@ -53,9 +55,11 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "djlint>=1.36.4",
+    "mypy>=1.19.1",
     "pre-commit>=4.5.0",
     "pytailwindcss>=0.2",
     "ruff>=0.11.8",
+    "tox-uv>=1.29.0",
 ]
 
 

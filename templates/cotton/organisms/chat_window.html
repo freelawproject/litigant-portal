@@ -1,6 +1,6 @@
 <c-vars session_id="" chat_enabled="true" />
-<div x-data="chatWindow('{{ session_id }}')"
-     x-init="init()"
+<div x-data="chat"
+     x-init="{% if session_id %}sessionId = '{{ session_id }}';{% endif %}"
      class="chat-window {{ class }}"
      {{ attrs }}>
   {# Messages container #}
@@ -44,7 +44,7 @@
   {# Input form #}
   <form x-on:submit.prevent="sendMessage"
         method="post"
-        action="{% url 'chat:send' %}"
+        action="{% url 'chat:stream' %}"
         class="chat-input-form">
     {% csrf_token %}
     <c-atoms.input x-model="inputText" x-bind:disabled="isStreaming" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" class="flex-1" />

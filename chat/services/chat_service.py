@@ -1,141 +1,45 @@
+"""Chat service for managing conversations and AI responses."""
+
 import json
 import logging
 from collections.abc import Iterator
+from uuid import UUID
 
 from django.conf import settings
 from django.http import HttpRequest, StreamingHttpResponse
 
-from chat.models import ChatSession, Message
-from chat.providers.base import ChatMessage
-from chat.providers.factory import get_provider
+from chat.agents import agent_registry
 
 logger = logging.getLogger(__name__)
 
 
 class ChatService:
-    """Service for managing chat conversations and AI responses."""
+    """Service for managing a chat conversation."""
 
-    def get_or_create_session(self, request: HttpRequest) -> ChatSession:
-        """
-        Get or create a chat session for the current request.
+    def __init__(
+        self,
+        request: HttpRequest,
+        session_id: str | UUID | None = None,
+        agent_name: str | None = None,
+    ):
+        self.request = request
+        agent_class = agent_registry[agent_name or settings.DEFAULT_CHAT_AGENT]
+        self.agent = agent_class.from_session_id(request, session_id)
 
-        Uses authenticated user if available, otherwise falls back to
-        Django session key for anonymous users.
-
-        Args:
-            request: The HTTP request.
-
-        Returns:
-            The chat session for this user/session.
-        """
-        if request.user.is_authenticated:
-            session, _ = ChatSession.objects.get_or_create(user=request.user)
-        else:
-            # Ensure session exists for anonymous users
-            if not request.session.session_key:
-                request.session.create()
-            session, _ = ChatSession.objects.get_or_create(
-                session_key=request.session.session_key
-            )
-        return session
-
-    def get_session(self, session_id: str) -> ChatSession | None:
-        """
-        Get a chat session by ID.
-
-        Args:
-            session_id: The session UUID.
-
-        Returns:
-            The chat session or None if not found.
-        """
-        try:
-            return ChatSession.objects.get(id=session_id)
-        except ChatSession.DoesNotExist:
-            return None
-
-    def add_user_message(self, session: ChatSession, content: str) -> Message:
-        """
-        Add a user message to the session.
-
-        Args:
-            session: The chat session.
-            content: The message content.
-
-        Returns:
-            The created message.
-        """
-        return Message.objects.create(
-            session=session,
-            role=Message.Role.USER,
-            content=content,
-        )
-
-    def build_message_history(self, session: ChatSession) -> list[ChatMessage]:
-        """
-        Build the message history for the LLM.
-
-        Args:
-            session: The chat session.
-
-        Returns:
-            List of ChatMessage objects for the provider.
-        """
-        messages = session.messages.all().order_by("created_at")
-        return [ChatMessage(role=m.role, content=m.content) for m in messages]
-
-    def stream_response(self, session: ChatSession) -> StreamingHttpResponse:
-        """
-        Generate a streaming SSE response for the chat.
-
-        Args:
-            session: The chat session to respond to.
-
-        Returns:
-            A StreamingHttpResponse with SSE content.
-        """
+    def stream(self, user_message: str) -> StreamingHttpResponse:
+        """Add user message and stream the AI response."""
 
         def event_stream() -> Iterator[str]:
-            full_response: list[str] = []
+            session_id = self.agent.session.id if self.agent.session else None
+            yield f"data: {json.dumps({'type': 'session', 'session_id': str(session_id)})}\n\n"
 
             try:
-                provider = get_provider()
-                messages = self.build_message_history(session)
-
-                # TODO: Add RAG context retrieval here
-                context = None
-
-                for token in provider.stream_response(messages, context):
-                    full_response.append(token)
-                    # Send token as SSE event
-                    data = json.dumps({"token": token})
-                    yield f"data: {data}\n\n"
-
-                # Save the complete assistant response
-                Message.objects.create(
-                    session=session,
-                    role=Message.Role.ASSISTANT,
-                    content="".join(full_response),
-                )
-
-                # Send completion signal
-                yield "data: [DONE]\n\n"
-
+                for event in self.agent.stream_run(user_message):
+                    yield f"data: {json.dumps(event)}\n\n"
             except Exception as e:
-                logger.error(f"Error streaming response: {e}")
-                error_msg = (
-                    "I apologize, but I encountered an error. "
-                    "Please try again or use the search feature."
-                )
-                # Save error as assistant response
-                Message.objects.create(
-                    session=session,
-                    role=Message.Role.ASSISTANT,
-                    content=error_msg,
-                )
-                data = json.dumps({"error": str(e), "message": error_msg})
-                yield f"data: {data}\n\n"
-                yield "data: [DONE]\n\n"
+                logger.exception("Error streaming response")
+                yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
         response = StreamingHttpResponse(
             event_stream(),
@@ -144,88 +48,3 @@ class ChatService:
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
-
-    def is_available(self) -> bool:
-        """
-        Check if the chat service is available.
-
-        Returns:
-            True if chat is enabled and provider is healthy.
-        """
-        if not settings.CHAT_ENABLED:
-            return False
-
-        try:
-            provider = get_provider()
-            return provider.health_check()
-        except Exception as e:
-            logger.warning(f"Chat service unavailable: {e}")
-            return False
-
-    def generate_summary(self, messages: list[dict]) -> str | None:
-        """
-        Generate a summary of a conversation.
-
-        Args:
-            messages: List of message dicts with 'role' and 'content' keys.
-
-        Returns:
-            A 2-3 sentence summary of the conversation, or None on error.
-        """
-        if not messages:
-            return None
-
-        try:
-            provider = get_provider()
-
-            # Build conversation text
-            conversation_text = "\n".join(
-                f"{msg.get('role', 'unknown').upper()}: {msg.get('content', '')}"
-                for msg in messages
-                if msg.get("content")
-            )
-
-            # Create summary prompt
-            summary_prompt = ChatMessage(
-                role="user",
-                content=f"""Summarize ONLY the questions the USER explicitly typed and their answers.
-
-IMPORTANT RULES:
-- Only include questions that appear after "USER:" in the conversation
-- SKIP any document analysis (messages about "I've analyzed your document...")
-- SKIP questions the assistant generated or suggested
-- If the user only uploaded a file and didn't ask follow-up questions, respond with just: "No user questions asked."
-
-Format (only for actual user questions):
-Q: [The user's actual question]
-A: [Specific answer with details: addresses, costs, times, deadlines. If no specifics, note that.]
-
-Example - user asked a real question:
-Q: Where can I park at DuPage County Courthouse?
-A: Parking garage at 505 N County Farm Rd, $6/day. Street meters on County Farm Rd.
-
-Example - user only uploaded a file, no questions:
-No user questions asked.
-
-Conversation:
-{conversation_text}
-
-Summary:""",
-            )
-
-            # Generate summary (non-streaming)
-            response_parts = []
-            for token in provider.stream_response(
-                [summary_prompt], context=None
-            ):
-                response_parts.append(token)
-
-            return "".join(response_parts).strip()
-
-        except Exception as e:
-            logger.error(f"Error generating summary: {e}")
-            return None
-
-
-# Singleton instance
-chat_service = ChatService()

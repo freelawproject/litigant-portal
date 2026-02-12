@@ -1,5 +1,4 @@
 import json
-import uuid
 
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
@@ -7,76 +6,67 @@ from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
-from .services.chat_service import chat_service
-from .services.extraction_service import extraction_service
+from .agents import agent_registry
+from .services.chat_service import ChatService
 from .services.pdf_service import pdf_service
 from .services.search_service import search_service
 
 
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
-def send_message(request: HttpRequest) -> JsonResponse:
+def stream(request: HttpRequest):
     """
-    Handle a new chat message from the user.
+    Send a message and stream the AI response.
 
-    Creates the message and returns the session ID for streaming.
-    Rate limited to 20 requests per minute per IP.
+    POST body:
+        message: The user's message (required)
+        session_id: Optional session ID to continue a conversation
+        agent_name: Optional agent name to use (defaults to DEFAULT_CHAT_AGENT)
+
+    Returns SSE stream with events:
+        - session: {type: "session", session_id: "..."} (first event)
+        - content_delta: {type: "content_delta", content: "..."}
+        - tool_call: {type: "tool_call", id: "...", name: "...", args: {...}}
+        - tool_response: {type: "tool_response", id: "...", name: "...", data: {...}}
+        - done: {type: "done"}
+        - error: {type: "error", error: "..."}
     """
-    content = request.POST.get("message", "").strip()
+    message = request.POST.get("message", "").strip()
+    session_id = request.POST.get("session_id") or None
+    agent_name = request.POST.get("agent_name") or None
 
-    if not content:
+    if not message:
         return JsonResponse({"error": "Message is required"}, status=400)
 
-    if len(content) > 2000:
+    if len(message) > 2000:
         return JsonResponse(
             {"error": "Message is too long (max 2000 characters)"}, status=400
         )
 
-    session = chat_service.get_or_create_session(request)
-    message = chat_service.add_user_message(session, content)
-
-    return JsonResponse(
-        {
-            "session_id": str(session.id),
-            "message_id": str(message.id),
-        }
-    )
-
-
-@require_GET
-@ratelimit(key="ip", rate="20/m", method="GET", block=True)
-def stream_response(request: HttpRequest, session_id: uuid.UUID):
-    """
-    Stream the AI response as Server-Sent Events.
-
-    This endpoint is called after send_message to receive the
-    streaming response from the AI provider.
-    Rate limited to 20 requests per minute per IP.
-    """
-    session = chat_service.get_session(str(session_id))
-
-    if session is None:
-        return JsonResponse({"error": "Session not found"}, status=404)
-
-    # Verify session ownership (user or session key match)
-    if request.user.is_authenticated:
-        if session.user != request.user:
-            return JsonResponse({"error": "Unauthorized"}, status=403)
-    else:
-        if session.session_key != request.session.session_key:
-            return JsonResponse({"error": "Unauthorized"}, status=403)
-
-    return chat_service.stream_response(session)
+    try:
+        chat = ChatService(
+            request, session_id=session_id, agent_name=agent_name
+        )
+        return chat.stream(message)
+    except PermissionError:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+    except ValueError:
+        return JsonResponse(
+            {"error": "Error loading chat session"}, status=404
+        )
+    except KeyError:
+        return JsonResponse(
+            {"error": f"Agent {agent_name} not found"}, status=404
+        )
 
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
-def keyword_search(request: HttpRequest):
+def search(request: HttpRequest):
     """
-    Fallback keyword search endpoint.
+    Keyword search endpoint.
 
     Used when AI chat is unavailable or disabled.
-    Rate limited to 60 requests per minute per IP.
     """
     query = request.GET.get("q", "").strip()
     category = request.GET.get("category")
@@ -103,18 +93,18 @@ def keyword_search(request: HttpRequest):
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
-def chat_status(request: HttpRequest) -> JsonResponse:
-    """
-    Check if chat service is available.
+def status(request: HttpRequest) -> JsonResponse:
+    """Check if chat service is available."""
+    available = False
+    if getattr(settings, "CHAT_ENABLED", True):
+        agent_name = settings.DEFAULT_CHAT_AGENT
+        if agent_name in agent_registry:
+            available = agent_registry[agent_name]().ping()
 
-    Returns the current status of the AI chat service.
-    Rate limited to 60 requests per minute per IP.
-    """
     return JsonResponse(
         {
-            "enabled": settings.CHAT_ENABLED,
-            "available": chat_service.is_available(),
-            "provider": settings.CHAT_PROVIDER,
+            "enabled": getattr(settings, "CHAT_ENABLED", True),
+            "available": available,
         }
     )
 
@@ -142,9 +132,10 @@ def upload_document(request: HttpRequest) -> JsonResponse:
         return JsonResponse({"error": pdf_result.error}, status=400)
 
     # Extract structured data using LLM
-    extraction_result = extraction_service.extract_from_text(pdf_result.text)
+    agent = agent_registry["DocumentExtractionAgent"]()
+    result = agent(pdf_result.text)
 
-    if not extraction_result.success:
+    if result is None:
         # Return partial success - text extracted but analysis failed
         return JsonResponse(
             {
@@ -152,7 +143,7 @@ def upload_document(request: HttpRequest) -> JsonResponse:
                 "page_count": pdf_result.page_count,
                 "text_preview": pdf_result.text_preview,
                 "extracted_data": None,
-                "extraction_error": extraction_result.error,
+                "extraction_error": "Failed to analyze document.",
             }
         )
 
@@ -161,7 +152,7 @@ def upload_document(request: HttpRequest) -> JsonResponse:
             "success": True,
             "page_count": pdf_result.page_count,
             "text_preview": pdf_result.text_preview,
-            "extracted_data": extraction_result.to_dict(),
+            "extracted_data": result,
         }
     )
 
@@ -190,7 +181,14 @@ def summarize_conversation(request: HttpRequest) -> JsonResponse:
             {"error": "At least 2 messages required for summary"}, status=400
         )
 
-    summary = chat_service.generate_summary(messages)
+    agent = agent_registry["ChatSummarizationAgent"]()
+
+    if not agent.ping():
+        return JsonResponse(
+            {"error": "Summarize agent is not available"}, status=500
+        )
+
+    summary = agent(messages)
 
     if summary is None:
         return JsonResponse(

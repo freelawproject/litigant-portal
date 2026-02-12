@@ -1,20 +1,7 @@
 /**
  * Chat Utilities
- * Shared functions for chat components.
  */
 const chatUtils = {
-  // Check if chat service is available
-  async checkAvailability() {
-    try {
-      const response = await fetch('/chat/status/')
-      if (!response.ok) return { available: false, enabled: false }
-      return await response.json()
-    } catch (e) {
-      return { available: false, enabled: false }
-    }
-  },
-
-  // Get CSRF token from form or cookie
   getCsrfToken() {
     const input = document.querySelector('[name=csrfmiddlewaretoken]')
     if (input) return input.value
@@ -27,7 +14,6 @@ const chatUtils = {
     return ''
   },
 
-  // Escape HTML for user messages
   escapeHtml(text) {
     if (!text) return ''
     return text
@@ -89,109 +75,90 @@ const chatUtils = {
         .replace(/^(.+)$/, '<p class="my-2">$1</p>')
     )
   },
-
-  // Parse SSE stream and call onToken for each token
-  async parseStream(response, onToken, onError) {
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let accumulatedContent = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      const chunk = decoder.decode(value, { stream: true })
-      const lines = chunk.split('\n')
-
-      for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const data = line.slice(6).trim()
-
-          if (data === '[DONE]') {
-            return accumulatedContent
-          }
-
-          try {
-            const parsed = JSON.parse(data)
-            if (parsed.token) {
-              accumulatedContent += parsed.token
-              onToken(accumulatedContent)
-            } else if (parsed.error) {
-              console.error('Stream error:', parsed.error)
-              if (parsed.message) {
-                accumulatedContent = parsed.message
-                onToken(accumulatedContent)
-              }
-            }
-          } catch (e) {
-            // Ignore parse errors for incomplete chunks
-          }
-        }
-      }
-    }
-
-    return accumulatedContent
-  },
 }
 
+// =============================================================================
+// Chat Component
+// =============================================================================
+
 /**
- * Chat Window Component
- * Alpine.js component for managing chat conversations with streaming responses.
+ * Creates a standalone chat component.
  *
- * Usage:
- *   <div x-data="chatWindow('session-id-here')" x-init="init()">
- *     ...
- *   </div>
+ * Can be used directly via Alpine.data('chat'), or composed into larger
+ * components via object spread:
+ *
+ *   Alpine.data('myPage', () => ({
+ *     ...createChat(),
+ *     // add your own state and methods
+ *   }))
+ *
+ * Hooks (set these to customize behavior):
+ *   onBeforeSend(content)       - Modify message before sending. Return new content or null.
+ *   onSessionCreated(sessionId) - Called when a chat session is established.
+ *   onStreamComplete(message)   - Called when streaming response finishes.
+ *   onCleared()                 - Called after chat history is cleared.
+ *
+ * Public API:
+ *   sendMessage()                      - Send the current inputText as a message.
+ *   clearChat()                        - Clear messages and session.
+ *   pushMessage(role, content, extra)  - Programmatically add a message.
+ *   scrollToBottom(force)              - Scroll the message container to bottom.
  */
-document.addEventListener('alpine:init', () => {
-  Alpine.data('chatWindow', (initialSessionId = '') => ({
-    // State
-    sessionId: initialSessionId,
-    dynamicMessages: [],
+function createChat() {
+  return {
+    // --- State ---
+    sessionId: '',
+    agentName: '',
+    messages: [],
     inputText: '',
     isStreaming: false,
-    chatAvailable: true,
-    showUnavailableWarning: false,
+    activeToolCall: null,
 
-    // Initialize component
-    async init() {
-      // Restore session from localStorage if not provided
-      if (!this.sessionId) {
-        this.sessionId = localStorage.getItem('chatSessionId') || ''
-      }
+    // --- Hooks (override for custom behavior) ---
+    onBeforeSend: null,
+    onSessionCreated: null,
+    onStreamComplete: null,
+    onCleared: null,
 
-      // Check if chat service is available
-      const status = await chatUtils.checkAvailability()
-      this.chatAvailable = status.available
-      this.showUnavailableWarning = !status.available
-    },
-
-    dismissWarning() {
-      this.showUnavailableWarning = false
-    },
-
-    // Send a message
+    // --- Core messaging ---
     async sendMessage() {
-      const content = this.inputText.trim()
+      let content = this.inputText.trim()
       if (!content || this.isStreaming) return
 
-      // Clear input immediately
-      this.inputText = ''
+      // Hook: allow message modification before sending
+      if (typeof this.onBeforeSend === 'function') {
+        const modified = await this.onBeforeSend(content)
+        if (modified) content = modified
+      }
 
-      // Add user message to UI
-      this.dynamicMessages.push({
+      this.inputText = ''
+      this.isStreaming = true
+      this.activeToolCall = null
+
+      this.messages.push({
         id: Date.now(),
         role: 'user',
-        content: content,
+        content,
+      })
+      this.scrollToBottom()
+
+      const msgIndex = this.messages.length
+      this.messages.push({
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: '',
+        toolCalls: [],
+        toolResponses: [],
       })
 
-      // Send to server
       try {
         const formData = new FormData()
         formData.append('message', content)
         formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+        if (this.sessionId) formData.append('session_id', this.sessionId)
+        if (this.agentName) formData.append('agent_name', this.agentName)
 
-        const response = await fetch('/chat/send/', {
+        const response = await fetch('/chat/stream/', {
           method: 'POST',
           body: formData,
         })
@@ -201,101 +168,169 @@ document.addEventListener('alpine:init', () => {
           throw new Error(error.error || 'Failed to send message')
         }
 
-        const data = await response.json()
-        this.sessionId = data.session_id
-        localStorage.setItem('chatSessionId', this.sessionId)
+        // Stream SSE response
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
 
-        // Start streaming response
-        await this.streamResponse()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6).trim()
+            if (!data) continue
+
+            try {
+              const event = JSON.parse(data)
+              const msg = this.messages[msgIndex]
+
+              switch (event.type) {
+                case 'session':
+                  this.sessionId = event.session_id
+                  localStorage.setItem('chatSessionId', event.session_id)
+                  if (typeof this.onSessionCreated === 'function') {
+                    this.onSessionCreated(event.session_id)
+                  }
+                  break
+
+                case 'content_delta':
+                  this.messages[msgIndex] = {
+                    ...msg,
+                    content: msg.content + (event.content || ''),
+                  }
+                  this.scrollToBottom()
+                  break
+
+                case 'tool_call':
+                  this.activeToolCall = {
+                    name: event.name,
+                    args: event.args,
+                  }
+                  msg.toolCalls.push({
+                    id: event.id,
+                    name: event.name,
+                    args: event.args,
+                  })
+                  this.scrollToBottom()
+                  break
+
+                case 'tool_response':
+                  this.activeToolCall = null
+                  msg.toolResponses.push({
+                    id: event.id,
+                    name: event.name,
+                    response: event.response,
+                    data: event.data,
+                  })
+                  this.scrollToBottom()
+                  break
+
+                case 'done':
+                  if (typeof this.onStreamComplete === 'function') {
+                    this.onStreamComplete(this.messages[msgIndex])
+                  }
+                  break
+
+                case 'error':
+                  console.error('Stream error:', event.error)
+                  if (event.message) {
+                    this.messages[msgIndex] = {
+                      ...msg,
+                      content: event.message,
+                    }
+                  }
+                  break
+              }
+            } catch (e) {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
       } catch (error) {
         console.error('Chat error:', error)
-        this.dynamicMessages.push({
-          id: Date.now(),
-          role: 'assistant',
-          content:
-            'Sorry, I encountered an error. Please try again or use the search feature.',
-        })
-      }
-    },
-
-    // Stream AI response via SSE
-    async streamResponse() {
-      this.isStreaming = true
-
-      // Add empty assistant message that will be filled
-      const messageId = Date.now()
-      const messageIndex = this.dynamicMessages.length
-      this.dynamicMessages.push({
-        id: messageId,
-        role: 'assistant',
-        content: '',
-      })
-
-      try {
-        const response = await fetch(`/chat/stream/${this.sessionId}/`)
-
-        if (!response.ok) {
-          throw new Error('Stream connection failed')
-        }
-
-        await chatUtils.parseStream(response, (content) => {
-          this.dynamicMessages[messageIndex] = {
-            id: messageId,
-            role: 'assistant',
-            content: content,
-          }
-        })
-      } catch (error) {
-        console.error('Stream error:', error)
-        if (!this.dynamicMessages[messageIndex].content) {
-          this.dynamicMessages[messageIndex] = {
-            id: messageId,
-            role: 'assistant',
-            content:
-              'Sorry, I encountered an error while generating a response.',
-          }
+        this.messages[msgIndex] = {
+          ...this.messages[msgIndex],
+          content: 'Sorry, I encountered an error. Please try again.',
         }
       } finally {
         this.isStreaming = false
+        this.activeToolCall = null
       }
     },
 
-    // Scroll messages container to bottom (only if user is near bottom)
+    // --- UI helpers ---
     scrollToBottom(force = false) {
       this.$nextTick(() => {
-        if (this.$refs.messages) {
-          const el = this.$refs.messages
-          const isNearBottom =
-            el.scrollHeight - el.scrollTop - el.clientHeight < 150
-          if (force || isNearBottom) {
-            el.scrollTop = el.scrollHeight
-          }
+        const el = this.$refs.messages || this.$refs.messagesArea
+        if (!el) return
+        const isNearBottom =
+          el.scrollHeight - el.scrollTop - el.clientHeight < 150
+        if (force || isNearBottom) {
+          el.scrollTop = el.scrollHeight
         }
       })
     },
 
-    // Clear chat history
+    // --- Session management ---
     clearChat() {
-      this.dynamicMessages = []
+      this.messages = []
       this.sessionId = ''
       localStorage.removeItem('chatSessionId')
+      if (typeof this.onCleared === 'function') {
+        this.onCleared()
+      }
+    },
+
+    /**
+     * Add a message to the chat programmatically.
+     * Useful for upload responses, system messages, etc.
+     */
+    pushMessage(role, content, extra = {}) {
+      this.messages.push({
+        id: Date.now(),
+        role,
+        content,
+        ...extra,
+      })
+      this.scrollToBottom()
+    },
+
+    // --- Template compatibility aliases ---
+    askQuestion() {
+      return this.sendMessage()
+    },
+    get dynamicMessages() {
+      return this.messages
     },
 
     // Delegate to shared utilities
     escapeHtml: chatUtils.escapeHtml,
     renderMarkdown: chatUtils.renderMarkdown,
-  }))
+  }
+}
 
-  /**
-   * Home Page Component
-   * Chat-first experience with AI assistance.
-   */
-  Alpine.data('homePage', () => ({
-    // State
-    sessionId: '',
-    messages: [],
-    inputText: '',
-    isStreaming: false,
+// =============================================================================
+// Home Page Component
+// =============================================================================
+
+/**
+ * Home page: chat + file upload + case management + timeline + summarization.
+ * Composes createChat() for core messaging, adds everything else directly.
+ *
+ * Usage: <div x-data="homePage" x-init="agentName = 'litigant_assistant'">
+ */
+function createHomePage() {
+  return {
+    // Compose chat
+    ...createChat(),
+
+    // --- Availability state ---
     chatAvailable: true,
     showUnavailableWarning: false,
     // Upload state
@@ -304,239 +339,111 @@ document.addEventListener('alpine:init', () => {
     uploadError: null,
     extractedText: null,
     extractedData: null,
-    // Case info (populated after user confirms extraction)
+
+    // --- Upload state ---
+    selectedFile: null,
+    isUploading: false,
+    uploadError: null,
+    extractedText: null,
+    extractedData: null,
+
+    // --- Case management state ---
     caseInfo: null,
     showConfirmation: false,
     _documentContextSent: false,
     _isClearingChat: false,
-    // Timeline state
+
+    // --- Timeline state ---
     caseTimeline: [],
 
+    // --- Initialization ---
     async init() {
+      // Check chat service availability
+      try {
+        const response = await fetch('/chat/status/')
+        if (response.ok) {
+          const status = await response.json()
+          this.chatAvailable = status.available
+          this.showUnavailableWarning = !status.available
+        } else {
+          this.chatAvailable = false
+          this.showUnavailableWarning = true
+        }
+      } catch {
+        this.chatAvailable = false
+        this.showUnavailableWarning = true
+      }
+
       // Restore session from localStorage
       this.sessionId = localStorage.getItem('chatSessionId') || ''
 
-      // Restore case info from localStorage
+      // Restore case info
       const savedCaseInfo = localStorage.getItem('caseInfo')
       if (savedCaseInfo) {
         try {
           this.caseInfo = JSON.parse(savedCaseInfo)
-        } catch (e) {
+        } catch {
           localStorage.removeItem('caseInfo')
         }
       }
 
-      // Restore timeline from localStorage
+      // Restore timeline
       const savedTimeline = localStorage.getItem('caseTimeline')
       if (savedTimeline) {
         try {
           this.caseTimeline = JSON.parse(savedTimeline)
-        } catch (e) {
+        } catch {
           localStorage.removeItem('caseTimeline')
         }
       }
 
-      // Check if chat service is available
-      const status = await chatUtils.checkAvailability()
-      this.chatAvailable = status.available
-      this.showUnavailableWarning = !status.available
+      // Wire up chat hook for document context injection
+      this.onBeforeSend = this._augmentWithDocumentContext.bind(this)
     },
 
     dismissWarning() {
       this.showUnavailableWarning = false
     },
 
-    // Send a question
-    async askQuestion() {
-      const content = this.inputText.trim()
-      if (!content || this.isStreaming) return
+    // =========================================================================
+    // Chat hooks
+    // =========================================================================
 
-      this.inputText = ''
+    /**
+     * Injects document context into the first message after an upload,
+     * so the LLM has case details available.
+     */
+    _augmentWithDocumentContext(content) {
+      if (!this.extractedData || this._documentContextSent) return content
 
-      // Add user message
-      this.messages.push({
-        id: Date.now(),
-        role: 'user',
-        content: content,
-      })
-      this.scrollToBottom()
-
-      // Build message with document context if available
-      let messageToSend = content
-      if (this.extractedData && !this._documentContextSent) {
-        // Include document context on first message after upload
-        const ctx = this.extractedData
-        let contextPrefix = '[Document Context]\n'
-        if (ctx.case_type) contextPrefix += `Case Type: ${ctx.case_type}\n`
-        if (ctx.summary) contextPrefix += `Summary: ${ctx.summary}\n`
-        if (ctx.court_info?.court_name)
-          contextPrefix += `Court: ${ctx.court_info.court_name}\n`
-        if (ctx.court_info?.case_number)
-          contextPrefix += `Case Number: ${ctx.court_info.case_number}\n`
-        if (ctx.parties?.opposing_party)
-          contextPrefix += `Opposing Party: ${ctx.parties.opposing_party}\n`
-        if (ctx.key_dates?.length > 0) {
-          const deadlines = ctx.key_dates.filter((d) => d.is_deadline)
-          if (deadlines.length > 0) {
-            contextPrefix += 'Deadlines:\n'
-            for (const d of deadlines) {
-              contextPrefix += `- ${d.label}: ${d.date}\n`
-            }
+      const ctx = this.extractedData
+      let prefix = '[Document Context]\n'
+      if (ctx.case_type) prefix += `Case Type: ${ctx.case_type}\n`
+      if (ctx.summary) prefix += `Summary: ${ctx.summary}\n`
+      if (ctx.court_info?.court_name)
+        prefix += `Court: ${ctx.court_info.court_name}\n`
+      if (ctx.court_info?.case_number)
+        prefix += `Case Number: ${ctx.court_info.case_number}\n`
+      if (ctx.parties?.opposing_party)
+        prefix += `Opposing Party: ${ctx.parties.opposing_party}\n`
+      if (ctx.key_dates?.length > 0) {
+        const deadlines = ctx.key_dates.filter((d) => d.is_deadline)
+        if (deadlines.length > 0) {
+          prefix += 'Deadlines:\n'
+          for (const d of deadlines) {
+            prefix += `- ${d.label}: ${d.date}\n`
           }
         }
-        contextPrefix += '[End Document Context]\n\n'
-        messageToSend = contextPrefix + content
-        this._documentContextSent = true
       }
-
-      // Send to server and stream response
-      try {
-        const formData = new FormData()
-        formData.append('message', messageToSend)
-        formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
-
-        const response = await fetch('/chat/send/', {
-          method: 'POST',
-          body: formData,
-        })
-
-        if (!response.ok) {
-          throw new Error('Failed to send message')
-        }
-
-        const data = await response.json()
-        this.sessionId = data.session_id
-        localStorage.setItem('chatSessionId', this.sessionId)
-
-        await this.streamResponse()
-      } catch (error) {
-        console.error('Chat error:', error)
-        this.messages.push({
-          id: Date.now(),
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
-        })
-      }
+      prefix += '[End Document Context]\n\n'
+      this._documentContextSent = true
+      return prefix + content
     },
 
-    // Stream AI response
-    async streamResponse() {
-      this.isStreaming = true
+    // =========================================================================
+    // File upload
+    // =========================================================================
 
-      const messageId = Date.now()
-      const messageIndex = this.messages.length
-      this.messages.push({
-        id: messageId,
-        role: 'assistant',
-        content: '',
-      })
-      this.scrollToBottom()
-
-      try {
-        const response = await fetch(`/chat/stream/${this.sessionId}/`)
-        if (!response.ok) throw new Error('Stream failed')
-
-        await chatUtils.parseStream(response, (content) => {
-          this.messages[messageIndex] = {
-            id: messageId,
-            role: 'assistant',
-            content: content,
-          }
-        })
-      } catch (error) {
-        console.error('Stream error:', error)
-        if (!this.messages[messageIndex].content) {
-          this.messages[messageIndex] = {
-            id: messageId,
-            role: 'assistant',
-            content: 'Sorry, I encountered an error.',
-          }
-        }
-      } finally {
-        this.isStreaming = false
-      }
-    },
-
-    // Clear chat and start new conversation
-    async clearChat() {
-      // Prevent double execution
-      if (this._isClearingChat) return
-      this._isClearingChat = true
-
-      try {
-        // Generate summary if there are substantive messages (at least user + assistant)
-        if (this.messages.length >= 2) {
-          const summary = await this.generateChatSummary()
-          // Only add to timeline if there were actual user questions
-          if (summary && !summary.toLowerCase().includes('no user questions')) {
-            this.addTimelineEvent('summary', '', summary)
-          }
-        }
-
-        // Clear chat state
-        this.messages = []
-        this.sessionId = ''
-        this.extractedData = null
-        this._documentContextSent = false
-        localStorage.removeItem('chatSessionId')
-      } finally {
-        this._isClearingChat = false
-      }
-    },
-
-    // Generate a summary of the current chat via backend
-    async generateChatSummary() {
-      if (this.messages.length < 2) return null
-
-      try {
-        const formData = new FormData()
-        formData.append('messages', JSON.stringify(this.messages))
-        formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
-
-        const response = await fetch('/chat/summarize/', {
-          method: 'POST',
-          body: formData,
-        })
-
-        if (!response.ok) return null
-
-        const data = await response.json()
-        return data.summary || null
-      } catch (e) {
-        console.error('Failed to generate summary:', e)
-        return null
-      }
-    },
-
-    // Add an event to the timeline
-    addTimelineEvent(type, title, content, metadata = {}) {
-      const event = {
-        id: Date.now(),
-        type, // 'upload' | 'summary' | 'change'
-        timestamp: new Date().toISOString(),
-        title,
-        content,
-        metadata,
-      }
-      this.caseTimeline.push(event)
-      localStorage.setItem('caseTimeline', JSON.stringify(this.caseTimeline))
-    },
-
-    // Scroll to bottom of messages
-    scrollToBottom() {
-      this.$nextTick(() => {
-        if (this.$refs.messagesArea) {
-          this.$refs.messagesArea.scrollTop =
-            this.$refs.messagesArea.scrollHeight
-        }
-      })
-    },
-
-    // Delegate to shared utilities
-    escapeHtml: chatUtils.escapeHtml,
-    renderMarkdown: chatUtils.renderMarkdown,
-
-    // File upload methods
     triggerFileInput() {
       this.$refs.fileInput?.click()
     },
@@ -545,14 +452,12 @@ document.addEventListener('alpine:init', () => {
       const file = event.target.files?.[0]
       if (!file) return
 
-      // Validate file type
       if (file.type !== 'application/pdf') {
         this.uploadError = 'Please select a PDF file'
         event.target.value = ''
         return
       }
 
-      // Validate file size (10MB)
       if (file.size > 10 * 1024 * 1024) {
         this.uploadError = 'File size must be less than 10MB'
         event.target.value = ''
@@ -582,115 +487,51 @@ document.addEventListener('alpine:init', () => {
         })
 
         const data = await response.json()
+        if (!response.ok) throw new Error(data.error || 'Upload failed')
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Upload failed')
-        }
-
-        // Add upload event to timeline
-        const uploadSummary =
-          data.extracted_data?.summary || `${data.page_count} page document`
-        this.addTimelineEvent(
-          'upload',
-          `Uploaded: ${fileName}`,
-          uploadSummary,
-          { filename: fileName, page_count: data.page_count }
-        )
-
-        // Store extracted data for later use
         this.extractedText = data.text_preview
         this.extractedData = data.extracted_data
-
-        // Reset document context flag so new info is sent in next message
         this._documentContextSent = false
 
-        // Build the response message
-        let messageContent = ''
+        this.selectedFile = null
+        if (this.$refs.fileInput) this.$refs.fileInput.value = ''
 
+        // Add timeline event
+        const summary =
+          data.extracted_data?.summary || `${data.page_count} page document`
+        this.addTimelineEvent('upload', `Uploaded: ${fileName}`, summary, {
+          filename: fileName,
+          page_count: data.page_count,
+        })
+
+        // Build and display response message
         if (data.extracted_data) {
-          const ed = data.extracted_data
-          messageContent = `I've analyzed your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}).\n\n`
-
-          if (ed.case_type) {
-            messageContent += `**Case Type:** ${ed.case_type}\n\n`
-          }
-
-          if (ed.summary) {
-            messageContent += `**Summary:** ${ed.summary}\n\n`
-          }
-
-          if (ed.court_info?.county || ed.court_info?.court_name) {
-            messageContent += `**Court:** ${ed.court_info.court_name || ''}`
-            if (ed.court_info.county) {
-              messageContent += ` (${ed.court_info.county})`
-            }
-            if (ed.court_info.case_number) {
-              messageContent += `\n**Case Number:** ${ed.court_info.case_number}`
-            }
-            messageContent += '\n\n'
-          }
-
-          if (ed.parties?.user_name || ed.parties?.opposing_party) {
-            if (ed.parties.opposing_party) {
-              messageContent += `**Filed by:** ${ed.parties.opposing_party}\n`
-            }
-            if (ed.parties.user_name) {
-              messageContent += `**Against:** ${ed.parties.user_name}\n`
-            }
-            messageContent += '\n'
-          }
-
-          if (ed.key_dates && ed.key_dates.length > 0) {
-            const deadlines = ed.key_dates.filter((d) => d.is_deadline)
-            const otherDates = ed.key_dates.filter((d) => !d.is_deadline)
-
-            if (deadlines.length > 0) {
-              messageContent += '**Important Deadlines:**\n'
-              for (const d of deadlines) {
-                messageContent += `- ${d.label}: **${d.date}**\n`
-              }
-              messageContent += '\n'
-            }
-
-            if (otherDates.length > 0) {
-              messageContent += '**Other Dates:**\n'
-              for (const d of otherDates) {
-                messageContent += `- ${d.label}: ${d.date}\n`
-              }
-              messageContent += '\n'
-            }
-          }
-
-          messageContent += 'Does this information look correct?'
-
-          // Show confirmation buttons
+          this.pushMessage(
+            'assistant',
+            this._buildExtractionMessage(data.extracted_data, data.page_count)
+          )
           this.showConfirmation = true
         } else if (data.extraction_error) {
-          messageContent = `I've received your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}), but I had trouble analyzing it: ${data.extraction_error}\n\nYou can still ask me questions about your situation.`
+          this.pushMessage(
+            'assistant',
+            `I've received your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}), ` +
+              `but I had trouble analyzing it: ${data.extraction_error}\n\n` +
+              'You can still ask me questions about your situation.'
+          )
         } else {
-          messageContent = `I've received your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}). How can I help you with it?`
-        }
-
-        this.messages.push({
-          id: Date.now(),
-          role: 'assistant',
-          content: messageContent,
-        })
-        this.scrollToBottom()
-
-        // Clear file input
-        this.selectedFile = null
-        if (this.$refs.fileInput) {
-          this.$refs.fileInput.value = ''
+          this.pushMessage(
+            'assistant',
+            `I've received your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}). ` +
+              'How can I help you with it?'
+          )
         }
       } catch (error) {
         console.error('Upload error:', error)
         this.uploadError = error.message
-        this.messages.push({
-          id: Date.now(),
-          role: 'assistant',
-          content: `Sorry, I couldn't process your document: ${error.message}`,
-        })
+        this.pushMessage(
+          'assistant',
+          `Sorry, I couldn't process your document: ${error.message}`
+        )
       } finally {
         this.isUploading = false
       }
@@ -700,11 +541,56 @@ document.addEventListener('alpine:init', () => {
       this.uploadError = null
     },
 
-    // Confirmation methods for extracted data
+    _buildExtractionMessage(ed, pageCount) {
+      let msg = `I've analyzed your document (${pageCount} page${pageCount !== 1 ? 's' : ''}).\n\n`
+
+      if (ed.case_type) msg += `**Case Type:** ${ed.case_type}\n\n`
+      if (ed.summary) msg += `**Summary:** ${ed.summary}\n\n`
+
+      if (ed.court_info?.county || ed.court_info?.court_name) {
+        msg += `**Court:** ${ed.court_info.court_name || ''}`
+        if (ed.court_info.county) msg += ` (${ed.court_info.county})`
+        if (ed.court_info.case_number)
+          msg += `\n**Case Number:** ${ed.court_info.case_number}`
+        msg += '\n\n'
+      }
+
+      if (ed.parties?.user_name || ed.parties?.opposing_party) {
+        if (ed.parties.opposing_party)
+          msg += `**Filed by:** ${ed.parties.opposing_party}\n`
+        if (ed.parties.user_name)
+          msg += `**Against:** ${ed.parties.user_name}\n`
+        msg += '\n'
+      }
+
+      if (ed.key_dates?.length > 0) {
+        const deadlines = ed.key_dates.filter((d) => d.is_deadline)
+        const otherDates = ed.key_dates.filter((d) => !d.is_deadline)
+
+        if (deadlines.length > 0) {
+          msg += '**Important Deadlines:**\n'
+          for (const d of deadlines) msg += `- ${d.label}: **${d.date}**\n`
+          msg += '\n'
+        }
+
+        if (otherDates.length > 0) {
+          msg += '**Other Dates:**\n'
+          for (const d of otherDates) msg += `- ${d.label}: ${d.date}\n`
+          msg += '\n'
+        }
+      }
+
+      msg += 'Does this information look correct?'
+      return msg
+    },
+
+    // =========================================================================
+    // Case management
+    // =========================================================================
+
     confirmExtraction() {
       if (!this.extractedData) return
 
-      // Merge into existing caseInfo or set new
       if (this.caseInfo) {
         this.mergeCaseInfo(this.extractedData)
       } else {
@@ -713,34 +599,24 @@ document.addEventListener('alpine:init', () => {
       localStorage.setItem('caseInfo', JSON.stringify(this.caseInfo))
       this.showConfirmation = false
 
-      // Add confirmation message
-      this.messages.push({
-        id: Date.now(),
-        role: 'assistant',
-        content:
-          "Great! I've saved your case information. You can see it in the sidebar. What would you like help with?",
-      })
-      this.scrollToBottom()
+      this.pushMessage(
+        'assistant',
+        "Great! I've saved your case information. You can see it in the sidebar. What would you like help with?"
+      )
     },
 
-    // Merge new extracted data into existing caseInfo
     mergeCaseInfo(newData) {
       if (!newData) return
 
-      // Track changes for timeline
       const changes = []
 
-      // Update case_type if different
       if (newData.case_type && newData.case_type !== this.caseInfo.case_type) {
         changes.push(`Case type: ${newData.case_type}`)
         this.caseInfo.case_type = newData.case_type
       }
 
-      // Merge court_info (update non-empty fields)
       if (newData.court_info) {
-        if (!this.caseInfo.court_info) {
-          this.caseInfo.court_info = {}
-        }
+        if (!this.caseInfo.court_info) this.caseInfo.court_info = {}
         for (const [key, value] of Object.entries(newData.court_info)) {
           if (value && value !== this.caseInfo.court_info[key]) {
             changes.push(`Court ${key}: ${value}`)
@@ -749,11 +625,8 @@ document.addEventListener('alpine:init', () => {
         }
       }
 
-      // Merge parties (update non-empty fields)
       if (newData.parties) {
-        if (!this.caseInfo.parties) {
-          this.caseInfo.parties = {}
-        }
+        if (!this.caseInfo.parties) this.caseInfo.parties = {}
         for (const [key, value] of Object.entries(newData.parties)) {
           if (value && value !== this.caseInfo.parties[key]) {
             changes.push(`Party ${key}: ${value}`)
@@ -762,11 +635,8 @@ document.addEventListener('alpine:init', () => {
         }
       }
 
-      // Append new key_dates (avoid duplicates by label+date)
-      if (newData.key_dates && newData.key_dates.length > 0) {
-        if (!this.caseInfo.key_dates) {
-          this.caseInfo.key_dates = []
-        }
+      if (newData.key_dates?.length > 0) {
+        if (!this.caseInfo.key_dates) this.caseInfo.key_dates = []
         for (const newDate of newData.key_dates) {
           const exists = this.caseInfo.key_dates.some(
             (d) => d.label === newDate.label && d.date === newDate.date
@@ -778,12 +648,8 @@ document.addEventListener('alpine:init', () => {
         }
       }
 
-      // Update summary if provided
-      if (newData.summary) {
-        this.caseInfo.summary = newData.summary
-      }
+      if (newData.summary) this.caseInfo.summary = newData.summary
 
-      // Add timeline event for changes
       if (changes.length > 0) {
         this.addTimelineEvent('change', 'Case info updated', changes.join('; '))
       }
@@ -791,18 +657,12 @@ document.addEventListener('alpine:init', () => {
 
     requestClarification() {
       this.showConfirmation = false
-
-      // Add clarification message
-      this.messages.push({
-        id: Date.now(),
-        role: 'assistant',
-        content:
-          "No problem! What information needs to be corrected? You can tell me what's wrong and I'll update it, or you can upload a different document.",
-      })
-      this.scrollToBottom()
+      this.pushMessage(
+        'assistant',
+        "No problem! What information needs to be corrected? You can tell me what's wrong and I'll update it, or you can upload a different document."
+      )
     },
 
-    // Clear all case data and timeline
     clearCaseInfo() {
       this.caseInfo = null
       this.extractedData = null
@@ -811,5 +671,83 @@ document.addEventListener('alpine:init', () => {
       localStorage.removeItem('caseInfo')
       localStorage.removeItem('caseTimeline')
     },
-  }))
+
+    // =========================================================================
+    // Summarization
+    // =========================================================================
+
+    async generateChatSummary() {
+      if (this.messages.length < 2) return null
+
+      try {
+        const formData = new FormData()
+        formData.append('messages', JSON.stringify(this.messages))
+        formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+
+        const response = await fetch('/chat/summarize/', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) return null
+        const data = await response.json()
+        return data.summary || null
+      } catch (e) {
+        console.error('Failed to generate summary:', e)
+        return null
+      }
+    },
+
+    // =========================================================================
+    // Timeline
+    // =========================================================================
+
+    addTimelineEvent(type, title, content, metadata = {}) {
+      const event = {
+        id: Date.now(),
+        type, // 'upload' | 'summary' | 'change'
+        timestamp: new Date().toISOString(),
+        title,
+        content,
+        metadata,
+      }
+      this.caseTimeline.push(event)
+      localStorage.setItem('caseTimeline', JSON.stringify(this.caseTimeline))
+    },
+
+    // =========================================================================
+    // Override: clearChat with summarization
+    // =========================================================================
+
+    async clearChat() {
+      if (this._isClearingChat) return
+      this._isClearingChat = true
+
+      try {
+        if (this.messages.length >= 2) {
+          const summary = await this.generateChatSummary()
+          if (summary && !summary.toLowerCase().includes('no user questions')) {
+            this.addTimelineEvent('summary', '', summary)
+          }
+        }
+
+        this.messages = []
+        this.sessionId = ''
+        this.extractedData = null
+        this._documentContextSent = false
+        localStorage.removeItem('chatSessionId')
+      } finally {
+        this._isClearingChat = false
+      }
+    },
+  }
+}
+
+// =============================================================================
+// Alpine Registration
+// =============================================================================
+
+document.addEventListener('alpine:init', () => {
+  Alpine.data('chat', () => createChat())
+  Alpine.data('homePage', () => createHomePage())
 })

@@ -6,8 +6,24 @@ from .models import ChatSession, Document, Message
 class MessageInline(admin.TabularInline):
     model = Message
     extra = 0
-    readonly_fields = ["id", "role", "content", "sources", "created_at"]
+    readonly_fields = [
+        "id",
+        "role_display",
+        "content_preview",
+        "created_at",
+    ]
     can_delete = False
+
+    def role_display(self, obj):
+        return obj.role
+
+    role_display.short_description = "Role"
+
+    def content_preview(self, obj):
+        content = obj.content
+        return content[:100] + "..." if len(content) > 100 else content
+
+    content_preview.short_description = "Content"
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -24,17 +40,25 @@ class ChatSessionAdmin(admin.ModelAdmin):
 
 @admin.register(Message)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ["id", "session", "role", "content_preview", "created_at"]
-    list_filter = ["role", "created_at"]
-    search_fields = ["content", "session__id"]
+    list_display = [
+        "id",
+        "session",
+        "role_display",
+        "content_preview",
+        "created_at",
+    ]
+    list_filter = ["created_at"]
+    search_fields = ["data", "session__id"]
     readonly_fields = ["id", "created_at"]
 
+    def role_display(self, obj):
+        return obj.role
+
+    role_display.short_description = "Role"
+
     def content_preview(self, obj):
-        return (
-            obj.content[:100] + "..."
-            if len(obj.content) > 100
-            else obj.content
-        )
+        content = obj.content
+        return content[:100] + "..." if len(content) > 100 else content
 
     content_preview.short_description = "Content"
 

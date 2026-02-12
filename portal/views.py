@@ -1,9 +1,11 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
 from django.views.generic import DetailView, UpdateView
+
+from chat.agents import agent_registry
 
 from .forms import UserProfileForm
 from .models import UserProfile
@@ -17,6 +19,13 @@ def health(request):
 def home(request):
     """Home page - main app landing page"""
     return render(request, "pages/home.html")
+
+
+def test_agent(request, agent_name):
+    """Test page for a specific agent."""
+    if agent_name not in agent_registry:
+        raise Http404(f"Agent '{agent_name}' not found")
+    return render(request, "pages/home.html", {"agent_name": agent_name})
 
 
 def style_guide(request):

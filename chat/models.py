@@ -2,6 +2,9 @@ import uuid
 
 from django.conf import settings
 from django.db import connection, models
+from django_pydantic_field import SchemaField
+
+from chat.agents.base import Message as MessageSchema
 
 # PostgreSQL-specific imports (optional for SQLite)
 try:
@@ -45,12 +48,12 @@ class ChatSession(models.Model):
 
 
 class Message(models.Model):
-    """A message within a chat session."""
+    """A message within a chat session.
 
-    class Role(models.TextChoices):
-        USER = "user", "User"
-        ASSISTANT = "assistant", "Assistant"
-        SYSTEM = "system", "System"
+    The `data` field stores the full message dict, validated against the
+    Message schema from chat.agents.base (SystemMessage, UserMessage,
+    AssistantMessage, or ToolMessage).
+    """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     session = models.ForeignKey(
@@ -58,14 +61,23 @@ class Message(models.Model):
         related_name="messages",
         on_delete=models.CASCADE,
     )
-    role = models.CharField(max_length=10, choices=Role.choices)
-    content = models.TextField()
-    # Source references for RAG responses
-    sources = models.JSONField(default=list, blank=True)
+    data = SchemaField(
+        schema=MessageSchema, default={"role": "system", "content": ""}
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["created_at"]
+
+    @property
+    def role(self) -> str:
+        """Get the message role from data."""
+        return self.data.get("role", "")
+
+    @property
+    def content(self) -> str:
+        """Get the message content from data."""
+        return self.data.get("content", "")
 
     def __str__(self):
         preview = (

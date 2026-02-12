@@ -9,8 +9,8 @@
 
 {% block content %}
 
-  <div x-data="homePage()"
-       x-init="init()"
+  <div x-data="homePage"
+       x-init="agentName = '{{ agent_name|default:'' }}'"
        class="home-container"
        x-bind:class="{ 'chat-mode': messages.length > 0 }">
     {# Hidden file input for PDF upload #}
