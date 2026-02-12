@@ -48,6 +48,8 @@ dependencies = [
     "pydantic>=2.0",
     # Rate limiting
     "django-ratelimit>=4.1",
+    # PDF text extraction
+    "pdfplumber>=0.11",
 ]
 
 [project.optional-dependencies]
@@ -109,4 +111,10 @@ indent = 2
 max_line_length = 120
 format_css = true
 format_js = true
-ignore = "H006,H030,H031"  # img alt, meta description, meta keywords
+# H006: img without alt, H021: inline styles (Alpine x-show), H030/H031: meta tags
+ignore = "H006,H021,H030,H031"
+extend_exclude = ".venv,node_modules,staticfiles"
+# Recognize Cotton components
+custom_blocks = "c-slot,c-vars"
+# Keep blank lines after extends/load/block tags
+blank_line_after_tag = "extends,load,block,endblock"
