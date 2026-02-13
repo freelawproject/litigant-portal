@@ -7,7 +7,7 @@
     <div class="flex-1 min-w-0">
       <h4 class="font-medium text-greyscale-900 mb-1">
         {% if url %}
-          <a href="{{ url }}" class="hover:text-primary-600">{{ title }}</a>
+          <c-atoms.link href="{{ url }}" variant="unstyled" class="hover:text-primary-600">{{ title }}</c-atoms.link>
         {% else %}
           {{ title }}
         {% endif %}

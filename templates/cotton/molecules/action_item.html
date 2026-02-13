@@ -11,10 +11,11 @@
   </div>
   <div class="flex-1 min-w-0">
     {% if href %}
-      <a href="{{ href }}"
-         class="text-sm font-medium text-greyscale-800 hover:text-primary-600 {% if completed == 'true' %}line-through text-greyscale-400{% endif %}">
-        {{ title }}
-      </a>
+      <c-atoms.link href="{{ href }}" variant="unstyled" class="text-sm font-medium text-greyscale-800 hover:text-primary-600
+      {% if completed == 'true' %}line-through text-greyscale-400{% endif %}
+      ">
+      {{ title }}
+      </c-atoms.link>
     {% else %}
       <p class="text-sm font-medium text-greyscale-800 {% if completed == 'true' %}line-through text-greyscale-400{% endif %}">
         {{ title }}

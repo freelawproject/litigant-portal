@@ -44,29 +44,27 @@ templates/
 
 ### Page Layout
 
-Single-page chat-first design:
+Dashboard home with separate chat page:
 
 ```
-┌─────────────────────────────────────────┐
-│ Header: [Logo] ... [Browse by Topic] [☰]│
-├─────────────────────────────────────────┤
-│                                         │
-│   How can we help you today?            │
-│   [________search________] [Ask]        │
-│                                         │
-├─────────────────────────────────────────┤
-│                                         │
-│   Chat messages appear here             │
-│   (AI streaming responses)              │
-│                                         │
-├─────────────────────────────────────────┤
-│ Footer                                  │
-└─────────────────────────────────────────┘
+/ (Dashboard)                    /chat/ (Chat)
+┌──────────────────────┐        ┌──────────────────────┐
+│ Header               │        │ Header               │
+├──────────────────────┤        ├──────────────────────┤
+│ Hero                 │        │ Hero (pre-chat)      │
+│  How can we help?    │        │  [____search____]    │
+│  [____search____]    │        ├──────────────────────┤
+├──────────────────────┤        │ Chat messages        │
+│ Browse by Topic      │        │ (AI streaming)       │
+│ [cards grid]         │        ├──────────────────────┤
+├──────────────────────┤        │ [input] [send]       │
+│ Footer               │        │ (no footer)          │
+└──────────────────────┘        └──────────────────────┘
 ```
 
-- **Hero + Chat** on home page (no separate `/chat/` page)
-- **Browse by Topic** in slide-out menu (hamburger)
-- **Topic cards** accessible via menu, chat is primary focus
+- **Dashboard** (`/`) shows hero + topic grid + footer
+- **Chat** (`/chat/`) is a full-screen chat interface (no footer, `overflow-hidden`)
+- **Agent testing** (`/test/<agent_name>/`) renders chat with a specific agent
 
 ### Naming Conventions
 
@@ -138,7 +136,8 @@ Django renders initial state, Alpine handles client reactivity:
 | `static/js/theme.js`        | Alpine theme store                              |
 | `static/js/chat.js`         | Alpine chat components (homePage, chatWindow)   |
 | `templates/cotton/*/`       | Component library (atoms, molecules, organisms) |
-| `templates/pages/home.html` | Main page with chat interface                   |
+| `templates/pages/home.html` | Dashboard with hero and topic grid              |
+| `templates/pages/chat.html` | Full-screen chat interface                      |
 | `Dockerfile`                | Multi-stage build (dev + prod)                  |
 | `docker-compose.yml`        | Dev/prod profiles with Docker secrets           |
 | `docker-entrypoint.sh`      | Container startup commands                      |
@@ -197,8 +196,8 @@ The portal includes an AI chat feature using Groq's API with the Llama 3.3 70B m
 ### Architecture
 
 ```
-User Input → POST /chat/send/ → Django creates message
-           → GET /chat/stream/<session_id>/ (SSE)
+User Input → POST /api/chat/send/ → Django creates message
+           → GET /api/chat/stream/<session_id>/ (SSE)
            → Groq API (OpenAI-compatible)
            → StreamingHttpResponse → Alpine.js updates UI
 ```

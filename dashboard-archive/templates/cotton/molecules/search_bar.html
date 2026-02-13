@@ -1,0 +1,12 @@
+<c-vars placeholder="What do you need help with?" action="" method="get" />
+<form action="{{ action }}"
+      method="{{ method }}"
+      class="search-bar {{ class }}"
+      role="search"
+      {{ attrs }}>
+  <c-atoms.search-input placeholder="{{ placeholder }}" name="q" />
+  <c-atoms.button type="submit" variant="primary" size="xl" aria_label="Search">
+  <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
+  <span class="hidden sm:inline">Search</span>
+  </c-atoms.button>
+</form>

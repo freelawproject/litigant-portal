@@ -38,7 +38,8 @@ make test                   # Run tests
 
 | URL                                       | Purpose                   |
 | ----------------------------------------- | ------------------------- |
-| http://portal.localhost:8000/             | Home                      |
+| http://portal.localhost:8000/             | Dashboard (hero + topics) |
+| http://portal.localhost:8000/chat/        | AI chat interface         |
 | http://portal.localhost:8000/style-guide/ | Component library / guide |
 | http://portal.localhost:8000/admin/       | Django admin              |
 
@@ -49,21 +50,23 @@ make test                   # Run tests
 ```
 litigant-portal/
 ├── config/                 # Django settings
-├── portal/                 # Main Django app
+├── portal/                 # Main Django app (views, models, forms)
+├── chat/                   # AI chat app (providers, services, agents)
 ├── templates/
 │   ├── base.html          # Base layout (responsive)
 │   ├── cotton/            # Django-Cotton components (Atomic Design)
 │   │   ├── atoms/         # Basic elements (button, input, link, etc.)
 │   │   ├── molecules/     # Combinations (logo, search_bar, topic_card)
 │   │   └── organisms/     # Complex sections (header, footer, hero)
-│   └── pages/             # Page templates
+│   └── pages/             # Page templates (home, chat, profile, etc.)
 ├── static/
 │   ├── css/
 │   │   ├── main.css       # Tailwind source
 │   │   └── main.built.css # Tailwind output (gitignored)
 │   ├── images/            # Static images (logo.svg)
 │   └── js/
-│       └── theme.js       # Alpine theme store
+│       ├── theme.js       # Alpine theme store
+│       └── chat.js        # Alpine chat component
 └── docs/                  # This folder
 ```
 

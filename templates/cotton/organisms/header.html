@@ -13,24 +13,17 @@
     </a>
     <div class="flex items-center gap-1 sm:gap-2">
       {% if debug %}
-        <a href="{% url 'portal:style_guide' %}"
-           class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-greyscale-600 transition-colors">
-          Style Guide
-        </a>
-        <button type="button"
-                x-on:click="localStorage.clear(); location.reload()"
-                class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 transition-colors">
-          Clear Demo
-        </button>
+        <c-atoms.link href="{% url 'portal:style_guide' %}" variant="unstyled" class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-greyscale-600 transition-colors">
+        Style Guide
+        </c-atoms.link>
+        <c-atoms.button type="button" variant="ghost" class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 !p-0" x-on:click="localStorage.clear(); location.reload()">
+        Clear Demo
+        </c-atoms.button>
       {% endif %}
       <c-molecules.user-menu class="hidden sm:flex" />
-      <button type="button"
-              class="mobile-header-menu-btn btn-ghost"
-              aria-label="Open activity timeline"
-              x-bind:aria-expanded="menuOpen"
-              x-on:click="menuOpen = true">
-        <c-atoms.icon name="bars-3" class="w-6 h-6" />
-      </button>
+      <c-atoms.button type="button" variant="ghost" aria_label="Open activity timeline" class="mobile-header-menu-btn" x-bind:aria-expanded="menuOpen" x-on:click="menuOpen = true">
+      <c-atoms.icon name="bars-3" class="w-6 h-6" />
+      </c-atoms.button>
     </div>
   </div>
   {# Menu Overlay #}
@@ -62,12 +55,9 @@
          aria-label="Activity timeline">
       <div class="flex items-center justify-between p-4 border-b border-greyscale-200">
         <span class="font-semibold text-greyscale-900">Activity</span>
-        <button type="button"
-                class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700"
-                aria-label="Close menu"
-                x-on:click="menuOpen = false">
-          <c-atoms.icon name="x-mark" class="w-6 h-6" />
-        </button>
+        <c-atoms.button type="button" variant="ghost" aria_label="Close menu" class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700" x-on:click="menuOpen = false">
+        <c-atoms.icon name="x-mark" class="w-6 h-6" />
+        </c-atoms.button>
       </div>
       {# Timeline - refreshes from localStorage when menu opens #}
       <div class="p-4 space-y-3">

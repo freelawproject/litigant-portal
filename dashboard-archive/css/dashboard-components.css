@@ -1,0 +1,310 @@
+/**
+ * Dashboard-era component styles
+ * Recovered from commit 40ab76c (Dec 15, 2025)
+ * "refactor(layout): consolidate to single responsive base"
+ *
+ * These are the original CSS component classes that existed when the
+ * dashboard home page (hero + topic grid + footer) was the root route.
+ *
+ * WHAT CHANGED in the current codebase:
+ * - Hero padding: was fixed (py-12/16/20), now viewport-relative (12vh/4vh)
+ * - Hero subheading margin: was mb-8, now mb-4
+ * - Topic grid padding: was py-10/12, now py-4/6 with transition
+ * - Footer padding: was py-8, now py-2
+ * - Header inner padding: was py-3, now py-2
+ * - Several component CSS classes were removed (alerts, buttons, inputs,
+ *   links, selects, scrollbar utilities) — atoms now inline their styles
+ *
+ * WHAT'S STILL IN THE LIVE CSS (unchanged):
+ * - Topic card styles (.topic-card, .topic-card-icon, etc.)
+ * - Search input/bar styles (.search-input, .search-bar, etc.)
+ * - Layout utilities (.container-desktop, .capped-width, etc.)
+ * - All theme tokens (colors, fonts, spacing)
+ */
+
+/* ==========================================================================
+   DASHBOARD HERO - Original spacing
+   ========================================================================== */
+
+.hero {
+  @apply px-4 py-12 md:py-16 lg:py-20;
+  @apply bg-greyscale-50;
+}
+
+.hero-content {
+  @apply max-w-xl mx-auto text-center;
+}
+
+.hero-heading {
+  @apply text-display-sm md:text-display-md lg:text-display-lg;
+  @apply font-cooper font-semibold text-greyscale-900;
+  @apply mb-3;
+}
+
+.hero-subheading {
+  @apply text-md md:text-lg text-greyscale-600;
+  @apply mb-8;
+}
+
+/* ==========================================================================
+   DASHBOARD TOPIC GRID - Original spacing
+   ========================================================================== */
+
+.topic-grid-section {
+  @apply px-4 py-10 md:py-12;
+}
+
+.topic-grid-heading {
+  @apply text-display-xs font-semibold text-greyscale-900;
+  @apply mb-6 text-center md:text-left;
+  @apply max-w-content mx-auto;
+}
+
+.topic-grid {
+  @apply grid gap-3 md:gap-4;
+  @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+  @apply max-w-content mx-auto;
+}
+
+/* ==========================================================================
+   DASHBOARD HEADER - Original (simpler, no activity timeline)
+   ========================================================================== */
+
+.mobile-header {
+  @apply bg-white border-b border-greyscale-200;
+}
+
+.mobile-header-sticky {
+  @apply sticky top-0 z-40;
+}
+
+.mobile-header-inner {
+  @apply flex items-center justify-between px-4 py-3;
+  @apply max-w-content mx-auto;
+}
+
+.mobile-header-menu-btn {
+  @apply p-2 -mr-2;
+}
+
+/* ==========================================================================
+   DASHBOARD FOOTER - Original (full nav + powered-by)
+   ========================================================================== */
+
+.mobile-footer {
+  @apply bg-greyscale-100 border-t border-greyscale-200;
+  @apply px-4 py-8;
+}
+
+.mobile-footer-inner {
+  @apply max-w-content mx-auto text-center;
+}
+
+.mobile-footer-nav {
+  @apply flex flex-wrap justify-center gap-4 md:gap-6;
+  @apply mb-4;
+}
+
+.mobile-footer-link {
+  @apply text-sm text-greyscale-600 no-underline;
+  @apply hover:text-primary-600 hover:underline;
+  @apply transition-colors;
+}
+
+.mobile-footer-copyright {
+  @apply text-xs text-greyscale-500;
+}
+
+/* ==========================================================================
+   REMOVED COMPONENT CLASSES - Were in the original, removed during
+   chat-first redesign (atoms now inline these styles in templates)
+   ========================================================================== */
+
+/* Alerts */
+.alert {
+  @apply px-4 py-3 text-sm rounded-lg border;
+}
+
+.alert-warning {
+  @apply px-4 py-3 text-sm rounded-lg border text-yellow-700 bg-yellow-50 border-yellow-400;
+}
+
+.alert-danger {
+  @apply px-4 py-3 text-sm rounded-lg border bg-red-100 text-red-700 border-red-500;
+}
+
+.alert-info {
+  @apply px-4 py-3 text-sm rounded-lg border bg-brand-100 text-brand-700 border-brand-300;
+}
+
+.alert-success {
+  @apply px-4 py-3 text-sm rounded-lg border bg-green-100 text-green-700 border-green-500;
+}
+
+/* Buttons */
+.btn {
+  @apply py-2.5 px-3.5 rounded-lg w-fit text-sm font-normal flex gap-1 items-center;
+  @apply transition-colors duration-200;
+  @apply disabled:cursor-not-allowed;
+}
+
+.btn-primary {
+  @apply py-2.5 px-3.5 rounded-lg w-fit text-sm font-normal flex gap-1 items-center;
+  @apply transition-colors duration-200 disabled:cursor-not-allowed;
+  @apply text-white bg-primary-600;
+  @apply hover:bg-primary-700;
+  @apply outline-none focus-visible:ring-4 focus-visible:ring-primary-300;
+  @apply disabled:bg-primary-100 disabled:text-primary-400;
+}
+
+.btn-outline {
+  @apply py-2.5 px-3.5 rounded-lg w-fit text-sm font-normal flex gap-1 items-center;
+  @apply transition-colors duration-200 disabled:cursor-not-allowed;
+  @apply bg-white text-greyscale-700 border border-greyscale-300;
+  @apply hover:bg-greyscale-100;
+  @apply outline-none focus-visible:ring-4 focus-visible:ring-greyscale-300;
+  @apply disabled:border-greyscale-200 disabled:text-greyscale-400;
+}
+
+.btn-dark {
+  @apply py-2.5 px-3.5 rounded-lg w-fit text-sm font-normal flex gap-1 items-center;
+  @apply transition-colors duration-200 disabled:cursor-not-allowed;
+  @apply text-white bg-greyscale-900;
+  @apply hover:bg-greyscale-800;
+  @apply outline-none focus-visible:ring-4 focus-visible:ring-greyscale-400;
+  @apply disabled:bg-greyscale-400 disabled:text-greyscale-200;
+}
+
+.btn-ghost {
+  @apply py-2.5 px-3.5 rounded-lg w-fit text-sm font-normal flex gap-1 items-center;
+  @apply transition-colors duration-200 disabled:cursor-not-allowed;
+  @apply text-greyscale-700;
+  @apply hover:bg-greyscale-100;
+  @apply focus-visible:ring-4 focus-visible:ring-greyscale-200;
+  @apply disabled:text-greyscale-400;
+}
+
+.btn-danger {
+  @apply py-2.5 px-3.5 rounded-lg w-fit text-sm font-normal flex gap-1 items-center;
+  @apply transition-colors duration-200 disabled:cursor-not-allowed;
+  @apply text-white bg-red-500;
+  @apply hover:bg-red-600;
+  @apply outline-none focus-visible:ring-4 focus-visible:ring-red-300;
+  @apply disabled:bg-red-200 disabled:text-red-400;
+}
+
+/* Button sizes */
+.btn-xl {
+  @apply py-3 px-4_5 text-md;
+}
+
+.btn-sm {
+  @apply py-1.5 px-2.5 text-xs;
+}
+
+/* Inputs */
+.input {
+  @apply w-full text-md font-normal py-3 px-4 rounded-lg;
+  @apply border border-greyscale-300 bg-white text-greyscale-900;
+  @apply placeholder:text-greyscale-400;
+  @apply transition-colors duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600;
+  @apply disabled:bg-greyscale-100 disabled:text-greyscale-500 disabled:cursor-not-allowed;
+}
+
+.input-error {
+  @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+}
+
+.input-success {
+  @apply border-green-500 focus:ring-green-500 focus:border-green-500;
+}
+
+/* Links */
+.link {
+  @apply inline-flex items-center gap-1 underline cursor-pointer;
+  @apply transition-colors duration-200;
+  text-underline-offset: 2px;
+}
+
+.link-default {
+  @apply text-primary-600;
+  @apply hover:text-primary-700;
+}
+
+.link-primary {
+  @apply text-primary-600 font-semibold;
+  text-decoration-thickness: 2px;
+  @apply hover:text-primary-700;
+}
+
+.link-secondary {
+  @apply text-greyscale-600;
+  @apply hover:text-greyscale-800;
+}
+
+.link-unstyled {
+  @apply text-inherit no-underline;
+  @apply hover:underline;
+}
+
+.link-external-icon {
+  @apply shrink-0 ml-1;
+}
+
+/* Selects */
+.select-wrapper {
+  @apply relative inline-block w-full;
+}
+
+.select {
+  @apply w-full text-md font-normal py-3 pl-4 pr-10 rounded-lg;
+  @apply border border-greyscale-300 bg-white text-greyscale-900;
+  @apply transition-colors duration-200 cursor-pointer;
+  @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600;
+  @apply disabled:bg-greyscale-100 disabled:text-greyscale-500 disabled:cursor-not-allowed;
+  appearance: none;
+}
+
+.select-icon {
+  @apply absolute right-3 top-1/2 -translate-y-1/2;
+  @apply pointer-events-none text-greyscale-500;
+}
+
+.select-wrapper-error .select {
+  @apply border-red-500 focus:ring-red-500 focus:border-red-500;
+}
+
+.select-wrapper-disabled .select {
+  @apply bg-greyscale-100 text-greyscale-500 cursor-not-allowed;
+}
+
+/* Logo size variants */
+.logo-sm {
+  @apply text-md;
+}
+
+.logo-lg {
+  @apply text-xl;
+}
+
+/* ==========================================================================
+   SCROLLBAR UTILITIES - Removed from current CSS
+   ========================================================================== */
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  @apply bg-greyscale-300 rounded-full;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  @apply bg-greyscale-400;
+}

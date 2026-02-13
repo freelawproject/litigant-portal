@@ -30,8 +30,7 @@
   </form>
   {# Forgot password link #}
   <div class="mt-4 text-center">
-    <a href="{% url 'account_reset_password' %}"
-       class="text-sm text-primary-600 hover:text-primary-700 underline">Forgot your password?</a>
+    <c-atoms.link href="{% url 'account_reset_password' %}" variant="primary" class="text-sm">Forgot your password?</c-atoms.link>
   </div>
 {% endblock auth_content %}
 
@@ -39,7 +38,6 @@
 
   <p class="text-sm text-greyscale-600">
     Don't have an account?
-    <a href="{% url 'account_signup' %}"
-       class="text-primary-600 hover:text-primary-700 font-medium underline">Create one</a>
+    <c-atoms.link href="{% url 'account_signup' %}" variant="primary">Create one</c-atoms.link>
   </p>
 {% endblock auth_footer %}

@@ -5,8 +5,8 @@
 **Stack:** Django `StreamingHttpResponse` + SSE + Alpine.js (~200 lines JS)
 
 ```
-POST /chat/send/     → Creates message, returns session_id
-GET /chat/stream/    → SSE stream via StreamingHttpResponse
+POST /api/chat/send/     → Creates message, returns session_id
+GET /api/chat/stream/    → SSE stream via StreamingHttpResponse
 ```
 
 **How it works:**
@@ -98,7 +98,7 @@ GET /chat/stream/    → SSE stream via StreamingHttpResponse
 ```html
 <div
   hx-ext="sse"
-  sse-connect="/chat/stream/{{ session_id }}/"
+  sse-connect="/api/chat/stream/{{ session_id }}/"
   sse-swap="message"
 >
   <!-- HTMX auto-swaps incoming HTML -->

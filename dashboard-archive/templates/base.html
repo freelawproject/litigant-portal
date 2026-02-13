@@ -24,33 +24,27 @@
         {% endblock extra_css %}
 
       </head>
-      <body class="{% block body_class %}
-         h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
-         ">
-        {% block header %}
+      <body class="min-h-screen">
+        <div class="flex flex-col min-h-screen bg-greyscale-25">
+          {% block header %}
 
-          <c-organisms.header />
-        {% endblock header %}
+            <c-organisms.header />
+          {% endblock header %}
 
-        <c-molecules.toast-container :messages="toast_messages" />
-        <main class="flex-1 min-h-0 flex flex-col">
-          {% block content %}
+          <main class="flex-1">
+            {% block content %}
 
-          {% endblock content %}
+            {% endblock content %}
+          </main>
+          {% block footer %}
 
-        </main>
-        {% block footer %}
+            <c-organisms.footer />
+          {% endblock footer %}
 
-          <c-organisms.footer />
-        {% endblock footer %}
-
+        </div>
         {# Theme store - must load before Alpine #}
         <script src="{% static 'js/theme.js' %}"></script>
-        {# Chat component - must load before Alpine #}
-        <script src="{% static 'js/chat.js' %}"></script>
-        {# Alpine.js CSP build - required for Content Security Policy compliance #}
-        {# https://alpinejs.dev/advanced/csp #}
-        {# Uses non-minified version in debug mode for easier debugging #}
+        {# Alpine.js #}
         {% if debug %}
           <script defer src="{% static 'js/alpine.js' %}"></script>
         {% else %}
