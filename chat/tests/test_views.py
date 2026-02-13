@@ -55,7 +55,7 @@ class StreamValidationTests(TestCase):
 
     def test_rejects_empty_message(self):
         """Empty messages should be rejected with 400."""
-        response = self.client.post("/chat/stream/", {"message": ""})
+        response = self.client.post("/api/chat/stream/", {"message": ""})
 
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.content)
@@ -63,14 +63,16 @@ class StreamValidationTests(TestCase):
 
     def test_rejects_whitespace_only_message(self):
         """Whitespace-only messages should be rejected."""
-        response = self.client.post("/chat/stream/", {"message": "   "})
+        response = self.client.post("/api/chat/stream/", {"message": "   "})
 
         self.assertEqual(response.status_code, 400)
 
     def test_rejects_message_over_2000_chars(self):
         """Messages over 2000 characters should be rejected."""
         long_message = "x" * 2001
-        response = self.client.post("/chat/stream/", {"message": long_message})
+        response = self.client.post(
+            "/api/chat/stream/", {"message": long_message}
+        )
 
         self.assertEqual(response.status_code, 400)
         data = json.loads(response.content)
@@ -79,7 +81,9 @@ class StreamValidationTests(TestCase):
     def test_accepts_message_at_2000_chars(self):
         """Messages exactly 2000 characters should be accepted."""
         max_message = "x" * 2000
-        response = self.client.post("/chat/stream/", {"message": max_message})
+        response = self.client.post(
+            "/api/chat/stream/", {"message": max_message}
+        )
 
         # Should return streaming response, not error
         self.assertEqual(response.status_code, 200)
@@ -95,7 +99,7 @@ class StreamSessionTests(TestCase):
 
     def test_returns_session_id_in_stream(self):
         """Stream should include session event with session_id."""
-        response = self.client.post("/chat/stream/", {"message": "Hello"})
+        response = self.client.post("/api/chat/stream/", {"message": "Hello"})
 
         content = b"".join(response.streaming_content).decode()
         self.assertIn('"type": "session"', content)
@@ -104,7 +108,7 @@ class StreamSessionTests(TestCase):
     def test_creates_message_with_user_content(self):
         """The message content should be saved to the database."""
         response = self.client.post(
-            "/chat/stream/", {"message": "Test message content"}
+            "/api/chat/stream/", {"message": "Test message content"}
         )
         # Consume the stream
         list(response.streaming_content)
@@ -117,7 +121,7 @@ class StreamSessionTests(TestCase):
     def test_reuses_session_when_session_id_provided(self):
         """Providing session_id reuses that session."""
         # First request creates session
-        response1 = self.client.post("/chat/stream/", {"message": "First"})
+        response1 = self.client.post("/api/chat/stream/", {"message": "First"})
         content1 = b"".join(response1.streaming_content).decode()
 
         # Extract session_id from stream
@@ -128,7 +132,8 @@ class StreamSessionTests(TestCase):
 
         # Second request with session_id
         response2 = self.client.post(
-            "/chat/stream/", {"message": "Second", "session_id": session_id}
+            "/api/chat/stream/",
+            {"message": "Second", "session_id": session_id},
         )
         list(response2.streaming_content)
 
@@ -152,7 +157,7 @@ class StreamAuthTests(TestCase):
         """Authenticated user's session should be linked to their account."""
         self.client.login(username="testuser", password="testpass")
 
-        response = self.client.post("/chat/stream/", {"message": "Hello"})
+        response = self.client.post("/api/chat/stream/", {"message": "Hello"})
         list(response.streaming_content)
 
         session = ChatSession.objects.first()
@@ -170,7 +175,7 @@ class StreamOwnershipTests(TestCase):
         """Non-existent session should return 404."""
         fake_uuid = "00000000-0000-0000-0000-000000000000"
         response = self.client.post(
-            "/chat/stream/", {"message": "Hello", "session_id": fake_uuid}
+            "/api/chat/stream/", {"message": "Hello", "session_id": fake_uuid}
         )
 
         self.assertEqual(response.status_code, 404)
@@ -183,7 +188,7 @@ class StreamOwnershipTests(TestCase):
         )
 
         response = self.client.post(
-            "/chat/stream/",
+            "/api/chat/stream/",
             {"message": "Hello", "session_id": str(other_session.id)},
         )
 
@@ -200,7 +205,7 @@ class StreamOwnershipTests(TestCase):
         self.client.login(username="testuser", password="testpass")
 
         response = self.client.post(
-            "/chat/stream/",
+            "/api/chat/stream/",
             {"message": "Hello", "session_id": str(other_session.id)},
         )
 
@@ -219,7 +224,7 @@ class SearchTests(TestCase):
             title="Test Doc", content="content", category="test"
         )
 
-        response = self.client.get("/chat/search/", {"q": ""})
+        response = self.client.get("/api/chat/search/", {"q": ""})
 
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "Test Doc")
@@ -234,7 +239,7 @@ class SearchTests(TestCase):
         )
 
         response = self.client.get(
-            "/chat/search/", {"q": "divorce", "category": "family"}
+            "/api/chat/search/", {"q": "divorce", "category": "family"}
         )
 
         self.assertContains(response, "Family Doc")
@@ -250,7 +255,7 @@ class StatusTests(TestCase):
 
     def test_returns_availability_status(self):
         """Status endpoint should return current availability."""
-        response = self.client.get("/chat/status/")
+        response = self.client.get("/api/chat/status/")
 
         data = json.loads(response.content)
         self.assertTrue(data["available"])
@@ -259,7 +264,7 @@ class StatusTests(TestCase):
     @override_settings(CHAT_ENABLED=False)
     def test_reflects_disabled_setting(self):
         """Status should reflect CHAT_ENABLED=False."""
-        response = self.client.get("/chat/status/")
+        response = self.client.get("/api/chat/status/")
 
         data = json.loads(response.content)
         self.assertFalse(data["enabled"])

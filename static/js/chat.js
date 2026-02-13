@@ -158,7 +158,7 @@ function createChat() {
         if (this.sessionId) formData.append('session_id', this.sessionId)
         if (this.agentName) formData.append('agent_name', this.agentName)
 
-        const response = await fetch('/chat/stream/', {
+        const response = await fetch('/api/chat/stream/', {
           method: 'POST',
           body: formData,
         })
@@ -360,7 +360,7 @@ function createHomePage() {
     async init() {
       // Check chat service availability
       try {
-        const response = await fetch('/chat/status/')
+        const response = await fetch('/api/chat/status/')
         if (response.ok) {
           const status = await response.json()
           this.chatAvailable = status.available
@@ -481,7 +481,7 @@ function createHomePage() {
         formData.append('file', this.selectedFile)
         formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
 
-        const response = await fetch('/chat/upload/', {
+        const response = await fetch('/api/chat/upload/', {
           method: 'POST',
           body: formData,
         })
@@ -684,7 +684,7 @@ function createHomePage() {
         formData.append('messages', JSON.stringify(this.messages))
         formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
 
-        const response = await fetch('/chat/summarize/', {
+        const response = await fetch('/api/chat/summarize/', {
           method: 'POST',
           body: formData,
         })

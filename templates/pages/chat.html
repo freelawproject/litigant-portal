@@ -2,49 +2,311 @@
 
 {% load cotton %}
 
+{% block body_class %}
+
+  h-dvh flex flex-col bg-greyscale-25 overflow-hidden
+{% endblock body_class %}
+
 {% block title %}
 
-  Chat - Litigant Portal
+  Litigant Portal - Free Legal Help
 {% endblock title %}
 
 {% block content %}
 
-  <main class="flex-1">
-    {# Page Header #}
-    <div class="bg-greyscale-50 border-b border-greyscale-200">
-      <div class="container-desktop py-6">
-        <h1 class="text-display-xs md:text-display-sm font-cooper font-semibold text-greyscale-900 mb-2">Legal Help Chat</h1>
-        <p class="text-md text-greyscale-600">
-          Ask questions about legal procedures, court processes, and document preparation.
-        </p>
+  <div x-data="homePage"
+       x-init="agentName = '{{ agent_name|default:'' }}'"
+       class="home-container"
+       x-bind:class="{ 'chat-mode': messages.length > 0 }">
+    {# Hidden file input for PDF upload #}
+    <input type="file"
+           x-ref="fileInput"
+           x-on:change="handleFileSelect($event)"
+           accept=".pdf,application/pdf"
+           class="hidden"
+           aria-label="Upload PDF document" />
+    {# Chat service unavailable warning #}
+    <div x-show="showUnavailableWarning"
+         x-cloak
+         class="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-full mx-4">
+      <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 shadow-lg">
+        <div class="flex items-start gap-3">
+          <c-atoms.icon name="exclamation-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div class="flex-1">
+            <p class="text-sm font-medium text-amber-800">Chat service unavailable</p>
+            <p class="text-sm text-amber-700 mt-1">The AI chat service is temporarily unavailable. Please try again later.</p>
+          </div>
+          <c-atoms.button type="button" variant="ghost" class="!p-0 text-amber-600 hover:text-amber-800" x-on:click="dismissWarning()">
+          <c-atoms.icon name="x-mark" class="w-5 h-5" />
+          </c-atoms.button>
+        </div>
       </div>
     </div>
-    {# Chat Interface #}
-    <div class="container-desktop py-8">
-      <div class="max-w-3xl mx-auto">
-        <c-organisms.chat-window session_id="{{ session_id }}" chat_enabled="{{ chat_enabled }}" />
-        {# Disclaimer #}
-        <div class="mt-6 p-4 bg-greyscale-50 rounded-lg border border-greyscale-200">
-          <div class="flex gap-3">
-            <c-atoms.icon name="information-circle" class="w-5 h-5 text-greyscale-500 flex-shrink-0 mt-0.5" />
-            <div class="text-sm text-greyscale-600">
-              <p class="font-medium text-greyscale-700 mb-1">Important Notice</p>
-              <p>
-                This AI assistant provides general legal information, not legal advice.
-                For specific legal matters, please consult with a licensed attorney.
-                Your conversations may be used to improve our services.
-              </p>
+    {# Case Sidebar - logged-in users only, LEFT side, desktop #}
+    {% if user.is_authenticated %}
+      <div class="hidden lg:block w-80 flex-shrink-0 border-r border-greyscale-200 overflow-y-auto">
+        <c-organisms.case-sidebar class="h-full">
+        {# Empty state - no case info #}
+        <div x-show="!caseInfo" class="text-center py-8 px-4">
+          <c-atoms.icon name="folder-open" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
+          <p class="text-sm font-medium text-greyscale-600 mb-2">No active case</p>
+          <p class="text-xs text-greyscale-500">
+            Upload a legal document to get started. We'll track your case details, deadlines, and action items here.
+          </p>
+        </div>
+        {# Case info display #}
+        <div x-show="caseInfo" x-cloak class="p-4 space-y-4">
+          {# Case type header #}
+          <div class="border-b border-greyscale-200 pb-3">
+            <h3 class="text-sm font-semibold text-greyscale-900"
+                x-text="caseInfo?.case_type || 'Your Case'"></h3>
+            <p class="text-xs text-greyscale-500 mt-1"
+               x-show="caseInfo?.court_info?.case_number"
+               x-text="'Case #' + caseInfo?.court_info?.case_number"></p>
+          </div>
+          {# Court info #}
+          <div x-show="caseInfo?.court_info?.court_name || caseInfo?.court_info?.county"
+               class="space-y-1">
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Court</h4>
+            <p class="text-sm text-greyscale-700"
+               x-text="caseInfo?.court_info?.court_name"></p>
+            <p x-show="caseInfo?.court_info?.county"
+               class="text-xs text-greyscale-500"
+               x-text="caseInfo?.court_info?.county"></p>
+            <p x-show="caseInfo?.court_info?.address"
+               class="text-xs text-greyscale-600"
+               x-text="caseInfo?.court_info?.address"></p>
+            <p x-show="caseInfo?.court_info?.phone"
+               class="text-xs text-greyscale-600">
+              <a x-bind:href="'tel:' + caseInfo?.court_info?.phone"
+                 class="text-primary-600 hover:underline"
+                 x-text="caseInfo?.court_info?.phone"></a>
+            </p>
+            <p x-show="caseInfo?.court_info?.email"
+               class="text-xs text-greyscale-600">
+              <a x-bind:href="'mailto:' + caseInfo?.court_info?.email"
+                 class="text-primary-600 hover:underline"
+                 x-text="caseInfo?.court_info?.email"></a>
+            </p>
+          </div>
+          {# Opposing Party #}
+          <div x-show="caseInfo?.parties?.opposing_party" class="space-y-1">
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Opposing Party</h4>
+            <p class="text-sm text-greyscale-700"
+               x-text="caseInfo?.parties?.opposing_party"></p>
+            <p x-show="caseInfo?.parties?.opposing_address"
+               class="text-xs text-greyscale-600"
+               x-text="caseInfo?.parties?.opposing_address"></p>
+            <p x-show="caseInfo?.parties?.opposing_phone"
+               class="text-xs text-greyscale-600">
+              <a x-bind:href="'tel:' + caseInfo?.parties?.opposing_phone"
+                 class="text-primary-600 hover:underline"
+                 x-text="caseInfo?.parties?.opposing_phone"></a>
+            </p>
+            <p x-show="caseInfo?.parties?.opposing_email"
+               class="text-xs text-greyscale-600">
+              <a x-bind:href="'mailto:' + caseInfo?.parties?.opposing_email"
+                 class="text-primary-600 hover:underline"
+                 x-text="caseInfo?.parties?.opposing_email"></a>
+            </p>
+            <p x-show="caseInfo?.parties?.opposing_website"
+               class="text-xs text-greyscale-600">
+              <a x-bind:href="caseInfo?.parties?.opposing_website"
+                 target="_blank"
+                 rel="noopener"
+                 class="text-primary-600 hover:underline"
+                 x-text="caseInfo?.parties?.opposing_website"></a>
+            </p>
+          </div>
+          {# Attorney (if represented) #}
+          <div x-show="caseInfo?.parties?.attorney_name" class="space-y-1">
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Their Attorney</h4>
+            <p class="text-sm text-greyscale-700"
+               x-text="caseInfo?.parties?.attorney_name"></p>
+            <p x-show="caseInfo?.parties?.attorney_phone"
+               class="text-xs text-greyscale-600">
+              <a x-bind:href="'tel:' + caseInfo?.parties?.attorney_phone"
+                 class="text-primary-600 hover:underline"
+                 x-text="caseInfo?.parties?.attorney_phone"></a>
+            </p>
+            <p x-show="caseInfo?.parties?.attorney_email"
+               class="text-xs text-greyscale-600">
+              <a x-bind:href="'mailto:' + caseInfo?.parties?.attorney_email"
+                 class="text-primary-600 hover:underline"
+                 x-text="caseInfo?.parties?.attorney_email"></a>
+            </p>
+          </div>
+          {# Key deadlines #}
+          <template x-if="caseInfo?.key_dates?.filter(d => d.is_deadline).length > 0">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Deadlines</h4>
+              <template x-for="deadline in caseInfo.key_dates.filter(d => d.is_deadline)"
+                        :key="deadline.label">
+                <div class="flex items-start gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
+                  <c-atoms.icon name="exclamation-circle" class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
+                    <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          {# Other dates #}
+          <template x-if="caseInfo?.key_dates?.filter(d => !d.is_deadline).length > 0">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Other Dates</h4>
+              <template x-for="date in caseInfo.key_dates.filter(d => !d.is_deadline)"
+                        :key="date.label">
+                <div class="flex items-start gap-2">
+                  <c-atoms.icon name="calendar" class="w-4 h-4 text-greyscale-400 flex-shrink-0 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-sm text-greyscale-700" x-text="date.date"></p>
+                    <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          {# Clear case button #}
+          <div class="pt-3 border-t border-greyscale-200">
+            <c-atoms.button type="button" variant="ghost" class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700" x-on:click="clearCaseInfo()">Clear case info</c-atoms.button>
+          </div>
+        </div>
+        </c-organisms.case-sidebar>
+      </div>
+    {% endif %}
+    {# Main Content Area - centered #}
+    <div class="flex-1 min-w-0 flex flex-col">
+      {# Hero Section - shows when no messages #}
+      <section class="hero flex-1" x-show="messages.length === 0" x-cloak>
+        <div class="hero-content">
+          <h1 class="hero-heading">How can we help you today?</h1>
+          <p class="hero-subheading">Free legal help for self-represented litigants</p>
+          <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
+            {% csrf_token %}
+            <c-atoms.button type="button" variant="outline" size="icon-xl" aria_label="Upload PDF document" x-on:click="triggerFileInput()" x-bind:disabled="isUploading" title="Upload a legal document (PDF)">
+            <template x-if="!isUploading">
+              <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
+            </template>
+            <template x-if="isUploading">
+              <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
+            </template>
+            </c-atoms.button>
+            <div class="search-input-wrapper">
+              <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
+              <input type="search"
+                     x-model="inputText"
+                     name="q"
+                     placeholder="What do you need help with?"
+                     class="search-input"
+                     aria-label="Search or ask a question" />
+            </div>
+            <c-atoms.button type="submit" variant="primary" size="xl" aria_label="Ask" x-bind:disabled="isStreaming">
+            <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
+            <span class="hidden sm:inline">Ask</span>
+            </c-atoms.button>
+          </form>
+        </div>
+      </section>
+      {# Chat Mode - shows when messages exist #}
+      <div class="chat-area flex-1 flex flex-col min-h-0"
+           x-show="messages.length > 0"
+           x-cloak>
+        {# Chat Header #}
+        <div class="chat-header">
+          <h1 class="text-lg font-semibold text-greyscale-900">How can we help you today?</h1>
+          <c-atoms.button type="button" variant="ghost" class="!p-0 text-sm text-greyscale-500 hover:text-greyscale-700" x-on:click="clearChat()">New conversation</c-atoms.button>
+        </div>
+        {# Chat Messages - scrollable area #}
+        <div class="chat-messages-area" x-ref="messagesArea">
+          <div class="max-w-3xl mx-auto">
+            <template x-for="msg in messages" :key="msg.id">
+              <div class="chat-message"
+                   x-bind:class="'chat-message-' + msg.role"
+                   x-show="msg.content">
+                <div class="chat-message-avatar">
+                  <template x-if="msg.role === 'user'">
+                    <c-atoms.icon name="user-circle" class="w-8 h-8 text-greyscale-400" />
+                  </template>
+                  <template x-if="msg.role === 'assistant'">
+                    <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+                  </template>
+                </div>
+                <div class="chat-message-content">
+                  <div class="chat-bubble"
+                       x-bind:class="msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'"
+                       x-html="msg.role === 'assistant' ? renderMarkdown(msg.content) : escapeHtml(msg.content)"></div>
+                </div>
+              </div>
+            </template>
+            {# Typing indicator #}
+            <div x-show="isStreaming"
+                 x-cloak
+                 class="chat-message chat-message-assistant">
+              <div class="chat-message-avatar">
+                <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+              </div>
+              <div class="chat-message-content">
+                <c-atoms.typing-indicator />
+              </div>
+            </div>
+            {# Confirmation buttons for extraction #}
+            <div x-show="showConfirmation"
+                 x-cloak
+                 class="chat-message chat-message-assistant">
+              <div class="chat-message-avatar">
+                <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+              </div>
+              <div class="chat-message-content">
+                <div class="flex flex-wrap gap-2">
+                  <c-atoms.button type="button" variant="primary" x-on:click="confirmExtraction()">
+                  <c-atoms.icon name="check" class="w-4 h-4" />
+                  Looks correct
+                  </c-atoms.button>
+                  <c-atoms.button type="button" variant="outline" x-on:click="requestClarification()">
+                  <c-atoms.icon name="pencil" class="w-4 h-4" />
+                  Let me clarify
+                  </c-atoms.button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        {# Fallback Search Option #}
-        <div class="mt-4 text-center">
-          <p class="text-sm text-greyscale-500">
-            Prefer to search our knowledge base?
-            <a href="{% url 'chat:search' %}" class="link link-primary">Use keyword search</a>
-          </p>
+        {# Chat Input - fixed at bottom #}
+        <div class="chat-input-area">
+          <form x-on:submit.prevent="askQuestion"
+                class="chat-input-form"
+                role="search">
+            {% csrf_token %}
+            <c-atoms.button type="button" variant="outline" size="icon" aria_label="Upload PDF document" x-on:click="triggerFileInput()" x-bind:disabled="isUploading" title="Upload a legal document (PDF)">
+            <template x-if="!isUploading">
+              <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
+            </template>
+            <template x-if="isUploading">
+              <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
+            </template>
+            </c-atoms.button>
+            <div class="search-input-wrapper">
+              <input type="text"
+                     x-model="inputText"
+                     name="q"
+                     placeholder="Ask a follow-up question..."
+                     class="chat-input"
+                     aria-label="Ask a follow-up question" />
+            </div>
+            <c-atoms.button type="submit" variant="primary" size="lg" aria_label="Send" x-bind:disabled="isStreaming">
+            <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
+            </c-atoms.button>
+          </form>
         </div>
       </div>
     </div>
-  </main>
+    {# Spacer to balance sidebar and keep chat centered - logged-in users only #}
+    {% if user.is_authenticated %}<div class="hidden lg:block w-80 flex-shrink-0"></div>{% endif %}
+  </div>
 {% endblock content %}
+
+{% block footer %}
+
+{% endblock footer %}

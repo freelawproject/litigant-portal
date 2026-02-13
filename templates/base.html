@@ -24,7 +24,9 @@
         {% endblock extra_css %}
 
       </head>
-      <body class="h-dvh flex flex-col bg-greyscale-25 overflow-hidden">
+      <body class="{% block body_class %}
+         h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
+         ">
         {% block header %}
 
           <c-organisms.header />
@@ -35,6 +37,7 @@
           {% block content %}
 
           {% endblock content %}
+
         </main>
         {% block footer %}
 
