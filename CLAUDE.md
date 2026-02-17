@@ -20,18 +20,18 @@ Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker e
 
 | Environment | Chat Provider | Config Source                              |
 | ----------- | ------------- | ------------------------------------------ |
-| Local dev   | Groq          | docker-compose.yml + `.env` (secrets only) |
+| Local dev   | OpenAI        | docker-compose.yml + `.env` (secrets only) |
 | CI/CD       | None (mocked) | tox.ini - tests mock all providers         |
-| QA (Fly.io) | Groq          | fly.toml + `fly secrets`                   |
+| QA (Fly.io) | OpenAI        | fly.toml + `fly secrets`                   |
 
 **Local dev setup:**
 
 ```bash
-cp .env.example .env        # Add your GROQ_API_KEY
+cp .env.example .env        # Add your OPENAI_API_KEY
 make docker-dev             # Start dev environment
 ```
 
-Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `groq/llama-3.3-70b-versatile`).
+Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `openai/gpt-4o-mini`).
 
 ## Commands
 
@@ -42,7 +42,7 @@ Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `groq/
 ### Local Development (Docker)
 
 ```sh
-cp .env.example .env        # Add your GROQ_API_KEY
+cp .env.example .env        # Add your OPENAI_API_KEY
 make docker-dev             # Start dev environment
 make docker-shell           # Shell into container
 make docker-down            # Stop containers
@@ -282,7 +282,7 @@ chat/
 
 ### LLM Provider
 
-Using **LiteLLM** with Groq (free tier) for dev and QA. Model configured via `CHAT_MODEL` env var (default: `groq/llama-3.3-70b-versatile`). To switch providers, change the env var (e.g. `openai/gpt-4o-mini`).
+Using **LiteLLM** with OpenAI for dev and QA. Model configured via `CHAT_MODEL` env var (default: `openai/gpt-4o-mini`). To switch providers, change the env var (e.g. `groq/llama-3.3-70b-versatile`).
 
 ### Chat Endpoints
 
@@ -325,11 +325,11 @@ SECRET_KEY=dev .venv/bin/python manage.py migrate
 
 All frontend assets are local files, not CDN. Update these in sync when upgrading:
 
-| Tool         | Version                 | Location                                         |
-| ------------ | ----------------------- | ------------------------------------------------ |
-| Tailwind CSS | v4.1.16 (CLI)           | `Dockerfile`                                     |
-| Alpine.js    | 3.14.9 (standard)       | `static/js/alpine.js`, `static/js/alpine.min.js` |
-| Chat model   | groq/llama-3.3-70b-versatile | `CHAT_MODEL` env var (docker-compose, fly.toml)  |
+| Tool         | Version            | Location                                         |
+| ------------ | ------------------ | ------------------------------------------------ |
+| Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                     |
+| Alpine.js    | 3.14.9 (standard)  | `static/js/alpine.js`, `static/js/alpine.min.js` |
+| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose, fly.toml)  |
 
 **Updating Alpine.js:**
 
@@ -369,10 +369,10 @@ fly ssh console         # SSH into container
 
 Set via `fly secrets set KEY=value`:
 
-| Variable       | Description              |
-| -------------- | ------------------------ |
-| `SECRET_KEY`   | Django secret key        |
-| `GROQ_API_KEY` | Groq API key for AI chat |
+| Variable         | Description                |
+| ---------------- | -------------------------- |
+| `SECRET_KEY`     | Django secret key          |
+| `OPENAI_API_KEY` | OpenAI API key for AI chat |
 
 Non-secret env vars (`DATABASE_URL`, `CHAT_MODEL`, etc.) configured in `fly.toml` under `[env]`.
 

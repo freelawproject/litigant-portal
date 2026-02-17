@@ -21,10 +21,10 @@ services:
       - DEBUG=true
       - SECRET_KEY=${SECRET_KEY:-auto}
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
-      # AI Chat configuration (Groq cloud LLM)
+      # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_MODEL=groq/llama-3.3-70b-versatile
-      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CHAT_MODEL=openai/gpt-4o-mini
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - .:/app
     ports:

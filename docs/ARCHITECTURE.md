@@ -192,7 +192,7 @@ docker compose --profile prod up
 
 ## AI Chat
 
-The portal includes an AI chat feature using Groq's API with the Llama 3.3 70B model.
+The portal includes an AI chat feature using LiteLLM with OpenAI (gpt-4o-mini by default).
 
 ### Architecture
 
@@ -205,21 +205,20 @@ User Input → POST /api/chat/send/ → Django creates message
 
 ### Configuration
 
-1. Get an API key from [Groq Console](https://console.groq.com/)
+1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
 2. Add to `.env`:
 
 ```bash
-GROQ_API_KEY=gsk_...                          # Required for chat
+OPENAI_API_KEY=sk-...                         # Required for chat
 CHAT_ENABLED=true                             # Enable/disable chat feature
-CHAT_MODEL=groq/llama-3.3-70b-versatile       # LiteLLM model string
+CHAT_MODEL=openai/gpt-4o-mini                 # LiteLLM model string
 ```
 
-### Why Groq?
+### Why OpenAI via LiteLLM?
 
-- **Fast inference** - Groq's LPU delivers extremely low latency
+- **LiteLLM** - Unified interface for 100+ LLM providers
+- **Easy to swap** - Change `CHAT_MODEL` env var to switch providers (e.g. `groq/llama-3.3-70b-versatile`)
 - **No local setup** - No GPU requirements, works anywhere
-- **Free tier** - Generous free tier for development
-- **OpenAI-compatible API** - Easy to swap providers later
 
 ---
 
@@ -228,6 +227,6 @@ CHAT_MODEL=groq/llama-3.3-70b-versatile       # LiteLLM model string
 - [Django Cotton](https://django-cotton.com/)
 - [AlpineJS](https://alpinejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
-- [Groq](https://groq.com/) - Fast LLM inference API
+- [LiteLLM](https://docs.litellm.ai/) - Unified LLM API interface
 - [WCAG 2.1 Quick Ref](https://www.w3.org/WAI/WCAG21/quickref/)
 - [CourtListener Frontend](https://github.com/freelawproject/courtlistener/wiki/New-Frontend-Architecture)

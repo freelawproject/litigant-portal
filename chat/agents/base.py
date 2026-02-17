@@ -223,7 +223,7 @@ class Agent:
             ]
 
     The model is read from settings.CHAT_MODEL (env var CHAT_MODEL),
-    defaulting to "groq/llama-3.3-70b-versatile".
+    defaulting to "openai/gpt-4o-mini".
     """
 
     default_model: ClassVar[str] = ""  # Set from settings in __init__
@@ -256,9 +256,7 @@ class Agent:
         from django.conf import settings as django_settings
 
         self.session = session
-        self.model = (
-            model or self.default_model or django_settings.CHAT_MODEL
-        )
+        self.model = model or self.default_model or django_settings.CHAT_MODEL
         self.completion_args = {
             **self.default_completion_args,
             **completion_args,

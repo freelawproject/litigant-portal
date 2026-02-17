@@ -257,7 +257,7 @@ if not DEBUG:
 
 # AI Chat configuration
 CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
-CHAT_MODEL = os.environ.get("CHAT_MODEL", "groq/llama-3.3-70b-versatile")
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "openai/gpt-4o-mini")
 DEFAULT_CHAT_AGENT = os.environ.get(
     "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
 )
