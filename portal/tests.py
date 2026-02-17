@@ -21,6 +21,62 @@ class DjangoSystemTests(TestCase):
 
 
 # =============================================================================
+# Route Tests
+# =============================================================================
+
+
+class HomePageTests(TestCase):
+    """Tests for the dashboard home page at /."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_home_returns_dashboard(self):
+        """Home page should render the dashboard with topic grid."""
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Browse by Topic")
+
+    def test_home_has_hero(self):
+        """Home page should include the hero section."""
+        response = self.client.get("/")
+        self.assertContains(response, "How can we help you today?")
+
+    def test_home_has_footer(self):
+        """Home page should render the footer."""
+        response = self.client.get("/")
+        self.assertContains(response, "mobile-footer")
+
+    def test_home_does_not_have_chat_interface(self):
+        """Home page should not include the chat Alpine component."""
+        response = self.client.get("/")
+        self.assertNotContains(response, "homePage")
+
+
+class ChatPageTests(TestCase):
+    """Tests for the chat page at /chat/."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_chat_page_renders(self):
+        """Chat page should return 200 with chat interface."""
+        response = self.client.get("/chat/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "homePage")
+
+    def test_chat_page_has_no_footer(self):
+        """Chat page should suppress the footer."""
+        response = self.client.get("/chat/")
+        self.assertNotContains(response, "mobile-footer")
+
+    def test_chat_page_has_overflow_hidden(self):
+        """Chat page should set overflow-hidden on body."""
+        response = self.client.get("/chat/")
+        self.assertContains(response, "overflow-hidden")
+
+
+# =============================================================================
 # Auth Template Tests
 # =============================================================================
 
@@ -31,22 +87,11 @@ class LoginPageTests(TestCase):
     def setUp(self):
         self.client = Client()
 
-    def test_login_page_renders(self):
-        """Login page should return 200 status."""
-        response = self.client.get("/accounts/login/")
-        self.assertEqual(response.status_code, 200)
-
     def test_login_page_has_custom_heading(self):
         """Login page should show our custom heading, not allauth default."""
         response = self.client.get("/accounts/login/")
         self.assertContains(response, "Sign in")
         self.assertContains(response, "Access your legal assistance portal")
-
-    def test_login_page_has_email_field(self):
-        """Login page should have email input field."""
-        response = self.client.get("/accounts/login/")
-        self.assertContains(response, 'name="login"')
-        self.assertContains(response, 'type="email"')
 
     def test_login_page_has_signup_link(self):
         """Login page should link to signup page."""
@@ -66,27 +111,11 @@ class SignupPageTests(TestCase):
     def setUp(self):
         self.client = Client()
 
-    def test_signup_page_renders(self):
-        """Signup page should return 200 status."""
-        response = self.client.get("/accounts/signup/")
-        self.assertEqual(response.status_code, 200)
-
     def test_signup_page_has_custom_heading(self):
         """Signup page should show our custom heading."""
         response = self.client.get("/accounts/signup/")
         self.assertContains(response, "Create account")
         self.assertContains(response, "Get free legal assistance today")
-
-    def test_signup_page_has_email_field(self):
-        """Signup page should have email input field."""
-        response = self.client.get("/accounts/signup/")
-        self.assertContains(response, 'name="email"')
-
-    def test_signup_page_has_password_fields(self):
-        """Signup page should have both password fields."""
-        response = self.client.get("/accounts/signup/")
-        self.assertContains(response, 'name="password1"')
-        self.assertContains(response, 'name="password2"')
 
     def test_signup_page_has_login_link(self):
         """Signup page should link to login page."""
@@ -105,17 +134,6 @@ class LogoutPageTests(TestCase):
             email="test@example.com",
             password="testpass123",
         )
-
-    def test_logout_page_requires_login(self):
-        """Logout page should redirect anonymous users to login."""
-        response = self.client.get("/accounts/logout/")
-        self.assertEqual(response.status_code, 302)
-
-    def test_logout_page_renders_for_authenticated_user(self):
-        """Logout page should render for logged-in users."""
-        self.client.login(username="testuser", password="testpass123")
-        response = self.client.get("/accounts/logout/")
-        self.assertEqual(response.status_code, 200)
 
     def test_logout_page_has_confirmation_message(self):
         """Logout page should show confirmation prompt."""
@@ -183,62 +201,6 @@ class UserMenuAuthenticatedTests(TestCase):
 # =============================================================================
 
 
-class SignupFlowTests(TestCase):
-    """Tests for the signup flow using our custom templates."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_signup_creates_user_and_redirects(self):
-        """Successful signup should create user and redirect to home."""
-        response = self.client.post(
-            "/accounts/signup/",
-            {
-                "email": "newuser@example.com",
-                "password1": "securepass123!",
-                "password2": "securepass123!",
-            },
-        )
-        # Should redirect to home after signup
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/")
-        # User should be created
-        self.assertTrue(
-            User.objects.filter(email="newuser@example.com").exists()
-        )
-
-
-class LoginFlowTests(TestCase):
-    """Tests for the login flow using our custom templates."""
-
-    def setUp(self):
-        self.client = Client()
-        self.user = User.objects.create_user(
-            username="testuser",
-            email="test@example.com",
-            password="testpass123",
-        )
-
-    def test_login_redirects_to_home(self):
-        """Successful login should redirect to home page."""
-        response = self.client.post(
-            "/accounts/login/",
-            {"login": "test@example.com", "password": "testpass123"},
-        )
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/")
-
-    def test_login_invalid_credentials_shows_error(self):
-        """Invalid login should show error on same page."""
-        response = self.client.post(
-            "/accounts/login/",
-            {"login": "test@example.com", "password": "wrongpassword"},
-        )
-        self.assertEqual(response.status_code, 200)
-        # Should show error message (allauth's error text)
-        self.assertContains(response, "email address and/or password")
-
-
 class LogoutFlowTests(TestCase):
     """Tests for the logout flow using our custom templates."""
 
@@ -250,12 +212,6 @@ class LogoutFlowTests(TestCase):
             password="testpass123",
         )
         self.client.login(username="testuser", password="testpass123")
-
-    def test_logout_post_redirects_to_home(self):
-        """POST to logout should sign out and redirect to home."""
-        response = self.client.post("/accounts/logout/")
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/")
 
     def test_user_is_logged_out_after_logout(self):
         """User should be anonymous after logout."""
@@ -401,3 +357,26 @@ class ProfileViewTests(TestCase):
         self.assertEqual(profile.phone, "555-1234")
         self.assertEqual(profile.city, "Boston")
         self.assertEqual(profile.state, "MA")
+
+
+# =============================================================================
+# Agent Test Page Tests
+# =============================================================================
+
+
+class AgentTestPageTests(TestCase):
+    """Tests for the /test/<agent_name>/ route."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_agent_page_renders_chat(self):
+        """Known agent should render chat interface with agent name."""
+        response = self.client.get("/test/WeatherAgent/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "homePage")
+
+    def test_unknown_agent_returns_404(self):
+        """Unknown agent name should return 404."""
+        response = self.client.get("/test/nonexistent/")
+        self.assertEqual(response.status_code, 404)

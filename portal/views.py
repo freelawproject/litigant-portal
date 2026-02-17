@@ -17,15 +17,20 @@ def health(request):
 
 
 def home(request):
-    """Home page - main app landing page"""
+    """Home page - dashboard with hero and topic grid."""
     return render(request, "pages/home.html")
+
+
+def chat_page(request):
+    """Chat page - AI-powered legal assistance chat interface."""
+    return render(request, "pages/chat.html")
 
 
 def test_agent(request, agent_name):
     """Test page for a specific agent."""
     if agent_name not in agent_registry:
         raise Http404(f"Agent '{agent_name}' not found")
-    return render(request, "pages/home.html", {"agent_name": agent_name})
+    return render(request, "pages/chat.html", {"agent_name": agent_name})
 
 
 def style_guide(request):

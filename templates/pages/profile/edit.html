@@ -1,7 +1,6 @@
 {% extends "base.html" %}
 
 {% load cotton %}
-{% load heroicons %}
 
 {% block title %}
 
@@ -56,8 +55,7 @@
       {# Submit #}
       <div class="flex flex-col sm:flex-row gap-4">
         <c-atoms.button type="submit" variant="primary" size="xl">Save Profile</c-atoms.button>
-        <a href="{% url 'portal:profile' %}"
-           class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-greyscale-700 hover:text-greyscale-900 transition-colors">Cancel</a>
+        <c-atoms.link href="{% url 'portal:profile' %}" variant="unstyled" class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-greyscale-700 hover:text-greyscale-900 transition-colors">Cancel</c-atoms.link>
       </div>
     </form>
   </div>
