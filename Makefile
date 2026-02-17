@@ -47,13 +47,13 @@ lint: ## Lint and format all code (via pre-commit)
 docker-build: ## Build Docker images
 	docker compose build
 
-docker-dev: ## Start dev environment (Django + Tailwind watch + PostgreSQL)
+docker-dev: ## Start dev environment (Django + Tailwind watch + SQLite)
 	docker compose --profile dev up
 
 docker-dev-build: ## Build and start dev environment
 	docker compose --profile dev up --build
 
-docker-prod: ## Start production environment (Gunicorn + PostgreSQL)
+docker-prod: ## Start production environment (Gunicorn + SQLite)
 	docker compose --profile prod up
 
 docker-prod-build: ## Build and start production environment

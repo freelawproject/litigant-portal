@@ -139,7 +139,7 @@ Django renders initial state, Alpine handles client reactivity:
 | `templates/pages/home.html` | Dashboard with hero and topic grid              |
 | `templates/pages/chat.html` | Full-screen chat interface                      |
 | `Dockerfile`                | Multi-stage build (dev + prod)                  |
-| `docker-compose.yml`        | Dev/prod profiles with Docker secrets           |
+| `docker-compose.yml`        | Dev/prod profiles with SQLite                   |
 | `docker-entrypoint.sh`      | Container startup commands                      |
 
 ---
@@ -156,35 +156,36 @@ docker compose --profile dev up
 
 - Mounts source code for hot reload
 - Tailwind CSS watch mode
-- PostgreSQL with default credentials
+- SQLite (file-based, zero config)
 - Auto-generates `SECRET_KEY`
 
 ### Production
 
 ```bash
-# Create secrets (see secrets/README.md)
+# Create secret key (see secrets/README.md)
 docker compose --profile prod up
 # or: make docker-prod
 ```
 
 - Gunicorn WSGI server
-- Docker secrets for credentials
+- SQLite with WAL mode + IMMEDIATE transactions
+- Docker secrets for Django secret key
 - Pre-built CSS (minified)
 - Non-root container user
 
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│ docker-compose.yml                          │
-├─────────────────────────────────────────────┤
-│ Profile: dev          Profile: prod         │
-│ ┌───────────┐ ┌────┐  ┌───────────┐ ┌────┐  │
-│ │django-dev │ │db- │  │django-prod│ │db- │  │
-│ │ runserver │ │dev │  │ gunicorn  │ │prod│  │
-│ │ + tailwind│ │    │  │           │ │    │  │
-│ └───────────┘ └────┘  └───────────┘ └────┘  │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│ docker-compose.yml                       │
+├──────────────────────────────────────────┤
+│ Profile: dev          Profile: prod      │
+│ ┌───────────┐         ┌───────────┐      │
+│ │django-dev │         │django-prod│      │
+│ │ runserver │         │ gunicorn  │      │
+│ │ + tailwind│         │ + SQLite  │      │
+│ └───────────┘         └───────────┘      │
+└──────────────────────────────────────────┘
 ```
 
 ---
@@ -208,10 +209,9 @@ User Input → POST /api/chat/send/ → Django creates message
 2. Add to `.env`:
 
 ```bash
-GROQ_API_KEY=gsk_...        # Required for chat
-CHAT_ENABLED=true           # Enable/disable chat feature
-CHAT_PROVIDER=groq          # Provider (default: groq)
-CHAT_MODEL=llama-3.3-70b-versatile  # Model to use
+GROQ_API_KEY=gsk_...                          # Required for chat
+CHAT_ENABLED=true                             # Enable/disable chat feature
+CHAT_MODEL=groq/llama-3.3-70b-versatile       # LiteLLM model string
 ```
 
 ### Why Groq?
