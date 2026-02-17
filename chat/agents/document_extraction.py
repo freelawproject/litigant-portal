@@ -116,7 +116,6 @@ class CourtDocumentData(BaseModel):
 class DocumentExtractionAgent(Agent):
     """An agent that extracts structured case data from legal documents."""
 
-    default_model = "groq/llama-3.3-70b-versatile"
     default_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     default_completion_args = {
         "max_tokens": 2048,

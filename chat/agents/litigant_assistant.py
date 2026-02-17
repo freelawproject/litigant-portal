@@ -24,5 +24,4 @@ and clear paragraph breaks. Keep responses concise and well-structured."""
 class LitigantAssistantAgent(Agent):
     """Main agent for the litigant portal assistant."""
 
-    default_model = "groq/llama-3.3-70b-versatile"
     default_messages = [{"role": "system", "content": SYSTEM_PROMPT}]

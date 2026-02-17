@@ -217,14 +217,16 @@ class Agent:
 
     Example:
         class LegalAssistant(Agent):
-            default_model = "groq/llama-3.3-70b-versatile"
             default_tools = [SearchDocuments, GetCourtInfo]
             default_messages = [
                 {"role": "system", "content": "You are a helpful legal assistant..."}
             ]
+
+    The model is read from settings.CHAT_MODEL (env var CHAT_MODEL),
+    defaulting to "groq/llama-3.3-70b-versatile".
     """
 
-    default_model: ClassVar[str] = "groq/llama-3.3-70b-versatile"
+    default_model: ClassVar[str] = ""  # Set from settings in __init__
     default_tools: ClassVar[list[type[Tool]]] = []
     default_max_steps: ClassVar[int] = 30
     default_messages: ClassVar[list[Message]] = []
@@ -243,7 +245,7 @@ class Agent:
         """Initialize the agent.
 
         Args:
-            model: LiteLLM model string (e.g., "groq/llama-3.3-70b-versatile").
+            model: LiteLLM model string. Defaults to settings.CHAT_MODEL.
             tools: List of Tool classes available to the agent.
             messages: Initial message history (dicts matching Message schema).
             state: Initial state dictionary for tool data storage.
@@ -251,8 +253,12 @@ class Agent:
             session: ChatSession object to associate with the agent.
             **completion_args: Additional args passed to litellm.completion().
         """
+        from django.conf import settings as django_settings
+
         self.session = session
-        self.model = model or self.default_model
+        self.model = (
+            model or self.default_model or django_settings.CHAT_MODEL
+        )
         self.completion_args = {
             **self.default_completion_args,
             **completion_args,
