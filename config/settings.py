@@ -64,7 +64,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "django.contrib.postgres",
     # Third-party apps
     "allauth",
     "allauth.account",
@@ -127,6 +126,12 @@ DATABASES = {
         conn_health_checks=True,
     )
 }
+
+# SQLite: use IMMEDIATE transactions to prevent "database is locked" under Gunicorn
+if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
+    DATABASES["default"]["OPTIONS"] = {
+        "transaction_mode": "IMMEDIATE",
+    }
 
 
 # Password validation
@@ -252,6 +257,7 @@ if not DEBUG:
 
 # AI Chat configuration
 CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "groq/llama-3.3-70b-versatile")
 DEFAULT_CHAT_AGENT = os.environ.get(
     "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
 )

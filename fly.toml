@@ -18,8 +18,8 @@ console_command = '/app/manage.py shell'
 [env]
   DEBUG = 'false'
   PORT = '8000'
-  CHAT_PROVIDER = 'groq'
-  CHAT_MODEL = 'llama-3.3-70b-versatile'
+  DATABASE_URL = 'sqlite:////data/db.sqlite3'
+  CHAT_MODEL = 'groq/llama-3.3-70b-versatile'
 
 [http_service]
   internal_port = 8000
@@ -43,6 +43,10 @@ console_command = '/app/manage.py shell'
     grace_period = '30s'
     method = 'GET'
     path = '/health/'
+
+[[mounts]]
+  source = 'litigant_data'
+  destination = '/data'
 
 [[vm]]
   cpu_kind = 'shared'

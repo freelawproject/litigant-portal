@@ -15,47 +15,20 @@ elif [ -n "$SECRET_KEY_FILE" ] && [ -f "$SECRET_KEY_FILE" ]; then
     export SECRET_KEY=$(cat "$SECRET_KEY_FILE")
 fi
 
-# Build DATABASE_URL from individual vars + secret file (for prod)
-if [ -z "$DATABASE_URL" ] && [ -n "$POSTGRES_HOST" ]; then
-    POSTGRES_PASSWORD_VALUE="$POSTGRES_PASSWORD"
-    if [ -n "$POSTGRES_PASSWORD_FILE" ] && [ -f "$POSTGRES_PASSWORD_FILE" ]; then
-        POSTGRES_PASSWORD_VALUE=$(cat "$POSTGRES_PASSWORD_FILE")
+enable_wal() {
+    # Enable WAL mode for SQLite (better concurrency under Gunicorn)
+    if echo "$DATABASE_URL" | grep -q "sqlite"; then
+        python -c "
+import dj_database_url, sqlite3, os
+db = dj_database_url.config(default=os.environ.get('DATABASE_URL', ''))
+path = db.get('NAME', '')
+if path:
+    conn = sqlite3.connect(path)
+    conn.execute('PRAGMA journal_mode=WAL;')
+    conn.close()
+    print(f'SQLite WAL mode enabled: {path}')
+"
     fi
-    export DATABASE_URL="postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD_VALUE}@${POSTGRES_HOST}:5432/${POSTGRES_DB}"
-fi
-
-wait_for_db() {
-    if [ -z "$DATABASE_URL" ]; then
-        return 0
-    fi
-    echo "Waiting for database..."
-    python << 'EOF'
-import os
-import sys
-import time
-from urllib.parse import urlparse
-
-url = urlparse(os.environ.get("DATABASE_URL", ""))
-if url.scheme.startswith("postgres"):
-    import psycopg
-    for i in range(30):
-        try:
-            conn = psycopg.connect(
-                host=url.hostname,
-                port=url.port or 5432,
-                user=url.username,
-                password=url.password,
-                dbname=url.path[1:],
-            )
-            conn.close()
-            print("Database is ready!")
-            sys.exit(0)
-        except psycopg.OperationalError:
-            print(f"Database not ready, waiting... ({i+1}/30)")
-            time.sleep(2)
-    print("Database connection timeout")
-    sys.exit(1)
-EOF
 }
 
 run_migrations() {
@@ -74,7 +47,6 @@ case "$1" in
         # Start Tailwind watch in background
         tailwindcss -i src/css/main.css -o static/css/main.built.css --watch &
 
-        wait_for_db
         run_migrations
 
         exec python manage.py runserver 0.0.0.0:8000
@@ -82,8 +54,7 @@ case "$1" in
 
     web-prod)
         echo "Starting production server..."
-        wait_for_db
-        # Migrations handled by fly.toml release_command (or run separately)
+        enable_wal
         run_collectstatic
 
         exec gunicorn config.wsgi:application \
@@ -97,7 +68,6 @@ case "$1" in
         ;;
 
     migrate)
-        wait_for_db
         run_migrations
         ;;
 

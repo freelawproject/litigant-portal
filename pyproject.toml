@@ -42,7 +42,6 @@ dependencies = [
     "django-pydantic-field>=0.5.1",
     "gunicorn>=23.0",
     "heroicons>=2.0",
-    "psycopg[binary]>=3.2",
     # AI Chat
     "litellm>=1.50",
     "pydantic>=2.0",

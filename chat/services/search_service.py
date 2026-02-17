@@ -17,10 +17,7 @@ class KeywordSearchService:
         limit: int = 10,
     ) -> QuerySet[Document]:
         """
-        Search documents using best available method.
-
-        Uses PostgreSQL full-text search if available, otherwise
-        falls back to simple icontains search for SQLite.
+        Search documents using keyword matching (icontains).
 
         Args:
             query: The search query string.
