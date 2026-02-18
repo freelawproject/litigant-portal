@@ -1,6 +1,6 @@
 {% load static %}
 
-<c-vars sticky="true" />
+<c-vars sticky="" />
 <header x-data="{ menuOpen: false, timeline: [] }"
         x-effect="if (menuOpen) timeline = JSON.parse(localStorage.getItem('caseTimeline') || '[]')"
         class="mobile-header flex-shrink-0 {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"

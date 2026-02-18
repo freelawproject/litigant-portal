@@ -364,6 +364,122 @@ class ProfileViewTests(TestCase):
 # =============================================================================
 
 
+class AboutPageTests(TestCase):
+    """Tests for the about page at /about/."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_about_returns_200(self):
+        """About page should return 200."""
+        response = self.client.get("/about/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_about_has_heading(self):
+        """About page should have the page heading."""
+        response = self.client.get("/about/")
+        self.assertContains(response, "<h1", html=False)
+        self.assertContains(response, "About")
+
+    def test_about_has_disclaimers(self):
+        """About page should include legal disclaimers."""
+        response = self.client.get("/about/")
+        self.assertContains(response, "not legal advice")
+
+    def test_about_mentions_flp(self):
+        """About page should mention Free Law Project."""
+        response = self.client.get("/about/")
+        self.assertContains(response, "Free Law Project")
+
+
+class PrivacyPageTests(TestCase):
+    """Tests for the privacy page at /privacy/."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_privacy_returns_200(self):
+        """Privacy page should return 200."""
+        response = self.client.get("/privacy/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_privacy_has_heading(self):
+        """Privacy page should have the page heading."""
+        response = self.client.get("/privacy/")
+        self.assertContains(response, "<h1", html=False)
+        self.assertContains(response, "Privacy")
+
+    def test_privacy_has_data_collection_section(self):
+        """Privacy page should describe what data is collected."""
+        response = self.client.get("/privacy/")
+        self.assertContains(response, "What we collect")
+
+    def test_privacy_has_no_selling_statement(self):
+        """Privacy page should state data is not sold."""
+        response = self.client.get("/privacy/")
+        self.assertContains(response, "never sell your data")
+
+
+class AccessibilityPageTests(TestCase):
+    """Tests for the accessibility page at /accessibility/."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_accessibility_returns_200(self):
+        """Accessibility page should return 200."""
+        response = self.client.get("/accessibility/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_accessibility_has_heading(self):
+        """Accessibility page should have the page heading."""
+        response = self.client.get("/accessibility/")
+        self.assertContains(response, "<h1", html=False)
+        self.assertContains(response, "Accessibility")
+
+    def test_accessibility_mentions_wcag(self):
+        """Accessibility page should reference WCAG."""
+        response = self.client.get("/accessibility/")
+        self.assertContains(response, "WCAG 2.2")
+
+    def test_accessibility_has_contact(self):
+        """Accessibility page should include contact email."""
+        response = self.client.get("/accessibility/")
+        self.assertContains(response, "info@free.law")
+
+
+class FooterLinkTests(TestCase):
+    """Tests for footer links on the home page."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_footer_has_about_link(self):
+        """Footer should link to the about page."""
+        response = self.client.get("/")
+        self.assertContains(response, "/about/")
+
+    def test_footer_has_privacy_link(self):
+        """Footer should link to the privacy page."""
+        response = self.client.get("/")
+        self.assertContains(response, "/privacy/")
+
+    def test_footer_has_accessibility_link(self):
+        """Footer should link to the accessibility page."""
+        response = self.client.get("/")
+        self.assertContains(response, "/accessibility/")
+
+    def test_footer_has_free_law_link(self):
+        """Footer should link to free.law."""
+        response = self.client.get("/")
+        self.assertContains(response, "https://free.law")
+
+
+# =============================================================================
+# Agent Test Page Tests
+# =============================================================================
+
+
 class AgentTestPageTests(TestCase):
     """Tests for the /test/<agent_name>/ route."""
 

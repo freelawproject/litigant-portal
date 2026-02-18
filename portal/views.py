@@ -33,6 +33,21 @@ def test_agent(request, agent_name):
     return render(request, "pages/chat.html", {"agent_name": agent_name})
 
 
+def about(request):
+    """About page - mission, disclaimers, FLP info."""
+    return render(request, "pages/about.html")
+
+
+def privacy(request):
+    """Privacy page - data practices and user rights."""
+    return render(request, "pages/privacy.html")
+
+
+def accessibility(request):
+    """Accessibility page - WCAG conformance and feedback."""
+    return render(request, "pages/accessibility.html")
+
+
 def style_guide(request):
     """Design tokens and component library"""
     return render(request, "pages/style_guide.html")

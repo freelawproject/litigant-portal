@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}
+
+  Accessibility - Litigant Portal
+{% endblock title %}
+
+{% block meta_description %}
+
+  Accessibility statement for the Litigant Portal - our commitment to WCAG 2.2 AA conformance.
+{% endblock meta_description %}
+
+{% block content %}
+
+  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+    <h1 class="text-3xl font-bold text-greyscale-900">Accessibility</h1>
+    <p class="mt-3 text-lg text-greyscale-600">Access to justice is not complete until it is also fully accessible.</p>
+    <div class="mt-8 space-y-8">
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Conformance goal</h2>
+        <p class="mt-2 text-greyscale-700">
+          We target
+          <c-atoms.link href="https://www.w3.org/TR/WCAG22/" target="_blank">WCAG 2.2 Level AA</c-atoms.link>
+          conformance across the entire portal. This is an ongoing effort and we
+          regularly test against these guidelines.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">What we do</h2>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Full keyboard navigation for all interactive elements</li>
+          <li>Visible focus indicators on every focusable element</li>
+          <li>Color contrast ratios of at least 4.5:1 for text</li>
+          <li>Touch targets of at least 44×44 pixels on mobile</li>
+          <li>Semantic HTML and ARIA labels for screen readers</li>
+          <li>Responsive design that works across devices and zoom levels</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Known limitations</h2>
+        <p class="mt-2 text-greyscale-700">
+          AI-generated chat responses may not always have ideal heading structure
+          or reading order. Streaming responses update the page progressively,
+          which may affect screen reader announcements. We are actively working
+          to improve these experiences.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Feedback</h2>
+        <p class="mt-2 text-greyscale-700">
+          If you encounter an accessibility barrier, please let us know at
+          <c-atoms.link href="mailto:info@free.law">info@free.law</c-atoms.link>.
+          We take all feedback seriously and will work to address issues promptly.
+        </p>
+      </section>
+    </div>
+  </div>
+{% endblock content %}

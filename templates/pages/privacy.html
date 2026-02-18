@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}
+
+  Privacy - Litigant Portal
+{% endblock title %}
+
+{% block meta_description %}
+
+  Privacy practices for the Litigant Portal - how we handle your data.
+{% endblock meta_description %}
+
+{% block content %}
+
+  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+    <h1 class="text-3xl font-bold text-greyscale-900">Privacy</h1>
+    <p class="mt-3 text-lg text-greyscale-600">How we handle your data and protect your privacy.</p>
+    <div class="mt-8 space-y-8">
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">What we collect</h2>
+        <p class="mt-2 text-greyscale-700">When you use the portal, we may collect:</p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Chat messages you send to the AI assistant</li>
+          <li>Documents you upload for analysis</li>
+          <li>Account information if you create an account (email, name)</li>
+          <li>Basic usage data to improve the service</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Temporary storage</h2>
+        <p class="mt-2 text-greyscale-700">
+          Chat sessions and uploaded documents are stored on a case-by-case basis
+          and retained only as long as needed to provide the service. We do not
+          build long-term profiles from your interactions.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">No selling or sharing</h2>
+        <p class="mt-2 text-greyscale-700">
+          We never sell your data. Your information is not shared with third parties
+          for marketing or advertising purposes. Data may be shared only when
+          required by law or necessary to operate the service (e.g., sending your
+          messages to the AI provider for processing).
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Your control</h2>
+        <p class="mt-2 text-greyscale-700">
+          You can request deletion of your account and associated data at any time
+          by contacting us. Anonymous chat sessions are not linked to any identity
+          and cannot be retrieved after the session ends.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Framework</h2>
+        <p class="mt-2 text-greyscale-700">
+          Our privacy practices are informed by the
+          <c-atoms.link href="https://www.nist.gov/privacy-framework" target="_blank">NIST Privacy Framework</c-atoms.link>.
+          As a nonprofit, we have no financial incentive to collect or monetize
+          your data.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Contact</h2>
+        <p class="mt-2 text-greyscale-700">
+          Questions about our privacy practices? Reach us at
+          <c-atoms.link href="mailto:info@free.law">info@free.law</c-atoms.link>.
+        </p>
+      </section>
+    </div>
+  </div>
+{% endblock content %}
