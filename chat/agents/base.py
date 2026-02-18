@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypedDict
 from uuid import UUID
@@ -222,11 +223,11 @@ class Agent:
                 {"role": "system", "content": "You are a helpful legal assistant..."}
             ]
 
-    The model is read from settings.CHAT_MODEL (env var CHAT_MODEL),
-    defaulting to "openai/gpt-4o-mini".
+    The model is read from the CHAT_MODEL env var, defaulting to
+    "openai/gpt-4o-mini".
     """
 
-    default_model: ClassVar[str] = ""  # Set from settings in __init__
+    default_model: ClassVar[str] = ""
     default_tools: ClassVar[list[type[Tool]]] = []
     default_max_steps: ClassVar[int] = 30
     default_messages: ClassVar[list[Message]] = []
@@ -245,7 +246,7 @@ class Agent:
         """Initialize the agent.
 
         Args:
-            model: LiteLLM model string. Defaults to settings.CHAT_MODEL.
+            model: LiteLLM model string. Defaults to CHAT_MODEL env var.
             tools: List of Tool classes available to the agent.
             messages: Initial message history (dicts matching Message schema).
             state: Initial state dictionary for tool data storage.
@@ -253,10 +254,12 @@ class Agent:
             session: ChatSession object to associate with the agent.
             **completion_args: Additional args passed to litellm.completion().
         """
-        from django.conf import settings as django_settings
-
         self.session = session
-        self.model = model or self.default_model or django_settings.CHAT_MODEL
+        self.model = (
+            model
+            or self.default_model
+            or os.getenv("CHAT_MODEL", "openai/gpt-4o-mini")
+        )
         self.completion_args = {
             **self.default_completion_args,
             **completion_args,
