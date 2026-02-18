@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypedDict
 from uuid import UUID
@@ -217,14 +218,16 @@ class Agent:
 
     Example:
         class LegalAssistant(Agent):
-            default_model = "groq/llama-3.3-70b-versatile"
             default_tools = [SearchDocuments, GetCourtInfo]
             default_messages = [
                 {"role": "system", "content": "You are a helpful legal assistant..."}
             ]
+
+    The model is read from the CHAT_MODEL env var, defaulting to
+    "openai/gpt-4o-mini".
     """
 
-    default_model: ClassVar[str] = "groq/llama-3.3-70b-versatile"
+    default_model: ClassVar[str] = ""
     default_tools: ClassVar[list[type[Tool]]] = []
     default_max_steps: ClassVar[int] = 30
     default_messages: ClassVar[list[Message]] = []
@@ -243,7 +246,7 @@ class Agent:
         """Initialize the agent.
 
         Args:
-            model: LiteLLM model string (e.g., "groq/llama-3.3-70b-versatile").
+            model: LiteLLM model string. Defaults to CHAT_MODEL env var.
             tools: List of Tool classes available to the agent.
             messages: Initial message history (dicts matching Message schema).
             state: Initial state dictionary for tool data storage.
@@ -252,7 +255,11 @@ class Agent:
             **completion_args: Additional args passed to litellm.completion().
         """
         self.session = session
-        self.model = model or self.default_model
+        self.model = (
+            model
+            or self.default_model
+            or os.getenv("CHAT_MODEL", "openai/gpt-4o-mini")
+        )
         self.completion_args = {
             **self.default_completion_args,
             **completion_args,

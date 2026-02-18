@@ -5,58 +5,9 @@
 #   - Auto-generates SECRET_KEY if not set
 #
 # Production: docker compose --profile prod up
-#   - Uses Docker secrets (more secure)
-#   - Requires: secrets/db_password.txt, secrets/django_secret_key.txt
+#   - Requires: secrets/django_secret_key.txt
 
 services:
-  # ---------------------------------------------------------------------------
-  # Development Database (uses .env file)
-  # ---------------------------------------------------------------------------
-  db-dev:
-    image: postgres:16-alpine
-    profiles: ['dev']
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-litigant_portal}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-litigant_dev}
-      POSTGRES_DB: ${POSTGRES_DB:-litigant_portal}
-    volumes:
-      - postgres_data_dev:/var/lib/postgresql/data
-    healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'pg_isready -U ${POSTGRES_USER:-litigant_portal} -d ${POSTGRES_DB:-litigant_portal}',
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    ports:
-      - '5432:5432'
-
-  # ---------------------------------------------------------------------------
-  # Production Database (uses Docker secrets)
-  # ---------------------------------------------------------------------------
-  db-prod:
-    image: postgres:16-alpine
-    profiles: ['prod']
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-litigant_portal}
-      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
-      POSTGRES_DB: ${POSTGRES_DB:-litigant_portal}
-    secrets:
-      - db_password
-    volumes:
-      - postgres_data_prod:/var/lib/postgresql/data
-    healthcheck:
-      test:
-        [
-          'CMD-SHELL',
-          'pg_isready -U ${POSTGRES_USER:-litigant_portal} -d ${POSTGRES_DB:-litigant_portal}',
-        ]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   # ---------------------------------------------------------------------------
   # Development Django Server
   # ---------------------------------------------------------------------------
@@ -69,28 +20,20 @@ services:
     environment:
       - DEBUG=true
       - SECRET_KEY=${SECRET_KEY:-auto}
-      # SQLite for demo (easy reset: rm db.sqlite3)
-      # For PostgreSQL, uncomment below and use: docker compose --profile dev up
-      # - DATABASE_URL=postgres://${POSTGRES_USER:-litigant_portal}:${POSTGRES_PASSWORD:-litigant_dev}@db-dev:5432/${POSTGRES_DB:-litigant_portal}
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
-      # AI Chat configuration (Groq cloud LLM)
+      # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_PROVIDER=groq
-      - CHAT_MODEL=llama-3.3-70b-versatile
-      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CHAT_MODEL=openai/gpt-4o-mini
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - .:/app
     ports:
       - '8000:8000'
-    # Uncomment for PostgreSQL:
-    # depends_on:
-    #   db-dev:
-    #     condition: service_healthy
     stdin_open: true
     tty: true
 
   # ---------------------------------------------------------------------------
-  # Production Django Server (uses Docker secrets)
+  # Production Django Server
   # ---------------------------------------------------------------------------
   django-prod:
     build:
@@ -101,31 +44,23 @@ services:
     environment:
       - DEBUG=false
       - SECRET_KEY_FILE=/run/secrets/django_secret_key
-      - POSTGRES_USER=${POSTGRES_USER:-litigant_portal}
-      - POSTGRES_DB=${POSTGRES_DB:-litigant_portal}
-      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
-      - POSTGRES_HOST=db-prod
+      - DATABASE_URL=sqlite:////data/db.sqlite3
       - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
     secrets:
       - django_secret_key
-      - db_password
+    volumes:
+      - sqlite_data:/data
     ports:
       - '8000:8000'
-    depends_on:
-      db-prod:
-        condition: service_healthy
 
 # ---------------------------------------------------------------------------
 # Secrets (create these files locally, never commit them)
 # ---------------------------------------------------------------------------
 secrets:
-  db_password:
-    file: ./secrets/db_password.txt
   django_secret_key:
     file: ./secrets/django_secret_key.txt
 
 volumes:
-  postgres_data_dev:
-  postgres_data_prod:
+  sqlite_data:

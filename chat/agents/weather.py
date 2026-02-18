@@ -31,7 +31,6 @@ class WeatherAgent(Agent):
     This is a test agent to verify the agent framework is working correctly.
     """
 
-    default_model = "groq/llama-3.3-70b-versatile"
     default_tools = [WeatherTool]
     default_messages = [
         {

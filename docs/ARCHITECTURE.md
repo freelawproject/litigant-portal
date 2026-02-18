@@ -139,7 +139,7 @@ Django renders initial state, Alpine handles client reactivity:
 | `templates/pages/home.html` | Dashboard with hero and topic grid              |
 | `templates/pages/chat.html` | Full-screen chat interface                      |
 | `Dockerfile`                | Multi-stage build (dev + prod)                  |
-| `docker-compose.yml`        | Dev/prod profiles with Docker secrets           |
+| `docker-compose.yml`        | Dev/prod profiles with SQLite                   |
 | `docker-entrypoint.sh`      | Container startup commands                      |
 
 ---
@@ -156,42 +156,43 @@ docker compose --profile dev up
 
 - Mounts source code for hot reload
 - Tailwind CSS watch mode
-- PostgreSQL with default credentials
+- SQLite (file-based, zero config)
 - Auto-generates `SECRET_KEY`
 
 ### Production
 
 ```bash
-# Create secrets (see secrets/README.md)
+# Create secret key (see secrets/README.md)
 docker compose --profile prod up
 # or: make docker-prod
 ```
 
 - Gunicorn WSGI server
-- Docker secrets for credentials
+- SQLite with WAL mode + IMMEDIATE transactions
+- Docker secrets for Django secret key
 - Pre-built CSS (minified)
 - Non-root container user
 
 ### Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│ docker-compose.yml                          │
-├─────────────────────────────────────────────┤
-│ Profile: dev          Profile: prod         │
-│ ┌───────────┐ ┌────┐  ┌───────────┐ ┌────┐  │
-│ │django-dev │ │db- │  │django-prod│ │db- │  │
-│ │ runserver │ │dev │  │ gunicorn  │ │prod│  │
-│ │ + tailwind│ │    │  │           │ │    │  │
-│ └───────────┘ └────┘  └───────────┘ └────┘  │
-└─────────────────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│ docker-compose.yml                       │
+├──────────────────────────────────────────┤
+│ Profile: dev          Profile: prod      │
+│ ┌───────────┐         ┌───────────┐      │
+│ │django-dev │         │django-prod│      │
+│ │ runserver │         │ gunicorn  │      │
+│ │ + tailwind│         │ + SQLite  │      │
+│ └───────────┘         └───────────┘      │
+└──────────────────────────────────────────┘
 ```
 
 ---
 
 ## AI Chat
 
-The portal includes an AI chat feature using Groq's API with the Llama 3.3 70B model.
+The portal includes an AI chat feature using LiteLLM with OpenAI (gpt-4o-mini by default).
 
 ### Architecture
 
@@ -204,22 +205,20 @@ User Input → POST /api/chat/send/ → Django creates message
 
 ### Configuration
 
-1. Get an API key from [Groq Console](https://console.groq.com/)
+1. Get an API key from [OpenAI](https://platform.openai.com/api-keys)
 2. Add to `.env`:
 
 ```bash
-GROQ_API_KEY=gsk_...        # Required for chat
-CHAT_ENABLED=true           # Enable/disable chat feature
-CHAT_PROVIDER=groq          # Provider (default: groq)
-CHAT_MODEL=llama-3.3-70b-versatile  # Model to use
+OPENAI_API_KEY=sk-...                         # Required for chat
+CHAT_ENABLED=true                             # Enable/disable chat feature
+CHAT_MODEL=openai/gpt-4o-mini                 # LiteLLM model string
 ```
 
-### Why Groq?
+### Why OpenAI via LiteLLM?
 
-- **Fast inference** - Groq's LPU delivers extremely low latency
+- **LiteLLM** - Unified interface for 100+ LLM providers
+- **Easy to swap** - Change `CHAT_MODEL` env var to switch providers (e.g. `groq/llama-3.3-70b-versatile`)
 - **No local setup** - No GPU requirements, works anywhere
-- **Free tier** - Generous free tier for development
-- **OpenAI-compatible API** - Easy to swap providers later
 
 ---
 
@@ -228,6 +227,6 @@ CHAT_MODEL=llama-3.3-70b-versatile  # Model to use
 - [Django Cotton](https://django-cotton.com/)
 - [AlpineJS](https://alpinejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
-- [Groq](https://groq.com/) - Fast LLM inference API
+- [LiteLLM](https://docs.litellm.ai/) - Unified LLM API interface
 - [WCAG 2.1 Quick Ref](https://www.w3.org/WAI/WCAG21/quickref/)
 - [CourtListener Frontend](https://github.com/freelawproject/courtlistener/wiki/New-Frontend-Architecture)

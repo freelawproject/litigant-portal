@@ -25,7 +25,6 @@ No user questions asked."""
 class ChatSummarizationAgent(Agent):
     """An agent that summarizes chat conversations into Q&A pairs."""
 
-    default_model = "groq/llama-3.3-70b-versatile"
     default_messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
     ]

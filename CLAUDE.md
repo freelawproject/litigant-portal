@@ -20,18 +20,18 @@ Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker e
 
 | Environment | Chat Provider | Config Source                              |
 | ----------- | ------------- | ------------------------------------------ |
-| Local dev   | Groq          | docker-compose.yml + `.env` (secrets only) |
+| Local dev   | OpenAI        | docker-compose.yml + `.env` (secrets only) |
 | CI/CD       | None (mocked) | tox.ini - tests mock all providers         |
-| QA (Fly.io) | Groq          | fly.toml + `fly secrets`                   |
+| QA (Fly.io) | OpenAI        | fly.toml + `fly secrets`                   |
 
 **Local dev setup:**
 
 ```bash
-cp .env.example .env        # Add your GROQ_API_KEY
+cp .env.example .env        # Add your OPENAI_API_KEY
 make docker-dev             # Start dev environment
 ```
 
-Future: LiteLLM will replace direct provider calls.
+Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `openai/gpt-4o-mini`).
 
 ## Commands
 
@@ -42,7 +42,7 @@ Future: LiteLLM will replace direct provider calls.
 ### Local Development (Docker)
 
 ```sh
-cp .env.example .env        # Add your GROQ_API_KEY
+cp .env.example .env        # Add your OPENAI_API_KEY
 make docker-dev             # Start dev environment
 make docker-shell           # Shell into container
 make docker-down            # Stop containers
@@ -282,9 +282,7 @@ chat/
 
 ### LLM Provider
 
-Currently using **Groq** (cloud) for dev and QA. Configured via `GROQ_API_KEY` in `.env`.
-
-Future: LiteLLM will provide a unified interface for multiple providers.
+Using **LiteLLM** with OpenAI for dev and QA. Model configured via `CHAT_MODEL` env var (default: `openai/gpt-4o-mini`). To switch providers, change the env var (e.g. `groq/llama-3.3-70b-versatile`).
 
 ### Chat Endpoints
 
@@ -308,8 +306,11 @@ Future: LiteLLM will provide a unified interface for multiple providers.
 
 ## Database
 
-- **Local dev / Demo:** SQLite (`db.sqlite3`)
-- **Docker / Production:** PostgreSQL via `DATABASE_URL`
+SQLite everywhere (local dev, Docker, Fly.io).
+
+- **Local dev:** `db.sqlite3` in project root
+- **Docker prod / Fly.io:** `sqlite:////data/db.sqlite3` on a volume
+- **Concurrency:** WAL mode + `transaction_mode = "IMMEDIATE"` (Django 5.2) prevents "database is locked" under Gunicorn
 
 ### Reset Data (Demo Mode)
 
@@ -318,25 +319,17 @@ rm db.sqlite3
 SECRET_KEY=dev .venv/bin/python manage.py migrate
 ```
 
-### Database Compatibility
-
-The codebase supports both SQLite and PostgreSQL:
-
-- Models avoid PostgreSQL-specific features for compatibility
-- Search service uses simple `icontains` queries (works everywhere)
-- PostgreSQL full-text search can be added later for production
-
 ## Versioning
 
 ### Pinned Dependencies (Local Assets)
 
 All frontend assets are local files, not CDN. Update these in sync when upgrading:
 
-| Tool         | Version                 | Location                                         |
-| ------------ | ----------------------- | ------------------------------------------------ |
-| Tailwind CSS | v4.1.16 (CLI)           | `Dockerfile`                                     |
-| Alpine.js    | 3.14.9 (standard)       | `static/js/alpine.js`, `static/js/alpine.min.js` |
-| Groq model   | llama-3.3-70b-versatile | `docker-compose.yml`, `fly.toml`                 |
+| Tool         | Version            | Location                                         |
+| ------------ | ------------------ | ------------------------------------------------ |
+| Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                     |
+| Alpine.js    | 3.14.9 (standard)  | `static/js/alpine.js`, `static/js/alpine.min.js` |
+| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose, fly.toml)  |
 
 **Updating Alpine.js:**
 
@@ -376,18 +369,13 @@ fly ssh console         # SSH into container
 
 Set via `fly secrets set KEY=value`:
 
-| Variable       | Description                       |
-| -------------- | --------------------------------- |
-| `SECRET_KEY`   | Django secret key                 |
-| `GROQ_API_KEY` | Groq API key for AI chat          |
-| `DATABASE_URL` | Auto-set by `fly postgres attach` |
+| Variable         | Description                |
+| ---------------- | -------------------------- |
+| `SECRET_KEY`     | Django secret key          |
+| `OPENAI_API_KEY` | OpenAI API key for AI chat |
 
-Non-secret env vars configured in `fly.toml` under `[env]`.
+Non-secret env vars (`DATABASE_URL`, `CHAT_MODEL`, etc.) configured in `fly.toml` under `[env]`.
 
 ### Database
 
-PostgreSQL via Fly Postgres (development tier).
-
-```bash
-fly postgres connect -a litigant-portal-qa-db  # Connect to database
-```
+SQLite on a Fly Volume (`/data/db.sqlite3`). WAL mode enabled at startup.

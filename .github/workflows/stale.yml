@@ -1,0 +1,49 @@
+name: Stale issues and PRs
+
+on:
+  schedule:
+    - cron: '0 14 * * MON' # Weekly Monday 9am CT (14:00 UTC)
+  workflow_dispatch: # Manual trigger from Actions tab
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          # Issues: warn at 90 days, close at 14 days after warning
+          days-before-issue-stale: 90
+          days-before-issue-close: 14
+          stale-issue-label: 'stale'
+          stale-issue-message: >
+            This issue has had no activity for 90 days. It will be
+            closed in 14 days unless there is new activity or it is
+            explicitly marked to keep open.
+          close-issue-message: >
+            Closed due to inactivity. Feel free to reopen if this is
+            still relevant.
+
+          # PRs: warn at 30 days, close at 7 days after warning
+          days-before-pr-stale: 30
+          days-before-pr-close: 7
+          stale-pr-label: 'stale'
+          stale-pr-message: >
+            This PR has had no activity for 30 days. It will be closed
+            in 7 days unless updated.
+          close-pr-message: >
+            Closed due to inactivity. Feel free to reopen if you'd
+            like to continue this work.
+
+          # Never mark these as stale
+          exempt-issue-labels: 'pinned,security,good first issue,blocked'
+          exempt-pr-labels: 'pinned,security,blocked'
+
+          # Don't touch assigned issues (someone owns it)
+          exempt-all-assignees: true
+
+          # Process up to 50 per run (avoids API rate limits)
+          operations-per-run: 50
