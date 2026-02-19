@@ -2,8 +2,8 @@
 <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
   <nav class="mb-6">
     <c-atoms.link href="{% url 'portal:home' %}" class="inline-flex items-center gap-1 text-sm">
-      <c-atoms.icon name="arrow-left" class="w-4 h-4" />
-      Back to topics
+    <c-atoms.icon name="arrow-left" class="w-4 h-4" />
+    Back to topics
     </c-atoms.link>
   </nav>
   <div class="flex items-center gap-3 mb-4">
@@ -14,22 +14,16 @@
   </div>
   <p class="text-lg text-greyscale-600">{{ subtitle }}</p>
   <c-atoms.alert variant="warning" class="mt-6">
-    <p class="font-semibold">This is general information, not legal advice.</p>
-    <p class="mt-1">
-      Every situation is different. For advice about your specific case, consult a licensed attorney.
-    </p>
+  <p class="font-semibold">This is general information, not legal advice.</p>
+  <p class="mt-1">Every situation is different. For advice about your specific case, consult a licensed attorney.</p>
   </c-atoms.alert>
-  <div class="mt-8 space-y-8">
-    {{ slot }}
-  </div>
+  <div class="mt-8 space-y-8">{{ slot }}</div>
   <div class="mt-12 rounded-lg border border-brand-200 bg-brand-50 p-6 text-center">
     <h2 class="text-lg font-semibold text-greyscale-900">Have questions about your situation?</h2>
-    <p class="mt-1 text-greyscale-600">
-      Our AI assistant can help you understand your options and find resources.
-    </p>
+    <p class="mt-1 text-greyscale-600">Our AI assistant can help you understand your options and find resources.</p>
     <c-atoms.link href="{% url 'portal:chat' %}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
-      Start a conversation
-      <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
+    Start a conversation
+    <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
     </c-atoms.link>
   </div>
 </div>
