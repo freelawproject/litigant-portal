@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}{{ topic.title }} - Litigant Portal{% endblock title %}
+
+{% block meta_description %}{{ topic.meta_description }}{% endblock meta_description %}
+
+{% block content %}
+
+  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+    <nav class="mb-6">
+      <c-atoms.link href="{% url 'portal:home' %}" class="inline-flex items-center gap-1 text-sm">
+        <c-atoms.icon name="arrow-left" class="w-4 h-4" />
+        Back to topics
+      </c-atoms.link>
+    </nav>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700">
+        <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+      </div>
+      <h1 class="text-3xl font-bold text-greyscale-900">{{ topic.title }}</h1>
+    </div>
+    <p class="text-lg text-greyscale-600">{{ topic.subtitle }}</p>
+    <c-atoms.alert variant="warning" class="mt-6">
+      <p class="font-semibold">This is general information, not legal advice.</p>
+      <p class="mt-1">
+        Every situation is different. For advice about your specific case, consult a licensed attorney.
+      </p>
+    </c-atoms.alert>
+    <div class="mt-8 space-y-8">
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">What is eviction?</h2>
+        <p class="mt-2 text-greyscale-700">
+          Eviction is the legal process a landlord uses to remove a tenant from a rental property.
+          A landlord cannot simply change the locks or shut off utilities &mdash; they must go through the courts.
+          Understanding how the process works helps you protect your rights whether you are a tenant or a landlord.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Common reasons for eviction</h2>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Non-payment of rent</li>
+          <li>Lease violations (unauthorized pets, subletting, property damage)</li>
+          <li>Staying after the lease expires (holdover)</li>
+          <li>Illegal activity on the premises</li>
+          <li>Owner move-in or major renovations (in some jurisdictions)</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">The eviction process</h2>
+        <p class="mt-2 text-greyscale-700">
+          While details vary by state and local law, eviction typically follows these steps:
+        </p>
+        <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+          <li><strong>Written notice</strong> &mdash; The landlord serves a notice to cure or quit (pay rent, fix the violation, or vacate).</li>
+          <li><strong>Court filing</strong> &mdash; If the issue is not resolved, the landlord files an eviction lawsuit (often called an "unlawful detainer").</li>
+          <li><strong>Hearing</strong> &mdash; Both sides present their case to a judge. The tenant has the right to appear and respond.</li>
+          <li><strong>Judgment</strong> &mdash; The court decides whether the tenant must leave and whether any money is owed.</li>
+          <li><strong>Enforcement</strong> &mdash; If the tenant does not leave voluntarily, the landlord can request a court order for removal by a sheriff or marshal.</li>
+        </ol>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Tenant rights and defenses</h2>
+        <p class="mt-2 text-greyscale-700">
+          Tenants have important legal protections during the eviction process:
+        </p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li><strong>Proper notice</strong> &mdash; The landlord must give written notice with the correct number of days required by state law.</li>
+          <li><strong>Habitability</strong> &mdash; Landlords must maintain safe and livable conditions. Failing to make essential repairs can be a defense.</li>
+          <li><strong>Retaliation</strong> &mdash; Landlords cannot evict tenants for reporting code violations, requesting repairs, or exercising other legal rights.</li>
+          <li><strong>Discrimination</strong> &mdash; The Fair Housing Act prohibits evictions based on race, color, religion, sex, national origin, disability, or familial status.</li>
+          <li><strong>Right to respond</strong> &mdash; Tenants can file an answer with the court and present their side at the hearing.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Landlord obligations</h2>
+        <p class="mt-2 text-greyscale-700">
+          Landlords have legal responsibilities they must follow:
+        </p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Maintain the property in habitable condition (working plumbing, heat, structural integrity)</li>
+          <li>Follow all notice requirements and court procedures</li>
+          <li>Comply with the Fair Housing Act and local anti-discrimination laws</li>
+          <li>Return security deposits according to state timelines and rules</li>
+          <li>Never use "self-help" eviction (changing locks, removing belongings, shutting off utilities)</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">What to do if you receive an eviction notice</h2>
+        <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+          <li>Read the notice carefully &mdash; note the deadline and reason.</li>
+          <li>Do not ignore it &mdash; missing a court date usually results in a default judgment against you.</li>
+          <li>Gather documentation &mdash; lease, rent receipts, photos, repair requests, and any written communication with your landlord.</li>
+          <li>Consider your options &mdash; you may be able to pay overdue rent, negotiate with the landlord, or raise a legal defense in court.</li>
+          <li>Seek help &mdash; legal aid organizations, tenant rights groups, and court self-help centers can provide free assistance.</li>
+        </ol>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Finding help</h2>
+        <p class="mt-2 text-greyscale-700">
+          Many communities offer free or low-cost resources for tenants and landlords:
+        </p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Your local legal aid office</li>
+          <li>Court self-help centers</li>
+          <li>Tenant rights organizations</li>
+          <li>Bar association lawyer referral services</li>
+          <li>HUD-approved housing counseling agencies</li>
+        </ul>
+      </section>
+    </div>
+    <div class="mt-12 rounded-lg border border-brand-200 bg-brand-50 p-6 text-center">
+      <h2 class="text-lg font-semibold text-greyscale-900">Have questions about your situation?</h2>
+      <p class="mt-1 text-greyscale-600">
+        Our AI assistant can help you understand your options and find resources.
+      </p>
+      <c-atoms.link href="{% url 'portal:chat' %}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
+        Start a conversation
+        <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
+      </c-atoms.link>
+    </div>
+  </div>
+{% endblock content %}

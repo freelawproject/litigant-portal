@@ -496,3 +496,67 @@ class AgentTestPageTests(TestCase):
         """Unknown agent name should return 404."""
         response = self.client.get("/test/nonexistent/")
         self.assertEqual(response.status_code, 404)
+
+
+# =============================================================================
+# Topic Detail Page Tests
+# =============================================================================
+
+
+class TopicDetailTests(TestCase):
+    """Tests for topic detail pages at /topics/<slug>/."""
+
+    TOPIC_SLUGS = {
+        "housing": "Housing &amp; Eviction",
+        "family": "Family &amp; Divorce",
+        "small-claims": "Small Claims",
+        "consumer": "Consumer Rights",
+        "expungement": "Expungement",
+        "traffic": "Traffic &amp; Fines",
+    }
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_all_topics_return_200(self):
+        """Each topic slug should return a 200 response."""
+        for slug in self.TOPIC_SLUGS:
+            with self.subTest(slug=slug):
+                response = self.client.get(f"/topics/{slug}/")
+                self.assertEqual(response.status_code, 200)
+
+    def test_all_topics_have_heading(self):
+        """Each topic page should display its heading."""
+        for slug, heading in self.TOPIC_SLUGS.items():
+            with self.subTest(slug=slug):
+                response = self.client.get(f"/topics/{slug}/")
+                self.assertContains(response, heading)
+
+    def test_all_topics_have_disclaimer(self):
+        """Each topic page should include the legal disclaimer."""
+        for slug in self.TOPIC_SLUGS:
+            with self.subTest(slug=slug):
+                response = self.client.get(f"/topics/{slug}/")
+                self.assertContains(
+                    response, "general information, not legal advice"
+                )
+
+    def test_all_topics_have_back_link(self):
+        """Each topic page should have a back link to the home page."""
+        for slug in self.TOPIC_SLUGS:
+            with self.subTest(slug=slug):
+                response = self.client.get(f"/topics/{slug}/")
+                self.assertContains(response, "Back to topics")
+
+    def test_all_topics_have_chat_cta(self):
+        """Each topic page should have a chat call-to-action."""
+        for slug in self.TOPIC_SLUGS:
+            with self.subTest(slug=slug):
+                response = self.client.get(f"/topics/{slug}/")
+                self.assertContains(response, "Start a conversation")
+                self.assertContains(response, "/chat/")
+
+    def test_invalid_slug_returns_404(self):
+        """An unknown topic slug should return 404."""
+        response = self.client.get("/topics/nonexistent/")
+        self.assertEqual(response.status_code, 404)

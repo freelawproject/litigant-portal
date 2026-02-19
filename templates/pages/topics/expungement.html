@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}{{ topic.title }} - Litigant Portal{% endblock title %}
+
+{% block meta_description %}{{ topic.meta_description }}{% endblock meta_description %}
+
+{% block content %}
+
+  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+    <nav class="mb-6">
+      <c-atoms.link href="{% url 'portal:home' %}" class="inline-flex items-center gap-1 text-sm">
+        <c-atoms.icon name="arrow-left" class="w-4 h-4" />
+        Back to topics
+      </c-atoms.link>
+    </nav>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700">
+        <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+      </div>
+      <h1 class="text-3xl font-bold text-greyscale-900">{{ topic.title }}</h1>
+    </div>
+    <p class="text-lg text-greyscale-600">{{ topic.subtitle }}</p>
+    <c-atoms.alert variant="warning" class="mt-6">
+      <p class="font-semibold">This is general information, not legal advice.</p>
+      <p class="mt-1">
+        Every situation is different. For advice about your specific case, consult a licensed attorney.
+      </p>
+    </c-atoms.alert>
+    <div class="mt-8 space-y-8">
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">What is expungement?</h2>
+        <p class="mt-2 text-greyscale-700">
+          Expungement is a court process that removes or seals a criminal record from public view.
+          After expungement, the record is treated as if it never happened for most purposes.
+        </p>
+        <p class="mt-2 text-greyscale-700">
+          <strong>Expungement vs. sealing:</strong> While the terms are sometimes used interchangeably,
+          expungement typically means the record is destroyed, while sealing means it still exists but is
+          hidden from public searches. The practical effect is often similar &mdash; most background checks
+          won't find a sealed or expunged record.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Why expungement matters</h2>
+        <p class="mt-2 text-greyscale-700">
+          A criminal record &mdash; even for a minor offense or a case that was dismissed &mdash; can create lasting barriers:
+        </p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li><strong>Employment</strong> &mdash; Many employers run background checks, and a record can disqualify you from jobs.</li>
+          <li><strong>Housing</strong> &mdash; Landlords may deny rental applications based on criminal history.</li>
+          <li><strong>Education</strong> &mdash; Some schools and financial aid programs consider criminal records.</li>
+          <li><strong>Professional licenses</strong> &mdash; Certain careers (nursing, teaching, law) require clean records.</li>
+          <li><strong>Immigration</strong> &mdash; Criminal records can affect visa applications and citizenship.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Eligibility requirements</h2>
+        <p class="mt-2 text-greyscale-700">
+          Eligibility varies significantly by state, but common factors include:
+        </p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li><strong>Type of offense</strong> &mdash; Minor offenses and misdemeanors are more likely to be eligible. Many states exclude serious violent crimes and sex offenses.</li>
+          <li><strong>Case outcome</strong> &mdash; Dismissals, acquittals, and completed diversion programs are often eligible. Some states also allow expungement of convictions.</li>
+          <li><strong>Waiting period</strong> &mdash; Most states require a certain number of years to pass since the offense or completion of the sentence.</li>
+          <li><strong>No new offenses</strong> &mdash; A clean record since the original offense is usually required.</li>
+          <li><strong>Completion of sentence</strong> &mdash; All fines, probation, community service, and other conditions must be fulfilled.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">The expungement process</h2>
+        <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+          <li><strong>Check eligibility</strong> &mdash; Review your state's laws or consult a legal aid organization to determine if your record qualifies.</li>
+          <li><strong>Obtain your record</strong> &mdash; Request a copy of your criminal record from the courthouse or state repository.</li>
+          <li><strong>File a petition</strong> &mdash; Complete the expungement forms for your court and pay any filing fees (fee waivers may be available).</li>
+          <li><strong>Notify the prosecution</strong> &mdash; Most courts require you to serve a copy of your petition on the district attorney or prosecutor.</li>
+          <li><strong>Attend the hearing</strong> &mdash; Some petitions are granted without a hearing. If a hearing is required, be prepared to explain why expungement is appropriate.</li>
+          <li><strong>Receive the order</strong> &mdash; If granted, the court issues an expungement order directing agencies to seal or destroy the record.</li>
+        </ol>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">After expungement</h2>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>For most purposes, you can legally answer "no" when asked about criminal history on job and housing applications.</li>
+          <li>Government background checks (law enforcement, security clearances) may still access sealed records.</li>
+          <li>Some private background check companies may take time to update their databases &mdash; follow up if an expunged record still appears.</li>
+          <li>Keep a copy of the expungement order for your records.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Related options</h2>
+        <p class="mt-2 text-greyscale-700">
+          If expungement is not available, other options may help:
+        </p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li><strong>Pardons</strong> &mdash; A governor or the President can grant a pardon, which forgives the offense but may not remove it from your record.</li>
+          <li><strong>Certificates of rehabilitation</strong> &mdash; Some states issue certificates showing you have been rehabilitated, which can help with employment and licensing.</li>
+          <li><strong>Certificates of relief</strong> &mdash; May remove specific barriers (like licensing restrictions) associated with a conviction.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Finding help</h2>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Your local legal aid office (many have dedicated expungement programs)</li>
+          <li>Court self-help centers</li>
+          <li>Public defender's office (some assist with post-conviction relief)</li>
+          <li>Law school clinics</li>
+          <li>Community organizations that offer expungement workshops or "clean slate" events</li>
+        </ul>
+      </section>
+    </div>
+    <div class="mt-12 rounded-lg border border-brand-200 bg-brand-50 p-6 text-center">
+      <h2 class="text-lg font-semibold text-greyscale-900">Have questions about your situation?</h2>
+      <p class="mt-1 text-greyscale-600">
+        Our AI assistant can help you understand your options and find resources.
+      </p>
+      <c-atoms.link href="{% url 'portal:chat' %}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
+        Start a conversation
+        <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
+      </c-atoms.link>
+    </div>
+  </div>
+{% endblock content %}

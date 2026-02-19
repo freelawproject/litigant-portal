@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}{{ topic.title }} - Litigant Portal{% endblock title %}
+
+{% block meta_description %}{{ topic.meta_description }}{% endblock meta_description %}
+
+{% block content %}
+
+  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+    <nav class="mb-6">
+      <c-atoms.link href="{% url 'portal:home' %}" class="inline-flex items-center gap-1 text-sm">
+        <c-atoms.icon name="arrow-left" class="w-4 h-4" />
+        Back to topics
+      </c-atoms.link>
+    </nav>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700">
+        <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+      </div>
+      <h1 class="text-3xl font-bold text-greyscale-900">{{ topic.title }}</h1>
+    </div>
+    <p class="text-lg text-greyscale-600">{{ topic.subtitle }}</p>
+    <c-atoms.alert variant="warning" class="mt-6">
+      <p class="font-semibold">This is general information, not legal advice.</p>
+      <p class="mt-1">
+        Every situation is different. For advice about your specific case, consult a licensed attorney.
+      </p>
+    </c-atoms.alert>
+    <div class="mt-8 space-y-8">
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Types of traffic violations</h2>
+        <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
+          <li><strong>Infractions</strong> &mdash; Minor violations like speeding, running a stop sign, or expired registration. Usually result in a fine and points on your license.</li>
+          <li><strong>Misdemeanors</strong> &mdash; More serious offenses like reckless driving, driving on a suspended license, or hit-and-run (property damage only). Can carry fines, jail time, or both.</li>
+          <li><strong>Felonies</strong> &mdash; The most serious traffic offenses, such as vehicular manslaughter or repeat DUI. Carry significant penalties including prison time.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Your options when you get a ticket</h2>
+        <p class="mt-2 text-greyscale-700">
+          When you receive a traffic citation, you generally have three options:
+        </p>
+        <ol class="mt-2 list-decimal pl-5 space-y-2 text-greyscale-700">
+          <li><strong>Pay the fine</strong> &mdash; This is an admission of guilt. The violation goes on your driving record and may increase your insurance rates.</li>
+          <li><strong>Contest the ticket</strong> &mdash; Request a court hearing to challenge the citation. You'll need to present a defense to the judge.</li>
+          <li><strong>Traffic school</strong> &mdash; If eligible, completing traffic school may keep the violation off your record or reduce points. Eligibility varies by state and violation type.</li>
+        </ol>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Contesting a traffic ticket</h2>
+        <p class="mt-2 text-greyscale-700">
+          If you decide to fight the ticket:
+        </p>
+        <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+          <li>Enter a "not guilty" plea by the deadline on your ticket.</li>
+          <li>Request any available evidence &mdash; radar calibration records, officer's notes, camera footage.</li>
+          <li>Prepare your defense &mdash; photos of the location, witness statements, or evidence of equipment malfunction.</li>
+          <li>Appear at the hearing on time and dressed respectfully.</li>
+          <li>Present your case clearly. The government must prove the violation &mdash; you can challenge their evidence.</li>
+        </ol>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">License suspension and reinstatement</h2>
+        <p class="mt-2 text-greyscale-700">
+          Your license can be suspended for various reasons:
+        </p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Accumulating too many points from traffic violations</li>
+          <li>DUI/DWI conviction</li>
+          <li>Failure to pay traffic fines or appear in court</li>
+          <li>Failure to maintain auto insurance</li>
+          <li>Failure to pay child support</li>
+        </ul>
+        <p class="mt-2 text-greyscale-700">
+          To reinstate a suspended license, you typically need to resolve the underlying issue (pay fines, complete a DUI program, provide proof of insurance), pay a reinstatement fee, and wait out any mandatory suspension period.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Fines and payment plans</h2>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Fines vary widely depending on the violation and jurisdiction.</li>
+          <li>Additional fees (court costs, surcharges) can significantly increase the total amount owed.</li>
+          <li>Many courts offer payment plans if you cannot pay the full amount at once.</li>
+          <li>If you cannot afford the fine, ask the court about community service alternatives or a fee waiver.</li>
+          <li>Ignoring fines can lead to license suspension, additional penalties, and even a warrant for your arrest.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Traffic school</h2>
+        <p class="mt-2 text-greyscale-700">
+          Traffic school (also called defensive driving) can help keep your record clean:
+        </p>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Eligibility depends on your state, the type of violation, and your recent driving record.</li>
+          <li>Courses are available online or in-person and typically take 4&ndash;8 hours.</li>
+          <li>Completing the course may dismiss the ticket, reduce points, or lower your insurance increase.</li>
+          <li>Make sure the course is approved by your state's DMV or traffic court.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">DUI / DWI</h2>
+        <c-atoms.alert variant="danger" class="mt-2">
+          <p class="font-semibold">DUI/DWI charges are serious criminal offenses.</p>
+          <p class="mt-1">
+            Penalties can include jail time, heavy fines, license suspension, and a permanent criminal record.
+            If you are facing DUI/DWI charges, consult an attorney as soon as possible.
+          </p>
+        </c-atoms.alert>
+        <ul class="mt-3 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Penalties increase significantly for repeat offenses and high blood alcohol levels.</li>
+          <li>You may be required to install an ignition interlock device.</li>
+          <li>Most states require completion of an alcohol education or treatment program.</li>
+          <li>A DUI conviction can affect employment, professional licenses, and insurance rates for years.</li>
+        </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Finding help</h2>
+        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+          <li>Your local court's traffic division or clerk's office</li>
+          <li>Court self-help centers</li>
+          <li>Legal aid organizations (especially for license suspension and fine issues)</li>
+          <li>Your state's DMV website for license and record information</li>
+          <li>Bar association lawyer referral services (especially for DUI/DWI cases)</li>
+        </ul>
+      </section>
+    </div>
+    <div class="mt-12 rounded-lg border border-brand-200 bg-brand-50 p-6 text-center">
+      <h2 class="text-lg font-semibold text-greyscale-900">Have questions about your situation?</h2>
+      <p class="mt-1 text-greyscale-600">
+        Our AI assistant can help you understand your options and find resources.
+      </p>
+      <c-atoms.link href="{% url 'portal:chat' %}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
+        Start a conversation
+        <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
+      </c-atoms.link>
+    </div>
+  </div>
+{% endblock content %}
