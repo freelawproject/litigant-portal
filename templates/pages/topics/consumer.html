@@ -1,133 +1,122 @@
 {% extends "base.html" %}
 
-{% block title %}{{ topic.title }} - Litigant Portal{% endblock title %}
+{% block title %}
 
-{% block meta_description %}{{ topic.meta_description }}{% endblock meta_description %}
+  {{ topic.title }} - Litigant Portal
+{% endblock title %}
+
+{% block meta_description %}
+
+  {{ topic.meta_description }}
+{% endblock meta_description %}
 
 {% block content %}
 
-  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-    <nav class="mb-6">
-      <c-atoms.link href="{% url 'portal:home' %}" class="inline-flex items-center gap-1 text-sm">
-        <c-atoms.icon name="arrow-left" class="w-4 h-4" />
-        Back to topics
-      </c-atoms.link>
-    </nav>
-    <div class="flex items-center gap-3 mb-4">
-      <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700">
-        <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
-      </div>
-      <h1 class="text-3xl font-bold text-greyscale-900">{{ topic.title }}</h1>
-    </div>
-    <p class="text-lg text-greyscale-600">{{ topic.subtitle }}</p>
-    <c-atoms.alert variant="warning" class="mt-6">
-      <p class="font-semibold">This is general information, not legal advice.</p>
-      <p class="mt-1">
-        Every situation is different. For advice about your specific case, consult a licensed attorney.
-      </p>
-    </c-atoms.alert>
-    <div class="mt-8 space-y-8">
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Your consumer rights</h2>
-        <p class="mt-2 text-greyscale-700">
-          Federal and state laws protect consumers from unfair, deceptive, and abusive practices.
-          Understanding your rights helps you recognize when something is wrong and take appropriate action.
-        </p>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>The right to accurate information about products and services</li>
-          <li>Protection from unfair or deceptive business practices</li>
-          <li>The right to dispute billing errors and unauthorized charges</li>
-          <li>Protection against discrimination in lending and credit</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Debt collection rules</h2>
-        <p class="mt-2 text-greyscale-700">
-          The Fair Debt Collection Practices Act (FDCPA) sets rules for how debt collectors can contact you.
-          Owing a debt does not mean collectors can do whatever they want &mdash; they must follow the law.
-        </p>
-        <p class="mt-2 font-medium text-greyscale-800">Debt collectors cannot:</p>
-        <ul class="mt-1 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Call before 8 a.m. or after 9 p.m.</li>
-          <li>Contact you at work if you tell them your employer doesn't allow it</li>
-          <li>Use threats, obscene language, or harassment</li>
-          <li>Lie about the amount you owe or who they are</li>
-          <li>Contact you after you send a written request to stop (with limited exceptions)</li>
-        </ul>
-        <p class="mt-2 font-medium text-greyscale-800">Your rights when contacted by a collector:</p>
-        <ul class="mt-1 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Request written verification of the debt within 30 days</li>
-          <li>Dispute the debt if you believe it is not yours or the amount is wrong</li>
-          <li>Send a cease-and-desist letter to stop contact</li>
-          <li>Report violations to the Consumer Financial Protection Bureau (CFPB) or your state attorney general</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Contract disputes</h2>
-        <p class="mt-2 text-greyscale-700">
-          When a business or individual doesn't hold up their end of a deal, you may have a breach of contract claim. Important things to know:
-        </p>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Always get agreements in writing when possible</li>
-          <li>Keep copies of contracts, receipts, emails, and text messages</li>
-          <li>Review cancellation policies before signing up for services</li>
-          <li>Small claims court handles many contract disputes</li>
-          <li>Some contracts include mandatory arbitration clauses &mdash; read the fine print</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Scams and fraud</h2>
-        <p class="mt-2 text-greyscale-700">
-          If you've been the victim of a scam or fraudulent business practice:
-        </p>
-        <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
-          <li>Stop all contact and payments to the scammer immediately.</li>
-          <li>Document everything &mdash; save messages, receipts, screenshots, and records.</li>
-          <li>Report to the FTC at <strong>ReportFraud.ftc.gov</strong>.</li>
-          <li>File a complaint with your state attorney general's consumer protection division.</li>
-          <li>Contact your bank or credit card company to dispute charges and protect your accounts.</li>
-          <li>Place a fraud alert on your credit reports if personal information was compromised.</li>
-        </ol>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Warranties and returns</h2>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li><strong>Express warranties</strong> &mdash; Written or verbal promises made by the seller about the product.</li>
-          <li><strong>Implied warranties</strong> &mdash; Automatic protections under state law (the product should work as expected for its intended use).</li>
-          <li>Federal law (Magnuson-Moss Warranty Act) requires warranty terms to be available before purchase.</li>
-          <li>"As is" sales may waive implied warranties &mdash; be cautious with these purchases.</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Dispute resolution options</h2>
-        <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
-          <li><strong>Direct negotiation</strong> &mdash; Contact the business, explain the problem, and request a specific resolution.</li>
-          <li><strong>File a complaint</strong> &mdash; Contact the Better Business Bureau (BBB), your state attorney general, or the CFPB.</li>
-          <li><strong>Mediation</strong> &mdash; A neutral third party helps both sides reach an agreement.</li>
-          <li><strong>Small claims court</strong> &mdash; For monetary disputes within your state's dollar limit.</li>
-          <li><strong>Arbitration</strong> &mdash; A private decision-maker resolves the dispute (sometimes required by contract).</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Finding help</h2>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Consumer Financial Protection Bureau (CFPB)</li>
-          <li>Federal Trade Commission (FTC)</li>
-          <li>Your state attorney general's consumer protection office</li>
-          <li>Local legal aid organizations</li>
-          <li>National Consumer Law Center</li>
-        </ul>
-      </section>
-    </div>
-    <div class="mt-12 rounded-lg border border-brand-200 bg-brand-50 p-6 text-center">
-      <h2 class="text-lg font-semibold text-greyscale-900">Have questions about your situation?</h2>
-      <p class="mt-1 text-greyscale-600">
-        Our AI assistant can help you understand your options and find resources.
-      </p>
-      <c-atoms.link href="{% url 'portal:chat' %}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
-        Start a conversation
-        <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
-      </c-atoms.link>
-    </div>
-  </div>
+  <c-organisms.topic-detail title="{{ topic.title }}" subtitle="{{ topic.subtitle }}" icon="{{ topic.icon }}">
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Your consumer rights</h2>
+    <p class="mt-2 text-greyscale-700">
+      Federal and state laws protect consumers from unfair, deceptive, and abusive practices.
+      Understanding your rights helps you recognize when something is wrong and take appropriate action.
+    </p>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>The right to accurate information about products and services</li>
+      <li>Protection from unfair or deceptive business practices</li>
+      <li>The right to dispute billing errors and unauthorized charges</li>
+      <li>Protection against discrimination in lending and credit</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Debt collection rules</h2>
+    <p class="mt-2 text-greyscale-700">
+      The Fair Debt Collection Practices Act (FDCPA) sets rules for how debt collectors can contact you.
+      Owing a debt does not mean collectors can do whatever they want &mdash; they must follow the law.
+    </p>
+    <p class="mt-2 font-medium text-greyscale-800">Debt collectors cannot:</p>
+    <ul class="mt-1 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Call before 8 a.m. or after 9 p.m.</li>
+      <li>Contact you at work if you tell them your employer doesn't allow it</li>
+      <li>Use threats, obscene language, or harassment</li>
+      <li>Lie about the amount you owe or who they are</li>
+      <li>Contact you after you send a written request to stop (with limited exceptions)</li>
+    </ul>
+    <p class="mt-2 font-medium text-greyscale-800">Your rights when contacted by a collector:</p>
+    <ul class="mt-1 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Request written verification of the debt within 30 days</li>
+      <li>Dispute the debt if you believe it is not yours or the amount is wrong</li>
+      <li>Send a cease-and-desist letter to stop contact</li>
+      <li>Report violations to the Consumer Financial Protection Bureau (CFPB) or your state attorney general</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Contract disputes</h2>
+    <p class="mt-2 text-greyscale-700">
+      When a business or individual doesn't hold up their end of a deal, you may have a breach of contract claim. Important things to know:
+    </p>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Always get agreements in writing when possible</li>
+      <li>Keep copies of contracts, receipts, emails, and text messages</li>
+      <li>Review cancellation policies before signing up for services</li>
+      <li>Small claims court handles many contract disputes</li>
+      <li>Some contracts include mandatory arbitration clauses &mdash; read the fine print</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Scams and fraud</h2>
+    <p class="mt-2 text-greyscale-700">If you've been the victim of a scam or fraudulent business practice:</p>
+    <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+      <li>Stop all contact and payments to the scammer immediately.</li>
+      <li>Document everything &mdash; save messages, receipts, screenshots, and records.</li>
+      <li>
+        Report to the FTC at <strong>ReportFraud.ftc.gov</strong>.
+      </li>
+      <li>File a complaint with your state attorney general's consumer protection division.</li>
+      <li>Contact your bank or credit card company to dispute charges and protect your accounts.</li>
+      <li>Place a fraud alert on your credit reports if personal information was compromised.</li>
+    </ol>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Warranties and returns</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>
+        <strong>Express warranties</strong> &mdash; Written or verbal promises made by the seller about the product.
+      </li>
+      <li>
+        <strong>Implied warranties</strong> &mdash; Automatic protections under state law (the product should work as expected for its intended use).
+      </li>
+      <li>Federal law (Magnuson-Moss Warranty Act) requires warranty terms to be available before purchase.</li>
+      <li>"As is" sales may waive implied warranties &mdash; be cautious with these purchases.</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Dispute resolution options</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
+      <li>
+        <strong>Direct negotiation</strong> &mdash; Contact the business, explain the problem, and request a specific resolution.
+      </li>
+      <li>
+        <strong>File a complaint</strong> &mdash; Contact the Better Business Bureau (BBB), your state attorney general, or the CFPB.
+      </li>
+      <li>
+        <strong>Mediation</strong> &mdash; A neutral third party helps both sides reach an agreement.
+      </li>
+      <li>
+        <strong>Small claims court</strong> &mdash; For monetary disputes within your state's dollar limit.
+      </li>
+      <li>
+        <strong>Arbitration</strong> &mdash; A private decision-maker resolves the dispute (sometimes required by contract).
+      </li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Finding help</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Consumer Financial Protection Bureau (CFPB)</li>
+      <li>Federal Trade Commission (FTC)</li>
+      <li>Your state attorney general's consumer protection office</li>
+      <li>Local legal aid organizations</li>
+      <li>National Consumer Law Center</li>
+    </ul>
+  </section>
+  </c-organisms.topic-detail>
 {% endblock content %}

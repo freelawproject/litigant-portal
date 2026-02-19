@@ -1,117 +1,94 @@
 {% extends "base.html" %}
 
-{% block title %}{{ topic.title }} - Litigant Portal{% endblock title %}
+{% block title %}
 
-{% block meta_description %}{{ topic.meta_description }}{% endblock meta_description %}
+  {{ topic.title }} - Litigant Portal
+{% endblock title %}
+
+{% block meta_description %}
+
+  {{ topic.meta_description }}
+{% endblock meta_description %}
 
 {% block content %}
 
-  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-    <nav class="mb-6">
-      <c-atoms.link href="{% url 'portal:home' %}" class="inline-flex items-center gap-1 text-sm">
-        <c-atoms.icon name="arrow-left" class="w-4 h-4" />
-        Back to topics
-      </c-atoms.link>
-    </nav>
-    <div class="flex items-center gap-3 mb-4">
-      <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700">
-        <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
-      </div>
-      <h1 class="text-3xl font-bold text-greyscale-900">{{ topic.title }}</h1>
-    </div>
-    <p class="text-lg text-greyscale-600">{{ topic.subtitle }}</p>
-    <c-atoms.alert variant="warning" class="mt-6">
-      <p class="font-semibold">This is general information, not legal advice.</p>
-      <p class="mt-1">
-        Every situation is different. For advice about your specific case, consult a licensed attorney.
-      </p>
-    </c-atoms.alert>
-    <div class="mt-8 space-y-8">
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">What is small claims court?</h2>
-        <p class="mt-2 text-greyscale-700">
-          Small claims court is a simplified court designed for resolving disputes involving relatively small amounts of money.
-          The procedures are informal, lawyers are often not required (and sometimes not allowed), and cases are decided quickly &mdash; usually in a single hearing.
-        </p>
-        <p class="mt-2 text-greyscale-700">
-          The dollar limit varies by state, typically ranging from $2,500 to $25,000.
-        </p>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Common types of cases</h2>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Unpaid debts or loans</li>
-          <li>Security deposit disputes</li>
-          <li>Property damage</li>
-          <li>Breach of contract (services not performed, defective goods)</li>
-          <li>Vehicle accident damage (minor)</li>
-          <li>Disputes with contractors or service providers</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Filing a claim (plaintiff)</h2>
-        <p class="mt-2 text-greyscale-700">
-          If someone owes you money or damaged your property:
-        </p>
-        <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
-          <li>Try to resolve the dispute directly first &mdash; courts may ask if you attempted settlement.</li>
-          <li>Identify the correct defendant &mdash; use the person's or business's legal name.</li>
-          <li>File the claim at the courthouse and pay the filing fee (usually $30&ndash;$100).</li>
-          <li>Serve the defendant &mdash; they must be officially notified of the lawsuit.</li>
-          <li>Prepare your evidence &mdash; contracts, receipts, photos, text messages, and witnesses.</li>
-        </ol>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Defending against a claim (defendant)</h2>
-        <p class="mt-2 text-greyscale-700">
-          If someone files a claim against you:
-        </p>
-        <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
-          <li>Do not ignore the claim &mdash; if you don't show up, the judge will likely rule against you (default judgment).</li>
-          <li>File a response by the deadline if your court requires one.</li>
-          <li>Gather your own evidence &mdash; anything that supports your side of the story.</li>
-          <li>Consider filing a counterclaim if the plaintiff owes you money.</li>
-          <li>Be prepared to explain your position clearly and calmly at the hearing.</li>
-        </ol>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">At the hearing</h2>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Arrive early, dress respectfully, and bring all your documents and evidence.</li>
-          <li>Each side tells their story to the judge &mdash; keep it brief and factual.</li>
-          <li>The judge may ask questions. Answer honestly.</li>
-          <li>Present evidence in an organized way (chronological order works well).</li>
-          <li>Be respectful to the other party, even if you disagree.</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">After the judgment</h2>
-        <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
-          <li><strong>If you win</strong> &mdash; The court issues a judgment in your favor, but you may still need to collect the money. Options include wage garnishment, bank levies, or property liens.</li>
-          <li><strong>If you lose</strong> &mdash; You may be able to appeal, depending on your state's rules. There is usually a short deadline to file an appeal.</li>
-          <li><strong>Payment plans</strong> &mdash; Courts sometimes allow the losing party to pay in installments.</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Tips for both sides</h2>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Organize your evidence before the hearing &mdash; make copies for the judge and the other party.</li>
-          <li>Practice explaining your case in 2&ndash;3 minutes.</li>
-          <li>Stick to the facts &mdash; avoid emotional arguments.</li>
-          <li>Consider settling before the hearing &mdash; a negotiated agreement can save time and uncertainty.</li>
-          <li>Check your court's website for specific local rules and forms.</li>
-        </ul>
-      </section>
-    </div>
-    <div class="mt-12 rounded-lg border border-brand-200 bg-brand-50 p-6 text-center">
-      <h2 class="text-lg font-semibold text-greyscale-900">Have questions about your situation?</h2>
-      <p class="mt-1 text-greyscale-600">
-        Our AI assistant can help you understand your options and find resources.
-      </p>
-      <c-atoms.link href="{% url 'portal:chat' %}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
-        Start a conversation
-        <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
-      </c-atoms.link>
-    </div>
-  </div>
+  <c-organisms.topic-detail title="{{ topic.title }}" subtitle="{{ topic.subtitle }}" icon="{{ topic.icon }}">
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">What is small claims court?</h2>
+    <p class="mt-2 text-greyscale-700">
+      Small claims court is a simplified court designed for resolving disputes involving relatively small amounts of money.
+      The procedures are informal, lawyers are often not required (and sometimes not allowed), and cases are decided quickly &mdash; usually in a single hearing.
+    </p>
+    <p class="mt-2 text-greyscale-700">The dollar limit varies by state, typically ranging from $2,500 to $25,000.</p>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Common types of cases</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Unpaid debts or loans</li>
+      <li>Security deposit disputes</li>
+      <li>Property damage</li>
+      <li>Breach of contract (services not performed, defective goods)</li>
+      <li>Vehicle accident damage (minor)</li>
+      <li>Disputes with contractors or service providers</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Filing a claim (plaintiff)</h2>
+    <p class="mt-2 text-greyscale-700">If someone owes you money or damaged your property:</p>
+    <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+      <li>Try to resolve the dispute directly first &mdash; courts may ask if you attempted settlement.</li>
+      <li>Identify the correct defendant &mdash; use the person's or business's legal name.</li>
+      <li>File the claim at the courthouse and pay the filing fee (usually $30&ndash;$100).</li>
+      <li>Serve the defendant &mdash; they must be officially notified of the lawsuit.</li>
+      <li>Prepare your evidence &mdash; contracts, receipts, photos, text messages, and witnesses.</li>
+    </ol>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Defending against a claim (defendant)</h2>
+    <p class="mt-2 text-greyscale-700">If someone files a claim against you:</p>
+    <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+      <li>
+        Do not ignore the claim &mdash; if you don't show up, the judge will likely rule against you (default judgment).
+      </li>
+      <li>File a response by the deadline if your court requires one.</li>
+      <li>Gather your own evidence &mdash; anything that supports your side of the story.</li>
+      <li>Consider filing a counterclaim if the plaintiff owes you money.</li>
+      <li>Be prepared to explain your position clearly and calmly at the hearing.</li>
+    </ol>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">At the hearing</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Arrive early, dress respectfully, and bring all your documents and evidence.</li>
+      <li>Each side tells their story to the judge &mdash; keep it brief and factual.</li>
+      <li>The judge may ask questions. Answer honestly.</li>
+      <li>Present evidence in an organized way (chronological order works well).</li>
+      <li>Be respectful to the other party, even if you disagree.</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">After the judgment</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
+      <li>
+        <strong>If you win</strong> &mdash; The court issues a judgment in your favor, but you may still need to collect the money. Options include wage garnishment, bank levies, or property liens.
+      </li>
+      <li>
+        <strong>If you lose</strong> &mdash; You may be able to appeal, depending on your state's rules. There is usually a short deadline to file an appeal.
+      </li>
+      <li>
+        <strong>Payment plans</strong> &mdash; Courts sometimes allow the losing party to pay in installments.
+      </li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Tips for both sides</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Organize your evidence before the hearing &mdash; make copies for the judge and the other party.</li>
+      <li>Practice explaining your case in 2&ndash;3 minutes.</li>
+      <li>Stick to the facts &mdash; avoid emotional arguments.</li>
+      <li>Consider settling before the hearing &mdash; a negotiated agreement can save time and uncertainty.</li>
+      <li>Check your court's website for specific local rules and forms.</li>
+    </ul>
+  </section>
+  </c-organisms.topic-detail>
 {% endblock content %}

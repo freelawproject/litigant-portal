@@ -1,125 +1,118 @@
 {% extends "base.html" %}
 
-{% block title %}{{ topic.title }} - Litigant Portal{% endblock title %}
+{% block title %}
 
-{% block meta_description %}{{ topic.meta_description }}{% endblock meta_description %}
+  {{ topic.title }} - Litigant Portal
+{% endblock title %}
+
+{% block meta_description %}
+
+  {{ topic.meta_description }}
+{% endblock meta_description %}
 
 {% block content %}
 
-  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-    <nav class="mb-6">
-      <c-atoms.link href="{% url 'portal:home' %}" class="inline-flex items-center gap-1 text-sm">
-        <c-atoms.icon name="arrow-left" class="w-4 h-4" />
-        Back to topics
-      </c-atoms.link>
-    </nav>
-    <div class="flex items-center gap-3 mb-4">
-      <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700">
-        <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
-      </div>
-      <h1 class="text-3xl font-bold text-greyscale-900">{{ topic.title }}</h1>
-    </div>
-    <p class="text-lg text-greyscale-600">{{ topic.subtitle }}</p>
-    <c-atoms.alert variant="warning" class="mt-6">
-      <p class="font-semibold">This is general information, not legal advice.</p>
-      <p class="mt-1">
-        Every situation is different. For advice about your specific case, consult a licensed attorney.
-      </p>
-    </c-atoms.alert>
-    <div class="mt-8 space-y-8">
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Types of family law cases</h2>
-        <p class="mt-2 text-greyscale-700">
-          Family courts handle a wide range of matters that affect families and households:
-        </p>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Divorce and legal separation</li>
-          <li>Child custody and visitation</li>
-          <li>Child support and spousal support (alimony)</li>
-          <li>Paternity establishment</li>
-          <li>Adoption and guardianship</li>
-          <li>Domestic violence protection orders</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">The divorce process</h2>
-        <p class="mt-2 text-greyscale-700">
-          Divorce ends a marriage through a court order. The process and requirements vary by state, but there are two main types:
-        </p>
-        <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
-          <li><strong>Uncontested divorce</strong> &mdash; Both spouses agree on major issues (property division, custody, support). This is typically faster, less expensive, and less stressful.</li>
-          <li><strong>Contested divorce</strong> &mdash; The spouses disagree on one or more issues. A judge will make decisions after both sides present their case.</li>
-        </ul>
-        <p class="mt-2 text-greyscale-700">
-          Many courts encourage or require <strong>mediation</strong> before trial. A neutral mediator helps both parties negotiate an agreement without going before a judge.
-        </p>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Child custody</h2>
-        <p class="mt-2 text-greyscale-700">
-          Custody decisions are based on the <strong>best interests of the child</strong> &mdash; the standard courts use in every state. Both parents' perspectives matter:
-        </p>
-        <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
-          <li><strong>Legal custody</strong> &mdash; The right to make major decisions about the child's education, health care, and religious upbringing. Can be sole or joint.</li>
-          <li><strong>Physical custody</strong> &mdash; Where the child lives. Joint physical custody means the child spends significant time with both parents.</li>
-        </ul>
-        <p class="mt-2 text-greyscale-700">
-          Courts consider factors like each parent's relationship with the child, stability of each home, the child's preferences (if old enough), and each parent's willingness to support the child's relationship with the other parent.
-        </p>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Child support</h2>
-        <p class="mt-2 text-greyscale-700">
-          Both parents have a legal obligation to support their children financially. Key points:
-        </p>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li><strong>Calculation</strong> &mdash; Most states use a formula based on both parents' incomes, the number of children, and the custody arrangement.</li>
-          <li><strong>Modification</strong> &mdash; Support can be changed if circumstances significantly change (job loss, income increase, change in custody).</li>
-          <li><strong>Enforcement</strong> &mdash; Failure to pay can result in wage garnishment, tax refund interception, license suspension, or contempt of court.</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Domestic violence resources</h2>
-        <p class="mt-2 text-greyscale-700">
-          If you or someone you know is experiencing domestic violence, help is available:
-        </p>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li><strong>National Domestic Violence Hotline:</strong> 1-800-799-7233 (available 24/7)</li>
-          <li><strong>Protection orders</strong> &mdash; Courts can issue emergency, temporary, and permanent protection orders that require an abuser to stay away.</li>
-          <li>Many courts have expedited processes for protection orders, often available the same day.</li>
-          <li>Advocates at local shelters and legal aid offices can help with safety planning and court paperwork.</li>
-        </ul>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Preparing for family court</h2>
-        <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
-          <li>Gather important documents &mdash; financial records, tax returns, property deeds, and any existing court orders.</li>
-          <li>Organize your timeline &mdash; key dates, events, and communications relevant to your case.</li>
-          <li>Understand your state's requirements &mdash; residency, waiting periods, mandatory parenting classes.</li>
-          <li>Consider what outcomes you want and what compromises you can accept.</li>
-          <li>Keep communication with the other party respectful and documented (in writing when possible).</li>
-        </ol>
-      </section>
-      <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Finding help</h2>
-        <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Your local legal aid office</li>
-          <li>Court self-help centers and family law facilitators</li>
-          <li>Bar association lawyer referral services</li>
-          <li>Mediation services (often available through the court)</li>
-          <li>Domestic violence hotlines and shelters</li>
-        </ul>
-      </section>
-    </div>
-    <div class="mt-12 rounded-lg border border-brand-200 bg-brand-50 p-6 text-center">
-      <h2 class="text-lg font-semibold text-greyscale-900">Have questions about your situation?</h2>
-      <p class="mt-1 text-greyscale-600">
-        Our AI assistant can help you understand your options and find resources.
-      </p>
-      <c-atoms.link href="{% url 'portal:chat' %}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
-        Start a conversation
-        <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
-      </c-atoms.link>
-    </div>
-  </div>
+  <c-organisms.topic-detail title="{{ topic.title }}" subtitle="{{ topic.subtitle }}" icon="{{ topic.icon }}">
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Types of family law cases</h2>
+    <p class="mt-2 text-greyscale-700">
+      Family courts handle a wide range of matters that affect families and households:
+    </p>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Divorce and legal separation</li>
+      <li>Child custody and visitation</li>
+      <li>Child support and spousal support (alimony)</li>
+      <li>Paternity establishment</li>
+      <li>Adoption and guardianship</li>
+      <li>Domestic violence protection orders</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">The divorce process</h2>
+    <p class="mt-2 text-greyscale-700">
+      Divorce ends a marriage through a court order. The process and requirements vary by state, but there are two main types:
+    </p>
+    <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
+      <li>
+        <strong>Uncontested divorce</strong> &mdash; Both spouses agree on major issues (property division, custody, support). This is typically faster, less expensive, and less stressful.
+      </li>
+      <li>
+        <strong>Contested divorce</strong> &mdash; The spouses disagree on one or more issues. A judge will make decisions after both sides present their case.
+      </li>
+    </ul>
+    <p class="mt-2 text-greyscale-700">
+      Many courts encourage or require <strong>mediation</strong> before trial. A neutral mediator helps both parties negotiate an agreement without going before a judge.
+    </p>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Child custody</h2>
+    <p class="mt-2 text-greyscale-700">
+      Custody decisions are based on the <strong>best interests of the child</strong> &mdash; the standard courts use in every state. Both parents' perspectives matter:
+    </p>
+    <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
+      <li>
+        <strong>Legal custody</strong> &mdash; The right to make major decisions about the child's education, health care, and religious upbringing. Can be sole or joint.
+      </li>
+      <li>
+        <strong>Physical custody</strong> &mdash; Where the child lives. Joint physical custody means the child spends significant time with both parents.
+      </li>
+    </ul>
+    <p class="mt-2 text-greyscale-700">
+      Courts consider factors like each parent's relationship with the child, stability of each home, the child's preferences (if old enough), and each parent's willingness to support the child's relationship with the other parent.
+    </p>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Child support</h2>
+    <p class="mt-2 text-greyscale-700">
+      Both parents have a legal obligation to support their children financially. Key points:
+    </p>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>
+        <strong>Calculation</strong> &mdash; Most states use a formula based on both parents' incomes, the number of children, and the custody arrangement.
+      </li>
+      <li>
+        <strong>Modification</strong> &mdash; Support can be changed if circumstances significantly change (job loss, income increase, change in custody).
+      </li>
+      <li>
+        <strong>Enforcement</strong> &mdash; Failure to pay can result in wage garnishment, tax refund interception, license suspension, or contempt of court.
+      </li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Domestic violence resources</h2>
+    <p class="mt-2 text-greyscale-700">If you or someone you know is experiencing domestic violence, help is available:</p>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>
+        <strong>National Domestic Violence Hotline:</strong> 1-800-799-7233 (available 24/7)
+      </li>
+      <li>
+        <strong>Protection orders</strong> &mdash; Courts can issue emergency, temporary, and permanent protection orders that require an abuser to stay away.
+      </li>
+      <li>Many courts have expedited processes for protection orders, often available the same day.</li>
+      <li>Advocates at local shelters and legal aid offices can help with safety planning and court paperwork.</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Preparing for family court</h2>
+    <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+      <li>
+        Gather important documents &mdash; financial records, tax returns, property deeds, and any existing court orders.
+      </li>
+      <li>Organize your timeline &mdash; key dates, events, and communications relevant to your case.</li>
+      <li>Understand your state's requirements &mdash; residency, waiting periods, mandatory parenting classes.</li>
+      <li>Consider what outcomes you want and what compromises you can accept.</li>
+      <li>Keep communication with the other party respectful and documented (in writing when possible).</li>
+    </ol>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Finding help</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Your local legal aid office</li>
+      <li>Court self-help centers and family law facilitators</li>
+      <li>Bar association lawyer referral services</li>
+      <li>Mediation services (often available through the court)</li>
+      <li>Domestic violence hotlines and shelters</li>
+    </ul>
+  </section>
+  </c-organisms.topic-detail>
 {% endblock content %}
