@@ -48,7 +48,7 @@ class HomePageTests(TestCase):
         self.assertContains(response, "mobile-footer")
 
     def test_home_does_not_have_chat_interface(self):
-        """Home page should not include the chat Alpine component."""
+        """Home page should not include the chat component."""
         response = self.client.get("/")
         self.assertNotContains(response, "homePage")
 

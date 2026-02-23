@@ -218,7 +218,7 @@ if DEBUG:
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'",)  # Alpine.js served locally
+CSP_SCRIPT_SRC = ("'self'",)  # Vanilla JS only, no eval needed
 CSP_STYLE_SRC = ("'self'",)
 CSP_IMG_SRC = (
     "'self'",
@@ -227,7 +227,7 @@ CSP_IMG_SRC = (
 )  # data: for inline, blob: for camera
 CSP_FONT_SRC = ("'self'", "data:")
 CSP_CONNECT_SRC = ("'self'",)
-# Alpine.js CSP build used (standard build requires unsafe-eval)
+# Vanilla JS components — no eval, no unsafe-eval needed
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

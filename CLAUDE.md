@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Access to justice portal for self-represented litigants. Django 5.2 with server-rendered components (Django Cotton), Tailwind CSS v4, and Alpine.js for reactivity.
+Access to justice portal for self-represented litigants. Django 5.2 with server-rendered components (Django Cotton), Tailwind CSS v4, and vanilla JS for reactivity.
 
 ## Current Focus: ITC Demo (Jan 2026)
 
@@ -92,6 +92,16 @@ make test    # Run test suite
 
 ## Architecture
 
+### Front-End Principles
+
+These guide every UI decision, in priority order:
+
+1. **WCAG AA accessible** — keyboard nav, focus indicators, 4.5:1 contrast, 44px touch targets, ARIA where needed. Semantic HTML is the foundation.
+2. **Mobile-first** — default styles target small screens; use `sm:`/`md:`/`lg:` breakpoints to enhance for larger.
+3. **HTML/CSS over JS** — if native HTML (e.g. `<details>`, `<dialog>`) or Tailwind can solve it, don't write JS. JS is for behavior that HTML/CSS genuinely can't handle (async data, streaming, complex state).
+4. **Atomic Design** — atoms → molecules → organisms. Components are self-contained and composable.
+5. **Dumb templates** — templates render; logic lives in models (Python) or JS components. Views just orchestrate.
+
 ### Component System (Django Cotton + Atomic Design)
 
 Components live in `templates/cotton/` using Atomic Design hierarchy:
@@ -109,13 +119,34 @@ Style guide available at `/style-guide/` during development.
 
 ### State Flow
 
-Django renders initial state, Alpine.js handles client-side reactivity:
+Django renders initial state, vanilla JS components handle client-side reactivity.
+
+Components use a factory + registry pattern. Each component is a function receiving its root DOM element:
+
+```js
+// Register in JS
+registerComponent('myComponent', (el) => {
+  const trigger = ref(el, 'trigger')
+  let open = false
+  function toggle() {
+    open = !open
+    update()
+  }
+  function update() {
+    /* sync DOM */
+  }
+  trigger.addEventListener('click', toggle)
+})
+```
 
 ```html
-<div x-data="{ expanded: false }">
-  <!-- Alpine handles UI state, Django handles data -->
+<!-- Use in template -->
+<div data-component="myComponent">
+  <button data-ref="trigger">Toggle</button>
 </div>
 ```
+
+See [docs/VANILLA_JS.md](docs/VANILLA_JS.md) for the full pattern reference.
 
 ### Tailwind v4 CSS
 
@@ -127,38 +158,41 @@ Build: `tailwindcss -i src/css/main.css -o static/css/main.built.css`
 
 ### CSP Compliance (Content Security Policy)
 
-**No inline event handlers.** Use Alpine.js directives instead:
+**No inline event handlers.** Use `addEventListener` in component JS:
 
 ```html
 <!-- BAD: Violates CSP -->
 <button onclick="doSomething()">
   <!-- GOOD: CSP-compliant -->
-  <button x-on:click="doSomething"></button>
+  <button data-ref="trigger"></button>
 </button>
 ```
 
 Pre-commit hook enforces this (`csp-inline-check`).
 
-### Alpine.js (Standard Build - Local)
+### Vanilla JS Components
 
-Using Alpine.js standard build (`static/js/alpine.min.js` v3.14.9). Local files, no CDN.
+Zero-dependency vanilla JS with `script-src 'self'` — no eval, no `unsafe-eval`. Components use a factory + registry pattern defined in `app.js`.
 
 **Files:**
 
-- `static/js/alpine.min.js` - Minified (production)
-- `static/js/alpine.js` - Non-minified (debug mode, auto-selected when `DEBUG=True`)
+- `static/js/app.js` - Component registry (`registerComponent`, `initComponents`, `renderList`, `scrollToBottom`)
+- `static/js/theme.js` - Dark mode IIFE (applies pre-DOMContentLoaded)
+- `static/js/components.js` - UI components (appHeader, autoDismiss, userMenu)
+- `static/js/chat.js` - Chat + homePage components
 
-**All directives available:**
+**Template conventions:**
 
-- `x-html` - HTML content rendering (used for markdown in demo)
-- `x-text` - Plain text content
-- `x-data`, `x-init`, `x-bind`, `x-on`, `x-show`, `x-if`, `x-for`, `x-model`, `x-ref`
-
-**TODO: Switch to CSP build for production:**
-
-1. Implement server-side markdown rendering
-2. Download CSP build: `curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js`
-3. Replace `x-html` with `x-text`
+| Pattern                 | Purpose                                 |
+| ----------------------- | --------------------------------------- |
+| `data-component="name"` | Root element, triggers factory          |
+| `data-ref="name"`       | querySelector target (replaces x-ref)   |
+| `data-bind="name"`      | Content target inside templates         |
+| `data-field="name"`     | Sidebar field updated by JS             |
+| `data-section="name"`   | Section shown/hidden by JS              |
+| `data-action="name"`    | Clickable element                       |
+| `data-template="name"`  | `<template>` for renderList()           |
+| `hidden` attribute      | Initial hidden state (replaces x-cloak) |
 
 ### WCAG AA Accessibility
 
@@ -257,11 +291,11 @@ The portal includes an AI-powered chat for legal assistance with streaming respo
 
 ### How It Works
 
-1. **Alpine.js** intercepts form submit, POSTs to `/chat/send/`
-2. **Django** creates session/message, returns `session_id`
-3. **Alpine.js** GETs `/chat/stream/<session_id>/` (SSE endpoint)
+1. **JS** intercepts form submit, POSTs to `/api/chat/stream/`
+2. **Django** creates session/message, streams SSE response
+3. **JS** reads SSE stream via `ReadableStream` reader
 4. **Django** streams tokens via `StreamingHttpResponse`
-5. **Alpine.js** updates UI progressively as tokens arrive
+5. **JS** updates DOM progressively as tokens arrive
 
 No WebSockets, no Django Channels - just SSE over standard HTTP.
 
@@ -296,9 +330,10 @@ Using **LiteLLM** with OpenAI for dev and QA. Model configured via `CHAT_MODEL` 
 | ---------------------------------- | --------------------------------------- |
 | `config/settings.py`               | Django + Cotton + CSP + Chat config     |
 | `src/css/main.css`                 | Tailwind v4 source + theme tokens       |
-| `static/js/alpine.js`              | Alpine.js standard build (debug)        |
-| `static/js/alpine.min.js`          | Alpine.js standard build (production)   |
-| `static/js/chat.js`                | Alpine.js chat component                |
+| `static/js/app.js`                 | Component registry                      |
+| `static/js/theme.js`               | Dark mode IIFE                          |
+| `static/js/components.js`          | UI components (header, menu, dismiss)   |
+| `static/js/chat.js`                | Chat + homePage components              |
 | `templates/cotton/`                | Component library (Atomic Design)       |
 | `templates/pages/style_guide.html` | Style guide page                        |
 | `chat/`                            | AI chat app with providers and services |
@@ -325,18 +360,10 @@ SECRET_KEY=dev .venv/bin/python manage.py migrate
 
 All frontend assets are local files, not CDN. Update these in sync when upgrading:
 
-| Tool         | Version            | Location                                         |
-| ------------ | ------------------ | ------------------------------------------------ |
-| Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                     |
-| Alpine.js    | 3.14.9 (standard)  | `static/js/alpine.js`, `static/js/alpine.min.js` |
-| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose, fly.toml)  |
-
-**Updating Alpine.js:**
-
-```bash
-curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.js" -o static/js/alpine.js
-curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js
-```
+| Tool         | Version            | Location                                        |
+| ------------ | ------------------ | ----------------------------------------------- |
+| Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                    |
+| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose, fly.toml) |
 
 ## Deployment (Fly.io)
 

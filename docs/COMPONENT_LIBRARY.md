@@ -44,8 +44,8 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
                       │
                       ▼
 ┌─────────────────────────────────────────────────────────┐
-│              Tailwind CSS + Alpine.js                   │
-│  static/css/main.css + static/js/alpine.min.js          │
+│            Tailwind CSS + Vanilla JS Components         │
+│  static/css/main.css + static/js/app.js + components.js │
 └─────────────────────────────────────────────────────────┘
 ```
 

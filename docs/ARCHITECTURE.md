@@ -15,14 +15,14 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 
 ## Tech Stack Decisions
 
-| Decision           | Choice                        | Rationale                                 |
-| ------------------ | ----------------------------- | ----------------------------------------- |
-| **Backend**        | Django                        | Team expertise, proven at scale           |
-| **Components**     | Django Cotton                 | Server-rendered, no JS framework needed   |
-| **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed          |
-| **Reactivity**     | AlpineJS (standard build)     | Lightweight, supports x-html for markdown |
-| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation       |
-| **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers      |
+| Decision           | Choice                        | Rationale                                     |
+| ------------------ | ----------------------------- | --------------------------------------------- |
+| **Backend**        | Django                        | Team expertise, proven at scale               |
+| **Components**     | Django Cotton                 | Server-rendered, no JS framework needed       |
+| **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed              |
+| **Reactivity**     | Vanilla JS (factory+registry) | Zero dependencies, CSP-safe, any dev can read |
+| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation           |
+| **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers          |
 
 ---
 
@@ -70,16 +70,16 @@ Dashboard home with separate chat page:
 
 - **Files:** `snake_case.html`
 - **Cotton components:** `<c-component-name>` (kebab-case)
-- **AlpineJS:** `x-data="componentName"` (camelCase)
+- **JS components:** `data-component="componentName"` (camelCase)
 - **CSS:** Tailwind utilities at component level
 
-### State Flow (Django → Alpine)
+### State Flow (Django → Vanilla JS)
 
-Django renders initial state, Alpine handles client reactivity:
+Django renders initial state, JS components handle client reactivity:
 
 ```html
-<div x-data="{ expanded: false }" x-init="initWithState({{ state|safe }})">
-  <!-- Alpine handles UI state, Django handles data -->
+<div data-component="myComponent" data-agent-name="{{ agent_name }}">
+  <!-- JS reads data-* attributes, manages state, updates DOM -->
 </div>
 ```
 
@@ -120,8 +120,8 @@ Django renders initial state, Alpine handles client reactivity:
 
 ## Security
 
-- **CSP configured** - Inline handlers blocked, Alpine.js directives used
-- **AlpineJS standard build** - Currently using standard build for markdown rendering (x-html). CSP build planned for production hardening.
+- **CSP configured** - `script-src 'self'` with no `unsafe-eval`
+- **Vanilla JS** - No framework eval, no `new Function()`, fully CSP-safe
 - **django-csp** - Header management via `CSP_*` settings
 - **VDP:** [free.law/vulnerability-disclosure-policy](https://free.law/vulnerability-disclosure-policy/)
 
@@ -133,8 +133,10 @@ Django renders initial state, Alpine handles client reactivity:
 | --------------------------- | ----------------------------------------------- |
 | `config/settings.py`        | Django + Cotton config                          |
 | `static/css/main.css`       | Tailwind v4 CSS source + theme tokens           |
-| `static/js/theme.js`        | Alpine theme store                              |
-| `static/js/chat.js`         | Alpine chat components (homePage, chatWindow)   |
+| `static/js/app.js`          | Component registry (registerComponent, etc.)    |
+| `static/js/theme.js`        | Theme store (dark mode IIFE)                    |
+| `static/js/chat.js`         | Chat + homePage components                      |
+| `static/js/components.js`   | UI components (header, auto-dismiss, user menu) |
 | `templates/cotton/*/`       | Component library (atoms, molecules, organisms) |
 | `templates/pages/home.html` | Dashboard with hero and topic grid              |
 | `templates/pages/chat.html` | Full-screen chat interface                      |
@@ -225,7 +227,6 @@ CHAT_MODEL=openai/gpt-4o-mini                 # LiteLLM model string
 ## References
 
 - [Django Cotton](https://django-cotton.com/)
-- [AlpineJS](https://alpinejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [LiteLLM](https://docs.litellm.ai/) - Unified LLM API interface
 - [WCAG 2.1 Quick Ref](https://www.w3.org/WAI/WCAG21/quickref/)
