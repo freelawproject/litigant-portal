@@ -1,36 +1,20 @@
 /**
- * Theme Store - Dark Mode Management
- * Alpine.js store for managing theme (light/dark mode)
- * Persists to localStorage and syncs with system preference
+ * Theme - Dark Mode Management
+ *
+ * IIFE that applies theme immediately (before DOMContentLoaded) to prevent
+ * flash of wrong theme. Exposes window.theme for programmatic access.
  *
  * Usage:
- *   <button @click="$store.theme.toggle()">Toggle Theme</button>
- *   <span x-text="$store.theme.current"></span>
+ *   window.theme.toggle()
+ *   window.theme.current // 'light' or 'dark'
  */
-
-document.addEventListener('alpine:init', () => {
-  Alpine.store('theme', {
-    // Initialize from localStorage or system preference
+;(function () {
+  const theme = {
     current:
       localStorage.getItem('theme') ||
       (window.matchMedia('(prefers-color-scheme: dark)').matches
         ? 'dark'
         : 'light'),
-
-    init() {
-      // Apply initial theme
-      this.apply()
-
-      // Listen for system preference changes
-      window
-        .matchMedia('(prefers-color-scheme: dark)')
-        .addEventListener('change', (e) => {
-          if (!localStorage.getItem('theme')) {
-            this.current = e.matches ? 'dark' : 'light'
-            this.apply()
-          }
-        })
-    },
 
     toggle() {
       this.current = this.current === 'light' ? 'dark' : 'light'
@@ -65,8 +49,20 @@ document.addEventListener('alpine:init', () => {
     get isLight() {
       return this.current === 'light'
     },
-  })
+  }
 
-  // Initialize theme on Alpine init
-  Alpine.store('theme').init()
-})
+  // Apply immediately to prevent flash
+  theme.apply()
+
+  // Listen for system preference changes
+  window
+    .matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', (e) => {
+      if (!localStorage.getItem('theme')) {
+        theme.current = e.matches ? 'dark' : 'light'
+        theme.apply()
+      }
+    })
+
+  window.theme = theme
+})()
