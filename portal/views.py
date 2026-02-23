@@ -14,36 +14,42 @@ TOPICS = {
     "housing": {
         "title": "Housing & Eviction",
         "subtitle": "Understanding the eviction process, tenant rights, and landlord obligations",
+        "description": "Landlord disputes, eviction defense, tenant rights",
         "icon": "home",
         "meta_description": "Learn about the eviction process, tenant rights, and landlord obligations. General legal information for self-represented litigants.",
     },
     "family": {
         "title": "Family & Divorce",
         "subtitle": "Divorce, custody, child support, and domestic violence resources",
+        "description": "Divorce, custody, child support, domestic issues",
         "icon": "users",
         "meta_description": "Learn about divorce, child custody, child support, and family court. General legal information for self-represented litigants.",
     },
     "small-claims": {
         "title": "Small Claims",
         "subtitle": "Resolving disputes and understanding the small claims court process",
+        "description": "Disputes under $10,000, debt collection defense",
         "icon": "currency-dollar",
         "meta_description": "Learn about filing or defending a small claims case. General legal information for self-represented litigants.",
     },
     "consumer": {
         "title": "Consumer Rights",
         "subtitle": "Debt collection rules, contract disputes, and consumer protections",
+        "description": "Scams, unfair business practices, contracts",
         "icon": "shield-check",
         "meta_description": "Learn about consumer rights, debt collection rules, and contract disputes. General legal information for self-represented litigants.",
     },
     "expungement": {
         "title": "Expungement",
         "subtitle": "Clearing or sealing your criminal record and restoring opportunities",
+        "description": "Clear your record, seal court files",
         "icon": "document-text",
         "meta_description": "Learn about expungement, record sealing, and eligibility requirements. General legal information for self-represented litigants.",
     },
     "traffic": {
         "title": "Traffic & Fines",
         "subtitle": "Traffic violations, fines, license issues, and your options",
+        "description": "Tickets, license issues, court fines",
         "icon": "truck",
         "meta_description": "Learn about traffic tickets, fines, license suspension, and your options. General legal information for self-represented litigants.",
     },
@@ -57,7 +63,7 @@ def health(request):
 
 def home(request):
     """Home page - dashboard with hero and topic grid."""
-    return render(request, "pages/home.html")
+    return render(request, "pages/home.html", {"topics": TOPICS})
 
 
 def topic_detail(request, slug):
@@ -97,7 +103,7 @@ def accessibility(request):
 
 def style_guide(request):
     """Design tokens and component library"""
-    return render(request, "pages/style_guide.html")
+    return render(request, "pages/style_guide.html", {"topics": TOPICS})
 
 
 class ProfileDetailView(LoginRequiredMixin, DetailView):

@@ -2,11 +2,8 @@
 <section class="topic-grid-section {{ class }}" {{ attrs }}>
   {% if heading %}<h2 class="topic-grid-heading">{{ heading }}</h2>{% endif %}
   <div class="topic-grid">
-    <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense, tenant rights" href="{% url 'portal:topic_detail' slug='housing' %}" />
-    <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support, domestic issues" href="{% url 'portal:topic_detail' slug='family' %}" />
-    <c-molecules.topic-card icon="currency-dollar" title="Small Claims" description="Disputes under $10,000, debt collection defense" href="{% url 'portal:topic_detail' slug='small-claims' %}" />
-    <c-molecules.topic-card icon="shield-check" title="Consumer Rights" description="Scams, unfair business practices, contracts" href="{% url 'portal:topic_detail' slug='consumer' %}" />
-    <c-molecules.topic-card icon="document-text" title="Expungement" description="Clear your record, seal court files" href="{% url 'portal:topic_detail' slug='expungement' %}" />
-    <c-molecules.topic-card icon="truck" title="Traffic & Fines" description="Tickets, license issues, court fines" href="{% url 'portal:topic_detail' slug='traffic' %}" />
+    {% for slug, topic in topics.items %}
+      <c-molecules.topic-card icon="{{ topic.icon }}" title="{{ topic.title }}" description="{{ topic.description }}" href="{% url 'portal:topic_detail' slug=slug %}" />
+    {% endfor %}
   </div>
 </section>
