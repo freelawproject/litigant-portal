@@ -1,18 +1,7 @@
-{% extends "base.html" %}
+{% extends "pages/topics/base_topic.html" %}
 
-{% block title %}
+{% block topic_content %}
 
-  {{ topic.title }} - Litigant Portal
-{% endblock title %}
-
-{% block meta_description %}
-
-  {{ topic.meta_description }}
-{% endblock meta_description %}
-
-{% block content %}
-
-  <c-organisms.topic-detail title="{{ topic.title }}" subtitle="{{ topic.subtitle }}" icon="{{ topic.icon }}">
   <section>
     <h2 class="text-xl font-semibold text-greyscale-900">What is expungement?</h2>
     <p class="mt-2 text-greyscale-700">
@@ -131,5 +120,4 @@
       <li>Community organizations that offer expungement workshops or "clean slate" events</li>
     </ul>
   </section>
-  </c-organisms.topic-detail>
-{% endblock content %}
+{% endblock topic_content %}
