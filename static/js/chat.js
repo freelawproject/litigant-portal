@@ -107,8 +107,9 @@ function createChat(el, { bindForm = true } = {}) {
     ref(el, 'input') ||
     el.querySelector('input[name="message"]') ||
     el.querySelector('input[name="q"]')
-  const submitBtn =
-    ref(el, 'submitBtn') || (form && form.querySelector('[type="submit"]'))
+  const submitBtn = bindForm
+    ? ref(el, 'submitBtn') || (form && form.querySelector('[type="submit"]'))
+    : null
   const typingIndicator = ref(el, 'typing')
 
   // State
@@ -438,6 +439,8 @@ function createHomePage(el) {
   const heroInput = ref(el, 'heroInput')
   const chatForm = ref(el, 'chatForm')
   const chatInput = ref(el, 'chatInput')
+  const heroSubmitBtn = heroForm?.querySelector('[type="submit"]')
+  const chatSubmitBtn = chatForm?.querySelector('[type="submit"]')
   const newConversationBtn = ref(el, 'newConversation')
   const confirmationArea = ref(el, 'confirmation')
   const confirmBtn = ref(el, 'confirmBtn')
@@ -537,6 +540,19 @@ function createHomePage(el) {
     spinnerIcons.forEach((icon) => {
       icon.hidden = !pageState.isUploading
     })
+
+    // Submit button states
+    if (heroSubmitBtn) {
+      heroSubmitBtn.disabled =
+        state.isStreaming || !(heroInput && heroInput.value.trim())
+    }
+    if (chatSubmitBtn) {
+      chatSubmitBtn.disabled =
+        state.isStreaming || !(chatInput && chatInput.value.trim())
+    }
+
+    // Chat input disabled during streaming
+    if (chatInput) chatInput.disabled = state.isStreaming
 
     // Sidebar
     updateSidebar()
@@ -1045,6 +1061,18 @@ function createHomePage(el) {
   // Clear case info
   if (clearCaseBtn) {
     clearCaseBtn.addEventListener('click', clearCaseInfo)
+  }
+
+  // Enable/disable submit buttons on input
+  if (heroInput && heroSubmitBtn) {
+    heroInput.addEventListener('input', () => {
+      heroSubmitBtn.disabled = state.isStreaming || !heroInput.value.trim()
+    })
+  }
+  if (chatInput && chatSubmitBtn) {
+    chatInput.addEventListener('input', () => {
+      chatSubmitBtn.disabled = state.isStreaming || !chatInput.value.trim()
+    })
   }
 
   // Run init

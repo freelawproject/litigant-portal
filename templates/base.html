@@ -33,7 +33,9 @@
         {% endblock header %}
 
         <c-molecules.toast-container :messages="toast_messages" />
-        <main class="flex-1">
+        <main class="flex-1 {% block main_class %}
+           {% endblock main_class %}
+           ">
           {% block content %}
 
           {% endblock content %}

@@ -7,6 +7,11 @@
   h-dvh flex flex-col bg-greyscale-25 overflow-hidden
 {% endblock body_class %}
 
+{% block main_class %}
+
+  min-h-0 flex flex-col
+{% endblock main_class %}
+
 {% block title %}
 
   Litigant Portal - Free Legal Help
@@ -190,7 +195,7 @@
       </div>
     {% endif %}
     {# Main Content Area - centered #}
-    <div class="flex-1 min-w-0 flex flex-col">
+    <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       {# Hero Section - shows when no messages #}
       <section data-ref="hero" class="hero flex-1">
         <div class="hero-content">
