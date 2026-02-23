@@ -36,7 +36,7 @@ repos:
     hooks:
       - id: prettier
         name: prettier
-        entry: prettier --write --ignore-unknown
+        entry: prettier --write --ignore-unknown --log-level warn
         language: node
         types_or: [javascript, json, markdown, yaml, css]
         exclude: ^(node_modules/|\.venv/|staticfiles/|static/css/main\.built\.css|package-lock\.json|uv\.lock)
@@ -59,7 +59,7 @@ repos:
 
       - id: csp-inline-check
         name: CSP inline handler check
-        entry: bash -c 'grep -rE "on(click|load|error|submit|change|input|focus|blur|keyup|keydown|mouseover)=" templates/ && echo "ERROR - Inline event handlers violate CSP. Use addEventListener in component JS." && exit 1 || exit 0'
+        entry: bash -c 'grep -rEn " on[a-z]+=|\"on[a-z]+=" templates/ && echo "ERROR - Inline event handlers violate CSP. Use addEventListener in component JS." && exit 1 || exit 0'
         language: system
         files: ^templates/.*\.html$
         pass_filenames: false

@@ -9,6 +9,19 @@ Contributor guide for the component system that replaced Alpine.js.
 - **Any web developer** can read and contribute
 - **No framework conflicts** for court partner site embedding
 
+### CSP Compliance
+
+Our Content Security Policy is `script-src 'self'` — only scripts served from our own origin can execute. This blocks three things: `eval()`/`new Function()`, inline event handlers (`onclick="..."`), and inline `<script>` tags. All three require `unsafe-eval` or `unsafe-inline` directives that we intentionally omit.
+
+Alpine.js's standard build uses `new Function()` to evaluate every template expression (e.g., `x-on:click="open = !open"` gets compiled into a function at runtime). Alpine's "CSP build" avoids this but restricts expressions to dot-path-only — no method calls, no ternaries — which was too limiting for contributors.
+
+Vanilla JS sidesteps the problem entirely:
+
+- All code lives in static `.js` files served from `/static/js/` — satisfies `'self'`
+- No string-to-code evaluation — no `eval()`, `new Function()`, `setTimeout("string")`
+- Events bound via `addEventListener()` in JS files, never inline `on*` attributes in HTML
+- The `csp-inline-check` pre-commit hook catches any inline handlers that slip into templates
+
 ## Architecture
 
 ```
