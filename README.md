@@ -34,7 +34,7 @@ make docker-prod
 - **Backend:** Django 5.2 LTS
 - **Components:** Django Cotton (server-rendered)
 - **Styling:** Tailwind CSS (standalone CLI)
-- **Reactivity:** Alpine.js (standard build)
+- **Reactivity:** Vanilla JS (factory + registry)
 - **Database:** SQLite
 
 ## License

@@ -202,7 +202,7 @@ The portal includes an AI chat feature using LiteLLM with OpenAI (gpt-4o-mini by
 User Input → POST /api/chat/send/ → Django creates message
            → GET /api/chat/stream/<session_id>/ (SSE)
            → Groq API (OpenAI-compatible)
-           → StreamingHttpResponse → Alpine.js updates UI
+           → StreamingHttpResponse → vanilla JS updates UI
 ```
 
 ### Configuration

@@ -60,8 +60,9 @@ function ref(root, name) {
  * @param {(clone: DocumentFragment, item: Object, index: number) => void} bindItem - Bind data to cloned template
  */
 function renderList(container, templateSelector, items, bindItem) {
-  const tpl = container.querySelector(templateSelector)
-    || document.querySelector(templateSelector)
+  const tpl =
+    container.querySelector(templateSelector) ||
+    document.querySelector(templateSelector)
   if (!tpl) return
 
   // Remove all children except the template itself
@@ -87,8 +88,7 @@ function renderList(container, templateSelector, items, bindItem) {
 function scrollToBottom(el, force = false) {
   if (!el) return
   requestAnimationFrame(() => {
-    const isNearBottom =
-      el.scrollHeight - el.scrollTop - el.clientHeight < 150
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 150
     if (force || isNearBottom) {
       el.scrollTop = el.scrollHeight
     }

@@ -110,7 +110,7 @@ indent = 2
 max_line_length = 120
 format_css = true
 format_js = true
-# H006: img without alt, H021: inline styles (Alpine x-show), H030/H031: meta tags
+# H006: img without alt, H021: inline styles, H030/H031: meta tags
 ignore = "H006,H021,H030,H031"
 extend_exclude = ".venv,node_modules,staticfiles"
 # Recognize Cotton components

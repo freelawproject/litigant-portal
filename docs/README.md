@@ -22,15 +22,15 @@ make test                   # Run tests
 
 ## Project Status
 
-| Phase                                           | Status |
-| ----------------------------------------------- | ------ |
-| Django Foundation                               | Done   |
-| Frontend Pipeline (Tailwind CLI + Alpine local) | Done   |
-| Core Atoms (Button, Input, Link, Select, Icon)  | Done   |
-| Component Library Page                          | Done   |
-| Auth (Login/Signup/Logout)                      | Done   |
-| AI Chat with Groq                               | Done   |
-| A11y Testing                                    | Next   |
+| Phase                                          | Status |
+| ---------------------------------------------- | ------ |
+| Django Foundation                              | Done   |
+| Frontend Pipeline (Tailwind CLI + vanilla JS)  | Done   |
+| Core Atoms (Button, Input, Link, Select, Icon) | Done   |
+| Component Library Page                         | Done   |
+| Auth (Login/Signup/Logout)                     | Done   |
+| AI Chat with Groq                              | Done   |
+| A11y Testing                                   | Next   |
 
 ---
 
@@ -65,8 +65,10 @@ litigant-portal/
 │   │   └── main.built.css # Tailwind output (gitignored)
 │   ├── images/            # Static images (logo.svg)
 │   └── js/
-│       ├── theme.js       # Alpine theme store
-│       └── chat.js        # Alpine chat component
+│       ├── app.js         # Component registry
+│       ├── theme.js       # Dark mode IIFE
+│       ├── components.js  # UI components (header, menu, dismiss)
+│       └── chat.js        # Chat + homePage components
 └── docs/                  # This folder
 ```
 
@@ -86,18 +88,18 @@ litigant-portal/
 
 ## Tech Stack
 
-| Layer      | Technology                               |
-| ---------- | ---------------------------------------- |
-| Backend    | Django 5.2 LTS, Python 3.13              |
-| Components | Django Cotton                            |
-| Styling    | Tailwind CSS 4.x (standalone CLI)        |
-| Reactivity | Alpine.js 3.14.9 (local, standard build) |
-| Auth       | django-allauth                           |
-| AI Chat    | Groq (llama-3.3-70b-versatile)           |
-| Security   | django-csp                               |
-| Deployment | Fly.io (QA), GitHub Pages (static demo)  |
+| Layer      | Technology                              |
+| ---------- | --------------------------------------- |
+| Backend    | Django 5.2 LTS, Python 3.13             |
+| Components | Django Cotton                           |
+| Styling    | Tailwind CSS 4.x (standalone CLI)       |
+| Reactivity | Vanilla JS (factory + registry)         |
+| Auth       | django-allauth                          |
+| AI Chat    | Groq (llama-3.3-70b-versatile)          |
+| Security   | django-csp                              |
+| Deployment | Fly.io (QA), GitHub Pages (static demo) |
 
-**No Node.js required** - Tailwind via standalone CLI, Alpine.js local files.
+**No Node.js required** - Tailwind via standalone CLI, vanilla JS local files.
 
 ---
 

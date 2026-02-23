@@ -84,23 +84,23 @@ registerComponent('myWidget', (el) => {
 
 ## Data Attributes
 
-| Attribute | Purpose |
-|-----------|---------|
-| `data-component="name"` | Root element — triggers factory from registry |
-| `data-ref="name"` | Queryable child — `ref(el, 'name')` returns it |
-| `data-bind="name"` | Content target inside `<template>` clones |
-| `data-field="name"` | Sidebar field updated by `updateSidebar()` |
-| `data-section="name"` | Section shown/hidden based on data |
-| `data-action="name"` | Clickable element (querySelectorAll pattern) |
-| `data-template="name"` | `<template>` element for `renderList()` |
-| `data-icon="type"` | Icon variant shown/hidden per item |
+| Attribute               | Purpose                                        |
+| ----------------------- | ---------------------------------------------- |
+| `data-component="name"` | Root element — triggers factory from registry  |
+| `data-ref="name"`       | Queryable child — `ref(el, 'name')` returns it |
+| `data-bind="name"`      | Content target inside `<template>` clones      |
+| `data-field="name"`     | Sidebar field updated by `updateSidebar()`     |
+| `data-section="name"`   | Section shown/hidden based on data             |
+| `data-action="name"`    | Clickable element (querySelectorAll pattern)   |
+| `data-template="name"`  | `<template>` element for `renderList()`        |
+| `data-icon="type"`      | Icon variant shown/hidden per item             |
 
 ## Patterns
 
 ### Show/Hide
 
 ```js
-el.hidden = !shouldShow  // replaces x-show + x-cloak
+el.hidden = !shouldShow // replaces x-show + x-cloak
 ```
 
 Start elements with `hidden` attribute in HTML if they should be hidden initially.
@@ -108,13 +108,13 @@ Start elements with `hidden` attribute in HTML if they should be hidden initiall
 ### Text Content
 
 ```js
-el.textContent = value   // replaces x-text
+el.textContent = value // replaces x-text
 ```
 
 ### HTML Content (sanitized only)
 
 ```js
-el.innerHTML = chatUtils.renderMarkdown(text)  // replaces x-html
+el.innerHTML = chatUtils.renderMarkdown(text) // replaces x-html
 ```
 
 Only use `innerHTML` with sanitized content (our markdown renderer escapes HTML first).
@@ -122,9 +122,10 @@ Only use `innerHTML` with sanitized content (our markdown renderer escapes HTML 
 ### Events
 
 ```js
-btn.addEventListener('click', handler)           // replaces x-on:click
-document.addEventListener('keydown', handler)    // replaces x-on:keydown.escape.window
-document.addEventListener('click', (e) => {      // replaces x-on:click.outside
+btn.addEventListener('click', handler) // replaces x-on:click
+document.addEventListener('keydown', handler) // replaces x-on:keydown.escape.window
+document.addEventListener('click', (e) => {
+  // replaces x-on:click.outside
   if (!el.contains(e.target)) close()
 })
 ```
@@ -152,8 +153,8 @@ renderList(container, '[data-template="item"]', items, (clone, item) => {
 ### Scroll to Bottom
 
 ```js
-scrollToBottom(el)         // scrolls if near bottom
-scrollToBottom(el, true)   // force scroll
+scrollToBottom(el) // scrolls if near bottom
+scrollToBottom(el, true) // force scroll
 ```
 
 ### Passing Data from Django
@@ -161,7 +162,11 @@ scrollToBottom(el, true)   // force scroll
 Use `data-*` attributes on the component root:
 
 ```html
-<div data-component="chat" data-session-id="{{ session_id }}" data-agent-name="{{ agent_name }}">
+<div
+  data-component="chat"
+  data-session-id="{{ session_id }}"
+  data-agent-name="{{ agent_name }}"
+></div>
 ```
 
 ```js
@@ -177,8 +182,8 @@ registerComponent('chat', (el) => {
 
 ```js
 function createHomePage(el) {
-  const chat = createChat(el)  // get chat API
-  chat.onBeforeSend = myHook   // wire hooks
+  const chat = createChat(el) // get chat API
+  chat.onBeforeSend = myHook // wire hooks
   // ...add page-specific logic
 }
 ```
@@ -188,8 +193,8 @@ function createHomePage(el) {
 For overlays, prefer native `<dialog>` over custom modals:
 
 ```js
-dialog.showModal()  // opens with backdrop, Escape, focus trap
-dialog.close()      // closes
+dialog.showModal() // opens with backdrop, Escape, focus trap
+dialog.close() // closes
 ```
 
 ```html

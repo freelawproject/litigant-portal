@@ -53,11 +53,11 @@ CSP prevents XSS attacks by controlling which resources can load.
 
 ### Stack
 
-| Component           | Purpose                          |
-| ------------------- | -------------------------------- |
-| `django-csp`        | Sends CSP headers via middleware |
-| Alpine.js CSP build | No `unsafe-eval` required        |
-| Pre-commit check    | Blocks inline event handlers     |
+| Component        | Purpose                                    |
+| ---------------- | ------------------------------------------ |
+| `django-csp`     | Sends CSP headers via middleware           |
+| Vanilla JS       | No `eval()` or `new Function()` — CSP-safe |
+| Pre-commit check | Blocks inline event handlers               |
 
 ### Configuration
 
@@ -65,7 +65,7 @@ Settings in `config/settings.py`:
 
 ```python
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", "https://cdn.jsdelivr.net")
+CSP_SCRIPT_SRC = ("'self'",)
 CSP_STYLE_SRC = ("'self'",)
 # ... see settings.py for full config
 ```
@@ -102,9 +102,9 @@ def test_no_csp_violations(live_server):
 
 ### What's Blocked
 
-| Blocked                   | Alternative             |
-| ------------------------- | ----------------------- |
-| `onclick="..."`           | `@click="..."` (Alpine) |
-| `<script>inline</script>` | External JS file        |
-| `javascript:` URLs        | Proper event handlers   |
-| `style="..."`             | CSS classes             |
+| Blocked                   | Alternative                |
+| ------------------------- | -------------------------- |
+| `onclick="..."`           | `addEventListener()` in JS |
+| `<script>inline</script>` | External JS file           |
+| `javascript:` URLs        | Proper event handlers      |
+| `style="..."`             | CSS classes                |

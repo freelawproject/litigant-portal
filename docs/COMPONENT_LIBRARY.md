@@ -6,7 +6,7 @@
 
 ## Current Status
 
-- [x] Build simplification (Tailwind standalone CLI + Alpine.js local files)
+- [x] Build simplification (Tailwind standalone CLI + vanilla JS)
 - [x] Node.js removed - zero JS build dependencies
 - [x] Tailwind v4 CSS-based config (no tailwind.config.js needed)
 - [x] CourtListener color scheme adopted
@@ -251,7 +251,10 @@ litigant-portal/
 │   ├── images/
 │   │   └── logo.svg              # Site logo
 │   └── js/
-│       └── theme.js              # Alpine theme store
+│       ├── app.js                # Component registry
+│       ├── theme.js              # Dark mode IIFE
+│       ├── components.js         # UI components
+│       └── chat.js               # Chat + homePage components
 │
 ├── templates/
 │   ├── cotton/                   # Django Cotton components (Atomic Design)
