@@ -44,18 +44,14 @@
           <c-organisms.footer />
         {% endblock footer %}
 
-        {# Theme store - must load before Alpine #}
+        {# Theme - IIFE, applies immediately to prevent flash #}
         <script src="{% static 'js/theme.js' %}"></script>
-        {# Chat component - must load before Alpine #}
+        {# Component registry - must load before component definitions #}
+        <script src="{% static 'js/app.js' %}"></script>
+        {# UI components (header, auto-dismiss, user menu) #}
+        <script src="{% static 'js/components.js' %}"></script>
+        {# Chat component #}
         <script src="{% static 'js/chat.js' %}"></script>
-        {# Alpine.js CSP build - required for Content Security Policy compliance #}
-        {# https://alpinejs.dev/advanced/csp #}
-        {# Uses non-minified version in debug mode for easier debugging #}
-        {% if debug %}
-          <script defer src="{% static 'js/alpine.js' %}"></script>
-        {% else %}
-          <script defer src="{% static 'js/alpine.min.js' %}"></script>
-        {% endif %}
         {# Additional JavaScript #}
         {% block extra_js %}
 

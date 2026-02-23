@@ -1,8 +1,7 @@
 {% load static %}
 
 <c-vars sticky="" />
-<header x-data="{ menuOpen: false, timeline: [] }"
-        x-effect="if (menuOpen) timeline = JSON.parse(localStorage.getItem('caseTimeline') || '[]')"
+<header data-component="appHeader"
         class="mobile-header flex-shrink-0 {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
         {{ attrs }}>
   <div class="mobile-header-inner">
@@ -16,91 +15,56 @@
         <c-atoms.link href="{% url 'portal:style_guide' %}" variant="unstyled" class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-greyscale-600 transition-colors">
         Style Guide
         </c-atoms.link>
-        <c-atoms.button type="button" variant="ghost" class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 !p-0" x-on:click="localStorage.clear(); location.reload()">
+        <c-atoms.button type="button" variant="ghost" class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 !p-0" data-ref="clearDemo">
         Clear Demo
         </c-atoms.button>
       {% endif %}
       <c-molecules.user-menu class="hidden sm:flex" />
-      <c-atoms.button type="button" variant="ghost" aria_label="Open activity timeline" class="mobile-header-menu-btn" x-bind:aria-expanded="menuOpen" x-on:click="menuOpen = true">
+      <c-atoms.button type="button" variant="ghost" aria_label="Open activity timeline" class="mobile-header-menu-btn" aria-expanded="false" data-ref="openMenu">
       <c-atoms.icon name="bars-3" class="w-6 h-6" />
       </c-atoms.button>
     </div>
   </div>
-  {# Menu Overlay #}
-  <div x-show="menuOpen"
-       x-cloak
-       class="fixed inset-0 z-50"
-       x-on:keydown.escape.window="menuOpen = false">
-    {# Backdrop #}
-    <div class="absolute inset-0 bg-black/50"
-         x-on:click="menuOpen = false"
-         x-show="menuOpen"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="opacity-0"
-         x-transition:enter-end="opacity-100"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="opacity-100"
-         x-transition:leave-end="opacity-0"></div>
-    {# Menu Panel #}
-    <nav class="absolute right-0 top-0 h-full w-80 bg-white shadow-xl overflow-y-auto"
-         x-show="menuOpen"
-         x-transition:enter="transition ease-out duration-200"
-         x-transition:enter-start="translate-x-full"
-         x-transition:enter-end="translate-x-0"
-         x-transition:leave="transition ease-in duration-150"
-         x-transition:leave-start="translate-x-0"
-         x-transition:leave-end="translate-x-full"
-         role="dialog"
-         aria-modal="true"
-         aria-label="Activity timeline">
+  {# Timeline dialog — native <dialog> with slide-over positioning #}
+  <dialog data-ref="dialog"
+          class="timeline-dialog"
+          aria-label="Activity timeline">
+    <div class="timeline-dialog-panel">
       <div class="flex items-center justify-between p-4 border-b border-greyscale-200">
         <span class="font-semibold text-greyscale-900">Activity</span>
-        <c-atoms.button type="button" variant="ghost" aria_label="Close menu" class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700" x-on:click="menuOpen = false">
+        <c-atoms.button type="button" variant="ghost" aria_label="Close menu" class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700" data-ref="closeMenu">
         <c-atoms.icon name="x-mark" class="w-6 h-6" />
         </c-atoms.button>
       </div>
-      {# Timeline - refreshes from localStorage when menu opens #}
-      <div class="p-4 space-y-3">
+      {# Timeline content #}
+      <div data-ref="events" class="p-4 space-y-3">
         {# Empty state #}
-        <template x-if="!timeline || timeline.length === 0">
-          <div class="text-center py-8">
-            <c-atoms.icon name="clock" class="w-10 h-10 text-greyscale-300 mx-auto mb-3" />
-            <p class="text-sm text-greyscale-500">No activity yet</p>
-            <p class="text-xs text-greyscale-400 mt-1">Upload documents and chat to see your history here</p>
-          </div>
-        </template>
-        {# Timeline events #}
-        <template x-if="timeline && timeline.length > 0">
-          <div class="space-y-3">
-            <template x-for="event in timeline.slice().reverse()" :key="event.id">
-              <div class="p-3 border-l-2 cursor-pointer"
-                   x-data="{ expanded: false }"
-                   x-on:click="expanded = !expanded"
-                   x-bind:class="{ 'border-primary-300 bg-primary-50/50': event.type === 'upload', 'border-blue-300 bg-blue-50/50': event.type === 'summary', 'border-greyscale-300 bg-greyscale-50': event.type === 'change' }">
-                <div class="flex items-center gap-2 mb-1">
-                  <template x-if="event.type === 'upload'">
-                    <c-atoms.icon name="document-arrow-up" class="w-4 h-4 text-primary-500" />
-                  </template>
-                  <template x-if="event.type === 'summary'">
-                    <c-atoms.icon name="chat-bubble-left-right" class="w-4 h-4 text-blue-500" />
-                  </template>
-                  <template x-if="event.type === 'change'">
-                    <c-atoms.icon name="pencil-square" class="w-4 h-4 text-greyscale-500" />
-                  </template>
-                  <p class="text-xs text-greyscale-500"
-                     x-text="new Date(event.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })">
-                  </p>
-                </div>
-                <p x-show="event.title"
-                   class="text-sm font-medium text-greyscale-800"
-                   x-text="event.title"></p>
-                <p class="text-sm text-greyscale-600"
-                   x-bind:class="{ 'line-clamp-2': !expanded, 'mt-0.5': event.title }"
-                   x-text="event.content"></p>
+        <div data-ref="emptyState" class="text-center py-8">
+          <c-atoms.icon name="clock" class="w-10 h-10 text-greyscale-300 mx-auto mb-3" />
+          <p class="text-sm text-greyscale-500">No activity yet</p>
+          <p class="text-xs text-greyscale-400 mt-1">Upload documents and chat to see your history here</p>
+        </div>
+        {# Timeline events (rendered via JS) #}
+        <div data-ref="eventsList" hidden class="space-y-3">
+          <template data-template="timelineEvent">
+            <div data-bind="card" class="p-3 border-l-2 cursor-pointer">
+              <div class="flex items-center gap-2 mb-1">
+                <span data-icon="upload" hidden>
+                  <c-atoms.icon name="document-arrow-up" class="w-4 h-4 text-primary-500" />
+                </span>
+                <span data-icon="summary" hidden>
+                  <c-atoms.icon name="chat-bubble-left-right" class="w-4 h-4 text-blue-500" />
+                </span>
+                <span data-icon="change" hidden>
+                  <c-atoms.icon name="pencil-square" class="w-4 h-4 text-greyscale-500" />
+                </span>
+                <p data-bind="time" class="text-xs text-greyscale-500"></p>
               </div>
-            </template>
-          </div>
-        </template>
+              <p data-bind="title" class="text-sm font-medium text-greyscale-800"></p>
+              <p data-bind="content" class="text-sm text-greyscale-600 line-clamp-2"></p>
+            </div>
+          </template>
+        </div>
       </div>
       {# Account Section (mobile) #}
       <div class="p-4 border-t border-greyscale-200 sm:hidden">
@@ -111,6 +75,6 @@
           <c-atoms.nav-link icon="arrow-right-end-on-rectangle" href="{% url 'account_login' %}" icon_bg="bg-primary-50" icon_color="text-primary-600">Sign in</c-atoms.nav-link>
         {% endif %}
       </div>
-    </nav>
-  </div>
+    </div>
+  </dialog>
 </header>

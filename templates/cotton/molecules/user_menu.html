@@ -1,23 +1,15 @@
 <c-vars />
 {% if user.is_authenticated %}
   {# Logged in: show user menu with dropdown #}
-  <div x-data="{ open: false }" class="relative {{ class }}" {{ attrs }}>
-    <c-atoms.button type="button" variant="ghost" class="!px-3 !py-2 text-sm font-medium" x-on:click="open = !open" x-bind:aria-expanded="open" aria-haspopup="true">
+  <div data-component="userMenu" class="relative {{ class }}" {{ attrs }}>
+    <c-atoms.button type="button" variant="ghost" class="!px-3 !py-2 text-sm font-medium" data-ref="trigger" aria-expanded="false" aria-haspopup="true">
     <c-atoms.icon name="user-circle" class="w-6 h-6 text-greyscale-500" />
     <span class="hidden sm:inline max-w-[140px] truncate">{{ user.email }}</span>
     <c-atoms.icon name="chevron-down" style="solid" class="w-4 h-4 text-greyscale-400" />
     </c-atoms.button>
     {# Dropdown menu #}
-    <div x-show="open"
-         x-cloak
-         x-on:click.outside="open = false"
-         x-on:keydown.escape.window="open = false"
-         x-transition:enter="transition ease-out duration-100"
-         x-transition:enter-start="opacity-0 scale-95"
-         x-transition:enter-end="opacity-100 scale-100"
-         x-transition:leave="transition ease-in duration-75"
-         x-transition:leave-start="opacity-100 scale-100"
-         x-transition:leave-end="opacity-0 scale-95"
+    <div data-ref="menu"
+         hidden
          class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
          role="menu"
          aria-orientation="vertical">

@@ -124,11 +124,6 @@
     --content-max-width: 948px;
   }
 
-  /* Alpine.js cloak - hide elements until Alpine initializes */
-  [x-cloak] {
-    display: none !important;
-  }
-
   /* Base HTML element styles */
   html {
     -webkit-font-smoothing: antialiased;
@@ -374,6 +369,23 @@
 
   .mobile-header-menu-btn {
     @apply p-2 -mr-2; /* Extend touch target */
+  }
+
+  /* Timeline Dialog — right-aligned slide-over using native <dialog> */
+  .timeline-dialog {
+    @apply fixed inset-0 m-0 p-0 border-0 bg-transparent;
+    max-width: 100vw;
+    max-height: 100vh;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  .timeline-dialog::backdrop {
+    background: rgb(0 0 0 / 0.5);
+  }
+
+  .timeline-dialog .timeline-dialog-panel {
+    @apply absolute right-0 top-0 h-full w-80 bg-white shadow-xl overflow-y-auto;
   }
 
   /* Hero Section */
@@ -636,6 +648,20 @@
    ========================================================================== */
 
 @layer utilities {
+  /* Fade-out animation for auto-dismiss */
+  .fade-out {
+    animation: fadeOut 300ms ease-in forwards;
+  }
+
+  @keyframes fadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
   /* Lead text for intro paragraphs */
   .lead {
     @apply text-xl text-greyscale-700 font-normal;

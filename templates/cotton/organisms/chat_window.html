@@ -1,38 +1,38 @@
 <c-vars session_id="" chat_enabled="true" />
-<div x-data="chat"
-     x-init="{% if session_id %}sessionId = '{{ session_id }}';{% endif %}"
+<div data-component="chat"
+     data-session-id="{{ session_id }}"
      class="chat-window {{ class }}"
      {{ attrs }}>
   {# Messages container #}
   <div class="chat-messages"
-       x-ref="messages"
+       data-ref="messages"
        role="log"
        aria-live="polite"
        aria-label="Chat messages">
-    {# All messages rendered dynamically via Alpine #}
-    <template x-for="msg in dynamicMessages" :key="msg.id">
-      <div class="chat-message"
-           x-bind:class="'chat-message-' + msg.role"
-           x-show="msg.content">
+    {# User message template #}
+    <template data-template="message-user">
+      <div class="chat-message chat-message-user">
         <div class="chat-message-avatar">
-          <template x-if="msg.role === 'user'">
-            <c-atoms.icon name="user-circle" class="w-8 h-8 text-greyscale-400" />
-          </template>
-          <template x-if="msg.role === 'assistant'">
-            <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
-          </template>
+          <c-atoms.icon name="user-circle" class="w-8 h-8 text-greyscale-400" />
         </div>
         <div class="chat-message-content">
-          <div class="chat-bubble"
-               x-bind:class="msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'"
-               x-html="msg.role === 'assistant' ? renderMarkdown(msg.content) : escapeHtml(msg.content)"></div>
+          <div data-bind="content" class="chat-bubble chat-bubble-user"></div>
+        </div>
+      </div>
+    </template>
+    {# Assistant message template #}
+    <template data-template="message-assistant">
+      <div class="chat-message chat-message-assistant">
+        <div class="chat-message-avatar">
+          <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+        </div>
+        <div class="chat-message-content">
+          <div data-bind="content" class="chat-bubble chat-bubble-assistant"></div>
         </div>
       </div>
     </template>
     {# Typing indicator #}
-    <div x-show="isStreaming"
-         x-cloak
-         class="chat-message chat-message-assistant">
+    <div data-ref="typing" hidden class="chat-message chat-message-assistant">
       <div class="chat-message-avatar">
         <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
       </div>
@@ -42,13 +42,12 @@
     </div>
   </div>
   {# Input form #}
-  <form x-on:submit.prevent="sendMessage"
-        method="post"
+  <form method="post"
         action="{% url 'chat:stream' %}"
         class="chat-input-form">
     {% csrf_token %}
-    <c-atoms.input x-model="inputText" x-bind:disabled="isStreaming" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" class="flex-1" />
-    <c-atoms.button type="submit" variant="primary" size="xl" x-bind:disabled="isStreaming || !inputText.trim()" aria_label="Send message">
+    <c-atoms.input data-ref="input" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" class="flex-1" />
+    <c-atoms.button type="submit" variant="primary" size="xl" data-ref="submitBtn" aria_label="Send message">
     <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
     <span class="hidden sm:inline ml-2">Send</span>
     </c-atoms.button>
