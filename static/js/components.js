@@ -39,9 +39,7 @@ document.addEventListener('alpine:init', () => {
     timeline: [],
 
     openMenu() {
-      this.timeline = JSON.parse(
-        localStorage.getItem('caseTimeline') || '[]'
-      )
+      this.timeline = JSON.parse(localStorage.getItem('caseTimeline') || '[]')
       this.menuOpen = true
     },
     closeMenu() {
@@ -67,11 +65,17 @@ document.addEventListener('alpine:init', () => {
         .map((event) => ({
           ...event,
           borderClass:
-            { upload: 'border-primary-300 bg-primary-50/50', summary: 'border-blue-300 bg-blue-50/50', change: 'border-greyscale-300 bg-greyscale-50' }[event.type] || 'border-greyscale-300 bg-greyscale-50',
-          formattedDate: new Date(event.timestamp).toLocaleDateString(
-            'en-US',
-            { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }
-          ),
+            {
+              upload: 'border-primary-300 bg-primary-50/50',
+              summary: 'border-blue-300 bg-blue-50/50',
+              change: 'border-greyscale-300 bg-greyscale-50',
+            }[event.type] || 'border-greyscale-300 bg-greyscale-50',
+          formattedDate: new Date(event.timestamp).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          }),
           isUpload: event.type === 'upload',
           isSummary: event.type === 'summary',
           isChange: event.type === 'change',

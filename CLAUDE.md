@@ -92,6 +92,26 @@ make test    # Run test suite
 
 ## Architecture
 
+### Front-End Principles
+
+When choosing how to implement UI behavior, follow this priority order:
+
+1. **Django/Cotton + HTML/Tailwind first** — solve it server-side or with semantic HTML + CSS before reaching for JS. Cotton components, Django template logic, Tailwind utilities, native elements (`<details>`, `<dialog>`, CSS animations) cover most needs.
+2. **Alpine.js is reactivity only** — show/hide, toggle, event binding, dynamic attribute binding. Alpine should not contain rendering logic, layout decisions, or anything that HTML/CSS can handle.
+3. **Named components, dot-paths only** — CSP build requires `Alpine.data()` registrations. No inline expressions in templates. Pre-compute values as getters/methods.
+4. **`data-*` attributes for config** — pass Django values to Alpine via `data-*` attributes, read them in `init()`. Never use `x-init` assignments or pass `$event` to handlers (Alpine auto-passes it).
+5. **Reference repos** — [CourtListener](https://github.com/freelawproject/courtlistener) and [free.law](https://github.com/freelawproject/free.law) have solved most Django + Alpine + CSP patterns at scale. When hitting a seemingly blocking JS/Alpine problem, check those repos for working patterns before inventing a new approach.
+
+**Patterns from the CSP migration:**
+
+- **Pre-compute in JS, bind in templates** — ternaries (`role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'`) become getter properties (`msg.bubbleClass`). Templates only reference the result.
+- **CSS over Alpine for animation** — `@keyframes` + `x-on:animationend` replaces `x-transition` + `setTimeout`. Native `<details>` + `grid-rows-[0fr]/[1fr]` replaces `x-collapse`.
+- **Flat getters for nested data** — optional chaining (`caseInfo?.court_info?.phone`) can't appear in templates. Create flat getters (`get courtPhone()`) that encapsulate the traversal.
+- **`x-effect` → method calls** — side effects on state change (like loading data when a menu opens) go in the method that triggers the change (`openMenu()` loads timeline), not in `x-effect`.
+- **No `!` negation in templates** — `x-show="!isOpen"` fails in CSP build. Create negated getters (`get isClosed()`) instead.
+- **No `x-model`** — CSP build can't evaluate the setter (`expr = __placeholder`). Use `x-bind:value="prop"` + `x-on:input="updateMethod"` instead, where the method reads `e.target.value`.
+- **Spread flattens getters** — `{ ...createChat() }` invokes getters and copies static values. If a composed component needs reactive getters from a base, re-define them after the spread.
+
 ### Component System (Django Cotton + Atomic Design)
 
 Components live in `templates/cotton/` using Atomic Design hierarchy:
@@ -109,11 +129,12 @@ Style guide available at `/style-guide/` during development.
 
 ### State Flow
 
-Django renders initial state, Alpine.js handles client-side reactivity:
+Django renders initial state, Alpine.js handles client-side reactivity. All components use named `Alpine.data()` registrations (CSP build requirement — no inline expressions):
 
 ```html
-<div x-data="{ expanded: false }">
-  <!-- Alpine handles UI state, Django handles data -->
+<div x-data="userMenu">
+  <!-- Alpine handles UI state via dot-path properties, Django handles data -->
+  <button x-on:click="toggle" x-bind:aria-expanded="open">Menu</button>
 </div>
 ```
 
@@ -139,26 +160,20 @@ Build: `tailwindcss -i src/css/main.css -o static/css/main.built.css`
 
 Pre-commit hook enforces this (`csp-inline-check`).
 
-### Alpine.js (Standard Build - Local)
+### Alpine.js (CSP Build - Local)
 
-Using Alpine.js standard build (`static/js/alpine.min.js` v3.14.9). Local files, no CDN.
+Using Alpine.js **CSP build** (`@alpinejs/csp` v3.14.9). Local files, no CDN. The CSP build replaces Alpine's expression evaluator with pure dot-path resolution — no `eval` or `new Function()`.
+
+**Constraint:** Every directive value must be a simple property name, method name, or dot-path (e.g., `isOpen`, `toggle`, `msg.content`). No ternaries, concatenation, object literals, optional chaining, or inline assignments. Push all logic into `Alpine.data()` getters/methods.
 
 **Files:**
 
 - `static/js/alpine.min.js` - Minified (production)
 - `static/js/alpine.js` - Non-minified (debug mode, auto-selected when `DEBUG=True`)
+- `static/js/components.js` - Named `Alpine.data()` components (userMenu, activityTimeline, etc.)
+- `static/js/chat.js` - Chat and home page components with pre-computed properties
 
-**All directives available:**
-
-- `x-html` - HTML content rendering (used for markdown in demo)
-- `x-text` - Plain text content
-- `x-data`, `x-init`, `x-bind`, `x-on`, `x-show`, `x-if`, `x-for`, `x-model`, `x-ref`
-
-**TODO: Switch to CSP build for production:**
-
-1. Implement server-side markdown rendering
-2. Download CSP build: `curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js`
-3. Replace `x-html` with `x-text`
+**`x-html` usage:** Still used for chat messages. Safe because `renderMarkdown()` escapes HTML before applying markdown transforms, and content is pre-computed in JS (`msg.renderedContent`).
 
 ### WCAG AA Accessibility
 
@@ -296,9 +311,10 @@ Using **LiteLLM** with OpenAI for dev and QA. Model configured via `CHAT_MODEL` 
 | ---------------------------------- | --------------------------------------- |
 | `config/settings.py`               | Django + Cotton + CSP + Chat config     |
 | `src/css/main.css`                 | Tailwind v4 source + theme tokens       |
-| `static/js/alpine.js`              | Alpine.js standard build (debug)        |
-| `static/js/alpine.min.js`          | Alpine.js standard build (production)   |
-| `static/js/chat.js`                | Alpine.js chat component                |
+| `static/js/alpine.js`              | Alpine.js CSP build (debug)             |
+| `static/js/alpine.min.js`          | Alpine.js CSP build (production)        |
+| `static/js/components.js`          | Named Alpine.data() components          |
+| `static/js/chat.js`                | Chat and home page Alpine components    |
 | `templates/cotton/`                | Component library (Atomic Design)       |
 | `templates/pages/style_guide.html` | Style guide page                        |
 | `chat/`                            | AI chat app with providers and services |
@@ -328,14 +344,14 @@ All frontend assets are local files, not CDN. Update these in sync when upgradin
 | Tool         | Version            | Location                                         |
 | ------------ | ------------------ | ------------------------------------------------ |
 | Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                     |
-| Alpine.js    | 3.14.9 (standard)  | `static/js/alpine.js`, `static/js/alpine.min.js` |
+| Alpine.js    | 3.14.9 (CSP build) | `static/js/alpine.js`, `static/js/alpine.min.js` |
 | Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose, fly.toml)  |
 
-**Updating Alpine.js:**
+**Updating Alpine.js (CSP build):**
 
 ```bash
-curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.js" -o static/js/alpine.js
-curl -sL "https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js
+curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.js" -o static/js/alpine.js
+curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js
 ```
 
 ## Deployment (Fly.io)
