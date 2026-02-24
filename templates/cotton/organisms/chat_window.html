@@ -1,6 +1,6 @@
 <c-vars session_id="" chat_enabled="true" />
 <div x-data="chat"
-     x-init="{% if session_id %}sessionId = '{{ session_id }}';{% endif %}"
+     data-session-id="{{ session_id }}"
      class="chat-window {{ class }}"
      {{ attrs }}>
   {# Messages container #}
@@ -12,20 +12,20 @@
     {# All messages rendered dynamically via Alpine #}
     <template x-for="msg in dynamicMessages" :key="msg.id">
       <div class="chat-message"
-           x-bind:class="'chat-message-' + msg.role"
+           x-bind:class="msg.messageClass"
            x-show="msg.content">
         <div class="chat-message-avatar">
-          <template x-if="msg.role === 'user'">
+          <template x-if="msg.isUser">
             <c-atoms.icon name="user-circle" class="w-8 h-8 text-greyscale-400" />
           </template>
-          <template x-if="msg.role === 'assistant'">
+          <template x-if="msg.isAssistant">
             <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
           </template>
         </div>
         <div class="chat-message-content">
           <div class="chat-bubble"
-               x-bind:class="msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'"
-               x-html="msg.role === 'assistant' ? renderMarkdown(msg.content) : escapeHtml(msg.content)"></div>
+               x-bind:class="msg.bubbleClass"
+               x-html="msg.renderedContent"></div>
         </div>
       </div>
     </template>
@@ -47,8 +47,8 @@
         action="{% url 'chat:stream' %}"
         class="chat-input-form">
     {% csrf_token %}
-    <c-atoms.input x-model="inputText" x-bind:disabled="isStreaming" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" class="flex-1" />
-    <c-atoms.button type="submit" variant="primary" size="xl" x-bind:disabled="isStreaming || !inputText.trim()" aria_label="Send message">
+    <c-atoms.input x-bind:value="inputText" x-on:input="updateInput" x-bind:disabled="isStreaming" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" class="flex-1" />
+    <c-atoms.button type="submit" variant="primary" size="xl" x-bind:disabled="sendDisabled" aria_label="Send message">
     <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
     <span class="hidden sm:inline ml-2">Send</span>
     </c-atoms.button>

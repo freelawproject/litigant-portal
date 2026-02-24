@@ -120,6 +120,18 @@ function createChat() {
     onStreamComplete: null,
     onCleared: null,
 
+    // --- Initialization (reads config from data-* attributes) ---
+    init() {
+      if (this.$el.dataset.sessionId) {
+        this.sessionId = this.$el.dataset.sessionId
+      }
+    },
+
+    // --- Input binding (x-model unsupported in CSP build) ---
+    updateInput(e) {
+      this.inputText = e.target.value
+    },
+
     // --- Core messaging ---
     async sendMessage() {
       let content = this.inputText.trim()
@@ -139,6 +151,11 @@ function createChat() {
         id: Date.now(),
         role: 'user',
         content,
+        renderedContent: chatUtils.escapeHtml(content),
+        bubbleClass: 'chat-bubble-user',
+        messageClass: 'chat-message-user',
+        isUser: true,
+        isAssistant: false,
       })
       this.scrollToBottom()
 
@@ -147,6 +164,11 @@ function createChat() {
         id: Date.now() + 1,
         role: 'assistant',
         content: '',
+        renderedContent: '',
+        bubbleClass: 'chat-bubble-assistant',
+        messageClass: 'chat-message-assistant',
+        isUser: false,
+        isAssistant: true,
         toolCalls: [],
         toolResponses: [],
       })
@@ -199,13 +221,15 @@ function createChat() {
                   }
                   break
 
-                case 'content_delta':
+                case 'content_delta': {
+                  const updated = msg.content + (event.content || '')
                   this.messages[msgIndex] = {
                     ...msg,
-                    content: msg.content + (event.content || ''),
+                    content: updated,
+                    renderedContent: chatUtils.renderMarkdown(updated),
                   }
-                  this.scrollToBottom()
                   break
+                }
 
                 case 'tool_call':
                   this.activeToolCall = {
@@ -217,7 +241,6 @@ function createChat() {
                     name: event.name,
                     args: event.args,
                   })
-                  this.scrollToBottom()
                   break
 
                 case 'tool_response':
@@ -228,7 +251,6 @@ function createChat() {
                     response: event.response,
                     data: event.data,
                   })
-                  this.scrollToBottom()
                   break
 
                 case 'done':
@@ -243,6 +265,7 @@ function createChat() {
                     this.messages[msgIndex] = {
                       ...msg,
                       content: event.message,
+                      renderedContent: chatUtils.escapeHtml(event.message),
                     }
                   }
                   break
@@ -254,9 +277,11 @@ function createChat() {
         }
       } catch (error) {
         console.error('Chat error:', error)
+        const errorMsg = 'Sorry, I encountered an error. Please try again.'
         this.messages[msgIndex] = {
           ...this.messages[msgIndex],
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: errorMsg,
+          renderedContent: chatUtils.escapeHtml(errorMsg),
         }
       } finally {
         this.isStreaming = false
@@ -292,13 +317,32 @@ function createChat() {
      * Useful for upload responses, system messages, etc.
      */
     pushMessage(role, content, extra = {}) {
+      const isUser = role === 'user'
       this.messages.push({
         id: Date.now(),
         role,
         content,
+        renderedContent: isUser
+          ? chatUtils.escapeHtml(content)
+          : chatUtils.renderMarkdown(content),
+        bubbleClass: isUser ? 'chat-bubble-user' : 'chat-bubble-assistant',
+        messageClass: isUser ? 'chat-message-user' : 'chat-message-assistant',
+        isUser,
+        isAssistant: !isUser,
         ...extra,
       })
       this.scrollToBottom()
+    },
+
+    // --- Getters for CSP-safe dot-path access ---
+    get hasMessages() {
+      return this.messages.length > 0
+    },
+    get noMessages() {
+      return this.messages.length === 0
+    },
+    get sendDisabled() {
+      return this.isStreaming || !this.inputText.trim()
     },
 
     // --- Template compatibility aliases ---
@@ -308,10 +352,6 @@ function createChat() {
     get dynamicMessages() {
       return this.messages
     },
-
-    // Delegate to shared utilities
-    escapeHtml: chatUtils.escapeHtml,
-    renderMarkdown: chatUtils.renderMarkdown,
   }
 }
 
@@ -323,22 +363,28 @@ function createChat() {
  * Home page: chat + file upload + case management + timeline + summarization.
  * Composes createChat() for core messaging, adds everything else directly.
  *
- * Usage: <div x-data="homePage" x-init="agentName = 'litigant_assistant'">
+ * Usage: <div x-data="homePage" data-agent-name="litigant_assistant">
  */
 function createHomePage() {
   return {
     // Compose chat
     ...createChat(),
 
+    // Re-define chat getters lost during spread (spread flattens getters
+    // into static values — a JS language gotcha with object spread).
+    get hasMessages() {
+      return this.messages.length > 0
+    },
+    get noMessages() {
+      return this.messages.length === 0
+    },
+    get sendDisabled() {
+      return this.isStreaming || !this.inputText.trim()
+    },
+
     // --- Availability state ---
     chatAvailable: true,
     showUnavailableWarning: false,
-    // Upload state
-    selectedFile: null,
-    isUploading: false,
-    uploadError: null,
-    extractedText: null,
-    extractedData: null,
 
     // --- Upload state ---
     selectedFile: null,
@@ -356,8 +402,121 @@ function createHomePage() {
     // --- Timeline state ---
     caseTimeline: [],
 
+    // --- Getters for CSP-safe dot-path access ---
+
+    // Container class
+    get containerClass() {
+      return this.messages.length > 0 ? 'chat-mode' : ''
+    },
+
+    // Case header
+    get caseTitle() {
+      return this.caseInfo?.case_type || 'Your Case'
+    },
+    get caseNumber() {
+      const num = this.caseInfo?.court_info?.case_number
+      return num ? 'Case #' + num : ''
+    },
+    get hasCaseNumber() {
+      return !!this.caseInfo?.court_info?.case_number
+    },
+
+    // Court info
+    get showCourtSection() {
+      return !!(
+        this.caseInfo?.court_info?.court_name ||
+        this.caseInfo?.court_info?.county
+      )
+    },
+    get courtName() {
+      return this.caseInfo?.court_info?.court_name || ''
+    },
+    get courtCounty() {
+      return this.caseInfo?.court_info?.county || ''
+    },
+    get courtAddress() {
+      return this.caseInfo?.court_info?.address || ''
+    },
+    get courtPhone() {
+      return this.caseInfo?.court_info?.phone || ''
+    },
+    get courtEmail() {
+      return this.caseInfo?.court_info?.email || ''
+    },
+    get courtPhoneHref() {
+      return this.courtPhone ? 'tel:' + this.courtPhone : ''
+    },
+    get courtEmailHref() {
+      return this.courtEmail ? 'mailto:' + this.courtEmail : ''
+    },
+
+    // Opposing party
+    get opposingParty() {
+      return this.caseInfo?.parties?.opposing_party || ''
+    },
+    get opposingAddress() {
+      return this.caseInfo?.parties?.opposing_address || ''
+    },
+    get opposingPhone() {
+      return this.caseInfo?.parties?.opposing_phone || ''
+    },
+    get opposingEmail() {
+      return this.caseInfo?.parties?.opposing_email || ''
+    },
+    get opposingWebsite() {
+      return this.caseInfo?.parties?.opposing_website || ''
+    },
+    get opposingPhoneHref() {
+      return this.opposingPhone ? 'tel:' + this.opposingPhone : ''
+    },
+    get opposingEmailHref() {
+      return this.opposingEmail ? 'mailto:' + this.opposingEmail : ''
+    },
+
+    // Attorney
+    get attorneyName() {
+      return this.caseInfo?.parties?.attorney_name || ''
+    },
+    get attorneyPhone() {
+      return this.caseInfo?.parties?.attorney_phone || ''
+    },
+    get attorneyEmail() {
+      return this.caseInfo?.parties?.attorney_email || ''
+    },
+    get attorneyPhoneHref() {
+      return this.attorneyPhone ? 'tel:' + this.attorneyPhone : ''
+    },
+    get attorneyEmailHref() {
+      return this.attorneyEmail ? 'mailto:' + this.attorneyEmail : ''
+    },
+
+    // Dates (pre-filtered)
+    get deadlines() {
+      return (this.caseInfo?.key_dates || []).filter((d) => d.is_deadline)
+    },
+    get otherDates() {
+      return (this.caseInfo?.key_dates || []).filter((d) => !d.is_deadline)
+    },
+    get hasDeadlines() {
+      return this.deadlines.length > 0
+    },
+    get hasOtherDates() {
+      return this.otherDates.length > 0
+    },
+
+    // Negated booleans (CSP build can't evaluate `!`)
+    get noCaseInfo() {
+      return !this.caseInfo
+    },
+    get notUploading() {
+      return !this.isUploading
+    },
+
     // --- Initialization ---
     async init() {
+      // Read config from data-* attributes
+      this.agentName = this.$el.dataset.agentName || ''
+
       // Check chat service availability
       try {
         const response = await fetch('/api/chat/status/')

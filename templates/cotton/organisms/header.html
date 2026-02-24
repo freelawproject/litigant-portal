@@ -1,8 +1,7 @@
 {% load static %}
 
 <c-vars sticky="" />
-<header x-data="{ menuOpen: false, timeline: [] }"
-        x-effect="if (menuOpen) timeline = JSON.parse(localStorage.getItem('caseTimeline') || '[]')"
+<header x-data="activityTimeline"
         class="mobile-header flex-shrink-0 {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
         {{ attrs }}>
   <div class="mobile-header-inner">
@@ -16,12 +15,12 @@
         <c-atoms.link href="{% url 'portal:style_guide' %}" variant="unstyled" class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-greyscale-600 transition-colors">
         Style Guide
         </c-atoms.link>
-        <c-atoms.button type="button" variant="ghost" class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 !p-0" x-on:click="localStorage.clear(); location.reload()">
+        <c-atoms.button type="button" variant="ghost" class="hidden sm:inline-flex text-xs font-medium text-greyscale-400 hover:text-red-500 !p-0" x-on:click="clearDemo">
         Clear Demo
         </c-atoms.button>
       {% endif %}
       <c-molecules.user-menu class="hidden sm:flex" />
-      <c-atoms.button type="button" variant="ghost" aria_label="Open activity timeline" class="mobile-header-menu-btn" x-bind:aria-expanded="menuOpen" x-on:click="menuOpen = true">
+      <c-atoms.button type="button" variant="ghost" aria_label="Open activity timeline" class="mobile-header-menu-btn" x-bind:aria-expanded="menuOpen" x-on:click="openMenu">
       <c-atoms.icon name="bars-3" class="w-6 h-6" />
       </c-atoms.button>
     </div>
@@ -30,10 +29,10 @@
   <div x-show="menuOpen"
        x-cloak
        class="fixed inset-0 z-50"
-       x-on:keydown.escape.window="menuOpen = false">
+       x-on:keydown.escape.window="closeMenu">
     {# Backdrop #}
     <div class="absolute inset-0 bg-black/50"
-         x-on:click="menuOpen = false"
+         x-on:click="closeMenu"
          x-show="menuOpen"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -55,14 +54,14 @@
          aria-label="Activity timeline">
       <div class="flex items-center justify-between p-4 border-b border-greyscale-200">
         <span class="font-semibold text-greyscale-900">Activity</span>
-        <c-atoms.button type="button" variant="ghost" aria_label="Close menu" class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700" x-on:click="menuOpen = false">
+        <c-atoms.button type="button" variant="ghost" aria_label="Close menu" class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700" x-on:click="closeMenu">
         <c-atoms.icon name="x-mark" class="w-6 h-6" />
         </c-atoms.button>
       </div>
       {# Timeline - refreshes from localStorage when menu opens #}
       <div class="p-4 space-y-3">
         {# Empty state #}
-        <template x-if="!timeline || timeline.length === 0">
+        <template x-if="noTimeline">
           <div class="text-center py-8">
             <c-atoms.icon name="clock" class="w-10 h-10 text-greyscale-300 mx-auto mb-3" />
             <p class="text-sm text-greyscale-500">No activity yet</p>
@@ -70,32 +69,30 @@
           </div>
         </template>
         {# Timeline events #}
-        <template x-if="timeline && timeline.length > 0">
+        <template x-if="hasTimeline">
           <div class="space-y-3">
-            <template x-for="event in timeline.slice().reverse()" :key="event.id">
+            <template x-for="event in reversedTimeline" :key="event.id">
               <div class="p-3 border-l-2 cursor-pointer"
-                   x-data="{ expanded: false }"
-                   x-on:click="expanded = !expanded"
-                   x-bind:class="{ 'border-primary-300 bg-primary-50/50': event.type === 'upload', 'border-blue-300 bg-blue-50/50': event.type === 'summary', 'border-greyscale-300 bg-greyscale-50': event.type === 'change' }">
+                   x-data="timelineEvent"
+                   x-on:click="toggle"
+                   x-bind:class="event.borderClass">
                 <div class="flex items-center gap-2 mb-1">
-                  <template x-if="event.type === 'upload'">
+                  <template x-if="event.isUpload">
                     <c-atoms.icon name="document-arrow-up" class="w-4 h-4 text-primary-500" />
                   </template>
-                  <template x-if="event.type === 'summary'">
+                  <template x-if="event.isSummary">
                     <c-atoms.icon name="chat-bubble-left-right" class="w-4 h-4 text-blue-500" />
                   </template>
-                  <template x-if="event.type === 'change'">
+                  <template x-if="event.isChange">
                     <c-atoms.icon name="pencil-square" class="w-4 h-4 text-greyscale-500" />
                   </template>
-                  <p class="text-xs text-greyscale-500"
-                     x-text="new Date(event.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })">
-                  </p>
+                  <p class="text-xs text-greyscale-500" x-text="event.formattedDate"></p>
                 </div>
                 <p x-show="event.title"
                    class="text-sm font-medium text-greyscale-800"
                    x-text="event.title"></p>
-                <p class="text-sm text-greyscale-600"
-                   x-bind:class="{ 'line-clamp-2': !expanded, 'mt-0.5': event.title }"
+                <p class="text-sm text-greyscale-600 mt-0.5"
+                   x-bind:class="clampClass"
                    x-text="event.content"></p>
               </div>
             </template>
