@@ -58,8 +58,14 @@
         <c-atoms.icon name="x-mark" class="w-6 h-6" />
         </c-atoms.button>
       </div>
-      {# Timeline - refreshes from localStorage when menu opens #}
+      {# Timeline - fetches from server when menu opens #}
       <div class="p-4 space-y-3">
+        {# Loading state #}
+        <template x-if="isLoadingTimeline">
+          <div class="flex items-center justify-center py-8">
+            <c-atoms.icon name="arrow-path" class="w-6 h-6 text-greyscale-400 animate-spin" />
+          </div>
+        </template>
         {# Empty state #}
         <template x-if="noTimeline">
           <div class="text-center py-8">
