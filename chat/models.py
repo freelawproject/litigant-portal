@@ -77,6 +77,76 @@ class Message(models.Model):
         return f"{self.role}: {preview}"
 
 
+class CaseInfo(models.Model):
+    """Server-side storage for extracted case information.
+
+    Replaces browser localStorage for PII (names, case numbers, court
+    details). Same dual-ownership pattern as ChatSession: authenticated
+    users get user FK, anonymous users get session_key.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="case_infos",
+    )
+    session_key = models.CharField(max_length=40, blank=True, db_index=True)
+    data = models.JSONField(
+        default=dict,
+        help_text="Extracted case data (case_type, court_info, parties, key_dates, summary)",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["session_key", "-created_at"]),
+        ]
+
+    def __str__(self):
+        case_type = self.data.get("case_type", "Unknown")
+        if self.user:
+            return f"Case {self.id} - {case_type} ({self.user})"
+        return f"Case {self.id} - {case_type} (Anonymous)"
+
+
+class TimelineEvent(models.Model):
+    """Individual timeline event for a case.
+
+    Proper rows instead of a JSON array — enables querying and audit.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(
+        CaseInfo,
+        related_name="timeline_events",
+        on_delete=models.CASCADE,
+    )
+    event_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("upload", "Document Upload"),
+            ("summary", "Chat Summary"),
+            ("change", "Case Info Change"),
+        ],
+    )
+    title = models.CharField(max_length=500, blank=True)
+    content = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.get_event_type_display()}: {self.title or self.content[:50]}"
+
+
 class Document(models.Model):
     """RAG document storage for domain knowledge (not yet implemented)."""
 
