@@ -1,0 +1,105 @@
+{% extends "pages/topics/base_topic.html" %}
+
+{% block topic_content %}
+
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Types of traffic violations</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-2 text-greyscale-700">
+      <li>
+        <strong>Infractions</strong> — Minor violations like speeding, running a stop sign, or expired registration. Usually result in a fine and points on your license.
+      </li>
+      <li>
+        <strong>Misdemeanors</strong> — More serious offenses like reckless driving, driving on a suspended license, or hit-and-run (property damage only). Can carry fines, jail time, or both.
+      </li>
+      <li>
+        <strong>Felonies</strong> — The most serious traffic offenses, such as vehicular manslaughter or repeat DUI. Carry significant penalties including prison time.
+      </li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Your options when you get a ticket</h2>
+    <p class="mt-2 text-greyscale-700">When you receive a traffic citation, you generally have three options:</p>
+    <ol class="mt-2 list-decimal pl-5 space-y-2 text-greyscale-700">
+      <li>
+        <strong>Pay the fine</strong> — This is an admission of guilt. The violation goes on your driving record and may increase your insurance rates.
+      </li>
+      <li>
+        <strong>Contest the ticket</strong> — Request a court hearing to challenge the citation. You'll need to present a defense to the judge.
+      </li>
+      <li>
+        <strong>Traffic school</strong> — If eligible, completing traffic school may keep the violation off your record or reduce points. Eligibility varies by state and violation type.
+      </li>
+    </ol>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Contesting a traffic ticket</h2>
+    <p class="mt-2 text-greyscale-700">If you decide to fight the ticket:</p>
+    <ol class="mt-2 list-decimal pl-5 space-y-1 text-greyscale-700">
+      <li>Enter a "not guilty" plea by the deadline on your ticket.</li>
+      <li>Request any available evidence — radar calibration records, officer's notes, camera footage.</li>
+      <li>Prepare your defense — photos of the location, witness statements, or evidence of equipment malfunction.</li>
+      <li>Appear at the hearing on time and dressed respectfully.</li>
+      <li>Present your case clearly. The government must prove the violation — you can challenge their evidence.</li>
+    </ol>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">License suspension and reinstatement</h2>
+    <p class="mt-2 text-greyscale-700">Your license can be suspended for various reasons:</p>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Accumulating too many points from traffic violations</li>
+      <li>DUI/DWI conviction</li>
+      <li>Failure to pay traffic fines or appear in court</li>
+      <li>Failure to maintain auto insurance</li>
+      <li>Failure to pay child support</li>
+    </ul>
+    <p class="mt-2 text-greyscale-700">
+      To reinstate a suspended license, you typically need to resolve the underlying issue (pay fines, complete a DUI program, provide proof of insurance), pay a reinstatement fee, and wait out any mandatory suspension period.
+    </p>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Fines and payment plans</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Fines vary widely depending on the violation and jurisdiction.</li>
+      <li>Additional fees (court costs, surcharges) can significantly increase the total amount owed.</li>
+      <li>Many courts offer payment plans if you cannot pay the full amount at once.</li>
+      <li>If you cannot afford the fine, ask the court about community service alternatives or a fee waiver.</li>
+      <li>Ignoring fines can lead to license suspension, additional penalties, and even a warrant for your arrest.</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Traffic school</h2>
+    <p class="mt-2 text-greyscale-700">Traffic school (also called defensive driving) can help keep your record clean:</p>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Eligibility depends on your state, the type of violation, and your recent driving record.</li>
+      <li>Courses are available online or in-person and typically take 4–8 hours.</li>
+      <li>Completing the course may dismiss the ticket, reduce points, or lower your insurance increase.</li>
+      <li>Make sure the course is approved by your state's DMV or traffic court.</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">DUI / DWI</h2>
+    <c-atoms.alert variant="danger" class="mt-2">
+    <p class="font-semibold">DUI/DWI charges are serious criminal offenses.</p>
+    <p class="mt-1">
+      Penalties can include jail time, heavy fines, license suspension, and a permanent criminal record.
+      If you are facing DUI/DWI charges, consult an attorney as soon as possible.
+    </p>
+    </c-atoms.alert>
+    <ul class="mt-3 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Penalties increase significantly for repeat offenses and high blood alcohol levels.</li>
+      <li>You may be required to install an ignition interlock device.</li>
+      <li>Most states require completion of an alcohol education or treatment program.</li>
+      <li>A DUI conviction can affect employment, professional licenses, and insurance rates for years.</li>
+    </ul>
+  </section>
+  <section>
+    <h2 class="text-xl font-semibold text-greyscale-900">Finding help</h2>
+    <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
+      <li>Your local court's traffic division or clerk's office</li>
+      <li>Court self-help centers</li>
+      <li>Legal aid organizations (especially for license suspension and fine issues)</li>
+      <li>Your state's DMV website for license and record information</li>
+      <li>Bar association lawyer referral services (especially for DUI/DWI cases)</li>
+    </ul>
+  </section>
+{% endblock topic_content %}

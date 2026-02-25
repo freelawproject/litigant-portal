@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}
+
+  {{ topic.title }} - Litigant Portal
+{% endblock title %}
+
+{% block meta_description %}
+
+  {{ topic.meta_description }}
+{% endblock meta_description %}
+
+{% block content %}
+
+  <c-organisms.topic-detail title="{{ topic.title }}" subtitle="{{ topic.subtitle }}" icon="{{ topic.icon }}">
+  {% block topic_content %}
+
+  {% endblock topic_content %}
+
+  </c-organisms.topic-detail>
+{% endblock content %}

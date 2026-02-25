@@ -7,7 +7,7 @@
 
 {% block meta_description %}
 
-  Accessibility statement for the Litigant Portal - our commitment to WCAG 2.2 AA conformance.
+  Accessibility statement for the Litigant Portal - our commitment to WCAG 2.2 AA conformance and selective AAA criteria.
 {% endblock meta_description %}
 
 {% block content %}
@@ -21,8 +21,10 @@
         <p class="mt-2 text-greyscale-700">
           We target
           <c-atoms.link href="https://www.w3.org/TR/WCAG22/" target="_blank">WCAG 2.2 Level AA</c-atoms.link>
-          conformance across the entire portal. This is an ongoing effort and we
-          regularly test against these guidelines.
+          conformance across the entire portal, plus selective Level AAA criteria
+          that directly benefit self-represented litigants — including enhanced
+          contrast, no time limits on content, and plain-language definitions of
+          legal terms.
         </p>
       </section>
       <section>
@@ -34,7 +36,26 @@
           <li>Touch targets of at least 44×44 pixels on mobile</li>
           <li>Semantic HTML and ARIA labels for screen readers</li>
           <li>Responsive design that works across devices and zoom levels</li>
+          <li>Enhanced contrast ratios of at least 7:1 for body text</li>
+          <li>No time limits on reading legal information</li>
+          <li>Plain-language definitions for legal terms and abbreviations</li>
         </ul>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Testing</h2>
+        <p class="mt-2 text-greyscale-700">
+          We combine automated accessibility checks on every code change with
+          manual keyboard and screen reader testing for each new feature.
+          Periodic full-site audits verify conformance against the complete
+          WCAG checklist.
+        </p>
+      </section>
+      <section>
+        <h2 class="text-xl font-semibold text-greyscale-900">Standards tracking</h2>
+        <p class="mt-2 text-greyscale-700">
+          We review our practices against current W3C accessibility guidelines
+          annually and will update our targets as standards evolve.
+        </p>
       </section>
       <section>
         <h2 class="text-xl font-semibold text-greyscale-900">Known limitations</h2>

@@ -496,3 +496,30 @@ class AgentTestPageTests(TestCase):
         """Unknown agent name should return 404."""
         response = self.client.get("/test/nonexistent/")
         self.assertEqual(response.status_code, 404)
+
+
+# =============================================================================
+# Topic Detail Page Tests
+# =============================================================================
+
+
+class TopicDetailTests(TestCase):
+    """Tests for topic detail pages at /topics/<slug>/."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_all_topics_render_with_correct_context(self):
+        """Each topic slug should return 200 with its title from TOPICS."""
+        from portal.views import TOPICS
+
+        for slug, topic in TOPICS.items():
+            with self.subTest(slug=slug):
+                response = self.client.get(f"/topics/{slug}/")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.context["topic"], topic)
+
+    def test_invalid_slug_returns_404(self):
+        """An unknown topic slug should return 404."""
+        response = self.client.get("/topics/nonexistent/")
+        self.assertEqual(response.status_code, 404)
