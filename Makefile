@@ -1,4 +1,5 @@
 .PHONY: help build css clean install migrate test collectstatic lint \
+       messages compilemessages \
        docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-test docker-clean
 
 help: ## Show this help message
@@ -42,6 +43,13 @@ shell: ## Open Django shell
 
 lint: ## Lint and format all code (via pre-commit)
 	pre-commit run --all-files
+
+messages: ## Extract translation strings (all languages)
+	SECRET_KEY=dev .venv/bin/python manage.py makemessages -a --no-location
+	SECRET_KEY=dev .venv/bin/python manage.py makemessages -d djangojs -a --no-location
+
+compilemessages: ## Compile .po to .mo files
+	SECRET_KEY=dev .venv/bin/python manage.py compilemessages
 
 # Docker targets
 docker-build: ## Build Docker images
