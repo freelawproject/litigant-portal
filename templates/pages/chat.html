@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% load cotton %}
+{% load cotton i18n %}
 
 {% block body_class %}
 
@@ -8,8 +8,7 @@
 {% endblock body_class %}
 
 {% block title %}
-
-  Litigant Portal - Free Legal Help
+  {% trans "Litigant Portal" %} - {% trans "Free Legal Help" %}
 {% endblock title %}
 
 {% block content %}
@@ -24,7 +23,7 @@
            x-on:change="handleFileSelect($event)"
            accept=".pdf,application/pdf"
            class="hidden"
-           aria-label="Upload PDF document" />
+           aria-label="{% trans "Upload PDF document" %}" />
     {# Chat service unavailable warning #}
     <div x-show="showUnavailableWarning"
          x-cloak
@@ -33,8 +32,8 @@
         <div class="flex items-start gap-3">
           <c-atoms.icon name="exclamation-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div class="flex-1">
-            <p class="text-sm font-medium text-amber-800">Chat service unavailable</p>
-            <p class="text-sm text-amber-700 mt-1">The AI chat service is temporarily unavailable. Please try again later.</p>
+            <p class="text-sm font-medium text-amber-800">{% trans "Chat service unavailable" %}</p>
+            <p class="text-sm text-amber-700 mt-1">{% trans "The AI chat service is temporarily unavailable. Please try again later." %}</p>
           </div>
           <c-atoms.button type="button" variant="ghost" class="!p-0 text-amber-600 hover:text-amber-800" x-on:click="dismissWarning()">
           <c-atoms.icon name="x-mark" class="w-5 h-5" />
@@ -49,9 +48,9 @@
         {# Empty state - no case info #}
         <div x-show="!caseInfo" class="text-center py-8 px-4">
           <c-atoms.icon name="folder-open" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
-          <p class="text-sm font-medium text-greyscale-600 mb-2">No active case</p>
+          <p class="text-sm font-medium text-greyscale-600 mb-2">{% trans "No active case" %}</p>
           <p class="text-xs text-greyscale-500">
-            Upload a legal document to get started. We'll track your case details, deadlines, and action items here.
+            {% trans "Upload a legal document to get started. We'll track your case details, deadlines, and action items here." %}
           </p>
         </div>
         {# Case info display #}
@@ -67,7 +66,7 @@
           {# Court info #}
           <div x-show="caseInfo?.court_info?.court_name || caseInfo?.court_info?.county"
                class="space-y-1">
-            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Court</h4>
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Court" %}</h4>
             <p class="text-sm text-greyscale-700"
                x-text="caseInfo?.court_info?.court_name"></p>
             <p x-show="caseInfo?.court_info?.county"
@@ -91,7 +90,7 @@
           </div>
           {# Opposing Party #}
           <div x-show="caseInfo?.parties?.opposing_party" class="space-y-1">
-            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Opposing Party</h4>
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Opposing Party" %}</h4>
             <p class="text-sm text-greyscale-700"
                x-text="caseInfo?.parties?.opposing_party"></p>
             <p x-show="caseInfo?.parties?.opposing_address"
@@ -120,7 +119,7 @@
           </div>
           {# Attorney (if represented) #}
           <div x-show="caseInfo?.parties?.attorney_name" class="space-y-1">
-            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Their Attorney</h4>
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Their Attorney" %}</h4>
             <p class="text-sm text-greyscale-700"
                x-text="caseInfo?.parties?.attorney_name"></p>
             <p x-show="caseInfo?.parties?.attorney_phone"
@@ -139,7 +138,7 @@
           {# Key deadlines #}
           <template x-if="caseInfo?.key_dates?.filter(d => d.is_deadline).length > 0">
             <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Deadlines</h4>
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Deadlines" %}</h4>
               <template x-for="deadline in caseInfo.key_dates.filter(d => d.is_deadline)"
                         :key="deadline.label">
                 <div class="flex items-start gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
@@ -155,7 +154,7 @@
           {# Other dates #}
           <template x-if="caseInfo?.key_dates?.filter(d => !d.is_deadline).length > 0">
             <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">Other Dates</h4>
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Other Dates" %}</h4>
               <template x-for="date in caseInfo.key_dates.filter(d => !d.is_deadline)"
                         :key="date.label">
                 <div class="flex items-start gap-2">
@@ -170,7 +169,7 @@
           </template>
           {# Clear case button #}
           <div class="pt-3 border-t border-greyscale-200">
-            <c-atoms.button type="button" variant="ghost" class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700" x-on:click="clearCaseInfo()">Clear case info</c-atoms.button>
+            <c-atoms.button type="button" variant="ghost" class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700" x-on:click="clearCaseInfo()">{% trans "Clear case info" %}</c-atoms.button>
           </div>
         </div>
         </c-organisms.case-sidebar>
@@ -181,11 +180,13 @@
       {# Hero Section - shows when no messages #}
       <section class="hero flex-1" x-show="messages.length === 0" x-cloak>
         <div class="hero-content">
-          <h1 class="hero-heading">How can we help you today?</h1>
-          <p class="hero-subheading">Free legal help for self-represented litigants</p>
+          <h1 class="hero-heading">{% trans "How can we help you today?" %}</h1>
+          <p class="hero-subheading">{% trans "Free legal help for self-represented litigants" %}</p>
           <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
             {% csrf_token %}
-            <c-atoms.button type="button" variant="outline" size="icon-xl" aria_label="Upload PDF document" x-on:click="triggerFileInput()" x-bind:disabled="isUploading" title="Upload a legal document (PDF)">
+            {% trans "Upload PDF document" as upload_label %}
+            {% trans "Upload a legal document (PDF)" as upload_title %}
+            <c-atoms.button type="button" variant="outline" size="icon-xl" aria_label="{{ upload_label }}" x-on:click="triggerFileInput()" x-bind:disabled="isUploading" title="{{ upload_title }}">
             <template x-if="!isUploading">
               <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
             </template>
@@ -198,13 +199,14 @@
               <input type="search"
                      x-model="inputText"
                      name="q"
-                     placeholder="What do you need help with?"
+                     placeholder="{% trans "What do you need help with?" %}"
                      class="search-input"
-                     aria-label="Search or ask a question" />
+                     aria-label="{% trans "Search or ask a question" %}" />
             </div>
-            <c-atoms.button type="submit" variant="primary" size="xl" aria_label="Ask" x-bind:disabled="isStreaming">
+            {% trans "Ask" as ask_label %}
+            <c-atoms.button type="submit" variant="primary" size="xl" aria_label="{{ ask_label }}" x-bind:disabled="isStreaming">
             <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
-            <span class="hidden sm:inline">Ask</span>
+            <span class="hidden sm:inline">{% trans "Ask" %}</span>
             </c-atoms.button>
           </form>
         </div>
@@ -215,8 +217,8 @@
            x-cloak>
         {# Chat Header #}
         <div class="chat-header">
-          <h1 class="text-lg font-semibold text-greyscale-900">How can we help you today?</h1>
-          <c-atoms.button type="button" variant="ghost" class="!p-0 text-sm text-greyscale-500 hover:text-greyscale-700" x-on:click="clearChat()">New conversation</c-atoms.button>
+          <h1 class="text-lg font-semibold text-greyscale-900">{% trans "How can we help you today?" %}</h1>
+          <c-atoms.button type="button" variant="ghost" class="!p-0 text-sm text-greyscale-500 hover:text-greyscale-700" x-on:click="clearChat()">{% trans "New conversation" %}</c-atoms.button>
         </div>
         {# Chat Messages - scrollable area #}
         <div class="chat-messages-area" x-ref="messagesArea">
@@ -262,11 +264,11 @@
                 <div class="flex flex-wrap gap-2">
                   <c-atoms.button type="button" variant="primary" x-on:click="confirmExtraction()">
                   <c-atoms.icon name="check" class="w-4 h-4" />
-                  Looks correct
+                  {% trans "Looks correct" %}
                   </c-atoms.button>
                   <c-atoms.button type="button" variant="outline" x-on:click="requestClarification()">
                   <c-atoms.icon name="pencil" class="w-4 h-4" />
-                  Let me clarify
+                  {% trans "Let me clarify" %}
                   </c-atoms.button>
                 </div>
               </div>
@@ -279,7 +281,7 @@
                 class="chat-input-form"
                 role="search">
             {% csrf_token %}
-            <c-atoms.button type="button" variant="outline" size="icon" aria_label="Upload PDF document" x-on:click="triggerFileInput()" x-bind:disabled="isUploading" title="Upload a legal document (PDF)">
+            <c-atoms.button type="button" variant="outline" size="icon" aria_label="{{ upload_label }}" x-on:click="triggerFileInput()" x-bind:disabled="isUploading" title="{{ upload_title }}">
             <template x-if="!isUploading">
               <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
             </template>
@@ -291,11 +293,12 @@
               <input type="text"
                      x-model="inputText"
                      name="q"
-                     placeholder="Ask a follow-up question..."
+                     placeholder="{% trans "Ask a follow-up question..." %}"
                      class="chat-input"
-                     aria-label="Ask a follow-up question" />
+                     aria-label="{% trans "Ask a follow-up question" %}" />
             </div>
-            <c-atoms.button type="submit" variant="primary" size="lg" aria_label="Send" x-bind:disabled="isStreaming">
+            {% trans "Send" as send_label %}
+            <c-atoms.button type="submit" variant="primary" size="lg" aria_label="{{ send_label }}" x-bind:disabled="isStreaming">
             <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
             </c-atoms.button>
           </form>

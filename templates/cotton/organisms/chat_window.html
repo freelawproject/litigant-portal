@@ -1,3 +1,5 @@
+{% load i18n %}
+
 <c-vars session_id="" chat_enabled="true" />
 <div x-data="chat"
      x-init="{% if session_id %}sessionId = '{{ session_id }}';{% endif %}"
@@ -8,7 +10,7 @@
        x-ref="messages"
        role="log"
        aria-live="polite"
-       aria-label="Chat messages">
+       aria-label="{% trans "Chat messages" %}">
     {# All messages rendered dynamically via Alpine #}
     <template x-for="msg in dynamicMessages" :key="msg.id">
       <div class="chat-message"
@@ -42,23 +44,25 @@
     </div>
   </div>
   {# Input form #}
+  {% trans "Ask a legal question..." as chat_placeholder %}
+  {% trans "Send message" as send_label %}
   <form x-on:submit.prevent="sendMessage"
         method="post"
         action="{% url 'chat:stream' %}"
         class="chat-input-form">
     {% csrf_token %}
-    <c-atoms.input x-model="inputText" x-bind:disabled="isStreaming" type="text" name="message" placeholder="Ask a legal question..." aria_label="Chat message" class="flex-1" />
-    <c-atoms.button type="submit" variant="primary" size="xl" x-bind:disabled="isStreaming || !inputText.trim()" aria_label="Send message">
+    <c-atoms.input x-model="inputText" x-bind:disabled="isStreaming" type="text" name="message" placeholder="{{ chat_placeholder }}" aria_label="{{ chat_placeholder }}" class="flex-1" />
+    <c-atoms.button type="submit" variant="primary" size="xl" x-bind:disabled="isStreaming || !inputText.trim()" aria_label="{{ send_label }}">
     <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
-    <span class="hidden sm:inline ml-2">Send</span>
+    <span class="hidden sm:inline ml-2">{% trans "Send" %}</span>
     </c-atoms.button>
   </form>
   {# Fallback search link #}
   {% if not chat_enabled %}
     <div class="chat-fallback-notice">
       <p class="text-sm text-greyscale-600">
-        AI chat is currently unavailable.
-        <c-atoms.link href="{% url 'chat:search' %}" variant="primary">Use keyword search</c-atoms.link>
+        {% trans "AI chat is currently unavailable." %}
+        <c-atoms.link href="{% url 'chat:search' %}" variant="primary">{% trans "Use keyword search" %}</c-atoms.link>
       </p>
     </div>
   {% endif %}
