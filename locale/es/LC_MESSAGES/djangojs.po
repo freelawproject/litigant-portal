@@ -1,0 +1,106 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-27 16:28+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+
+msgid "Failed to send message"
+msgstr ""
+
+msgid "Sorry, I encountered an error. Please try again."
+msgstr ""
+
+msgid "Please select a PDF file"
+msgstr ""
+
+msgid "File size must be less than 10MB"
+msgstr ""
+
+msgid "Upload failed"
+msgstr ""
+
+#, javascript-format
+msgid "%s page document"
+msgstr ""
+
+#, javascript-format
+msgid "Uploaded: %s"
+msgstr ""
+
+#, javascript-format
+msgid "1 page"
+msgid_plural "%s pages"
+msgstr[0] ""
+msgstr[1] ""
+
+msgid ""
+"I've received your document (%(pages)s), but I had trouble analyzing it: %"
+"(error)s\n"
+"\n"
+"You can still ask me questions about your situation."
+msgstr ""
+
+msgid "I've received your document (%(pages)s). How can I help you with it?"
+msgstr ""
+
+#, javascript-format
+msgid "Sorry, I couldn't process your document: %s"
+msgstr ""
+
+msgid "I've analyzed your document (%(pages)s)."
+msgstr ""
+
+msgid "Case Type"
+msgstr ""
+
+msgid "Summary"
+msgstr ""
+
+msgid "Court"
+msgstr ""
+
+msgid "Case Number"
+msgstr ""
+
+msgid "Filed by"
+msgstr ""
+
+msgid "Against"
+msgstr ""
+
+msgid "Important Deadlines"
+msgstr ""
+
+msgid "Other Dates"
+msgstr ""
+
+msgid "Does this information look correct?"
+msgstr ""
+
+msgid ""
+"Great! I've saved your case information. You can see it in the sidebar. What "
+"would you like help with?"
+msgstr ""
+
+msgid "Case info updated"
+msgstr ""
+
+msgid ""
+"No problem! What information needs to be corrected? You can tell me what's "
+"wrong and I'll update it, or you can upload a different document."
+msgstr ""

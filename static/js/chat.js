@@ -487,7 +487,8 @@ function createHomePage() {
         })
 
         const data = await response.json()
-        if (!response.ok) throw new Error(data.error || gettext('Upload failed'))
+        if (!response.ok)
+          throw new Error(data.error || gettext('Upload failed'))
 
         this.extractedText = data.text_preview
         this.extractedData = data.extracted_data
@@ -546,10 +547,9 @@ function createHomePage() {
         this.uploadError = error.message
         this.pushMessage(
           'assistant',
-          interpolate(
-            gettext("Sorry, I couldn't process your document: %s"),
-            [error.message]
-          )
+          interpolate(gettext("Sorry, I couldn't process your document: %s"), [
+            error.message,
+          ])
         )
       } finally {
         this.isUploading = false
@@ -680,7 +680,11 @@ function createHomePage() {
       if (newData.summary) this.caseInfo.summary = newData.summary
 
       if (changes.length > 0) {
-        this.addTimelineEvent('change', gettext('Case info updated'), changes.join('; '))
+        this.addTimelineEvent(
+          'change',
+          gettext('Case info updated'),
+          changes.join('; ')
+        )
       }
     },
 

@@ -1,0 +1,839 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-27 16:28+0000\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? "
+"1 : 2;\n"
+msgid "Message is required"
+msgstr ""
+
+msgid "Message is too long (max 2000 characters)"
+msgstr ""
+
+msgid "Unauthorized"
+msgstr ""
+
+msgid "Error loading chat session"
+msgstr ""
+
+msgid "Agent not found"
+msgstr ""
+
+msgid "No file uploaded"
+msgstr ""
+
+msgid "Failed to analyze document."
+msgstr ""
+
+msgid "Messages are required"
+msgstr ""
+
+msgid "Invalid messages format"
+msgstr ""
+
+msgid "At least 2 messages required for summary"
+msgstr ""
+
+msgid "Summarize agent is not available"
+msgstr ""
+
+msgid "Failed to generate summary"
+msgstr ""
+
+msgid "Your full legal name"
+msgstr ""
+
+msgid "(555) 123-4567"
+msgstr ""
+
+msgid "123 Main Street"
+msgstr ""
+
+msgid "Apartment, suite, unit, etc."
+msgstr ""
+
+msgid "City"
+msgstr ""
+
+msgid "12345"
+msgstr ""
+
+msgid "e.g., Los Angeles County"
+msgstr ""
+
+msgid "Alabama"
+msgstr ""
+
+msgid "Alaska"
+msgstr ""
+
+msgid "Arizona"
+msgstr ""
+
+msgid "Arkansas"
+msgstr ""
+
+msgid "California"
+msgstr ""
+
+msgid "Colorado"
+msgstr ""
+
+msgid "Connecticut"
+msgstr ""
+
+msgid "Delaware"
+msgstr ""
+
+msgid "Florida"
+msgstr ""
+
+msgid "Georgia"
+msgstr ""
+
+msgid "Hawaii"
+msgstr ""
+
+msgid "Idaho"
+msgstr ""
+
+msgid "Illinois"
+msgstr ""
+
+msgid "Indiana"
+msgstr ""
+
+msgid "Iowa"
+msgstr ""
+
+msgid "Kansas"
+msgstr ""
+
+msgid "Kentucky"
+msgstr ""
+
+msgid "Louisiana"
+msgstr ""
+
+msgid "Maine"
+msgstr ""
+
+msgid "Maryland"
+msgstr ""
+
+msgid "Massachusetts"
+msgstr ""
+
+msgid "Michigan"
+msgstr ""
+
+msgid "Minnesota"
+msgstr ""
+
+msgid "Mississippi"
+msgstr ""
+
+msgid "Missouri"
+msgstr ""
+
+msgid "Montana"
+msgstr ""
+
+msgid "Nebraska"
+msgstr ""
+
+msgid "Nevada"
+msgstr ""
+
+msgid "New Hampshire"
+msgstr ""
+
+msgid "New Jersey"
+msgstr ""
+
+msgid "New Mexico"
+msgstr ""
+
+msgid "New York"
+msgstr ""
+
+msgid "North Carolina"
+msgstr ""
+
+msgid "North Dakota"
+msgstr ""
+
+msgid "Ohio"
+msgstr ""
+
+msgid "Oklahoma"
+msgstr ""
+
+msgid "Oregon"
+msgstr ""
+
+msgid "Pennsylvania"
+msgstr ""
+
+msgid "Rhode Island"
+msgstr ""
+
+msgid "South Carolina"
+msgstr ""
+
+msgid "South Dakota"
+msgstr ""
+
+msgid "Tennessee"
+msgstr ""
+
+msgid "Texas"
+msgstr ""
+
+msgid "Utah"
+msgstr ""
+
+msgid "Vermont"
+msgstr ""
+
+msgid "Virginia"
+msgstr ""
+
+msgid "Washington"
+msgstr ""
+
+msgid "West Virginia"
+msgstr ""
+
+msgid "Wisconsin"
+msgstr ""
+
+msgid "Wyoming"
+msgstr ""
+
+msgid "District of Columbia"
+msgstr ""
+
+msgid "Full legal name"
+msgstr ""
+
+msgid "Phone number"
+msgstr ""
+
+msgid "Street address"
+msgstr ""
+
+msgid "Apt, suite, etc."
+msgstr ""
+
+msgid "ZIP code"
+msgstr ""
+
+msgid "User Profile"
+msgstr ""
+
+msgid "User Profiles"
+msgstr ""
+
+msgid "Housing & Eviction"
+msgstr ""
+
+msgid ""
+"Understanding the eviction process, tenant rights, and landlord obligations"
+msgstr ""
+
+msgid "Landlord disputes, eviction defense, tenant rights"
+msgstr ""
+
+msgid ""
+"Learn about the eviction process, tenant rights, and landlord obligations. "
+"General legal information for self-represented litigants."
+msgstr ""
+
+msgid "Family & Divorce"
+msgstr ""
+
+msgid "Divorce, custody, child support, and domestic violence resources"
+msgstr ""
+
+msgid "Divorce, custody, child support, domestic issues"
+msgstr ""
+
+msgid ""
+"Learn about divorce, child custody, child support, and family court. General "
+"legal information for self-represented litigants."
+msgstr ""
+
+msgid "Small Claims"
+msgstr ""
+
+msgid "Resolving disputes and understanding the small claims court process"
+msgstr ""
+
+msgid "Disputes under $10,000, debt collection defense"
+msgstr ""
+
+msgid ""
+"Learn about filing or defending a small claims case. General legal "
+"information for self-represented litigants."
+msgstr ""
+
+msgid "Consumer Rights"
+msgstr ""
+
+msgid "Debt collection rules, contract disputes, and consumer protections"
+msgstr ""
+
+msgid "Scams, unfair business practices, contracts"
+msgstr ""
+
+msgid ""
+"Learn about consumer rights, debt collection rules, and contract disputes. "
+"General legal information for self-represented litigants."
+msgstr ""
+
+msgid "Expungement"
+msgstr ""
+
+msgid "Clearing or sealing your criminal record and restoring opportunities"
+msgstr ""
+
+msgid "Clear your record, seal court files"
+msgstr ""
+
+msgid ""
+"Learn about expungement, record sealing, and eligibility requirements. "
+"General legal information for self-represented litigants."
+msgstr ""
+
+msgid "Traffic & Fines"
+msgstr ""
+
+msgid "Traffic violations, fines, license issues, and your options"
+msgstr ""
+
+msgid "Tickets, license issues, court fines"
+msgstr ""
+
+msgid ""
+"Learn about traffic tickets, fines, license suspension, and your options. "
+"General legal information for self-represented litigants."
+msgstr ""
+
+msgid "Profile updated successfully."
+msgstr ""
+
+msgid "Return to home"
+msgstr ""
+
+msgid "Litigant Portal"
+msgstr ""
+
+msgid "Sign In"
+msgstr ""
+
+msgid "Sign in"
+msgstr ""
+
+msgid "Access your legal assistance portal"
+msgstr ""
+
+msgid "Email address"
+msgstr ""
+
+msgid "you@example.com"
+msgstr ""
+
+msgid "Password"
+msgstr ""
+
+msgid "Enter your password"
+msgstr ""
+
+msgid "Remember me"
+msgstr ""
+
+msgid "Forgot your password?"
+msgstr ""
+
+msgid "Don't have an account?"
+msgstr ""
+
+msgid "Create one"
+msgstr ""
+
+msgid "Create Account"
+msgstr ""
+
+msgid "Create account"
+msgstr ""
+
+msgid "Get free legal assistance today"
+msgstr ""
+
+msgid "Create a password"
+msgstr ""
+
+msgid "At least 8 characters"
+msgstr ""
+
+msgid "Confirm password"
+msgstr ""
+
+msgid "Confirm your password"
+msgstr ""
+
+msgid ""
+"By creating an account, you agree to our <a href=\"#\" class=\"text-"
+"greyscale-600 underline hover:text-greyscale-800 text-xs\">Terms of Service</"
+"a> and <a href=\"#\" class=\"text-greyscale-600 underline hover:text-"
+"greyscale-800 text-xs\">Privacy Policy</a>."
+msgstr ""
+
+msgid "Already have an account?"
+msgstr ""
+
+msgid "Litigant Portal – Access to Justice"
+msgstr ""
+
+msgid "What do you need help with?"
+msgstr ""
+
+msgid "Search"
+msgstr ""
+
+msgid "Profile"
+msgstr ""
+
+msgid "Sign out"
+msgstr ""
+
+msgid "Your Case"
+msgstr ""
+
+msgid "Chat messages"
+msgstr ""
+
+msgid "Ask a legal question..."
+msgstr ""
+
+msgid "Send message"
+msgstr ""
+
+msgid "Send"
+msgstr ""
+
+msgid "AI chat is currently unavailable."
+msgstr ""
+
+msgid "Use keyword search"
+msgstr ""
+
+msgid "About"
+msgstr ""
+
+msgid "Privacy"
+msgstr ""
+
+msgid "Accessibility"
+msgstr ""
+
+msgid "Home"
+msgstr ""
+
+msgid "Litigant Portal – Powered by Free Law Project"
+msgstr ""
+
+msgid "Open activity timeline"
+msgstr ""
+
+msgid "Activity timeline"
+msgstr ""
+
+msgid "Activity"
+msgstr ""
+
+msgid "Close menu"
+msgstr ""
+
+msgid "No activity yet"
+msgstr ""
+
+msgid "Upload documents and chat to see your history here"
+msgstr ""
+
+msgid "How can we help you today?"
+msgstr ""
+
+msgid "Free legal help for self-represented litigants"
+msgstr ""
+
+msgid "Browse by Topic"
+msgstr ""
+
+msgid ""
+"About the Litigant Portal – free AI-powered legal guidance for self-"
+"represented litigants."
+msgstr ""
+
+msgid ""
+"Free, AI-powered legal guidance for people navigating the court system on "
+"their own."
+msgstr ""
+
+msgid "Our mission"
+msgstr ""
+
+msgid ""
+"The Litigant Portal is built by <a href=\"https://free.law\" "
+"target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-primary-600 "
+"underline hover:text-primary-700\">Free Law Project</a>, a 501(c)(3) "
+"nonprofit dedicated to making the legal system more accessible. This portal "
+"helps self-represented litigants understand their legal situation, find "
+"relevant resources, and prepare for court using AI-powered guidance."
+msgstr ""
+
+msgid "How it works"
+msgstr ""
+
+msgid ""
+"Describe your legal situation in plain language and the portal's AI "
+"assistant will help you understand your options, identify relevant legal "
+"topics, and locate court resources. You can also browse common legal topics "
+"directly."
+msgstr ""
+
+msgid "Important disclaimers"
+msgstr ""
+
+msgid "This is not legal advice."
+msgstr ""
+
+msgid ""
+"The portal provides general legal information, not advice tailored to your "
+"specific case."
+msgstr ""
+
+msgid "AI responses may contain errors or outdated information."
+msgstr ""
+
+msgid "Using this portal does not create an attorney-client relationship."
+msgstr ""
+
+msgid "For advice about your specific situation, consult a licensed attorney."
+msgstr ""
+
+msgid "About Free Law Project"
+msgstr ""
+
+msgid ""
+"Free Law Project is a California nonprofit that operates <a href=\"https://"
+"www.courtlistener.com\" target=\"_blank\" rel=\"noopener noreferrer\" "
+"class=\"text-primary-600 underline hover:text-primary-700\">CourtListener</"
+"a>, <a href=\"https://free.law/recap\" target=\"_blank\" rel=\"noopener "
+"noreferrer\" class=\"text-primary-600 underline hover:text-"
+"primary-700\">RECAP</a>, and other tools that make the legal system more "
+"transparent and accessible. Learn more at <a href=\"https://free.law\" "
+"target=\"_blank\" rel=\"noopener noreferrer\" class=\"text-primary-600 "
+"underline hover:text-primary-700\">free.law</a>."
+msgstr ""
+
+msgid ""
+"Accessibility statement for the Litigant Portal – our commitment to WCAG 2.2 "
+"AA conformance and selective AAA criteria."
+msgstr ""
+
+msgid "Access to justice is not complete until it is also fully accessible."
+msgstr ""
+
+msgid "Conformance goal"
+msgstr ""
+
+msgid ""
+"We target <a href=\"https://www.w3.org/TR/WCAG22/\" target=\"_blank\" "
+"rel=\"noopener noreferrer\" class=\"text-primary-600 underline hover:text-"
+"primary-700\">WCAG 2.2 Level AA</a> conformance across the entire portal, "
+"plus selective Level AAA criteria that directly benefit self-represented "
+"litigants — including enhanced contrast, no time limits on content, and "
+"plain-language definitions of legal terms."
+msgstr ""
+
+msgid "What we do"
+msgstr ""
+
+msgid "Full keyboard navigation for all interactive elements"
+msgstr ""
+
+msgid "Visible focus indicators on every focusable element"
+msgstr ""
+
+msgid "Color contrast ratios of at least 4.5:1 for text"
+msgstr ""
+
+msgid "Touch targets of at least 44×44 pixels on mobile"
+msgstr ""
+
+msgid "Semantic HTML and ARIA labels for screen readers"
+msgstr ""
+
+msgid "Responsive design that works across devices and zoom levels"
+msgstr ""
+
+msgid "Enhanced contrast ratios of at least 7:1 for body text"
+msgstr ""
+
+msgid "No time limits on reading legal information"
+msgstr ""
+
+msgid "Plain-language definitions for legal terms and abbreviations"
+msgstr ""
+
+msgid "Testing"
+msgstr ""
+
+msgid ""
+"We combine automated accessibility checks on every code change with manual "
+"keyboard and screen reader testing for each new feature. Periodic full-site "
+"audits verify conformance against the complete WCAG checklist."
+msgstr ""
+
+msgid "Standards tracking"
+msgstr ""
+
+msgid ""
+"We review our practices against current W3C accessibility guidelines "
+"annually and will update our targets as standards evolve."
+msgstr ""
+
+msgid "Known limitations"
+msgstr ""
+
+msgid ""
+"AI-generated chat responses may not always have ideal heading structure or "
+"reading order. Streaming responses update the page progressively, which may "
+"affect screen reader announcements. We are actively working to improve these "
+"experiences."
+msgstr ""
+
+msgid "Feedback"
+msgstr ""
+
+msgid ""
+"If you encounter an accessibility barrier, please let us know at <a "
+"href=\"mailto:info@free.law\" class=\"text-primary-600 underline hover:text-"
+"primary-700\">info@free.law</a>. We take all feedback seriously and will "
+"work to address issues promptly."
+msgstr ""
+
+msgid "Free Legal Help"
+msgstr ""
+
+msgid "Upload PDF document"
+msgstr ""
+
+msgid "Chat service unavailable"
+msgstr ""
+
+msgid "The AI chat service is temporarily unavailable. Please try again later."
+msgstr ""
+
+msgid "No active case"
+msgstr ""
+
+msgid ""
+"Upload a legal document to get started. We'll track your case details, "
+"deadlines, and action items here."
+msgstr ""
+
+msgid "Court"
+msgstr ""
+
+msgid "Opposing Party"
+msgstr ""
+
+msgid "Their Attorney"
+msgstr ""
+
+msgid "Deadlines"
+msgstr ""
+
+msgid "Other Dates"
+msgstr ""
+
+msgid "Clear case info"
+msgstr ""
+
+msgid "Upload a legal document (PDF)"
+msgstr ""
+
+msgid "Search or ask a question"
+msgstr ""
+
+msgid "Ask"
+msgstr ""
+
+msgid "New conversation"
+msgstr ""
+
+msgid "Looks correct"
+msgstr ""
+
+msgid "Let me clarify"
+msgstr ""
+
+msgid "Ask a follow-up question..."
+msgstr ""
+
+msgid "Ask a follow-up question"
+msgstr ""
+
+msgid "Privacy practices for the Litigant Portal – how we handle your data."
+msgstr ""
+
+msgid "How we handle your data and protect your privacy."
+msgstr ""
+
+msgid "What we collect"
+msgstr ""
+
+msgid "When you use the portal, we may collect:"
+msgstr ""
+
+msgid "Chat messages you send to the AI assistant"
+msgstr ""
+
+msgid "Documents you upload for analysis"
+msgstr ""
+
+msgid "Account information if you create an account (email, name)"
+msgstr ""
+
+msgid "Basic usage data to improve the service"
+msgstr ""
+
+msgid "Temporary storage"
+msgstr ""
+
+msgid ""
+"Chat sessions and uploaded documents are stored on a case-by-case basis and "
+"retained only as long as needed to provide the service. We do not build long-"
+"term profiles from your interactions."
+msgstr ""
+
+msgid "No selling or sharing"
+msgstr ""
+
+msgid ""
+"We never sell your data. Your information is not shared with third parties "
+"for marketing or advertising purposes. Data may be shared only when required "
+"by law or necessary to operate the service (e.g., sending your messages to "
+"the AI provider for processing)."
+msgstr ""
+
+msgid "Your control"
+msgstr ""
+
+msgid ""
+"You can request deletion of your account and associated data at any time by "
+"contacting us. Anonymous chat sessions are not linked to any identity and "
+"cannot be retrieved after the session ends."
+msgstr ""
+
+msgid "Framework"
+msgstr ""
+
+msgid ""
+"Our privacy practices are informed by the <a href=\"https://www.nist.gov/"
+"privacy-framework\" target=\"_blank\" rel=\"noopener noreferrer\" "
+"class=\"text-primary-600 underline hover:text-primary-700\">NIST Privacy "
+"Framework</a>. As a nonprofit, we have no financial incentive to collect or "
+"monetize your data."
+msgstr ""
+
+msgid "Contact"
+msgstr ""
+
+msgid ""
+"Questions about our privacy practices? Reach us at <a "
+"href=\"mailto:info@free.law\" class=\"text-primary-600 underline hover:text-"
+"primary-700\">info@free.law</a>."
+msgstr ""
+
+msgid "Your Profile"
+msgstr ""
+
+msgid "Edit"
+msgstr ""
+
+msgid "Not provided"
+msgstr ""
+
+msgid "Contact Information"
+msgstr ""
+
+msgid "Name"
+msgstr ""
+
+msgid "Phone"
+msgstr ""
+
+msgid "Email"
+msgstr ""
+
+msgid "Address"
+msgstr ""
+
+msgid "County"
+msgstr ""
+
+msgid "Edit Profile"
+msgstr ""
+
+msgid ""
+"All fields are optional. The more you share, the more personalized "
+"assistance we can provide."
+msgstr ""
+
+msgid "Full Legal Name"
+msgstr ""
+
+msgid "Used for official documents and forms"
+msgstr ""
+
+msgid "Phone Number"
+msgstr ""
+
+msgid "Street Address"
+msgstr ""
+
+msgid "Address Line 2"
+msgstr ""
+
+msgid "State"
+msgstr ""
+
+msgid "Select state"
+msgstr ""
+
+msgid "ZIP Code"
+msgstr ""
+
+msgid "Save Profile"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
