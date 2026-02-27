@@ -1,4 +1,9 @@
-<c-vars heading="How can we help you today?" subheading="Free legal help for self-represented litigants" search_placeholder="What do you need help with?" />
+{% load i18n %}
+
+{% trans "How can we help you today?" as default_heading %}
+{% trans "Free legal help for self-represented litigants" as default_subheading %}
+{% trans "What do you need help with?" as default_placeholder %}
+<c-vars heading="{{ default_heading }}" subheading="{{ default_subheading }}" search_placeholder="{{ default_placeholder }}" />
 <section class="hero {{ class }}" {{ attrs }}>
   <div class="hero-content">
     <h1 class="hero-heading">{{ heading }}</h1>

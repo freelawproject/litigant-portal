@@ -1,3 +1,5 @@
+{% load i18n %}
+
 <c-vars case_type="" county="" />
 {# Case sidebar - displays case info, deadlines, and action items #}
 {# Can be used statically or with Alpine.js x-data for dynamic updates #}
@@ -5,7 +7,7 @@
        {{ attrs }}>
   {# Header #}
   <div class="p-4 border-b border-greyscale-200">
-    <h2 class="text-lg font-semibold text-greyscale-800">Your Case</h2>
+    <h2 class="text-lg font-semibold text-greyscale-800">{% trans "Your Case" %}</h2>
     {% if case_type or county %}
       <p class="mt-1 text-sm text-greyscale-500">
         {% if case_type %}{{ case_type }}{% endif %}
