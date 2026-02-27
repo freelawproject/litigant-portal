@@ -3,6 +3,7 @@ import json
 from django.conf import settings
 from django.http import HttpRequest, JsonResponse
 from django.shortcuts import render
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
@@ -36,11 +37,12 @@ def stream(request: HttpRequest):
     agent_name = request.POST.get("agent_name") or None
 
     if not message:
-        return JsonResponse({"error": "Message is required"}, status=400)
+        return JsonResponse({"error": _("Message is required")}, status=400)
 
     if len(message) > 2000:
         return JsonResponse(
-            {"error": "Message is too long (max 2000 characters)"}, status=400
+            {"error": _("Message is too long (max 2000 characters)")},
+            status=400,
         )
 
     try:
@@ -49,15 +51,13 @@ def stream(request: HttpRequest):
         )
         return chat.stream(message)
     except PermissionError:
-        return JsonResponse({"error": "Unauthorized"}, status=403)
+        return JsonResponse({"error": _("Unauthorized")}, status=403)
     except ValueError:
         return JsonResponse(
-            {"error": "Error loading chat session"}, status=404
+            {"error": _("Error loading chat session")}, status=404
         )
     except KeyError:
-        return JsonResponse(
-            {"error": f"Agent {agent_name} not found"}, status=404
-        )
+        return JsonResponse({"error": _("Agent not found")}, status=404)
 
 
 @require_GET
@@ -121,7 +121,7 @@ def upload_document(request: HttpRequest) -> JsonResponse:
     Rate limited to 10 requests per minute per IP.
     """
     if "file" not in request.FILES:
-        return JsonResponse({"error": "No file uploaded"}, status=400)
+        return JsonResponse({"error": _("No file uploaded")}, status=400)
 
     uploaded_file = request.FILES["file"]
 
@@ -143,7 +143,7 @@ def upload_document(request: HttpRequest) -> JsonResponse:
                 "page_count": pdf_result.page_count,
                 "text_preview": pdf_result.text_preview,
                 "extracted_data": None,
-                "extraction_error": "Failed to analyze document.",
+                "extraction_error": _("Failed to analyze document."),
             }
         )
 
@@ -169,30 +169,33 @@ def summarize_conversation(request: HttpRequest) -> JsonResponse:
     messages_raw = request.POST.get("messages", "")
 
     if not messages_raw:
-        return JsonResponse({"error": "Messages are required"}, status=400)
+        return JsonResponse({"error": _("Messages are required")}, status=400)
 
     try:
         messages = json.loads(messages_raw)
     except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid messages format"}, status=400)
+        return JsonResponse(
+            {"error": _("Invalid messages format")}, status=400
+        )
 
     if not isinstance(messages, list) or len(messages) < 2:
         return JsonResponse(
-            {"error": "At least 2 messages required for summary"}, status=400
+            {"error": _("At least 2 messages required for summary")},
+            status=400,
         )
 
     agent = agent_registry["ChatSummarizationAgent"]()
 
     if not agent.ping():
         return JsonResponse(
-            {"error": "Summarize agent is not available"}, status=500
+            {"error": _("Summarize agent is not available")}, status=500
         )
 
     summary = agent(messages)
 
     if summary is None:
         return JsonResponse(
-            {"error": "Failed to generate summary"}, status=500
+            {"error": _("Failed to generate summary")}, status=500
         )
 
     return JsonResponse({"summary": summary})
