@@ -1,7 +1,7 @@
-{% load static %}
+{% load static i18n %}
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ LANGUAGE_CODE }}">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -44,6 +44,8 @@
           <c-organisms.footer />
         {% endblock footer %}
 
+        {# Django JS i18n catalog - must load before components #}
+        <script src="{% url 'javascript-catalog' %}"></script>
         {# Theme store - must load before Alpine #}
         <script src="{% static 'js/theme.js' %}"></script>
         {# Chat component - must load before Alpine #}
