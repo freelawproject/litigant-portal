@@ -1,18 +1,18 @@
 {% extends "base.html" %}
 
-{% load cotton %}
+{% load cotton i18n %}
 
 {% block title %}
 
-  Edit Profile - Litigant Portal
+  {% trans "Edit Profile" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block content %}
 
   <div class="max-w-2xl mx-auto px-4 py-8">
-    <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Your Profile</h1>
+    <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Your Profile" %}</h1>
     <p class="text-greyscale-600 mb-6">
-      All fields are optional. The more you share, the more personalized assistance we can provide.
+      {% trans "All fields are optional. The more you share, the more personalized assistance we can provide." %}
     </p>
     {# Form errors #}
     {% if form.non_field_errors %}
@@ -24,22 +24,34 @@
       {% csrf_token %}
       {# Contact Information #}
       <fieldset>
-        <legend class="text-lg font-medium text-greyscale-900 mb-4">Contact Information</legend>
+        <legend class="text-lg font-medium text-greyscale-900 mb-4">{% trans "Contact Information" %}</legend>
         <div class="space-y-4">
-          <c-molecules.form-field label="Full Legal Name" type="text" name="name" id="id_name" placeholder="Your full legal name" autocomplete="name" value="{{ form.name.value|default:'' }}" :errors="form.name.errors" help_text="Used for official documents and forms" />
-          <c-molecules.form-field label="Phone Number" type="tel" name="phone" id="id_phone" placeholder="(555) 123-4567" autocomplete="tel" value="{{ form.phone.value|default:'' }}" :errors="form.phone.errors" />
+          {% trans "Full Legal Name" as name_label %}
+          {% trans "Your full legal name" as name_placeholder %}
+          {% trans "Used for official documents and forms" as name_help %}
+          <c-molecules.form-field label="{{ name_label }}" type="text" name="name" id="id_name" placeholder="{{ name_placeholder }}" autocomplete="name" value="{{ form.name.value|default:'' }}" :errors="form.name.errors" help_text="{{ name_help }}" />
+          {% trans "Phone Number" as phone_label %}
+          {% trans "(555) 123-4567" as phone_placeholder %}
+          <c-molecules.form-field label="{{ phone_label }}" type="tel" name="phone" id="id_phone" placeholder="{{ phone_placeholder }}" autocomplete="tel" value="{{ form.phone.value|default:'' }}" :errors="form.phone.errors" />
         </div>
       </fieldset>
       {# Address Information #}
       <fieldset>
-        <legend class="text-lg font-medium text-greyscale-900 mb-4">Address</legend>
+        <legend class="text-lg font-medium text-greyscale-900 mb-4">{% trans "Address" %}</legend>
         <div class="space-y-4">
-          <c-molecules.form-field label="Street Address" type="text" name="address_line1" id="id_address_line1" placeholder="123 Main Street" autocomplete="address-line1" value="{{ form.address_line1.value|default:'' }}" :errors="form.address_line1.errors" />
-          <c-molecules.form-field label="Address Line 2" type="text" name="address_line2" id="id_address_line2" placeholder="Apartment, suite, unit, etc." autocomplete="address-line2" value="{{ form.address_line2.value|default:'' }}" :errors="form.address_line2.errors" />
+          {% trans "Street Address" as street_label %}
+          {% trans "123 Main Street" as street_placeholder %}
+          <c-molecules.form-field label="{{ street_label }}" type="text" name="address_line1" id="id_address_line1" placeholder="{{ street_placeholder }}" autocomplete="address-line1" value="{{ form.address_line1.value|default:'' }}" :errors="form.address_line1.errors" />
+          {% trans "Address Line 2" as addr2_label %}
+          {% trans "Apartment, suite, unit, etc." as addr2_placeholder %}
+          <c-molecules.form-field label="{{ addr2_label }}" type="text" name="address_line2" id="id_address_line2" placeholder="{{ addr2_placeholder }}" autocomplete="address-line2" value="{{ form.address_line2.value|default:'' }}" :errors="form.address_line2.errors" />
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <c-molecules.form-field label="City" type="text" name="city" id="id_city" placeholder="City" autocomplete="address-level2" value="{{ form.city.value|default:'' }}" :errors="form.city.errors" />
-            <c-molecules.form-field-select label="State" name="state" id="id_state" :errors="form.state.errors">
-            <option value="">Select state</option>
+            {% trans "City" as city_label %}
+            {% trans "City" as city_placeholder %}
+            <c-molecules.form-field label="{{ city_label }}" type="text" name="city" id="id_city" placeholder="{{ city_placeholder }}" autocomplete="address-level2" value="{{ form.city.value|default:'' }}" :errors="form.city.errors" />
+            {% trans "State" as state_label %}
+            <c-molecules.form-field-select label="{{ state_label }}" name="state" id="id_state" :errors="form.state.errors">
+            <option value="">{% trans "Select state" %}</option>
             {% for code, name in form.fields.state.choices %}
               <option value="{{ code }}"
                       {% if form.state.value == code %}selected{% endif %}>{{ name }}</option>
@@ -47,15 +59,19 @@
             </c-molecules.form-field-select>
           </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <c-molecules.form-field label="ZIP Code" type="text" name="zip_code" id="id_zip_code" placeholder="12345" autocomplete="postal-code" value="{{ form.zip_code.value|default:'' }}" :errors="form.zip_code.errors" />
-            <c-molecules.form-field label="County" type="text" name="county" id="id_county" placeholder="e.g., Los Angeles County" value="{{ form.county.value|default:'' }}" :errors="form.county.errors" />
+            {% trans "ZIP Code" as zip_label %}
+            {% trans "12345" as zip_placeholder %}
+            <c-molecules.form-field label="{{ zip_label }}" type="text" name="zip_code" id="id_zip_code" placeholder="{{ zip_placeholder }}" autocomplete="postal-code" value="{{ form.zip_code.value|default:'' }}" :errors="form.zip_code.errors" />
+            {% trans "County" as county_label %}
+            {% trans "e.g., Los Angeles County" as county_placeholder %}
+            <c-molecules.form-field label="{{ county_label }}" type="text" name="county" id="id_county" placeholder="{{ county_placeholder }}" value="{{ form.county.value|default:'' }}" :errors="form.county.errors" />
           </div>
         </div>
       </fieldset>
       {# Submit #}
       <div class="flex flex-col sm:flex-row gap-4">
-        <c-atoms.button type="submit" variant="primary" size="xl">Save Profile</c-atoms.button>
-        <c-atoms.link href="{% url 'portal:profile' %}" variant="unstyled" class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-greyscale-700 hover:text-greyscale-900 transition-colors">Cancel</c-atoms.link>
+        <c-atoms.button type="submit" variant="primary" size="xl">{% trans "Save Profile" %}</c-atoms.button>
+        <c-atoms.link href="{% url 'portal:profile' %}" variant="unstyled" class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-greyscale-700 hover:text-greyscale-900 transition-colors">{% trans "Cancel" %}</c-atoms.link>
       </div>
     </form>
   </div>

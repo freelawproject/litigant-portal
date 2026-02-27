@@ -1,62 +1,53 @@
 {% extends "base.html" %}
 
+{% load i18n %}
+
 {% block title %}
 
-  About - Litigant Portal
+  {% trans "About" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block meta_description %}
 
-  About the Litigant Portal - free AI-powered legal guidance for self-represented litigants.
+  {% trans "About the Litigant Portal – free AI-powered legal guidance for self-represented litigants." %}
 {% endblock meta_description %}
 
 {% block content %}
 
   <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-    <h1 class="text-3xl font-bold text-greyscale-900">About</h1>
+    <h1 class="text-3xl font-bold text-greyscale-900">{% trans "About" %}</h1>
     <p class="mt-3 text-lg text-greyscale-600">
-      Free, AI-powered legal guidance for people navigating the court system on their own.
+      {% trans "Free, AI-powered legal guidance for people navigating the court system on their own." %}
     </p>
     <div class="mt-8 space-y-8">
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Our mission</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Our mission" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          The Litigant Portal is built by
-          <c-atoms.link href="https://free.law" target="_blank">Free Law Project</c-atoms.link>,
-          a 501(c)(3) nonprofit dedicated to making the legal system more accessible.
-          This portal helps self-represented litigants understand their legal situation,
-          find relevant resources, and prepare for court using AI-powered guidance.
+          {% blocktrans %}The Litigant Portal is built by <a href="https://free.law" target="_blank" rel="noopener noreferrer" class="text-primary-600 underline hover:text-primary-700">Free Law Project</a>, a 501(c)(3) nonprofit dedicated to making the legal system more accessible. This portal helps self-represented litigants understand their legal situation, find relevant resources, and prepare for court using AI-powered guidance.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">How it works</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "How it works" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          Describe your legal situation in plain language and the portal's AI assistant
-          will help you understand your options, identify relevant legal topics, and
-          locate court resources. You can also browse common legal topics directly.
+          {% blocktrans %}Describe your legal situation in plain language and the portal's AI assistant will help you understand your options, identify relevant legal topics, and locate court resources. You can also browse common legal topics directly.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Important disclaimers</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Important disclaimers" %}</h2>
         <c-atoms.alert variant="warning" class="mt-2">
-        <p class="font-semibold">This is not legal advice.</p>
+        <p class="font-semibold">{% trans "This is not legal advice." %}</p>
         <ul class="mt-2 list-disc pl-5 space-y-1">
-          <li>The portal provides general legal information, not advice tailored to your specific case.</li>
-          <li>AI responses may contain errors or outdated information.</li>
-          <li>Using this portal does not create an attorney-client relationship.</li>
-          <li>For advice about your specific situation, consult a licensed attorney.</li>
+          <li>{% trans "The portal provides general legal information, not advice tailored to your specific case." %}</li>
+          <li>{% trans "AI responses may contain errors or outdated information." %}</li>
+          <li>{% trans "Using this portal does not create an attorney-client relationship." %}</li>
+          <li>{% trans "For advice about your specific situation, consult a licensed attorney." %}</li>
         </ul>
         </c-atoms.alert>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">About Free Law Project</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "About Free Law Project" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          Free Law Project is a California nonprofit that operates
-          <c-atoms.link href="https://www.courtlistener.com" target="_blank">CourtListener</c-atoms.link>,
-          <c-atoms.link href="https://free.law/recap" target="_blank">RECAP</c-atoms.link>,
-          and other tools that make the legal system more transparent and accessible.
-          Learn more at
-          <c-atoms.link href="https://free.law" target="_blank">free.law</c-atoms.link>.
+          {% blocktrans %}Free Law Project is a California nonprofit that operates <a href="https://www.courtlistener.com" target="_blank" rel="noopener noreferrer" class="text-primary-600 underline hover:text-primary-700">CourtListener</a>, <a href="https://free.law/recap" target="_blank" rel="noopener noreferrer" class="text-primary-600 underline hover:text-primary-700">RECAP</a>, and other tools that make the legal system more transparent and accessible. Learn more at <a href="https://free.law" target="_blank" rel="noopener noreferrer" class="text-primary-600 underline hover:text-primary-700">free.law</a>.{% endblocktrans %}
         </p>
       </section>
     </div>

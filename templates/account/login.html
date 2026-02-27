@@ -1,16 +1,16 @@
 {% extends "account/base.html" %}
 
-{% load static %}
+{% load static i18n %}
 
 {% block title %}
 
-  Sign In - Litigant Portal
+  {% trans "Sign In" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block auth_content %}
 
-  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Sign in</h1>
-  <p class="text-greyscale-600 mb-6">Access your legal assistance portal</p>
+  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Sign in" %}</h1>
+  <p class="text-greyscale-600 mb-6">{% trans "Access your legal assistance portal" %}</p>
   {# Error messages #}
   {% if form.non_field_errors %}
     <c-atoms.alert variant="danger" class="mb-4">
@@ -19,25 +19,30 @@
   {% endif %}
   <form method="post" action="{% url 'account_login' %}" class="space-y-4">
     {% csrf_token %}
-    <c-molecules.form-field label="Email address" type="email" name="login" id="id_login" placeholder="you@example.com" required autocomplete="email" value="{{ form.login.value|default:'' }}" :errors="form.login.errors" />
-    <c-molecules.form-field label="Password" type="password" name="password" id="id_password" placeholder="Enter your password" required autocomplete="current-password" :errors="form.password.errors" />
+    {% trans "Email address" as email_label %}
+    {% trans "you@example.com" as email_placeholder %}
+    <c-molecules.form-field label="{{ email_label }}" type="email" name="login" id="id_login" placeholder="{{ email_placeholder }}" required autocomplete="email" value="{{ form.login.value|default:'' }}" :errors="form.login.errors" />
+    {% trans "Password" as password_label %}
+    {% trans "Enter your password" as password_placeholder %}
+    <c-molecules.form-field label="{{ password_label }}" type="password" name="password" id="id_password" placeholder="{{ password_placeholder }}" required autocomplete="current-password" :errors="form.password.errors" />
     {# Remember me #}
-    <c-atoms.checkbox name="remember" id="id_remember" checked label="Remember me" />
+    {% trans "Remember me" as remember_label %}
+    <c-atoms.checkbox name="remember" id="id_remember" checked label="{{ remember_label }}" />
     {# Submit #}
     <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
-    Sign in
+    {% trans "Sign in" %}
     </c-atoms.button>
   </form>
   {# Forgot password link #}
   <div class="mt-4 text-center">
-    <c-atoms.link href="{% url 'account_reset_password' %}" variant="primary" class="text-sm">Forgot your password?</c-atoms.link>
+    <c-atoms.link href="{% url 'account_reset_password' %}" variant="primary" class="text-sm">{% trans "Forgot your password?" %}</c-atoms.link>
   </div>
 {% endblock auth_content %}
 
 {% block auth_footer %}
 
   <p class="text-sm text-greyscale-600">
-    Don't have an account?
-    <c-atoms.link href="{% url 'account_signup' %}" variant="primary">Create one</c-atoms.link>
+    {% trans "Don't have an account?" %}
+    <c-atoms.link href="{% url 'account_signup' %}" variant="primary">{% trans "Create one" %}</c-atoms.link>
   </p>
 {% endblock auth_footer %}

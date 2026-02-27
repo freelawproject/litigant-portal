@@ -1,16 +1,16 @@
 {% extends "account/base.html" %}
 
-{% load static %}
+{% load static i18n %}
 
 {% block title %}
 
-  Create Account - Litigant Portal
+  {% trans "Create Account" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block auth_content %}
 
-  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Create account</h1>
-  <p class="text-greyscale-600 mb-6">Get free legal assistance today</p>
+  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Create account" %}</h1>
+  <p class="text-greyscale-600 mb-6">{% trans "Get free legal assistance today" %}</p>
   {# Error messages #}
   {% if form.non_field_errors %}
     <c-atoms.alert variant="danger" class="mb-4">
@@ -19,25 +19,30 @@
   {% endif %}
   <form method="post" action="{% url 'account_signup' %}" class="space-y-4">
     {% csrf_token %}
-    <c-molecules.form-field label="Email address" type="email" name="email" id="id_email" placeholder="you@example.com" required autocomplete="email" value="{{ form.email.value|default:'' }}" :errors="form.email.errors" />
-    <c-molecules.form-field label="Password" type="password" name="password1" id="id_password1" placeholder="Create a password" required autocomplete="new-password" help_text="At least 8 characters" :errors="form.password1.errors" />
-    <c-molecules.form-field label="Confirm password" type="password" name="password2" id="id_password2" placeholder="Confirm your password" required autocomplete="new-password" :errors="form.password2.errors" />
+    {% trans "Email address" as email_label %}
+    {% trans "you@example.com" as email_placeholder %}
+    <c-molecules.form-field label="{{ email_label }}" type="email" name="email" id="id_email" placeholder="{{ email_placeholder }}" required autocomplete="email" value="{{ form.email.value|default:'' }}" :errors="form.email.errors" />
+    {% trans "Password" as password_label %}
+    {% trans "Create a password" as password_placeholder %}
+    {% trans "At least 8 characters" as password_help %}
+    <c-molecules.form-field label="{{ password_label }}" type="password" name="password1" id="id_password1" placeholder="{{ password_placeholder }}" required autocomplete="new-password" help_text="{{ password_help }}" :errors="form.password1.errors" />
+    {% trans "Confirm password" as confirm_label %}
+    {% trans "Confirm your password" as confirm_placeholder %}
+    <c-molecules.form-field label="{{ confirm_label }}" type="password" name="password2" id="id_password2" placeholder="{{ confirm_placeholder }}" required autocomplete="new-password" :errors="form.password2.errors" />
     {# Submit #}
     <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
-    Create account
+    {% trans "Create account" %}
     </c-atoms.button>
   </form>
   <p class="mt-4 text-xs text-greyscale-500 text-center">
-    By creating an account, you agree to our
-    <c-atoms.link href="#" variant="secondary" class="text-xs">Terms of Service</c-atoms.link> and
-    <c-atoms.link href="#" variant="secondary" class="text-xs">Privacy Policy</c-atoms.link>.
+    {% blocktrans %}By creating an account, you agree to our <a href="#" class="text-greyscale-600 underline hover:text-greyscale-800 text-xs">Terms of Service</a> and <a href="#" class="text-greyscale-600 underline hover:text-greyscale-800 text-xs">Privacy Policy</a>.{% endblocktrans %}
   </p>
 {% endblock auth_content %}
 
 {% block auth_footer %}
 
   <p class="text-sm text-greyscale-600">
-    Already have an account?
-    <c-atoms.link href="{% url 'account_login' %}" variant="primary">Sign in</c-atoms.link>
+    {% trans "Already have an account?" %}
+    <c-atoms.link href="{% url 'account_login' %}" variant="primary">{% trans "Sign in" %}</c-atoms.link>
   </p>
 {% endblock auth_footer %}
