@@ -41,7 +41,8 @@ def stream(request: HttpRequest):
 
     if len(message) > 2000:
         return JsonResponse(
-            {"error": _("Message is too long (max 2000 characters)")}, status=400
+            {"error": _("Message is too long (max 2000 characters)")},
+            status=400,
         )
 
     try:
@@ -56,9 +57,7 @@ def stream(request: HttpRequest):
             {"error": _("Error loading chat session")}, status=404
         )
     except KeyError:
-        return JsonResponse(
-            {"error": _("Agent not found")}, status=404
-        )
+        return JsonResponse({"error": _("Agent not found")}, status=404)
 
 
 @require_GET
@@ -175,11 +174,14 @@ def summarize_conversation(request: HttpRequest) -> JsonResponse:
     try:
         messages = json.loads(messages_raw)
     except json.JSONDecodeError:
-        return JsonResponse({"error": _("Invalid messages format")}, status=400)
+        return JsonResponse(
+            {"error": _("Invalid messages format")}, status=400
+        )
 
     if not isinstance(messages, list) or len(messages) < 2:
         return JsonResponse(
-            {"error": _("At least 2 messages required for summary")}, status=400
+            {"error": _("At least 2 messages required for summary")},
+            status=400,
         )
 
     agent = agent_registry["ChatSummarizationAgent"]()
