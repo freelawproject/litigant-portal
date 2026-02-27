@@ -1,42 +1,42 @@
 {% extends "base.html" %}
 
-{% load cotton %}
+{% load cotton i18n %}
 
 {% block title %}
-
-  Profile - Litigant Portal
+  {% trans "Profile" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block content %}
 
   <div class="max-w-2xl mx-auto px-4 py-8">
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-semibold text-greyscale-900">Your Profile</h1>
+      <h1 class="text-2xl font-semibold text-greyscale-900">{% trans "Your Profile" %}</h1>
       <c-atoms.link href="{% url 'portal:profile_edit' %}" variant="unstyled" class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-greyscale-700 bg-white border border-greyscale-300 rounded-lg hover:bg-greyscale-50 transition-colors">
       <c-atoms.icon name="pencil" class="w-4 h-4" />
-      Edit
+      {% trans "Edit" %}
       </c-atoms.link>
     </div>
     {# Profile sections #}
+    {% trans "Not provided" as not_provided %}
     <div class="space-y-6">
       {# Contact #}
       <section class="bg-white rounded-lg border border-greyscale-200 p-6">
-        <h2 class="text-lg font-medium text-greyscale-900 mb-4">Contact Information</h2>
+        <h2 class="text-lg font-medium text-greyscale-900 mb-4">{% trans "Contact Information" %}</h2>
         <dl class="space-y-3">
           <div>
-            <dt class="text-sm text-greyscale-500">Name</dt>
+            <dt class="text-sm text-greyscale-500">{% trans "Name" %}</dt>
             <dd class="text-greyscale-900">
-              {{ profile.name|default:"Not provided" }}
+              {{ profile.name|default:not_provided }}
             </dd>
           </div>
           <div>
-            <dt class="text-sm text-greyscale-500">Phone</dt>
+            <dt class="text-sm text-greyscale-500">{% trans "Phone" %}</dt>
             <dd class="text-greyscale-900">
-              {{ profile.phone|default:"Not provided" }}
+              {{ profile.phone|default:not_provided }}
             </dd>
           </div>
           <div>
-            <dt class="text-sm text-greyscale-500">Email</dt>
+            <dt class="text-sm text-greyscale-500">{% trans "Email" %}</dt>
             <dd class="text-greyscale-900">
               {{ user.email }}
             </dd>
@@ -45,18 +45,18 @@
       </section>
       {# Address #}
       <section class="bg-white rounded-lg border border-greyscale-200 p-6">
-        <h2 class="text-lg font-medium text-greyscale-900 mb-4">Address</h2>
+        <h2 class="text-lg font-medium text-greyscale-900 mb-4">{% trans "Address" %}</h2>
         <dl class="space-y-3">
           <div>
-            <dt class="text-sm text-greyscale-500">Address</dt>
+            <dt class="text-sm text-greyscale-500">{% trans "Address" %}</dt>
             <dd class="text-greyscale-900 whitespace-pre-line">
-              {{ profile.full_address|default:"Not provided" }}
+              {{ profile.full_address|default:not_provided }}
             </dd>
           </div>
           <div>
-            <dt class="text-sm text-greyscale-500">County</dt>
+            <dt class="text-sm text-greyscale-500">{% trans "County" %}</dt>
             <dd class="text-greyscale-900">
-              {{ profile.county|default:"Not provided" }}
+              {{ profile.county|default:not_provided }}
             </dd>
           </div>
         </dl>

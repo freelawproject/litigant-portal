@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% load static %}
+{% load static i18n %}
 
 {% block header %}
 
@@ -16,9 +16,9 @@
     <div class="w-full max-w-md">
       {# Logo #}
       <div class="text-center mb-8">
-        <a href="{% url 'portal:home' %}" aria-label="Return to home">
+        <a href="{% url 'portal:home' %}" aria-label="{% trans "Return to home" %}">
           <img src="{% static 'images/logo.svg' %}"
-               alt="Litigant Portal"
+               alt="{% trans "Litigant Portal" %}"
                class="h-10 mx-auto" />
         </a>
       </div>

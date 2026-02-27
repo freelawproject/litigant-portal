@@ -1,70 +1,59 @@
 {% extends "base.html" %}
 
-{% block title %}
+{% load i18n %}
 
-  Privacy - Litigant Portal
+{% block title %}
+  {% trans "Privacy" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block meta_description %}
-
-  Privacy practices for the Litigant Portal - how we handle your data.
+  {% trans "Privacy practices for the Litigant Portal – how we handle your data." %}
 {% endblock meta_description %}
 
 {% block content %}
 
   <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-    <h1 class="text-3xl font-bold text-greyscale-900">Privacy</h1>
-    <p class="mt-3 text-lg text-greyscale-600">How we handle your data and protect your privacy.</p>
+    <h1 class="text-3xl font-bold text-greyscale-900">{% trans "Privacy" %}</h1>
+    <p class="mt-3 text-lg text-greyscale-600">{% trans "How we handle your data and protect your privacy." %}</p>
     <div class="mt-8 space-y-8">
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">What we collect</h2>
-        <p class="mt-2 text-greyscale-700">When you use the portal, we may collect:</p>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "What we collect" %}</h2>
+        <p class="mt-2 text-greyscale-700">{% trans "When you use the portal, we may collect:" %}</p>
         <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Chat messages you send to the AI assistant</li>
-          <li>Documents you upload for analysis</li>
-          <li>Account information if you create an account (email, name)</li>
-          <li>Basic usage data to improve the service</li>
+          <li>{% trans "Chat messages you send to the AI assistant" %}</li>
+          <li>{% trans "Documents you upload for analysis" %}</li>
+          <li>{% trans "Account information if you create an account (email, name)" %}</li>
+          <li>{% trans "Basic usage data to improve the service" %}</li>
         </ul>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Temporary storage</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Temporary storage" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          Chat sessions and uploaded documents are stored on a case-by-case basis
-          and retained only as long as needed to provide the service. We do not
-          build long-term profiles from your interactions.
+          {% blocktrans %}Chat sessions and uploaded documents are stored on a case-by-case basis and retained only as long as needed to provide the service. We do not build long-term profiles from your interactions.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">No selling or sharing</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "No selling or sharing" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          We never sell your data. Your information is not shared with third parties
-          for marketing or advertising purposes. Data may be shared only when
-          required by law or necessary to operate the service (e.g., sending your
-          messages to the AI provider for processing).
+          {% blocktrans %}We never sell your data. Your information is not shared with third parties for marketing or advertising purposes. Data may be shared only when required by law or necessary to operate the service (e.g., sending your messages to the AI provider for processing).{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Your control</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Your control" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          You can request deletion of your account and associated data at any time
-          by contacting us. Anonymous chat sessions are not linked to any identity
-          and cannot be retrieved after the session ends.
+          {% blocktrans %}You can request deletion of your account and associated data at any time by contacting us. Anonymous chat sessions are not linked to any identity and cannot be retrieved after the session ends.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Framework</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Framework" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          Our privacy practices are informed by the
-          <c-atoms.link href="https://www.nist.gov/privacy-framework" target="_blank">NIST Privacy Framework</c-atoms.link>.
-          As a nonprofit, we have no financial incentive to collect or monetize
-          your data.
+          {% blocktrans %}Our privacy practices are informed by the <a href="https://www.nist.gov/privacy-framework" target="_blank" rel="noopener noreferrer" class="text-primary-600 underline hover:text-primary-700">NIST Privacy Framework</a>. As a nonprofit, we have no financial incentive to collect or monetize your data.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Contact</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Contact" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          Questions about our privacy practices? Reach us at
-          <c-atoms.link href="mailto:info@free.law">info@free.law</c-atoms.link>.
+          {% blocktrans %}Questions about our privacy practices? Reach us at <a href="mailto:info@free.law" class="text-primary-600 underline hover:text-primary-700">info@free.law</a>.{% endblocktrans %}
         </p>
       </section>
     </div>
