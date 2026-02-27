@@ -1,4 +1,4 @@
-{% load static %}
+{% load static i18n %}
 
 <c-vars sticky="" />
 <header x-data="{ menuOpen: false, timeline: [] }"
@@ -6,9 +6,9 @@
         class="mobile-header flex-shrink-0 {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
         {{ attrs }}>
   <div class="mobile-header-inner">
-    <a href="{% url 'portal:home' %}" aria-label="Home">
+    <a href="{% url 'portal:home' %}" aria-label="{% trans "Home" %}">
       <img src="{% static 'images/logo_powered.svg' %}"
-           alt="Litigant Portal - Powered by Free Law Project"
+           alt="{% trans "Litigant Portal – Powered by Free Law Project" %}"
            class="h-12" />
     </a>
     <div class="flex items-center gap-1 sm:gap-2">
@@ -21,7 +21,8 @@
         </c-atoms.button>
       {% endif %}
       <c-molecules.user-menu class="hidden sm:flex" />
-      <c-atoms.button type="button" variant="ghost" aria_label="Open activity timeline" class="mobile-header-menu-btn" x-bind:aria-expanded="menuOpen" x-on:click="menuOpen = true">
+      {% trans "Open activity timeline" as timeline_label %}
+      <c-atoms.button type="button" variant="ghost" aria_label="{{ timeline_label }}" class="mobile-header-menu-btn" x-bind:aria-expanded="menuOpen" x-on:click="menuOpen = true">
       <c-atoms.icon name="bars-3" class="w-6 h-6" />
       </c-atoms.button>
     </div>
@@ -52,10 +53,11 @@
          x-transition:leave-end="translate-x-full"
          role="dialog"
          aria-modal="true"
-         aria-label="Activity timeline">
+         aria-label="{% trans "Activity timeline" %}">
       <div class="flex items-center justify-between p-4 border-b border-greyscale-200">
-        <span class="font-semibold text-greyscale-900">Activity</span>
-        <c-atoms.button type="button" variant="ghost" aria_label="Close menu" class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700" x-on:click="menuOpen = false">
+        <span class="font-semibold text-greyscale-900">{% trans "Activity" %}</span>
+        {% trans "Close menu" as close_label %}
+        <c-atoms.button type="button" variant="ghost" aria_label="{{ close_label }}" class="p-2 -mr-2 text-greyscale-500 hover:text-greyscale-700" x-on:click="menuOpen = false">
         <c-atoms.icon name="x-mark" class="w-6 h-6" />
         </c-atoms.button>
       </div>
@@ -65,8 +67,8 @@
         <template x-if="!timeline || timeline.length === 0">
           <div class="text-center py-8">
             <c-atoms.icon name="clock" class="w-10 h-10 text-greyscale-300 mx-auto mb-3" />
-            <p class="text-sm text-greyscale-500">No activity yet</p>
-            <p class="text-xs text-greyscale-400 mt-1">Upload documents and chat to see your history here</p>
+            <p class="text-sm text-greyscale-500">{% trans "No activity yet" %}</p>
+            <p class="text-xs text-greyscale-400 mt-1">{% trans "Upload documents and chat to see your history here" %}</p>
           </div>
         </template>
         {# Timeline events #}
@@ -106,9 +108,9 @@
       <div class="p-4 border-t border-greyscale-200 sm:hidden">
         {% if user.is_authenticated %}
           <div class="mb-2 px-1 py-1 text-sm text-greyscale-600 truncate">{{ user.email }}</div>
-          <c-atoms.nav-link icon="arrow-right-start-on-rectangle" href="{% url 'account_logout' %}" icon_bg="bg-greyscale-100" icon_color="text-greyscale-600">Sign out</c-atoms.nav-link>
+          <c-atoms.nav-link icon="arrow-right-start-on-rectangle" href="{% url 'account_logout' %}" icon_bg="bg-greyscale-100" icon_color="text-greyscale-600">{% trans "Sign out" %}</c-atoms.nav-link>
         {% else %}
-          <c-atoms.nav-link icon="arrow-right-end-on-rectangle" href="{% url 'account_login' %}" icon_bg="bg-primary-50" icon_color="text-primary-600">Sign in</c-atoms.nav-link>
+          <c-atoms.nav-link icon="arrow-right-end-on-rectangle" href="{% url 'account_login' %}" icon_bg="bg-primary-50" icon_color="text-primary-600">{% trans "Sign in" %}</c-atoms.nav-link>
         {% endif %}
       </div>
     </nav>
