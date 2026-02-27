@@ -165,7 +165,7 @@ function createChat() {
 
         if (!response.ok) {
           const error = await response.json()
-          throw new Error(error.error || 'Failed to send message')
+          throw new Error(error.error || gettext('Failed to send message'))
         }
 
         // Stream SSE response
@@ -256,7 +256,7 @@ function createChat() {
         console.error('Chat error:', error)
         this.messages[msgIndex] = {
           ...this.messages[msgIndex],
-          content: 'Sorry, I encountered an error. Please try again.',
+          content: gettext('Sorry, I encountered an error. Please try again.'),
         }
       } finally {
         this.isStreaming = false
@@ -453,13 +453,13 @@ function createHomePage() {
       if (!file) return
 
       if (file.type !== 'application/pdf') {
-        this.uploadError = 'Please select a PDF file'
+        this.uploadError = gettext('Please select a PDF file')
         event.target.value = ''
         return
       }
 
       if (file.size > 10 * 1024 * 1024) {
-        this.uploadError = 'File size must be less than 10MB'
+        this.uploadError = gettext('File size must be less than 10MB')
         event.target.value = ''
         return
       }
@@ -487,7 +487,7 @@ function createHomePage() {
         })
 
         const data = await response.json()
-        if (!response.ok) throw new Error(data.error || 'Upload failed')
+        if (!response.ok) throw new Error(data.error || gettext('Upload failed'))
 
         this.extractedText = data.text_preview
         this.extractedData = data.extracted_data
@@ -498,11 +498,14 @@ function createHomePage() {
 
         // Add timeline event
         const summary =
-          data.extracted_data?.summary || `${data.page_count} page document`
-        this.addTimelineEvent('upload', `Uploaded: ${fileName}`, summary, {
-          filename: fileName,
-          page_count: data.page_count,
-        })
+          data.extracted_data?.summary ||
+          interpolate(gettext('%s page document'), [data.page_count])
+        this.addTimelineEvent(
+          'upload',
+          interpolate(gettext('Uploaded: %s'), [fileName]),
+          summary,
+          { filename: fileName, page_count: data.page_count }
+        )
 
         // Build and display response message
         if (data.extracted_data) {
@@ -512,17 +515,30 @@ function createHomePage() {
           )
           this.showConfirmation = true
         } else if (data.extraction_error) {
+          const pages = ngettext('1 page', '%s pages', data.page_count)
+          const pageStr = interpolate(pages, [data.page_count])
           this.pushMessage(
             'assistant',
-            `I've received your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}), ` +
-              `but I had trouble analyzing it: ${data.extraction_error}\n\n` +
-              'You can still ask me questions about your situation.'
+            interpolate(
+              gettext(
+                "I've received your document (%(pages)s), but I had trouble analyzing it: %(error)s\n\nYou can still ask me questions about your situation."
+              ),
+              { pages: pageStr, error: data.extraction_error },
+              true
+            )
           )
         } else {
+          const pages = ngettext('1 page', '%s pages', data.page_count)
+          const pageStr = interpolate(pages, [data.page_count])
           this.pushMessage(
             'assistant',
-            `I've received your document (${data.page_count} page${data.page_count !== 1 ? 's' : ''}). ` +
-              'How can I help you with it?'
+            interpolate(
+              gettext(
+                "I've received your document (%(pages)s). How can I help you with it?"
+              ),
+              { pages: pageStr },
+              true
+            )
           )
         }
       } catch (error) {
@@ -530,7 +546,10 @@ function createHomePage() {
         this.uploadError = error.message
         this.pushMessage(
           'assistant',
-          `Sorry, I couldn't process your document: ${error.message}`
+          interpolate(
+            gettext("Sorry, I couldn't process your document: %s"),
+            [error.message]
+          )
         )
       } finally {
         this.isUploading = false
@@ -542,24 +561,32 @@ function createHomePage() {
     },
 
     _buildExtractionMessage(ed, pageCount) {
-      let msg = `I've analyzed your document (${pageCount} page${pageCount !== 1 ? 's' : ''}).\n\n`
+      const pages = ngettext('1 page', '%s pages', pageCount)
+      const pageStr = interpolate(pages, [pageCount])
+      let msg =
+        interpolate(
+          gettext("I've analyzed your document (%(pages)s)."),
+          { pages: pageStr },
+          true
+        ) + '\n\n'
 
-      if (ed.case_type) msg += `**Case Type:** ${ed.case_type}\n\n`
-      if (ed.summary) msg += `**Summary:** ${ed.summary}\n\n`
+      if (ed.case_type)
+        msg += `**${gettext('Case Type')}:** ${ed.case_type}\n\n`
+      if (ed.summary) msg += `**${gettext('Summary')}:** ${ed.summary}\n\n`
 
       if (ed.court_info?.county || ed.court_info?.court_name) {
-        msg += `**Court:** ${ed.court_info.court_name || ''}`
+        msg += `**${gettext('Court')}:** ${ed.court_info.court_name || ''}`
         if (ed.court_info.county) msg += ` (${ed.court_info.county})`
         if (ed.court_info.case_number)
-          msg += `\n**Case Number:** ${ed.court_info.case_number}`
+          msg += `\n**${gettext('Case Number')}:** ${ed.court_info.case_number}`
         msg += '\n\n'
       }
 
       if (ed.parties?.user_name || ed.parties?.opposing_party) {
         if (ed.parties.opposing_party)
-          msg += `**Filed by:** ${ed.parties.opposing_party}\n`
+          msg += `**${gettext('Filed by')}:** ${ed.parties.opposing_party}\n`
         if (ed.parties.user_name)
-          msg += `**Against:** ${ed.parties.user_name}\n`
+          msg += `**${gettext('Against')}:** ${ed.parties.user_name}\n`
         msg += '\n'
       }
 
@@ -568,19 +595,19 @@ function createHomePage() {
         const otherDates = ed.key_dates.filter((d) => !d.is_deadline)
 
         if (deadlines.length > 0) {
-          msg += '**Important Deadlines:**\n'
+          msg += `**${gettext('Important Deadlines')}:**\n`
           for (const d of deadlines) msg += `- ${d.label}: **${d.date}**\n`
           msg += '\n'
         }
 
         if (otherDates.length > 0) {
-          msg += '**Other Dates:**\n'
+          msg += `**${gettext('Other Dates')}:**\n`
           for (const d of otherDates) msg += `- ${d.label}: ${d.date}\n`
           msg += '\n'
         }
       }
 
-      msg += 'Does this information look correct?'
+      msg += gettext('Does this information look correct?')
       return msg
     },
 
@@ -601,7 +628,9 @@ function createHomePage() {
 
       this.pushMessage(
         'assistant',
-        "Great! I've saved your case information. You can see it in the sidebar. What would you like help with?"
+        gettext(
+          "Great! I've saved your case information. You can see it in the sidebar. What would you like help with?"
+        )
       )
     },
 
@@ -651,7 +680,7 @@ function createHomePage() {
       if (newData.summary) this.caseInfo.summary = newData.summary
 
       if (changes.length > 0) {
-        this.addTimelineEvent('change', 'Case info updated', changes.join('; '))
+        this.addTimelineEvent('change', gettext('Case info updated'), changes.join('; '))
       }
     },
 
@@ -659,7 +688,9 @@ function createHomePage() {
       this.showConfirmation = false
       this.pushMessage(
         'assistant',
-        "No problem! What information needs to be corrected? You can tell me what's wrong and I'll update it, or you can upload a different document."
+        gettext(
+          "No problem! What information needs to be corrected? You can tell me what's wrong and I'll update it, or you can upload a different document."
+        )
       )
     },
 
