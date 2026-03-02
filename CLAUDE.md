@@ -35,9 +35,9 @@ Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `opena
 
 ## Commands
 
-**Always use `make` commands** for linting and testing. Don't run `ruff`, `djlint`, `pytest`, or `pre-commit` directly — use `make lint` and `make test`. These ensure correct environment setup and consistent behavior.
+**Always use `make` commands** for linting and testing. Don't run `ruff`, `djlint`, `pytest`, or `pre-commit` directly — `make` targets ensure correct environment setup and consistent behavior.
 
-**Note:** `make lint` and `make test` often hit sandbox restrictions. Ask the user to run them manually rather than attempting and failing.
+**Sandbox note:** `make lint` and `make test` hit sandbox restrictions. Remind the user to run them manually rather than attempting and failing.
 
 ### Local Development (Docker)
 
