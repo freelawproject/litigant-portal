@@ -36,26 +36,64 @@ document.addEventListener('alpine:init', () => {
 
   Alpine.data('activityTimeline', () => ({
     menuOpen: false,
+    isLoading: false,
     timeline: [],
 
-    openMenu() {
-      this.timeline = JSON.parse(localStorage.getItem('caseTimeline') || '[]')
+    async openMenu() {
       this.menuOpen = true
+      this.isLoading = true
+      try {
+        const response = await fetch('/api/chat/case/')
+        if (response.ok) {
+          const data = await response.json()
+          this.timeline = (data.timeline || []).map((e) => ({
+            id: e.id,
+            type: e.event_type,
+            timestamp: e.created_at,
+            title: e.title,
+            content: e.content,
+            metadata: e.metadata,
+          }))
+        }
+      } catch (e) {
+        console.error('Failed to load timeline:', e)
+      } finally {
+        this.isLoading = false
+      }
     },
     closeMenu() {
       this.menuOpen = false
     },
 
-    clearDemo() {
-      localStorage.clear()
+    async clearDemo() {
+      const csrfToken =
+        document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
+        document.cookie
+          .split(';')
+          .find((c) => c.trim().startsWith('csrftoken='))
+          ?.split('=')[1] ||
+        ''
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', csrfToken)
+      try {
+        await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
+      } catch (e) {
+        console.error('Failed to clear demo:', e)
+      }
       location.reload()
     },
 
+    get isLoadingTimeline() {
+      return this.isLoading
+    },
+    get notLoadingTimeline() {
+      return !this.isLoading
+    },
     get hasTimeline() {
-      return this.timeline.length > 0
+      return !this.isLoading && this.timeline.length > 0
     },
     get noTimeline() {
-      return this.timeline.length === 0
+      return !this.isLoading && this.timeline.length === 0
     },
 
     get reversedTimeline() {

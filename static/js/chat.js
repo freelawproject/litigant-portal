@@ -215,7 +215,6 @@ function createChat() {
               switch (event.type) {
                 case 'session':
                   this.sessionId = event.session_id
-                  localStorage.setItem('chatSessionId', event.session_id)
                   if (typeof this.onSessionCreated === 'function') {
                     this.onSessionCreated(event.session_id)
                   }
@@ -306,7 +305,6 @@ function createChat() {
     clearChat() {
       this.messages = []
       this.sessionId = ''
-      localStorage.removeItem('chatSessionId')
       if (typeof this.onCleared === 'function') {
         this.onCleared()
       }
@@ -533,27 +531,27 @@ function createHomePage() {
         this.showUnavailableWarning = true
       }
 
-      // Restore session from localStorage
-      this.sessionId = localStorage.getItem('chatSessionId') || ''
-
-      // Restore case info
-      const savedCaseInfo = localStorage.getItem('caseInfo')
-      if (savedCaseInfo) {
-        try {
-          this.caseInfo = JSON.parse(savedCaseInfo)
-        } catch {
-          localStorage.removeItem('caseInfo')
+      // Restore case info and timeline from server
+      try {
+        const caseResponse = await fetch('/api/chat/case/')
+        if (caseResponse.ok) {
+          const caseData = await caseResponse.json()
+          if (caseData.case_info) {
+            this.caseInfo = caseData.case_info
+          }
+          if (caseData.timeline) {
+            this.caseTimeline = caseData.timeline.map((e) => ({
+              id: e.id,
+              type: e.event_type,
+              timestamp: e.created_at,
+              title: e.title,
+              content: e.content,
+              metadata: e.metadata,
+            }))
+          }
         }
-      }
-
-      // Restore timeline
-      const savedTimeline = localStorage.getItem('caseTimeline')
-      if (savedTimeline) {
-        try {
-          this.caseTimeline = JSON.parse(savedTimeline)
-        } catch {
-          localStorage.removeItem('caseTimeline')
-        }
+      } catch {
+        // Server unavailable — start with empty state
       }
 
       // Wire up chat hook for document context injection
@@ -747,7 +745,7 @@ function createHomePage() {
     // Case management
     // =========================================================================
 
-    confirmExtraction() {
+    async confirmExtraction() {
       if (!this.extractedData) return
 
       if (this.caseInfo) {
@@ -755,8 +753,17 @@ function createHomePage() {
       } else {
         this.caseInfo = this.extractedData
       }
-      localStorage.setItem('caseInfo', JSON.stringify(this.caseInfo))
       this.showConfirmation = false
+
+      // Persist to server
+      const formData = new FormData()
+      formData.append('data', JSON.stringify(this.caseInfo))
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        await fetch('/api/chat/case/save/', { method: 'POST', body: formData })
+      } catch (e) {
+        console.error('Failed to save case info:', e)
+      }
 
       this.pushMessage(
         'assistant',
@@ -822,13 +829,20 @@ function createHomePage() {
       )
     },
 
-    clearCaseInfo() {
+    async clearCaseInfo() {
       this.caseInfo = null
       this.extractedData = null
       this.caseTimeline = []
       this._documentContextSent = false
-      localStorage.removeItem('caseInfo')
-      localStorage.removeItem('caseTimeline')
+
+      // Clear server-side data
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
+      } catch (e) {
+        console.error('Failed to clear case info:', e)
+      }
     },
 
     // =========================================================================
@@ -861,17 +875,37 @@ function createHomePage() {
     // Timeline
     // =========================================================================
 
-    addTimelineEvent(type, title, content, metadata = {}) {
+    async addTimelineEvent(type, title, content, metadata = {}) {
+      // Optimistic push to in-memory state
       const event = {
         id: Date.now(),
-        type, // 'upload' | 'summary' | 'change'
+        type,
         timestamp: new Date().toISOString(),
         title,
         content,
         metadata,
       }
       this.caseTimeline.push(event)
-      localStorage.setItem('caseTimeline', JSON.stringify(this.caseTimeline))
+
+      // Persist to server
+      const formData = new FormData()
+      formData.append('event_type', type)
+      formData.append('title', title)
+      formData.append('content', content)
+      formData.append('metadata', JSON.stringify(metadata))
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch('/api/chat/case/timeline/', {
+          method: 'POST',
+          body: formData,
+        })
+        if (response.ok) {
+          const data = await response.json()
+          event.id = data.id
+        }
+      } catch (e) {
+        console.error('Failed to save timeline event:', e)
+      }
     },
 
     // =========================================================================
@@ -894,7 +928,6 @@ function createHomePage() {
         this.sessionId = ''
         this.extractedData = null
         this._documentContextSent = false
-        localStorage.removeItem('chatSessionId')
       } finally {
         this._isClearingChat = false
       }
