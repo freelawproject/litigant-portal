@@ -82,7 +82,10 @@ class CaseInfo(models.Model):
 
     Replaces browser localStorage for PII (names, case numbers, court
     details). Same dual-ownership pattern as ChatSession: authenticated
-    users get user FK, anonymous users get session_key.
+    users get user FK, anonymous users get session_key. Optional
+    chat_session FK tracks which conversation produced the data.
+
+    User FK uses CASCADE — PII is deleted when the user is deleted.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -90,10 +93,17 @@ class CaseInfo(models.Model):
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.CASCADE,
         related_name="case_infos",
     )
     session_key = models.CharField(max_length=40, blank=True, db_index=True)
+    chat_session = models.ForeignKey(
+        ChatSession,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="case_infos",
+    )
     data = models.JSONField(
         default=dict,
         help_text="Extracted case data (case_type, court_info, parties, key_dates, summary)",
