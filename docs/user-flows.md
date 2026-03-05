@@ -215,7 +215,8 @@ Items flagged for future work or legal input:
 
 ## References
 
-- [Demo Flow (Jane)](./demo-flow-jane.md) — Full-AI authenticated flow detail (ITC demo)
+- [Happy Path Narrative](./happy-path-jane.md) — Full AI · Auth story in full detail (base for all variations)
+- [Demo Flow (Jane)](./demo-flow-jane.md) — 8-step ITC demo flow (abbreviated)
 - [Requirements](./REQUIREMENTS.md) — MVP/post-MVP scope (AI section needs updating)
 - [Architecture](./ARCHITECTURE.md) — Tech stack and component structure
 - [AI Tone Guide](./ai-tone-guide.md) — How the AI communicates

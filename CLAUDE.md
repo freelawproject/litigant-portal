@@ -10,7 +10,9 @@ Access to justice portal for self-represented litigants. Django 5.2 with server-
 
 Building a clickable demo for ITC San Antonio. Key docs:
 
-- [Demo Flow](docs/demo-flow-jane.md) - Jane's 8-step user journey
+- [Happy Path Narrative](docs/happy-path-jane.md) - Full AI · Auth end-to-end story (base for all variations)
+- [Demo Flow](docs/demo-flow-jane.md) - Jane's 8-step ITC demo flow (abbreviated)
+- [User Flows Matrix](docs/user-flows.md) - 3×2 matrix (Full AI / Hybrid / Basic × Anon / Auth)
 - [Retro Notes](docs/itc-demo-retro.md) - Append lessons learned here
 - [Milestone](https://github.com/freelawproject/litigant-portal/milestone/1) - 13 issues tracked
 
