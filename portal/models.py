@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class UserProfile(models.Model):
@@ -11,57 +12,57 @@ class UserProfile(models.Model):
     """
 
     STATE_CHOICES = [
-        ("AL", "Alabama"),
-        ("AK", "Alaska"),
-        ("AZ", "Arizona"),
-        ("AR", "Arkansas"),
-        ("CA", "California"),
-        ("CO", "Colorado"),
-        ("CT", "Connecticut"),
-        ("DE", "Delaware"),
-        ("FL", "Florida"),
-        ("GA", "Georgia"),
-        ("HI", "Hawaii"),
-        ("ID", "Idaho"),
-        ("IL", "Illinois"),
-        ("IN", "Indiana"),
-        ("IA", "Iowa"),
-        ("KS", "Kansas"),
-        ("KY", "Kentucky"),
-        ("LA", "Louisiana"),
-        ("ME", "Maine"),
-        ("MD", "Maryland"),
-        ("MA", "Massachusetts"),
-        ("MI", "Michigan"),
-        ("MN", "Minnesota"),
-        ("MS", "Mississippi"),
-        ("MO", "Missouri"),
-        ("MT", "Montana"),
-        ("NE", "Nebraska"),
-        ("NV", "Nevada"),
-        ("NH", "New Hampshire"),
-        ("NJ", "New Jersey"),
-        ("NM", "New Mexico"),
-        ("NY", "New York"),
-        ("NC", "North Carolina"),
-        ("ND", "North Dakota"),
-        ("OH", "Ohio"),
-        ("OK", "Oklahoma"),
-        ("OR", "Oregon"),
-        ("PA", "Pennsylvania"),
-        ("RI", "Rhode Island"),
-        ("SC", "South Carolina"),
-        ("SD", "South Dakota"),
-        ("TN", "Tennessee"),
-        ("TX", "Texas"),
-        ("UT", "Utah"),
-        ("VT", "Vermont"),
-        ("VA", "Virginia"),
-        ("WA", "Washington"),
-        ("WV", "West Virginia"),
-        ("WI", "Wisconsin"),
-        ("WY", "Wyoming"),
-        ("DC", "District of Columbia"),
+        ("AL", _("Alabama")),
+        ("AK", _("Alaska")),
+        ("AZ", _("Arizona")),
+        ("AR", _("Arkansas")),
+        ("CA", _("California")),
+        ("CO", _("Colorado")),
+        ("CT", _("Connecticut")),
+        ("DE", _("Delaware")),
+        ("FL", _("Florida")),
+        ("GA", _("Georgia")),
+        ("HI", _("Hawaii")),
+        ("ID", _("Idaho")),
+        ("IL", _("Illinois")),
+        ("IN", _("Indiana")),
+        ("IA", _("Iowa")),
+        ("KS", _("Kansas")),
+        ("KY", _("Kentucky")),
+        ("LA", _("Louisiana")),
+        ("ME", _("Maine")),
+        ("MD", _("Maryland")),
+        ("MA", _("Massachusetts")),
+        ("MI", _("Michigan")),
+        ("MN", _("Minnesota")),
+        ("MS", _("Mississippi")),
+        ("MO", _("Missouri")),
+        ("MT", _("Montana")),
+        ("NE", _("Nebraska")),
+        ("NV", _("Nevada")),
+        ("NH", _("New Hampshire")),
+        ("NJ", _("New Jersey")),
+        ("NM", _("New Mexico")),
+        ("NY", _("New York")),
+        ("NC", _("North Carolina")),
+        ("ND", _("North Dakota")),
+        ("OH", _("Ohio")),
+        ("OK", _("Oklahoma")),
+        ("OR", _("Oregon")),
+        ("PA", _("Pennsylvania")),
+        ("RI", _("Rhode Island")),
+        ("SC", _("South Carolina")),
+        ("SD", _("South Dakota")),
+        ("TN", _("Tennessee")),
+        ("TX", _("Texas")),
+        ("UT", _("Utah")),
+        ("VT", _("Vermont")),
+        ("VA", _("Virginia")),
+        ("WA", _("Washington")),
+        ("WV", _("West Virginia")),
+        ("WI", _("Wisconsin")),
+        ("WY", _("Wyoming")),
+        ("DC", _("District of Columbia")),
     ]
 
     user = models.OneToOneField(
@@ -72,23 +73,23 @@ class UserProfile(models.Model):
 
     # Contact information
     name = models.CharField(
-        max_length=255, blank=True, help_text="Full legal name"
+        max_length=255, blank=True, help_text=_("Full legal name")
     )
     phone = models.CharField(
-        max_length=20, blank=True, help_text="Phone number"
+        max_length=20, blank=True, help_text=_("Phone number")
     )
 
     # Address fields
     address_line1 = models.CharField(
-        max_length=255, blank=True, verbose_name="Street address"
+        max_length=255, blank=True, verbose_name=_("Street address")
     )
     address_line2 = models.CharField(
-        max_length=255, blank=True, verbose_name="Apt, suite, etc."
+        max_length=255, blank=True, verbose_name=_("Apt, suite, etc.")
     )
     city = models.CharField(max_length=100, blank=True)
     state = models.CharField(max_length=2, choices=STATE_CHOICES, blank=True)
     zip_code = models.CharField(
-        max_length=10, blank=True, verbose_name="ZIP code"
+        max_length=10, blank=True, verbose_name=_("ZIP code")
     )
     county = models.CharField(max_length=100, blank=True)
 
@@ -96,8 +97,8 @@ class UserProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "User Profile"
-        verbose_name_plural = "User Profiles"
+        verbose_name = _("User Profile")
+        verbose_name_plural = _("User Profiles")
 
     def __str__(self):
         return f"{self.name or 'Unnamed'} ({self.user.email})"
