@@ -7,9 +7,23 @@ from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
 from .agents import agent_registry
+from .models import CaseInfo, TimelineEvent
 from .services.chat_service import ChatService
 from .services.pdf_service import pdf_service
 from .services.search_service import search_service
+
+
+def _ownership_filter(request: HttpRequest) -> dict:
+    """Return query filter for the current user's data.
+
+    Authenticated users match by user FK, anonymous users by session_key.
+    Same dual-ownership pattern as ChatSession.
+    """
+    if request.user.is_authenticated:
+        return {"user": request.user}
+    if not request.session.session_key:
+        request.session.create()
+    return {"session_key": request.session.session_key}
 
 
 @require_POST
@@ -32,7 +46,11 @@ def stream(request: HttpRequest):
         - error: {type: "error", error: "..."}
     """
     message = request.POST.get("message", "").strip()
-    session_id = request.POST.get("session_id") or None
+    session_id = (
+        request.POST.get("session_id")
+        or request.session.get("chat_session_id")
+        or None
+    )
     agent_name = request.POST.get("agent_name") or None
 
     if not message:
@@ -47,6 +65,7 @@ def stream(request: HttpRequest):
         chat = ChatService(
             request, session_id=session_id, agent_name=agent_name
         )
+        request.session["chat_session_id"] = str(chat.agent.session.id)
         return chat.stream(message)
     except PermissionError:
         return JsonResponse({"error": "Unauthorized"}, status=403)
@@ -196,3 +215,106 @@ def summarize_conversation(request: HttpRequest) -> JsonResponse:
         )
 
     return JsonResponse({"summary": summary})
+
+
+# =============================================================================
+# Case info endpoints
+# =============================================================================
+
+
+@require_GET
+@ratelimit(key="ip", rate="60/m", method="GET", block=True)
+def case_get(request: HttpRequest) -> JsonResponse:
+    """Return case info + timeline for the current user/session."""
+    ownership = _ownership_filter(request)
+    case = CaseInfo.objects.filter(**ownership).first()
+
+    if not case:
+        return JsonResponse({"case_info": None, "timeline": []})
+
+    timeline = list(
+        case.timeline_events.values(
+            "id", "event_type", "title", "content", "metadata", "created_at"
+        )
+    )
+    # Serialize UUIDs and datetimes
+    for event in timeline:
+        event["id"] = str(event["id"])
+        event["created_at"] = event["created_at"].isoformat()
+
+    return JsonResponse({"case_info": case.data, "timeline": timeline})
+
+
+@require_POST
+@ratelimit(key="ip", rate="30/m", method="POST", block=True)
+def case_save(request: HttpRequest) -> JsonResponse:
+    """Create or update case info."""
+    raw_data = request.POST.get("data", "")
+    if not raw_data:
+        return JsonResponse({"error": "data is required"}, status=400)
+
+    try:
+        data = json.loads(raw_data)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON in data"}, status=400)
+
+    if not isinstance(data, dict):
+        return JsonResponse(
+            {"error": "data must be a JSON object"}, status=400
+        )
+
+    ownership = _ownership_filter(request)
+    case, created = CaseInfo.objects.update_or_create(
+        defaults={"data": data},
+        **ownership,
+    )
+
+    return JsonResponse({"id": str(case.id), "created": created})
+
+
+@require_POST
+@ratelimit(key="ip", rate="30/m", method="POST", block=True)
+def case_timeline_add(request: HttpRequest) -> JsonResponse:
+    """Add a timeline event. Auto-creates CaseInfo if needed."""
+    event_type = request.POST.get("event_type", "")
+    title = request.POST.get("title", "")
+    content = request.POST.get("content", "")
+    raw_metadata = request.POST.get("metadata", "{}")
+
+    valid_types = {"upload", "summary", "change"}
+    if event_type not in valid_types:
+        return JsonResponse(
+            {
+                "error": f"event_type must be one of: {', '.join(sorted(valid_types))}"
+            },
+            status=400,
+        )
+
+    try:
+        metadata = json.loads(raw_metadata)
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON in metadata"}, status=400)
+
+    ownership = _ownership_filter(request)
+    case, _ = CaseInfo.objects.get_or_create(**ownership)
+
+    event = TimelineEvent.objects.create(
+        case=case,
+        event_type=event_type,
+        title=title,
+        content=content,
+        metadata=metadata,
+    )
+
+    return JsonResponse({"id": str(event.id)})
+
+
+@require_POST
+@ratelimit(key="ip", rate="30/m", method="POST", block=True)
+def case_clear(request: HttpRequest) -> JsonResponse:
+    """Delete case info + cascade timeline. Clear chat session from Django session."""
+    ownership = _ownership_filter(request)
+    deleted, _ = CaseInfo.objects.filter(**ownership).delete()
+    request.session.pop("chat_session_id", None)
+
+    return JsonResponse({"deleted": deleted > 0})

@@ -83,6 +83,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "chat.middleware.AnonymousSessionKeyMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
@@ -227,7 +228,7 @@ CSP_IMG_SRC = (
 )  # data: for inline, blob: for camera
 CSP_FONT_SRC = ("'self'", "data:")
 CSP_CONNECT_SRC = ("'self'",)
-# Alpine.js CSP build used (standard build requires unsafe-eval)
+# Alpine.js CSP build — no unsafe-eval needed
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

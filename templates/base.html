@@ -33,7 +33,9 @@
         {% endblock header %}
 
         <c-molecules.toast-container :messages="toast_messages" />
-        <main class="flex-1">
+        <main class="flex-1 {% block main_class %}
+           {% endblock main_class %}
+           ">
           {% block content %}
 
           {% endblock content %}
@@ -46,6 +48,8 @@
 
         {# Theme store - must load before Alpine #}
         <script src="{% static 'js/theme.js' %}"></script>
+        {# Alpine.data() components - must load before Alpine #}
+        <script src="{% static 'js/components.js' %}"></script>
         {# Chat component - must load before Alpine #}
         <script src="{% static 'js/chat.js' %}"></script>
         {# Alpine.js CSP build - required for Content Security Policy compliance #}
