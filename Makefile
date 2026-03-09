@@ -7,49 +7,47 @@ help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install Python dependencies (includes Tailwind CSS)
-	python -m venv .venv
-	.venv/bin/pip install --upgrade pip
-	.venv/bin/pip install -e ".[dev]"
+	uv sync --extra dev
 
 css: ## Build Tailwind CSS (one-time)
-	tailwindcss -i src/css/main.css -o static/css/main.built.css
+	tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css
 
 css-watch: ## Watch Tailwind CSS for changes
-	tailwindcss -i src/css/main.css -o static/css/main.built.css --watch
+	tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --watch
 
 css-prod: ## Build production CSS (minified)
-	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
+	tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --minify
 
 migrate: ## Run Django migrations
-	source .venv/bin/activate && python manage.py migrate
+	uv run python app/manage.py migrate
 
 test: ## Run tests (builds CSS + collectstatic first, uses tox)
-	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
-	SECRET_KEY=test .venv/bin/python manage.py collectstatic --noinput --clear
+	tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --minify
+	uv run python app/manage.py collectstatic --noinput --clear
 	tox
 
 collectstatic: ## Collect static files (builds CSS first)
-	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
-	SECRET_KEY=test .venv/bin/python manage.py collectstatic --noinput --clear
+	tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --minify
+	uv run python app/manage.py collectstatic --noinput --clear
 
 clean: ## Clean build artifacts
-	rm -f static/css/main.built.css
+	rm -f app/static/css/main.built.css
 
 superuser: ## Create Django superuser
-	source .venv/bin/activate && python manage.py createsuperuser
+	uv run python app/manage.py createsuperuser
 
 shell: ## Open Django shell
-	source .venv/bin/activate && python manage.py shell
+	uv run python app/manage.py shell
 
 lint: ## Lint and format all code (via pre-commit)
 	pre-commit run --all-files
 
 messages: ## Extract translation strings (all languages)
-	SECRET_KEY=dev .venv/bin/python manage.py makemessages -a --no-location
-	SECRET_KEY=dev .venv/bin/python manage.py makemessages -d djangojs -a --no-location
+	uv run python app/manage.py makemessages -a --no-location
+	uv run python app/manage.py makemessages -d djangojs -a --no-location
 
 compilemessages: ## Compile .po to .mo files
-	SECRET_KEY=dev .venv/bin/python manage.py compilemessages
+	uv run python app/manage.py compilemessages
 
 # Docker targets
 docker-build: ## Build Docker images

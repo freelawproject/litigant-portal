@@ -43,11 +43,14 @@ yarn-error.log*
 static/.vite/
 static/assets/
 
+# Tailwind Executable
+tailwindcss
+
 # Tailwind CLI output (source is static/css/main.css)
-static/css/main.built.css
+app/static/css/main.built.css
 
 # Django collectstatic output
-staticfiles/
+app/staticfiles/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
