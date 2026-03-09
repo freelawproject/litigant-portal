@@ -4,10 +4,9 @@ Tests for custom model behavior in chat app.
 Only tests custom code - not Django built-ins like UUIDField, auto_now, etc.
 """
 
+from chat.models import ChatSession, Message
 from django.contrib.auth import get_user_model
 from django.test import TestCase
-
-from chat.models import ChatSession, Message
 
 User = get_user_model()
 

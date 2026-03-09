@@ -1,8 +1,7 @@
 import logging
 
-from django.db.models import Q, QuerySet
-
 from chat.models import Document
+from django.db.models import Q, QuerySet
 
 logger = logging.getLogger(__name__)
 

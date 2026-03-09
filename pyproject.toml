@@ -5,7 +5,7 @@ requires = [
 ]
 
 [project]
-name = "litigant_portal"
+name = "litigant-portal"
 version = "0.1.0"
 description = "Access to Justice Portal"
 authors = [{ name = "Free Law Project", email = "info@free.law" }]
@@ -62,8 +62,8 @@ dev = [
 ]
 
 
-[tool.setuptools]
-packages = [ "litigant_portal" ]
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [tool.ruff]
 line-length = 79

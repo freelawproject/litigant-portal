@@ -1,3 +1,4 @@
+from chat.agents import agent_registry
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpResponse
@@ -6,8 +7,6 @@ from django.urls import reverse_lazy
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView, UpdateView
-
-from chat.agents import agent_registry
 
 from .forms import UserProfileForm
 from .models import UserProfile

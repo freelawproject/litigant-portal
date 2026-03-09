@@ -1,10 +1,9 @@
 import uuid
 
+from chat.agents.base import Message as MessageSchema
 from django.conf import settings
 from django.db import models
 from django_pydantic_field import SchemaField
-
-from chat.agents.base import Message as MessageSchema
 
 
 class ChatSession(models.Model):
