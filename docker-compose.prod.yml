@@ -1,7 +1,7 @@
 services:
   app:
     volumes: !reset []
-    command: "web-prod"
+    command: 'web-prod'
     depends_on:
       postgres:
         condition: service_started
