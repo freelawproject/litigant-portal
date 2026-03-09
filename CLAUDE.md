@@ -10,6 +10,7 @@ Access to justice portal for self-represented litigants. Django 5.2 with server-
 
 Building a clickable demo for ITC San Antonio. Key docs:
 
+- [Legal Flow](docs/legal-flow.md) - Generic 9-stage flow (Triage / Prepare / Resolve); legal review artifact
 - [Happy Path Narrative](docs/happy-path-jane.md) - Full AI · Auth end-to-end story (base for all variations)
 - [Demo Flow](docs/demo-flow-jane.md) - Jane's 8-step ITC demo flow (abbreviated)
 - [User Flows Matrix](docs/user-flows.md) - 3×2 matrix (Full AI / Hybrid / Basic × Anon / Auth)
