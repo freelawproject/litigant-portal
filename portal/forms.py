@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 from .models import UserProfile
 
@@ -21,32 +22,32 @@ class UserProfileForm(forms.ModelForm):
         widgets = {
             "name": forms.TextInput(
                 attrs={
-                    "placeholder": "Your full legal name",
+                    "placeholder": _("Your full legal name"),
                     "autocomplete": "name",
                 }
             ),
             "phone": forms.TextInput(
                 attrs={
-                    "placeholder": "(555) 123-4567",
+                    "placeholder": _("(555) 123-4567"),
                     "autocomplete": "tel",
                     "type": "tel",
                 }
             ),
             "address_line1": forms.TextInput(
                 attrs={
-                    "placeholder": "123 Main Street",
+                    "placeholder": _("123 Main Street"),
                     "autocomplete": "address-line1",
                 }
             ),
             "address_line2": forms.TextInput(
                 attrs={
-                    "placeholder": "Apartment, suite, unit, etc.",
+                    "placeholder": _("Apartment, suite, unit, etc."),
                     "autocomplete": "address-line2",
                 }
             ),
             "city": forms.TextInput(
                 attrs={
-                    "placeholder": "City",
+                    "placeholder": _("City"),
                     "autocomplete": "address-level2",
                 }
             ),
@@ -57,13 +58,13 @@ class UserProfileForm(forms.ModelForm):
             ),
             "zip_code": forms.TextInput(
                 attrs={
-                    "placeholder": "12345",
+                    "placeholder": _("12345"),
                     "autocomplete": "postal-code",
                 }
             ),
             "county": forms.TextInput(
                 attrs={
-                    "placeholder": "e.g., Los Angeles County",
+                    "placeholder": _("e.g., Los Angeles County"),
                 }
             ),
         }

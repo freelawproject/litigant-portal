@@ -3,6 +3,8 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse_lazy
+from django.utils.translation import gettext
+from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView, UpdateView
 
 from chat.agents import agent_registry
@@ -12,46 +14,70 @@ from .models import UserProfile
 
 TOPICS = {
     "housing": {
-        "title": "Housing & Eviction",
-        "subtitle": "Understanding the eviction process, tenant rights, and landlord obligations",
-        "description": "Landlord disputes, eviction defense, tenant rights",
+        "title": _("Housing & Eviction"),
+        "subtitle": _(
+            "Understanding the eviction process, tenant rights, and landlord obligations"
+        ),
+        "description": _("Landlord disputes, eviction defense, tenant rights"),
         "icon": "home",
-        "meta_description": "Learn about the eviction process, tenant rights, and landlord obligations. General legal information for self-represented litigants.",
+        "meta_description": _(
+            "Learn about the eviction process, tenant rights, and landlord obligations. General legal information for self-represented litigants."
+        ),
     },
     "family": {
-        "title": "Family & Divorce",
-        "subtitle": "Divorce, custody, child support, and domestic violence resources",
-        "description": "Divorce, custody, child support, domestic issues",
+        "title": _("Family & Divorce"),
+        "subtitle": _(
+            "Divorce, custody, child support, and domestic violence resources"
+        ),
+        "description": _("Divorce, custody, child support, domestic issues"),
         "icon": "users",
-        "meta_description": "Learn about divorce, child custody, child support, and family court. General legal information for self-represented litigants.",
+        "meta_description": _(
+            "Learn about divorce, child custody, child support, and family court. General legal information for self-represented litigants."
+        ),
     },
     "small-claims": {
-        "title": "Small Claims",
-        "subtitle": "Resolving disputes and understanding the small claims court process",
-        "description": "Disputes under $10,000, debt collection defense",
+        "title": _("Small Claims"),
+        "subtitle": _(
+            "Resolving disputes and understanding the small claims court process"
+        ),
+        "description": _("Disputes under $10,000, debt collection defense"),
         "icon": "currency-dollar",
-        "meta_description": "Learn about filing or defending a small claims case. General legal information for self-represented litigants.",
+        "meta_description": _(
+            "Learn about filing or defending a small claims case. General legal information for self-represented litigants."
+        ),
     },
     "consumer": {
-        "title": "Consumer Rights",
-        "subtitle": "Debt collection rules, contract disputes, and consumer protections",
-        "description": "Scams, unfair business practices, contracts",
+        "title": _("Consumer Rights"),
+        "subtitle": _(
+            "Debt collection rules, contract disputes, and consumer protections"
+        ),
+        "description": _("Scams, unfair business practices, contracts"),
         "icon": "shield-check",
-        "meta_description": "Learn about consumer rights, debt collection rules, and contract disputes. General legal information for self-represented litigants.",
+        "meta_description": _(
+            "Learn about consumer rights, debt collection rules, and contract disputes. General legal information for self-represented litigants."
+        ),
     },
     "expungement": {
-        "title": "Expungement",
-        "subtitle": "Clearing or sealing your criminal record and restoring opportunities",
-        "description": "Clear your record, seal court files",
+        "title": _("Expungement"),
+        "subtitle": _(
+            "Clearing or sealing your criminal record and restoring opportunities"
+        ),
+        "description": _("Clear your record, seal court files"),
         "icon": "document-text",
-        "meta_description": "Learn about expungement, record sealing, and eligibility requirements. General legal information for self-represented litigants.",
+        "meta_description": _(
+            "Learn about expungement, record sealing, and eligibility requirements. General legal information for self-represented litigants."
+        ),
     },
     "traffic": {
-        "title": "Traffic & Fines",
-        "subtitle": "Traffic violations, fines, license issues, and your options",
-        "description": "Tickets, license issues, court fines",
+        "title": _("Traffic & Fines"),
+        "subtitle": _(
+            "Traffic violations, fines, license issues, and your options"
+        ),
+        "description": _("Tickets, license issues, court fines"),
         "icon": "truck",
-        "meta_description": "Learn about traffic tickets, fines, license suspension, and your options. General legal information for self-represented litigants.",
+        "meta_description": _(
+            "Learn about traffic tickets, fines, license suspension, and your options. General legal information for self-represented litigants."
+        ),
     },
 }
 
@@ -131,5 +157,7 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
         return profile
 
     def form_valid(self, form):
-        messages.success(self.request, "Profile updated successfully.")
+        messages.success(
+            self.request, gettext("Profile updated successfully.")
+        )
         return super().form_valid(form)
