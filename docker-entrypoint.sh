@@ -41,6 +41,11 @@ run_collectstatic() {
     python manage.py collectstatic --noinput --clear
 }
 
+run_compilemessages() {
+    echo "Compiling translation messages..."
+    python manage.py compilemessages
+}
+
 case "$1" in
     web-dev)
         echo "Starting development server..."
@@ -55,6 +60,7 @@ case "$1" in
     web-prod)
         echo "Starting production server..."
         enable_wal
+        run_compilemessages
         run_collectstatic
 
         exec gunicorn config.wsgi:application \
