@@ -3,13 +3,13 @@ node_modules/
 .venv/
 
 # Build outputs (not source)
-staticfiles/
-static/css/main.built.css
+app/staticfiles/
+app/static/css/main.built.css
 *.min.js
 *.min.css
 
 # Vendored JS (from CDN, do not modify)
-static/js/alpine.js
+app/static/js/alpine.js
 
 # Django
 *.pyc
