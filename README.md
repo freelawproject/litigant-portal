@@ -13,12 +13,35 @@ Visit: http://portal.localhost
 
 ### Docker Production
 
-```bash
-# Create secret key
-mkdir -p secrets
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > secrets/django_secret_key.txt
+Spin up a server, it is recommended that you firewall all ports except the following:
 
-make docker-prod
+- 80 (HTTP)
+- 443 (HTTPS)
+- 22 (SSH)
+
+SSH into the server clone the repo in `/opt`
+
+```bash
+cd /opt
+git clone https://github.com/freelawproject/litigant-portal.git
+cd litigant-portal
+```
+
+Create a `.env` in the root of the repo and add the following:
+
+```bash
+DB_PASSWORD=your-database-password
+SECRET_KEY=something-random
+DOMAIN=https://your-domain.com
+ALLOWED_HOSTS=your-domain.com
+OPENAI_API_KEY=your-openai-api-key-here
+```
+
+Then run the following commands:
+
+```bash
+./scripts/init-server.sh
+./scripts/deploy.sh
 ```
 
 ## Documentation
