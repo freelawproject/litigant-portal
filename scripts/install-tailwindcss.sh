@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-TAILWIND_VERSION="${TAILWIND_VERSION:-v4.1.3}"
+TAILWIND_VERSION="${TAILWIND_VERSION:-v4.1.16}"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="${REPO_ROOT}/tailwindcss"
