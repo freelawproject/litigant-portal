@@ -63,8 +63,11 @@ dev = [
 ]
 
 
+[tool.setuptools]
+package-dir = {"" = "app"}
+
 [tool.setuptools.packages.find]
-include = ["app*"]
+where = ["app"]
 
 [tool.ruff]
 line-length = 79
