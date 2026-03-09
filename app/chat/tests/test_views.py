@@ -6,11 +6,12 @@ Only tests custom code, not Django built-ins like @require_POST.
 
 import json
 
+from django.contrib.auth import get_user_model
+from django.test import Client, TestCase, override_settings
+
 from chat.agents import agent_registry
 from chat.agents.base import Agent
 from chat.models import ChatSession, Document, Message
-from django.contrib.auth import get_user_model
-from django.test import Client, TestCase, override_settings
 
 User = get_user_model()
 

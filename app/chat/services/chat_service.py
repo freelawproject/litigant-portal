@@ -5,9 +5,10 @@ import logging
 from collections.abc import Iterator
 from uuid import UUID
 
-from chat.agents import agent_registry
 from django.conf import settings
 from django.http import HttpRequest, StreamingHttpResponse
+
+from chat.agents import agent_registry
 
 logger = logging.getLogger(__name__)
 

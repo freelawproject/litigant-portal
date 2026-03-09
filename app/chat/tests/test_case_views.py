@@ -7,9 +7,10 @@ auto-creation of CaseInfo on timeline event, and clear cascade.
 
 import json
 
-from chat.models import CaseInfo, TimelineEvent
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
+
+from chat.models import CaseInfo, TimelineEvent
 
 User = get_user_model()
 

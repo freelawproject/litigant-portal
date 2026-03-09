@@ -6,10 +6,11 @@ Only tests custom code, not Django ORM basics.
 
 from unittest.mock import MagicMock
 
-from chat.models import Document
-from chat.services.search_service import KeywordSearchService
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+
+from chat.models import Document
+from chat.services.search_service import KeywordSearchService
 
 User = get_user_model()
 
