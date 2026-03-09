@@ -1,66 +1,73 @@
 # Litigant Portal Docker Compose
-#
-# Development: docker compose --profile dev up
-#   - Requires .env file with GROQ_API_KEY (copy from .env.example)
-#   - Auto-generates SECRET_KEY if not set
-#
-# Production: docker compose --profile prod up
-#   - Requires: secrets/django_secret_key.txt
 
 services:
-  # ---------------------------------------------------------------------------
-  # Development Django Server
-  # ---------------------------------------------------------------------------
-  django-dev:
+  caddy:
+    image: caddy:2
+    restart: always
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      DOMAIN: ${DOMAIN:-http://portal.localhost}
+    depends_on:
+      - app
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: litigant_portal
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      retries: 5
+
+  app:
     build:
       context: .
-      target: development
-    profiles: ['dev']
+      dockerfile: Dockerfile
     command: web-dev
-    environment:
-      - DEBUG=true
-      - SECRET_KEY=${SECRET_KEY:-auto}
-      - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
-      # AI Chat configuration
-      - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_MODEL=openai/gpt-4o-mini
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
-      - .:/app
-    ports:
-      - '8000:8000'
-    stdin_open: true
-    tty: true
-
-  # ---------------------------------------------------------------------------
-  # Production Django Server
-  # ---------------------------------------------------------------------------
-  django-prod:
-    build:
-      context: .
-      target: production
-    profiles: ['prod']
-    command: web-prod
+      - ./app:/app/app
     environment:
-      - DEBUG=false
-      - SECRET_KEY_FILE=/run/secrets/django_secret_key
-      - DATABASE_URL=sqlite:////data/db.sqlite3
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
-      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
-      - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
-    secrets:
-      - django_secret_key
-    volumes:
-      - sqlite_data:/data
-    ports:
-      - '8000:8000'
-
-# ---------------------------------------------------------------------------
-# Secrets (create these files locally, never commit them)
-# ---------------------------------------------------------------------------
-secrets:
-  django_secret_key:
-    file: ./secrets/django_secret_key.txt
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: litigant_portal
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-dev}
+      SECRET_KEY: ${SECRET_KEY:-dev}
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS:-portal.localhost}
+      DEBUG: ${DEBUG:-true}
+      CHAT_ENABLED: ${CHAT_ENABLED:-true}
+      CHAT_MODEL: ${CHAT_MODEL:-openai/gpt-4o-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
 
 volumes:
-  sqlite_data:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:
