@@ -1,77 +1,67 @@
 {% extends "base.html" %}
 
+{% load i18n %}
+
 {% block title %}
 
-  Accessibility - Litigant Portal
+  {% trans "Accessibility" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block meta_description %}
 
-  Accessibility statement for the Litigant Portal - our commitment to WCAG 2.2 AA conformance and selective AAA criteria.
+  {% trans "Accessibility statement for the Litigant Portal – our commitment to WCAG 2.2 AA conformance and selective AAA criteria." %}
 {% endblock meta_description %}
 
 {% block content %}
 
   <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-    <h1 class="text-3xl font-bold text-greyscale-900">Accessibility</h1>
-    <p class="mt-3 text-lg text-greyscale-600">Access to justice is not complete until it is also fully accessible.</p>
+    <h1 class="text-3xl font-bold text-greyscale-900">{% trans "Accessibility" %}</h1>
+    <p class="mt-3 text-lg text-greyscale-600">
+      {% trans "Access to justice is not complete until it is also fully accessible." %}
+    </p>
     <div class="mt-8 space-y-8">
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Conformance goal</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Conformance goal" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          We target
-          <c-atoms.link href="https://www.w3.org/TR/WCAG22/" target="_blank">WCAG 2.2 Level AA</c-atoms.link>
-          conformance across the entire portal, plus selective Level AAA criteria
-          that directly benefit self-represented litigants — including enhanced
-          contrast, no time limits on content, and plain-language definitions of
-          legal terms.
+          {% blocktrans %}We target <a href="https://www.w3.org/TR/WCAG22/" target="_blank" rel="noopener noreferrer" class="text-primary-600 underline hover:text-primary-700">WCAG 2.2 Level AA</a> conformance across the entire portal, plus selective Level AAA criteria that directly benefit self-represented litigants — including enhanced contrast, no time limits on content, and plain-language definitions of legal terms.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">What we do</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "What we do" %}</h2>
         <ul class="mt-2 list-disc pl-5 space-y-1 text-greyscale-700">
-          <li>Full keyboard navigation for all interactive elements</li>
-          <li>Visible focus indicators on every focusable element</li>
-          <li>Color contrast ratios of at least 4.5:1 for text</li>
-          <li>Touch targets of at least 44×44 pixels on mobile</li>
-          <li>Semantic HTML and ARIA labels for screen readers</li>
-          <li>Responsive design that works across devices and zoom levels</li>
-          <li>Enhanced contrast ratios of at least 7:1 for body text</li>
-          <li>No time limits on reading legal information</li>
-          <li>Plain-language definitions for legal terms and abbreviations</li>
+          <li>{% trans "Full keyboard navigation for all interactive elements" %}</li>
+          <li>{% trans "Visible focus indicators on every focusable element" %}</li>
+          <li>{% trans "Color contrast ratios of at least 4.5:1 for text" %}</li>
+          <li>{% trans "Touch targets of at least 44×44 pixels on mobile" %}</li>
+          <li>{% trans "Semantic HTML and ARIA labels for screen readers" %}</li>
+          <li>{% trans "Responsive design that works across devices and zoom levels" %}</li>
+          <li>{% trans "Enhanced contrast ratios of at least 7:1 for body text" %}</li>
+          <li>{% trans "No time limits on reading legal information" %}</li>
+          <li>{% trans "Plain-language definitions for legal terms and abbreviations" %}</li>
         </ul>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Testing</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Testing" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          We combine automated accessibility checks on every code change with
-          manual keyboard and screen reader testing for each new feature.
-          Periodic full-site audits verify conformance against the complete
-          WCAG checklist.
+          {% blocktrans %}We combine automated accessibility checks on every code change with manual keyboard and screen reader testing for each new feature. Periodic full-site audits verify conformance against the complete WCAG checklist.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Standards tracking</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Standards tracking" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          We review our practices against current W3C accessibility guidelines
-          annually and will update our targets as standards evolve.
+          {% blocktrans %}We review our practices against current W3C accessibility guidelines annually and will update our targets as standards evolve.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Known limitations</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Known limitations" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          AI-generated chat responses may not always have ideal heading structure
-          or reading order. Streaming responses update the page progressively,
-          which may affect screen reader announcements. We are actively working
-          to improve these experiences.
+          {% blocktrans %}AI-generated chat responses may not always have ideal heading structure or reading order. Streaming responses update the page progressively, which may affect screen reader announcements. We are actively working to improve these experiences.{% endblocktrans %}
         </p>
       </section>
       <section>
-        <h2 class="text-xl font-semibold text-greyscale-900">Feedback</h2>
+        <h2 class="text-xl font-semibold text-greyscale-900">{% trans "Feedback" %}</h2>
         <p class="mt-2 text-greyscale-700">
-          If you encounter an accessibility barrier, please let us know at
-          <c-atoms.link href="mailto:info@free.law">info@free.law</c-atoms.link>.
-          We take all feedback seriously and will work to address issues promptly.
+          {% blocktrans %}If you encounter an accessibility barrier, please let us know at <a href="mailto:info@free.law" class="text-primary-600 underline hover:text-primary-700">info@free.law</a>. We take all feedback seriously and will work to address issues promptly.{% endblocktrans %}
         </p>
       </section>
     </div>
