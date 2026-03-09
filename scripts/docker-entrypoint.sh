@@ -23,8 +23,7 @@ case "$1" in
     web-dev)
         echo "Starting development server..."
         run_migrations
-        sleep infinity | ./tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --watch &
-
+        tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --watch &
         python app/manage.py runserver 0.0.0.0:8000
         ;;
 

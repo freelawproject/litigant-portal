@@ -35,22 +35,20 @@ COPY app/templates/ ./app/templates/
 COPY scripts scripts/
 
 RUN ./scripts/install-tailwindcss.sh
-RUN ./tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --minify
-
 
 # -----------------------------------------------------------------------------
 # Stage 4: Add code and build CSS
 # -----------------------------------------------------------------------------
 ENV PATH="/app/.venv/bin:$PATH"
 COPY app/ app/
-RUN ./tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --minify
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev
+RUN tailwindcss -i app/src/css/main.css -o app/static/css/main.built.css --minify
 
 RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app \
     && mkdir -p /data && chown appuser:appuser /data
 USER appuser
-
-ENV PYTHONPATH="/app/app:${PYTHONPATH}"
 
 EXPOSE 8000
 
