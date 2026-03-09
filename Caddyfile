@@ -1,0 +1,8 @@
+{$DOMAIN} {
+    handle {
+        reverse_proxy app:8000
+    }
+    log {
+        output stdout
+    }
+}
