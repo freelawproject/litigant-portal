@@ -17,7 +17,7 @@ repos:
       - id: check-toml
       - id: check-xml
       - id: check-yaml
-        args: [--unsafe]
+        exclude: docker-compose\.prod\.yml
       - id: debug-statements
       - id: detect-private-key
       - id: fix-byte-order-marker
@@ -40,7 +40,7 @@ repos:
         entry: prettier --write --ignore-unknown
         language: node
         types_or: [javascript, json, markdown, yaml, css]
-        exclude: ^(node_modules/|\.venv/|staticfiles/|static/css/main\.built\.css|package-lock\.json|uv\.lock)
+        exclude: ^(node_modules/|\.venv/|app/staticfiles/|app/static/css/main\.built\.css|package-lock\.json|uv\.lock)
         additional_dependencies: ['prettier@3.8.1']
 
   - repo: https://github.com/djlint/djLint
