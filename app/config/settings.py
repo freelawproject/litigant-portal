@@ -25,7 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 # Required: set SECRET_KEY environment variable
-SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
+SECRET_KEY = os.environ.get("SECRET_KEY")
+
+if SECRET_KEY == "auto":
+    SECRET_KEY = get_random_secret_key()
+elif SECRET_KEY is None:
+    raise ValueError("SECRET_KEY environment variable is required")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # Defaults to True for development; set DEBUG=false in production
