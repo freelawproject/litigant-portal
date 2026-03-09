@@ -1,3 +1,18 @@
+# Whitelist approach - ignore everything, then allow specific files/dirs
+*
+
+# Python project files
+!pyproject.toml
+!uv.lock
+!manage.py
+
+# Application code
+!app/
+
+# Scripts
+!scripts/
+
+# Ignore within allowed directories
 **/__pycache__/
 **/*.pyc
 **/*.pyo
