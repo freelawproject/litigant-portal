@@ -607,6 +607,17 @@
     animation-delay: -0.16s;
   }
 
+  /* Auto-dismiss animation - used by autoDismiss Alpine component */
+  @keyframes auto-dismiss {
+    0%,
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
   @keyframes typing-bounce {
     0%,
     80%,

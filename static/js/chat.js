@@ -120,6 +120,18 @@ function createChat() {
     onStreamComplete: null,
     onCleared: null,
 
+    // --- Initialization (reads config from data-* attributes) ---
+    init() {
+      if (this.$el.dataset.sessionId) {
+        this.sessionId = this.$el.dataset.sessionId
+      }
+    },
+
+    // --- Input binding (x-model unsupported in CSP build) ---
+    updateInput(e) {
+      this.inputText = e.target.value
+    },
+
     // --- Core messaging ---
     async sendMessage() {
       let content = this.inputText.trim()
@@ -139,6 +151,11 @@ function createChat() {
         id: Date.now(),
         role: 'user',
         content,
+        renderedContent: chatUtils.escapeHtml(content),
+        bubbleClass: 'chat-bubble-user',
+        messageClass: 'chat-message-user',
+        isUser: true,
+        isAssistant: false,
       })
       this.scrollToBottom()
 
@@ -147,6 +164,11 @@ function createChat() {
         id: Date.now() + 1,
         role: 'assistant',
         content: '',
+        renderedContent: '',
+        bubbleClass: 'chat-bubble-assistant',
+        messageClass: 'chat-message-assistant',
+        isUser: false,
+        isAssistant: true,
         toolCalls: [],
         toolResponses: [],
       })
@@ -193,19 +215,20 @@ function createChat() {
               switch (event.type) {
                 case 'session':
                   this.sessionId = event.session_id
-                  localStorage.setItem('chatSessionId', event.session_id)
                   if (typeof this.onSessionCreated === 'function') {
                     this.onSessionCreated(event.session_id)
                   }
                   break
 
-                case 'content_delta':
+                case 'content_delta': {
+                  const updated = msg.content + (event.content || '')
                   this.messages[msgIndex] = {
                     ...msg,
-                    content: msg.content + (event.content || ''),
+                    content: updated,
+                    renderedContent: chatUtils.renderMarkdown(updated),
                   }
-                  this.scrollToBottom()
                   break
+                }
 
                 case 'tool_call':
                   this.activeToolCall = {
@@ -217,7 +240,6 @@ function createChat() {
                     name: event.name,
                     args: event.args,
                   })
-                  this.scrollToBottom()
                   break
 
                 case 'tool_response':
@@ -228,7 +250,6 @@ function createChat() {
                     response: event.response,
                     data: event.data,
                   })
-                  this.scrollToBottom()
                   break
 
                 case 'done':
@@ -243,6 +264,7 @@ function createChat() {
                     this.messages[msgIndex] = {
                       ...msg,
                       content: event.message,
+                      renderedContent: chatUtils.escapeHtml(event.message),
                     }
                   }
                   break
@@ -254,9 +276,13 @@ function createChat() {
         }
       } catch (error) {
         console.error('Chat error:', error)
+        const errorMsg = gettext(
+          'Sorry, I encountered an error. Please try again.'
+        )
         this.messages[msgIndex] = {
           ...this.messages[msgIndex],
-          content: gettext('Sorry, I encountered an error. Please try again.'),
+          content: errorMsg,
+          renderedContent: chatUtils.escapeHtml(errorMsg),
         }
       } finally {
         this.isStreaming = false
@@ -281,7 +307,6 @@ function createChat() {
     clearChat() {
       this.messages = []
       this.sessionId = ''
-      localStorage.removeItem('chatSessionId')
       if (typeof this.onCleared === 'function') {
         this.onCleared()
       }
@@ -292,13 +317,32 @@ function createChat() {
      * Useful for upload responses, system messages, etc.
      */
     pushMessage(role, content, extra = {}) {
+      const isUser = role === 'user'
       this.messages.push({
         id: Date.now(),
         role,
         content,
+        renderedContent: isUser
+          ? chatUtils.escapeHtml(content)
+          : chatUtils.renderMarkdown(content),
+        bubbleClass: isUser ? 'chat-bubble-user' : 'chat-bubble-assistant',
+        messageClass: isUser ? 'chat-message-user' : 'chat-message-assistant',
+        isUser,
+        isAssistant: !isUser,
         ...extra,
       })
       this.scrollToBottom()
+    },
+
+    // --- Getters for CSP-safe dot-path access ---
+    get hasMessages() {
+      return this.messages.length > 0
+    },
+    get noMessages() {
+      return this.messages.length === 0
+    },
+    get sendDisabled() {
+      return this.isStreaming || !this.inputText.trim()
     },
 
     // --- Template compatibility aliases ---
@@ -308,10 +352,6 @@ function createChat() {
     get dynamicMessages() {
       return this.messages
     },
-
-    // Delegate to shared utilities
-    escapeHtml: chatUtils.escapeHtml,
-    renderMarkdown: chatUtils.renderMarkdown,
   }
 }
 
@@ -323,22 +363,28 @@ function createChat() {
  * Home page: chat + file upload + case management + timeline + summarization.
  * Composes createChat() for core messaging, adds everything else directly.
  *
- * Usage: <div x-data="homePage" x-init="agentName = 'litigant_assistant'">
+ * Usage: <div x-data="homePage" data-agent-name="litigant_assistant">
  */
 function createHomePage() {
   return {
     // Compose chat
     ...createChat(),
 
+    // Re-define chat getters lost during spread (spread flattens getters
+    // into static values — a JS language gotcha with object spread).
+    get hasMessages() {
+      return this.messages.length > 0
+    },
+    get noMessages() {
+      return this.messages.length === 0
+    },
+    get sendDisabled() {
+      return this.isStreaming || !this.inputText.trim()
+    },
+
     // --- Availability state ---
     chatAvailable: true,
     showUnavailableWarning: false,
-    // Upload state
-    selectedFile: null,
-    isUploading: false,
-    uploadError: null,
-    extractedText: null,
-    extractedData: null,
 
     // --- Upload state ---
     selectedFile: null,
@@ -356,8 +402,121 @@ function createHomePage() {
     // --- Timeline state ---
     caseTimeline: [],
 
+    // --- Getters for CSP-safe dot-path access ---
+
+    // Container class
+    get containerClass() {
+      return this.messages.length > 0 ? 'chat-mode' : ''
+    },
+
+    // Case header
+    get caseTitle() {
+      return this.caseInfo?.case_type || 'Your Case'
+    },
+    get caseNumber() {
+      const num = this.caseInfo?.court_info?.case_number
+      return num ? 'Case #' + num : ''
+    },
+    get hasCaseNumber() {
+      return !!this.caseInfo?.court_info?.case_number
+    },
+
+    // Court info
+    get showCourtSection() {
+      return !!(
+        this.caseInfo?.court_info?.court_name ||
+        this.caseInfo?.court_info?.county
+      )
+    },
+    get courtName() {
+      return this.caseInfo?.court_info?.court_name || ''
+    },
+    get courtCounty() {
+      return this.caseInfo?.court_info?.county || ''
+    },
+    get courtAddress() {
+      return this.caseInfo?.court_info?.address || ''
+    },
+    get courtPhone() {
+      return this.caseInfo?.court_info?.phone || ''
+    },
+    get courtEmail() {
+      return this.caseInfo?.court_info?.email || ''
+    },
+    get courtPhoneHref() {
+      return this.courtPhone ? 'tel:' + this.courtPhone : ''
+    },
+    get courtEmailHref() {
+      return this.courtEmail ? 'mailto:' + this.courtEmail : ''
+    },
+
+    // Opposing party
+    get opposingParty() {
+      return this.caseInfo?.parties?.opposing_party || ''
+    },
+    get opposingAddress() {
+      return this.caseInfo?.parties?.opposing_address || ''
+    },
+    get opposingPhone() {
+      return this.caseInfo?.parties?.opposing_phone || ''
+    },
+    get opposingEmail() {
+      return this.caseInfo?.parties?.opposing_email || ''
+    },
+    get opposingWebsite() {
+      return this.caseInfo?.parties?.opposing_website || ''
+    },
+    get opposingPhoneHref() {
+      return this.opposingPhone ? 'tel:' + this.opposingPhone : ''
+    },
+    get opposingEmailHref() {
+      return this.opposingEmail ? 'mailto:' + this.opposingEmail : ''
+    },
+
+    // Attorney
+    get attorneyName() {
+      return this.caseInfo?.parties?.attorney_name || ''
+    },
+    get attorneyPhone() {
+      return this.caseInfo?.parties?.attorney_phone || ''
+    },
+    get attorneyEmail() {
+      return this.caseInfo?.parties?.attorney_email || ''
+    },
+    get attorneyPhoneHref() {
+      return this.attorneyPhone ? 'tel:' + this.attorneyPhone : ''
+    },
+    get attorneyEmailHref() {
+      return this.attorneyEmail ? 'mailto:' + this.attorneyEmail : ''
+    },
+
+    // Dates (pre-filtered)
+    get deadlines() {
+      return (this.caseInfo?.key_dates || []).filter((d) => d.is_deadline)
+    },
+    get otherDates() {
+      return (this.caseInfo?.key_dates || []).filter((d) => !d.is_deadline)
+    },
+    get hasDeadlines() {
+      return this.deadlines.length > 0
+    },
+    get hasOtherDates() {
+      return this.otherDates.length > 0
+    },
+
+    // Negated booleans (CSP build can't evaluate `!`)
+    get noCaseInfo() {
+      return !this.caseInfo
+    },
+    get notUploading() {
+      return !this.isUploading
+    },
+
     // --- Initialization ---
     async init() {
+      // Read config from data-* attributes
+      this.agentName = this.$el.dataset.agentName || ''
+
       // Check chat service availability
       try {
         const response = await fetch('/api/chat/status/')
@@ -374,27 +533,27 @@ function createHomePage() {
         this.showUnavailableWarning = true
       }
 
-      // Restore session from localStorage
-      this.sessionId = localStorage.getItem('chatSessionId') || ''
-
-      // Restore case info
-      const savedCaseInfo = localStorage.getItem('caseInfo')
-      if (savedCaseInfo) {
-        try {
-          this.caseInfo = JSON.parse(savedCaseInfo)
-        } catch {
-          localStorage.removeItem('caseInfo')
+      // Restore case info and timeline from server
+      try {
+        const caseResponse = await fetch('/api/chat/case/')
+        if (caseResponse.ok) {
+          const caseData = await caseResponse.json()
+          if (caseData.case_info) {
+            this.caseInfo = caseData.case_info
+          }
+          if (caseData.timeline) {
+            this.caseTimeline = caseData.timeline.map((e) => ({
+              id: e.id,
+              type: e.event_type,
+              timestamp: e.created_at,
+              title: e.title,
+              content: e.content,
+              metadata: e.metadata,
+            }))
+          }
         }
-      }
-
-      // Restore timeline
-      const savedTimeline = localStorage.getItem('caseTimeline')
-      if (savedTimeline) {
-        try {
-          this.caseTimeline = JSON.parse(savedTimeline)
-        } catch {
-          localStorage.removeItem('caseTimeline')
-        }
+      } catch {
+        // Server unavailable — start with empty state
       }
 
       // Wire up chat hook for document context injection
@@ -615,7 +774,7 @@ function createHomePage() {
     // Case management
     // =========================================================================
 
-    confirmExtraction() {
+    async confirmExtraction() {
       if (!this.extractedData) return
 
       if (this.caseInfo) {
@@ -623,8 +782,17 @@ function createHomePage() {
       } else {
         this.caseInfo = this.extractedData
       }
-      localStorage.setItem('caseInfo', JSON.stringify(this.caseInfo))
       this.showConfirmation = false
+
+      // Persist to server
+      const formData = new FormData()
+      formData.append('data', JSON.stringify(this.caseInfo))
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        await fetch('/api/chat/case/save/', { method: 'POST', body: formData })
+      } catch (e) {
+        console.error('Failed to save case info:', e)
+      }
 
       this.pushMessage(
         'assistant',
@@ -698,13 +866,20 @@ function createHomePage() {
       )
     },
 
-    clearCaseInfo() {
+    async clearCaseInfo() {
       this.caseInfo = null
       this.extractedData = null
       this.caseTimeline = []
       this._documentContextSent = false
-      localStorage.removeItem('caseInfo')
-      localStorage.removeItem('caseTimeline')
+
+      // Clear server-side data
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
+      } catch (e) {
+        console.error('Failed to clear case info:', e)
+      }
     },
 
     // =========================================================================
@@ -737,17 +912,37 @@ function createHomePage() {
     // Timeline
     // =========================================================================
 
-    addTimelineEvent(type, title, content, metadata = {}) {
+    async addTimelineEvent(type, title, content, metadata = {}) {
+      // Optimistic push to in-memory state
       const event = {
         id: Date.now(),
-        type, // 'upload' | 'summary' | 'change'
+        type,
         timestamp: new Date().toISOString(),
         title,
         content,
         metadata,
       }
       this.caseTimeline.push(event)
-      localStorage.setItem('caseTimeline', JSON.stringify(this.caseTimeline))
+
+      // Persist to server
+      const formData = new FormData()
+      formData.append('event_type', type)
+      formData.append('title', title)
+      formData.append('content', content)
+      formData.append('metadata', JSON.stringify(metadata))
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch('/api/chat/case/timeline/', {
+          method: 'POST',
+          body: formData,
+        })
+        if (response.ok) {
+          const data = await response.json()
+          event.id = data.id
+        }
+      } catch (e) {
+        console.error('Failed to save timeline event:', e)
+      }
     },
 
     // =========================================================================
@@ -770,7 +965,6 @@ function createHomePage() {
         this.sessionId = ''
         this.extractedData = null
         this._documentContextSent = false
-        localStorage.removeItem('chatSessionId')
       } finally {
         this._isClearingChat = false
       }
