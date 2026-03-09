@@ -1,3 +1,5 @@
+{% load i18n %}
+
 <c-vars />
 {% if user.is_authenticated %}
   {# Logged in: show user menu with dropdown #}
@@ -25,13 +27,13 @@
          class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100"
          role="menuitem">
         <c-atoms.icon name="user" class="w-5 h-5 text-greyscale-500" />
-        Profile
+        {% trans "Profile" %}
       </a>
       <a href="{% url 'account_logout' %}"
          class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100"
          role="menuitem">
         <c-atoms.icon name="arrow-right-start-on-rectangle" class="w-5 h-5 text-greyscale-500" />
-        Sign out
+        {% trans "Sign out" %}
       </a>
     </div>
   </div>
@@ -41,6 +43,6 @@
      class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-greyscale-700 hover:bg-greyscale-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 {{ class }}"
      {{ attrs }}>
     <c-atoms.icon name="arrow-right-end-on-rectangle" class="w-5 h-5" />
-    <span>Sign in</span>
+    <span>{% trans "Sign in" %}</span>
   </a>
 {% endif %}

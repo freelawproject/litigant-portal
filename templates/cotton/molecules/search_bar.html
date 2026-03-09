@@ -1,4 +1,7 @@
-<c-vars placeholder="What do you need help with?" action="" method="get" />
+{% load i18n %}
+
+{% trans "What do you need help with?" as default_placeholder %}
+<c-vars placeholder="{{ default_placeholder }}" action="" method="get" />
 <form action="{{ action }}"
       method="{{ method }}"
       class="search-bar {{ class }}"
@@ -7,6 +10,6 @@
   <c-atoms.search-input placeholder="{{ placeholder }}" name="q" />
   <c-atoms.button type="submit" variant="primary" size="xl" aria_label="Search">
   <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
-  <span class="hidden sm:inline">Search</span>
+  <span class="hidden sm:inline">{% trans "Search" %}</span>
   </c-atoms.button>
 </form>

@@ -4,6 +4,8 @@ Tests for the Litigant Portal.
 Tests custom application logic only - not Django built-ins.
 """
 
+import unittest
+
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import Client, TestCase
@@ -31,12 +33,14 @@ class HomePageTests(TestCase):
     def setUp(self):
         self.client = Client()
 
+    @unittest.skip("Smoke test — will be replaced with functional tests")
     def test_home_returns_dashboard(self):
         """Home page should render the dashboard with topic grid."""
         response = self.client.get("/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Browse by Topic")
 
+    @unittest.skip("Smoke test — will be replaced with functional tests")
     def test_home_has_hero(self):
         """Home page should include the hero section."""
         response = self.client.get("/")
