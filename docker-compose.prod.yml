@@ -1,0 +1,22 @@
+services:
+  app:
+    volumes: !reset []
+    command: "web-prod"
+    depends_on:
+      postgres:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: litigant_portal
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY}
+      REDIS_URL: redis://redis:6379/0
+      ALLOWED_HOSTS: ${ALLOWED_HOSTS}
+      DEBUG: false
+      CHAT_ENABLED: ${CHAT_ENABLED:-true}
+      CHAT_MODEL: ${CHAT_MODEL:-openai/gpt-4o-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}

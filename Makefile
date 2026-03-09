@@ -54,31 +54,31 @@ docker-build: ## Build Docker images
 	docker compose build
 
 docker-dev: ## Start dev environment (Django + Tailwind watch + SQLite)
-	docker compose --profile dev up
+	docker compose up
 
 docker-dev-build: ## Build and start dev environment
-	docker compose --profile dev up --build
+	docker compose up --build
 
 docker-prod: ## Start production environment (Gunicorn + SQLite)
-	docker compose --profile prod up
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 docker-prod-build: ## Build and start production environment
-	docker compose --profile prod up --build
+	docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 docker-down: ## Stop all containers
-	docker compose --profile dev --profile prod down
+	docker compose down
 
 docker-logs: ## View container logs
-	docker compose --profile dev logs -f
+	docker compose logs -f
 
 docker-shell: ## Open shell in Django dev container
-	docker compose --profile dev exec django-dev bash
+	docker compose exec app bash
 
 docker-migrate: ## Run migrations in Docker
-	docker compose --profile dev exec django-dev python manage.py migrate
+	docker compose exec app python app/manage.py migrate
 
 docker-test: ## Run tests in Docker
-	docker compose --profile dev exec django-dev python manage.py test
+	docker compose exec app python app/manage.py test
 
 docker-clean: ## Remove containers, volumes, and images
-	docker compose --profile dev --profile prod down -v --rmi local
+	docker compose down -v --rmi local
