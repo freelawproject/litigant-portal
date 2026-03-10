@@ -25,27 +25,27 @@ Stages are grouped into three phases: **Triage**, **Prepare**, and **Resolve**.
 
 ### Phase 1: Triage — "What's my situation?"
 
-| Stage | Name | Description | UX Expectation | Tooling (high-level) |
-|-------|------|-------------|----------------|----------------------|
-| 1 | Entry | First load or referral via court, legal aid, or community link | No friction; county auto-detected where possible; open chat or topic grid depending on mode | Portal routing, county detection |
-| 2 | Issue identification | User describes their situation in their own words | One question at a time; plain language; no jargon; no account required | AI conversation / topic browse |
-| 3 | Issue & document discovery | Specific legal issue confirmed; relevant documents surfaced | Clarifying questions about notice type, case stage, and key facts; documents can be uploaded | AI conversation, document upload |
-| 4 | Related issue surfacing | Connected issues identified proactively or via browse | Sidebar or action list updated; AI may raise issues the user did not mention | AI proactive connection / topic browse |
+| Stage | Name                       | Description                                                    | UX Expectation                                                                                                    | Tooling (high-level)                   |
+| ----- | -------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| 1     | Entry                      | First load or referral via court, legal aid, or community link | No friction; jurisdiction set by court or auto-detected where possible; open chat or topic grid depending on mode | Portal routing, jurisdiction detection |
+| 2     | Issue identification       | User describes their situation in their own words              | One question at a time; plain language; no jargon; no account required                                            | AI conversation / topic browse         |
+| 3     | Issue & document discovery | Specific legal issue confirmed; relevant documents surfaced    | Clarifying questions about notice type, case stage, and key facts; documents can be uploaded                      | AI conversation, document upload       |
+| 4     | Related issue surfacing    | Connected issues identified proactively or via browse          | Sidebar or action list updated; AI may raise issues the user did not mention                                      | AI proactive connection / topic browse |
 
 ### Phase 2: Prepare — "What do I need to do?"
 
-| Stage | Name | Description | UX Expectation | Tooling (high-level) |
-|-------|------|-------------|----------------|----------------------|
-| 5 | Guided next steps | Deadlines, filing requirements, and action items assembled | Sidebar or checklist shows what is needed and when; nothing buried in conversation history | Deadline calculator, case sidebar / portable case file |
-| 6 | Warm handoff | User connected to legal aid, guided interview tool, or court self-help resource | Handoff is optional and user-initiated; case context travels with the user | Legal aid referral, guided interview tool (e.g. DocAssemble), court resource links |
-| 7 | Handoff re-integration | New information from external tool or attorney flows back into the portal | Portal accepts returning user and updates case facts, deadlines, or documents accordingly | Case file import / session resume |
+| Stage | Name                   | Description                                                                     | UX Expectation                                                                             | Tooling (high-level)                                                                           |
+| ----- | ---------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| 5     | Guided next steps      | Deadlines, filing requirements, and action items assembled                      | Sidebar or checklist shows what is needed and when; nothing buried in conversation history | Deadline calculator, case sidebar / portable case file                                         |
+| 6     | Warm handoff           | User connected to legal aid, guided interview tool, or court self-help resource | Handoff is optional and user-initiated; case context travels with the user                 | Legal aid referral, guided interview tool (e.g. A2J Author, DocAssemble), court resource links |
+| 7     | Handoff re-integration | New information from external tool or attorney flows back into the portal       | Portal accepts returning user and updates case facts, deadlines, or documents accordingly  | Case file import / session resume                                                              |
 
 ### Phase 3: Resolve — "Take action"
 
-| Stage | Name | Description | UX Expectation | Tooling (high-level) |
-|-------|------|-------------|----------------|----------------------|
-| 8 | File or appear | E-file, download forms, or prepare for court visit | Multiple resolution paths offered; user chooses; no dead ends | E-filing system, form download, court logistics info |
-| 9 | Resolution & follow-up | Confirmation of filing, reminders, case history, post-resolution next steps | Confirmation is immediate; reminders are set; case is not abandoned after filing | Email/SMS notifications, case history, deadline reminders |
+| Stage | Name                   | Description                                                                 | UX Expectation                                                                   | Tooling (high-level)                                      |
+| ----- | ---------------------- | --------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| 8     | File or appear         | E-file, download forms, or prepare for court visit                          | Multiple resolution paths offered; user chooses; no dead ends                    | E-filing system, form download, court logistics info      |
+| 9     | Resolution & follow-up | Confirmation of filing, reminders, case history, post-resolution next steps | Confirmation is immediate; reminders are set; case is not abandoned after filing | Email/SMS notifications, case history, deadline reminders |
 
 ---
 
@@ -53,17 +53,17 @@ Stages are grouped into three phases: **Triage**, **Prepare**, and **Resolve**.
 
 The ITC demo uses Jane, a self-represented litigant facing eviction. Her path through the stages:
 
-| Stage | Jane's Moment |
-|-------|---------------|
-| 1. Entry | Opens the portal on her phone; no account |
-| 2. Issue identification | "I got eviction papers" — AI classifies: 5-day notice, unpaid rent |
-| 3. Issue & document discovery | Mold mentioned → habitability defense surfaced; notice type confirmed |
-| 4. Related issue surfacing | Household of 3 → ILRPP eligibility; kids mentioned → child support enforcement |
-| 5. Guided next steps | Appearance deadline added; ILRPP deadline added; document checklist assembled |
-| 6. Warm handoff | Not taken in happy path; available (DuPage Legal Aid linked) |
-| 7. Re-integration | N/A in happy path; available if handoff taken |
-| 8. File or appear | E-file Appearance form with 18th Judicial Circuit |
-| 9. Follow-up | Confirmation email; sidebar persists; reminders set; account created at this moment |
+| Stage                         | Jane's Moment                                                                       |
+| ----------------------------- | ----------------------------------------------------------------------------------- |
+| 1. Entry                      | Opens the portal on her phone; no account                                           |
+| 2. Issue identification       | "I got eviction papers" — AI classifies: 5-day notice, unpaid rent                  |
+| 3. Issue & document discovery | Mold mentioned → habitability defense surfaced; notice type confirmed               |
+| 4. Related issue surfacing    | Household of 3 → ILRPP eligibility; kids mentioned → child support enforcement      |
+| 5. Guided next steps          | Appearance deadline added; ILRPP deadline added; document checklist assembled       |
+| 6. Warm handoff               | Not taken in happy path; available (DuPage Legal Aid linked)                        |
+| 7. Re-integration             | N/A in happy path; available if handoff taken                                       |
+| 8. File or appear             | E-file Appearance form with 18th Judicial Circuit                                   |
+| 9. Follow-up                  | Confirmation email; sidebar persists; reminders set; account created at this moment |
 
 See [Happy Path Narrative](./happy-path-jane.md) for the full story and [User Flows Matrix](./user-flows.md) for how Jane's path varies across AI modes and auth states.
 
