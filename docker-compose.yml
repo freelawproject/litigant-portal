@@ -20,7 +20,7 @@ services:
     environment:
       - DEBUG=true
       - SECRET_KEY=${SECRET_KEY:-auto}
-      - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
+      - ALLOWED_HOSTS=portal.localhost
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
       - CHAT_MODEL=openai/gpt-4o-mini
@@ -41,7 +41,7 @@ services:
       - DEBUG=false
       - SECRET_KEY_FILE=/run/secrets/django_secret_key
       - DATABASE_URL=sqlite:////data/db.sqlite3
-      - ALLOWED_HOSTS=${DOMAIN:-localhost}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
       # AI Chat configuration
@@ -62,6 +62,8 @@ services:
     profiles: ['dev']
     ports:
       - '80:80'
+    environment:
+      - DOMAIN=${DOMAIN:-http://portal.localhost}
     volumes:
       - ./deploy/caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
     depends_on:
