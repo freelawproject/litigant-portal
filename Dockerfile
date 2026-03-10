@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_LINK_MODE=copy
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
+    curl gettext \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -81,6 +81,7 @@ RUN chmod +x /docker-entrypoint.sh
 
 # Non-root user
 RUN useradd --create-home --shell /bin/bash appuser \
+    && mkdir -p /app/staticfiles \
     && chown -R appuser:appuser /app \
     && mkdir -p /data && chown appuser:appuser /data
 USER appuser
