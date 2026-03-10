@@ -1,0 +1,12 @@
+{$DOMAIN} {
+	handle_path /static/* {
+		root * /srv/staticfiles
+		file_server
+	}
+
+	reverse_proxy django-prod:8000
+
+	log {
+		output stdout
+	}
+}

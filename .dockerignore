@@ -20,10 +20,14 @@
 !static/
 static/css/main.built.css
 
+# Translations
+!locale/
+
 # Docker files
 !Dockerfile
 !docker-compose.yml
-!docker-entrypoint.sh
+!scripts/
+!deploy/
 
 # Ignore within allowed directories
 **/__pycache__/

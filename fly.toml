@@ -9,7 +9,6 @@ console_command = '/app/manage.py shell'
 
 [build]
   dockerfile = "Dockerfile"
-  target = "production"
 
 [deploy]
   release_command = 'python manage.py migrate --noinput'

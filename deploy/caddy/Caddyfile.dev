@@ -1,0 +1,6 @@
+:80 {
+	reverse_proxy django-dev:8000
+	log {
+		output stdout
+	}
+}

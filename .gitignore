@@ -43,6 +43,9 @@ yarn-error.log*
 static/.vite/
 static/assets/
 
+# Tailwind CLI binary (installed by scripts/install-tailwind.sh)
+tailwindcss
+
 # Tailwind CLI output (source is static/css/main.css)
 static/css/main.built.css
 

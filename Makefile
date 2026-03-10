@@ -55,13 +55,13 @@ compilemessages: ## Compile .po to .mo files
 docker-build: ## Build Docker images
 	docker compose build
 
-docker-dev: ## Start dev environment (Django + Tailwind watch + SQLite)
+docker-dev: ## Start dev environment (Caddy + Django + Tailwind watch)
 	docker compose --profile dev up
 
 docker-dev-build: ## Build and start dev environment
 	docker compose --profile dev up --build
 
-docker-prod: ## Start production environment (Gunicorn + SQLite)
+docker-prod: ## Start production environment (Caddy + Gunicorn)
 	docker compose --profile prod up
 
 docker-prod-build: ## Build and start production environment
