@@ -16,10 +16,11 @@
     <div class="w-full max-w-md">
       {# Logo #}
       <div class="text-center mb-8">
-        <a href="{% url 'portal:home' %}"
-           aria-label="{% trans "Return to home" %}">
+        {% trans "Return to home" as return_label %}
+        {% trans "Litigant Portal" as site_name %}
+        <a href="{% url 'portal:home' %}" aria-label="{{ return_label }}">
           <img src="{% static 'images/logo.svg' %}"
-               alt="{% trans "Litigant Portal" %}"
+               alt="{{ site_name }}"
                class="h-10 mx-auto" />
         </a>
       </div>
