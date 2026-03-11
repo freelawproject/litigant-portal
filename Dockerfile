@@ -20,7 +20,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 WORKDIR /app
 
 # -----------------------------------------------------------------------------
-# Stage 2: Dependencies - install all Python packages (including dev)
+# Stage 2: Dependencies - install production Python packages
 # -----------------------------------------------------------------------------
 FROM base AS dependencies
 
@@ -29,7 +29,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 COPY pyproject.toml uv.lock ./
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project
+    uv sync --frozen --no-install-project --no-dev
 
 # -----------------------------------------------------------------------------
 # Stage 3: Tailwind - build production CSS
@@ -59,11 +59,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 COPY --from=tailwind /app/static/css/main.built.css ./static/css/main.built.css
 
 # Tailwind binary (needed at runtime for dev watch mode)
-ARG TAILWIND_VERSION=v4.1.16
-COPY scripts/install-tailwind.sh /tmp/install-tailwind.sh
-RUN TAILWIND_VERSION=${TAILWIND_VERSION} TAILWIND_DEST=/usr/local/bin/tailwindcss \
-    bash /tmp/install-tailwind.sh \
-    && rm /tmp/install-tailwind.sh
+COPY --from=tailwind /usr/local/bin/tailwindcss /usr/local/bin/tailwindcss
 
 # Application code
 COPY config/ ./config/

@@ -85,6 +85,9 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - staticfiles:/srv/staticfiles:ro
+    # NOTE: depends_on waits for container start, not for collectstatic to
+    # finish. Static assets may 404 briefly on first deploy until Django's
+    # entrypoint completes collectstatic into the shared volume.
     depends_on:
       - django-prod
 
