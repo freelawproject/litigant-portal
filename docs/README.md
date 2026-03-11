@@ -95,7 +95,7 @@ litigant-portal/
 | Auth       | django-allauth                           |
 | AI Chat    | Groq (llama-3.3-70b-versatile)           |
 | Security   | django-csp                               |
-| Deployment | Self-hosted (Docker Compose + Caddy)      |
+| Deployment | Self-hosted (Docker Compose + Caddy)     |
 
 **No Node.js required** - Tailwind via standalone CLI, Alpine.js local files.
 

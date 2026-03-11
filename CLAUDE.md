@@ -326,11 +326,11 @@ docker compose --profile prod up --build -d
 
 Set in `.env` at the project root:
 
-| Variable         | Description                              | Example                 |
-| ---------------- | ---------------------------------------- | ----------------------- |
-| `DOMAIN`         | Public domain (Caddy uses for HTTPS)     | `portal.example.com`    |
-| `ALLOWED_HOSTS`  | Django allowed hosts (matches `DOMAIN`)  | `portal.example.com`    |
-| `OPENAI_API_KEY` | OpenAI API key for AI chat               | `sk-...`                |
+| Variable         | Description                             | Example              |
+| ---------------- | --------------------------------------- | -------------------- |
+| `DOMAIN`         | Public domain (Caddy uses for HTTPS)    | `portal.example.com` |
+| `ALLOWED_HOSTS`  | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
+| `OPENAI_API_KEY` | OpenAI API key for AI chat              | `sk-...`             |
 
 Secret key is read from `secrets/django_secret_key.txt` (never committed).
 
