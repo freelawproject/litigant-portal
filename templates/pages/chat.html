@@ -2,23 +2,15 @@
 
 {% load cotton i18n %}
 
-{% block body_class %}
+{% block body_class %}h-dvh flex flex-col bg-greyscale-25 overflow-hidden{% endblock body_class %}
 
-  h-dvh flex flex-col bg-greyscale-25 overflow-hidden
-{% endblock body_class %}
-
-{% block main_class %}
-
-  min-h-0 flex flex-col
-{% endblock main_class %}
+{% block main_class %}min-h-0 flex flex-col{% endblock main_class %}
 
 {% block title %}
-
   {% trans "Litigant Portal" %} - {% trans "Free Legal Help" %}
 {% endblock title %}
 
 {% block content %}
-
   <div x-data="homePage"
        data-agent-name="{{ agent_name|default:'' }}"
        class="home-container"
@@ -29,7 +21,7 @@
            x-on:change="handleFileSelect"
            accept=".pdf,application/pdf"
            class="hidden"
-           aria-label="{% trans "Upload PDF document" %}" />
+           aria-label="{% trans "Upload PDF document" %}">
     {# Chat service unavailable warning #}
     <div x-show="showUnavailableWarning"
          x-cloak
@@ -196,7 +188,7 @@
                      name="q"
                      placeholder="{% trans "What do you need help with?" %}"
                      class="search-input"
-                     aria-label="{% trans "Search or ask a question" %}" />
+                     aria-label="{% trans "Search or ask a question" %}">
             </div>
             {% trans "Ask" as ask_label %}
             <c-atoms.button type="submit" variant="primary" size="xl" aria_label="{{ ask_label }}" x-bind:disabled="isStreaming">
@@ -291,7 +283,7 @@
                      name="q"
                      placeholder="{% trans "Ask a follow-up question..." %}"
                      class="chat-input"
-                     aria-label="{% trans "Ask a follow-up question" %}" />
+                     aria-label="{% trans "Ask a follow-up question" %}">
             </div>
             {% trans "Send" as send_label %}
             <c-atoms.button type="submit" variant="primary" size="lg" aria_label="{{ send_label }}" x-bind:disabled="isStreaming">
@@ -307,5 +299,4 @@
 {% endblock content %}
 
 {% block footer %}
-
 {% endblock footer %}
