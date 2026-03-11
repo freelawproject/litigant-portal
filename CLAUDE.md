@@ -25,7 +25,7 @@ Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker e
 | ----------- | ------------- | ------------------------------------------ |
 | Local dev   | OpenAI        | docker-compose.yml + `.env` (secrets only) |
 | CI/CD       | None (mocked) | tox.ini - tests mock all providers         |
-| QA (Fly.io) | OpenAI        | fly.toml + `fly secrets`                   |
+| Production  | OpenAI        | docker-compose.yml + `.env` + secrets/     |
 
 **Local dev setup:**
 
@@ -255,10 +255,10 @@ Using **LiteLLM** with OpenAI for dev and QA. Model configured via `CHAT_MODEL` 
 
 ## Database
 
-SQLite everywhere (local dev, Docker, Fly.io).
+SQLite everywhere (local dev, Docker, production).
 
 - **Local dev:** `db.sqlite3` in project root
-- **Docker prod / Fly.io:** `sqlite:////data/db.sqlite3` on a volume
+- **Docker prod:** `sqlite:////data/db.sqlite3` on a Docker volume
 - **Concurrency:** WAL mode + `transaction_mode = "IMMEDIATE"` (Django 5.2) prevents "database is locked" under Gunicorn
 
 ### Reset Data (Demo Mode)
@@ -278,7 +278,7 @@ All frontend assets are local files, not CDN. Update these in sync when upgradin
 | ------------ | ------------------ | ------------------------------------------------ |
 | Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                     |
 | Alpine.js    | 3.14.9 (CSP build) | `static/js/alpine.js`, `static/js/alpine.min.js` |
-| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose, fly.toml)  |
+| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose.yml, .env)  |
 
 **Updating Alpine.js (CSP build):**
 
@@ -287,44 +287,65 @@ curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.js" -o stat
 curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js
 ```
 
-## Deployment (Fly.io)
+## Deployment (Self-Hosted)
 
-QA/staging environment deployed on Fly.io. Configuration in `fly.toml`.
+Production runs on a self-hosted server with Docker Compose and Caddy for automatic HTTPS.
 
-### Auto-Deploy
+### Server Requirements
 
-Pushes to `main` auto-deploy via GitHub Actions (`.github/workflows/fly-deploy.yml`).
+A server (VPS/droplet) with firewall allowing only:
 
-### Manual Deploy (PR Testing)
+- **80** (HTTP — Caddy redirects to HTTPS)
+- **443** (HTTPS — Caddy auto-provisions via Let's Encrypt)
+- **22** (SSH)
 
-To test a branch on QA before merging:
-
-```bash
-git checkout your-branch
-fly deploy              # Deploys your local working directory
-```
-
-Note: This deploys local files, not the GitHub branch. After merge, `main` auto-deploys.
-
-### Other Commands
+### Initial Setup
 
 ```bash
-fly logs                # View logs
-fly status              # Check app status
-fly ssh console         # SSH into container
+ssh user@your-server
+
+# Clone repo
+git clone https://github.com/freelawproject/litigant-portal.git /opt/litigant-portal
+cd /opt/litigant-portal
+
+# Install Docker (idempotent, supports apt/dnf/apk)
+./scripts/init-server.sh
+
+# Configure environment
+cp .env.example .env
+# Edit .env and set: DOMAIN, ALLOWED_HOSTS, OPENAI_API_KEY
+
+# Create secret key
+mkdir -p secrets
+python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
+
+# Start production stack
+docker compose --profile prod up --build -d
 ```
 
 ### Environment Variables
 
-Set via `fly secrets set KEY=value`:
+Set in `.env` at the project root:
 
-| Variable         | Description                |
-| ---------------- | -------------------------- |
-| `SECRET_KEY`     | Django secret key          |
-| `OPENAI_API_KEY` | OpenAI API key for AI chat |
+| Variable         | Description                             | Example              |
+| ---------------- | --------------------------------------- | -------------------- |
+| `DOMAIN`         | Public domain (Caddy uses for HTTPS)    | `portal.example.com` |
+| `ALLOWED_HOSTS`  | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
+| `OPENAI_API_KEY` | OpenAI API key for AI chat              | `sk-...`             |
 
-Non-secret env vars (`DATABASE_URL`, `CHAT_MODEL`, etc.) configured in `fly.toml` under `[env]`.
+Secret key is read from `secrets/django_secret_key.txt` (never committed).
+
+Non-secret env vars (`DATABASE_URL`, `CHAT_MODEL`, `GUNICORN_WORKERS`, etc.) can be set in `.env` or overridden in `docker-compose.yml`.
+
+### Common Commands
+
+```bash
+docker compose --profile prod logs -f          # View logs
+docker compose --profile prod exec django-prod python manage.py shell  # Django shell
+docker compose --profile prod down             # Stop stack
+docker compose --profile prod up --build -d    # Rebuild and restart
+```
 
 ### Database
 
-SQLite on a Fly Volume (`/data/db.sqlite3`). WAL mode enabled at startup.
+SQLite on a Docker volume (`/data/db.sqlite3`). WAL mode enabled at startup by the entrypoint.

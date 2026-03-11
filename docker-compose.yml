@@ -1,20 +1,20 @@
 # Litigant Portal Docker Compose
 #
 # Development: docker compose --profile dev up
-#   - Requires .env file with GROQ_API_KEY (copy from .env.example)
+#   - Requires .env file with OPENAI_API_KEY (copy from .env.example)
 #   - Auto-generates SECRET_KEY if not set
+#   - Access at http://localhost (port 80 via Caddy)
 #
 # Production: docker compose --profile prod up
-#   - Requires: secrets/django_secret_key.txt
+#   - Requires: secrets/django_secret_key.txt, DOMAIN in .env
+#   - Caddy auto-provisions HTTPS via Let's Encrypt
 
 services:
   # ---------------------------------------------------------------------------
   # Development Django Server
   # ---------------------------------------------------------------------------
   django-dev:
-    build:
-      context: .
-      target: development
+    build: .
     profiles: ['dev']
     command: web-dev
     environment:
@@ -27,8 +27,6 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - .:/app
-    ports:
-      - '8000:8000'
     stdin_open: true
     tty: true
 
@@ -36,24 +34,64 @@ services:
   # Production Django Server
   # ---------------------------------------------------------------------------
   django-prod:
-    build:
-      context: .
-      target: production
+    build: .
     profiles: ['prod']
     command: web-prod
     environment:
       - DEBUG=false
       - SECRET_KEY_FILE=/run/secrets/django_secret_key
       - DATABASE_URL=sqlite:////data/db.sqlite3
-      - ALLOWED_HOSTS=${ALLOWED_HOSTS:-localhost}
+      - ALLOWED_HOSTS=localhost,${ALLOWED_HOSTS:-localhost}
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
+      # AI Chat configuration
+      - CHAT_ENABLED=${CHAT_ENABLED:-true}
+      - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health/']
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
     secrets:
       - django_secret_key
     volumes:
       - sqlite_data:/data
+      - staticfiles:/app/staticfiles
+
+  # ---------------------------------------------------------------------------
+  # Caddy Reverse Proxy (Development)
+  # ---------------------------------------------------------------------------
+  caddy-dev:
+    image: caddy:2-alpine
+    profiles: ['dev']
     ports:
-      - '8000:8000'
+      - '80:80'
+    volumes:
+      - ./deploy/caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - django-dev
+
+  # ---------------------------------------------------------------------------
+  # Caddy Reverse Proxy (Production)
+  # ---------------------------------------------------------------------------
+  caddy-prod:
+    image: caddy:2-alpine
+    profiles: ['prod']
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      - DOMAIN=${DOMAIN:?Set DOMAIN in .env or environment}
+    volumes:
+      - ./deploy/caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+      - staticfiles:/srv/staticfiles:ro
+    depends_on:
+      django-prod:
+        condition: service_healthy
 
 # ---------------------------------------------------------------------------
 # Secrets (create these files locally, never commit them)
@@ -64,3 +102,6 @@ secrets:
 
 volumes:
   sqlite_data:
+  staticfiles:
+  caddy_data:
+  caddy_config:

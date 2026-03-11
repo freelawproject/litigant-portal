@@ -9,7 +9,7 @@ cp .env.example .env      # Add your OPENAI_API_KEY
 make docker-dev           # Start dev environment
 ```
 
-Visit: http://portal.localhost:8000
+Visit: http://portal.localhost
 
 ### Docker Production
 

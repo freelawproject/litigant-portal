@@ -39,10 +39,6 @@ ALLOWED_HOSTS = [
     if h.strip()
 ] or (["localhost", "127.0.0.1", "0.0.0.0"] if DEBUG else [])
 
-# Fly.io auto-sets FLY_APP_NAME
-if fly_app := os.environ.get("FLY_APP_NAME"):
-    ALLOWED_HOSTS.append(f"{fly_app}.fly.dev")
-
 # Required for Django's debug context processor to expose 'debug' in templates
 if DEBUG:
     # In DEBUG mode, treat all IPs as internal (for Docker networking)
@@ -258,6 +254,11 @@ if not DEBUG:
     # Secure cookies
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+
+    # Trust origins that match ALLOWED_HOSTS over HTTPS
+    CSRF_TRUSTED_ORIGINS = [
+        f"https://{host}" for host in ALLOWED_HOSTS if host != "*"
+    ]
 
     # Additional security headers
     SECURE_CONTENT_TYPE_NOSNIFF = True
