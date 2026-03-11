@@ -1,6 +1,7 @@
 {% load i18n %}
 
-{% if not user.is_authenticated %}
+<c-vars preview="" />
+{% if not user.is_authenticated or preview %}
   <section class="auth-cta {{ class }}" {{ attrs }}>
     <div class="auth-cta-inner">
       <div class="auth-cta-content">
@@ -13,10 +14,12 @@
         </ul>
       </div>
       <div class="auth-cta-actions">
-        <a href="{% url 'account_signup' %}"
-           class="auth-cta-btn auth-cta-btn-primary">{% trans "Create Account" %}</a>
-        <a href="{% url 'account_login' %}"
-           class="auth-cta-btn auth-cta-btn-outline">{% trans "Sign In" %}</a>
+        <c-atoms.button href="{% url 'account_signup' %}" variant="primary" size="xl" full_width class="justify-center">
+        {% trans "Create Account" %}
+        </c-atoms.button>
+        <c-atoms.button href="{% url 'account_login' %}" variant="outline" size="xl" full_width class="justify-center">
+        {% trans "Sign In" %}
+        </c-atoms.button>
       </div>
     </div>
   </section>
