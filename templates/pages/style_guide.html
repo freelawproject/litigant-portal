@@ -413,8 +413,16 @@
               <c-atoms.button variant="primary">Default</c-atoms.button>
               <c-atoms.button variant="primary" size="xl">Extra Large</c-atoms.button>
             </div>
-            <div class="mb-6">
-              <c-atoms.button variant="primary" disabled>Disabled</c-atoms.button>
+            <div class="flex flex-wrap gap-3 mb-6">
+              <c-atoms.button variant="primary" disabled>Primary</c-atoms.button>
+              <c-atoms.button variant="outline" disabled>Outline</c-atoms.button>
+              <c-atoms.button variant="dark" disabled>Dark</c-atoms.button>
+              <c-atoms.button variant="ghost" disabled>Ghost</c-atoms.button>
+              <c-atoms.button variant="danger" disabled>Danger</c-atoms.button>
+            </div>
+            <div class="flex flex-wrap gap-3 mb-6">
+              <c-atoms.button variant="primary" href="#">Link Button</c-atoms.button>
+              <c-atoms.button variant="primary" href="#" disabled>Disabled Link</c-atoms.button>
             </div>
             <h4 class="mt-8">Props</h4>
             <div class="bg-greyscale-100 rounded-xl p-4 my-3">
@@ -424,11 +432,15 @@
               </div>
               <div class="flex flex-col md:flex-row border-b border-greyscale-200">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
-                <span class="p-2.5">"sm" | "" | "xl"</span>
+                <span class="p-2.5">"sm" | "" | "xl" | "icon" | "icon-xl"</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+                <span class="p-2.5">URL string — renders as &lt;a&gt; instead of &lt;button&gt;</span>
               </div>
               <div class="flex flex-col md:flex-row">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
-                <span class="p-2.5">Boolean</span>
+                <span class="p-2.5">Boolean — uses <code>aria-disabled</code> for links</span>
               </div>
             </div>
             <details class="mt-4">

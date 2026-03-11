@@ -235,6 +235,95 @@
    ========================================================================== */
 
 @layer components {
+  /* ==========================================================================
+     BUTTON ATOM
+     ========================================================================== */
+
+  /* Base */
+  .btn {
+    @apply rounded-lg w-fit font-normal flex gap-1 items-center transition-colors duration-200;
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed;
+  }
+
+  .btn[aria-disabled='true'] {
+    @apply pointer-events-none;
+  }
+
+  /* Sizes */
+  .btn-sm {
+    @apply py-1.5 px-2.5 text-xs;
+  }
+
+  .btn-md {
+    @apply py-2.5 px-3.5 text-sm;
+  }
+
+  .btn-xl {
+    @apply py-3 px-4.5 text-md;
+  }
+
+  .btn-icon {
+    @apply p-2.5;
+  }
+
+  .btn-icon-xl {
+    @apply p-3;
+  }
+
+  /* Variants */
+  .btn-primary {
+    @apply text-white bg-primary-600 outline-none;
+    @apply hover:bg-primary-700 focus-visible:ring-4 focus-visible:ring-primary-300;
+  }
+
+  .btn-primary:disabled,
+  .btn-primary[aria-disabled='true'] {
+    @apply bg-primary-100 text-primary-400;
+  }
+
+  .btn-outline {
+    @apply bg-white text-greyscale-700 border border-greyscale-300 outline-none;
+    @apply hover:bg-greyscale-100 focus-visible:ring-4 focus-visible:ring-greyscale-300;
+  }
+
+  .btn-outline:disabled,
+  .btn-outline[aria-disabled='true'] {
+    @apply bg-white text-greyscale-400 border-greyscale-200;
+  }
+
+  .btn-dark {
+    @apply text-white bg-greyscale-900 outline-none;
+    @apply hover:bg-greyscale-800 focus-visible:ring-4 focus-visible:ring-greyscale-400;
+  }
+
+  .btn-dark:disabled,
+  .btn-dark[aria-disabled='true'] {
+    @apply bg-greyscale-400 text-greyscale-200;
+  }
+
+  .btn-ghost {
+    @apply text-greyscale-700;
+    @apply hover:bg-greyscale-100 focus-visible:ring-4 focus-visible:ring-greyscale-200;
+  }
+
+  .btn-ghost:disabled,
+  .btn-ghost[aria-disabled='true'] {
+    @apply text-greyscale-400;
+  }
+
+  .btn-danger {
+    @apply text-white bg-red-500 outline-none;
+    @apply hover:bg-red-600 focus-visible:ring-4 focus-visible:ring-red-300;
+  }
+
+  .btn-danger:disabled,
+  .btn-danger[aria-disabled='true'] {
+    @apply bg-red-200 text-red-400;
+  }
+
   /* Skip Link - Accessibility */
   .skip-link {
     @apply transition-all ease-in-out pointer-events-none;
