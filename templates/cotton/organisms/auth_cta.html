@@ -1,0 +1,23 @@
+{% load i18n %}
+
+{% if not user.is_authenticated %}
+  <section class="auth-cta {{ class }}" {{ attrs }}>
+    <div class="auth-cta-inner">
+      <div class="auth-cta-content">
+        <h2 class="auth-cta-heading">{% trans "Sign in or create an account" %}</h2>
+        <ul class="auth-cta-benefits">
+          <li>{% trans "Save your answers" %}</li>
+          <li>{% trans "Return to paperwork you started" %}</li>
+          <li>{% trans "E-file your documents with the court" %}</li>
+          <li>{% trans "Access case history and files" %}</li>
+        </ul>
+      </div>
+      <div class="auth-cta-actions">
+        <a href="{% url 'account_signup' %}"
+           class="auth-cta-btn auth-cta-btn-primary">{% trans "Create Account" %}</a>
+        <a href="{% url 'account_login' %}"
+           class="auth-cta-btn auth-cta-btn-outline">{% trans "Sign In" %}</a>
+      </div>
+    </div>
+  </section>
+{% endif %}

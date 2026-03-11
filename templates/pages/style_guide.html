@@ -140,6 +140,14 @@
               <a href="#case-sidebar"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Case Sidebar</a>
             </li>
+            <li>
+              <a href="#fallback-resources"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Fallback Resources</a>
+            </li>
+            <li>
+              <a href="#auth-cta"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth CTA</a>
+            </li>
           </ul>
         </details>
       </nav>
@@ -909,6 +917,28 @@
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
                 <span class="p-2.5">Sidebar sections content</span>
               </div>
+            </div>
+          </section>
+          <section id="fallback-resources"
+                   class="mb-12"
+                   aria-labelledby="fallback-resources-heading">
+            <h3 id="fallback-resources-heading" class="mb-4">Fallback Resources</h3>
+            <p class="text-greyscale-600 mb-6">
+              "What if my issue isn't here?" — resource links box and two accordions for self-help content.
+              Shown when no topic matches the user's situation.
+            </p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+              <c-organisms.fallback-resources />
+            </div>
+          </section>
+          <section id="auth-cta" class="mb-12" aria-labelledby="auth-cta-heading">
+            <h3 id="auth-cta-heading" class="mb-4">Auth CTA</h3>
+            <p class="text-greyscale-600 mb-6">
+              Account sign-up prompt with benefit bullets and Create Account / Sign In buttons.
+              Renders nothing for authenticated users.
+            </p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+              <c-organisms.auth-cta />
             </div>
           </section>
         </section>
