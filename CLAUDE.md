@@ -128,6 +128,15 @@ templates/cotton/
 
 Style guide available at `/style-guide/` during development.
 
+**NEVER** create custom CSS classes or raw HTML that duplicates what an existing atom/molecule already does. **ALWAYS** check existing components before writing any UI element:
+
+1. Check `templates/cotton/` for an existing component at the right atomic level
+2. Check component props — variants, sizes, `href`, `full_width`, `class` passthrough — before assuming a component can't do what you need
+3. If a component is _almost_ right, **extend it** with a new prop rather than bypassing it with custom CSS
+4. Check Tailwind theme tokens in `src/css/main.css` before inventing new values
+
+Only create a new component when no combination of existing ones works. Only add new theme tokens when the design system genuinely needs them.
+
 ### State Flow
 
 Django renders initial state, Alpine.js handles client-side reactivity. All components use named `Alpine.data()` registrations (CSP build requirement — no inline expressions):

@@ -430,6 +430,68 @@
   }
 
   /* ==========================================================================
+     FALLBACK RESOURCES SECTION
+     ========================================================================== */
+
+  .fallback-resources {
+    @apply px-4 py-8 md:py-12;
+  }
+
+  .fallback-resources-inner {
+    @apply max-w-content mx-auto;
+  }
+
+  .fallback-resources-heading {
+    @apply text-display-xs font-semibold text-greyscale-900 mb-6;
+  }
+
+  .fallback-resources-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-6;
+  }
+
+  .fallback-resources-links {
+    @apply border border-greyscale-200 rounded-xl p-5 bg-white flex flex-col gap-3;
+  }
+
+  .fallback-accordion {
+    @apply border border-greyscale-200 rounded-xl bg-white mb-3 last:mb-0;
+  }
+
+  .fallback-accordion-summary {
+    @apply flex w-full items-center justify-between px-4 py-3.5;
+    @apply text-sm font-medium text-greyscale-900 cursor-pointer;
+    @apply list-none [&::-webkit-details-marker]:hidden;
+  }
+
+  /* ==========================================================================
+     AUTH CTA SECTION
+     ========================================================================== */
+
+  .auth-cta {
+    @apply bg-greyscale-100 px-4 py-10 md:py-14;
+  }
+
+  .auth-cta-inner {
+    @apply max-w-content mx-auto flex flex-col sm:flex-row gap-8 items-start justify-between;
+  }
+
+  .auth-cta-content {
+    @apply flex-1;
+  }
+
+  .auth-cta-heading {
+    @apply text-display-sm font-semibold text-greyscale-900 mb-4;
+  }
+
+  .auth-cta-benefits {
+    @apply space-y-2 text-md font-semibold text-greyscale-800 list-disc list-inside;
+  }
+
+  .auth-cta-actions {
+    @apply flex flex-col gap-3 w-full sm:w-64 flex-shrink-0;
+  }
+
+  /* ==========================================================================
      HOME PAGE - CHAT MODE LAYOUT
      ========================================================================== */
 
