@@ -20,7 +20,7 @@ services:
     environment:
       - DEBUG=true
       - SECRET_KEY=${SECRET_KEY:-auto}
-      - ALLOWED_HOSTS=portal.localhost
+      - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
       - CHAT_MODEL=openai/gpt-4o-mini
@@ -48,6 +48,12 @@ services:
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
       - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health/']
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
     secrets:
       - django_secret_key
     volumes:
@@ -83,11 +89,9 @@ services:
       - caddy_data:/data
       - caddy_config:/config
       - staticfiles:/srv/staticfiles:ro
-    # NOTE: depends_on waits for container start, not for collectstatic to
-    # finish. Static assets may 404 briefly on first deploy until Django's
-    # entrypoint completes collectstatic into the shared volume.
     depends_on:
-      - django-prod
+      django-prod:
+        condition: service_healthy
 
 # ---------------------------------------------------------------------------
 # Secrets (create these files locally, never commit them)

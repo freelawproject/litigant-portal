@@ -83,7 +83,7 @@ TOPICS = {
 
 
 def health(request):
-    """Lightweight health check for Fly.io."""
+    """Lightweight health check for container orchestration."""
     return HttpResponse("ok")
 
 
