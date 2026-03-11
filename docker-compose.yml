@@ -62,8 +62,6 @@ services:
     profiles: ['dev']
     ports:
       - '80:80'
-    environment:
-      - DOMAIN=${DOMAIN:-http://portal.localhost}
     volumes:
       - ./deploy/caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
     depends_on:
