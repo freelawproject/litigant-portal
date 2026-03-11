@@ -4,15 +4,7 @@
 <div class="flex items-start gap-3 p-3 rounded-lg bg-greyscale-50 border border-greyscale-200 {{ class }}"
      {{ attrs }}>
   <div class="flex-shrink-0 mt-0.5">
-    <c-atoms.icon name="{{ icon }}" class="w-5 h-5
-    {% if status == 'urgent' %}
-      text-red-500
-    {% elif status == 'completed' %}
-      text-green-500
-    {% else %}
-      text-greyscale-400
-    {% endif %}
-    " />
+    <c-atoms.icon name="{{ icon }}" class="w-5 h-5 {% if status == 'urgent' %}text-red-500{% elif status == 'completed' %}text-green-500{% else %}text-greyscale-400{% endif %}" />
   </div>
   <div class="flex-1 min-w-0">
     <div class="flex items-center justify-between gap-2">

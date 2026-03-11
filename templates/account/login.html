@@ -3,12 +3,10 @@
 {% load static i18n %}
 
 {% block title %}
-
   {% trans "Sign In" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block auth_content %}
-
   <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Sign in" %}</h1>
   <p class="text-greyscale-600 mb-6">{% trans "Access your legal assistance portal" %}</p>
   {# Error messages #}
@@ -40,7 +38,6 @@
 {% endblock auth_content %}
 
 {% block auth_footer %}
-
   <p class="text-sm text-greyscale-600">
     {% trans "Don't have an account?" %}
     <c-atoms.link href="{% url 'account_signup' %}" variant="primary">{% trans "Create one" %}</c-atoms.link>

@@ -76,11 +76,13 @@ SECRET_KEY=test .venv/bin/python manage.py test portal.tests.ProfileViewTests
 Pre-commit runs automatically on commit. Key hooks:
 
 - **ruff** - Python linting/formatting
-- **djlint** - HTML template linting/formatting
+- **djlint** - HTML template linting (errors only, no auto-formatting)
 - **prettier** - JS, JSON, CSS, Markdown, YAML formatting
 - **csp-inline-check** - Blocks inline event handlers (CSP compliance)
 
 Run all hooks manually: `pre-commit run --all-files`
+
+**Note:** djlint runs in **lint-only mode** (no auto-formatter). Its formatter was mangling template tags inside HTML attributes — expanding single-line `{% block %}` tags to multi-line and injecting whitespace into rendered attributes. See "Template Formatting" below for the manual conventions that replace the formatter.
 
 ### Before Committing
 
@@ -90,6 +92,138 @@ Always run before commits (especially after rebases or batch edits):
 make lint    # Format + lint all code
 make test    # Run test suite
 ```
+
+### Template Formatting (Manual Conventions)
+
+No auto-formatter for `.html` templates — djlint runs lint-only. Follow these Prettier-inspired conventions. Cotton components (`<c-atoms.button>`, `<c-organisms.header>`) are valid HTML5 custom elements and follow the same rules as any HTML tag.
+
+**1. Indentation: 2 spaces.** For HTML elements, Cotton components, and template tags alike.
+
+**2. Attribute wrapping: single vs multi-line.**
+
+If all attributes fit on one line within ~120 chars, keep them inline:
+
+```html
+<div class="flex items-center gap-2">
+  <c-atoms.icon name="check" class="w-4 h-4" />
+  <c-atoms.button
+    type="button"
+    variant="primary"
+    x-on:click="save"
+  ></c-atoms.button>
+</div>
+```
+
+If they don't fit, one attribute per line, aligned with the first attribute. Closing `>` stays on the last attribute line (not on its own line):
+
+```html
+<input
+  type="text"
+  x-bind:value="inputText"
+  x-on:input="updateInput"
+  name="q"
+  placeholder="{% trans 'Ask a question' %}"
+  class="chat-input"
+  aria-label="{% trans 'Ask a question' %}"
+/>
+```
+
+For Cotton components, same rule — first attribute on the tag line, rest aligned:
+
+```html
+<c-molecules.form-field
+  label="Email"
+  type="email"
+  name="email"
+  required
+  value="{{ form.email.value|default:'' }}"
+/>
+```
+
+**3. Template tags inside HTML attributes MUST stay on one line.**
+
+This is the critical rule. Django template tags (`{% block %}`, `{% if %}`, `{{ var }}`) inside an attribute value must remain on the same line as the attribute. Multi-line = literal whitespace in the rendered HTML.
+
+```html
+<!-- GOOD -->
+<body
+  class="{% block body_class %}min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}"
+>
+  <main class="flex-1 {% block main_class %}{% endblock main_class %}">
+    <meta
+      name="description"
+      content="{% block meta_description %}{% trans 'Default' %}{% endblock meta_description %}"
+    />
+
+    <!-- BAD: whitespace injected into rendered class attribute -->
+    <body
+      class="{% block body_class %}
+    min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
+    "
+    ></body>
+  </main>
+</body>
+```
+
+These lines will be long. That's OK — attribute values are not breakable.
+
+**4. Block-level template tags get their own lines.**
+
+Outside of attributes, `{% block %}`, `{% if %}`, `{% for %}` etc. get their own lines and indent their children:
+
+```html
+{% block content %}
+<div class="container">
+  <h1>Title</h1>
+</div>
+{% endblock content %} {% if user.is_authenticated %}
+<p>Welcome</p>
+{% else %}
+<p>Please sign in</p>
+{% endif %}
+```
+
+**5. Self-closing tags.**
+
+Void HTML elements use `>` (no slash): `<meta>`, `<input>`, `<link>`, `<img>`, `<br>`, `<hr>`. Cotton components and non-void elements with no children use `/>`:
+
+```html
+<!-- Void HTML elements: no slash -->
+<meta charset="UTF-8" />
+<input type="text" name="q" />
+<img src="logo.svg" alt="Logo" class="h-12" />
+
+<!-- Cotton self-closing: slash -->
+<c-atoms.icon name="check" class="w-4 h-4" />
+<c-atoms.typing-indicator />
+<c-organisms.header />
+```
+
+**6. Quotes: double quotes** for all HTML attributes. Single quotes only inside attribute values for Django template tags: `value="{{ form.email.value|default:'' }}"`.
+
+**7. Blank lines.** One blank line between logical sections. Never multiple consecutive blank lines. No blank line immediately after an opening tag or before a closing tag:
+
+```html
+<!-- GOOD -->
+<div class="container">
+  <h1>Title</h1>
+  <p>Content</p>
+</div>
+
+<!-- BAD: blank line after opening tag -->
+<div class="container">
+  <h1>Title</h1>
+</div>
+```
+
+**8. Short inline elements stay on one line** when they fit:
+
+```html
+<p class="text-sm text-greyscale-500">{% trans "No activity yet" %}</p>
+<span class="font-semibold">{% trans "Activity" %}</span>
+```
+
+**9. Long `class` values.** Tailwind classes stay on one line inside the `class` attribute even when long — don't break a class string across lines. If the element also has many other attributes, the `class` attribute gets its own line in the multi-line format (rule 2), but the value itself stays unbroken.
 
 ## Architecture
 
