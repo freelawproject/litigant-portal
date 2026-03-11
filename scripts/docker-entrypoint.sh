@@ -48,7 +48,7 @@ run_compilemessages() {
 
 case "$1" in
     web-dev)
-        echo "Starting development server..."
+        echo "Starting development server at http://localhost ..."
         # Start Tailwind watch in background
         tailwindcss -i src/css/main.css -o static/css/main.built.css --watch &
 
