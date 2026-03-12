@@ -1,16 +1,16 @@
 {% extends "account/base.html" %}
 
-{% load static %}
-
 {% block title %}
   Sign Out - Litigant Portal
 {% endblock title %}
 
 {% block auth_content %}
-  <div class="text-center">
-    <c-atoms.icon name="arrow-right-start-on-rectangle" class="w-12 h-12 text-greyscale-400 mx-auto mb-4" />
-    <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">Sign out</h1>
-    <p class="text-greyscale-600 mb-6">Are you sure you want to sign out?</p>
+  <c-molecules.auth-status
+    icon="arrow-right-start-on-rectangle"
+    icon_class="text-greyscale-400"
+    heading="Sign out"
+    description="Are you sure you want to sign out?"
+  >
     <form method="post" action="{% url 'account_logout' %}">
       {% csrf_token %}
       <div class="flex flex-col sm:flex-row gap-3 justify-center">
@@ -24,5 +24,5 @@
         </c-atoms.button>
       </div>
     </form>
-  </div>
+  </c-molecules.auth-status>
 {% endblock auth_content %}
