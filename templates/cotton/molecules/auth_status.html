@@ -1,0 +1,9 @@
+<c-vars icon="" icon_style="" icon_class="" heading="" description="" />
+<div class="text-center {{ class }}" {{ attrs }}>
+  {% if icon %}
+    <c-atoms.icon name="{{ icon }}" style="{{ icon_style }}" class="w-12 h-12 {{ icon_class }} mx-auto mb-4" />
+  {% endif %}
+  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{{ heading }}</h1>
+  <p class="text-greyscale-600 mb-6">{{ description }}</p>
+  {{ slot }}
+</div>
