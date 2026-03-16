@@ -519,6 +519,70 @@
   }
 
   /* ==========================================================================
+     TOPIC CHAT ENTRY
+     ========================================================================== */
+
+  .topic-entry {
+    @apply max-w-xl mx-auto text-center flex flex-col;
+  }
+
+  .topic-entry-header {
+    @apply flex items-center gap-3 text-left;
+  }
+
+  .topic-entry-icon {
+    @apply flex-shrink-0 w-10 h-10 rounded-lg;
+    @apply bg-primary-50 text-primary-600;
+    @apply flex items-center justify-center;
+  }
+
+  .topic-entry-title {
+    @apply font-cooper font-semibold text-display-xs text-greyscale-900 m-0;
+  }
+
+  .topic-entry-subtitle {
+    @apply text-sm text-greyscale-600 mt-0.5 m-0;
+  }
+
+  .topic-prompts {
+    @apply flex flex-col gap-2 mt-6;
+  }
+
+  .topic-prompt-btn {
+    @apply w-full flex items-center gap-3 text-left;
+    @apply px-4 py-3 rounded-lg;
+    @apply bg-white border border-greyscale-200 text-greyscale-700;
+    @apply hover:border-primary-300 hover:bg-primary-25;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2;
+    @apply transition-colors duration-200 cursor-pointer;
+    @apply text-sm font-medium;
+    min-height: 44px;
+  }
+
+  /* Topic Context — collapsible info panel */
+  .topic-context-card {
+    @apply mt-1;
+  }
+
+  /* Hide native disclosure triangle across browsers */
+  .topic-context-card > .topic-context-toggle {
+    list-style: none;
+  }
+
+  .topic-context-card > .topic-context-toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .topic-context-toggle {
+    @apply inline-flex items-center gap-1.5 py-0.5 rounded;
+    @apply text-xs font-medium text-greyscale-400 cursor-pointer;
+    @apply hover:text-greyscale-600 transition-colors;
+  }
+
+  .topic-context-body {
+    @apply pt-2 pb-1 space-y-3 text-left;
+  }
+  /* ==========================================================================
      FALLBACK RESOURCES SECTION
      ========================================================================== */
 

@@ -23,6 +23,42 @@ TOPICS = {
         "meta_description": _(
             "Learn about the eviction process, tenant rights, and landlord obligations. General legal information for self-represented litigants."
         ),
+        "prompts": [
+            _(
+                "I received an eviction notice and need to understand my options"
+            ),
+            _("My landlord isn't making repairs — what are my rights?"),
+            _("I'm behind on rent and worried about eviction"),
+        ],
+        "context_sections": [
+            {
+                "heading": _("The eviction process"),
+                "body": _(
+                    "Eviction follows a legal process: written notice, court"
+                    " filing, hearing, judgment, and enforcement. A landlord"
+                    " cannot skip steps or use self-help eviction (changing"
+                    " locks, shutting off utilities)."
+                ),
+            },
+            {
+                "heading": _("Key tenant rights"),
+                "body": _(
+                    "You have the right to proper written notice, habitable"
+                    " living conditions, protection from retaliation, freedom"
+                    " from discrimination under the Fair Housing Act, and the"
+                    " right to appear and respond in court."
+                ),
+            },
+            {
+                "heading": _("If you received a notice"),
+                "body": _(
+                    "Read the notice carefully and note any deadlines. Do not"
+                    " ignore it — missing a court date usually results in a"
+                    " default judgment. Gather your lease, rent receipts,"
+                    " photos, and communications with your landlord."
+                ),
+            },
+        ],
     },
     "family": {
         "title": _("Family & Divorce"),
@@ -34,6 +70,8 @@ TOPICS = {
         "meta_description": _(
             "Learn about divorce, child custody, child support, and family court. General legal information for self-represented litigants."
         ),
+        "prompts": [],
+        "context_sections": [],
     },
     "small-claims": {
         "title": _("Small Claims"),
@@ -45,6 +83,8 @@ TOPICS = {
         "meta_description": _(
             "Learn about filing or defending a small claims case. General legal information for self-represented litigants."
         ),
+        "prompts": [],
+        "context_sections": [],
     },
     "consumer": {
         "title": _("Consumer Rights"),
@@ -56,6 +96,8 @@ TOPICS = {
         "meta_description": _(
             "Learn about consumer rights, debt collection rules, and contract disputes. General legal information for self-represented litigants."
         ),
+        "prompts": [],
+        "context_sections": [],
     },
     "expungement": {
         "title": _("Expungement"),
@@ -67,6 +109,8 @@ TOPICS = {
         "meta_description": _(
             "Learn about expungement, record sealing, and eligibility requirements. General legal information for self-represented litigants."
         ),
+        "prompts": [],
+        "context_sections": [],
     },
     "traffic": {
         "title": _("Traffic & Fines"),
@@ -78,6 +122,8 @@ TOPICS = {
         "meta_description": _(
             "Learn about traffic tickets, fines, license suspension, and your options. General legal information for self-represented litigants."
         ),
+        "prompts": [],
+        "context_sections": [],
     },
 }
 
@@ -97,12 +143,20 @@ def topic_detail(request, slug):
     topic = TOPICS.get(slug)
     if not topic:
         raise Http404(f"Topic '{slug}' not found")
-    return render(request, f"pages/topics/{slug}.html", {"topic": topic})
+    return render(
+        request, f"pages/topics/{slug}.html", {"topic": topic, "slug": slug}
+    )
 
 
 def chat_page(request):
     """Chat page - AI-powered legal assistance chat interface."""
-    return render(request, "pages/chat.html")
+    slug = request.GET.get("topic", "").strip()
+    topic = TOPICS.get(slug) if slug else None
+    return render(
+        request,
+        "pages/chat.html",
+        {"topic": topic, "topic_slug": slug if topic else ""},
+    )
 
 
 def test_agent(request, agent_name):
