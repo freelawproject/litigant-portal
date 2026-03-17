@@ -95,7 +95,7 @@ make test    # Run test suite
 
 ### Template Formatting (Manual Conventions)
 
-No auto-formatter for `.html` templates — djlint runs lint-only. Follow these Prettier-inspired conventions. Cotton components (`<c-atoms.button>`, `<c-organisms.header>`) are valid HTML5 custom elements and follow the same rules as any HTML tag.
+No auto-formatter for `.html` templates — djlint runs lint-only. Follow these Prettier-inspired conventions (Prettier is the source of truth — a Cotton plugin is planned). Cotton components (`<c-atoms.button>`, `<c-organisms.header>`) are valid HTML5 custom elements and follow the same rules as any HTML tag.
 
 **1. Indentation: 2 spaces.** For HTML elements, Cotton components, and template tags alike.
 
@@ -114,7 +114,7 @@ If all attributes fit on one line within ~120 chars, keep them inline:
 </div>
 ```
 
-If they don't fit, one attribute per line, aligned with the first attribute. Closing `>` stays on the last attribute line (not on its own line):
+If they don't fit, one attribute per line. Closing `>` or `/>` goes on its own line (Prettier default, `bracketSameLine: false`):
 
 ```html
 <input
@@ -185,21 +185,30 @@ Outside of attributes, `{% block %}`, `{% if %}`, `{% for %}` etc. get their own
 
 **5. Self-closing tags.**
 
-Void HTML elements use `>` (no slash): `<meta>`, `<input>`, `<link>`, `<img>`, `<br>`, `<hr>`. Cotton components and non-void elements with no children use `/>`:
+Prettier adds `/>` to void HTML elements and self-closing components alike. Follow Prettier:
 
 ```html
-<!-- Void HTML elements: no slash -->
+<!-- Void HTML elements -->
 <meta charset="UTF-8" />
 <input type="text" name="q" />
 <img src="logo.svg" alt="Logo" class="h-12" />
 
-<!-- Cotton self-closing: slash -->
+<!-- Cotton self-closing -->
 <c-atoms.icon name="check" class="w-4 h-4" />
 <c-atoms.typing-indicator />
 <c-organisms.header />
 ```
 
 **6. Quotes: double quotes** for all HTML attributes. Single quotes only inside attribute values for Django template tags: `value="{{ form.email.value|default:'' }}"`.
+
+**`{% trans %}` in Cotton props:** Never put `{% trans %}` directly in a prop attribute — the single quotes needed to avoid closing the HTML attribute violate djlint T002. Extract to a variable first:
+
+```html
+{% trans "Check your email" as status_heading %}
+<c-molecules.auth-status
+  heading="{{ status_heading }}"
+></c-molecules.auth-status>
+```
 
 **7. Blank lines.** One blank line between logical sections. Never multiple consecutive blank lines. No blank line immediately after an opening tag or before a closing tag:
 
@@ -270,6 +279,12 @@ Style guide available at `/style-guide/` during development.
 4. Check Tailwind theme tokens in `src/css/main.css` before inventing new values
 
 Only create a new component when no combination of existing ones works. Only add new theme tokens when the design system genuinely needs them.
+
+**Atomic design check (both directions):** After any template or component change:
+
+- **Top-down:** Are templates composing existing atoms/molecules/organisms? No hand-rolled HTML that duplicates a component.
+- **Bottom-up:** Are there repeated patterns across templates that should be _extracted_ into new components? If 3+ templates share the same HTML structure (same tags, classes, layout), that's a missing molecule or organism.
+- **Style guide:** Does `templates/pages/style_guide.html` need updating? New components, new props, or changed behavior should be reflected there.
 
 ### State Flow
 

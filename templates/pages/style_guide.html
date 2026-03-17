@@ -109,6 +109,10 @@
               <a href="#sidebar-section"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Sidebar Section</a>
             </li>
+            <li>
+              <a href="#auth-status"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth Status</a>
+            </li>
           </ul>
         </details>
         <details open class="mb-2 nav-accordion">
@@ -144,6 +148,10 @@
             <li>
               <a href="#auth-cta"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth CTA</a>
+            </li>
+            <li>
+              <a href="#auth-layout"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth Layout</a>
             </li>
           </ul>
         </details>
@@ -862,6 +870,81 @@
               </div>
             </div>
           </section>
+          <section id="auth-status" class="mb-12" aria-labelledby="auth-status-heading">
+            <h3 id="auth-status-heading" class="mb-4">Auth Status</h3>
+            <p class="text-greyscale-600 mb-6">
+              Centered status page pattern used across auth flows — icon, heading, description, and CTA slot.
+            </p>
+            <div class="space-y-6">
+              {# Info variant #}
+              <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
+                <c-molecules.auth-status
+                  icon="envelope"
+                  icon_class="text-greyscale-400"
+                  heading="Check your email"
+                  description="We've sent a password reset link to your email address."
+                >
+                  <c-atoms.button href="#" variant="outline" class="justify-center">
+                  Back to sign in
+                  </c-atoms.button>
+                </c-molecules.auth-status>
+              </div>
+              {# Success variant #}
+              <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
+                <c-molecules.auth-status
+                  icon="check-circle"
+                  icon_style="solid"
+                  icon_class="text-green-500"
+                  heading="Password reset complete"
+                  description="Your password has been changed successfully."
+                >
+                  <c-atoms.button href="#" variant="primary" size="xl" full_width class="justify-center">
+                  Sign in
+                  </c-atoms.button>
+                </c-molecules.auth-status>
+              </div>
+              {# Error variant #}
+              <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
+                <c-molecules.auth-status
+                  icon="exclamation-circle"
+                  icon_class="text-red-500"
+                  heading="Invalid reset link"
+                  description="This password reset link is invalid or has expired."
+                >
+                  <c-atoms.button href="#" variant="primary" size="xl" full_width class="justify-center">
+                  Request new reset link
+                  </c-atoms.button>
+                </c-molecules.auth-status>
+              </div>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+                <span class="p-2.5">Heroicon name (outline by default)</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_style</code></span>
+                <span class="p-2.5">"solid" for filled icon; empty = outline (default)</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_class</code></span>
+                <span class="p-2.5">Color class for the icon (e.g. "text-green-500")</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>heading</code></span>
+                <span class="p-2.5">Status heading text</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>description</code></span>
+                <span class="p-2.5">Descriptive paragraph below the heading</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
+                <span class="p-2.5">CTA area — button, link, or form</span>
+              </div>
+            </div>
+          </section>
         </section>
         <section id="organisms" aria-labelledby="organisms-heading">
           <h2 id="organisms-heading"
@@ -948,6 +1031,39 @@
             </p>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.auth-cta preview="true" />
+            </div>
+          </section>
+          <section id="auth-layout" class="mb-12" aria-labelledby="auth-layout-heading">
+            <h3 id="auth-layout-heading" class="mb-4">Auth Layout</h3>
+            <p class="text-greyscale-600 mb-6">
+              Full-page centered layout used by all auth templates — background, logo link, white card, and optional footer.
+            </p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+              <c-organisms.auth-layout class="!min-h-0">
+                <p class="text-greyscale-600 text-center">Card content goes here via the default slot.</p>
+                <c-slot name="footer">
+                  <p class="text-sm text-greyscale-600">
+                    Footer content via the named
+                    <code>footer</code>
+                    slot.
+                  </p>
+                </c-slot>
+              </c-organisms.auth-layout>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
+                <span class="p-2.5">Card body content (default slot)</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>footer</code></span>
+                <span class="p-2.5">Named slot — below-card text; wrapper div omitted when empty</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>class</code></span>
+                <span class="p-2.5">Additional classes on the outer container</span>
+              </div>
             </div>
           </section>
         </section>
