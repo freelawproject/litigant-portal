@@ -74,10 +74,10 @@ class ChatPageTests(TestCase):
         response = self.client.get("/chat/")
         self.assertNotContains(response, "mobile-footer")
 
-    def test_chat_page_has_overflow_hidden(self):
-        """Chat page should set overflow-hidden on body."""
+    def test_chat_page_has_stable_subheader(self):
+        """Chat page should have a stable sub-header."""
         response = self.client.get("/chat/")
-        self.assertContains(response, "overflow-hidden")
+        self.assertContains(response, "chat-subheader")
 
 
 # =============================================================================

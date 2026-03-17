@@ -137,6 +137,9 @@ function createChat() {
       let content = this.inputText.trim()
       if (!content || this.isStreaming) return
 
+      // Save display text before hook may prepend invisible context
+      const displayContent = content
+
       // Hook: allow message modification before sending
       if (typeof this.onBeforeSend === 'function') {
         const modified = await this.onBeforeSend(content)
@@ -151,13 +154,13 @@ function createChat() {
         id: Date.now(),
         role: 'user',
         content,
-        renderedContent: chatUtils.escapeHtml(content),
+        renderedContent: chatUtils.escapeHtml(displayContent),
         bubbleClass: 'chat-bubble-user',
         messageClass: 'chat-message-user',
         isUser: true,
         isAssistant: false,
       })
-      this.scrollToBottom()
+      this.scrollToLatestQuestion()
 
       const msgIndex = this.messages.length
       this.messages.push({
@@ -291,6 +294,29 @@ function createChat() {
     },
 
     // --- UI helpers ---
+
+    /**
+     * Scroll so the latest user message is at the top of the visible area.
+     * First message: no scroll (already visible).
+     * Follow-ups: smooth scroll the user message to the top.
+     */
+    scrollToLatestQuestion() {
+      this.$nextTick(() => {
+        const el = this.$refs.messagesArea
+        if (!el) return
+
+        // Find the last user message element
+        const userMessages = el.querySelectorAll('.chat-message-user')
+        const latest = userMessages[userMessages.length - 1]
+        if (!latest) return
+
+        // First message — already at top, no scroll needed
+        if (userMessages.length <= 1) return
+
+        latest.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    },
+
     scrollToBottom(force = false) {
       this.$nextTick(() => {
         const el = this.$refs.messages || this.$refs.messagesArea
@@ -388,6 +414,8 @@ function createHomePage() {
 
     // --- Topic state ---
     topicSlug: '',
+    topicContext: '',
+    _topicContextSent: false,
 
     // --- Upload state ---
     selectedFile: null,
@@ -406,11 +434,6 @@ function createHomePage() {
     caseTimeline: [],
 
     // --- Getters for CSP-safe dot-path access ---
-
-    // Container class
-    get containerClass() {
-      return this.messages.length > 0 ? 'chat-mode' : ''
-    },
 
     // Case header
     get caseTitle() {
@@ -520,6 +543,10 @@ function createHomePage() {
       // Read config from data-* attributes
       this.agentName = this.$el.dataset.agentName || ''
       this.topicSlug = this.$el.dataset.topicSlug || ''
+      const topicContextEl = document.getElementById('topic-context-data')
+      this.topicContext = topicContextEl
+        ? JSON.parse(topicContextEl.textContent)
+        : ''
 
       // Check chat service availability
       try {
@@ -562,6 +589,18 @@ function createHomePage() {
 
       // Wire up chat hook for document context injection
       this.onBeforeSend = this._augmentWithDocumentContext.bind(this)
+
+      // Auto-send question from ?q= param (home page handoff)
+      const urlParams = new URLSearchParams(window.location.search)
+      const question = urlParams.get('q')?.trim()
+      if (question && this.chatAvailable) {
+        this.inputText = question
+        this.sendMessage()
+        // Clean URL without triggering navigation
+        const url = new URL(window.location)
+        url.searchParams.delete('q')
+        history.replaceState(null, '', url)
+      }
     },
 
     dismissWarning() {
@@ -584,10 +623,20 @@ function createHomePage() {
      * so the LLM has case details available.
      */
     _augmentWithDocumentContext(content) {
-      if (!this.extractedData || this._documentContextSent) return content
+      let prefix = ''
+
+      // Inject topic context on first message when entering from a topic card
+      if (this.topicContext && !this._topicContextSent) {
+        prefix += `[Topic Context]\n${this.topicContext}\n[End Topic Context]\n\n`
+        this._topicContextSent = true
+      }
+
+      if (!this.extractedData || this._documentContextSent) {
+        return prefix ? prefix + content : content
+      }
 
       const ctx = this.extractedData
-      let prefix = '[Document Context]\n'
+      prefix += '[Document Context]\n'
       if (ctx.case_type) prefix += `Case Type: ${ctx.case_type}\n`
       if (ctx.summary) prefix += `Summary: ${ctx.summary}\n`
       if (ctx.court_info?.court_name)
