@@ -523,7 +523,45 @@ class TopicDetailTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.context["topic"], topic)
 
+    def test_topic_detail_passes_slug(self):
+        """Topic detail page should pass slug in template context."""
+        response = self.client.get("/topics/housing/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["slug"], "housing")
+
     def test_invalid_slug_returns_404(self):
         """An unknown topic slug should return 404."""
         response = self.client.get("/topics/nonexistent/")
         self.assertEqual(response.status_code, 404)
+
+
+# =============================================================================
+# Chat Page Topic Routing Tests
+# =============================================================================
+
+
+class ChatPageTopicTests(TestCase):
+    """Tests for topic context routing on the chat page."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_valid_topic_passes_context(self):
+        """Chat page with valid topic param should pass topic and slug."""
+        response = self.client.get("/chat/?topic=housing")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(response.context["topic"])
+        self.assertEqual(response.context["topic_slug"], "housing")
+
+    def test_invalid_topic_falls_back(self):
+        """Chat page with invalid topic param should fall back to generic."""
+        response = self.client.get("/chat/?topic=nonexistent")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["topic"])
+        self.assertEqual(response.context["topic_slug"], "")
+
+    def test_no_topic_renders_generic(self):
+        """Chat page without topic param should render generic."""
+        response = self.client.get("/chat/")
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.context["topic"])

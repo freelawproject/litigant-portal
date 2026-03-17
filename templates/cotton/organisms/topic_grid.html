@@ -6,7 +6,7 @@
   {% if heading %}<h2 class="topic-grid-heading">{{ heading }}</h2>{% endif %}
   <div class="topic-grid">
     {% for slug, topic in topics.items %}
-      <c-molecules.topic-card icon="{{ topic.icon }}" title="{{ topic.title }}" description="{{ topic.description }}" href="{% url 'portal:topic_detail' slug=slug %}" />
+      <c-molecules.topic-card icon="{{ topic.icon }}" title="{{ topic.title }}" description="{{ topic.description }}" href="{% url 'portal:chat' %}?topic={{ slug }}" />
     {% endfor %}
   </div>
 </section>

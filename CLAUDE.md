@@ -38,7 +38,7 @@ Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `opena
 
 ## Commands
 
-**`make lint` and `make test` must be run by the user** — sandbox restrictions prevent Claude from running them. Always ask the user to run these manually. Never attempt to run them yourself.
+**`make lint` and `make test`** — sandbox restrictions prevent Claude from running them. Always ask the user to run these manually. Never attempt to run them yourself.
 
 ### Local Development (Docker)
 

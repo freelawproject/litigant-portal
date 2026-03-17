@@ -386,6 +386,9 @@ function createHomePage() {
     chatAvailable: true,
     showUnavailableWarning: false,
 
+    // --- Topic state ---
+    topicSlug: '',
+
     // --- Upload state ---
     selectedFile: null,
     isUploading: false,
@@ -516,6 +519,7 @@ function createHomePage() {
     async init() {
       // Read config from data-* attributes
       this.agentName = this.$el.dataset.agentName || ''
+      this.topicSlug = this.$el.dataset.topicSlug || ''
 
       // Check chat service availability
       try {
@@ -562,6 +566,13 @@ function createHomePage() {
 
     dismissWarning() {
       this.showUnavailableWarning = false
+    },
+
+    sendPrompt(e) {
+      const prompt = e.target.dataset.prompt || e.currentTarget.dataset.prompt
+      if (!prompt) return
+      this.inputText = prompt
+      this.sendMessage()
     },
 
     // =========================================================================

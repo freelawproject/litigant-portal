@@ -21,7 +21,7 @@
   <div class="mt-12 rounded-lg border border-brand-200 bg-brand-50 p-6 text-center">
     <h2 class="text-lg font-semibold text-greyscale-900">Have questions about your situation?</h2>
     <p class="mt-1 text-greyscale-600">Our AI assistant can help you understand your options and find resources.</p>
-    <c-atoms.link href="{% url 'portal:chat' %}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
+    <c-atoms.link href="{% url 'portal:chat' %}?topic={{ slug }}" class="mt-4 inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-700 no-underline">
     Start a conversation
     <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5" />
     </c-atoms.link>

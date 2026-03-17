@@ -13,6 +13,7 @@
 {% block content %}
   <div x-data="homePage"
        data-agent-name="{{ agent_name|default:'' }}"
+       data-topic-slug="{{ topic_slug|default:'' }}"
        class="home-container"
        x-bind:class="containerClass">
     {# Hidden file input for PDF upload #}
@@ -165,38 +166,100 @@
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
       {# Hero Section - shows when no messages #}
       <section class="hero flex-1" x-show="noMessages" x-cloak>
-        <div class="hero-content">
-          <h1 class="hero-heading">{% trans "How can we help you today?" %}</h1>
-          <p class="hero-subheading">{% trans "Free legal help for self-represented litigants" %}</p>
-          <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
-            {% csrf_token %}
-            {% trans "Upload PDF document" as upload_label %}
-            {% trans "Upload a legal document (PDF)" as upload_title %}
-            <c-atoms.button type="button" variant="outline" size="icon-xl" aria_label="{{ upload_label }}" x-on:click="triggerFileInput" x-bind:disabled="isUploading" title="{{ upload_title }}">
-            <template x-if="notUploading">
-              <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
-            </template>
-            <template x-if="isUploading">
-              <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
-            </template>
-            </c-atoms.button>
-            <div class="search-input-wrapper">
-              <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
-              <input type="search"
-                     x-bind:value="inputText"
-                     x-on:input="updateInput"
-                     name="q"
-                     placeholder="{% trans "What do you need help with?" %}"
-                     class="search-input"
-                     aria-label="{% trans "Search or ask a question" %}">
+        {% if topic %}
+          {# Topic-specific entry #}
+          <div class="topic-entry">
+            <div class="topic-entry-header">
+              <div class="topic-entry-icon">
+                <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <h1 class="topic-entry-title">{{ topic.title }}</h1>
+                <p class="topic-entry-subtitle">{{ topic.subtitle }}</p>
+                {% if topic.context_sections %}
+                  <details class="group topic-context-card">
+                    <summary class="topic-context-toggle">
+                      <c-atoms.icon name="chevron-right" class="w-3.5 h-3.5 text-greyscale-400 transition-transform duration-200 group-open:rotate-90" />
+                      <span>{% trans "What you should know" %}</span>
+                    </summary>
+                    <div class="topic-context-body">
+                      {% for section in topic.context_sections %}
+                        <div>
+                          <h3 class="text-sm font-semibold text-greyscale-800">{{ section.heading }}</h3>
+                          <p class="text-sm text-greyscale-600 mt-1">{{ section.body }}</p>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </details>
+                {% endif %}
+              </div>
             </div>
-            {% trans "Ask" as ask_label %}
-            <c-atoms.button type="submit" variant="primary" size="xl" aria_label="{{ ask_label }}" x-bind:disabled="isStreaming">
-            <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
-            <span class="hidden sm:inline">{% trans "Ask" %}</span>
-            </c-atoms.button>
-          </form>
-        </div>
+            {% if topic.prompts %}
+              <div class="topic-prompts">
+                {% for prompt in topic.prompts %}
+                  <button type="button"
+                          class="topic-prompt-btn"
+                          data-prompt="{{ prompt }}"
+                          x-on:click="sendPrompt">
+                    <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5 text-greyscale-400 flex-shrink-0" />
+                    <span>{{ prompt }}</span>
+                  </button>
+                {% endfor %}
+              </div>
+            {% endif %}
+            <form x-on:submit.prevent="askQuestion" class="search-bar mt-4" role="search">
+              {% csrf_token %}
+              <div class="search-input-wrapper">
+                <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
+                <input type="search"
+                       x-bind:value="inputText"
+                       x-on:input="updateInput"
+                       name="q"
+                       placeholder="{% trans "Or ask your own question..." %}"
+                       class="search-input"
+                       aria-label="{% trans "Ask a question about this topic" %}">
+              </div>
+              {% trans "Ask" as ask_label %}
+              <c-atoms.button type="submit" variant="primary" size="xl" aria_label="{{ ask_label }}" x-bind:disabled="isStreaming">
+              <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
+              </c-atoms.button>
+            </form>
+          </div>
+        {% else %}
+          {# Generic hero #}
+          <div class="hero-content">
+            <h1 class="hero-heading">{% trans "How can we help you today?" %}</h1>
+            <p class="hero-subheading">{% trans "Free legal help for self-represented litigants" %}</p>
+            <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
+              {% csrf_token %}
+              {% trans "Upload PDF document" as upload_label %}
+              {% trans "Upload a legal document (PDF)" as upload_title %}
+              <c-atoms.button type="button" variant="outline" size="icon-xl" aria_label="{{ upload_label }}" x-on:click="triggerFileInput" x-bind:disabled="isUploading" title="{{ upload_title }}">
+              <template x-if="notUploading">
+                <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
+              </template>
+              <template x-if="isUploading">
+                <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
+              </template>
+              </c-atoms.button>
+              <div class="search-input-wrapper">
+                <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
+                <input type="search"
+                       x-bind:value="inputText"
+                       x-on:input="updateInput"
+                       name="q"
+                       placeholder="{% trans "What do you need help with?" %}"
+                       class="search-input"
+                       aria-label="{% trans "Search or ask a question" %}">
+              </div>
+              {% trans "Ask" as ask_label %}
+              <c-atoms.button type="submit" variant="primary" size="xl" aria_label="{{ ask_label }}" x-bind:disabled="isStreaming">
+              <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
+              <span class="hidden sm:inline">{% trans "Ask" %}</span>
+              </c-atoms.button>
+            </form>
+          </div>
+        {% endif %}
       </section>
       {# Chat Mode - shows when messages exist #}
       <div class="chat-area flex-1 flex flex-col min-h-0"
