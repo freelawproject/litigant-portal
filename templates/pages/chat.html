@@ -49,198 +49,194 @@
         </div>
       </div>
     </div>
-    {# Case Sidebar - logged-in users only, LEFT side, desktop #}
-    {% if user.is_authenticated %}
-      <div class="hidden lg:block w-80 flex-shrink-0 border-r border-greyscale-200 overflow-y-auto">
-        <c-organisms.case-sidebar class="h-full">
-          {# Empty state - no case info #}
-          <div x-show="noCaseInfo" class="text-center py-8 px-4">
-            <c-atoms.icon name="folder-open" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
-            <p class="text-sm font-medium text-greyscale-600 mb-2">{% trans "No active case" %}</p>
-            <p class="text-xs text-greyscale-500">
-              {% trans "Upload a legal document to get started. We'll track your case details, deadlines, and action items here." %}
+    {# Left column — sidebar, ~20% #}
+    <div class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 overflow-y-auto">
+      <c-organisms.case-sidebar class="h-full">
+        {# Empty state #}
+        <div x-show="noCaseInfo" class="text-center py-8 px-4">
+          <c-atoms.icon name="folder-open" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
+          <p class="text-sm font-medium text-greyscale-600 mb-2">{% trans "No active case" %}</p>
+          <p class="text-xs text-greyscale-500">
+            {% trans "Describe your situation or upload a document and your case details will appear here." %}
+          </p>
+        </div>
+        {# Case info display #}
+        <div x-show="caseInfo" x-cloak x-bind:class="sidebarFlash" class="p-4 space-y-4">
+          {# Case type header #}
+          <div class="border-b border-greyscale-200 pb-3">
+            <h3 class="text-sm font-semibold text-greyscale-900" x-text="caseTitle"></h3>
+            <p class="text-xs text-greyscale-500 mt-1"
+               x-show="hasCaseNumber"
+               x-text="caseNumber"></p>
+          </div>
+          {# Court info #}
+          <div x-show="showCourtSection" class="space-y-1">
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Court" %}</h4>
+            <p class="text-sm text-greyscale-700" x-text="courtName"></p>
+            <p x-show="courtCounty"
+               class="text-xs text-greyscale-500"
+               x-text="courtCounty"></p>
+            <p x-show="courtAddress"
+               class="text-xs text-greyscale-600"
+               x-text="courtAddress"></p>
+            <p x-show="courtPhone" class="text-xs text-greyscale-600">
+              <a x-bind:href="courtPhoneHref"
+                 class="text-primary-600 hover:underline"
+                 x-text="courtPhone"></a>
+            </p>
+            <p x-show="courtEmail" class="text-xs text-greyscale-600">
+              <a x-bind:href="courtEmailHref"
+                 class="text-primary-600 hover:underline"
+                 x-text="courtEmail"></a>
             </p>
           </div>
-          {# Case info display #}
-          <div x-show="caseInfo" x-cloak class="p-4 space-y-4">
-            {# Case type header #}
-            <div class="border-b border-greyscale-200 pb-3">
-              <h3 class="text-sm font-semibold text-greyscale-900" x-text="caseTitle"></h3>
-              <p class="text-xs text-greyscale-500 mt-1"
-                 x-show="hasCaseNumber"
-                 x-text="caseNumber"></p>
-            </div>
-            {# Court info #}
-            <div x-show="showCourtSection" class="space-y-1">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Court" %}</h4>
-              <p class="text-sm text-greyscale-700" x-text="courtName"></p>
-              <p x-show="courtCounty"
-                 class="text-xs text-greyscale-500"
-                 x-text="courtCounty"></p>
-              <p x-show="courtAddress"
-                 class="text-xs text-greyscale-600"
-                 x-text="courtAddress"></p>
-              <p x-show="courtPhone" class="text-xs text-greyscale-600">
-                <a x-bind:href="courtPhoneHref"
-                   class="text-primary-600 hover:underline"
-                   x-text="courtPhone"></a>
-              </p>
-              <p x-show="courtEmail" class="text-xs text-greyscale-600">
-                <a x-bind:href="courtEmailHref"
-                   class="text-primary-600 hover:underline"
-                   x-text="courtEmail"></a>
-              </p>
-            </div>
-            {# Opposing Party #}
-            <div x-show="opposingParty" class="space-y-1">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Opposing Party" %}</h4>
-              <p class="text-sm text-greyscale-700" x-text="opposingParty"></p>
-              <p x-show="opposingAddress"
-                 class="text-xs text-greyscale-600"
-                 x-text="opposingAddress"></p>
-              <p x-show="opposingPhone" class="text-xs text-greyscale-600">
-                <a x-bind:href="opposingPhoneHref"
-                   class="text-primary-600 hover:underline"
-                   x-text="opposingPhone"></a>
-              </p>
-              <p x-show="opposingEmail" class="text-xs text-greyscale-600">
-                <a x-bind:href="opposingEmailHref"
-                   class="text-primary-600 hover:underline"
-                   x-text="opposingEmail"></a>
-              </p>
-              <p x-show="opposingWebsite" class="text-xs text-greyscale-600">
-                <a x-bind:href="opposingWebsite"
-                   target="_blank"
-                   rel="noopener"
-                   class="text-primary-600 hover:underline"
-                   x-text="opposingWebsite"></a>
-              </p>
-            </div>
-            {# Attorney (if represented) #}
-            <div x-show="attorneyName" class="space-y-1">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Their Attorney" %}</h4>
-              <p class="text-sm text-greyscale-700" x-text="attorneyName"></p>
-              <p x-show="attorneyPhone" class="text-xs text-greyscale-600">
-                <a x-bind:href="attorneyPhoneHref"
-                   class="text-primary-600 hover:underline"
-                   x-text="attorneyPhone"></a>
-              </p>
-              <p x-show="attorneyEmail" class="text-xs text-greyscale-600">
-                <a x-bind:href="attorneyEmailHref"
-                   class="text-primary-600 hover:underline"
-                   x-text="attorneyEmail"></a>
-              </p>
-            </div>
-            {# Key deadlines #}
-            <template x-if="hasDeadlines">
-              <div class="space-y-2">
-                <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Deadlines" %}</h4>
-                <template x-for="deadline in deadlines" :key="deadline.label">
-                  <div class="flex items-start gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
-                    <c-atoms.icon name="exclamation-circle" class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                    <div class="min-w-0">
-                      <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
-                      <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </template>
-            {# Other dates #}
-            <template x-if="hasOtherDates">
-              <div class="space-y-2">
-                <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Other Dates" %}</h4>
-                <template x-for="date in otherDates" :key="date.label">
-                  <div class="flex items-start gap-2">
-                    <c-atoms.icon name="calendar" class="w-4 h-4 text-greyscale-400 flex-shrink-0 mt-0.5" />
-                    <div class="min-w-0">
-                      <p class="text-sm text-greyscale-700" x-text="date.date"></p>
-                      <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
-                    </div>
-                  </div>
-                </template>
-              </div>
-            </template>
-            {# Clear case button #}
-            <div class="pt-3 border-t border-greyscale-200">
-              <c-atoms.button type="button"
-                              variant="ghost"
-                              class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700"
-                              x-on:click="clearCaseInfo">
-                {% trans "Clear case info" %}
-              </c-atoms.button>
-            </div>
+          {# Opposing Party #}
+          <div x-show="opposingParty" class="space-y-1">
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Opposing Party" %}</h4>
+            <p class="text-sm text-greyscale-700" x-text="opposingParty"></p>
+            <p x-show="opposingAddress"
+               class="text-xs text-greyscale-600"
+               x-text="opposingAddress"></p>
+            <p x-show="opposingPhone" class="text-xs text-greyscale-600">
+              <a x-bind:href="opposingPhoneHref"
+                 class="text-primary-600 hover:underline"
+                 x-text="opposingPhone"></a>
+            </p>
+            <p x-show="opposingEmail" class="text-xs text-greyscale-600">
+              <a x-bind:href="opposingEmailHref"
+                 class="text-primary-600 hover:underline"
+                 x-text="opposingEmail"></a>
+            </p>
+            <p x-show="opposingWebsite" class="text-xs text-greyscale-600">
+              <a x-bind:href="opposingWebsite"
+                 target="_blank"
+                 rel="noopener"
+                 class="text-primary-600 hover:underline"
+                 x-text="opposingWebsite"></a>
+            </p>
           </div>
-        </c-organisms.case-sidebar>
-      </div>
-    {% endif %}
-    {# Main Content Column #}
-    <div class="flex-1 min-w-0 min-h-0 flex flex-col">
-      {# Sub-header — always visible, stable across state changes #}
-      <div class="chat-subheader">
-        <div class="chat-subheader-inner">
-          {% if topic %}
-            <div class="flex items-start justify-between gap-4">
-              <div class="topic-entry-header">
-                <div class="topic-entry-icon">
-                  <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+          {# Attorney (if represented) #}
+          <div x-show="attorneyName" class="space-y-1">
+            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Their Attorney" %}</h4>
+            <p class="text-sm text-greyscale-700" x-text="attorneyName"></p>
+            <p x-show="attorneyPhone" class="text-xs text-greyscale-600">
+              <a x-bind:href="attorneyPhoneHref"
+                 class="text-primary-600 hover:underline"
+                 x-text="attorneyPhone"></a>
+            </p>
+            <p x-show="attorneyEmail" class="text-xs text-greyscale-600">
+              <a x-bind:href="attorneyEmailHref"
+                 class="text-primary-600 hover:underline"
+                 x-text="attorneyEmail"></a>
+            </p>
+          </div>
+          {# Key deadlines #}
+          <template x-if="hasDeadlines">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Deadlines" %}</h4>
+              <template x-for="deadline in deadlines" :key="deadline.label">
+                <div class="flex items-start gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
+                  <c-atoms.icon name="exclamation-circle" class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
+                    <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
+                  </div>
                 </div>
-                <div class="flex-1 min-w-0">
-                  <h1 class="topic-entry-title">{{ topic.title }}</h1>
-                  <p class="topic-entry-subtitle">{{ topic.subtitle }}</p>
-                  {% if topic.context_sections %}
-                    <details class="group topic-context-card">
-                      <summary class="topic-context-toggle">
-                        <c-atoms.icon name="chevron-right" class="w-3.5 h-3.5 text-greyscale-400 transition-transform duration-200 group-open:rotate-90" />
-                        <span>{% trans "What you should know" %}</span>
-                      </summary>
-                      <div class="topic-context-body">
-                        {% for section in topic.context_sections %}
-                          <div>
-                            <h3 class="text-sm font-semibold text-greyscale-800">{{ section.heading }}</h3>
-                            <p class="text-sm text-greyscale-600 mt-1">{{ section.body }}</p>
-                          </div>
-                        {% endfor %}
-                      </div>
-                    </details>
-                  {% endif %}
-                </div>
-              </div>
-              <c-atoms.button type="button"
-                              variant="ghost"
-                              class="text-sm text-greyscale-500 hover:text-greyscale-700 flex-shrink-0"
-                              x-show="hasMessages"
-                              x-cloak
-                              x-on:click="clearChat">
-                {% trans "New conversation" %}
-              </c-atoms.button>
+              </template>
             </div>
-          {% else %}
-            <div class="flex items-start justify-between gap-4">
-              <div class="topic-entry-header">
-                <div class="topic-entry-icon">
-                  <c-atoms.icon name="chat-bubble-left-right" class="w-6 h-6" />
+          </template>
+          {# Other dates #}
+          <template x-if="hasOtherDates">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Other Dates" %}</h4>
+              <template x-for="date in otherDates" :key="date.label">
+                <div class="flex items-start gap-2">
+                  <c-atoms.icon name="calendar" class="w-4 h-4 text-greyscale-400 flex-shrink-0 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-sm text-greyscale-700" x-text="date.date"></p>
+                    <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
+                  </div>
                 </div>
-                <div class="flex-1 min-w-0">
-                  <h1 class="topic-entry-title">{% trans "Legal Assistant" %}</h1>
-                  <p class="topic-entry-subtitle">{% trans "Free legal help for self-represented litigants" %}</p>
-                </div>
-              </div>
-              <c-atoms.button type="button"
-                              variant="ghost"
-                              class="text-sm text-greyscale-500 hover:text-greyscale-700 flex-shrink-0"
-                              x-show="hasMessages"
-                              x-cloak
-                              x-on:click="clearChat">
-                {% trans "New conversation" %}
-              </c-atoms.button>
+              </template>
             </div>
-          {% endif %}
+          </template>
+          {# Clear case button #}
+          <div class="pt-3 border-t border-greyscale-200">
+            <c-atoms.button type="button"
+                            variant="ghost"
+                            class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700"
+                            x-on:click="clearCaseInfo">
+              {% trans "Clear case info" %}
+            </c-atoms.button>
+          </div>
         </div>
+      </c-organisms.case-sidebar>
+    </div>
+    {# Center column — subheader + chat, ~60% #}
+    <div class="flex-1 min-w-0 flex flex-col min-h-0">
+      {# Sub-header — topic context, only affects center column #}
+      <div class="chat-subheader">
+        {% if topic %}
+          <div class="flex items-start justify-between gap-4">
+            <div class="topic-entry-header">
+              <div class="topic-entry-icon">
+                <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <h1 class="topic-entry-title">{{ topic.title }}</h1>
+                <p class="topic-entry-subtitle">{{ topic.subtitle }}</p>
+                {% if topic.context_sections %}
+                  <details class="group topic-context-card">
+                    <summary class="topic-context-toggle">
+                      <c-atoms.icon name="chevron-right" class="w-3.5 h-3.5 text-greyscale-400 transition-transform duration-200 group-open:rotate-90" />
+                      <span>{% trans "What you should know" %}</span>
+                    </summary>
+                    <div class="topic-context-body">
+                      {% for section in topic.context_sections %}
+                        <div>
+                          <h3 class="text-sm font-semibold text-greyscale-800">{{ section.heading }}</h3>
+                          <p class="text-sm text-greyscale-600 mt-1">{{ section.body }}</p>
+                        </div>
+                      {% endfor %}
+                    </div>
+                  </details>
+                {% endif %}
+              </div>
+            </div>
+            <c-atoms.button type="button"
+                            variant="ghost"
+                            class="text-sm text-greyscale-500 hover:text-greyscale-700 flex-shrink-0"
+                            x-show="hasMessages"
+                            x-cloak
+                            x-on:click="clearChat">
+              {% trans "New conversation" %}
+            </c-atoms.button>
+          </div>
+        {% else %}
+          <div class="flex items-start justify-between gap-4">
+            <div class="topic-entry-header">
+              <div class="topic-entry-icon">
+                <c-atoms.icon name="chat-bubble-left-right" class="w-6 h-6" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <h1 class="topic-entry-title">{% trans "Legal Assistant" %}</h1>
+                <p class="topic-entry-subtitle">{% trans "Free legal help for self-represented litigants" %}</p>
+              </div>
+            </div>
+            <c-atoms.button type="button"
+                            variant="ghost"
+                            class="text-sm text-greyscale-500 hover:text-greyscale-700 flex-shrink-0"
+                            x-show="hasMessages"
+                            x-cloak
+                            x-on:click="clearChat">
+              {% trans "New conversation" %}
+            </c-atoms.button>
+          </div>
+        {% endif %}
       </div>
-      {# Content — scrollable, messages + input flow together #}
+      {# Chat content — scrollable, messages + input flow together #}
       <div class="chat-content" x-ref="messagesArea">
-        <div class="max-w-3xl mx-auto px-4 py-4 space-y-4">
+        <div class="max-w-2xl mx-auto px-4 py-4 space-y-4">
           {# Guided prompts — topic only, before first message #}
           {% if topic.prompts %}
             <div x-show="noMessages" class="topic-prompts">
@@ -348,8 +344,45 @@
         </div>
       </div>
     </div>
-    {# Spacer to balance sidebar and keep chat centered — logged-in users only #}
-    {% if user.is_authenticated %}<div class="hidden lg:block w-80 flex-shrink-0"></div>{% endif %}
+    {# Right column — activity panel, ~20% #}
+    <div class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-l border-greyscale-200 overflow-y-auto">
+      <c-organisms.activity-panel class="h-full">
+        {# Empty state #}
+        <div x-show="noTimeline" class="text-center py-8 px-4">
+          <c-atoms.icon name="clock" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
+          <p class="text-sm font-medium text-greyscale-600 mb-2">{% trans "No activity yet" %}</p>
+          <p class="text-xs text-greyscale-500">
+            {% trans "Uploads, summaries, and case updates will appear here." %}
+          </p>
+        </div>
+        {# Timeline events #}
+        <template x-if="hasTimeline">
+          <div class="space-y-2">
+            <template x-for="event in caseTimeline" :key="event.id">
+              <details class="timeline-event-card">
+                <summary class="timeline-event-summary">
+                  <template x-if="event.isUpload">
+                    <c-atoms.icon name="document-arrow-up" class="timeline-event-icon" />
+                  </template>
+                  <template x-if="event.isSummary">
+                    <c-atoms.icon name="document-text" class="timeline-event-icon" />
+                  </template>
+                  <template x-if="event.isChange">
+                    <c-atoms.icon name="pencil-square" class="timeline-event-icon" />
+                  </template>
+                  <span class="timeline-event-title" x-text="event.title"></span>
+                  <span class="timeline-event-badge" x-text="event.typeLabel"></span>
+                </summary>
+                <div class="timeline-event-body" x-show="event.content">
+                  <p class="text-xs text-greyscale-600" x-text="event.content"></p>
+                  <p class="text-xs text-greyscale-400 mt-1" x-text="event.formattedTime"></p>
+                </div>
+              </details>
+            </template>
+          </div>
+        </template>
+      </c-organisms.activity-panel>
+    </div>
   </div>
 {% endblock content %}
 
