@@ -6,8 +6,8 @@
 <aside class="case-sidebar bg-white border-l border-greyscale-200 {{ class }}"
        {{ attrs }}>
   {# Header #}
-  <div class="p-4 border-b border-greyscale-200">
-    <h2 class="text-lg font-semibold text-greyscale-800">{% trans "Your Case" %}</h2>
+  <div class="px-4 pt-4 pb-3 border-b border-greyscale-200">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Your Case" %}</h2>
     {% if case_type or county %}
       <p class="mt-1 text-sm text-greyscale-500">
         {% if case_type %}{{ case_type }}{% endif %}
