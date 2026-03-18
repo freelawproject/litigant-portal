@@ -118,6 +118,7 @@ function createChat() {
     onBeforeSend: null,
     onSessionCreated: null,
     onStreamComplete: null,
+    onToolResponse: null,
     onCleared: null,
 
     // --- Initialization (reads config from data-* attributes) ---
@@ -253,6 +254,9 @@ function createChat() {
                     response: event.response,
                     data: event.data,
                   })
+                  if (typeof this.onToolResponse === 'function') {
+                    this.onToolResponse(event.name, event.data)
+                  }
                   break
 
                 case 'done':
@@ -433,6 +437,9 @@ function createHomePage() {
     // --- Timeline state ---
     caseTimeline: [],
 
+    // --- Sidebar flash state ---
+    _sidebarFlash: false,
+
     // --- Getters for CSP-safe dot-path access ---
 
     // Case header
@@ -530,6 +537,19 @@ function createHomePage() {
       return this.otherDates.length > 0
     },
 
+    // Sidebar flash (brief highlight when new facts arrive)
+    get sidebarFlash() {
+      return this._sidebarFlash ? 'sidebar-flash' : ''
+    },
+
+    // Timeline
+    get hasTimeline() {
+      return this.caseTimeline.length > 0
+    },
+    get noTimeline() {
+      return this.caseTimeline.length === 0
+    },
+
     // Negated booleans (CSP build can't evaluate `!`)
     get noCaseInfo() {
       return !this.caseInfo
@@ -580,6 +600,11 @@ function createHomePage() {
               title: e.title,
               content: e.content,
               metadata: e.metadata,
+              isUpload: e.event_type === 'upload',
+              isSummary: e.event_type === 'summary',
+              isChange: e.event_type === 'change',
+              typeLabel: this._timelineTypeLabel(e.event_type),
+              formattedTime: this._formatTime(e.created_at),
             }))
           }
         }
@@ -587,8 +612,9 @@ function createHomePage() {
         // Server unavailable — start with empty state
       }
 
-      // Wire up chat hook for document context injection
+      // Wire up chat hooks
       this.onBeforeSend = this._augmentWithDocumentContext.bind(this)
+      this.onToolResponse = this._handleToolResponse.bind(this)
 
       // Auto-send question from ?q= param (home page handoff)
       const urlParams = new URLSearchParams(window.location.search)
@@ -605,6 +631,45 @@ function createHomePage() {
 
     dismissWarning() {
       this.showUnavailableWarning = false
+    },
+
+    // =========================================================================
+    // Tool response handlers
+    // =========================================================================
+
+    /**
+     * Handle tool_response events from the AI stream.
+     * Routes UpdateCaseFacts responses to live sidebar updates.
+     */
+    _handleToolResponse(toolName, data) {
+      if (toolName === 'UpdateCaseFacts' && data?.case_patch) {
+        const patch = data.case_patch
+        if (!this.caseInfo) {
+          this.caseInfo = patch
+          this.addTimelineEvent(
+            'change',
+            gettext('Case info started'),
+            Object.keys(patch).join(', ')
+          )
+        } else {
+          this.mergeCaseInfo(patch)
+        }
+        this._triggerSidebarFlash()
+      }
+    },
+
+    /**
+     * Trigger a brief highlight flash on the sidebar case info section.
+     * Resets first so the animation replays if facts arrive in quick succession.
+     */
+    _triggerSidebarFlash() {
+      this._sidebarFlash = false
+      this.$nextTick(() => {
+        this._sidebarFlash = true
+        setTimeout(() => {
+          this._sidebarFlash = false
+        }, 1500)
+      })
     },
 
     sendPrompt(e) {
@@ -972,15 +1037,34 @@ function createHomePage() {
     // Timeline
     // =========================================================================
 
+    _timelineTypeLabel(type) {
+      if (type === 'upload') return gettext('Upload')
+      if (type === 'summary') return gettext('Summary')
+      return gettext('Update')
+    },
+
+    _formatTime(isoString) {
+      return new Date(isoString).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    },
+
     async addTimelineEvent(type, title, content, metadata = {}) {
+      const timestamp = new Date().toISOString()
       // Optimistic push to in-memory state
       const event = {
         id: Date.now(),
         type,
-        timestamp: new Date().toISOString(),
+        timestamp,
         title,
         content,
         metadata,
+        isUpload: type === 'upload',
+        isSummary: type === 'summary',
+        isChange: type === 'change',
+        typeLabel: this._timelineTypeLabel(type),
+        formattedTime: this._formatTime(timestamp),
       }
       this.caseTimeline.push(event)
 
