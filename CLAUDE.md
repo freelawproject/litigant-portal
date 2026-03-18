@@ -6,16 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Access to justice portal for self-represented litigants. Django 5.2 with server-rendered components (Django Cotton), Tailwind CSS v4, and Alpine.js for reactivity.
 
-## Current Focus: ITC Demo (Jan 2026)
+## Current Focus: Beta Demo — Housing Eviction Flow
 
-Building a clickable demo for ITC San Antonio. Key docs:
+Building a complete eviction flow from discovery to resolution for court partner demos. One topic, end-to-end, at production quality — every button/link does something, no placeholders. Court-neutral information where partner-specific data isn't available yet.
 
+- [Milestone](https://github.com/freelawproject/litigant-portal/milestone/3) - Beta Demo: Housing Eviction Flow
 - [Legal Flow](docs/legal-flow.md) - Generic 9-stage flow (Triage / Prepare / Resolve); legal review artifact
 - [Happy Path Narrative](docs/happy-path-jane.md) - Full AI · Auth end-to-end story (base for all variations)
-- [Demo Flow](docs/demo-flow-jane.md) - Jane's 8-step ITC demo flow (abbreviated)
+- [Demo Flow](docs/demo-flow-jane.md) - Jane's 8-step demo flow (abbreviated)
 - [User Flows Matrix](docs/user-flows.md) - 3×2 matrix (Full AI / Hybrid / Basic × Anon / Auth)
-- [Retro Notes](docs/itc-demo-retro.md) - Append lessons learned here
-- [Milestone](https://github.com/freelawproject/litigant-portal/milestone/1) - 13 issues tracked
+- [Retro Notes](docs/itc-demo-retro.md) - Lessons learned from ITC demo (Jan 2026)
 
 ## Environment Philosophy
 
@@ -245,6 +245,14 @@ When choosing how to implement UI behavior, follow this priority order:
 3. **Named components, dot-paths only** — CSP build requires `Alpine.data()` registrations. No inline expressions in templates. Pre-compute values as getters/methods.
 4. **`data-*` attributes for config** — pass Django values to Alpine via `data-*` attributes, read them in `init()`. Never use `x-init` assignments or pass `$event` to handlers (Alpine auto-passes it).
 5. **Reference repos** — [CourtListener](https://github.com/freelawproject/courtlistener) and [free.law](https://github.com/freelawproject/free.law) have solved most Django + Alpine + CSP patterns at scale. When hitting a seemingly blocking JS/Alpine problem, check those repos for working patterns before inventing a new approach.
+
+**Layout stability (WCAG + mobile-first):**
+
+Every page follows the same frame: **site header → sub-header (contextual) → content (scrollable)**. The sub-header varies per view (topic cards on home, topic context on chat, etc.) but is always in the same position and never shifts when state changes. Content is the only area that grows and scrolls.
+
+- **No mode-switching layouts.** Never toggle between completely different DOM structures based on state (e.g., hero vs. chat mode). Users with cognitive or motor disabilities rely on consistent placement of controls and landmarks.
+- **Mobile-first and responsive**, but layout stability for WCAG always wins over visual flair. Buttons, links, and navigation stay in predictable locations across all views and states.
+- **Inputs flow with content** — don't pin chat inputs to the viewport bottom. Follow conversation UX: the input lives at the end of the message flow.
 
 **Patterns from the CSP migration:**
 

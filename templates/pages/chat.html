@@ -2,7 +2,7 @@
 
 {% load cotton i18n %}
 
-{% block body_class %}h-dvh flex flex-col bg-greyscale-25 overflow-hidden{% endblock body_class %}
+{% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
 
 {% block main_class %}min-h-0 flex flex-col{% endblock main_class %}
 
@@ -10,19 +10,23 @@
   {% trans "Litigant Portal" %} - {% trans "Free Legal Help" %}
 {% endblock title %}
 
+{% trans "Upload PDF document" as upload_pdf_label %}
+{% trans "What do you need help with?" as input_placeholder %}
+{% trans "Ask a question" as input_aria_label %}
+
 {% block content %}
+  {{ topic_context|json_script:"topic-context-data" }}
   <div x-data="homePage"
        data-agent-name="{{ agent_name|default:'' }}"
        data-topic-slug="{{ topic_slug|default:'' }}"
-       class="home-container"
-       x-bind:class="containerClass">
+       class="flex-1 flex flex-row min-h-0">
     {# Hidden file input for PDF upload #}
     <input type="file"
            x-ref="fileInput"
            x-on:change="handleFileSelect"
            accept=".pdf,application/pdf"
            class="hidden"
-           aria-label="{% trans "Upload PDF document" %}">
+           aria-label="{{ upload_pdf_label }}" />
     {# Chat service unavailable warning #}
     <div x-show="showUnavailableWarning"
          x-cloak
@@ -36,8 +40,11 @@
               {% trans "The AI chat service is temporarily unavailable. Please try again later." %}
             </p>
           </div>
-          <c-atoms.button type="button" variant="ghost" class="!p-0 text-amber-600 hover:text-amber-800" x-on:click="dismissWarning">
-          <c-atoms.icon name="x-mark" class="w-5 h-5" />
+          <c-atoms.button type="button"
+                          variant="ghost"
+                          class="!p-0 text-amber-600 hover:text-amber-800"
+                          x-on:click="dismissWarning">
+            <c-atoms.icon name="x-mark" class="w-5 h-5" />
           </c-atoms.button>
         </div>
       </div>
@@ -46,317 +53,302 @@
     {% if user.is_authenticated %}
       <div class="hidden lg:block w-80 flex-shrink-0 border-r border-greyscale-200 overflow-y-auto">
         <c-organisms.case-sidebar class="h-full">
-        {# Empty state - no case info #}
-        <div x-show="noCaseInfo" class="text-center py-8 px-4">
-          <c-atoms.icon name="folder-open" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
-          <p class="text-sm font-medium text-greyscale-600 mb-2">{% trans "No active case" %}</p>
-          <p class="text-xs text-greyscale-500">
-            {% trans "Upload a legal document to get started. We'll track your case details, deadlines, and action items here." %}
-          </p>
-        </div>
-        {# Case info display #}
-        <div x-show="caseInfo" x-cloak class="p-4 space-y-4">
-          {# Case type header #}
-          <div class="border-b border-greyscale-200 pb-3">
-            <h3 class="text-sm font-semibold text-greyscale-900" x-text="caseTitle"></h3>
-            <p class="text-xs text-greyscale-500 mt-1"
-               x-show="hasCaseNumber"
-               x-text="caseNumber"></p>
-          </div>
-          {# Court info #}
-          <div x-show="showCourtSection" class="space-y-1">
-            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Court" %}</h4>
-            <p class="text-sm text-greyscale-700" x-text="courtName"></p>
-            <p x-show="courtCounty"
-               class="text-xs text-greyscale-500"
-               x-text="courtCounty"></p>
-            <p x-show="courtAddress"
-               class="text-xs text-greyscale-600"
-               x-text="courtAddress"></p>
-            <p x-show="courtPhone" class="text-xs text-greyscale-600">
-              <a x-bind:href="courtPhoneHref"
-                 class="text-primary-600 hover:underline"
-                 x-text="courtPhone"></a>
-            </p>
-            <p x-show="courtEmail" class="text-xs text-greyscale-600">
-              <a x-bind:href="courtEmailHref"
-                 class="text-primary-600 hover:underline"
-                 x-text="courtEmail"></a>
+          {# Empty state - no case info #}
+          <div x-show="noCaseInfo" class="text-center py-8 px-4">
+            <c-atoms.icon name="folder-open" class="w-12 h-12 text-greyscale-300 mx-auto mb-3" />
+            <p class="text-sm font-medium text-greyscale-600 mb-2">{% trans "No active case" %}</p>
+            <p class="text-xs text-greyscale-500">
+              {% trans "Upload a legal document to get started. We'll track your case details, deadlines, and action items here." %}
             </p>
           </div>
-          {# Opposing Party #}
-          <div x-show="opposingParty" class="space-y-1">
-            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Opposing Party" %}</h4>
-            <p class="text-sm text-greyscale-700" x-text="opposingParty"></p>
-            <p x-show="opposingAddress"
-               class="text-xs text-greyscale-600"
-               x-text="opposingAddress"></p>
-            <p x-show="opposingPhone" class="text-xs text-greyscale-600">
-              <a x-bind:href="opposingPhoneHref"
-                 class="text-primary-600 hover:underline"
-                 x-text="opposingPhone"></a>
-            </p>
-            <p x-show="opposingEmail" class="text-xs text-greyscale-600">
-              <a x-bind:href="opposingEmailHref"
-                 class="text-primary-600 hover:underline"
-                 x-text="opposingEmail"></a>
-            </p>
-            <p x-show="opposingWebsite" class="text-xs text-greyscale-600">
-              <a x-bind:href="opposingWebsite"
-                 target="_blank"
-                 rel="noopener"
-                 class="text-primary-600 hover:underline"
-                 x-text="opposingWebsite"></a>
-            </p>
-          </div>
-          {# Attorney (if represented) #}
-          <div x-show="attorneyName" class="space-y-1">
-            <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Their Attorney" %}</h4>
-            <p class="text-sm text-greyscale-700" x-text="attorneyName"></p>
-            <p x-show="attorneyPhone" class="text-xs text-greyscale-600">
-              <a x-bind:href="attorneyPhoneHref"
-                 class="text-primary-600 hover:underline"
-                 x-text="attorneyPhone"></a>
-            </p>
-            <p x-show="attorneyEmail" class="text-xs text-greyscale-600">
-              <a x-bind:href="attorneyEmailHref"
-                 class="text-primary-600 hover:underline"
-                 x-text="attorneyEmail"></a>
-            </p>
-          </div>
-          {# Key deadlines #}
-          <template x-if="hasDeadlines">
-            <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Deadlines" %}</h4>
-              <template x-for="deadline in deadlines" :key="deadline.label">
-                <div class="flex items-start gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
-                  <c-atoms.icon name="exclamation-circle" class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div class="min-w-0">
-                    <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
-                    <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
-                  </div>
-                </div>
-              </template>
+          {# Case info display #}
+          <div x-show="caseInfo" x-cloak class="p-4 space-y-4">
+            {# Case type header #}
+            <div class="border-b border-greyscale-200 pb-3">
+              <h3 class="text-sm font-semibold text-greyscale-900" x-text="caseTitle"></h3>
+              <p class="text-xs text-greyscale-500 mt-1"
+                 x-show="hasCaseNumber"
+                 x-text="caseNumber"></p>
             </div>
-          </template>
-          {# Other dates #}
-          <template x-if="hasOtherDates">
-            <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Other Dates" %}</h4>
-              <template x-for="date in otherDates" :key="date.label">
-                <div class="flex items-start gap-2">
-                  <c-atoms.icon name="calendar" class="w-4 h-4 text-greyscale-400 flex-shrink-0 mt-0.5" />
-                  <div class="min-w-0">
-                    <p class="text-sm text-greyscale-700" x-text="date.date"></p>
-                    <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
-                  </div>
-                </div>
-              </template>
+            {# Court info #}
+            <div x-show="showCourtSection" class="space-y-1">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Court" %}</h4>
+              <p class="text-sm text-greyscale-700" x-text="courtName"></p>
+              <p x-show="courtCounty"
+                 class="text-xs text-greyscale-500"
+                 x-text="courtCounty"></p>
+              <p x-show="courtAddress"
+                 class="text-xs text-greyscale-600"
+                 x-text="courtAddress"></p>
+              <p x-show="courtPhone" class="text-xs text-greyscale-600">
+                <a x-bind:href="courtPhoneHref"
+                   class="text-primary-600 hover:underline"
+                   x-text="courtPhone"></a>
+              </p>
+              <p x-show="courtEmail" class="text-xs text-greyscale-600">
+                <a x-bind:href="courtEmailHref"
+                   class="text-primary-600 hover:underline"
+                   x-text="courtEmail"></a>
+              </p>
             </div>
-          </template>
-          {# Clear case button #}
-          <div class="pt-3 border-t border-greyscale-200">
-            <c-atoms.button type="button" variant="ghost" class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700" x-on:click="clearCaseInfo">{% trans "Clear case info" %}</c-atoms.button>
+            {# Opposing Party #}
+            <div x-show="opposingParty" class="space-y-1">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Opposing Party" %}</h4>
+              <p class="text-sm text-greyscale-700" x-text="opposingParty"></p>
+              <p x-show="opposingAddress"
+                 class="text-xs text-greyscale-600"
+                 x-text="opposingAddress"></p>
+              <p x-show="opposingPhone" class="text-xs text-greyscale-600">
+                <a x-bind:href="opposingPhoneHref"
+                   class="text-primary-600 hover:underline"
+                   x-text="opposingPhone"></a>
+              </p>
+              <p x-show="opposingEmail" class="text-xs text-greyscale-600">
+                <a x-bind:href="opposingEmailHref"
+                   class="text-primary-600 hover:underline"
+                   x-text="opposingEmail"></a>
+              </p>
+              <p x-show="opposingWebsite" class="text-xs text-greyscale-600">
+                <a x-bind:href="opposingWebsite"
+                   target="_blank"
+                   rel="noopener"
+                   class="text-primary-600 hover:underline"
+                   x-text="opposingWebsite"></a>
+              </p>
+            </div>
+            {# Attorney (if represented) #}
+            <div x-show="attorneyName" class="space-y-1">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Their Attorney" %}</h4>
+              <p class="text-sm text-greyscale-700" x-text="attorneyName"></p>
+              <p x-show="attorneyPhone" class="text-xs text-greyscale-600">
+                <a x-bind:href="attorneyPhoneHref"
+                   class="text-primary-600 hover:underline"
+                   x-text="attorneyPhone"></a>
+              </p>
+              <p x-show="attorneyEmail" class="text-xs text-greyscale-600">
+                <a x-bind:href="attorneyEmailHref"
+                   class="text-primary-600 hover:underline"
+                   x-text="attorneyEmail"></a>
+              </p>
+            </div>
+            {# Key deadlines #}
+            <template x-if="hasDeadlines">
+              <div class="space-y-2">
+                <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Deadlines" %}</h4>
+                <template x-for="deadline in deadlines" :key="deadline.label">
+                  <div class="flex items-start gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
+                    <c-atoms.icon name="exclamation-circle" class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
+                      <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+            {# Other dates #}
+            <template x-if="hasOtherDates">
+              <div class="space-y-2">
+                <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Other Dates" %}</h4>
+                <template x-for="date in otherDates" :key="date.label">
+                  <div class="flex items-start gap-2">
+                    <c-atoms.icon name="calendar" class="w-4 h-4 text-greyscale-400 flex-shrink-0 mt-0.5" />
+                    <div class="min-w-0">
+                      <p class="text-sm text-greyscale-700" x-text="date.date"></p>
+                      <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </template>
+            {# Clear case button #}
+            <div class="pt-3 border-t border-greyscale-200">
+              <c-atoms.button type="button"
+                              variant="ghost"
+                              class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700"
+                              x-on:click="clearCaseInfo">
+                {% trans "Clear case info" %}
+              </c-atoms.button>
+            </div>
           </div>
-        </div>
         </c-organisms.case-sidebar>
       </div>
     {% endif %}
-    {# Main Content Area - centered #}
+    {# Main Content Column #}
     <div class="flex-1 min-w-0 min-h-0 flex flex-col">
-      {# Hero Section - shows when no messages #}
-      <section class="hero flex-1" x-show="noMessages" x-cloak>
-        {% if topic %}
-          {# Topic-specific entry #}
-          <div class="topic-entry">
-            <div class="topic-entry-header">
-              <div class="topic-entry-icon">
-                <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+      {# Sub-header — always visible, stable across state changes #}
+      <div class="chat-subheader">
+        <div class="chat-subheader-inner">
+          {% if topic %}
+            <div class="flex items-start justify-between gap-4">
+              <div class="topic-entry-header">
+                <div class="topic-entry-icon">
+                  <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h1 class="topic-entry-title">{{ topic.title }}</h1>
+                  <p class="topic-entry-subtitle">{{ topic.subtitle }}</p>
+                  {% if topic.context_sections %}
+                    <details class="group topic-context-card">
+                      <summary class="topic-context-toggle">
+                        <c-atoms.icon name="chevron-right" class="w-3.5 h-3.5 text-greyscale-400 transition-transform duration-200 group-open:rotate-90" />
+                        <span>{% trans "What you should know" %}</span>
+                      </summary>
+                      <div class="topic-context-body">
+                        {% for section in topic.context_sections %}
+                          <div>
+                            <h3 class="text-sm font-semibold text-greyscale-800">{{ section.heading }}</h3>
+                            <p class="text-sm text-greyscale-600 mt-1">{{ section.body }}</p>
+                          </div>
+                        {% endfor %}
+                      </div>
+                    </details>
+                  {% endif %}
+                </div>
               </div>
-              <div class="flex-1 min-w-0">
-                <h1 class="topic-entry-title">{{ topic.title }}</h1>
-                <p class="topic-entry-subtitle">{{ topic.subtitle }}</p>
-                {% if topic.context_sections %}
-                  <details class="group topic-context-card">
-                    <summary class="topic-context-toggle">
-                      <c-atoms.icon name="chevron-right" class="w-3.5 h-3.5 text-greyscale-400 transition-transform duration-200 group-open:rotate-90" />
-                      <span>{% trans "What you should know" %}</span>
-                    </summary>
-                    <div class="topic-context-body">
-                      {% for section in topic.context_sections %}
-                        <div>
-                          <h3 class="text-sm font-semibold text-greyscale-800">{{ section.heading }}</h3>
-                          <p class="text-sm text-greyscale-600 mt-1">{{ section.body }}</p>
-                        </div>
-                      {% endfor %}
-                    </div>
-                  </details>
-                {% endif %}
+              <c-atoms.button type="button"
+                              variant="ghost"
+                              class="text-sm text-greyscale-500 hover:text-greyscale-700 flex-shrink-0"
+                              x-show="hasMessages"
+                              x-cloak
+                              x-on:click="clearChat">
+                {% trans "New conversation" %}
+              </c-atoms.button>
+            </div>
+          {% else %}
+            <div class="flex items-start justify-between gap-4">
+              <div class="topic-entry-header">
+                <div class="topic-entry-icon">
+                  <c-atoms.icon name="chat-bubble-left-right" class="w-6 h-6" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h1 class="topic-entry-title">{% trans "Legal Assistant" %}</h1>
+                  <p class="topic-entry-subtitle">{% trans "Free legal help for self-represented litigants" %}</p>
+                </div>
+              </div>
+              <c-atoms.button type="button"
+                              variant="ghost"
+                              class="text-sm text-greyscale-500 hover:text-greyscale-700 flex-shrink-0"
+                              x-show="hasMessages"
+                              x-cloak
+                              x-on:click="clearChat">
+                {% trans "New conversation" %}
+              </c-atoms.button>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      {# Content — scrollable, messages + input flow together #}
+      <div class="chat-content" x-ref="messagesArea">
+        <div class="max-w-3xl mx-auto px-4 py-4 space-y-4">
+          {# Guided prompts — topic only, before first message #}
+          {% if topic.prompts %}
+            <div x-show="noMessages" class="topic-prompts">
+              {% for prompt in topic.prompts %}
+                <button type="button"
+                        class="topic-prompt-btn"
+                        data-prompt="{{ prompt }}"
+                        x-on:click="sendPrompt">
+                  <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5 text-greyscale-400 flex-shrink-0" />
+                  <span>{{ prompt }}</span>
+                </button>
+              {% endfor %}
+            </div>
+          {% endif %}
+          {# Messages #}
+          <template x-for="msg in messages" :key="msg.id">
+            <div class="chat-message"
+                 x-bind:class="msg.messageClass"
+                 x-show="msg.content">
+              <div class="chat-message-avatar">
+                <template x-if="msg.isUser">
+                  <c-atoms.icon name="user-circle" class="w-8 h-8 text-greyscale-400" />
+                </template>
+                <template x-if="msg.isAssistant">
+                  <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+                </template>
+              </div>
+              <div class="chat-message-content">
+                <div class="chat-bubble"
+                     x-bind:class="msg.bubbleClass"
+                     x-html="msg.renderedContent"></div>
               </div>
             </div>
-            {% if topic.prompts %}
-              <div class="topic-prompts">
-                {% for prompt in topic.prompts %}
-                  <button type="button"
-                          class="topic-prompt-btn"
-                          data-prompt="{{ prompt }}"
-                          x-on:click="sendPrompt">
-                    <c-atoms.icon name="chat-bubble-left-right" class="w-5 h-5 text-greyscale-400 flex-shrink-0" />
-                    <span>{{ prompt }}</span>
-                  </button>
-                {% endfor %}
-              </div>
-            {% endif %}
-            <form x-on:submit.prevent="askQuestion" class="search-bar mt-4" role="search">
-              {% csrf_token %}
-              <div class="search-input-wrapper">
-                <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
-                <input type="search"
-                       x-bind:value="inputText"
-                       x-on:input="updateInput"
-                       name="q"
-                       placeholder="{% trans "Or ask your own question..." %}"
-                       class="search-input"
-                       aria-label="{% trans "Ask a question about this topic" %}">
-              </div>
-              {% trans "Ask" as ask_label %}
-              <c-atoms.button type="submit" variant="primary" size="xl" aria_label="{{ ask_label }}" x-bind:disabled="isStreaming">
-              <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
-              </c-atoms.button>
-            </form>
+          </template>
+          {# Typing indicator #}
+          <div x-show="isStreaming"
+               x-cloak
+               class="chat-message chat-message-assistant">
+            <div class="chat-message-avatar">
+              <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+            </div>
+            <div class="chat-message-content">
+              <c-atoms.typing-indicator />
+            </div>
           </div>
-        {% else %}
-          {# Generic hero #}
-          <div class="hero-content">
-            <h1 class="hero-heading">{% trans "How can we help you today?" %}</h1>
-            <p class="hero-subheading">{% trans "Free legal help for self-represented litigants" %}</p>
-            <form x-on:submit.prevent="askQuestion" class="search-bar" role="search">
-              {% csrf_token %}
-              {% trans "Upload PDF document" as upload_label %}
-              {% trans "Upload a legal document (PDF)" as upload_title %}
-              <c-atoms.button type="button" variant="outline" size="icon-xl" aria_label="{{ upload_label }}" x-on:click="triggerFileInput" x-bind:disabled="isUploading" title="{{ upload_title }}">
+          {# Confirmation buttons for extraction #}
+          <div x-show="showConfirmation"
+               x-cloak
+               class="chat-message chat-message-assistant">
+            <div class="chat-message-avatar">
+              <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
+            </div>
+            <div class="chat-message-content">
+              <div class="flex flex-wrap gap-2">
+                <c-atoms.button type="button" variant="primary" x-on:click="confirmExtraction">
+                  <c-atoms.icon name="check" class="w-4 h-4" />
+                  {% trans "Looks correct" %}
+                </c-atoms.button>
+                <c-atoms.button type="button" variant="outline" x-on:click="requestClarification">
+                  <c-atoms.icon name="pencil" class="w-4 h-4" />
+                  {% trans "Let me clarify" %}
+                </c-atoms.button>
+              </div>
+            </div>
+          </div>
+          {# Chat input — flows at end of conversation #}
+          <form x-on:submit.prevent="askQuestion"
+                class="chat-input-form"
+                role="search">
+            {% csrf_token %}
+            {% trans "Upload PDF document" as upload_label %}
+            {% trans "Upload a legal document (PDF)" as upload_title %}
+            <c-atoms.button type="button"
+                            variant="outline"
+                            size="icon"
+                            aria_label="{{ upload_label }}"
+                            x-on:click="triggerFileInput"
+                            x-bind:disabled="isUploading"
+                            title="{{ upload_title }}">
               <template x-if="notUploading">
                 <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
               </template>
               <template x-if="isUploading">
                 <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
               </template>
-              </c-atoms.button>
-              <div class="search-input-wrapper">
-                <c-atoms.icon name="magnifying-glass" class="search-input-icon w-5 h-5" />
-                <input type="search"
-                       x-bind:value="inputText"
-                       x-on:input="updateInput"
-                       name="q"
-                       placeholder="{% trans "What do you need help with?" %}"
-                       class="search-input"
-                       aria-label="{% trans "Search or ask a question" %}">
-              </div>
-              {% trans "Ask" as ask_label %}
-              <c-atoms.button type="submit" variant="primary" size="xl" aria_label="{{ ask_label }}" x-bind:disabled="isStreaming">
-              <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
-              <span class="hidden sm:inline">{% trans "Ask" %}</span>
-              </c-atoms.button>
-            </form>
-          </div>
-        {% endif %}
-      </section>
-      {# Chat Mode - shows when messages exist #}
-      <div class="chat-area flex-1 flex flex-col min-h-0"
-           x-show="hasMessages"
-           x-cloak>
-        {# Chat Header #}
-        <div class="chat-header">
-          <h1 class="text-lg font-semibold text-greyscale-900">{% trans "How can we help you today?" %}</h1>
-          <c-atoms.button type="button" variant="ghost" class="!p-0 text-sm text-greyscale-500 hover:text-greyscale-700" x-on:click="clearChat">{% trans "New conversation" %}</c-atoms.button>
-        </div>
-        {# Chat Messages - scrollable area #}
-        <div class="chat-messages-area" x-ref="messagesArea">
-          <div class="max-w-3xl mx-auto">
-            <template x-for="msg in messages" :key="msg.id">
-              <div class="chat-message"
-                   x-bind:class="msg.messageClass"
-                   x-show="msg.content">
-                <div class="chat-message-avatar">
-                  <template x-if="msg.isUser">
-                    <c-atoms.icon name="user-circle" class="w-8 h-8 text-greyscale-400" />
-                  </template>
-                  <template x-if="msg.isAssistant">
-                    <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
-                  </template>
-                </div>
-                <div class="chat-message-content">
-                  <div class="chat-bubble"
-                       x-bind:class="msg.bubbleClass"
-                       x-html="msg.renderedContent"></div>
-                </div>
-              </div>
-            </template>
-            {# Typing indicator #}
-            <div x-show="isStreaming"
-                 x-cloak
-                 class="chat-message chat-message-assistant">
-              <div class="chat-message-avatar">
-                <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
-              </div>
-              <div class="chat-message-content">
-                <c-atoms.typing-indicator />
-              </div>
-            </div>
-            {# Confirmation buttons for extraction #}
-            <div x-show="showConfirmation"
-                 x-cloak
-                 class="chat-message chat-message-assistant">
-              <div class="chat-message-avatar">
-                <c-atoms.icon name="chat-bubble-left-right" class="w-8 h-8 text-primary-600" />
-              </div>
-              <div class="chat-message-content">
-                <div class="flex flex-wrap gap-2">
-                  <c-atoms.button type="button" variant="primary" x-on:click="confirmExtraction">
-                  <c-atoms.icon name="check" class="w-4 h-4" />
-                  {% trans "Looks correct" %}
-                  </c-atoms.button>
-                  <c-atoms.button type="button" variant="outline" x-on:click="requestClarification">
-                  <c-atoms.icon name="pencil" class="w-4 h-4" />
-                  {% trans "Let me clarify" %}
-                  </c-atoms.button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        {# Chat Input - fixed at bottom #}
-        <div class="chat-input-area">
-          <form x-on:submit.prevent="askQuestion"
-                class="chat-input-form"
-                role="search">
-            {% csrf_token %}
-            <c-atoms.button type="button" variant="outline" size="icon" aria_label="{{ upload_label }}" x-on:click="triggerFileInput" x-bind:disabled="isUploading" title="{{ upload_title }}">
-            <template x-if="notUploading">
-              <c-atoms.icon name="document-arrow-up" class="w-5 h-5" />
-            </template>
-            <template x-if="isUploading">
-              <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
-            </template>
             </c-atoms.button>
             <div class="search-input-wrapper">
               <input type="text"
                      x-bind:value="inputText"
                      x-on:input="updateInput"
                      name="q"
-                     placeholder="{% trans "Ask a follow-up question..." %}"
+                     placeholder="{{ input_placeholder }}"
                      class="chat-input"
-                     aria-label="{% trans "Ask a follow-up question" %}">
+                     aria-label="{{ input_aria_label }}" />
             </div>
             {% trans "Send" as send_label %}
-            <c-atoms.button type="submit" variant="primary" size="lg" aria_label="{{ send_label }}" x-bind:disabled="isStreaming">
-            <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
+            <c-atoms.button type="submit"
+                            variant="primary"
+                            size="xl"
+                            aria_label="{{ send_label }}"
+                            x-bind:disabled="isStreaming">
+              <c-atoms.icon name="paper-airplane" class="w-5 h-5" />
             </c-atoms.button>
           </form>
         </div>
       </div>
     </div>
-    {# Spacer to balance sidebar and keep chat centered - logged-in users only #}
+    {# Spacer to balance sidebar and keep chat centered — logged-in users only #}
     {% if user.is_authenticated %}<div class="hidden lg:block w-80 flex-shrink-0"></div>{% endif %}
   </div>
 {% endblock content %}

@@ -152,10 +152,20 @@ def chat_page(request):
     """Chat page - AI-powered legal assistance chat interface."""
     slug = request.GET.get("topic", "").strip()
     topic = TOPICS.get(slug) if slug else None
+    topic_context = ""
+    if topic and topic.get("context_sections"):
+        lines = [f"Topic: {topic['title']}"]
+        for section in topic["context_sections"]:
+            lines.append(f"{section['heading']}: {section['body']}")
+        topic_context = "\n".join(lines)
     return render(
         request,
         "pages/chat.html",
-        {"topic": topic, "topic_slug": slug if topic else ""},
+        {
+            "topic": topic,
+            "topic_slug": slug if topic else "",
+            "topic_context": topic_context,
+        },
     )
 
 

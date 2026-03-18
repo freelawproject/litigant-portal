@@ -36,7 +36,7 @@ repos:
     hooks:
       - id: prettier
         name: prettier
-        entry: prettier --write --ignore-unknown
+        entry: prettier --write --ignore-unknown --log-level warn
         language: node
         types_or: [javascript, json, markdown, yaml, css]
         exclude: ^(node_modules/|\.venv/|staticfiles/|static/css/main\.built\.css|package-lock\.json|uv\.lock)
