@@ -649,11 +649,11 @@
   /* Sub-header — stable context bar, never changes with state */
   .chat-subheader {
     @apply border-b border-greyscale-200 bg-greyscale-50;
-    @apply flex-shrink-0 px-4 py-4;
+    @apply flex-shrink-0 py-4;
   }
 
   .chat-subheader-inner {
-    @apply max-w-3xl mx-auto px-4;
+    @apply px-4;
   }
 
   .chat-subheader-heading {
@@ -828,6 +828,54 @@
       transform: scale(1);
       opacity: 1;
     }
+  }
+
+  /* Sidebar flash — brief highlight when new case facts arrive from AI */
+  @keyframes sidebar-flash {
+    0% {
+      background-color: #fef9c3;
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  .sidebar-flash {
+    border-radius: 0.5rem;
+    animation: sidebar-flash 1.5s ease-out;
+  }
+
+  /* Activity panel */
+  .activity-panel {
+    @apply flex flex-col h-full;
+  }
+
+  .timeline-event-card {
+    @apply rounded-lg border border-greyscale-200 bg-white overflow-hidden;
+  }
+
+  .timeline-event-summary {
+    @apply flex items-center gap-2 p-3 cursor-pointer select-none list-none text-sm text-greyscale-700 hover:bg-greyscale-50;
+  }
+
+  .timeline-event-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .timeline-event-icon {
+    @apply w-4 h-4 text-greyscale-400 flex-shrink-0;
+  }
+
+  .timeline-event-title {
+    @apply flex-1 truncate font-medium;
+  }
+
+  .timeline-event-badge {
+    @apply text-xs text-greyscale-400 flex-shrink-0;
+  }
+
+  .timeline-event-body {
+    @apply px-3 pb-3 border-t border-greyscale-100 pt-2;
   }
 
   /* Search Results (fallback) */
