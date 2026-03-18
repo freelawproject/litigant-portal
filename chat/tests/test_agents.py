@@ -60,7 +60,9 @@ class UpdateCaseFactsPatchBuildingTests(TestCase):
         self.assertEqual(patch["court_info"]["case_number"], "2026-EV-001234")
 
     def test_new_dates_map_to_key_dates(self):
-        dates = [FactDate(label="Hearing", date="2026-04-01", is_deadline=True)]
+        dates = [
+            FactDate(label="Hearing", date="2026-04-01", is_deadline=True)
+        ]
         patch = self._call_with(new_dates=dates)
         self.assertEqual(len(patch["key_dates"]), 1)
         self.assertEqual(patch["key_dates"][0]["label"], "Hearing")
@@ -96,7 +98,9 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
             username="jane", password="testpass"
         )
         self.user_session = ChatSession.objects.create(user=self.user)
-        self.anon_session = ChatSession.objects.create(session_key="anon-key-abc")
+        self.anon_session = ChatSession.objects.create(
+            session_key="anon-key-abc"
+        )
 
     def _call(self, tool, session):
         return tool(_mock_agent(session=session))
@@ -117,7 +121,9 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
             CaseInfo.objects.filter(session_key="anon-key-abc").count(), 0
         )
 
-        self._call(UpdateCaseFacts(case_type="Small Claims"), self.anon_session)
+        self._call(
+            UpdateCaseFacts(case_type="Small Claims"), self.anon_session
+        )
 
         self.assertEqual(
             CaseInfo.objects.filter(session_key="anon-key-abc").count(), 1
@@ -138,24 +144,34 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
         """Merging partial court_info updates given fields without clearing others."""
         CaseInfo.objects.create(
             user=self.user,
-            data={"court_info": {"court_name": "Circuit Court", "phone": "555-1234"}},
+            data={
+                "court_info": {
+                    "court_name": "Circuit Court",
+                    "phone": "555-1234",
+                }
+            },
         )
 
-        self._call(
-            UpdateCaseFacts(court_county="DuPage"), self.user_session
-        )
+        self._call(UpdateCaseFacts(court_county="DuPage"), self.user_session)
 
         case = CaseInfo.objects.get(user=self.user)
         self.assertEqual(case.data["court_info"]["county"], "DuPage")
         # Existing field must not be overwritten
-        self.assertEqual(case.data["court_info"]["court_name"], "Circuit Court")
+        self.assertEqual(
+            case.data["court_info"]["court_name"], "Circuit Court"
+        )
         self.assertEqual(case.data["court_info"]["phone"], "555-1234")
 
     def test_merges_parties_preserves_existing_fields(self):
         """Merging partial parties updates given fields without clearing others."""
         CaseInfo.objects.create(
             user=self.user,
-            data={"parties": {"opposing_party": "Acme Corp", "opposing_phone": "555-9999"}},
+            data={
+                "parties": {
+                    "opposing_party": "Acme Corp",
+                    "opposing_phone": "555-9999",
+                }
+            },
         )
 
         self._call(
@@ -163,7 +179,9 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
         )
 
         case = CaseInfo.objects.get(user=self.user)
-        self.assertEqual(case.data["parties"]["opposing_address"], "100 Oak Ave")
+        self.assertEqual(
+            case.data["parties"]["opposing_address"], "100 Oak Ave"
+        )
         self.assertEqual(case.data["parties"]["opposing_party"], "Acme Corp")
         self.assertEqual(case.data["parties"]["opposing_phone"], "555-9999")
 
@@ -185,7 +203,11 @@ class UpdateCaseFactsDateDeduplicationTests(TestCase):
             user=self.user,
             data={
                 "key_dates": [
-                    {"label": "Hearing", "date": "2026-04-01", "is_deadline": True}
+                    {
+                        "label": "Hearing",
+                        "date": "2026-04-01",
+                        "is_deadline": True,
+                    }
                 ]
             },
         )
@@ -195,7 +217,9 @@ class UpdateCaseFactsDateDeduplicationTests(TestCase):
 
     def test_does_not_duplicate_same_label_and_date(self):
         """Calling with a date already in key_dates does not add a duplicate."""
-        duplicate = FactDate(label="Hearing", date="2026-04-01", is_deadline=True)
+        duplicate = FactDate(
+            label="Hearing", date="2026-04-01", is_deadline=True
+        )
         self._call(UpdateCaseFacts(new_dates=[duplicate]))
 
         case = CaseInfo.objects.get(user=self.user)
@@ -203,7 +227,9 @@ class UpdateCaseFactsDateDeduplicationTests(TestCase):
 
     def test_appends_date_with_different_label(self):
         """A date with the same date but a different label is added."""
-        new = FactDate(label="Notice Date", date="2026-04-01", is_deadline=False)
+        new = FactDate(
+            label="Notice Date", date="2026-04-01", is_deadline=False
+        )
         self._call(UpdateCaseFacts(new_dates=[new]))
 
         case = CaseInfo.objects.get(user=self.user)
