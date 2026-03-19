@@ -2,8 +2,8 @@
 
 {# Activity panel - right-side timeline of session events (uploads, summaries, fact updates) #}
 <aside class="activity-panel bg-white border-l border-greyscale-200 {{ class }}" {{ attrs }}>
-  <div class="p-4 border-b border-greyscale-200">
-    <h2 class="text-lg font-semibold text-greyscale-800">{% trans "Activity" %}</h2>
+  <div class="px-4 pt-4 pb-3 border-b border-greyscale-200">
+    <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Activity" %}</h2>
   </div>
   <div class="flex-1 overflow-y-auto p-4 space-y-2">{{ slot }}</div>
 </aside>

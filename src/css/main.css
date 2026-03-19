@@ -547,7 +547,7 @@
   }
 
   .topic-prompt-btn {
-    @apply w-full flex items-center gap-3 text-left;
+    @apply w-full flex items-center justify-between gap-3 text-left;
     @apply px-4 py-3 rounded-lg;
     @apply bg-white border border-greyscale-200 text-greyscale-700;
     @apply hover:border-primary-300 hover:bg-primary-25;
@@ -572,13 +572,19 @@
   }
 
   .topic-context-toggle {
-    @apply inline-flex items-center gap-1.5 py-0.5 rounded;
-    @apply text-xs font-medium text-greyscale-400 cursor-pointer;
-    @apply hover:text-greyscale-600 transition-colors;
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md;
+    @apply bg-greyscale-100 border border-greyscale-200;
+    @apply text-xs font-medium text-greyscale-600 cursor-pointer;
+    @apply hover:bg-greyscale-200 transition-colors;
   }
 
   .topic-context-body {
-    @apply pt-2 pb-1 space-y-3 text-left;
+    @apply pt-3 pb-1 space-y-3 text-left;
+    @apply max-h-44 overflow-y-auto;
+  }
+
+  .topic-context-body h3 {
+    @apply text-xs font-semibold uppercase tracking-wider text-greyscale-500;
   }
   /* ==========================================================================
      FALLBACK RESOURCES SECTION
@@ -678,10 +684,14 @@
   .chat-input {
     @apply w-full text-md font-normal py-3 px-4 rounded-lg;
     @apply border border-greyscale-300 bg-white text-greyscale-900;
-    @apply placeholder:text-greyscale-400;
+    @apply placeholder:text-greyscale-500;
     @apply transition-colors duration-200;
     @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600;
     min-height: 48px; /* 44px touch target + padding */
+  }
+
+  .chat-disclaimer {
+    @apply max-w-2xl mx-auto px-2 text-xs text-greyscale-400 text-center;
   }
 
   /* Mobile Footer */
