@@ -275,7 +275,7 @@
                 </template>
               </div>
               <div class="chat-message-content">
-                <div class="chat-bubble"
+                <div class="p-3 rounded-lg text-md break-words whitespace-pre-wrap"
                      x-bind:class="msg.bubbleClass"
                      x-html="msg.renderedContent"></div>
               </div>
@@ -336,7 +336,7 @@
                 <c-atoms.icon name="arrow-path" class="w-5 h-5 animate-spin" />
               </template>
             </c-atoms.button>
-            <div class="search-input-wrapper">
+            <div class="relative flex-1">
               <input type="text"
                      x-bind:value="inputText"
                      x-on:input="updateInput"
