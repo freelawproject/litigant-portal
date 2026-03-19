@@ -324,48 +324,9 @@
     @apply bg-red-200 text-red-400;
   }
 
-  /* Skip Link - Accessibility */
-  .skip-link {
-    @apply transition-all ease-in-out pointer-events-none;
-    @apply focus-visible:pointer-events-auto top-0 left-0;
-    @apply bg-primary-600 text-white absolute p-2 m-2;
-    @apply -translate-y-24 focus-visible:translate-y-0;
-    @apply focus-visible:opacity-100 opacity-0;
-    @apply focus-visible:ring-2 focus-visible:ring-primary-900;
-    @apply focus-visible:outline focus-visible:outline-primary-900 z-50;
-  }
-
   /* Icons */
   .icon {
     @apply inline-flex items-center justify-center;
-  }
-
-  /* Banners & Cards */
-  .banner {
-    @apply flex flex-col gap-4 rounded-2xl bg-greyscale-100 border-2 border-greyscale-200 p-6;
-  }
-
-  .card {
-    @apply bg-white rounded-xl border border-greyscale-200 p-4;
-  }
-
-  /* Layout */
-  .container-desktop {
-    @apply max-w-content mx-auto px-4 sm:px-6 lg:px-8;
-  }
-
-  .container-mobile {
-    @apply max-w-md mx-auto px-4;
-  }
-
-  .capped-width {
-    @apply w-full mx-auto;
-    max-width: var(--content-max-width);
-  }
-
-  /* Text Box (for forms) */
-  .textbox {
-    @apply text-md font-normal py-3 px-4 rounded-lg border border-greyscale-300;
   }
 
   /* ==========================================================================
@@ -503,26 +464,9 @@
     @apply max-w-content mx-auto;
   }
 
-  /* Topic Grid Collapsed State */
-  .topic-grid-collapsed {
-    @apply py-0;
-    @apply border-t border-greyscale-200 bg-greyscale-50;
-  }
-
-  .topic-grid-toggle {
-    @apply w-full flex items-center justify-between;
-    @apply px-4 py-3 max-w-content mx-auto;
-    @apply text-left cursor-pointer;
-    @apply hover:bg-greyscale-100 transition-colors;
-  }
-
   /* ==========================================================================
      TOPIC CHAT ENTRY
      ========================================================================== */
-
-  .topic-entry {
-    @apply max-w-xl mx-auto text-center flex flex-col;
-  }
 
   .topic-entry-header {
     @apply flex items-center gap-3 text-left;
@@ -658,18 +602,6 @@
     @apply flex-shrink-0 py-4;
   }
 
-  .chat-subheader-inner {
-    @apply px-4;
-  }
-
-  .chat-subheader-heading {
-    @apply font-cooper font-semibold text-display-xs text-greyscale-900 m-0;
-  }
-
-  .chat-subheader-subtext {
-    @apply text-sm text-greyscale-600 mt-0.5 m-0;
-  }
-
   /* Content — scrollable area where messages + input flow together */
   .chat-content {
     @apply flex-1 overflow-y-auto;
@@ -698,25 +630,6 @@
   .mobile-footer {
     @apply bg-greyscale-100 border-t border-greyscale-200;
     @apply px-4 py-2;
-  }
-
-  .mobile-footer-inner {
-    @apply max-w-content mx-auto text-center;
-  }
-
-  .mobile-footer-nav {
-    @apply flex flex-wrap justify-center gap-4 md:gap-6;
-    @apply mb-4;
-  }
-
-  .mobile-footer-link {
-    @apply text-base text-greyscale-600 no-underline; /* 16px for WCAG 2.x */
-    @apply hover:text-primary-600 hover:underline;
-    @apply transition-colors;
-  }
-
-  .mobile-footer-copyright {
-    @apply text-sm text-greyscale-500; /* 14px ok for secondary text */
   }
 
   /* Style Guide Navigation Accordion */
@@ -896,25 +809,5 @@
   .search-result-card {
     @apply p-4 bg-white border border-greyscale-200 rounded-lg;
     @apply hover:border-primary-300 hover:shadow-sm transition-all;
-  }
-}
-
-/* ==========================================================================
-   UTILITIES LAYER - Custom utilities
-   ========================================================================== */
-
-@layer utilities {
-  /* Lead text for intro paragraphs */
-  .lead {
-    @apply text-xl text-greyscale-700 font-normal;
-  }
-
-  /* Focus container - provides focus state when a child input is focused */
-  .focus-container {
-    @apply flex;
-  }
-
-  .focus-container:has(input:focus) {
-    @apply outline outline-2 outline-primary-600;
   }
 }
