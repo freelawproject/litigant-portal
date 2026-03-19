@@ -1,5 +1,5 @@
 <c-vars role="user" />
-<div class="chat-bubble {% if role == 'user' %}chat-bubble-user{% elif role == 'assistant' %}chat-bubble-assistant{% else %}chat-bubble-system{% endif %} {{ class }}"
+<div class="p-3 rounded-lg text-md break-words whitespace-pre-wrap {% if role == 'user' %}bg-primary-600 text-white rounded-br-sm{% elif role == 'assistant' %}bg-greyscale-100 text-greyscale-900 rounded-bl-sm{% else %}bg-yellow-50 text-yellow-700 border border-yellow-200 text-sm italic{% endif %} {{ class }}"
      {{ attrs }}>
   {{ slot }}
 </div>

@@ -156,7 +156,7 @@ function createChat() {
         role: 'user',
         content,
         renderedContent: chatUtils.escapeHtml(displayContent),
-        bubbleClass: 'chat-bubble-user',
+        bubbleClass: 'bg-primary-600 text-white rounded-br-sm',
         messageClass: 'chat-message-user',
         isUser: true,
         isAssistant: false,
@@ -169,7 +169,7 @@ function createChat() {
         role: 'assistant',
         content: '',
         renderedContent: '',
-        bubbleClass: 'chat-bubble-assistant',
+        bubbleClass: 'bg-greyscale-100 text-greyscale-900 rounded-bl-sm',
         messageClass: 'chat-message-assistant',
         isUser: false,
         isAssistant: true,
@@ -355,7 +355,9 @@ function createChat() {
         renderedContent: isUser
           ? chatUtils.escapeHtml(content)
           : chatUtils.renderMarkdown(content),
-        bubbleClass: isUser ? 'chat-bubble-user' : 'chat-bubble-assistant',
+        bubbleClass: isUser
+          ? 'bg-primary-600 text-white rounded-br-sm'
+          : 'bg-greyscale-100 text-greyscale-900 rounded-bl-sm',
         messageClass: isUser ? 'chat-message-user' : 'chat-message-assistant',
         isUser,
         isAssistant: !isUser,
