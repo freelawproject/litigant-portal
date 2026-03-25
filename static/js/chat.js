@@ -426,6 +426,7 @@ function createHomePage() {
     // --- Upload state ---
     selectedFile: null,
     isUploading: false,
+    uploadStatus: '', // 'uploading' | 'analyzing' | ''
     uploadError: null,
     extractedText: null,
     extractedData: null,
@@ -558,6 +559,12 @@ function createHomePage() {
     },
     get notUploading() {
       return !this.isUploading
+    },
+
+    // Upload overlay text (CSP build can't evaluate ternaries in templates)
+    get uploadStatusText() {
+      if (this.uploadStatus === 'analyzing') return 'Analyzing document…'
+      return 'Uploading document…'
     },
 
     // --- Initialization ---
@@ -759,6 +766,7 @@ function createHomePage() {
       if (!this.selectedFile || this.isUploading) return
 
       this.isUploading = true
+      this.uploadStatus = 'uploading'
       this.uploadError = null
       const fileName = this.selectedFile.name
 
@@ -767,11 +775,17 @@ function createHomePage() {
         formData.append('file', this.selectedFile)
         formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
 
+        // Upload completes quickly; analysis takes longer
+        const analyzeTimer = setTimeout(() => {
+          this.uploadStatus = 'analyzing'
+        }, 1000)
+
         const response = await fetch('/api/chat/upload/', {
           method: 'POST',
           body: formData,
         })
 
+        clearTimeout(analyzeTimer)
         const data = await response.json()
         if (!response.ok)
           throw new Error(data.error || gettext('Upload failed'))
@@ -839,6 +853,7 @@ function createHomePage() {
         )
       } finally {
         this.isUploading = false
+        this.uploadStatus = ''
       }
     },
 
