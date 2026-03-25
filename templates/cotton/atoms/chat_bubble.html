@@ -1,5 +1,11 @@
 <c-vars role="user" />
-<div class="p-3 rounded-lg text-md break-words whitespace-pre-wrap {% if role == 'user' %}bg-primary-600 text-white rounded-br-sm{% elif role == 'assistant' %}bg-greyscale-100 text-greyscale-900 rounded-bl-sm{% else %}bg-yellow-50 text-yellow-700 border border-yellow-200 text-sm italic{% endif %} {{ class }}"
+{# --- Base --- #}
+{% with base="p-3 rounded-lg text-md break-words whitespace-pre-wrap" %}
+{# --- Roles --- #}
+{% with r_user="bg-primary-600 text-white rounded-br-sm" r_assistant="bg-greyscale-100 text-greyscale-900 rounded-bl-sm" r_system="bg-yellow-50 text-yellow-700 border border-yellow-200 text-sm italic" %}
+<div class="{{ base }} {% if role == 'user' %}{{ r_user }}{% elif role == 'assistant' %}{{ r_assistant }}{% else %}{{ r_system }}{% endif %} {{ class }}"
      {{ attrs }}>
   {{ slot }}
 </div>
+{% endwith %}
+{% endwith %}
