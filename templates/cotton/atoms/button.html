@@ -3,7 +3,7 @@
 {# Size: sm|xl|icon|icon-xl (default is medium) #}
 {# href: when set, renders as <a> link instead of <button> #}
 {# --- Base --- #}
-{% with base="rounded-lg w-fit font-normal flex gap-1 items-center transition-colors duration-200" %}
+{% with base="rounded-lg font-normal flex gap-1 items-center transition-colors duration-200" %}
 {# --- Sizes --- #}
 {% with sm="py-1.5 px-2.5 text-xs" xl="py-3 px-4.5 text-md" icon="p-2.5" icon_xl="p-3" md="py-2.5 px-3.5 text-sm" %}
 {# --- Variants (colors, hover, focus — shared between link and button) --- #}
@@ -16,14 +16,14 @@
      {% if id %}id="{{ id }}"{% endif %}
      {% if disabled %}aria-disabled="true" tabindex="-1"{% endif %}
      {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
-     class="{{ base }} aria-disabled:pointer-events-none {% if size == 'sm' %}{{ sm }}{% elif size == 'xl' %}{{ xl }}{% elif size == 'icon' %}{{ icon }}{% elif size == 'icon-xl' %}{{ icon_xl }}{% else %}{{ md }}{% endif %} {% if full_width %}w-full {% endif %}{% if variant == 'outline' %}{{ outline }} {{ link_outline_dis }}{% elif variant == 'dark' %}{{ dark }} {{ link_dark_dis }}{% elif variant == 'ghost' %}{{ ghost }} {{ link_ghost_dis }}{% elif variant == 'danger' %}{{ danger }} {{ link_danger_dis }}{% else %}{{ primary }} {{ link_primary_dis }}{% endif %} {{ class }}"
+     class="{{ base }} aria-disabled:pointer-events-none {% if size == 'sm' %}{{ sm }}{% elif size == 'xl' %}{{ xl }}{% elif size == 'icon' %}{{ icon }}{% elif size == 'icon-xl' %}{{ icon_xl }}{% else %}{{ md }}{% endif %} {% if full_width %}w-full{% else %}w-fit{% endif %}{% if variant == 'outline' %}{{ outline }} {{ link_outline_dis }}{% elif variant == 'dark' %}{{ dark }} {{ link_dark_dis }}{% elif variant == 'ghost' %}{{ ghost }} {{ link_ghost_dis }}{% elif variant == 'danger' %}{{ danger }} {{ link_danger_dis }}{% else %}{{ primary }} {{ link_primary_dis }}{% endif %} {{ class }}"
      {{ attrs }}>{{ slot }}</a>
 {% else %}
   <button type="{{ type }}"
           {% if id %}id="{{ id }}"{% endif %}
           {% if disabled %}disabled{% endif %}
           {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
-          class="{{ base }} disabled:cursor-not-allowed {% if size == 'sm' %}{{ sm }}{% elif size == 'xl' %}{{ xl }}{% elif size == 'icon' %}{{ icon }}{% elif size == 'icon-xl' %}{{ icon_xl }}{% else %}{{ md }}{% endif %} {% if full_width %}w-full {% endif %}{% if variant == 'outline' %}{{ outline }} {{ btn_outline_dis }}{% elif variant == 'dark' %}{{ dark }} {{ btn_dark_dis }}{% elif variant == 'ghost' %}{{ ghost }} {{ btn_ghost_dis }}{% elif variant == 'danger' %}{{ danger }} {{ btn_danger_dis }}{% else %}{{ primary }} {{ btn_primary_dis }}{% endif %} {{ class }}"
+          class="{{ base }} disabled:cursor-not-allowed {% if size == 'sm' %}{{ sm }}{% elif size == 'xl' %}{{ xl }}{% elif size == 'icon' %}{{ icon }}{% elif size == 'icon-xl' %}{{ icon_xl }}{% else %}{{ md }}{% endif %} {% if full_width %}w-full{% else %}w-fit{% endif %}{% if variant == 'outline' %}{{ outline }} {{ btn_outline_dis }}{% elif variant == 'dark' %}{{ dark }} {{ btn_dark_dis }}{% elif variant == 'ghost' %}{{ ghost }} {{ btn_ghost_dis }}{% elif variant == 'danger' %}{{ danger }} {{ btn_danger_dis }}{% else %}{{ primary }} {{ btn_primary_dis }}{% endif %} {{ class }}"
           {{ attrs }}>{{ slot }}
   </button>
 {% endif %}
