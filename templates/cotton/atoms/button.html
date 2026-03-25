@@ -2,19 +2,33 @@
 {# Variant: primary|outline|dark|ghost|danger #}
 {# Size: sm|xl|icon|icon-xl (default is medium) #}
 {# href: when set, renders as <a> link instead of <button> #}
+{# --- Base --- #}
+{% with base="rounded-lg w-fit font-normal flex gap-1 items-center transition-colors duration-200" %}
+{# --- Sizes --- #}
+{% with sm="py-1.5 px-2.5 text-xs" xl="py-3 px-4.5 text-md" icon="p-2.5" icon_xl="p-3" md="py-2.5 px-3.5 text-sm" %}
+{# --- Variants (colors, hover, focus — shared between link and button) --- #}
+{% with primary="text-white bg-primary-600 outline-none hover:bg-primary-700 focus-visible:ring-4 focus-visible:ring-primary-300" outline="bg-white text-greyscale-700 border border-greyscale-300 outline-none hover:bg-greyscale-100 focus-visible:ring-4 focus-visible:ring-greyscale-300" dark="text-white bg-greyscale-900 outline-none hover:bg-greyscale-800 focus-visible:ring-4 focus-visible:ring-greyscale-400" ghost="text-greyscale-700 hover:bg-greyscale-100 focus-visible:ring-4 focus-visible:ring-greyscale-200" danger="text-white bg-red-500 outline-none hover:bg-red-600 focus-visible:ring-4 focus-visible:ring-red-300" %}
+{# --- Disabled states: link uses aria-disabled:, button uses disabled: --- #}
+{% with link_primary_dis="aria-disabled:bg-primary-100 aria-disabled:text-primary-400" link_outline_dis="aria-disabled:bg-white aria-disabled:text-greyscale-400 aria-disabled:border-greyscale-200" link_dark_dis="aria-disabled:bg-greyscale-400 aria-disabled:text-greyscale-200" link_ghost_dis="aria-disabled:text-greyscale-400" link_danger_dis="aria-disabled:bg-red-200 aria-disabled:text-red-400" %}
+{% with btn_primary_dis="disabled:bg-primary-100 disabled:text-primary-400" btn_outline_dis="disabled:bg-white disabled:text-greyscale-400 disabled:border-greyscale-200" btn_dark_dis="disabled:bg-greyscale-400 disabled:text-greyscale-200" btn_ghost_dis="disabled:text-greyscale-400" btn_danger_dis="disabled:bg-red-200 disabled:text-red-400" %}
 {% if href %}
   <a href="{{ href }}"
      {% if id %}id="{{ id }}"{% endif %}
      {% if disabled %}aria-disabled="true" tabindex="-1"{% endif %}
      {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
-     class="btn btn-{% if size %}{{ size }}{% else %}md{% endif %} btn-{{ variant }}{% if full_width %} w-full{% endif %} {{ class }}"
+     class="{{ base }} aria-disabled:pointer-events-none {% if size == 'sm' %}{{ sm }}{% elif size == 'xl' %}{{ xl }}{% elif size == 'icon' %}{{ icon }}{% elif size == 'icon-xl' %}{{ icon_xl }}{% else %}{{ md }}{% endif %} {% if full_width %}w-full {% endif %}{% if variant == 'outline' %}{{ outline }} {{ link_outline_dis }}{% elif variant == 'dark' %}{{ dark }} {{ link_dark_dis }}{% elif variant == 'ghost' %}{{ ghost }} {{ link_ghost_dis }}{% elif variant == 'danger' %}{{ danger }} {{ link_danger_dis }}{% else %}{{ primary }} {{ link_primary_dis }}{% endif %} {{ class }}"
      {{ attrs }}>{{ slot }}</a>
 {% else %}
   <button type="{{ type }}"
           {% if id %}id="{{ id }}"{% endif %}
           {% if disabled %}disabled{% endif %}
           {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
-          class="btn btn-{% if size %}{{ size }}{% else %}md{% endif %} btn-{{ variant }}{% if full_width %} w-full{% endif %} {{ class }}"
+          class="{{ base }} disabled:cursor-not-allowed {% if size == 'sm' %}{{ sm }}{% elif size == 'xl' %}{{ xl }}{% elif size == 'icon' %}{{ icon }}{% elif size == 'icon-xl' %}{{ icon_xl }}{% else %}{{ md }}{% endif %} {% if full_width %}w-full {% endif %}{% if variant == 'outline' %}{{ outline }} {{ btn_outline_dis }}{% elif variant == 'dark' %}{{ dark }} {{ btn_dark_dis }}{% elif variant == 'ghost' %}{{ ghost }} {{ btn_ghost_dis }}{% elif variant == 'danger' %}{{ danger }} {{ btn_danger_dis }}{% else %}{{ primary }} {{ btn_primary_dis }}{% endif %} {{ class }}"
           {{ attrs }}>{{ slot }}
   </button>
 {% endif %}
+{% endwith %}
+{% endwith %}
+{% endwith %}
+{% endwith %}
+{% endwith %}
