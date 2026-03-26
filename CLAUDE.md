@@ -504,7 +504,7 @@ Set in `.env` at the project root:
 | Variable             | Description                          | Example                          |
 | -------------------- | ------------------------------------ | -------------------------------- |
 | `SECRET_KEY_FILE`    | Path to file containing Django key   | `/run/secrets/django_secret_key` |
-| `OPENAI_API_KEY_FILE`| Path to file containing OpenAI key   | `/run/secrets/openai_api_key`    |
+| `OPENAI_API_KEY_FILE` | Path to file containing OpenAI key   | `/run/secrets/openai_api_key`    |
 
 In dev (`DEBUG=true`), `SECRET_KEY` is auto-generated if neither `SECRET_KEY` nor `SECRET_KEY_FILE` is set.
 

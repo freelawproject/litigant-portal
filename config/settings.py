@@ -301,4 +301,4 @@ DEFAULT_CHAT_AGENT = os.environ.get(
 # so we populate the env var here if a file path is provided.
 _openai_key = _read_secret("OPENAI_API_KEY")
 if _openai_key:
-    os.environ.setdefault("OPENAI_API_KEY", _openai_key)
+    os.environ["OPENAI_API_KEY"] = _openai_key
