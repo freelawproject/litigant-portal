@@ -27,8 +27,6 @@ services:
       retries: 5
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - '5432:5432'
 
   # ---------------------------------------------------------------------------
   # Development Django Server
@@ -64,7 +62,7 @@ services:
     environment:
       - DEBUG=false
       - SECRET_KEY_FILE=/run/secrets/django_secret_key
-      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/litigant_portal
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/litigant_portal
       - ALLOWED_HOSTS=localhost,${ALLOWED_HOSTS:-localhost}
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
