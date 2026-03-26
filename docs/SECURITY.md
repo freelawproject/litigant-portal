@@ -28,7 +28,7 @@ When `DEBUG=False`, Django enables these security settings:
 ### Development
 
 - `SECRET_KEY` auto-generated at runtime (Docker entrypoint)
-- `GROQ_API_KEY` in `.env` file (gitignored)
+- `OPENAI_API_KEY` in `.env` file (gitignored)
 
 ### Production
 
@@ -38,12 +38,9 @@ When `DEBUG=False`, Django enables these security settings:
 ```bash
 # Create production secrets
 mkdir -p secrets
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > secrets/django_secret_key.txt
-echo "your-secure-password" > secrets/db_password.txt
+python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
 chmod 600 secrets/*.txt
 ```
-
-See `secrets/README.md` for details.
 
 ---
 

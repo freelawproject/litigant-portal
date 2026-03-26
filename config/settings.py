@@ -115,21 +115,15 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# Supports DATABASE_URL env var, falls back to SQLite for local development
+# Supports DATABASE_URL env var, defaults to local PostgreSQL
 
 DATABASES = {
     "default": dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
+        default="postgres://postgres:postgres@localhost:5432/litigant_portal",
         conn_max_age=600,
         conn_health_checks=True,
     )
 }
-
-# SQLite: use IMMEDIATE transactions to prevent "database is locked" under Gunicorn
-if DATABASES["default"]["ENGINE"] == "django.db.backends.sqlite3":
-    DATABASES["default"]["OPTIONS"] = {
-        "transaction_mode": "IMMEDIATE",
-    }
 
 
 # Password validation
