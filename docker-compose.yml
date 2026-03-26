@@ -19,7 +19,6 @@ services:
     command: web-dev
     environment:
       - DEBUG=true
-      - SECRET_KEY=${SECRET_KEY:-auto}
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}

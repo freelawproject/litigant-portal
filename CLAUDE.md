@@ -499,7 +499,14 @@ Set in `.env` at the project root:
 | `ALLOWED_HOSTS`  | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
 | `OPENAI_API_KEY` | OpenAI API key for AI chat              | `sk-...`             |
 
-Secret key is read from `secrets/django_secret_key.txt` (never committed).
+**Secrets (`_FILE` convention):** `settings.py` reads secrets via a `_read_secret()` helper that checks `<VAR>_FILE` first (path to a file), then falls back to `<VAR>` as a plain env var. This works for Docker Compose secrets, K8s secret mounts, and plain env vars.
+
+| Variable             | Description                          | Example                          |
+| -------------------- | ------------------------------------ | -------------------------------- |
+| `SECRET_KEY_FILE`    | Path to file containing Django key   | `/run/secrets/django_secret_key` |
+| `OPENAI_API_KEY_FILE`| Path to file containing OpenAI key   | `/run/secrets/openai_api_key`    |
+
+In dev (`DEBUG=true`), `SECRET_KEY` is auto-generated if neither `SECRET_KEY` nor `SECRET_KEY_FILE` is set.
 
 Non-secret env vars (`DATABASE_URL`, `CHAT_MODEL`, `GUNICORN_WORKERS`, etc.) can be set in `.env` or overridden in `docker-compose.yml`.
 

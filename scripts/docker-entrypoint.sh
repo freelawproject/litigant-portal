@@ -4,17 +4,6 @@ set -e
 # Docker entrypoint for Litigant Portal
 # Commands: web-dev, web-prod, migrate, collectstatic, shell, test
 
-# ---------------------------------------------------------------------------
-# Handle secrets from files (_FILE pattern for Docker secrets)
-# ---------------------------------------------------------------------------
-
-# SECRET_KEY: auto-generate for dev, or read from file for prod
-if [ "$SECRET_KEY" = "auto" ]; then
-    export SECRET_KEY=$(python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())')
-elif [ -n "$SECRET_KEY_FILE" ] && [ -f "$SECRET_KEY_FILE" ]; then
-    export SECRET_KEY=$(cat "$SECRET_KEY_FILE")
-fi
-
 enable_wal() {
     # Enable WAL mode for SQLite (better concurrency under Gunicorn)
     if echo "$DATABASE_URL" | grep -q "sqlite"; then

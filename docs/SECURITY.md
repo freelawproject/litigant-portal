@@ -25,25 +25,52 @@ When `DEBUG=False`, Django enables these security settings:
 
 ## Secrets Management
 
+Secrets are read in `config/settings.py` using the `_read_secret()` helper, which follows the `_FILE` convention:
+
+1. Check for `<VAR>_FILE` env var → read the file at that path
+2. Fall back to `<VAR>` env var directly
+
+This pattern works with Docker Compose secrets, Kubernetes secret volume mounts, and plain env vars.
+
+### Supported secrets
+
+| Secret           | `_FILE` variant        | Notes                                     |
+| ---------------- | ---------------------- | ----------------------------------------- |
+| `SECRET_KEY`     | `SECRET_KEY_FILE`      | Auto-generated in DEBUG mode if unset     |
+| `OPENAI_API_KEY` | `OPENAI_API_KEY_FILE`  | Populated into `os.environ` for LiteLLM   |
+
 ### Development
 
-- `SECRET_KEY` auto-generated at runtime (Docker entrypoint)
-- `GROQ_API_KEY` in `.env` file (gitignored)
+- `SECRET_KEY` is auto-generated at startup when `DEBUG=true` and no key is provided (no entrypoint magic — handled in `settings.py`)
+- `OPENAI_API_KEY` set in `.env` file (gitignored)
+- Developers who want a stable key across container restarts can add `SECRET_KEY=some-stable-value` to `.env`
 
 ### Production
 
-- Uses Docker secrets mounted at `/run/secrets/`
-- Never stored on disk or in environment variables visible to `docker inspect`
+- `SECRET_KEY_FILE` points to a Docker secret mounted at `/run/secrets/django_secret_key`
+- The secret is read directly in `settings.py` — never exported to the process environment
+- Not visible via `/proc/<pid>/environ`, `docker inspect`, or child processes
 
 ```bash
 # Create production secrets
 mkdir -p secrets
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > secrets/django_secret_key.txt
-echo "your-secure-password" > secrets/db_password.txt
+python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
 chmod 600 secrets/*.txt
 ```
 
-See `secrets/README.md` for details.
+### Kubernetes
+
+The `_FILE` convention maps directly to K8s secret volume mounts:
+
+```yaml
+volumeMounts:
+  - name: django-secrets
+    mountPath: /run/secrets/django_secret_key
+    subPath: django_secret_key
+    readOnly: true
+```
+
+Set `SECRET_KEY_FILE=/run/secrets/django_secret_key` — no code changes needed when migrating from Docker Compose to K8s.
 
 ---
 
