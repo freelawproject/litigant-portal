@@ -6,12 +6,14 @@
     </div>
     <div class="flex-1 min-w-0">
       <h4 class="font-medium text-greyscale-900 mb-1">
+
         {% if url %}
           <c-atoms.link href="{{ url }}" variant="unstyled" class="hover:text-primary-600">{{ title }}</c-atoms.link>
         {% else %}
           {{ title }}
         {% endif %}
       </h4>
+
       {% if category %}
         <span class="inline-block px-2 py-0.5 text-xs font-medium bg-greyscale-100 text-greyscale-600 rounded mb-2">
           {{ category }}
@@ -19,6 +21,7 @@
       {% endif %}
       <p class="text-sm text-greyscale-600 line-clamp-2">{{ content }}</p>
     </div>
+
     {% if url %}
       <div class="flex-shrink-0">
         <c-atoms.icon name="arrow-top-right-on-square" class="w-5 h-5 text-greyscale-400" />
