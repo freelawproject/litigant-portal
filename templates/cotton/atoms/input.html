@@ -1,4 +1,8 @@
 <c-vars type="text" />
+{# --- Base --- #}
+{% with base="w-full text-md font-normal py-3 px-4 rounded-lg border bg-white text-greyscale-900 placeholder:text-greyscale-400 transition-colors duration-200 focus:outline-none focus:ring-2 disabled:bg-greyscale-100 disabled:text-greyscale-500 disabled:cursor-not-allowed" %}
+{# --- States --- #}
+{% with state_error="border-red-500 focus:ring-red-500 focus:border-red-500" state_success="border-green-500 focus:ring-green-500 focus:border-green-500" state_default="border-greyscale-300 focus:ring-primary-600 focus:border-primary-600" %}
 <input type="{{ type }}"
        {% if name %}name="{{ name }}"{% endif %}
        {% if id %}id="{{ id }}"{% endif %}
@@ -10,5 +14,7 @@
        {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
        {% if aria_describedby %}aria-describedby="{{ aria_describedby }}"{% endif %}
        {% if error %}aria-invalid="true"{% endif %}
-       class="w-full text-md font-normal py-3 px-4 rounded-lg border bg-white text-greyscale-900 placeholder:text-greyscale-400 transition-colors duration-200 focus:outline-none focus:ring-2 disabled:bg-greyscale-100 disabled:text-greyscale-500 disabled:cursor-not-allowed {% if error %}border-red-500 focus:ring-red-500 focus:border-red-500{% elif success %}border-green-500 focus:ring-green-500 focus:border-green-500{% else %}border-greyscale-300 focus:ring-primary-600 focus:border-primary-600{% endif %} {{ class }}"
+       class="{{ base }} {% if error %}{{ state_error }}{% elif success %}{{ state_success }}{% else %}{{ state_default }}{% endif %} {{ class }}"
        {{ attrs }}>
+{% endwith %}
+{% endwith %}

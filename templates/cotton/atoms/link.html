@@ -1,12 +1,17 @@
 <c-vars variant="default" />
 {% load heroicons %}
-
+{# --- Base --- #}
+{% with base="inline-flex items-center gap-1 cursor-pointer transition-colors duration-200 [text-underline-offset:2px]" %}
+{# --- Variants --- #}
+{% with v_primary="text-primary-600 font-semibold underline [text-decoration-thickness:2px] hover:text-primary-700" v_secondary="text-greyscale-600 underline hover:text-greyscale-800" v_unstyled="text-inherit no-underline hover:underline" v_default="text-primary-600 underline hover:text-primary-700" %}
 <a href="{{ href }}"
    {% if target %}target="{{ target }}"{% endif %}
    {% if target == '_blank' or href|slice:":4" == "http" %}rel="noopener noreferrer"{% endif %}
-   class="inline-flex items-center gap-1 cursor-pointer transition-colors duration-200 [text-underline-offset:2px] {% if variant == 'primary' %}text-primary-600 font-semibold underline [text-decoration-thickness:2px] hover:text-primary-700{% elif variant == 'secondary' %}text-greyscale-600 underline hover:text-greyscale-800{% elif variant == 'unstyled' %}text-inherit no-underline hover:underline{% else %}text-primary-600 underline hover:text-primary-700{% endif %} {{ class }}"
+   class="{{ base }} {% if variant == 'primary' %}{{ v_primary }}{% elif variant == 'secondary' %}{{ v_secondary }}{% elif variant == 'unstyled' %}{{ v_unstyled }}{% else %}{{ v_default }}{% endif %} {{ class }}"
    {{ attrs }}>{{ slot }}
   {% if external_icon and target == '_blank' %}
     <span class="shrink-0 ml-1 w-3.5 h-3.5" aria-hidden="true">{% heroicon_outline "arrow-top-right-on-square" %}</span>
   {% endif %}
 </a>
+{% endwith %}
+{% endwith %}
