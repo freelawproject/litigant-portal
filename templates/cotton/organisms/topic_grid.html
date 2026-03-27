@@ -1,10 +1,11 @@
 {% load i18n %}
-
 {% trans "Browse by Topic" as default_heading %}
 <c-vars heading="{{ default_heading }}" />
 <section class="topic-grid-section {{ class }}" {{ attrs }}>
+
   {% if heading %}<h2 class="topic-grid-heading">{{ heading }}</h2>{% endif %}
   <div class="topic-grid">
+
     {% for slug, topic in topics.items %}
       <c-molecules.topic-card icon="{{ topic.icon }}" title="{{ topic.title }}" description="{{ topic.description }}" href="{% url 'portal:chat' %}?topic={{ slug }}" />
     {% endfor %}

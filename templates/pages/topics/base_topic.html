@@ -1,13 +1,10 @@
 {% extends "base.html" %}
-
 {% block title %}
   {{ topic.title }} - Litigant Portal
 {% endblock title %}
-
 {% block meta_description %}
   {{ topic.meta_description }}
 {% endblock meta_description %}
-
 {% block content %}
   <c-organisms.topic-detail title="{{ topic.title }}" subtitle="{{ topic.subtitle }}" icon="{{ topic.icon }}" slug="{{ slug }}">
   {% block topic_content %}

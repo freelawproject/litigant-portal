@@ -1,6 +1,7 @@
 {% load i18n %}
 
 <c-vars preview="" />
+
 {% if not user.is_authenticated or preview %}
   <section class="auth-cta {{ class }}" {{ attrs }}>
     <div class="auth-cta-inner">

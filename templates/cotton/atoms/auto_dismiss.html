@@ -1,7 +1,11 @@
 <c-vars timeout="1500" />
-<div x-data="autoDismiss"
-     x-show="show"
-     style="animation: auto-dismiss {{ timeout }}ms ease-in-out forwards"
-     x-on:animationend="dismiss"
-     {{ attrs }}>{{ slot }}
+<div
+  x-data="autoDismiss"
+  x-show="show"
+  style="animation: auto-dismiss {{ timeout }}ms ease-in-out forwards"
+  x-on:animationend="dismiss"
+
+  {{ attrs }}
+>
+  {{ slot }}
 </div>

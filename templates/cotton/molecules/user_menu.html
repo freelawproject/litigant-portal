@@ -1,6 +1,7 @@
 {% load i18n %}
 
 <c-vars />
+
 {% if user.is_authenticated %}
   {# Logged in: show user menu with dropdown #}
   <div x-data="userMenu" class="relative {{ class }}" {{ attrs }}>
