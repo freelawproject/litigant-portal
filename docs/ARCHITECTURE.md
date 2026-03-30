@@ -139,7 +139,7 @@ Django renders initial state, Alpine handles client reactivity:
 | `templates/pages/home.html` | Dashboard with hero and topic grid              |
 | `templates/pages/chat.html` | Full-screen chat interface                      |
 | `Dockerfile`                | Multi-stage build (dev + prod)                  |
-| `docker-compose.yml`        | Dev/prod profiles with SQLite                   |
+| `docker-compose.yml`        | Dev/prod profiles with PostgreSQL                |
 | `docker-entrypoint.sh`      | Container startup commands                      |
 
 ---
@@ -156,7 +156,7 @@ docker compose --profile dev up
 
 - Mounts source code for hot reload
 - Tailwind CSS watch mode
-- SQLite (file-based, zero config)
+- PostgreSQL (pgvector) via Docker Compose service
 - Auto-generates `SECRET_KEY`
 
 ### Production
@@ -168,7 +168,7 @@ docker compose --profile prod up
 ```
 
 - Gunicorn WSGI server
-- SQLite with WAL mode + IMMEDIATE transactions
+- PostgreSQL (pgvector) with persistent volume
 - Docker secrets for Django secret key
 - Pre-built CSS (minified)
 - Non-root container user
@@ -183,8 +183,13 @@ docker compose --profile prod up
 │ ┌───────────┐         ┌───────────┐      │
 │ │django-dev │         │django-prod│      │
 │ │ runserver │         │ gunicorn  │      │
-│ │ + tailwind│         │ + SQLite  │      │
-│ └───────────┘         └───────────┘      │
+│ │ + tailwind│         │           │      │
+│ └─────┬─────┘         └─────┬─────┘      │
+│       └───────┐    ┌────────┘            │
+│           ┌───┴────┴──┐                  │
+│           │ postgres   │                  │
+│           │ (pgvector) │                  │
+│           └────────────┘                  │
 └──────────────────────────────────────────┘
 ```
 

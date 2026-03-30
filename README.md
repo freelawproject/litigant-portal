@@ -35,7 +35,7 @@ make docker-prod
 - **Components:** Django Cotton (server-rendered)
 - **Styling:** Tailwind CSS (standalone CLI)
 - **Reactivity:** Alpine.js (standard build)
-- **Database:** SQLite
+- **Database:** PostgreSQL (pgvector)
 
 ## License
 

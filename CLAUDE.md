@@ -421,16 +421,16 @@ Using **LiteLLM** with OpenAI for dev and QA. Model configured via `CHAT_MODEL` 
 
 ## Database
 
-SQLite everywhere (local dev, Docker, production).
+PostgreSQL (pgvector) everywhere (local dev, Docker, production).
 
-- **Local dev:** `db.sqlite3` in project root
-- **Docker prod:** `sqlite:////data/db.sqlite3` on a Docker volume
-- **Concurrency:** WAL mode + `transaction_mode = "IMMEDIATE"` (Django 5.2) prevents "database is locked" under Gunicorn
+- **Docker (dev & prod):** `pgvector/pgvector:pg17` service in `docker-compose.yml`
+- **Local dev (no Docker):** `docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres pgvector/pgvector:pg17`
+- **pgvector** is included so vector similarity search is available for future semantic/RAG features
 
 ### Reset Data (Demo Mode)
 
 ```bash
-rm db.sqlite3
+docker compose --profile dev exec postgres psql -U postgres -d litigant_portal -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 SECRET_KEY=dev .venv/bin/python manage.py migrate
 ```
 
@@ -493,11 +493,12 @@ docker compose --profile prod up --build -d
 
 Set in `.env` at the project root:
 
-| Variable         | Description                             | Example              |
-| ---------------- | --------------------------------------- | -------------------- |
-| `DOMAIN`         | Public domain (Caddy uses for HTTPS)    | `portal.example.com` |
-| `ALLOWED_HOSTS`  | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
-| `OPENAI_API_KEY` | OpenAI API key for AI chat              | `sk-...`             |
+| Variable            | Description                             | Example              |
+| ------------------- | --------------------------------------- | -------------------- |
+| `DOMAIN`            | Public domain (Caddy uses for HTTPS)    | `portal.example.com` |
+| `ALLOWED_HOSTS`     | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
+| `OPENAI_API_KEY`    | OpenAI API key for AI chat              | `sk-...`             |
+| `POSTGRES_PASSWORD` | PostgreSQL password (required for prod; defaults to `postgres` for dev) | `strong-password`  |
 
 Secret key is read from `secrets/django_secret_key.txt` (never committed).
 
@@ -514,4 +515,4 @@ docker compose --profile prod up --build -d    # Rebuild and restart
 
 ### Database
 
-SQLite on a Docker volume (`/data/db.sqlite3`). WAL mode enabled at startup by the entrypoint.
+PostgreSQL (pgvector) on a Docker volume (`postgres_data`). Shared by dev and prod profiles.
