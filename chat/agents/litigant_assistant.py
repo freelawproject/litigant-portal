@@ -8,11 +8,13 @@ litigants understand their situation and navigate the legal system.
 FACT GATHERING (PRIORITY ONE)
 Your first goal is to understand the facts of the user's case through natural \
 conversation. As users describe their situation, ask clarifying questions to uncover:
-- Who the other party is (landlord name, company name, etc.)
-- Key dates (when they received notices, hearing dates, deadlines)
-- Where the case is (court name, county)
 - What type of legal matter this is (eviction, small claims, etc.)
+- Who the other party is (landlord name, company name, contact info)
+- The user's own name and address (as it appears on any paperwork)
+- Key dates (when they received notices, hearing dates, deadlines)
+- Where the case is (court name, county, address, phone number)
 - Case or docket number if they have paperwork
+- Whether the other side has an attorney (name and contact info)
 
 Call UpdateCaseFacts immediately whenever you learn any fact — don't wait until you \
 know everything. Partial updates as facts emerge are preferred. For example, if the \
@@ -60,23 +62,24 @@ class UpdateCaseFacts(Tool):
     """Update the user's briefcase with facts discovered in conversation.
 
     Call this tool immediately when you learn any fact about the user's case:
-    party names, dates, court location, case type, or case number. Call it
-    as soon as you have facts — partial updates are fine and preferred.
-    Do not wait until you know everything.
+    party names, dates, court location, case type, contact info, or attorney
+    details. Call it as soon as you have facts — partial updates are fine and
+    preferred. Do not wait until you know everything.
+
+    NOTE: Field schema mirrors chat.agents.document_extraction.CourtDocumentData.
+    Keep both in sync until #207 consolidates them.
     """
 
     case_type: str | None = Field(
         None,
         description="Type of legal case, e.g. 'Eviction', 'Small Claims', 'Divorce'",
     )
-    opposing_party: str | None = Field(
+    summary: str | None = Field(
         None,
-        description="Name of the opposing party (landlord, plaintiff, company, etc.)",
+        description="Brief summary of the case so far",
     )
-    opposing_address: str | None = Field(
-        None,
-        description="Address of the opposing party",
-    )
+
+    # Court info
     court_name: str | None = Field(
         None,
         description="Full name of the court",
@@ -89,6 +92,66 @@ class UpdateCaseFacts(Tool):
         None,
         description="Case number, docket number, or cause number",
     )
+    court_address: str | None = Field(
+        None,
+        description="Full street address of the courthouse",
+    )
+    court_phone: str | None = Field(
+        None,
+        description="Court phone number",
+    )
+    court_email: str | None = Field(
+        None,
+        description="Court email or clerk email",
+    )
+
+    # Parties — user
+    user_name: str | None = Field(
+        None,
+        description="The user's name as it appears on court paperwork",
+    )
+    user_address: str | None = Field(
+        None,
+        description="The user's address",
+    )
+
+    # Parties — opposing
+    opposing_party: str | None = Field(
+        None,
+        description="Name of the opposing party (landlord, plaintiff, company, etc.)",
+    )
+    opposing_address: str | None = Field(
+        None,
+        description="Address of the opposing party",
+    )
+    opposing_phone: str | None = Field(
+        None,
+        description="Opposing party's phone number",
+    )
+    opposing_email: str | None = Field(
+        None,
+        description="Opposing party's email",
+    )
+    opposing_website: str | None = Field(
+        None,
+        description="Opposing party's website",
+    )
+
+    # Parties — attorney
+    attorney_name: str | None = Field(
+        None,
+        description="Attorney name if the opposing side is represented",
+    )
+    attorney_phone: str | None = Field(
+        None,
+        description="Attorney phone number",
+    )
+    attorney_email: str | None = Field(
+        None,
+        description="Attorney email",
+    )
+
+    # Dates
     new_dates: list[FactDate] | None = Field(
         None,
         description="New dates or deadlines discovered in this exchange",
@@ -102,24 +165,44 @@ class UpdateCaseFacts(Tool):
 
         if self.case_type:
             patch["case_type"] = self.case_type
+        if self.summary:
+            patch["summary"] = self.summary
 
-        parties: dict = {}
-        if self.opposing_party:
-            parties["opposing_party"] = self.opposing_party
-        if self.opposing_address:
-            parties["opposing_address"] = self.opposing_address
-        if parties:
-            patch["parties"] = parties
-
+        # Court info — mirrors document_extraction.CourtInfo fields
         court_info: dict = {}
-        if self.court_name:
-            court_info["court_name"] = self.court_name
-        if self.court_county:
-            court_info["county"] = self.court_county
-        if self.case_number:
-            court_info["case_number"] = self.case_number
+        for attr, key in [
+            ("court_name", "court_name"),
+            ("court_county", "county"),
+            ("case_number", "case_number"),
+            ("court_address", "address"),
+            ("court_phone", "phone"),
+            ("court_email", "email"),
+        ]:
+            value = getattr(self, attr)
+            if value:
+                court_info[key] = value
         if court_info:
             patch["court_info"] = court_info
+
+        # Parties — mirrors document_extraction.Parties fields
+        parties: dict = {}
+        for attr in [
+            "user_name",
+            "user_address",
+            "opposing_party",
+            "opposing_address",
+            "opposing_phone",
+            "opposing_email",
+            "opposing_website",
+            "attorney_name",
+            "attorney_phone",
+            "attorney_email",
+        ]:
+            value = getattr(self, attr)
+            if value:
+                parties[attr] = value
+        if parties:
+            patch["parties"] = parties
 
         if self.new_dates:
             patch["key_dates"] = [
@@ -144,6 +227,8 @@ class UpdateCaseFacts(Tool):
 
             if "case_type" in patch:
                 data["case_type"] = patch["case_type"]
+            if "summary" in patch:
+                data["summary"] = patch["summary"]
 
             if "court_info" in patch:
                 data.setdefault("court_info", {})
