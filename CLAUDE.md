@@ -481,9 +481,12 @@ cd /opt/litigant-portal
 cp .env.example .env
 # Edit .env and set: DOMAIN, ALLOWED_HOSTS, OPENAI_API_KEY
 
-# Create secret key
+# Create secrets
 mkdir -p secrets
 python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
+echo "your-db-password" > secrets/db_password.txt
+echo "sk-your-openai-api-key" > secrets/openai_api_key.txt
+chmod 600 secrets/*.txt
 
 # Start production stack
 docker compose --profile prod up --build -d
@@ -493,16 +496,15 @@ docker compose --profile prod up --build -d
 
 Set in `.env` at the project root:
 
-| Variable            | Description                                                             | Example              |
-| ------------------- | ----------------------------------------------------------------------- | -------------------- |
-| `DOMAIN`            | Public domain (Caddy uses for HTTPS)                                    | `portal.example.com` |
-| `ALLOWED_HOSTS`     | Django allowed hosts (matches `DOMAIN`)                                 | `portal.example.com` |
-| `OPENAI_API_KEY`    | OpenAI API key for AI chat                                              | `sk-...`             |
-| `POSTGRES_PASSWORD` | PostgreSQL password (required for prod; defaults to `postgres` for dev) | `strong-password`    |
+| Variable         | Description                             | Example              |
+| ---------------- | --------------------------------------- | -------------------- |
+| `DOMAIN`         | Public domain (Caddy uses for HTTPS)    | `portal.example.com` |
+| `ALLOWED_HOSTS`  | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
+| `OPENAI_API_KEY` | OpenAI API key for AI chat              | `sk-...`             |
 
-Secret key is read from `secrets/django_secret_key.txt` (never committed).
+All secrets support the `_FILE` convention (`<VAR>_FILE` points to a file, falls back to `<VAR>` env var). Production uses Docker secrets in `secrets/` (never committed). See `docs/SECURITY.md` for details.
 
-Non-secret env vars (`DATABASE_URL`, `CHAT_MODEL`, `GUNICORN_WORKERS`, etc.) can be set in `.env` or overridden in `docker-compose.yml`.
+Non-secret env vars (`CHAT_MODEL`, `GUNICORN_WORKERS`, etc.) can be set in `.env` or overridden in `docker-compose.yml`.
 
 ### Common Commands
 
@@ -515,4 +517,4 @@ docker compose --profile prod up --build -d    # Rebuild and restart
 
 ### Database
 
-PostgreSQL (pgvector) on a Docker volume (`postgres_data`). Shared by dev and prod profiles.
+PostgreSQL (pgvector) on a Docker volume (`postgres_data`). Separate services per profile (`postgres-dev`, `postgres-prod`); prod uses Docker secrets for the password via `POSTGRES_PASSWORD_FILE`.

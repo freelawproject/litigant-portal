@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
-import dj_database_url
+from config.secrets import read_secret
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,15 +22,17 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# Required: set SECRET_KEY environment variable
-SECRET_KEY = os.environ.get("SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable is required")
-
 # SECURITY WARNING: don't run with debug turned on in production!
 # Defaults to True for development; set DEBUG=false in production
 DEBUG = os.environ.get("DEBUG", "true").lower() not in ("false", "0")
+
+
+# SECURITY WARNING: keep the secret key used in production secret!
+# 1. Try SECRET_KEY_FILE then SECRET_KEY env var (via read_secret)
+# 2. If still unset, raise — no auto-generation so sessions stay stable
+SECRET_KEY = read_secret("SECRET_KEY")
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY or SECRET_KEY_FILE is required")
 
 # Parse ALLOWED_HOSTS from env (comma-separated), default to localhost in debug
 ALLOWED_HOSTS = [
@@ -115,14 +117,23 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# Supports DATABASE_URL env var, defaults to local PostgreSQL
+# Built from individual env vars for clarity and secret-file support.
+
+POSTGRES_PASSWORD = read_secret("POSTGRES_PASSWORD")
+if not POSTGRES_PASSWORD:
+    raise ValueError("POSTGRES_PASSWORD or POSTGRES_PASSWORD_FILE is required")
 
 DATABASES = {
-    "default": dj_database_url.config(
-        default="postgres://postgres:postgres@localhost:5432/litigant_portal",
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("POSTGRES_DB", "litigant_portal"),
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": POSTGRES_PASSWORD,
+        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "CONN_MAX_AGE": 600,
+        "CONN_HEALTH_CHECKS": True,
+    }
 }
 
 # Password validation
@@ -263,3 +274,8 @@ CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
 DEFAULT_CHAT_AGENT = os.environ.get(
     "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
 )
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "openai/gpt-4o-mini")
+
+# Read OPENAI_API_KEY from env or secret file; passed to LiteLLM at call time
+# via llm_completion() wrapper — never written back to os.environ.
+OPENAI_API_KEY = read_secret("OPENAI_API_KEY")

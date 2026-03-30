@@ -2,31 +2,51 @@
 #
 # Development: docker compose --profile dev up
 #   - Requires .env file with OPENAI_API_KEY (copy from .env.example)
-#   - Auto-generates SECRET_KEY if not set
+#   - SECRET_KEY hardcoded to 'dev' for stable sessions
 #   - Access at http://localhost (port 80 via Caddy)
 #
 # Production: docker compose --profile prod up
-#   - Requires: secrets/django_secret_key.txt, DOMAIN in .env
+#   - Requires: secrets/django_secret_key.txt, secrets/db_password.txt, secrets/openai_api_key.txt, DOMAIN in .env
 #   - Caddy auto-provisions HTTPS via Let's Encrypt
 
 services:
   # ---------------------------------------------------------------------------
-  # PostgreSQL Database (pgvector)
+  # PostgreSQL Database — Development (pgvector)
   # ---------------------------------------------------------------------------
-  postgres:
+  postgres-dev:
     image: pgvector/pgvector:pg17
-    profiles: ['dev', 'prod']
+    profiles: ['dev']
     environment:
       - POSTGRES_DB=litigant_portal
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_PASSWORD=postgres
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       timeout: 3s
       retries: 5
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_dev:/var/lib/postgresql/data
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Database — Production (pgvector)
+  # ---------------------------------------------------------------------------
+  postgres-prod:
+    image: pgvector/pgvector:pg17
+    profiles: ['prod']
+    environment:
+      - POSTGRES_DB=litigant_portal
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    secrets:
+      - db_password
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
 
   # ---------------------------------------------------------------------------
   # Development Django Server
@@ -37,8 +57,9 @@ services:
     command: web-dev
     environment:
       - DEBUG=true
-      - SECRET_KEY=${SECRET_KEY:-auto}
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/litigant_portal
+      - SECRET_KEY=dev
+      - POSTGRES_HOST=postgres-dev
+      - POSTGRES_PASSWORD=postgres
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
@@ -49,7 +70,7 @@ services:
     stdin_open: true
     tty: true
     depends_on:
-      postgres:
+      postgres-dev:
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
@@ -62,14 +83,15 @@ services:
     environment:
       - DEBUG=false
       - SECRET_KEY_FILE=/run/secrets/django_secret_key
-      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/litigant_portal
+      - POSTGRES_HOST=postgres-prod
+      - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
       - ALLOWED_HOSTS=localhost,${ALLOWED_HOSTS:-localhost}
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
       - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY_FILE=/run/secrets/openai_api_key
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/health/']
       interval: 5s
@@ -78,10 +100,12 @@ services:
       retries: 3
     secrets:
       - django_secret_key
+      - db_password
+      - openai_api_key
     volumes:
       - staticfiles:/app/staticfiles
     depends_on:
-      postgres:
+      postgres-prod:
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
@@ -123,9 +147,14 @@ services:
 secrets:
   django_secret_key:
     file: ./secrets/django_secret_key.txt
+  db_password:
+    file: ./secrets/db_password.txt
+  openai_api_key:
+    file: ./secrets/openai_api_key.txt
 
 volumes:
-  postgres_data:
+  postgres_data_dev:
+  postgres_data_prod:
   staticfiles:
   caddy_data:
   caddy_config:

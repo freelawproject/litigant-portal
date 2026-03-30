@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      POSTGRES_HOST: localhost
     services:
       postgres:
         image: pgvector/pgvector:pg17
