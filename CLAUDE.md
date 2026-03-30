@@ -493,12 +493,12 @@ docker compose --profile prod up --build -d
 
 Set in `.env` at the project root:
 
-| Variable            | Description                             | Example              |
-| ------------------- | --------------------------------------- | -------------------- |
-| `DOMAIN`            | Public domain (Caddy uses for HTTPS)    | `portal.example.com` |
-| `ALLOWED_HOSTS`     | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
-| `OPENAI_API_KEY`    | OpenAI API key for AI chat              | `sk-...`             |
-| `POSTGRES_PASSWORD` | PostgreSQL password (required for prod; defaults to `postgres` for dev) | `strong-password`  |
+| Variable            | Description                                                             | Example              |
+| ------------------- | ----------------------------------------------------------------------- | -------------------- |
+| `DOMAIN`            | Public domain (Caddy uses for HTTPS)                                    | `portal.example.com` |
+| `ALLOWED_HOSTS`     | Django allowed hosts (matches `DOMAIN`)                                 | `portal.example.com` |
+| `OPENAI_API_KEY`    | OpenAI API key for AI chat                                              | `sk-...`             |
+| `POSTGRES_PASSWORD` | PostgreSQL password (required for prod; defaults to `postgres` for dev) | `strong-password`    |
 
 Secret key is read from `secrets/django_secret_key.txt` (never committed).
 

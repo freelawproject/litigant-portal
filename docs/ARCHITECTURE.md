@@ -139,7 +139,7 @@ Django renders initial state, Alpine handles client reactivity:
 | `templates/pages/home.html` | Dashboard with hero and topic grid              |
 | `templates/pages/chat.html` | Full-screen chat interface                      |
 | `Dockerfile`                | Multi-stage build (dev + prod)                  |
-| `docker-compose.yml`        | Dev/prod profiles with PostgreSQL                |
+| `docker-compose.yml`        | Dev/prod profiles with PostgreSQL               |
 | `docker-entrypoint.sh`      | Container startup commands                      |
 
 ---
