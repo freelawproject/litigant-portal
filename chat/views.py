@@ -53,6 +53,7 @@ def stream(request: HttpRequest):
         or None
     )
     agent_name = request.POST.get("agent_name") or None
+    topic = request.POST.get("topic", "").strip() or None
 
     if not message:
         return JsonResponse({"error": _("Message is required")}, status=400)
@@ -65,7 +66,10 @@ def stream(request: HttpRequest):
 
     try:
         chat = ChatService(
-            request, session_id=session_id, agent_name=agent_name
+            request,
+            session_id=session_id,
+            agent_name=agent_name,
+            topic=topic,
         )
         request.session["chat_session_id"] = str(chat.agent.session.id)
         return chat.stream(message)

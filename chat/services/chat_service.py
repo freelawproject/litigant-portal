@@ -21,10 +21,20 @@ class ChatService:
         request: HttpRequest,
         session_id: str | UUID | None = None,
         agent_name: str | None = None,
+        topic: str | None = None,
     ):
         self.request = request
         agent_class = agent_registry[agent_name or settings.DEFAULT_CHAT_AGENT]
-        self.agent = agent_class.from_session_id(request, session_id)
+        # Pass topic/jurisdiction to the agent for prompt composition.
+        # Jurisdiction is hardcoded to "il" for the beta demo; will become
+        # dynamic when court-configurable context (#179) lands.
+        agent_kwargs = {}
+        if topic:
+            agent_kwargs["topic"] = topic
+            agent_kwargs["jurisdiction"] = "il"
+        self.agent = agent_class.from_session_id(
+            request, session_id, **agent_kwargs
+        )
 
     def stream(self, user_message: str) -> StreamingHttpResponse:
         """Add user message and stream the AI response."""
