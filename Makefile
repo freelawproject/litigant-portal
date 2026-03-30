@@ -1,4 +1,4 @@
-.PHONY: help build css clean install migrate test collectstatic lint \
+.PHONY: help build css clean install migrate test collectstatic lint fmt-check fmt \
        messages compilemessages \
        docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-test docker-clean
 
@@ -43,6 +43,12 @@ shell: ## Open Django shell
 
 lint: ## Lint and format all code (via pre-commit)
 	pre-commit run --all-files
+
+fmt-check: ## Check template formatting (dry run, no writes)
+	npx prettier --plugin prettier-plugin-django-cotton --parser django-html --check "templates/**/*.html"
+
+fmt: ## Format all templates with prettier-plugin-django-cotton
+	npx prettier --plugin prettier-plugin-django-cotton --parser django-html --write "templates/**/*.html"
 
 messages: ## Extract translation strings (all languages)
 	SECRET_KEY=dev .venv/bin/python manage.py makemessages -a --no-location

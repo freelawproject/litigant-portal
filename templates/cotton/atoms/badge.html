@@ -1,5 +1,14 @@
 <c-vars variant="info" size="sm" />
 {# Badge variants: urgent|pending|completed|info #}
 {# Badge sizes: sm|md #}
-<span class="inline-flex items-center font-medium rounded-full {% if size == 'md' %}px-3 py-1 text-sm{% else %}px-2 py-0.5 text-xs{% endif %} {% if variant == 'urgent' %}bg-red-100 text-red-700{% elif variant == 'pending' %}bg-yellow-100 text-yellow-700{% elif variant == 'completed' %}bg-green-100 text-green-700{% else %}bg-brand-100 text-brand-700{% endif %} {{ class }}"
+{# --- Base --- #}
+{% with base="inline-flex items-center font-medium rounded-full" %}
+{# --- Sizes --- #}
+{% with sz_md="px-3 py-1 text-sm" sz_sm="px-2 py-0.5 text-xs" %}
+{# --- Variants --- #}
+{% with v_urgent="bg-red-100 text-red-700" v_pending="bg-yellow-100 text-yellow-700" v_completed="bg-green-100 text-green-700" v_info="bg-brand-100 text-brand-700" %}
+<span class="{{ base }} {% if size == 'md' %}{{ sz_md }}{% else %}{{ sz_sm }}{% endif %} {% if variant == 'urgent' %}{{ v_urgent }}{% elif variant == 'pending' %}{{ v_pending }}{% elif variant == 'completed' %}{{ v_completed }}{% else %}{{ v_info }}{% endif %} {{ class }}"
       {{ attrs }}>{{ slot }}</span>
+{% endwith %}
+{% endwith %}
+{% endwith %}

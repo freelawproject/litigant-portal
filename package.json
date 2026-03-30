@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "prettier-plugin-django-cotton": "^0.1.0-beta.1"
+  }
+}
