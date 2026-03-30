@@ -78,7 +78,9 @@ RUN chmod +x /docker-entrypoint.sh
 # Non-root user
 RUN useradd --create-home --shell /bin/bash appuser \
     && mkdir -p /app/staticfiles \
-    && chown -R appuser:appuser /app
+    && chown -R appuser:appuser /app \
+    && mkdir -p /tmp/tox \
+    && chown -R appuser:appuser /tmp/tox
 USER appuser
 
 EXPOSE 8000

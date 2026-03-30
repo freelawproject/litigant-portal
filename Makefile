@@ -84,7 +84,7 @@ docker-migrate: ## Run migrations in Docker
 	docker compose --profile dev exec django-dev python manage.py migrate
 
 docker-test: ## Run full test suite in Docker (includes postgres tests)
-	@docker compose --profile dev exec django-dev /docker-entrypoint.sh test || \
+	@docker compose --profile dev exec -e UV_PROJECT_ENVIRONMENT=/tmp/tox django-dev /docker-entrypoint.sh test || \
 	  (echo "\n  Docker dev container is not running. Start it with: make docker-dev\n" && exit 1)
 
 docker-clean: ## Remove containers, volumes, and images
