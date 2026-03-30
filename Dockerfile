@@ -29,7 +29,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 COPY pyproject.toml uv.lock ./
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev
+    uv sync --frozen --no-install-project --no-dev --group test
 
 # -----------------------------------------------------------------------------
 # Stage 3: Tailwind - build production CSS
