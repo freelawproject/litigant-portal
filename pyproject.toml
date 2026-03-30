@@ -64,12 +64,6 @@ dev = [
     "tox-uv>=1.29.0",
 ]
 
-[dependency-groups]
-test = [
-    "pytest>=8.0",
-    "pytest-django>=4.9",
-]
-
 
 [tool.setuptools]
 packages = [ "litigant_portal" ]
