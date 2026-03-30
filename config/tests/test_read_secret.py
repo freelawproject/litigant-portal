@@ -4,7 +4,7 @@ from unittest import mock
 
 from django.test import TestCase
 
-from config.settings import read_secret
+from config.secrets import read_secret
 
 
 class ReadSecretTests(TestCase):
