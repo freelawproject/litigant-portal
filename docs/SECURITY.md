@@ -27,7 +27,7 @@ When `DEBUG=False`, Django enables these security settings:
 
 ### `_FILE` Convention
 
-`config/settings.py` uses a `_read_secret()` helper that checks `<VAR>_FILE` for a file path first, then falls back to `<VAR>` env var. This works with Docker Compose secrets, Kubernetes secret mounts, and plain env vars.
+`config/settings.py` uses a `read_secret()` helper that checks `<VAR>_FILE` for a file path first, then falls back to `<VAR>` env var. This works with Docker Compose secrets, Kubernetes secret mounts, and plain env vars.
 
 ### Development
 

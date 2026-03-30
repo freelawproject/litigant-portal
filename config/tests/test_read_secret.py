@@ -4,18 +4,18 @@ from unittest import mock
 
 from django.test import TestCase
 
-from config.settings import _read_secret
+from config.settings import read_secret
 
 
 class ReadSecretTests(TestCase):
-    """Tests for the _read_secret() helper."""
+    """Tests for the read_secret() helper."""
 
     def test_plain_env_var(self):
         """Falls back to plain env var when no _FILE is set."""
         with mock.patch.dict(
             os.environ, {"MY_SECRET": "plain-value"}, clear=False
         ):
-            self.assertEqual(_read_secret("MY_SECRET"), "plain-value")
+            self.assertEqual(read_secret("MY_SECRET"), "plain-value")
 
     def test_file_based(self):
         """Reads secret from file when _FILE is set."""
@@ -30,7 +30,7 @@ class ReadSecretTests(TestCase):
                     {"MY_SECRET_FILE": f.name},
                     clear=False,
                 ):
-                    self.assertEqual(_read_secret("MY_SECRET"), "file-secret")
+                    self.assertEqual(read_secret("MY_SECRET"), "file-secret")
             finally:
                 os.unlink(f.name)
 
@@ -50,7 +50,7 @@ class ReadSecretTests(TestCase):
                     },
                     clear=False,
                 ):
-                    self.assertEqual(_read_secret("MY_SECRET"), "from-file")
+                    self.assertEqual(read_secret("MY_SECRET"), "from-file")
             finally:
                 os.unlink(f.name)
 
@@ -64,7 +64,7 @@ class ReadSecretTests(TestCase):
             },
             clear=False,
         ):
-            self.assertEqual(_read_secret("MY_SECRET"), "fallback")
+            self.assertEqual(read_secret("MY_SECRET"), "fallback")
 
     def test_neither_set_returns_none(self):
         """Returns None when neither _FILE nor plain var is set."""
@@ -72,4 +72,4 @@ class ReadSecretTests(TestCase):
         env.pop("MY_SECRET", None)
         env.pop("MY_SECRET_FILE", None)
         with mock.patch.dict(os.environ, env, clear=True):
-            self.assertIsNone(_read_secret("MY_SECRET"))
+            self.assertIsNone(read_secret("MY_SECRET"))

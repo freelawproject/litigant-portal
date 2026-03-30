@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
+from config.secrets import read_secret
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -25,27 +27,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DEBUG = os.environ.get("DEBUG", "true").lower() not in ("false", "0")
 
 
-def _read_secret(env_var: str) -> str | None:
-    """Read a secret from a file path or fall back to env var.
-
-    Checks <ENV_VAR>_FILE first (path to a file containing the secret),
-    then falls back to <ENV_VAR> directly. This pattern works with:
-    - Docker Compose secrets (/run/secrets/...)
-    - Kubernetes secrets (mounted as files)
-    - Plain env vars (local dev, CI)
-    """
-    file_path = os.environ.get(f"{env_var}_FILE")
-    if file_path:
-        path = Path(file_path)
-        if path.is_file():
-            return path.read_text().strip()
-    return os.environ.get(env_var)
-
-
 # SECURITY WARNING: keep the secret key used in production secret!
-# 1. Try SECRET_KEY_FILE then SECRET_KEY env var (via _read_secret)
+# 1. Try SECRET_KEY_FILE then SECRET_KEY env var (via read_secret)
 # 2. If still unset, raise — no auto-generation so sessions stay stable
-SECRET_KEY = _read_secret("SECRET_KEY")
+SECRET_KEY = read_secret("SECRET_KEY")
 if not SECRET_KEY:
     raise ValueError("SECRET_KEY or SECRET_KEY_FILE is required")
 
@@ -134,7 +119,7 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 # Built from individual env vars for clarity and secret-file support.
 
-POSTGRES_PASSWORD = _read_secret("POSTGRES_PASSWORD")
+POSTGRES_PASSWORD = read_secret("POSTGRES_PASSWORD")
 if not POSTGRES_PASSWORD:
     raise ValueError("POSTGRES_PASSWORD or POSTGRES_PASSWORD_FILE is required")
 
@@ -293,4 +278,4 @@ CHAT_MODEL = os.environ.get("CHAT_MODEL", "openai/gpt-4o-mini")
 
 # Read OPENAI_API_KEY from env or secret file; passed to LiteLLM at call time
 # via llm_completion() wrapper — never written back to os.environ.
-OPENAI_API_KEY = _read_secret("OPENAI_API_KEY")
+OPENAI_API_KEY = read_secret("OPENAI_API_KEY")
