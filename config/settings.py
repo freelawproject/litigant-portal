@@ -44,14 +44,11 @@ def _read_secret(env_var: str) -> str | None:
 
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# 1. Try SECRET_KEY_FILE then SECRET_KEY env var (via _read_secret)
+# 2. If still unset, raise — no auto-generation so sessions stay stable
 SECRET_KEY = _read_secret("SECRET_KEY")
 if not SECRET_KEY:
-    if DEBUG:
-        from django.core.management.utils import get_random_secret_key
-
-        SECRET_KEY = get_random_secret_key()
-    else:
-        raise ValueError("SECRET_KEY or SECRET_KEY_FILE is required")
+    raise ValueError("SECRET_KEY or SECRET_KEY_FILE is required")
 
 # Parse ALLOWED_HOSTS from env (comma-separated), default to localhost in debug
 ALLOWED_HOSTS = [

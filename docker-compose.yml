@@ -2,7 +2,7 @@
 #
 # Development: docker compose --profile dev up
 #   - Requires .env file with OPENAI_API_KEY (copy from .env.example)
-#   - Auto-generates SECRET_KEY if not set
+#   - SECRET_KEY hardcoded to 'dev' for stable sessions
 #   - Access at http://localhost (port 80 via Caddy)
 #
 # Production: docker compose --profile prod up
@@ -57,6 +57,7 @@ services:
     command: web-dev
     environment:
       - DEBUG=true
+      - SECRET_KEY=dev
       - POSTGRES_HOST=postgres-dev
       - POSTGRES_PASSWORD=postgres
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0

@@ -31,7 +31,7 @@ When `DEBUG=False`, Django enables these security settings:
 
 ### Development
 
-- `SECRET_KEY` auto-generated at runtime (`settings.py` generates when `DEBUG=True`)
+- `SECRET_KEY=dev` hardcoded in `docker-compose.yml` for stable sessions
 - `OPENAI_API_KEY` in `.env` file (gitignored)
 - PostgreSQL uses hardcoded default password (`postgres`)
 
