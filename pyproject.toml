@@ -45,6 +45,8 @@ dependencies = [
     # AI Chat
     "litellm>=1.50",
     "pydantic>=2.0",
+    # PostgreSQL driver
+    "psycopg[binary]>=3.2",
     # Rate limiting
     "django-ratelimit>=4.1",
     # PDF text extraction

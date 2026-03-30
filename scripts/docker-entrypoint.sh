@@ -15,22 +15,6 @@ elif [ -n "$SECRET_KEY_FILE" ] && [ -f "$SECRET_KEY_FILE" ]; then
     export SECRET_KEY=$(cat "$SECRET_KEY_FILE")
 fi
 
-enable_wal() {
-    # Enable WAL mode for SQLite (better concurrency under Gunicorn)
-    if echo "$DATABASE_URL" | grep -q "sqlite"; then
-        python -c "
-import dj_database_url, sqlite3, os
-db = dj_database_url.config(default=os.environ.get('DATABASE_URL', ''))
-path = db.get('NAME', '')
-if path:
-    conn = sqlite3.connect(path)
-    conn.execute('PRAGMA journal_mode=WAL;')
-    conn.close()
-    print(f'SQLite WAL mode enabled: {path}')
-"
-    fi
-}
-
 run_migrations() {
     echo "Running migrations..."
     python manage.py migrate --noinput
@@ -59,7 +43,6 @@ case "$1" in
 
     web-prod)
         echo "Starting production server..."
-        enable_wal
         run_compilemessages
         run_collectstatic
         run_migrations
