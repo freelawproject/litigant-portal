@@ -26,6 +26,7 @@ def llm_completion(**kwargs):
     """
     import litellm
 
+    # To add a new provider, you must implement the secrets file pattern in docker-compose.yml
     model = kwargs.get("model", "")
     if model.startswith("openai/") or model.startswith("openai."):
         kwargs.setdefault("api_key", settings.OPENAI_API_KEY)
