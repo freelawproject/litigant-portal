@@ -76,8 +76,62 @@ class UpdateCaseFactsPatchBuildingTests(TestCase):
         self.assertNotIn("court_info", patch)
         self.assertNotIn("key_dates", patch)
 
-    def test_empty_parties_excluded_when_both_none(self):
-        """parties key omitted when both opposing_party and opposing_address are None."""
+    def test_summary_maps_to_top_level_key(self):
+        patch = self._call_with(
+            summary="Tenant facing eviction for nonpayment"
+        )
+        self.assertEqual(
+            patch["summary"], "Tenant facing eviction for nonpayment"
+        )
+
+    def test_court_address_maps_to_court_info(self):
+        patch = self._call_with(court_address="505 N County Farm Rd, Wheaton")
+        self.assertEqual(
+            patch["court_info"]["address"], "505 N County Farm Rd, Wheaton"
+        )
+
+    def test_court_phone_maps_to_court_info(self):
+        patch = self._call_with(court_phone="630-407-8700")
+        self.assertEqual(patch["court_info"]["phone"], "630-407-8700")
+
+    def test_court_email_maps_to_court_info(self):
+        patch = self._call_with(court_email="clerk@example.com")
+        self.assertEqual(patch["court_info"]["email"], "clerk@example.com")
+
+    def test_user_name_maps_to_parties(self):
+        patch = self._call_with(user_name="Jane Doe")
+        self.assertEqual(patch["parties"]["user_name"], "Jane Doe")
+
+    def test_user_address_maps_to_parties(self):
+        patch = self._call_with(user_address="456 Elm St")
+        self.assertEqual(patch["parties"]["user_address"], "456 Elm St")
+
+    def test_opposing_contact_info_maps_to_parties(self):
+        patch = self._call_with(
+            opposing_phone="555-1234",
+            opposing_email="landlord@example.com",
+            opposing_website="https://acme.com",
+        )
+        self.assertEqual(patch["parties"]["opposing_phone"], "555-1234")
+        self.assertEqual(
+            patch["parties"]["opposing_email"], "landlord@example.com"
+        )
+        self.assertEqual(
+            patch["parties"]["opposing_website"], "https://acme.com"
+        )
+
+    def test_attorney_info_maps_to_parties(self):
+        patch = self._call_with(
+            attorney_name="Bob Smith",
+            attorney_phone="555-5678",
+            attorney_email="bob@lawfirm.com",
+        )
+        self.assertEqual(patch["parties"]["attorney_name"], "Bob Smith")
+        self.assertEqual(patch["parties"]["attorney_phone"], "555-5678")
+        self.assertEqual(patch["parties"]["attorney_email"], "bob@lawfirm.com")
+
+    def test_empty_parties_excluded_when_all_none(self):
+        """parties key omitted when all party fields are None."""
         patch = self._call_with(case_type="Eviction")
         self.assertNotIn("parties", patch)
 
