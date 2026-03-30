@@ -25,20 +25,33 @@ When `DEBUG=False`, Django enables these security settings:
 
 ## Secrets Management
 
+### `_FILE` Convention
+
+`config/settings.py` uses a `_read_secret()` helper that checks `<VAR>_FILE` for a file path first, then falls back to `<VAR>` env var. This works with Docker Compose secrets, Kubernetes secret mounts, and plain env vars.
+
 ### Development
 
-- `SECRET_KEY` auto-generated at runtime (Docker entrypoint)
+- `SECRET_KEY` auto-generated at runtime (`settings.py` generates when `DEBUG=True`)
 - `OPENAI_API_KEY` in `.env` file (gitignored)
+- PostgreSQL uses hardcoded default password (`postgres`)
 
 ### Production
 
-- Uses Docker secrets mounted at `/run/secrets/`
-- Never stored on disk or in environment variables visible to `docker inspect`
+All secrets use the `_FILE` convention — `settings.py` checks `<VAR>_FILE` for a file path first, then falls back to `<VAR>` env var:
+
+| Secret             | File                                             | Env var fallback   |
+| ------------------ | ------------------------------------------------ | ------------------ |
+| Django secret key  | `SECRET_KEY_FILE=/run/secrets/django_secret_key` | `SECRET_KEY`       |
+| OpenAI API key     | `OPENAI_API_KEY_FILE=/run/secrets/openai_api_key` | `OPENAI_API_KEY`   |
+| Postgres password  | `POSTGRES_PASSWORD_FILE=/run/secrets/db_password` | `POSTGRES_PASSWORD` |
+
+Secrets are never exported to the process environment (except `OPENAI_API_KEY` which LiteLLM requires in `os.environ`).
 
 ```bash
 # Create production secrets
 mkdir -p secrets
 python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
+echo "your-db-password" > secrets/db_password.txt
 chmod 600 secrets/*.txt
 ```
 

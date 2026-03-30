@@ -22,15 +22,37 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-# Required: set SECRET_KEY environment variable
-SECRET_KEY = os.environ.get("SECRET_KEY")
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY environment variable is required")
-
 # SECURITY WARNING: don't run with debug turned on in production!
 # Defaults to True for development; set DEBUG=false in production
 DEBUG = os.environ.get("DEBUG", "true").lower() not in ("false", "0")
+
+
+def _read_secret(env_var: str) -> str | None:
+    """Read a secret from a file path or fall back to env var.
+
+    Checks <ENV_VAR>_FILE first (path to a file containing the secret),
+    then falls back to <ENV_VAR> directly. This pattern works with:
+    - Docker Compose secrets (/run/secrets/...)
+    - Kubernetes secrets (mounted as files)
+    - Plain env vars (local dev, CI)
+    """
+    file_path = os.environ.get(f"{env_var}_FILE")
+    if file_path:
+        path = Path(file_path)
+        if path.is_file():
+            return path.read_text().strip()
+    return os.environ.get(env_var)
+
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = _read_secret("SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        from django.core.management.utils import get_random_secret_key
+
+        SECRET_KEY = get_random_secret_key()
+    else:
+        raise ValueError("SECRET_KEY or SECRET_KEY_FILE is required")
 
 # Parse ALLOWED_HOSTS from env (comma-separated), default to localhost in debug
 ALLOWED_HOSTS = [
@@ -116,10 +138,29 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 # Supports DATABASE_URL env var, defaults to local PostgreSQL
+# If POSTGRES_PASSWORD_FILE is set, it overrides the password in DATABASE_URL
+
+_db_url = os.environ.get(
+    "DATABASE_URL",
+    "postgres://postgres:postgres@localhost:5432/litigant_portal",
+)
+
+# If a password file is provided, inject it into the DATABASE_URL
+_db_password = _read_secret("POSTGRES_PASSWORD")
+if _db_password and _db_url.startswith("postgres"):
+    from urllib.parse import urlparse, urlunparse
+
+    _parsed = urlparse(_db_url)
+    _db_url = urlunparse(
+        _parsed._replace(
+            netloc=f"{_parsed.username}:{_db_password}"
+            f"@{_parsed.hostname}:{_parsed.port}"
+        )
+    )
 
 DATABASES = {
     "default": dj_database_url.config(
-        default="postgres://postgres:postgres@localhost:5432/litigant_portal",
+        default=_db_url,
         conn_max_age=600,
         conn_health_checks=True,
     )
@@ -263,3 +304,9 @@ CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
 DEFAULT_CHAT_AGENT = os.environ.get(
     "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
 )
+
+# Make OPENAI_API_KEY available via _FILE pattern
+# LiteLLM reads from os.environ at call time, so we set it here
+_openai_key = _read_secret("OPENAI_API_KEY")
+if _openai_key:
+    os.environ["OPENAI_API_KEY"] = _openai_key
