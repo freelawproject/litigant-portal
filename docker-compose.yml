@@ -6,7 +6,7 @@
 #   - Access at http://localhost (port 80 via Caddy)
 #
 # Production: docker compose --profile prod up
-#   - Requires: secrets/django_secret_key.txt, secrets/db_password.txt, DOMAIN in .env
+#   - Requires: secrets/django_secret_key.txt, secrets/db_password.txt, secrets/openai_api_key.txt, DOMAIN in .env
 #   - Caddy auto-provisions HTTPS via Let's Encrypt
 
 services:

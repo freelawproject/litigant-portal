@@ -17,7 +17,8 @@ Visit: http://portal.localhost
 # Create secret key
 mkdir -p secrets
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > secrets/django_secret_key.txt
-
+echo "your-db-password" > secrets/db_password.txt
+echo "sk-your-openai-api-key" > secrets/openai_api_key.txt
 make docker-prod
 ```
 

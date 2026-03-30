@@ -30,7 +30,7 @@ class KeywordSearchService:
         if not query.strip():
             return Document.objects.none()
 
-        # Use simple search (works with SQLite and PostgreSQL)
+        # Use simple search
         queryset = Document.objects.filter(
             Q(title__icontains=query) | Q(content__icontains=query)
         )

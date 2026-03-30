@@ -485,6 +485,7 @@ cp .env.example .env
 mkdir -p secrets
 python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
 echo "your-db-password" > secrets/db_password.txt
+echo "sk-your-openai-api-key" > secrets/openai_api_key.txt
 chmod 600 secrets/*.txt
 
 # Start production stack
