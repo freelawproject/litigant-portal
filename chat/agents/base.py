@@ -1,11 +1,10 @@
 import json
 import logging
-import os
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypedDict
 from uuid import UUID
 
-import litellm
+from django.conf import settings
 from django.http import HttpRequest
 from pydantic import BaseModel
 from pydantic import Field as PydanticField
@@ -13,11 +12,31 @@ from pydantic import Field as PydanticField
 if TYPE_CHECKING:
     from chat.models import ChatSession
 
-litellm.drop_params = True
-
 logger = logging.getLogger(__name__)
 
 Field = PydanticField
+
+
+def llm_completion(**kwargs):
+    """Wrapper around litellm.completion() that injects provider API keys.
+
+    Reads API keys from Django settings (which support the _FILE secret
+    pattern) instead of relying on os.environ. This keeps secrets out of
+    the process environment.
+    """
+    import litellm
+
+    litellm.drop_params = True
+
+    model = kwargs.get("model", "")
+    if model.startswith("openai/") or model.startswith("openai."):
+        kwargs.setdefault("api_key", settings.OPENAI_API_KEY)
+    else:
+        raise NotImplementedError(
+            f"Provider for model '{model}' is not configured. "
+            f"Only OpenAI models are currently supported."
+        )
+    return litellm.completion(**kwargs)
 
 
 # =============================================================================
@@ -255,11 +274,7 @@ class Agent:
             **completion_args: Additional args passed to litellm.completion().
         """
         self.session = session
-        self.model = (
-            model
-            or self.default_model
-            or os.getenv("CHAT_MODEL", "openai/gpt-4o-mini")
-        )
+        self.model = model or self.default_model or settings.CHAT_MODEL
         self.completion_args = {
             **self.default_completion_args,
             **completion_args,
@@ -401,7 +416,7 @@ class Agent:
                 full_content: list[str] = []
                 tool_calls: list[ToolCall] = []
 
-                for chunk in litellm.completion(**call_args):
+                for chunk in llm_completion(**call_args):
                     choice = chunk.choices[0]
                     delta = choice.delta
 
@@ -493,7 +508,7 @@ class Agent:
     def ping(self) -> bool:
         """Check if the agent's model/provider is accessible."""
         try:
-            litellm.completion(
+            llm_completion(
                 model=self.model,
                 messages=[{"role": "user", "content": "hi"}],
                 max_tokens=1,

@@ -503,7 +503,7 @@ Set in `.env` at the project root:
 
 All secrets support the `_FILE` convention (`<VAR>_FILE` points to a file, falls back to `<VAR>` env var). Production uses Docker secrets in `secrets/` (never committed). See `docs/SECURITY.md` for details.
 
-Non-secret env vars (`DATABASE_URL`, `CHAT_MODEL`, `GUNICORN_WORKERS`, etc.) can be set in `.env` or overridden in `docker-compose.yml`.
+Non-secret env vars (`CHAT_MODEL`, `GUNICORN_WORKERS`, etc.) can be set in `.env` or overridden in `docker-compose.yml`.
 
 ### Common Commands
 

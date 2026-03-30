@@ -57,7 +57,8 @@ services:
     command: web-dev
     environment:
       - DEBUG=true
-      - DATABASE_URL=postgres://postgres:postgres@postgres-dev:5432/litigant_portal
+      - POSTGRES_HOST=postgres-dev
+      - POSTGRES_PASSWORD=postgres
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
@@ -81,7 +82,7 @@ services:
     environment:
       - DEBUG=false
       - SECRET_KEY_FILE=/run/secrets/django_secret_key
-      - DATABASE_URL=postgres://postgres:x@postgres-prod:5432/litigant_portal
+      - POSTGRES_HOST=postgres-prod
       - POSTGRES_PASSWORD_FILE=/run/secrets/db_password
       - ALLOWED_HOSTS=localhost,${ALLOWED_HOSTS:-localhost}
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
@@ -89,7 +90,7 @@ services:
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
       - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY_FILE=/run/secrets/openai_api_key
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/health/']
       interval: 5s
@@ -99,6 +100,7 @@ services:
     secrets:
       - django_secret_key
       - db_password
+      - openai_api_key
     volumes:
       - staticfiles:/app/staticfiles
     depends_on:
@@ -146,6 +148,8 @@ secrets:
     file: ./secrets/django_secret_key.txt
   db_password:
     file: ./secrets/db_password.txt
+  openai_api_key:
+    file: ./secrets/openai_api_key.txt
 
 volumes:
   postgres_data:

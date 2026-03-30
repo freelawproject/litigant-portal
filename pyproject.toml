@@ -35,7 +35,6 @@ urls.Repository = "https://github.com/freelawproject/litigant-portal"
 urls."Organisation Homepage" = "https://free.law/"
 dependencies = [
     "Django>=5.2",
-    "dj-database-url>=2.3",
     "django-allauth>=65.0",
     "django-cotton>=1.0",
     "django-csp>=3.8",

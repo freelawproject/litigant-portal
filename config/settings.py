@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
-import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -137,35 +136,28 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# Supports DATABASE_URL env var, defaults to local PostgreSQL
-# If POSTGRES_PASSWORD_FILE is set, it overrides the password in DATABASE_URL
+# Built from individual env vars for clarity and secret-file support.
 
-_db_url = os.environ.get(
-    "DATABASE_URL",
-    "postgres://postgres:postgres@localhost:5432/litigant_portal",
-)
-
-# If a password file is provided, inject it into the DATABASE_URL
 _db_password = _read_secret("POSTGRES_PASSWORD")
-if _db_password and _db_url.startswith("postgres"):
-    from urllib.parse import urlparse, urlunparse
-
-    _parsed = urlparse(_db_url)
-    _port_suffix = f":{_parsed.port}" if _parsed.port else ""
-    _db_url = urlunparse(
-        _parsed._replace(
-            netloc=f"{_parsed.username}:{_db_password}"
-            f"@{_parsed.hostname}{_port_suffix}"
+if not _db_password:
+    if DEBUG:
+        _db_password = "postgres"
+    else:
+        raise ValueError(
+            "POSTGRES_PASSWORD or POSTGRES_PASSWORD_FILE is required"
         )
-    )
-    os.environ["DATABASE_URL"] = _db_url
 
 DATABASES = {
-    "default": dj_database_url.config(
-        default=_db_url,
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.environ.get("POSTGRES_DB", "litigant_portal"),
+        "USER": os.environ.get("POSTGRES_USER", "postgres"),
+        "PASSWORD": _db_password,
+        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "CONN_MAX_AGE": 600,
+        "CONN_HEALTH_CHECKS": True,
+    }
 }
 
 # Password validation
@@ -306,9 +298,8 @@ CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
 DEFAULT_CHAT_AGENT = os.environ.get(
     "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
 )
+CHAT_MODEL = os.environ.get("CHAT_MODEL", "openai/gpt-4o-mini")
 
-# Make OPENAI_API_KEY available via _FILE pattern
-# LiteLLM reads from os.environ at call time, so we set it here
-_openai_key = _read_secret("OPENAI_API_KEY")
-if _openai_key:
-    os.environ["OPENAI_API_KEY"] = _openai_key
+# Read OPENAI_API_KEY from env or secret file; passed to LiteLLM at call time
+# via llm_completion() wrapper — never written back to os.environ.
+OPENAI_API_KEY = _read_secret("OPENAI_API_KEY")

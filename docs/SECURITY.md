@@ -45,13 +45,14 @@ All secrets use the `_FILE` convention — `settings.py` checks `<VAR>_FILE` for
 | OpenAI API key     | `OPENAI_API_KEY_FILE=/run/secrets/openai_api_key` | `OPENAI_API_KEY`   |
 | Postgres password  | `POSTGRES_PASSWORD_FILE=/run/secrets/db_password` | `POSTGRES_PASSWORD` |
 
-Secrets are never exported to the process environment (except `OPENAI_API_KEY` which LiteLLM requires in `os.environ`).
+Secrets are never exported to the process environment. `OPENAI_API_KEY` is passed directly to LiteLLM via the `llm_completion()` wrapper in `chat/agents/base.py`.
 
 ```bash
 # Create production secrets
 mkdir -p secrets
 python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
 echo "your-db-password" > secrets/db_password.txt
+echo "sk-your-openai-key" > secrets/openai_api_key.txt
 chmod 600 secrets/*.txt
 ```
 
