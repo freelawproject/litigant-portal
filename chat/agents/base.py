@@ -26,8 +26,6 @@ def llm_completion(**kwargs):
     """
     import litellm
 
-    litellm.drop_params = True
-
     model = kwargs.get("model", "")
     if model.startswith("openai/") or model.startswith("openai."):
         kwargs.setdefault("api_key", settings.OPENAI_API_KEY)
@@ -36,6 +34,7 @@ def llm_completion(**kwargs):
             f"Provider for model '{model}' is not configured. "
             f"Only OpenAI models are currently supported."
         )
+    kwargs.setdefault("drop_params", True)
     return litellm.completion(**kwargs)
 
 
