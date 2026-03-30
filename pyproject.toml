@@ -111,7 +111,7 @@ lint.ignore = [
 DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["tests.py", "test_*.py"]
 python_classes = ["*Tests"]
-python_paths = ["."]
+pythonpath = ["."]
 addopts = "-ra --strict-markers"
 markers = [
     "postgres: test requires a PostgreSQL database",
