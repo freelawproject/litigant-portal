@@ -39,11 +39,11 @@ When `DEBUG=False`, Django enables these security settings:
 
 All secrets use the `_FILE` convention — `settings.py` checks `<VAR>_FILE` for a file path first, then falls back to `<VAR>` env var:
 
-| Secret             | File                                             | Env var fallback   |
-| ------------------ | ------------------------------------------------ | ------------------ |
-| Django secret key  | `SECRET_KEY_FILE=/run/secrets/django_secret_key` | `SECRET_KEY`       |
-| OpenAI API key     | `OPENAI_API_KEY_FILE=/run/secrets/openai_api_key` | `OPENAI_API_KEY`   |
-| Postgres password  | `POSTGRES_PASSWORD_FILE=/run/secrets/db_password` | `POSTGRES_PASSWORD` |
+| Secret            | File                                              | Env var fallback    |
+| ----------------- | ------------------------------------------------- | ------------------- |
+| Django secret key | `SECRET_KEY_FILE=/run/secrets/django_secret_key`  | `SECRET_KEY`        |
+| OpenAI API key    | `OPENAI_API_KEY_FILE=/run/secrets/openai_api_key` | `OPENAI_API_KEY`    |
+| Postgres password | `POSTGRES_PASSWORD_FILE=/run/secrets/db_password` | `POSTGRES_PASSWORD` |
 
 Secrets are never exported to the process environment. `OPENAI_API_KEY` is passed directly to LiteLLM via the `llm_completion()` wrapper in `chat/agents/base.py`.
 

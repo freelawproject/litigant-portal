@@ -30,9 +30,7 @@ class ReadSecretTests(TestCase):
                     {"MY_SECRET_FILE": f.name},
                     clear=False,
                 ):
-                    self.assertEqual(
-                        _read_secret("MY_SECRET"), "file-secret"
-                    )
+                    self.assertEqual(_read_secret("MY_SECRET"), "file-secret")
             finally:
                 os.unlink(f.name)
 
@@ -52,9 +50,7 @@ class ReadSecretTests(TestCase):
                     },
                     clear=False,
                 ):
-                    self.assertEqual(
-                        _read_secret("MY_SECRET"), "from-file"
-                    )
+                    self.assertEqual(_read_secret("MY_SECRET"), "from-file")
             finally:
                 os.unlink(f.name)
 

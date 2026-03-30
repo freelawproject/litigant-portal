@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 import os
 from pathlib import Path
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -135,21 +134,16 @@ WSGI_APPLICATION = "config.wsgi.application"
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 # Built from individual env vars for clarity and secret-file support.
 
-_db_password = _read_secret("POSTGRES_PASSWORD")
-if not _db_password:
-    if DEBUG:
-        _db_password = "postgres"
-    else:
-        raise ValueError(
-            "POSTGRES_PASSWORD or POSTGRES_PASSWORD_FILE is required"
-        )
+POSTGRES_PASSWORD = _read_secret("POSTGRES_PASSWORD")
+if not POSTGRES_PASSWORD:
+    raise ValueError("POSTGRES_PASSWORD or POSTGRES_PASSWORD_FILE is required")
 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": os.environ.get("POSTGRES_DB", "litigant_portal"),
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
-        "PASSWORD": _db_password,
+        "PASSWORD": POSTGRES_PASSWORD,
         "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
         "PORT": os.environ.get("POSTGRES_PORT", "5432"),
         "CONN_MAX_AGE": 600,

@@ -368,18 +368,6 @@ wheels = [
 ]
 
 [[package]]
-name = "dj-database-url"
-version = "3.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "django" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/95/c6/88676a7333fb7c668e626b55f8bfc8527dd863973eb1c40412b95d27747d/dj_database_url-3.1.0.tar.gz", hash = "sha256:d80218426b83f9302c8d27d4fccf52de5cf0cab179f0645fb2839f37605d1353", size = 7924, upload-time = "2026-01-04T09:18:32.693Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/68/1b/e84f7472ab0bdacc3fd09556eb4dd40d88246941d465cc103b36a8dabcd8/dj_database_url-3.1.0-py3-none-any.whl", hash = "sha256:155a56fbbecbaaf1348ccd73bf29138b4c9988363ba08261a0f0145e392e638c", size = 8849, upload-time = "2026-01-04T09:18:43.77Z" },
-]
-
-[[package]]
 name = "django"
 version = "6.0.2"
 source = { registry = "https://pypi.org/simple" }
@@ -933,7 +921,6 @@ name = "litigant-portal"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
-    { name = "dj-database-url" },
     { name = "django" },
     { name = "django-allauth" },
     { name = "django-cotton" },
@@ -960,7 +947,6 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "dj-database-url", specifier = ">=2.3" },
     { name = "django", specifier = ">=5.2" },
     { name = "django-allauth", specifier = ">=65.0" },
     { name = "django-cotton", specifier = ">=1.0" },
