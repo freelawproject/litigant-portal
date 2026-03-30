@@ -68,9 +68,9 @@ SECRET_KEY=dev .venv/bin/python manage.py migrate
 SECRET_KEY=dev .venv/bin/python manage.py shell
 
 # Run non-postgres tests locally (no Docker needed)
-SECRET_KEY=test POSTGRES_PASSWORD=postgres CHAT_ENABLED=false uv run pytest -m "not postgres"
+tox -e fast
 # Run a specific test class
-SECRET_KEY=test POSTGRES_PASSWORD=postgres CHAT_ENABLED=false uv run pytest -m "not postgres" -k "ReadSecretTests"
+tox -e fast -- -k "ReadSecretTests"
 ```
 
 ## Pre-commit Hooks

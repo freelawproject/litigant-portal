@@ -24,7 +24,7 @@ migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
 
 test: ## Run non-postgres tests locally (no Docker needed)
-	SECRET_KEY=test POSTGRES_PASSWORD=postgres CHAT_ENABLED=false uv run pytest -m "not postgres" --verbosity=1
+	tox -e fast
 
 collectstatic: ## Collect static files (builds CSS first)
 	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
