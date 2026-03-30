@@ -151,12 +151,14 @@ if _db_password and _db_url.startswith("postgres"):
     from urllib.parse import urlparse, urlunparse
 
     _parsed = urlparse(_db_url)
+    _port_suffix = f":{_parsed.port}" if _parsed.port else ""
     _db_url = urlunparse(
         _parsed._replace(
             netloc=f"{_parsed.username}:{_db_password}"
-            f"@{_parsed.hostname}:{_parsed.port}"
+            f"@{_parsed.hostname}{_port_suffix}"
         )
     )
+    os.environ["DATABASE_URL"] = _db_url
 
 DATABASES = {
     "default": dj_database_url.config(

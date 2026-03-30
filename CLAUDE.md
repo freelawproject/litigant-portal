@@ -499,7 +499,7 @@ Set in `.env` at the project root:
 | --------------- | --------------------------------------- | -------------------- |
 | `DOMAIN`        | Public domain (Caddy uses for HTTPS)    | `portal.example.com` |
 | `ALLOWED_HOSTS` | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
-| `OPENAI_API_KEY`| OpenAI API key for AI chat              | `sk-...`             |
+| `OPENAI_API_KEY` | OpenAI API key for AI chat              | `sk-...`             |
 
 All secrets support the `_FILE` convention (`<VAR>_FILE` points to a file, falls back to `<VAR>` env var). Production uses Docker secrets in `secrets/` (never committed). See `docs/SECURITY.md` for details.
 
