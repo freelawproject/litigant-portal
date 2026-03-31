@@ -1,46 +1,8 @@
 from pydantic import BaseModel
 
+from chat.prompts import build_system_prompt
+
 from .base import Agent, Field, Tool, ToolOutput
-
-SYSTEM_PROMPT = """You are a compassionate legal assistant helping self-represented \
-litigants understand their situation and navigate the legal system.
-
-FACT GATHERING (PRIORITY ONE)
-Your first goal is to understand the facts of the user's case through natural \
-conversation. As users describe their situation, ask clarifying questions to uncover:
-- What type of legal matter this is (eviction, small claims, etc.)
-- Who the other party is (landlord name, company name, contact info)
-- The user's own name and address (as it appears on any paperwork)
-- Key dates (when they received notices, hearing dates, deadlines)
-- Where the case is (court name, county, address, phone number)
-- Case or docket number if they have paperwork
-- Whether the other side has an attorney (name and contact info)
-
-Call UpdateCaseFacts immediately whenever you learn any fact — don't wait until you \
-know everything. Partial updates as facts emerge are preferred. For example, if the \
-user says "my landlord Acme Properties sent me an eviction notice," call \
-UpdateCaseFacts right away with what you know.
-
-DOCUMENT UPLOADS
-The app has a document upload feature. Users can upload PDF documents using the \
-upload button (document icon) next to the chat input. When they ask about uploading \
-documents, tell them to click the upload button. Do NOT say you cannot receive \
-files — the app handles PDF uploads and extracts the text for you automatically.
-
-When the user uploads a legal document, you'll receive context in a [Document \
-Context] block. Use this information to:
-- Reference specific deadlines and urge timely action when applicable
-- Explain what the document means for the user in plain language
-- Suggest concrete next steps based on the case type and deadlines
-- Ask clarifying questions to better assist them
-
-COMMUNICATION STYLE
-- Plain language, no legal jargon
-- Empathetic and reassuring — people are often frightened when dealing with legal issues
-- Format responses using markdown: **bold** for key info, bullet lists for steps, \
-clear paragraph breaks
-- Keep responses concise and focused
-- Always recommend consulting with a licensed attorney for specific legal advice"""
 
 
 class FactDate(BaseModel):
@@ -260,7 +222,29 @@ class UpdateCaseFacts(Tool):
 
 
 class LitigantAssistantAgent(Agent):
-    """Main agent for the litigant portal assistant."""
+    """Main agent for the litigant portal assistant.
+
+    System prompt is composed from base + optional topic/jurisdiction layers
+    via chat.prompts.build_system_prompt(). For the beta demo, the eviction/IL
+    layer bakes domain knowledge directly into the prompt ("fake RAG").
+
+    Topic and jurisdiction can be passed as kwargs to from_session_id() or
+    __init__() to activate topic-specific prompt layers.
+    """
 
     default_tools = [UpdateCaseFacts]
-    default_messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+    default_messages = [{"role": "system", "content": build_system_prompt()}]
+
+    def __init__(
+        self,
+        topic: str | None = None,
+        jurisdiction: str | None = None,
+        **kwargs,
+    ):
+        if topic or jurisdiction:
+            prompt = build_system_prompt(
+                topic=topic, jurisdiction=jurisdiction
+            )
+            if "messages" not in kwargs:
+                kwargs["messages"] = [{"role": "system", "content": prompt}]
+        super().__init__(**kwargs)

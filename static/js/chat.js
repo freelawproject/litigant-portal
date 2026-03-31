@@ -183,6 +183,7 @@ function createChat() {
         formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
         if (this.sessionId) formData.append('session_id', this.sessionId)
         if (this.agentName) formData.append('agent_name', this.agentName)
+        if (this.topicSlug) formData.append('topic', this.topicSlug)
 
         const response = await fetch('/api/chat/stream/', {
           method: 'POST',
