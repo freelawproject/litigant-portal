@@ -517,4 +517,4 @@ docker compose --profile prod up --build -d    # Rebuild and restart
 
 ### Database
 
-PostgreSQL (pgvector) on a Docker volume (`postgres_data`). Separate services per profile (`postgres-dev`, `postgres-prod`); prod uses Docker secrets for the password via `POSTGRES_PASSWORD_FILE`.
+PostgreSQL (pgvector) on Docker volumes named with the PG major version (e.g., `postgres_data_dev_pg17`). When upgrading Postgres (e.g., pg17 → pg18), update both the image tag and volume name in `docker-compose.yml` so Docker creates a fresh volume instead of failing on incompatible data files. Separate services per profile (`postgres-dev`, `postgres-prod`); prod uses Docker secrets for the password via `POSTGRES_PASSWORD_FILE`.
