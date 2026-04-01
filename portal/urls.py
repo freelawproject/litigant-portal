@@ -1,5 +1,7 @@
 from django.urls import path
 
+from chat.views import action_plan
+
 from . import views
 
 app_name = "portal"
@@ -11,6 +13,7 @@ urlpatterns = [
     path("accessibility/", views.accessibility, name="accessibility"),
     path("topics/<slug:slug>/", views.topic_detail, name="topic_detail"),
     path("chat/", views.chat_page, name="chat"),
+    path("chat/action-plan/", action_plan, name="action_plan"),
     path("health/", views.health, name="health"),
     path("style-guide/", views.style_guide, name="style_guide"),
     # Agent testing

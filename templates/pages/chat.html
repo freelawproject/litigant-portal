@@ -62,6 +62,16 @@
     {# Left column — sidebar, ~20% #}
     <div class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 overflow-y-auto">
       <c-organisms.case-sidebar class="h-full">
+        <c-slot name="header_actions">
+          <c-atoms.button type="button"
+                          variant="ghost"
+                          class="!p-0 text-xs text-greyscale-400 hover:text-greyscale-600"
+                          x-show="caseInfo"
+                          x-cloak
+                          x-on:click="clearCaseInfo">
+            {% trans "Clear" %}
+          </c-atoms.button>
+        </c-slot>
         {# Empty state #}
         <div x-show="noCaseInfo" class="text-center py-8 px-4">
           <div class="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mx-auto mb-3">
@@ -172,14 +182,86 @@
               </template>
             </div>
           </template>
-          {# Clear case button #}
+          {# Action plan — spotted issues #}
+          <template x-if="hasSpottedIssues">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">
+                {% trans "Your Rights & Defenses" %}
+              </h4>
+              <template x-for="issue in spottedIssues" :key="issue.title">
+                <div class="flex items-start gap-2 p-2 bg-blue-50 border border-blue-100 rounded-lg">
+                  <c-atoms.icon name="shield-check" class="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-blue-800" x-text="issue.title"></p>
+                    <p x-show="issue.description"
+                       class="text-xs text-blue-600 mt-0.5"
+                       x-text="issue.description"></p>
+                    <p x-show="issue.statute"
+                       class="text-xs text-blue-400 mt-0.5"
+                       x-text="issue.statute"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          {# Action plan — action items #}
+          <template x-if="hasActionItems">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">
+                {% trans "Next Steps" %}
+              </h4>
+              <template x-for="item in actionItems" :key="item.title">
+                <div class="flex items-start gap-2 p-2 rounded-lg"
+                     x-bind:class="item.bgClass">
+                  <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5"
+                       x-bind:class="item.borderClass"></div>
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium"
+                       x-bind:class="item.titleClass"
+                       x-text="item.title"></p>
+                    <p x-show="item.description"
+                       class="text-xs mt-0.5"
+                       x-bind:class="item.descClass"
+                       x-text="item.description"></p>
+                    <p x-show="item.deadline"
+                       class="text-xs mt-0.5"
+                       x-bind:class="item.dateClass">
+                      <c-atoms.icon name="clock" class="w-3 h-3 inline -mt-0.5 mr-0.5" />
+                      <span x-text="item.deadline"></span>
+                    </p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          {# Action plan — resources #}
+          <template x-if="hasResources">
+            <div class="space-y-2">
+              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">
+                {% trans "Resources" %}
+              </h4>
+              <template x-for="resource in resources" :key="resource.title">
+                <div class="flex items-start gap-2 p-2 bg-green-50 border border-green-100 rounded-lg">
+                  <c-atoms.icon name="link" class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  <div class="min-w-0">
+                    <p class="text-sm font-medium text-green-800" x-text="resource.title"></p>
+                    <p x-show="resource.description"
+                       class="text-xs text-green-600 mt-0.5"
+                       x-text="resource.description"></p>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </template>
+          {# Printable document link #}
           <div class="pt-3 border-t border-greyscale-200">
-            <c-atoms.button type="button"
-                            variant="ghost"
-                            class="!p-0 text-xs text-greyscale-500 hover:text-greyscale-700"
-                            x-on:click="clearCaseInfo">
-              {% trans "Clear case info" %}
-            </c-atoms.button>
+            <a href="{% url 'portal:action_plan' %}"
+               target="_blank"
+               rel="noopener"
+               class="flex items-center gap-2 text-xs font-medium text-primary-600 hover:text-primary-700 hover:underline">
+              <c-atoms.icon name="printer" class="w-4 h-4" />
+              {% trans "Printable summary" %}
+            </a>
           </div>
         </div>
       </c-organisms.case-sidebar>

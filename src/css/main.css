@@ -669,4 +669,18 @@
     @apply p-4 bg-white border border-greyscale-200 rounded-lg;
     @apply hover:border-primary-300 hover:shadow-sm transition-all;
   }
+
+  /* ==========================================================================
+     PRINT STYLES — action plan document view
+     ========================================================================== */
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+
+    .print-section {
+      break-inside: avoid;
+    }
+  }
 }

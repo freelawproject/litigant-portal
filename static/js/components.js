@@ -134,4 +134,14 @@ document.addEventListener('alpine:init', () => {
       return this.expanded ? '' : 'line-clamp-2'
     },
   }))
+
+  // ===========================================================================
+  // Action plan page (print button)
+  // ===========================================================================
+
+  Alpine.data('actionPlanPage', () => ({
+    printPage() {
+      window.print()
+    },
+  }))
 })

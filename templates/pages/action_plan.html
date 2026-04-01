@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Case Summary" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block body_class %}min-h-dvh flex flex-col bg-white{% endblock body_class %}
+
+{% block header %}
+  <div class="no-print">
+    <c-organisms.header />
+  </div>
+{% endblock header %}
+
+{% block content %}
+  <div class="max-w-3xl mx-auto px-6 py-8">
+    {# Document header #}
+    <div class="border-b-2 border-greyscale-800 pb-4 mb-6">
+      <h1 class="text-2xl font-bold text-greyscale-900">{% trans "Case Summary" %}</h1>
+      {% if case_type %}
+        <p class="text-lg text-greyscale-600 mt-1">{{ case_type }}</p>
+      {% endif %}
+      {% if summary %}
+        <p class="text-sm text-greyscale-500 mt-2">{{ summary }}</p>
+      {% endif %}
+    </div>
+
+    {% if not has_data %}
+      <div class="text-center py-12">
+        <p class="text-greyscale-500">
+          {% trans "No action plan yet. Start a conversation and I'll build your plan as we identify issues and next steps." %}
+        </p>
+        <a href="{% url 'portal:chat' %}"
+           class="inline-block mt-4 text-primary-600 hover:underline font-medium">
+          {% trans "Go to chat" %}
+        </a>
+      </div>
+    {% else %}
+
+      {# Case info summary #}
+      {% if court_info or parties %}
+        <div class="print-section mb-6">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-greyscale-500 mb-3">
+            {% trans "Case Information" %}
+          </h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+            {% if court_info.court_name %}
+              <div>
+                <p class="font-medium text-greyscale-700">{% trans "Court" %}</p>
+                <p class="text-greyscale-600">{{ court_info.court_name }}</p>
+                {% if court_info.county %}<p class="text-greyscale-500">{{ court_info.county }}</p>{% endif %}
+                {% if court_info.address %}<p class="text-greyscale-500">{{ court_info.address }}</p>{% endif %}
+                {% if court_info.phone %}<p class="text-greyscale-500">{{ court_info.phone }}</p>{% endif %}
+              </div>
+            {% endif %}
+            {% if parties.opposing_party %}
+              <div>
+                <p class="font-medium text-greyscale-700">{% trans "Opposing Party" %}</p>
+                <p class="text-greyscale-600">{{ parties.opposing_party }}</p>
+                {% if parties.opposing_phone %}<p class="text-greyscale-500">{{ parties.opposing_phone }}</p>{% endif %}
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {# Key dates / deadlines #}
+      {% if key_dates %}
+        <div class="print-section mb-6">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-greyscale-500 mb-3">
+            {% trans "Key Dates" %}
+          </h2>
+          <div class="space-y-2">
+            {% for date in key_dates %}
+              <div class="flex items-start gap-3 p-3 rounded-lg border {% if date.is_deadline %}border-red-200 bg-red-50{% else %}border-greyscale-200 bg-greyscale-50{% endif %}">
+                <span class="font-medium text-sm {% if date.is_deadline %}text-red-700{% else %}text-greyscale-700{% endif %}">
+                  {{ date.date }}
+                </span>
+                <span class="text-sm {% if date.is_deadline %}text-red-600{% else %}text-greyscale-600{% endif %}">
+                  {{ date.label }}
+                  {% if date.is_deadline %}
+                    <span class="inline-block ml-1 text-xs font-semibold uppercase text-red-500">{% trans "Deadline" %}</span>
+                  {% endif %}
+                </span>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {# Spotted issues / defenses #}
+      {% if spotted_issues %}
+        <div class="print-section mb-6">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-greyscale-500 mb-3">
+            {% trans "Your Rights & Defenses" %}
+          </h2>
+          <div class="space-y-3">
+            {% for issue in spotted_issues %}
+              <div class="p-3 rounded-lg border border-blue-200 bg-blue-50">
+                <p class="text-sm font-medium text-blue-800">{{ issue.title }}</p>
+                {% if issue.description %}
+                  <p class="text-sm text-blue-700 mt-1">{{ issue.description }}</p>
+                {% endif %}
+                {% if issue.statute %}
+                  <p class="text-xs text-blue-500 mt-1">{{ issue.statute }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {# Action items / next steps #}
+      {% if action_items %}
+        <div class="print-section mb-6">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-greyscale-500 mb-3">
+            {% trans "Next Steps" %}
+          </h2>
+          <div class="space-y-2">
+            {% for item in action_items %}
+              <div class="flex items-start gap-3 p-3 rounded-lg border {% if item.priority == 'urgent' %}border-red-200 bg-red-50{% else %}border-greyscale-200 bg-greyscale-50{% endif %}">
+                <div class="w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 {% if item.priority == 'urgent' %}border-red-400{% else %}border-greyscale-300{% endif %}"></div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium {% if item.priority == 'urgent' %}text-red-800{% else %}text-greyscale-800{% endif %}">
+                    {{ item.title }}
+                  </p>
+                  {% if item.description %}
+                    <p class="text-sm mt-0.5 {% if item.priority == 'urgent' %}text-red-600{% else %}text-greyscale-600{% endif %}">
+                      {{ item.description }}
+                    </p>
+                  {% endif %}
+                  {% if item.deadline %}
+                    <p class="text-xs mt-1 {% if item.priority == 'urgent' %}text-red-500 font-medium{% else %}text-greyscale-400{% endif %}">
+                      {% trans "Due:" %} {{ item.deadline }}
+                    </p>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {# Resources #}
+      {% if resources %}
+        <div class="print-section mb-6">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-greyscale-500 mb-3">
+            {% trans "Resources" %}
+          </h2>
+          <div class="space-y-2">
+            {% for resource in resources %}
+              <div class="p-3 rounded-lg border border-green-200 bg-green-50">
+                <p class="text-sm font-medium text-green-800">{{ resource.title }}</p>
+                {% if resource.description %}
+                  <p class="text-sm text-green-700 mt-1">{{ resource.description }}</p>
+                {% endif %}
+                {% if resource.href %}
+                  <p class="text-xs text-green-600 mt-1">{{ resource.href }}</p>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+
+      {# Disclaimer #}
+      <div class="print-section border-t border-greyscale-200 pt-4 mt-8">
+        <p class="text-xs text-greyscale-400">
+          {% trans "This action plan contains general legal information only -- not legal advice. For urgent matters, contact a local legal aid organization. Consult with a licensed attorney for case-specific guidance." %}
+        </p>
+      </div>
+
+    {% endif %}
+
+    {# Print button (hidden when printing) #}
+    <div class="no-print mt-8 flex gap-3" x-data="actionPlanPage">
+      <c-atoms.button type="button"
+                      variant="outline"
+                      x-on:click="printPage">
+        {% trans "Print / Save as PDF" %}
+      </c-atoms.button>
+      <a href="{% url 'portal:chat' %}"
+         class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 hover:underline">
+        {% trans "Back to chat" %}
+      </a>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block footer %}
+{% endblock footer %}
