@@ -528,6 +528,17 @@ function createHomePage() {
     },
 
     // Dates (pre-filtered)
+    _formatTime12h(time24) {
+      const [h, m] = time24.split(':').map(Number)
+      const period = h >= 12 ? 'PM' : 'AM'
+      const h12 = h % 12 || 12
+      return h12 + ':' + String(m).padStart(2, '0') + ' ' + period
+    },
+    _stampDateDisplay(d) {
+      d.dateDisplay = d.time
+        ? d.date + ' at ' + this._formatTime12h(d.time)
+        : d.date
+    },
     get deadlines() {
       return (this.caseInfo?.key_dates || []).filter((d) => d.is_deadline)
     },
@@ -600,6 +611,9 @@ function createHomePage() {
         if (caseResponse.ok) {
           const caseData = await caseResponse.json()
           if (caseData.case_info) {
+            ;(caseData.case_info.key_dates || []).forEach((d) =>
+              this._stampDateDisplay(d)
+            )
             this.caseInfo = caseData.case_info
           }
           if (caseData.timeline) {
@@ -614,7 +628,7 @@ function createHomePage() {
               isSummary: e.event_type === 'summary',
               isChange: e.event_type === 'change',
               typeLabel: this._timelineTypeLabel(e.event_type),
-              formattedTime: this._formatTime(e.created_at),
+              formattedTime: this._formatISOTime(e.created_at),
             }))
           }
         }
@@ -655,6 +669,7 @@ function createHomePage() {
       if (toolName === 'UpdateCaseFacts' && data?.case_patch) {
         const patch = data.case_patch
         if (!this.caseInfo) {
+          ;(patch.key_dates || []).forEach((d) => this._stampDateDisplay(d))
           this.caseInfo = patch
           this.addTimelineEvent(
             'change',
@@ -982,6 +997,7 @@ function createHomePage() {
             (d) => d.label === newDate.label && d.date === newDate.date
           )
           if (!exists) {
+            this._stampDateDisplay(newDate)
             changes.push(`New date: ${newDate.label} - ${newDate.date}`)
             this.caseInfo.key_dates.push(newDate)
           }
@@ -1061,7 +1077,7 @@ function createHomePage() {
       return gettext('Update')
     },
 
-    _formatTime(isoString) {
+    _formatISOTime(isoString) {
       return new Date(isoString).toLocaleTimeString([], {
         hour: '2-digit',
         minute: '2-digit',
@@ -1082,7 +1098,7 @@ function createHomePage() {
         isSummary: type === 'summary',
         isChange: type === 'change',
         typeLabel: this._timelineTypeLabel(type),
-        formattedTime: this._formatTime(timestamp),
+        formattedTime: this._formatISOTime(timestamp),
       }
       this.caseTimeline.push(event)
 

@@ -14,6 +14,10 @@ class FactDate(BaseModel):
     date: str = Field(
         description="The date in YYYY-MM-DD format if known, otherwise as stated"
     )
+    time: str | None = Field(
+        None,
+        description="Time in HH:MM format (24-hour) if known, e.g. '10:00', '14:30'",
+    )
     is_deadline: bool = Field(
         False,
         description="True if the user must take action by this date",
@@ -171,6 +175,7 @@ class UpdateCaseFacts(Tool):
                 {
                     "label": d.label,
                     "date": d.date,
+                    "time": d.time,
                     "is_deadline": d.is_deadline,
                 }
                 for d in self.new_dates

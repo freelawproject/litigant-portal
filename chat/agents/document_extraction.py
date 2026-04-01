@@ -28,6 +28,10 @@ class KeyDate(BaseModel):
         description="The date in YYYY-MM-DD format if possible, "
         "otherwise as written",
     )
+    time: str | None = Field(
+        None,
+        description="Time in HH:MM format (24-hour) if known, e.g. '10:00', '14:30'",
+    )
     is_deadline: bool = Field(
         False,
         description="True if this is a deadline the user needs to act on",
