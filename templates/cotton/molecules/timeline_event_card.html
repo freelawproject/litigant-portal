@@ -1,22 +1,19 @@
 {% load i18n %}
 
-<c-vars
-  title=""
-  content=""
-  icon="clock"
-  type_label=""
-  formatted_time=""
-/>
+<c-vars title="" content="" icon="clock" type_label="" formatted_time="" />
+
 {# Timeline event card — collapsible entry in the activity panel. #}
 {# Used statically (style guide). Alpine x-for loops inline this structure directly. #}
 <details class="timeline-event-card group">
   <summary class="timeline-event-summary">
     <c-atoms.icon name="{{ icon }}" class="timeline-event-icon" />
     <span class="timeline-event-title">{{ title }}</span>
+
     {% if type_label %}
       <span class="timeline-event-badge">{{ type_label }}</span>
     {% endif %}
   </summary>
+
   {% if content %}
     <div class="timeline-event-body">
       <p class="text-xs text-greyscale-600">{{ content }}</p>

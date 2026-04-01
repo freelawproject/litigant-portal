@@ -2,35 +2,61 @@
 
 <section class="fallback-resources {{ class }}" {{ attrs }}>
   <div class="fallback-resources-inner">
-    <h2 class="fallback-resources-heading">{% trans "What if my issue isn't here?" %}</h2>
+    <h2 class="fallback-resources-heading">
+      {% trans "What if my issue isn't here?" %}
+    </h2>
     <div class="fallback-resources-grid">
       <div class="fallback-resources-links">
-        <c-atoms.link href="#" variant="secondary">{% trans "Legal aid referral" %}</c-atoms.link>
-        <c-atoms.link href="#" variant="secondary">{% trans "Pro bono / Bar Association referral" %}</c-atoms.link>
-        <c-atoms.link href="#" variant="secondary">{% trans "Civil / Appeals division" %}</c-atoms.link>
-        <c-atoms.link href="#" variant="secondary">{% trans "Jurisdiction resource 1" %}</c-atoms.link>
-        <c-atoms.link href="#" variant="secondary">{% trans "Jurisdiction resource 2" %}</c-atoms.link>
+        <c-atoms.link href="#" variant="secondary"
+          >{% trans "Legal aid referral" %}</c-atoms.link
+        >
+        <c-atoms.link href="#" variant="secondary"
+          >{% trans "Pro bono / Bar Association referral" %}</c-atoms.link
+        >
+        <c-atoms.link href="#" variant="secondary"
+          >{% trans "Civil / Appeals division" %}</c-atoms.link
+        >
+        <c-atoms.link href="#" variant="secondary"
+          >{% trans "Jurisdiction resource 1" %}</c-atoms.link
+        >
+        <c-atoms.link href="#" variant="secondary"
+          >{% trans "Jurisdiction resource 2" %}</c-atoms.link
+        >
       </div>
       <div class="fallback-resources-accordions">
         <details class="group fallback-accordion">
           <summary class="fallback-accordion-summary">
             <span>{% trans "How to represent yourself in court" %}</span>
-            <c-atoms.icon name="chevron-down" class="w-5 h-5 text-greyscale-400 transition-transform group-open:rotate-180" />
+            <c-atoms.icon
+              name="chevron-down"
+              class="w-5 h-5 text-greyscale-400 transition-transform group-open:rotate-180"
+            />
           </summary>
-          <div class="grid grid-rows-[0fr] group-open:grid-rows-[1fr] transition-[grid-template-rows] duration-200">
+          <div
+            class="grid grid-rows-[0fr] group-open:grid-rows-[1fr] transition-[grid-template-rows] duration-200"
+          >
             <div class="overflow-hidden">
-              <p class="px-4 pb-4 pt-2 text-sm text-greyscale-600">{% trans "Self-representation guidance will appear here." %}</p>
+              <p class="px-4 pb-4 pt-2 text-sm text-greyscale-600">
+                {% trans "Self-representation guidance will appear here." %}
+              </p>
             </div>
           </div>
         </details>
         <details class="group fallback-accordion">
           <summary class="fallback-accordion-summary">
             <span>{% trans "Next steps in your case" %}</span>
-            <c-atoms.icon name="chevron-down" class="w-5 h-5 text-greyscale-400 transition-transform group-open:rotate-180" />
+            <c-atoms.icon
+              name="chevron-down"
+              class="w-5 h-5 text-greyscale-400 transition-transform group-open:rotate-180"
+            />
           </summary>
-          <div class="grid grid-rows-[0fr] group-open:grid-rows-[1fr] transition-[grid-template-rows] duration-200">
+          <div
+            class="grid grid-rows-[0fr] group-open:grid-rows-[1fr] transition-[grid-template-rows] duration-200"
+          >
             <div class="overflow-hidden">
-              <p class="px-4 pb-4 pt-2 text-sm text-greyscale-600">{% trans "Guidance on next steps will appear here." %}</p>
+              <p class="px-4 pb-4 pt-2 text-sm text-greyscale-600">
+                {% trans "Guidance on next steps will appear here." %}
+              </p>
             </div>
           </div>
         </details>

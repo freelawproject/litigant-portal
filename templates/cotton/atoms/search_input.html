@@ -1,12 +1,22 @@
 <c-vars placeholder="Search..." />
 <div class="relative flex-1">
-  <c-atoms.icon name="magnifying-glass" class="absolute left-4 top-1/2 -translate-y-1/2 text-greyscale-400 pointer-events-none" />
-  <input type="search"
-         {% if id %}id="{{ id }}"{% endif %}
-         {% if name %}name="{{ name }}"{% endif %}
-         placeholder="{{ placeholder }}"
-         {% if disabled %}disabled{% endif %}
-         {% if aria_label %}aria-label="{{ aria_label }}"{% else %}aria-label="{{ placeholder }}"{% endif %}
-         class="w-full text-md font-normal py-3.5 pl-12 pr-4 rounded-lg border border-greyscale-300 bg-white text-greyscale-900 placeholder:text-greyscale-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600 min-h-12 {{ class }}"
-         {{ attrs }}>
+  <c-atoms.icon
+    name="magnifying-glass"
+    class="absolute left-4 top-1/2 -translate-y-1/2 text-greyscale-400 pointer-events-none"
+  />
+  <input
+    type="search"
+
+    {% if id %}id="{{ id }}"{% endif %}
+
+    {% if name %}name="{{ name }}"{% endif %}
+    placeholder="{{ placeholder }}"
+
+    {% if disabled %}disabled{% endif %}
+
+    {% if aria_label %}aria-label="{{ aria_label }}"{% else %}aria-label="{{ placeholder }}"{% endif %}
+    class="w-full text-md font-normal py-3.5 pl-12 pr-4 rounded-lg border border-greyscale-300 bg-white text-greyscale-900 placeholder:text-greyscale-400 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600 min-h-12 {{ class }}"
+
+    {{ attrs }}
+  />
 </div>
