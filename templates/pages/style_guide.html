@@ -69,6 +69,18 @@
               <a href="#badges"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Badges</a>
             </li>
+            <li>
+              <a href="#checkbox"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Checkbox</a>
+            </li>
+            <li>
+              <a href="#nav-link"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Nav Link</a>
+            </li>
+            <li>
+              <a href="#auto-dismiss"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auto Dismiss</a>
+            </li>
           </ul>
         </details>
         <details open class="mb-2 nav-accordion">
@@ -113,6 +125,26 @@
               <a href="#auth-status"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth Status</a>
             </li>
+            <li>
+              <a href="#chat-message"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Chat Message</a>
+            </li>
+            <li>
+              <a href="#timeline-event-card"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Timeline Event Card</a>
+            </li>
+            <li>
+              <a href="#toast-container"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Toast Container</a>
+            </li>
+            <li>
+              <a href="#search-result"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Search Result</a>
+            </li>
+            <li>
+              <a href="#user-menu"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">User Menu</a>
+            </li>
           </ul>
         </details>
         <details open class="mb-2 nav-accordion">
@@ -152,6 +184,18 @@
             <li>
               <a href="#auth-layout"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth Layout</a>
+            </li>
+            <li>
+              <a href="#activity-panel"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Activity Panel</a>
+            </li>
+            <li>
+              <a href="#topic-detail"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Topic Detail</a>
+            </li>
+            <li>
+              <a href="#chat-window"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Chat Window</a>
             </li>
           </ul>
         </details>
@@ -504,6 +548,25 @@
               <option value="">Error state</option>
               </c-atoms.select>
             </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
+                <span class="p-2.5">Form field name</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>id</code></span>
+                <span class="p-2.5">Element ID</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>error</code></span>
+                <span class="p-2.5">Boolean — shows error styling</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
+                <span class="p-2.5">Boolean</span>
+              </div>
+            </div>
           </section>
           <section id="links" class="mb-12" aria-labelledby="links-heading">
             <h3 id="links-heading" class="mb-4">Links</h3>
@@ -513,6 +576,25 @@
               <c-atoms.link href="#" variant="primary">Primary</c-atoms.link>
               <c-atoms.link href="#" variant="secondary">Secondary</c-atoms.link>
               <c-atoms.link href="https://free.law" target="_blank" external_icon>External</c-atoms.link>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+                <span class="p-2.5">URL string</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+                <span class="p-2.5">"default" | "primary" | "secondary" | "unstyled"</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>target</code></span>
+                <span class="p-2.5">Link target (e.g., "_blank")</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>external_icon</code></span>
+                <span class="p-2.5">Boolean — shows external link icon</span>
+              </div>
             </div>
           </section>
           <section id="icons" class="mb-12" aria-labelledby="icons-heading">
@@ -636,6 +718,13 @@
               <c-atoms.alert variant="warning">Warning alert message.</c-atoms.alert>
               <c-atoms.alert variant="danger">Danger alert message.</c-atoms.alert>
             </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+                <span class="p-2.5">"info" (default) | "success" | "warning" | "danger"</span>
+              </div>
+            </div>
           </section>
           <section id="badges" class="mb-12" aria-labelledby="badges-heading">
             <h3 id="badges-heading" class="mb-4">Badges</h3>
@@ -660,6 +749,83 @@
               <div class="flex flex-col md:flex-row">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
                 <span class="p-2.5">"sm" (default) | "md"</span>
+              </div>
+            </div>
+          </section>
+          <section id="checkbox" class="mb-12" aria-labelledby="checkbox-heading">
+            <h3 id="checkbox-heading" class="mb-4">Checkbox</h3>
+            <p class="text-greyscale-600 mb-6">Checkbox input with optional label.</p>
+            <div class="space-y-4 mb-6">
+              <c-atoms.checkbox id="demo-cb-1" label="Default checkbox" />
+              <c-atoms.checkbox id="demo-cb-2" label="Checked" checked />
+              <c-atoms.checkbox id="demo-cb-3" label="Disabled" disabled />
+              <c-atoms.checkbox id="demo-cb-4" label="Required" required />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
+                <span class="p-2.5">Label text</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>checked</code></span>
+                <span class="p-2.5">Boolean — pre-checked state</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
+                <span class="p-2.5">Form field name</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>id</code></span>
+                <span class="p-2.5">Element ID (links label to input)</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
+                <span class="p-2.5">Boolean</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>required</code></span>
+                <span class="p-2.5">Boolean</span>
+              </div>
+            </div>
+          </section>
+          <section id="nav-link" class="mb-12" aria-labelledby="nav-link-heading">
+            <h3 id="nav-link-heading" class="mb-4">Nav Link</h3>
+            <p class="text-greyscale-600 mb-6">Navigation link with icon badge, used in sidebar navigation.</p>
+            <div class="space-y-2 mb-6 max-w-xs">
+              <c-atoms.nav-link icon="home" href="#" icon_bg="bg-primary-50" icon_color="text-primary-600">Home</c-atoms.nav-link>
+              <c-atoms.nav-link icon="document-text" href="#" icon_bg="bg-green-50" icon_color="text-green-600">Documents</c-atoms.nav-link>
+              <c-atoms.nav-link icon="shield-check" href="#" icon_bg="bg-amber-50" icon_color="text-amber-600">Legal Rights</c-atoms.nav-link>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+                <span class="p-2.5">Heroicon name</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+                <span class="p-2.5">URL string</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_bg</code></span>
+                <span class="p-2.5">Tailwind bg class for icon badge (default: "bg-primary-50")</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_color</code></span>
+                <span class="p-2.5">Tailwind text class for icon (default: "text-primary-600")</span>
+              </div>
+            </div>
+          </section>
+          <section id="auto-dismiss" class="mb-12" aria-labelledby="auto-dismiss-heading">
+            <h3 id="auto-dismiss-heading" class="mb-4">Auto Dismiss</h3>
+            <p class="text-greyscale-600 mb-6">Wrapper that auto-hides its content after a timeout. Used by toast container for flash messages.</p>
+            <p class="text-sm text-greyscale-500 mb-4">Note: requires the <code>autoDismiss</code> Alpine.js component.</p>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>timeout</code></span>
+                <span class="p-2.5">Duration in ms before dismissing (default: 1500)</span>
               </div>
             </div>
           </section>
@@ -933,6 +1099,97 @@
               </div>
             </div>
           </section>
+          <section id="chat-message" class="mb-12" aria-labelledby="chat-message-heading">
+            <h3 id="chat-message-heading" class="mb-4">Chat Message</h3>
+            <p class="text-greyscale-600 mb-6">Server-rendered chat message bubble with avatar. Used for static/initial message display.</p>
+            <div class="space-y-4 mb-6 max-w-lg">
+              <c-molecules.chat-message role="user" content="I just received an eviction notice. What should I do?" timestamp="2:30 PM" />
+              <c-molecules.chat-message role="assistant" content="I can help you understand your rights. First, what state are you in?" timestamp="2:31 PM" />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>role</code></span>
+                <span class="p-2.5">"user" | "assistant"</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>content</code></span>
+                <span class="p-2.5">Message text (alternative to slot)</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>timestamp</code></span>
+                <span class="p-2.5">Displayed time string</span>
+              </div>
+            </div>
+          </section>
+          <section id="timeline-event-card" class="mb-12" aria-labelledby="timeline-event-card-heading">
+            <h3 id="timeline-event-card-heading" class="mb-4">Timeline Event Card</h3>
+            <p class="text-greyscale-600 mb-6">Collapsible timeline entry for the activity panel.</p>
+            <div class="space-y-2 mb-6 max-w-sm">
+              <c-molecules.timeline-event-card title="Document uploaded" content="Eviction notice processed" icon="document-text" type_label="Upload" formatted_time="Mar 31, 2:30 PM" />
+              <c-molecules.timeline-event-card title="Case facts updated" content="Added court date and parties" icon="pencil" type_label="Update" formatted_time="Mar 31, 2:35 PM" />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
+                <span class="p-2.5">Event title</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>content</code></span>
+                <span class="p-2.5">Expandable detail text</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+                <span class="p-2.5">Heroicon name (default: "clock")</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type_label</code></span>
+                <span class="p-2.5">Badge text (e.g., "Upload", "Update")</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>formatted_time</code></span>
+                <span class="p-2.5">Displayed timestamp</span>
+              </div>
+            </div>
+          </section>
+          <section id="toast-container" class="mb-12" aria-labelledby="toast-container-heading">
+            <h3 id="toast-container-heading" class="mb-4">Toast Container</h3>
+            <p class="text-greyscale-600 mb-6">Renders Django flash messages as auto-dismissing toast overlays. Included in <code>base.html</code>.</p>
+            <p class="text-sm text-greyscale-500 mb-4">Composes <code>c-atoms.auto-dismiss</code> and <code>c-atoms.alert</code>. No props — reads <code>messages</code> from template context.</p>
+          </section>
+          <section id="search-result" class="mb-12" aria-labelledby="search-result-heading">
+            <h3 id="search-result-heading" class="mb-4">Search Result</h3>
+            <p class="text-greyscale-600 mb-6">Search result card with title, content preview, category badge, and optional link.</p>
+            <div class="space-y-4 mb-6 max-w-lg">
+              <c-molecules.search-result title="Eviction Process in Illinois" content="Learn about the steps in an Illinois eviction case, from notice to court hearing." category="Housing" url="#" />
+              <c-molecules.search-result title="Tenant Rights Overview" content="Understanding your rights as a tenant when facing eviction proceedings." category="Legal Rights" />
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
+                <span class="p-2.5">Result title</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>content</code></span>
+                <span class="p-2.5">Preview text (truncated to 2 lines)</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>category</code></span>
+                <span class="p-2.5">Category badge text</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>url</code></span>
+                <span class="p-2.5">Link URL — shows external icon when set</span>
+              </div>
+            </div>
+          </section>
+          <section id="user-menu" class="mb-12" aria-labelledby="user-menu-heading">
+            <h3 id="user-menu-heading" class="mb-4">User Menu</h3>
+            <p class="text-greyscale-600 mb-6">Header user menu — shows sign-in link for anonymous users, dropdown with profile/logout for authenticated users. Used inside <code>c-organisms.header</code>.</p>
+            <p class="text-sm text-greyscale-500 mb-4">No props — reads <code>user</code> from template context. Requires the <code>userMenu</code> Alpine.js component.</p>
+          </section>
         </section>
         <section id="organisms" aria-labelledby="organisms-heading">
           <h2 id="organisms-heading"
@@ -1051,6 +1308,54 @@
               <div class="flex flex-col md:flex-row">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>class</code></span>
                 <span class="p-2.5">Additional classes on the outer container</span>
+              </div>
+            </div>
+          </section>
+          <section id="activity-panel" class="mb-12" aria-labelledby="activity-panel-heading">
+            <h3 id="activity-panel-heading" class="mb-4">Activity Panel</h3>
+            <p class="text-greyscale-600 mb-6">Right-side timeline panel for session events (uploads, summaries, fact updates). Accepts slot content.</p>
+            <div class="mb-6 border border-greyscale-200 rounded-lg overflow-hidden" style="height: 200px;">
+              <c-organisms.activity-panel class="h-full">
+              <c-molecules.timeline-event-card title="Document uploaded" content="Eviction notice processed" icon="document-text" type_label="Upload" formatted_time="2:30 PM" />
+              <c-molecules.timeline-event-card title="Case facts updated" content="Added court date" icon="pencil" type_label="Update" formatted_time="2:35 PM" />
+              </c-organisms.activity-panel>
+            </div>
+          </section>
+          <section id="topic-detail" class="mb-12" aria-labelledby="topic-detail-heading">
+            <h3 id="topic-detail-heading" class="mb-4">Topic Detail</h3>
+            <p class="text-greyscale-600 mb-6">Topic landing page layout with back nav, icon, title, legal disclaimer, and CTA to chat.</p>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
+                <span class="p-2.5">Topic heading</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>subtitle</code></span>
+                <span class="p-2.5">Topic description</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+                <span class="p-2.5">Heroicon name</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slug</code></span>
+                <span class="p-2.5">Topic slug — used for chat link (?topic=slug)</span>
+              </div>
+            </div>
+          </section>
+          <section id="chat-window" class="mb-12" aria-labelledby="chat-window-heading">
+            <h3 id="chat-window-heading" class="mb-4">Chat Window</h3>
+            <p class="text-greyscale-600 mb-6">Complete chat interface with message list, typing indicator, input form, and fallback search. Requires the <code>chat</code> Alpine.js component.</p>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>session_id</code></span>
+                <span class="p-2.5">Chat session UUID</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>chat_enabled</code></span>
+                <span class="p-2.5">"true" (default) | "false" — shows fallback search when disabled</span>
               </div>
             </div>
           </section>
