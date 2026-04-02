@@ -23,9 +23,8 @@ css-prod: ## Build production CSS (minified)
 migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
 
-test: ## Run tests in Docker dev container (builds CSS + collectstatic first)
-	@docker compose --profile dev exec django-dev /docker-entrypoint.sh test portal chat || \
-	  (echo "\n  Docker dev container is not running. Start it with: make docker-dev\n" && exit 1)
+test: ## Run non-postgres tests locally (no Docker needed)
+	tox -e fast
 
 collectstatic: ## Collect static files (builds CSS first)
 	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
@@ -84,7 +83,9 @@ docker-shell: ## Open shell in Django dev container
 docker-migrate: ## Run migrations in Docker
 	docker compose --profile dev exec django-dev python manage.py migrate
 
-docker-test: test ## Alias for 'make test' (runs in Docker)
+docker-test: ## Run full test suite in Docker (includes postgres tests)
+	@docker compose --profile dev exec -e UV_PROJECT_ENVIRONMENT=/tmp/tox django-dev /docker-entrypoint.sh test || \
+	  (echo "\n  Docker dev container is not running. Start it with: make docker-dev\n" && exit 1)
 
 docker-clean: ## Remove containers, volumes, and images
 	docker compose --profile dev --profile prod down -v --rmi local

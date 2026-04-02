@@ -1,5 +1,6 @@
 """Tests for anonymous-to-authenticated data migration signal."""
 
+import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
@@ -26,6 +27,7 @@ def _create_anonymous_session(client):
     return session.session_key
 
 
+@pytest.mark.postgres
 @override_settings(
     ACCOUNT_EMAIL_VERIFICATION="none",
     ACCOUNT_AUTHENTICATION_METHOD="username",

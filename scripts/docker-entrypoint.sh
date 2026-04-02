@@ -61,7 +61,7 @@ case "$1" in
     test)
         tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
         run_collectstatic
-        exec python manage.py test "${@:2}"
+        exec uv run --extra dev tox
         ;;
 
     *)

@@ -2,12 +2,12 @@ import os
 import tempfile
 from unittest import mock
 
-from django.test import TestCase
+from django.test import SimpleTestCase
 
 from config.secrets import read_secret
 
 
-class ReadSecretTests(TestCase):
+class ReadSecretTests(SimpleTestCase):
     """Tests for the read_secret() helper."""
 
     def test_plain_env_var(self):

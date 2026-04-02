@@ -7,8 +7,9 @@ declarations, or LiteLLM interactions.
 
 from unittest.mock import MagicMock
 
+import pytest
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from chat.agents.litigant_assistant import FactDate, UpdateCaseFacts
 from chat.models import CaseInfo, ChatSession
@@ -23,7 +24,7 @@ def _mock_agent(session=None):
     return agent
 
 
-class UpdateCaseFactsPatchBuildingTests(TestCase):
+class UpdateCaseFactsPatchBuildingTests(SimpleTestCase):
     """UpdateCaseFacts builds the correct patch structure from its fields."""
 
     def _call_with(self, **kwargs):
@@ -144,6 +145,7 @@ class UpdateCaseFactsPatchBuildingTests(TestCase):
         self.assertIn("case_patch", result.data)
 
 
+@pytest.mark.postgres
 class UpdateCaseFactsDbPersistenceTests(TestCase):
     """UpdateCaseFacts creates and updates CaseInfo in the database."""
 
@@ -245,6 +247,7 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
         self.assertEqual(CaseInfo.objects.count(), 0)
 
 
+@pytest.mark.postgres
 class UpdateCaseFactsDateDeduplicationTests(TestCase):
     """UpdateCaseFacts deduplicates key_dates by label + date pair."""
 

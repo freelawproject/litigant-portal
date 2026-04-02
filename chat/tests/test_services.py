@@ -6,8 +6,9 @@ Only tests custom code, not Django ORM basics.
 
 from unittest.mock import MagicMock
 
+import pytest
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from chat.models import Document
 from chat.services.search_service import KeywordSearchService
@@ -15,6 +16,7 @@ from chat.services.search_service import KeywordSearchService
 User = get_user_model()
 
 
+@pytest.mark.postgres
 class KeywordSearchTests(TestCase):
     """Tests for keyword search service logic."""
 
@@ -59,6 +61,7 @@ class KeywordSearchTests(TestCase):
         self.assertEqual(len(results), 3)
 
 
+@pytest.mark.postgres
 class KeywordSearchCategoriesTests(TestCase):
     """Tests for category listing."""
 
@@ -88,7 +91,7 @@ class KeywordSearchCategoriesTests(TestCase):
         self.assertEqual(categories, ["criminal", "family", "tax"])
 
 
-class PDFServiceValidationTests(TestCase):
+class PDFServiceValidationTests(SimpleTestCase):
     """Tests for PDF upload validation logic."""
 
     def setUp(self):
