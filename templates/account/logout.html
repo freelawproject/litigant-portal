@@ -14,11 +14,9 @@
     <form method="post" action="{% url 'account_logout' %}">
       {% csrf_token %}
       <div class="flex flex-col sm:flex-row gap-3 justify-center">
-        <a href="{% url 'portal:home' %}">
-          <c-atoms.button type="button" variant="outline" class="w-full sm:w-auto justify-center">
-          Cancel
-          </c-atoms.button>
-        </a>
+        <c-atoms.button href="{% url 'portal:home' %}" variant="outline" class="w-full sm:w-auto justify-center">
+        Cancel
+        </c-atoms.button>
         <c-atoms.button type="submit" variant="primary" class="justify-center">
         Sign out
         </c-atoms.button>

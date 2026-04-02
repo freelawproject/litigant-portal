@@ -32,10 +32,9 @@
         <p class="text-greyscale-500">
           {% trans "No action plan yet. Start a conversation and I'll build your plan as we identify issues and next steps." %}
         </p>
-        <a href="{% url 'portal:chat' %}"
-           class="inline-block mt-4 text-primary-600 hover:underline font-medium">
-          {% trans "Go to chat" %}
-        </a>
+        <c-atoms.link href="{% url 'portal:chat' %}" variant="primary" class="mt-4 inline-block">
+        {% trans "Go to chat" %}
+        </c-atoms.link>
       </div>
     {% else %}
 
@@ -182,10 +181,9 @@
                         x-on:click="printPage">
           {% trans "Print / Save as PDF" %}
         </c-atoms.button>
-        <a href="{% url 'portal:chat' %}"
-           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 hover:underline">
-          {% trans "Back to chat" %}
-        </a>
+        <c-atoms.button href="{% url 'portal:chat' %}" variant="ghost">
+        {% trans "Back to chat" %}
+        </c-atoms.button>
       </div>
     {% endif %}
   </div>
