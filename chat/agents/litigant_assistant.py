@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 from chat.prompts import build_system_prompt
@@ -18,6 +20,52 @@ class FactDate(BaseModel):
         False,
         description="True if the user must take action by this date",
     )
+
+
+class ActionItem(BaseModel):
+    """A concrete next step the user should take."""
+
+    title: str = Field(
+        description="Short action title (e.g. 'File an Appearance')"
+    )
+    description: str = Field(
+        "", description="Why this matters and how to do it"
+    )
+    priority: Literal["urgent", "normal"] = Field(
+        "normal",
+        description="'urgent' for deadline-sensitive, 'normal' otherwise",
+    )
+    deadline: str | None = Field(
+        None, description="Due date in YYYY-MM-DD format if applicable"
+    )
+    href: str | None = Field(
+        None, description="URL to a resource or form if applicable"
+    )
+
+
+class SpottedIssue(BaseModel):
+    """A legal issue, defense, or right identified from conversation."""
+
+    title: str = Field(description="Short label (e.g. 'Habitability defense')")
+    description: str = Field(
+        "", description="Plain-language explanation of why this applies"
+    )
+    statute: str | None = Field(
+        None,
+        description="Statute citation if applicable (e.g. '765 ILCS 735/2')",
+    )
+
+
+class Resource(BaseModel):
+    """A program, service, or organization the user may benefit from."""
+
+    title: str = Field(
+        description="Name of the resource (e.g. 'Illinois Rental Payment Program')"
+    )
+    description: str = Field(
+        "", description="What it is and why it's relevant"
+    )
+    href: str | None = Field(None, description="URL if available")
 
 
 class UpdateCaseFacts(Tool):
@@ -221,6 +269,87 @@ class UpdateCaseFacts(Tool):
         )
 
 
+class UpdateActionPlan(Tool):
+    """Update the user's action plan with next steps, spotted issues, and resources.
+
+    Call this tool when you:
+    - Identify a legal defense or right that applies to the user's situation
+    - Discover an assistance program the user may qualify for
+    - Surface a filing requirement or concrete next step
+    - Find a resource (legal aid, self-help center, program) relevant to them
+
+    Call it incrementally as issues emerge — don't wait until the end of the
+    conversation. Each call adds to (not replaces) the existing action plan.
+    """
+
+    new_action_items: list[ActionItem] | None = Field(
+        None,
+        description="Concrete next steps for the user to take",
+    )
+    new_spotted_issues: list[SpottedIssue] | None = Field(
+        None,
+        description="Legal issues, defenses, or rights you've identified",
+    )
+    new_resources: list[Resource] | None = Field(
+        None,
+        description="Programs, services, or organizations the user may benefit from",
+    )
+
+    def __call__(self, agent: "Agent") -> ToolOutput:
+        from chat.models import CaseInfo
+
+        patch: dict = {}
+
+        if self.new_action_items:
+            patch["action_items"] = [
+                item.model_dump(exclude_none=True)
+                for item in self.new_action_items
+            ]
+
+        if self.new_spotted_issues:
+            patch["spotted_issues"] = [
+                issue.model_dump(exclude_none=True)
+                for issue in self.new_spotted_issues
+            ]
+
+        if self.new_resources:
+            patch["resources"] = [
+                resource.model_dump(exclude_none=True)
+                for resource in self.new_resources
+            ]
+
+        # Persist: append to existing action plan in CaseInfo
+        if agent.session:
+            session = agent.session
+            ownership = (
+                {"user": session.user}
+                if session.user
+                else {"session_key": session.session_key}
+            )
+            case, _ = CaseInfo.objects.get_or_create(**ownership)
+            data = dict(case.data) if case.data else {}
+
+            for key in ("action_items", "spotted_issues", "resources"):
+                if key in patch:
+                    existing = data.get(key, [])
+                    for new_item in patch[key]:
+                        already_present = any(
+                            item["title"] == new_item["title"]
+                            for item in existing
+                        )
+                        if not already_present:
+                            existing.append(new_item)
+                    data[key] = existing
+
+            case.data = data
+            case.save()
+
+        return ToolOutput(
+            response="Action plan updated.",
+            data={"action_plan_patch": patch},
+        )
+
+
 class LitigantAssistantAgent(Agent):
     """Main agent for the litigant portal assistant.
 
@@ -232,7 +361,7 @@ class LitigantAssistantAgent(Agent):
     __init__() to activate topic-specific prompt layers.
     """
 
-    default_tools = [UpdateCaseFacts]
+    default_tools = [UpdateCaseFacts, UpdateActionPlan]
     default_messages = [{"role": "system", "content": build_system_prompt()}]
 
     def __init__(
