@@ -174,18 +174,20 @@
 
     {% endif %}
 
-    {# Print button (hidden when printing) #}
-    <div class="no-print mt-8 flex gap-3" x-data="actionPlanPage">
-      <c-atoms.button type="button"
-                      variant="outline"
-                      x-on:click="printPage">
-        {% trans "Print / Save as PDF" %}
-      </c-atoms.button>
-      <a href="{% url 'portal:chat' %}"
-         class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 hover:underline">
-        {% trans "Back to chat" %}
-      </a>
-    </div>
+    {# Print button (hidden when printing and when no data) #}
+    {% if has_data %}
+      <div class="no-print mt-8 flex gap-3" x-data="actionPlanPage">
+        <c-atoms.button type="button"
+                        variant="outline"
+                        x-on:click="printPage">
+          {% trans "Print / Save as PDF" %}
+        </c-atoms.button>
+        <a href="{% url 'portal:chat' %}"
+           class="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary-600 hover:underline">
+          {% trans "Back to chat" %}
+        </a>
+      </div>
+    {% endif %}
   </div>
 {% endblock content %}
 
