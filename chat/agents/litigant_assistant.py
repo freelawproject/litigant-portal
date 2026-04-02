@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 from chat.prompts import build_system_prompt
@@ -29,7 +31,7 @@ class ActionItem(BaseModel):
     description: str = Field(
         "", description="Why this matters and how to do it"
     )
-    priority: str = Field(
+    priority: Literal["urgent", "normal"] = Field(
         "normal",
         description="'urgent' for deadline-sensitive, 'normal' otherwise",
     )
