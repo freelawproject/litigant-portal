@@ -316,6 +316,31 @@ def case_timeline_add(request: HttpRequest) -> JsonResponse:
     return JsonResponse({"id": str(event.id)})
 
 
+@require_GET
+@ratelimit(key="ip", rate="60/m", method="GET", block=True)
+def action_plan(request: HttpRequest):
+    """Render a print-friendly action plan document from CaseInfo data."""
+    ownership = _ownership_filter(request)
+    case = CaseInfo.objects.filter(**ownership).first()
+    data = case.data if case else {}
+
+    return render(
+        request,
+        "pages/action_plan.html",
+        {
+            "case_type": data.get("case_type", ""),
+            "summary": data.get("summary", ""),
+            "court_info": data.get("court_info", {}),
+            "parties": data.get("parties", {}),
+            "key_dates": data.get("key_dates", []),
+            "action_items": data.get("action_items", []),
+            "spotted_issues": data.get("spotted_issues", []),
+            "resources": data.get("resources", []),
+            "has_data": bool(data),
+        },
+    )
+
+
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 def case_clear(request: HttpRequest) -> JsonResponse:

@@ -438,6 +438,9 @@ function createHomePage() {
     _documentContextSent: false,
     _isClearingChat: false,
 
+    // --- Action plan state ---
+    actionPlan: null, // { action_items: [], spotted_issues: [], resources: [] }
+
     // --- Timeline state ---
     caseTimeline: [],
 
@@ -541,6 +544,51 @@ function createHomePage() {
       return this.otherDates.length > 0
     },
 
+    // Action plan
+    get actionItems() {
+      return (this.actionPlan?.action_items || []).map((item) => ({
+        ...item,
+        isUrgent: item.priority === 'urgent',
+        bgClass:
+          item.priority === 'urgent'
+            ? 'bg-red-50 border border-red-100'
+            : 'bg-greyscale-50 border border-greyscale-200',
+        borderClass:
+          item.priority === 'urgent'
+            ? 'border-red-400'
+            : 'border-greyscale-300',
+        titleClass:
+          item.priority === 'urgent' ? 'text-red-800' : 'text-greyscale-800',
+        descClass:
+          item.priority === 'urgent' ? 'text-red-600' : 'text-greyscale-500',
+        dateClass:
+          item.priority === 'urgent'
+            ? 'text-red-500 font-medium'
+            : 'text-greyscale-400',
+      }))
+    },
+    get spottedIssues() {
+      return this.actionPlan?.spotted_issues || []
+    },
+    get resources() {
+      return this.actionPlan?.resources || []
+    },
+    get hasActionItems() {
+      return this.actionItems.length > 0
+    },
+    get hasSpottedIssues() {
+      return this.spottedIssues.length > 0
+    },
+    get hasResources() {
+      return this.resources.length > 0
+    },
+    get hasActionPlan() {
+      return this.hasActionItems || this.hasSpottedIssues || this.hasResources
+    },
+    get noActionPlan() {
+      return !this.hasActionPlan
+    },
+
     // Sidebar flash (brief highlight when new facts arrive)
     get sidebarFlash() {
       return this._sidebarFlash ? 'sidebar-flash' : ''
@@ -601,6 +649,15 @@ function createHomePage() {
           const caseData = await caseResponse.json()
           if (caseData.case_info) {
             this.caseInfo = caseData.case_info
+            // Restore action plan from case info data
+            const ap = caseData.case_info
+            if (ap.action_items || ap.spotted_issues || ap.resources) {
+              this.actionPlan = {
+                action_items: ap.action_items || [],
+                spotted_issues: ap.spotted_issues || [],
+                resources: ap.resources || [],
+              }
+            }
           }
           if (caseData.timeline) {
             this.caseTimeline = caseData.timeline.map((e) => ({
@@ -664,6 +721,11 @@ function createHomePage() {
         } else {
           this.mergeCaseInfo(patch)
         }
+        this._triggerSidebarFlash()
+      }
+
+      if (toolName === 'UpdateActionPlan' && data?.action_plan_patch) {
+        this.mergeActionPlan(data.action_plan_patch)
         this._triggerSidebarFlash()
       }
     },
@@ -999,6 +1061,43 @@ function createHomePage() {
       }
     },
 
+    mergeActionPlan(patch) {
+      if (!patch) return
+
+      if (!this.actionPlan) {
+        this.actionPlan = {
+          action_items: [],
+          spotted_issues: [],
+          resources: [],
+        }
+      }
+
+      const changes = []
+
+      for (const key of ['action_items', 'spotted_issues', 'resources']) {
+        if (patch[key]) {
+          if (!this.actionPlan[key]) this.actionPlan[key] = []
+          for (const newItem of patch[key]) {
+            const exists = this.actionPlan[key].some(
+              (item) => item.title === newItem.title
+            )
+            if (!exists) {
+              changes.push(newItem.title)
+              this.actionPlan[key].push(newItem)
+            }
+          }
+        }
+      }
+
+      if (changes.length > 0) {
+        this.addTimelineEvent(
+          'change',
+          gettext('Action plan updated'),
+          changes.join('; ')
+        )
+      }
+    },
+
     requestClarification() {
       this.showConfirmation = false
       this.pushMessage(
@@ -1011,6 +1110,7 @@ function createHomePage() {
 
     async clearCaseInfo() {
       this.caseInfo = null
+      this.actionPlan = null
       this.extractedData = null
       this.caseTimeline = []
       this._documentContextSent = false
