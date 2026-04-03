@@ -7,8 +7,11 @@ Tests custom application logic only - not Django built-ins.
 import unittest
 
 from django.contrib.auth import get_user_model
+from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.management import call_command
-from django.test import Client, TestCase
+from django.test import Client, RequestFactory, TestCase
+
+from portal.context_processors import toast_messages
 
 User = get_user_model()
 
@@ -565,3 +568,63 @@ class ChatPageTopicTests(TestCase):
         response = self.client.get("/chat/")
         self.assertEqual(response.status_code, 200)
         self.assertIsNone(response.context["topic"])
+
+
+# =============================================================================
+# Context Processor Tests
+# =============================================================================
+
+
+class ToastMessagesTests(TestCase):
+    """Tests for toast_messages context processor tag-to-variant mapping."""
+
+    def setUp(self):
+        self.factory = RequestFactory()
+
+    def _request_with_messages(self, *tags_and_texts):
+        """Create a request with messages added via the messages framework."""
+        request = self.factory.get("/")
+        request.session = self.client.session
+        request._messages = FallbackStorage(request)
+        from django.contrib.messages import constants
+
+        tag_map = {
+            "success": constants.SUCCESS,
+            "error": constants.ERROR,
+            "warning": constants.WARNING,
+            "info": constants.INFO,
+        }
+        for tag, text in tags_and_texts:
+            request._messages.add(tag_map.get(tag, constants.INFO), text)
+        return request
+
+    def test_no_messages_returns_empty_list(self):
+        request = self._request_with_messages()
+
+        result = toast_messages(request)
+
+        self.assertEqual(result["toast_messages"], [])
+
+    def test_error_tag_maps_to_danger_variant(self):
+        request = self._request_with_messages(("error", "Something broke"))
+
+        result = toast_messages(request)
+
+        self.assertEqual(result["toast_messages"][0]["variant"], "danger")
+        self.assertEqual(
+            result["toast_messages"][0]["text"], "Something broke"
+        )
+
+    def test_success_tag_passes_through(self):
+        request = self._request_with_messages(("success", "Saved"))
+
+        result = toast_messages(request)
+
+        self.assertEqual(result["toast_messages"][0]["variant"], "success")
+
+    def test_warning_tag_passes_through(self):
+        request = self._request_with_messages(("warning", "Check this"))
+
+        result = toast_messages(request)
+
+        self.assertEqual(result["toast_messages"][0]["variant"], "warning")
