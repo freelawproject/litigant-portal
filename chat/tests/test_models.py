@@ -7,7 +7,7 @@ Only tests custom code - not Django built-ins like UUIDField, auto_now, etc.
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from chat.models import ChatSession, Message
+from chat.models import CaseInfo, ChatSession, Message, TimelineEvent
 
 User = get_user_model()
 
@@ -81,3 +81,79 @@ class MessageStrTests(TestCase):
         result = str(message)
 
         self.assertIn("assistant", result)
+
+
+class CaseInfoStrTests(TestCase):
+    """Tests for CaseInfo.__str__ custom formatting."""
+
+    def test_str_shows_case_type_and_username(self):
+        user = User.objects.create_user(username="jane", password="testpass")
+        case = CaseInfo.objects.create(
+            user=user, data={"case_type": "Eviction"}
+        )
+
+        result = str(case)
+
+        self.assertIn("Eviction", result)
+        self.assertIn("jane", result)
+
+    def test_str_shows_anonymous_when_no_user(self):
+        case = CaseInfo.objects.create(
+            session_key="abc123", data={"case_type": "Eviction"}
+        )
+
+        result = str(case)
+
+        self.assertIn("Eviction", result)
+        self.assertIn("Anonymous", result)
+
+    def test_str_shows_unknown_when_no_case_type(self):
+        case = CaseInfo.objects.create(data={})
+
+        result = str(case)
+
+        self.assertIn("Unknown", result)
+
+
+class TimelineEventStrTests(TestCase):
+    """Tests for TimelineEvent.__str__ display logic."""
+
+    def setUp(self):
+        self.case = CaseInfo.objects.create(data={})
+
+    def test_str_uses_title_when_set(self):
+        event = TimelineEvent.objects.create(
+            case=self.case,
+            event_type="upload",
+            title="Lease agreement uploaded",
+        )
+
+        result = str(event)
+
+        self.assertIn("Document Upload", result)
+        self.assertIn("Lease agreement uploaded", result)
+
+    def test_str_falls_back_to_content_when_no_title(self):
+        event = TimelineEvent.objects.create(
+            case=self.case,
+            event_type="summary",
+            content="User discussed eviction timeline with assistant",
+        )
+
+        result = str(event)
+
+        self.assertIn("Chat Summary", result)
+        self.assertIn("User discussed eviction timeline", result)
+
+    def test_str_truncates_content_at_50_chars(self):
+        long_content = "x" * 80
+        event = TimelineEvent.objects.create(
+            case=self.case,
+            event_type="change",
+            content=long_content,
+        )
+
+        result = str(event)
+
+        self.assertIn("x" * 50, result)
+        self.assertNotIn("x" * 51, result)
