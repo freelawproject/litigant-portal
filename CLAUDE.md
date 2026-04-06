@@ -52,9 +52,14 @@ make docker-down            # Stop containers
 ### Testing & Linting
 
 ```sh
-make test                   # Run tests (builds CSS + collectstatic first)
+make test                   # Run non-postgres tests locally (no Docker needed)
+make docker-test            # Run full test suite in Docker (includes postgres tests)
+make docker-test fast       # Pass extra tox args through make
+make -- docker-test -e fast -- -k "ReadSecretTests"
 make lint                   # Lint and format all code (via pre-commit)
 ```
+
+`make docker-test ...` forwards extra positional args to `tox`. Caveat: args that start with `-` are parsed by `make` itself, so use `make -- docker-test ...` when passing tox or pytest flags.
 
 ### Direct Python commands (use .venv/bin/python)
 
@@ -66,9 +71,10 @@ SECRET_KEY=dev .venv/bin/python manage.py makemigrations
 SECRET_KEY=dev .venv/bin/python manage.py migrate
 SECRET_KEY=dev .venv/bin/python manage.py shell
 
-# Run tests directly (faster than make test, skips CSS build)
-SECRET_KEY=test .venv/bin/python manage.py test
-SECRET_KEY=test .venv/bin/python manage.py test portal.tests.ProfileViewTests
+# Run non-postgres tests locally (no Docker needed)
+tox -e fast
+# Run a specific test class
+tox -e fast -- -k "ReadSecretTests"
 ```
 
 ## Pre-commit Hooks

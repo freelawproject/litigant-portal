@@ -7,6 +7,7 @@ auto-creation of CaseInfo on timeline event, and clear cascade.
 
 import json
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
@@ -36,6 +37,7 @@ SAMPLE_CASE_DATA = {
 }
 
 
+@pytest.mark.postgres
 class CaseGetTests(TestCase):
     """Tests for GET /api/chat/case/."""
 
@@ -88,6 +90,7 @@ class CaseGetTests(TestCase):
         self.assertEqual(data["timeline"][0]["event_type"], "upload")
 
 
+@pytest.mark.postgres
 class CaseSaveTests(TestCase):
     """Tests for POST /api/chat/case/save/."""
 
@@ -145,6 +148,7 @@ class CaseSaveTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
 
+@pytest.mark.postgres
 class CaseTimelineAddTests(TestCase):
     """Tests for POST /api/chat/case/timeline/."""
 
@@ -211,6 +215,7 @@ class CaseTimelineAddTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
 
+@pytest.mark.postgres
 class CaseClearTests(TestCase):
     """Tests for POST /api/chat/case/clear/."""
 
@@ -257,6 +262,7 @@ class CaseClearTests(TestCase):
         self.assertNotIn("chat_session_id", self.client.session)
 
 
+@pytest.mark.postgres
 class OwnershipIsolationTests(TestCase):
     """Tests that separate sessions/users can't see each other's data."""
 
