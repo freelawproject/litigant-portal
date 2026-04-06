@@ -4,6 +4,7 @@ Tests for custom model behavior in chat app.
 Only tests custom code - not Django built-ins like UUIDField, auto_now, etc.
 """
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
@@ -12,6 +13,7 @@ from chat.models import ChatSession, Message
 User = get_user_model()
 
 
+@pytest.mark.postgres
 class ChatSessionStrTests(TestCase):
     """Tests for ChatSession.__str__ custom formatting."""
 
@@ -37,6 +39,7 @@ class ChatSessionStrTests(TestCase):
         self.assertNotIn("testuser", result)
 
 
+@pytest.mark.postgres
 class MessageStrTests(TestCase):
     """Tests for Message.__str__ truncation logic at 50-char boundary."""
 

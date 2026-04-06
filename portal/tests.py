@@ -4,14 +4,15 @@ Tests for the Litigant Portal.
 Tests custom application logic only - not Django built-ins.
 """
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
-from django.test import Client, TestCase
+from django.test import Client, SimpleTestCase, TestCase
 
 User = get_user_model()
 
 
-class DjangoSystemTests(TestCase):
+class DjangoSystemTests(SimpleTestCase):
     """Verify Django configuration is correct."""
 
     def test_system_checks_pass(self):
@@ -25,6 +26,7 @@ class DjangoSystemTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class HomePageTests(TestCase):
     """Tests for the dashboard home page at /."""
 
@@ -42,6 +44,7 @@ class HomePageTests(TestCase):
         self.assertNotContains(response, "homePage")
 
 
+@pytest.mark.postgres
 class ChatPageTests(TestCase):
     """Tests for the chat page at /chat/."""
 
@@ -70,6 +73,7 @@ class ChatPageTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class LoginPageTests(TestCase):
     """Tests for custom login page template (templates/account/login.html)."""
 
@@ -87,6 +91,7 @@ class LoginPageTests(TestCase):
         self.assertContains(response, "/accounts/signup/")
 
 
+@pytest.mark.postgres
 class SignupPageTests(TestCase):
     """Tests for custom signup page template (templates/account/signup.html)."""
 
@@ -104,6 +109,7 @@ class SignupPageTests(TestCase):
         self.assertContains(response, "/accounts/login/")
 
 
+@pytest.mark.postgres
 class LogoutPageTests(TestCase):
     """Tests for custom logout page template (templates/account/logout.html)."""
 
@@ -127,6 +133,7 @@ class LogoutPageTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class UserMenuAnonymousTests(TestCase):
     """Tests for user menu when user is not logged in."""
 
@@ -145,6 +152,7 @@ class UserMenuAnonymousTests(TestCase):
         self.assertNotContains(response, "Sign out")
 
 
+@pytest.mark.postgres
 class UserMenuAuthenticatedTests(TestCase):
     """Tests for user menu when user is logged in."""
 
@@ -174,6 +182,7 @@ class UserMenuAuthenticatedTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class LogoutFlowTests(TestCase):
     """Tests for the logout flow using our custom templates."""
 
@@ -200,6 +209,7 @@ class LogoutFlowTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class UserProfileModelTests(TestCase):
     """Tests for UserProfile model custom logic."""
 
@@ -269,6 +279,7 @@ class UserProfileModelTests(TestCase):
         )
 
 
+@pytest.mark.postgres
 class ProfileViewTests(TestCase):
     """Tests for profile views."""
 
@@ -337,6 +348,7 @@ class ProfileViewTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class FooterLinkTests(TestCase):
     """Tests for footer links on the home page."""
 
@@ -369,6 +381,7 @@ class FooterLinkTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class AgentTestPageTests(TestCase):
     """Tests for the /test/<agent_name>/ route."""
 
@@ -392,6 +405,7 @@ class AgentTestPageTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class TopicDetailTests(TestCase):
     """Tests for topic detail pages at /topics/<slug>/."""
 
@@ -425,6 +439,7 @@ class TopicDetailTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class ChatPageTopicTests(TestCase):
     """Tests for topic context routing on the chat page."""
 

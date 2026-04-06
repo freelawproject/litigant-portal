@@ -6,6 +6,7 @@ Only tests custom code, not Django built-ins like @require_POST.
 
 import json
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 
@@ -46,6 +47,7 @@ class MockAgent(Agent):
 agent_registry["MockAgent"] = MockAgent
 
 
+@pytest.mark.postgres
 @override_settings(DEFAULT_CHAT_AGENT="MockAgent")
 class StreamValidationTests(TestCase):
     """Tests for message validation in stream endpoint."""
@@ -90,6 +92,7 @@ class StreamValidationTests(TestCase):
         self.assertEqual(response["Content-Type"], "text/event-stream")
 
 
+@pytest.mark.postgres
 @override_settings(DEFAULT_CHAT_AGENT="MockAgent")
 class StreamSessionTests(TestCase):
     """Tests for session management in stream endpoint."""
@@ -143,6 +146,7 @@ class StreamSessionTests(TestCase):
         self.assertEqual(ChatSession.objects.count(), 1)
 
 
+@pytest.mark.postgres
 @override_settings(DEFAULT_CHAT_AGENT="MockAgent")
 class StreamAuthTests(TestCase):
     """Tests for authenticated user session handling."""
@@ -164,6 +168,7 @@ class StreamAuthTests(TestCase):
         self.assertEqual(session.user, self.user)
 
 
+@pytest.mark.postgres
 @override_settings(DEFAULT_CHAT_AGENT="MockAgent")
 class StreamOwnershipTests(TestCase):
     """Tests for session ownership verification."""
@@ -212,6 +217,7 @@ class StreamOwnershipTests(TestCase):
         self.assertEqual(response.status_code, 403)
 
 
+@pytest.mark.postgres
 class SearchTests(TestCase):
     """Tests for keyword search functionality."""
 
@@ -246,6 +252,7 @@ class SearchTests(TestCase):
         self.assertNotContains(response, "Tax Doc")
 
 
+@pytest.mark.postgres
 @override_settings(CHAT_ENABLED=True, DEFAULT_CHAT_AGENT="MockAgent")
 class StatusTests(TestCase):
     """Tests for chat status endpoint."""
