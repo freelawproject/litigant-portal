@@ -44,6 +44,11 @@ dependencies = [
     # AI Chat
     "litellm>=1.50",
     "pydantic>=2.0",
+    # Security minimums (transitive deps — Dependabot #13-#25)
+    "aiohttp>=3.13.4",
+    "cryptography>=46.0.6",
+    "pygments>=2.20.0",
+    "requests>=2.33.0",
     # PostgreSQL driver
     "psycopg[binary]>=3.2",
     # Rate limiting
