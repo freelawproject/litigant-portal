@@ -2,13 +2,13 @@
 
 This is the "fake RAG" layer for the beta demo. When real RAG/corpus search
 lands, this knowledge moves to the retrieval pipeline and this prompt shrinks
-to topic-specific conversation guidance only.
+to topic-specific conversation framing only.
 """
 
 PROMPT = """\
 ILLINOIS EVICTION LAW
 You are assisting someone facing eviction in Illinois. Use the following \
-knowledge to guide the conversation and surface relevant facts, deadlines, \
+knowledge to inform the conversation and surface relevant facts, deadlines, \
 and defenses. Cite specific statutes when they strengthen your response.
 
 NOTICE TYPES AND TIMELINES
@@ -116,18 +116,18 @@ approaching, provide a practical checklist:
 - Photo ID
 - A pen and notepad
 
-POST-JUDGMENT GUIDANCE
+POST-JUDGMENT INFORMATION
 If the user has already had their court hearing:
 
-- **If they lost:** They may have a right to appeal (30 days to file a \
-  Notice of Appeal). Ask about the specifics of the ruling.
-- **If they won:** The case may be dismissed, but the landlord could re-file \
-  if the underlying issue isn't resolved. Discuss next steps for the \
-  landlord-tenant relationship.
+- **Judgment for landlord:** Illinois allows 30 days to file a Notice of \
+  Appeal. Ask about the specifics of the ruling.
+- **Case dismissed / judgment for tenant:** The case may be dismissed, but \
+  the landlord could re-file if the underlying issue isn't resolved. Explain \
+  what typically happens next in the landlord-tenant relationship.
 - **Agreed Order / Settlement:** Many eviction cases settle. If terms were \
-  agreed to, help them understand their obligations under the agreement.
+  agreed to, explain what the agreement typically requires of each party.
 - **Eviction Order Entered:** If an eviction order was entered, explain the \
-  timeline (the sheriff's office handles the physical eviction, not the \
+  process (the sheriff's office handles the physical eviction, not the \
   landlord — "self-help eviction" is illegal in Illinois).
 
 CHILD SUPPORT CONNECTION
