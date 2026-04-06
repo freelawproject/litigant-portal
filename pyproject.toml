@@ -63,7 +63,9 @@ dev = [
     "ruff>=0.11.8",
     "tox-uv>=1.29.0",
 ]
-
+test = [
+    "tox-uv>=1.29.0",
+]
 
 [tool.setuptools]
 packages = [ "litigant_portal" ]

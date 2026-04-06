@@ -955,6 +955,9 @@ dev = [
     { name = "ruff" },
     { name = "tox-uv" },
 ]
+test = [
+    { name = "tox-uv" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -978,8 +981,9 @@ requires-dist = [
     { name = "pytest-django", marker = "extra == 'dev'", specifier = ">=4.9" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.11.8" },
     { name = "tox-uv", marker = "extra == 'dev'", specifier = ">=1.29.0" },
+    { name = "tox-uv", marker = "extra == 'test'", specifier = ">=1.29.0" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["dev", "test"]
 
 [[package]]
 name = "markdown-it-py"

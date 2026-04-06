@@ -29,7 +29,7 @@ ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 COPY pyproject.toml uv.lock ./
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev
+    uv sync --extra test --frozen --no-install-project --no-dev
 
 # -----------------------------------------------------------------------------
 # Stage 3: Tailwind - build production CSS
@@ -78,9 +78,7 @@ RUN chmod +x /docker-entrypoint.sh
 # Non-root user
 RUN useradd --create-home --shell /bin/bash appuser \
     && mkdir -p /app/staticfiles \
-    && chown -R appuser:appuser /app \
-    && mkdir -p /tmp/tox \
-    && chown -R appuser:appuser /tmp/tox
+    && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000

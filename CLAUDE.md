@@ -54,8 +54,12 @@ make docker-down            # Stop containers
 ```sh
 make test                   # Run non-postgres tests locally (no Docker needed)
 make docker-test            # Run full test suite in Docker (includes postgres tests)
+make docker-test fast       # Pass extra tox args through make
+make -- docker-test -e fast -- -k "ReadSecretTests"
 make lint                   # Lint and format all code (via pre-commit)
 ```
+
+`make docker-test ...` forwards extra positional args to `tox`. Caveat: args that start with `-` are parsed by `make` itself, so use `make -- docker-test ...` when passing tox or pytest flags.
 
 ### Direct Python commands (use .venv/bin/python)
 
