@@ -4,7 +4,6 @@ from django.test import Client, TestCase
 
 from chat.models import CaseInfo
 
-
 SAMPLE_CASE_DATA = {
     "case_type": "Eviction",
     "summary": "Tenant eviction case",
@@ -41,7 +40,9 @@ class ActionPlanViewTests(TestCase):
         ctx = response.context
         self.assertEqual(ctx["case_type"], "Eviction")
         self.assertEqual(ctx["summary"], "Tenant eviction case")
-        self.assertEqual(ctx["court_info"]["court_name"], "Bexar County Justice Court")
+        self.assertEqual(
+            ctx["court_info"]["court_name"], "Bexar County Justice Court"
+        )
         self.assertEqual(ctx["parties"]["user_name"], "Jane Doe")
         self.assertEqual(len(ctx["key_dates"]), 1)
         self.assertEqual(len(ctx["action_items"]), 1)
