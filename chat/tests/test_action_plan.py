@@ -1,5 +1,6 @@
 """Tests for action_plan view context building."""
 
+import pytest
 from django.test import Client, TestCase
 
 from chat.models import CaseInfo
@@ -16,6 +17,7 @@ SAMPLE_CASE_DATA = {
 }
 
 
+@pytest.mark.postgres
 class ActionPlanViewTests(TestCase):
     """Tests for action_plan view context with and without case data."""
 
