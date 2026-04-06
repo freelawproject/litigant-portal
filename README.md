@@ -11,7 +11,6 @@ make docker-dev           # Start dev environment
 
 Visit: http://portal.localhost
 
-
 ### Docker Production
 
 ```bash
