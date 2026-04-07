@@ -268,11 +268,11 @@ function createChat() {
 
                 case 'error':
                   console.error('Stream error:', event.error)
-                  if (event.message) {
+                  if (event.error) {
                     this.messages[msgIndex] = {
                       ...msg,
-                      content: event.message,
-                      renderedContent: chatUtils.escapeHtml(event.message),
+                      content: event.error,
+                      renderedContent: chatUtils.escapeHtml(event.error),
                     }
                   }
                   break
