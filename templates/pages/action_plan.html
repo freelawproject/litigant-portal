@@ -30,7 +30,7 @@
     {% if not has_data %}
       <div class="text-center py-12">
         <p class="text-greyscale-500">
-          {% trans "No action plan yet. Start a conversation and I'll build your plan as we identify issues and next steps." %}
+          {% trans "No case summary yet. Start a conversation and I'll build your summary as we identify issues and relevant information." %}
         </p>
         <c-atoms.link href="{% url 'portal:chat' %}" variant="primary" class="mt-4 inline-block">
         {% trans "Go to chat" %}
@@ -111,11 +111,11 @@
         </div>
       {% endif %}
 
-      {# Action items / next steps #}
+      {# Action items / possible next steps #}
       {% if action_items %}
         <div class="print-section mb-6">
           <h2 class="text-sm font-semibold uppercase tracking-wide text-greyscale-500 mb-3">
-            {% trans "Next Steps" %}
+            {% trans "Possible Next Steps" %}
           </h2>
           <div class="space-y-2">
             {% for item in action_items %}
@@ -167,7 +167,7 @@
       {# Disclaimer #}
       <div class="print-section border-t border-greyscale-200 pt-4 mt-8">
         <p class="text-xs text-greyscale-400">
-          {% trans "This action plan contains general legal information only -- not legal advice. For urgent matters, contact a local legal aid organization. Consult with a licensed attorney for case-specific guidance." %}
+          {% trans "This case summary contains general legal information only -- not legal advice. For urgent matters, contact a local legal aid organization. Consult with a licensed attorney for advice about your specific situation." %}
         </p>
       </div>
 

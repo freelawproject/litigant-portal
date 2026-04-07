@@ -5,6 +5,8 @@ from django.test import Client, TestCase
 
 from chat.models import CaseInfo
 
+pytestmark = pytest.mark.postgres
+
 SAMPLE_CASE_DATA = {
     "case_type": "Eviction",
     "summary": "Tenant eviction case",

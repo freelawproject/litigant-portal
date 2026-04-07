@@ -208,7 +208,7 @@
           <template x-if="hasActionItems">
             <div class="space-y-2">
               <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">
-                {% trans "Next Steps" %}
+                {% trans "Possible Next Steps" %}
               </h4>
               <template x-for="item in actionItems" :key="item.title">
                 <div class="flex items-start gap-2 p-2 rounded-lg"
@@ -318,7 +318,7 @@
           {# Warm handoff + prompts + context — only before first message #}
           <div x-show="noMessages" x-cloak>
             <p class="text-sm text-greyscale-500 mb-4">
-              {% trans "I'm here to help. Describe your situation below and I'll help you understand your rights and next steps." %}
+              {% trans "I'm here to help. Describe your situation below and I'll help you understand your rights and options." %}
             </p>
             {# Guided prompts — topic only #}
             {% if topic.prompts %}
