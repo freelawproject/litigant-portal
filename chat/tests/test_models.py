@@ -4,6 +4,7 @@ Tests for custom model behavior in chat app.
 Only tests custom code - not Django built-ins like UUIDField, auto_now, etc.
 """
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
@@ -83,6 +84,7 @@ class MessageStrTests(TestCase):
         self.assertIn("assistant", result)
 
 
+@pytest.mark.postgres
 class CaseInfoStrTests(TestCase):
     """Tests for CaseInfo.__str__ custom formatting."""
 
@@ -115,6 +117,7 @@ class CaseInfoStrTests(TestCase):
         self.assertIn("Unknown", result)
 
 
+@pytest.mark.postgres
 class TimelineEventStrTests(TestCase):
     """Tests for TimelineEvent.__str__ display logic."""
 
