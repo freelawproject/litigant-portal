@@ -1,11 +1,13 @@
 """Tests for AnonymousSessionKeyMiddleware."""
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 User = get_user_model()
 
 
+@pytest.mark.postgres
 class AnonymousSessionKeyMiddlewareTests(TestCase):
     """Tests for session key preservation on anonymous requests."""
 
