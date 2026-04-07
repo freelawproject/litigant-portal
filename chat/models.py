@@ -20,6 +20,8 @@ class ChatSession(models.Model):
     )
     # For anonymous users, track by session key
     session_key = models.CharField(max_length=40, blank=True, db_index=True)
+    topic = models.CharField(max_length=50, blank=True)
+    jurisdiction = models.CharField(max_length=10, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

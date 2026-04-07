@@ -25,12 +25,11 @@ class ChatService:
     ):
         self.request = request
         agent_class = agent_registry[agent_name or settings.DEFAULT_CHAT_AGENT]
-        # Pass topic/jurisdiction to the agent for prompt composition.
-        # Jurisdiction is hardcoded to "il" for the beta demo; will become
-        # dynamic when court-configurable context (#179) lands.
         agent_kwargs = {}
         if topic:
             agent_kwargs["topic"] = topic
+            # TODO: #179 — jurisdiction will become dynamic when
+            # court-configurable context lands.
             agent_kwargs["jurisdiction"] = "il"
         self.agent = agent_class.from_session_id(
             request, session_id, **agent_kwargs
