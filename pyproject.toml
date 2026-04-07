@@ -44,6 +44,11 @@ dependencies = [
     # AI Chat
     "litellm>=1.50",
     "pydantic>=2.0",
+    # Security minimums (transitive deps — Dependabot #13-#25)
+    "aiohttp>=3.13.4",
+    "cryptography>=46.0.6",
+    "pygments>=2.20.0",
+    "requests>=2.33.0",
     # PostgreSQL driver
     "psycopg[binary]>=3.2",
     # Rate limiting
@@ -57,11 +62,15 @@ dev = [
     "djlint>=1.36.4",
     "mypy>=1.19.1",
     "pre-commit>=4.5.0",
+    "pytest>=8.0",
+    "pytest-django>=4.9",
     "pytailwindcss>=0.2",
     "ruff>=0.11.8",
     "tox-uv>=1.29.0",
 ]
-
+test = [
+    "tox-uv>=1.29.0",
+]
 
 [tool.setuptools]
 packages = [ "litigant_portal" ]
@@ -103,6 +112,16 @@ lint.ignore = [
   "SIM108",
   # printf-string-formatting
   "UP031",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py"]
+python_classes = ["*Tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers"
+markers = [
+    "postgres: test requires a PostgreSQL database",
 ]
 
 [tool.djlint]

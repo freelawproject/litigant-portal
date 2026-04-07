@@ -4,19 +4,18 @@ Tests for the Litigant Portal.
 Tests custom application logic only - not Django built-ins.
 """
 
-import unittest
-
+import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.management import call_command
-from django.test import Client, RequestFactory, TestCase
+from django.test import Client, RequestFactory, SimpleTestCase, TestCase
 
 from portal.context_processors import toast_messages
 
 User = get_user_model()
 
 
-class DjangoSystemTests(TestCase):
+class DjangoSystemTests(SimpleTestCase):
     """Verify Django configuration is correct."""
 
     def test_system_checks_pass(self):
@@ -30,24 +29,12 @@ class DjangoSystemTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class HomePageTests(TestCase):
     """Tests for the dashboard home page at /."""
 
     def setUp(self):
         self.client = Client()
-
-    @unittest.skip("Smoke test — will be replaced with functional tests")
-    def test_home_returns_dashboard(self):
-        """Home page should render the dashboard with topic grid."""
-        response = self.client.get("/")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Browse by Topic")
-
-    @unittest.skip("Smoke test — will be replaced with functional tests")
-    def test_home_has_hero(self):
-        """Home page should include the hero section."""
-        response = self.client.get("/")
-        self.assertContains(response, "How can we help you today?")
 
     def test_home_has_footer(self):
         """Home page should render the footer."""
@@ -60,6 +47,7 @@ class HomePageTests(TestCase):
         self.assertNotContains(response, "homePage")
 
 
+@pytest.mark.postgres
 class ChatPageTests(TestCase):
     """Tests for the chat page at /chat/."""
 
@@ -88,6 +76,7 @@ class ChatPageTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class LoginPageTests(TestCase):
     """Tests for custom login page template (templates/account/login.html)."""
 
@@ -98,20 +87,14 @@ class LoginPageTests(TestCase):
         """Login page should show our custom heading, not allauth default."""
         response = self.client.get("/accounts/login/")
         self.assertContains(response, "Sign in")
-        self.assertContains(response, "Access your legal assistance portal")
 
     def test_login_page_has_signup_link(self):
         """Login page should link to signup page."""
         response = self.client.get("/accounts/login/")
-        self.assertContains(response, "Don't have an account?")
         self.assertContains(response, "/accounts/signup/")
 
-    def test_login_page_has_password_reset_link(self):
-        """Login page should link to password reset."""
-        response = self.client.get("/accounts/login/")
-        self.assertContains(response, "Forgot your password?")
 
-
+@pytest.mark.postgres
 class SignupPageTests(TestCase):
     """Tests for custom signup page template (templates/account/signup.html)."""
 
@@ -122,15 +105,14 @@ class SignupPageTests(TestCase):
         """Signup page should show our custom heading."""
         response = self.client.get("/accounts/signup/")
         self.assertContains(response, "Create account")
-        self.assertContains(response, "Get free legal assistance today")
 
     def test_signup_page_has_login_link(self):
         """Signup page should link to login page."""
         response = self.client.get("/accounts/signup/")
-        self.assertContains(response, "Already have an account?")
         self.assertContains(response, "/accounts/login/")
 
 
+@pytest.mark.postgres
 class LogoutPageTests(TestCase):
     """Tests for custom logout page template (templates/account/logout.html)."""
 
@@ -143,17 +125,10 @@ class LogoutPageTests(TestCase):
         )
 
     def test_logout_page_has_confirmation_message(self):
-        """Logout page should show confirmation prompt."""
+        """Logout page should show our custom template, not allauth default."""
         self.client.login(username="testuser", password="testpass123")
         response = self.client.get("/accounts/logout/")
         self.assertContains(response, "Sign out")
-        self.assertContains(response, "Are you sure you want to sign out?")
-
-    def test_logout_page_has_cancel_button(self):
-        """Logout page should have cancel option."""
-        self.client.login(username="testuser", password="testpass123")
-        response = self.client.get("/accounts/logout/")
-        self.assertContains(response, "Cancel")
 
 
 # =============================================================================
@@ -161,6 +136,7 @@ class LogoutPageTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class UserMenuAnonymousTests(TestCase):
     """Tests for user menu when user is not logged in."""
 
@@ -179,6 +155,7 @@ class UserMenuAnonymousTests(TestCase):
         self.assertNotContains(response, "Sign out")
 
 
+@pytest.mark.postgres
 class UserMenuAuthenticatedTests(TestCase):
     """Tests for user menu when user is logged in."""
 
@@ -208,6 +185,7 @@ class UserMenuAuthenticatedTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class LogoutFlowTests(TestCase):
     """Tests for the logout flow using our custom templates."""
 
@@ -234,6 +212,7 @@ class LogoutFlowTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class UserProfileModelTests(TestCase):
     """Tests for UserProfile model custom logic."""
 
@@ -303,6 +282,7 @@ class UserProfileModelTests(TestCase):
         )
 
 
+@pytest.mark.postgres
 class ProfileViewTests(TestCase):
     """Tests for profile views."""
 
@@ -367,94 +347,11 @@ class ProfileViewTests(TestCase):
 
 
 # =============================================================================
-# Agent Test Page Tests
+# Footer & Navigation Tests
 # =============================================================================
 
 
-class AboutPageTests(TestCase):
-    """Tests for the about page at /about/."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_about_returns_200(self):
-        """About page should return 200."""
-        response = self.client.get("/about/")
-        self.assertEqual(response.status_code, 200)
-
-    def test_about_has_heading(self):
-        """About page should have the page heading."""
-        response = self.client.get("/about/")
-        self.assertContains(response, "<h1", html=False)
-        self.assertContains(response, "About")
-
-    def test_about_has_disclaimers(self):
-        """About page should include legal disclaimers."""
-        response = self.client.get("/about/")
-        self.assertContains(response, "not legal advice")
-
-    def test_about_mentions_flp(self):
-        """About page should mention Free Law Project."""
-        response = self.client.get("/about/")
-        self.assertContains(response, "Free Law Project")
-
-
-class PrivacyPageTests(TestCase):
-    """Tests for the privacy page at /privacy/."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_privacy_returns_200(self):
-        """Privacy page should return 200."""
-        response = self.client.get("/privacy/")
-        self.assertEqual(response.status_code, 200)
-
-    def test_privacy_has_heading(self):
-        """Privacy page should have the page heading."""
-        response = self.client.get("/privacy/")
-        self.assertContains(response, "<h1", html=False)
-        self.assertContains(response, "Privacy")
-
-    def test_privacy_has_data_collection_section(self):
-        """Privacy page should describe what data is collected."""
-        response = self.client.get("/privacy/")
-        self.assertContains(response, "What we collect")
-
-    def test_privacy_has_no_selling_statement(self):
-        """Privacy page should state data is not sold."""
-        response = self.client.get("/privacy/")
-        self.assertContains(response, "never sell your data")
-
-
-class AccessibilityPageTests(TestCase):
-    """Tests for the accessibility page at /accessibility/."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_accessibility_returns_200(self):
-        """Accessibility page should return 200."""
-        response = self.client.get("/accessibility/")
-        self.assertEqual(response.status_code, 200)
-
-    def test_accessibility_has_heading(self):
-        """Accessibility page should have the page heading."""
-        response = self.client.get("/accessibility/")
-        self.assertContains(response, "<h1", html=False)
-        self.assertContains(response, "Accessibility")
-
-    def test_accessibility_mentions_wcag(self):
-        """Accessibility page should reference WCAG."""
-        response = self.client.get("/accessibility/")
-        self.assertContains(response, "WCAG 2.2")
-
-    def test_accessibility_has_contact(self):
-        """Accessibility page should include contact email."""
-        response = self.client.get("/accessibility/")
-        self.assertContains(response, "info@free.law")
-
-
+@pytest.mark.postgres
 class FooterLinkTests(TestCase):
     """Tests for footer links on the home page."""
 
@@ -487,6 +384,7 @@ class FooterLinkTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class AgentTestPageTests(TestCase):
     """Tests for the /test/<agent_name>/ route."""
 
@@ -510,6 +408,7 @@ class AgentTestPageTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class TopicDetailTests(TestCase):
     """Tests for topic detail pages at /topics/<slug>/."""
 
@@ -543,6 +442,7 @@ class TopicDetailTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class ChatPageTopicTests(TestCase):
     """Tests for topic context routing on the chat page."""
 

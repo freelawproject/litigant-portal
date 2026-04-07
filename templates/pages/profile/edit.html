@@ -69,7 +69,7 @@
       {# Submit #}
       <div class="flex flex-col sm:flex-row gap-4">
         <c-atoms.button type="submit" variant="primary" size="xl">{% trans "Save Profile" %}</c-atoms.button>
-        <c-atoms.link href="{% url 'portal:profile' %}" variant="unstyled" class="inline-flex items-center justify-center px-6 py-3 text-base font-medium text-greyscale-700 hover:text-greyscale-900 transition-colors">{% trans "Cancel" %}</c-atoms.link>
+        <c-atoms.button href="{% url 'portal:profile' %}" variant="ghost" size="xl">{% trans "Cancel" %}</c-atoms.button>
       </div>
     </form>
   </div>
