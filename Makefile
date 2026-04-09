@@ -1,4 +1,4 @@
-.PHONY: help build css clean install migrate test collectstatic lint fmt-check fmt \
+.PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
        messages compilemessages \
        docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-clean
 
@@ -23,12 +23,17 @@ css-prod: ## Build production CSS (minified)
 migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
 
-test: ## Run tests (full suite if Docker running, fast suite otherwise)
+test: ## Run tests — dots + warnings + failures + summary
 	@if docker compose --profile dev exec -T django-dev true 2>/dev/null; then \
-	  echo "\n  \033[36mDocker detected\033[0m — running full test suite\n"; \
+	  docker compose --profile dev exec django-dev /docker-entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS)); \
+	else \
+	  tox -q -e fast -- -q --tb=short; \
+	fi
+
+test-v: ## Run tests — verbose output (full tox + pytest details)
+	@if docker compose --profile dev exec -T django-dev true 2>/dev/null; then \
 	  docker compose --profile dev exec django-dev /docker-entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS)); \
 	else \
-	  echo "\n  \033[33mNo Docker\033[0m — running fast suite only (skipping postgres tests)\n"; \
 	  tox -e fast; \
 	fi
 
