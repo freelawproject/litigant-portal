@@ -475,6 +475,7 @@ class ChatPageTopicTests(TestCase):
 # =============================================================================
 
 
+@pytest.mark.postgres
 class ToastMessagesTests(TestCase):
     """Tests for toast_messages context processor tag-to-variant mapping."""
 

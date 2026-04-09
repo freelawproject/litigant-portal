@@ -1,6 +1,6 @@
 .PHONY: help build css clean install migrate test collectstatic lint fmt-check fmt \
        messages compilemessages \
-       docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-test docker-clean
+       docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-clean
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -23,8 +23,14 @@ css-prod: ## Build production CSS (minified)
 migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
 
-test: ## Run non-postgres tests locally (no Docker needed)
-	tox -e fast
+test: ## Run tests (full suite if Docker running, fast suite otherwise)
+	@if docker compose --profile dev exec -T django-dev true 2>/dev/null; then \
+	  echo "\n  \033[36mDocker detected\033[0m — running full test suite\n"; \
+	  docker compose --profile dev exec django-dev /docker-entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS)); \
+	else \
+	  echo "\n  \033[33mNo Docker\033[0m — running fast suite only (skipping postgres tests)\n"; \
+	  tox -e fast; \
+	fi
 
 collectstatic: ## Collect static files (builds CSS first)
 	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
@@ -82,10 +88,6 @@ docker-shell: ## Open shell in Django dev container
 
 docker-migrate: ## Run migrations in Docker
 	docker compose --profile dev exec django-dev python manage.py migrate
-
-docker-test: ## Run full test suite in Docker (includes postgres tests)
-	@docker compose --profile dev exec django-dev /docker-entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS)) || \
-	  (echo "\n  Docker dev container is not running. Start it with: make docker-dev\n" && exit 1)
 
 docker-clean: ## Remove containers, volumes, and images
 	docker compose --profile dev --profile prod down -v --rmi local
