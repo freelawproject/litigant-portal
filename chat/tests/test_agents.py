@@ -11,7 +11,14 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 
-from chat.agents.litigant_assistant import FactDate, UpdateCaseFacts
+from chat.agents.litigant_assistant import (
+    ActionItem,
+    FactDate,
+    Resource,
+    SpottedIssue,
+    UpdateActionPlan,
+    UpdateCaseFacts,
+)
 from chat.models import CaseInfo, ChatSession
 
 User = get_user_model()
@@ -299,3 +306,242 @@ class UpdateCaseFactsDateDeduplicationTests(TestCase):
 
         case = CaseInfo.objects.get(user=self.user)
         self.assertEqual(len(case.data["key_dates"]), 2)
+
+
+# =============================================================================
+# UpdateActionPlan tests
+# =============================================================================
+
+
+class UpdateActionPlanPatchBuildingTests(SimpleTestCase):
+    """UpdateActionPlan builds the correct patch structure from its fields."""
+
+    def _call_with(self, **kwargs):
+        """Instantiate tool and call it with no session (patch-only path)."""
+        tool = UpdateActionPlan(**kwargs)
+        result = tool(_mock_agent(session=None))
+        assert result.data is not None
+        return result.data["action_plan_patch"]
+
+    def test_action_items_in_patch(self):
+        items = [ActionItem(title="File an Appearance", priority="urgent")]
+        patch = self._call_with(new_action_items=items)
+        self.assertEqual(len(patch["action_items"]), 1)
+        self.assertEqual(
+            patch["action_items"][0]["title"], "File an Appearance"
+        )
+        self.assertEqual(patch["action_items"][0]["priority"], "urgent")
+
+    def test_spotted_issues_in_patch(self):
+        issues = [
+            SpottedIssue(
+                title="Habitability defense",
+                statute="765 ILCS 735/2",
+            )
+        ]
+        patch = self._call_with(new_spotted_issues=issues)
+        self.assertEqual(len(patch["spotted_issues"]), 1)
+        self.assertEqual(
+            patch["spotted_issues"][0]["title"], "Habitability defense"
+        )
+        self.assertEqual(
+            patch["spotted_issues"][0]["statute"], "765 ILCS 735/2"
+        )
+
+    def test_resources_in_patch(self):
+        resources = [
+            Resource(
+                title="IL Rental Payment Program",
+                href="https://example.com",
+            )
+        ]
+        patch = self._call_with(new_resources=resources)
+        self.assertEqual(len(patch["resources"]), 1)
+        self.assertEqual(
+            patch["resources"][0]["title"], "IL Rental Payment Program"
+        )
+
+    def test_none_fields_excluded_from_patch(self):
+        """Fields left as None should not appear in the patch."""
+        patch = self._call_with(new_action_items=[ActionItem(title="Test")])
+        self.assertNotIn("spotted_issues", patch)
+        self.assertNotIn("resources", patch)
+
+    def test_empty_patch_when_all_none(self):
+        """Patch is empty when no lists are provided."""
+        patch = self._call_with()
+        self.assertEqual(patch, {})
+
+    def test_returns_tool_output_with_action_plan_patch_key(self):
+        from chat.agents.base import ToolOutput
+
+        tool = UpdateActionPlan(new_action_items=[ActionItem(title="Test")])
+        result = tool(_mock_agent(session=None))
+        self.assertIsInstance(result, ToolOutput)
+        self.assertIn("action_plan_patch", result.data)
+
+    def test_none_optional_fields_excluded_from_item_dict(self):
+        """ActionItem with no deadline/href excludes those keys."""
+        items = [ActionItem(title="Test", description="Do the thing")]
+        patch = self._call_with(new_action_items=items)
+        item = patch["action_items"][0]
+        self.assertNotIn("deadline", item)
+        self.assertNotIn("href", item)
+
+    def test_optional_fields_included_when_set(self):
+        items = [
+            ActionItem(
+                title="File form",
+                deadline="2026-05-01",
+                href="https://courts.il.gov/form",
+            )
+        ]
+        patch = self._call_with(new_action_items=items)
+        item = patch["action_items"][0]
+        self.assertEqual(item["deadline"], "2026-05-01")
+        self.assertEqual(item["href"], "https://courts.il.gov/form")
+
+
+@pytest.mark.postgres
+class UpdateActionPlanDbPersistenceTests(TestCase):
+    """UpdateActionPlan creates and updates action plan data in the database."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="jane", password="testpass"
+        )
+        self.user_session = ChatSession.objects.create(user=self.user)
+        self.anon_session = ChatSession.objects.create(
+            session_key="anon-key-xyz"
+        )
+
+    def _call(self, tool, session):
+        return tool(_mock_agent(session=session))
+
+    def test_creates_action_items_for_authenticated_user(self):
+        """Action items are stored in CaseInfo.data for the user."""
+        self._call(
+            UpdateActionPlan(
+                new_action_items=[ActionItem(title="File an Appearance")]
+            ),
+            self.user_session,
+        )
+
+        case = CaseInfo.objects.get(user=self.user)
+        self.assertEqual(len(case.data["action_items"]), 1)
+        self.assertEqual(
+            case.data["action_items"][0]["title"], "File an Appearance"
+        )
+
+    def test_creates_action_items_for_anonymous_session(self):
+        """Action items are stored in CaseInfo.data keyed by session_key."""
+        self._call(
+            UpdateActionPlan(
+                new_action_items=[ActionItem(title="Call the clerk")]
+            ),
+            self.anon_session,
+        )
+
+        case = CaseInfo.objects.get(session_key="anon-key-xyz")
+        self.assertEqual(len(case.data["action_items"]), 1)
+
+    def test_spotted_issues_stored_in_json(self):
+        """Spotted issues are stored in CaseInfo.data JSON."""
+        self._call(
+            UpdateActionPlan(
+                new_spotted_issues=[SpottedIssue(title="Habitability defense")]
+            ),
+            self.user_session,
+        )
+
+        case = CaseInfo.objects.get(user=self.user)
+        self.assertEqual(len(case.data["spotted_issues"]), 1)
+        self.assertEqual(
+            case.data["spotted_issues"][0]["title"], "Habitability defense"
+        )
+
+    def test_resources_stored_in_json(self):
+        """Resources are stored in CaseInfo.data JSON."""
+        self._call(
+            UpdateActionPlan(
+                new_resources=[Resource(title="Legal Aid Hotline")]
+            ),
+            self.user_session,
+        )
+
+        case = CaseInfo.objects.get(user=self.user)
+        self.assertEqual(len(case.data["resources"]), 1)
+
+    def test_no_session_skips_db_write(self):
+        """Tool with no session returns patch but writes nothing to the DB."""
+        self._call(
+            UpdateActionPlan(new_action_items=[ActionItem(title="Test")]),
+            session=None,
+        )
+        self.assertEqual(CaseInfo.objects.count(), 0)
+
+
+@pytest.mark.postgres
+class UpdateActionPlanDeduplicationTests(TestCase):
+    """UpdateActionPlan deduplicates action items by title."""
+
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="jane", password="testpass"
+        )
+        self.session = ChatSession.objects.create(user=self.user)
+        CaseInfo.objects.create(
+            user=self.user,
+            data={
+                "action_items": [
+                    {
+                        "title": "File an Appearance",
+                        "description": "Submit to clerk",
+                        "priority": "urgent",
+                    }
+                ]
+            },
+        )
+
+    def _call(self, tool):
+        return tool(_mock_agent(session=self.session))
+
+    def test_does_not_duplicate_same_title(self):
+        """Calling with an action item whose title exists does not add a duplicate."""
+        self._call(
+            UpdateActionPlan(
+                new_action_items=[ActionItem(title="File an Appearance")]
+            )
+        )
+
+        case = CaseInfo.objects.get(user=self.user)
+        self.assertEqual(len(case.data["action_items"]), 1)
+
+    def test_appends_item_with_different_title(self):
+        """An action item with a new title is appended."""
+        self._call(
+            UpdateActionPlan(
+                new_action_items=[ActionItem(title="Contact legal aid")]
+            )
+        )
+
+        case = CaseInfo.objects.get(user=self.user)
+        self.assertEqual(len(case.data["action_items"]), 2)
+
+    def test_spotted_issue_dedup_by_title(self):
+        """Spotted issues with the same title are not duplicated."""
+        CaseInfo.objects.filter(user=self.user).update(
+            data={
+                "action_items": [],
+                "spotted_issues": [{"title": "Habitability defense"}],
+            }
+        )
+
+        self._call(
+            UpdateActionPlan(
+                new_spotted_issues=[SpottedIssue(title="Habitability defense")]
+            )
+        )
+
+        case = CaseInfo.objects.get(user=self.user)
+        self.assertEqual(len(case.data["spotted_issues"]), 1)
