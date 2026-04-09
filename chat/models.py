@@ -108,7 +108,11 @@ class CaseInfo(models.Model):
     )
     data = models.JSONField(
         default=dict,
-        help_text="Extracted case data (case_type, court_info, parties, key_dates, summary)",
+        help_text=(
+            "Extracted case data (case_type, court_info, parties, summary,"
+            " spotted_issues, resources). key_dates → Deadline model,"
+            " action_items → ActionItem model."
+        ),
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -157,6 +161,93 @@ class TimelineEvent(models.Model):
 
     def __str__(self):
         return f"{self.get_event_type_display()}: {self.title or self.content[:50]}"
+
+
+class Deadline(models.Model):
+    """A date or deadline extracted from conversation.
+
+    Promoted from CaseInfo.data["key_dates"] JSON to a proper model for
+    querying and future reminder functionality. Stable fields as columns,
+    metadata JSONField for flex.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(
+        CaseInfo,
+        related_name="deadlines",
+        on_delete=models.CASCADE,
+    )
+    label = models.CharField(max_length=500)
+    date = models.CharField(
+        max_length=50,
+        help_text="Date as provided by LLM (YYYY-MM-DD or as stated)",
+    )
+    is_deadline = models.BooleanField(default=False)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["date", "label"]
+
+    def __str__(self):
+        flag = " [DEADLINE]" if self.is_deadline else ""
+        return f"{self.date}: {self.label}{flag}"
+
+    def to_dict(self) -> dict:
+        """Return the JSON shape the frontend expects in key_dates."""
+        return {
+            "label": self.label,
+            "date": self.date,
+            "is_deadline": self.is_deadline,
+        }
+
+
+class ActionItemModel(models.Model):
+    """A concrete next step the user should take.
+
+    Promoted from CaseInfo.data["action_items"] JSON to a proper model for
+    completion tracking and querying. Named ActionItemModel to avoid collision
+    with the Pydantic ActionItem in litigant_assistant.py.
+    """
+
+    PRIORITY_CHOICES = [("urgent", "Urgent"), ("normal", "Normal")]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    case = models.ForeignKey(
+        CaseInfo,
+        related_name="action_items",
+        on_delete=models.CASCADE,
+    )
+    title = models.CharField(max_length=500)
+    description = models.TextField(blank=True)
+    priority = models.CharField(
+        max_length=10, choices=PRIORITY_CHOICES, default="normal"
+    )
+    deadline = models.CharField(max_length=50, blank=True)
+    href = models.URLField(blank=True)
+    completed = models.BooleanField(default=False)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-priority", "title"]
+        verbose_name = "action item"
+
+    def __str__(self):
+        return f"[{self.priority}] {self.title}"
+
+    def to_dict(self) -> dict:
+        """Return the JSON shape the frontend expects in action_items."""
+        d: dict = {
+            "title": self.title,
+            "description": self.description,
+            "priority": self.priority,
+        }
+        if self.deadline:
+            d["deadline"] = self.deadline
+        if self.href:
+            d["href"] = self.href
+        return d
 
 
 class Document(models.Model):
