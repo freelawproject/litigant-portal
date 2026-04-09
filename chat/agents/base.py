@@ -538,10 +538,20 @@ class Agent:
         session_key = request.session.session_key if not user else ""
 
         if not session_id:
+            topic = kwargs.pop("topic", "")
+            jurisdiction = kwargs.pop("jurisdiction", "")
             session = ChatSession.objects.create(
-                user=user, session_key=session_key
+                user=user,
+                session_key=session_key,
+                topic=topic,
+                jurisdiction=jurisdiction,
             )
-            agent = cls(session=session, **kwargs)
+            agent = cls(
+                session=session,
+                topic=topic,
+                jurisdiction=jurisdiction,
+                **kwargs,
+            )
             for msg in agent.messages:
                 MessageModel.objects.create(session=session, data=msg)
             return agent
@@ -560,6 +570,11 @@ class Agent:
             messages = [
                 m.data for m in session.messages.order_by("created_at")
             ]
+            # Restore topic/jurisdiction from session for prompt composition
+            if session.topic:
+                kwargs.setdefault("topic", session.topic)
+            if session.jurisdiction:
+                kwargs.setdefault("jurisdiction", session.jurisdiction)
             agent = cls(session=session, messages=messages, **kwargs)
             return agent
 
