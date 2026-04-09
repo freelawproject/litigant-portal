@@ -3,17 +3,16 @@
 import pytest
 from django.test import Client, TestCase
 
-from chat.models import CaseInfo
+from chat.models import ActionItemModel, CaseInfo, Deadline
 
 pytestmark = pytest.mark.postgres
 
+# JSON-only fields (key_dates and action_items are now in models)
 SAMPLE_CASE_DATA = {
     "case_type": "Eviction",
     "summary": "Tenant eviction case",
     "court_info": {"court_name": "Bexar County Justice Court"},
     "parties": {"user_name": "Jane Doe"},
-    "key_dates": [{"label": "Answer deadline", "date": "2026-03-15"}],
-    "action_items": [{"title": "File answer", "priority": "high"}],
     "spotted_issues": [{"title": "Late notice"}],
     "resources": [{"title": "Legal aid hotline"}],
 }
@@ -34,8 +33,14 @@ class ActionPlanViewTests(TestCase):
         session.save()
         self.client.cookies["sessionid"] = session.session_key
 
-        CaseInfo.objects.create(
+        case = CaseInfo.objects.create(
             session_key=session.session_key, data=SAMPLE_CASE_DATA
+        )
+        Deadline.objects.create(
+            case=case, label="Answer deadline", date="2026-03-15"
+        )
+        ActionItemModel.objects.create(
+            case=case, title="File answer", priority="urgent"
         )
 
         response = self.client.get("/chat/action-plan/")

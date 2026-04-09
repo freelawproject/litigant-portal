@@ -19,7 +19,7 @@ from chat.agents.litigant_assistant import (
     UpdateActionPlan,
     UpdateCaseFacts,
 )
-from chat.models import CaseInfo, ChatSession
+from chat.models import ActionItemModel, CaseInfo, ChatSession, Deadline
 
 User = get_user_model()
 
@@ -256,38 +256,31 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
 
 @pytest.mark.postgres
 class UpdateCaseFactsDateDeduplicationTests(TestCase):
-    """UpdateCaseFacts deduplicates key_dates by label + date pair."""
+    """UpdateCaseFacts deduplicates key_dates via Deadline model."""
 
     def setUp(self):
         self.user = User.objects.create_user(
             username="jane", password="testpass"
         )
         self.session = ChatSession.objects.create(user=self.user)
-        CaseInfo.objects.create(
-            user=self.user,
-            data={
-                "key_dates": [
-                    {
-                        "label": "Hearing",
-                        "date": "2026-04-01",
-                        "is_deadline": True,
-                    }
-                ]
-            },
+        self.case = CaseInfo.objects.create(user=self.user, data={})
+        Deadline.objects.create(
+            case=self.case,
+            label="Hearing",
+            date="2026-04-01",
+            is_deadline=True,
         )
 
     def _call(self, tool):
         return tool(_mock_agent(session=self.session))
 
     def test_does_not_duplicate_same_label_and_date(self):
-        """Calling with a date already in key_dates does not add a duplicate."""
+        """Calling with a date already in Deadline table does not add a duplicate."""
         duplicate = FactDate(
             label="Hearing", date="2026-04-01", is_deadline=True
         )
         self._call(UpdateCaseFacts(new_dates=[duplicate]))
-
-        case = CaseInfo.objects.get(user=self.user)
-        self.assertEqual(len(case.data["key_dates"]), 1)
+        self.assertEqual(self.case.deadlines.count(), 1)
 
     def test_appends_date_with_different_label(self):
         """A date with the same date but a different label is added."""
@@ -295,17 +288,20 @@ class UpdateCaseFactsDateDeduplicationTests(TestCase):
             label="Notice Date", date="2026-04-01", is_deadline=False
         )
         self._call(UpdateCaseFacts(new_dates=[new]))
-
-        case = CaseInfo.objects.get(user=self.user)
-        self.assertEqual(len(case.data["key_dates"]), 2)
+        self.assertEqual(self.case.deadlines.count(), 2)
 
     def test_appends_date_with_different_date(self):
         """A date with the same label but a different date value is added."""
         new = FactDate(label="Hearing", date="2026-05-15", is_deadline=True)
         self._call(UpdateCaseFacts(new_dates=[new]))
+        self.assertEqual(self.case.deadlines.count(), 2)
 
-        case = CaseInfo.objects.get(user=self.user)
-        self.assertEqual(len(case.data["key_dates"]), 2)
+    def test_key_dates_not_in_json(self):
+        """key_dates should not be written to CaseInfo.data."""
+        new = FactDate(label="Filing", date="2026-06-01", is_deadline=True)
+        self._call(UpdateCaseFacts(new_dates=[new]))
+        self.case.refresh_from_db()
+        self.assertNotIn("key_dates", self.case.data)
 
 
 # =============================================================================
@@ -419,7 +415,7 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
         return tool(_mock_agent(session=session))
 
     def test_creates_action_items_for_authenticated_user(self):
-        """Action items are stored in CaseInfo.data for the user."""
+        """Action items are stored as ActionItemModel rows for the user."""
         self._call(
             UpdateActionPlan(
                 new_action_items=[ActionItem(title="File an Appearance")]
@@ -428,13 +424,11 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
         )
 
         case = CaseInfo.objects.get(user=self.user)
-        self.assertEqual(len(case.data["action_items"]), 1)
-        self.assertEqual(
-            case.data["action_items"][0]["title"], "File an Appearance"
-        )
+        self.assertEqual(case.action_items.count(), 1)
+        self.assertEqual(case.action_items.first().title, "File an Appearance")
 
     def test_creates_action_items_for_anonymous_session(self):
-        """Action items are stored in CaseInfo.data keyed by session_key."""
+        """Action items are stored as ActionItemModel rows keyed by session_key."""
         self._call(
             UpdateActionPlan(
                 new_action_items=[ActionItem(title="Call the clerk")]
@@ -443,7 +437,7 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
         )
 
         case = CaseInfo.objects.get(session_key="anon-key-xyz")
-        self.assertEqual(len(case.data["action_items"]), 1)
+        self.assertEqual(case.action_items.count(), 1)
 
     def test_spotted_issues_stored_in_json(self):
         """Spotted issues are stored in CaseInfo.data JSON."""
@@ -472,6 +466,15 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
         case = CaseInfo.objects.get(user=self.user)
         self.assertEqual(len(case.data["resources"]), 1)
 
+    def test_action_items_not_in_json(self):
+        """action_items should not be written to CaseInfo.data."""
+        self._call(
+            UpdateActionPlan(new_action_items=[ActionItem(title="Test")]),
+            self.user_session,
+        )
+        case = CaseInfo.objects.get(user=self.user)
+        self.assertNotIn("action_items", case.data)
+
     def test_no_session_skips_db_write(self):
         """Tool with no session returns patch but writes nothing to the DB."""
         self._call(
@@ -479,28 +482,24 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
             session=None,
         )
         self.assertEqual(CaseInfo.objects.count(), 0)
+        self.assertEqual(ActionItemModel.objects.count(), 0)
 
 
 @pytest.mark.postgres
 class UpdateActionPlanDeduplicationTests(TestCase):
-    """UpdateActionPlan deduplicates action items by title."""
+    """UpdateActionPlan deduplicates action items via ActionItemModel."""
 
     def setUp(self):
         self.user = User.objects.create_user(
             username="jane", password="testpass"
         )
         self.session = ChatSession.objects.create(user=self.user)
-        CaseInfo.objects.create(
-            user=self.user,
-            data={
-                "action_items": [
-                    {
-                        "title": "File an Appearance",
-                        "description": "Submit to clerk",
-                        "priority": "urgent",
-                    }
-                ]
-            },
+        self.case = CaseInfo.objects.create(user=self.user, data={})
+        ActionItemModel.objects.create(
+            case=self.case,
+            title="File an Appearance",
+            description="Submit to clerk",
+            priority="urgent",
         )
 
     def _call(self, tool):
@@ -513,9 +512,7 @@ class UpdateActionPlanDeduplicationTests(TestCase):
                 new_action_items=[ActionItem(title="File an Appearance")]
             )
         )
-
-        case = CaseInfo.objects.get(user=self.user)
-        self.assertEqual(len(case.data["action_items"]), 1)
+        self.assertEqual(self.case.action_items.count(), 1)
 
     def test_appends_item_with_different_title(self):
         """An action item with a new title is appended."""
@@ -524,18 +521,14 @@ class UpdateActionPlanDeduplicationTests(TestCase):
                 new_action_items=[ActionItem(title="Contact legal aid")]
             )
         )
-
-        case = CaseInfo.objects.get(user=self.user)
-        self.assertEqual(len(case.data["action_items"]), 2)
+        self.assertEqual(self.case.action_items.count(), 2)
 
     def test_spotted_issue_dedup_by_title(self):
         """Spotted issues with the same title are not duplicated."""
-        CaseInfo.objects.filter(user=self.user).update(
-            data={
-                "action_items": [],
-                "spotted_issues": [{"title": "Habitability defense"}],
-            }
-        )
+        self.case.data = {
+            "spotted_issues": [{"title": "Habitability defense"}],
+        }
+        self.case.save()
 
         self._call(
             UpdateActionPlan(
@@ -543,5 +536,5 @@ class UpdateActionPlanDeduplicationTests(TestCase):
             )
         )
 
-        case = CaseInfo.objects.get(user=self.user)
-        self.assertEqual(len(case.data["spotted_issues"]), 1)
+        self.case.refresh_from_db()
+        self.assertEqual(len(self.case.data["spotted_issues"]), 1)
