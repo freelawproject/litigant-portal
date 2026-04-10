@@ -102,6 +102,10 @@
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Topic Card</a>
             </li>
             <li>
+              <a href="#form-errors"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Errors</a>
+            </li>
+            <li>
               <a href="#form-field"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Field</a>
             </li>
@@ -857,6 +861,30 @@
             <div class="grid gap-3 max-w-md mb-6">
               <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense" href="#" />
               <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" />
+            </div>
+          </section>
+          <section id="form-errors" class="mb-12" aria-labelledby="form-errors-heading">
+            <h3 id="form-errors-heading" class="mb-4">Form Errors</h3>
+            <p class="text-greyscale-600 mb-6">
+              Renders non-field errors from a Django form as a danger alert.
+              Outputs nothing when there are no errors. Pass the form object
+              via the <code>:form</code> prop.
+            </p>
+            <div class="space-y-4 max-w-md mb-6">
+              <c-atoms.alert variant="danger" class="mb-4">
+                Example: Your password must contain at least 8 characters.
+              </c-atoms.alert>
+            </div>
+            <h4 class="mt-8">Usage</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <code>&lt;c-molecules.form-errors :form="form" /&gt;</code>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:form</code></span>
+                <span class="p-2.5">Django form instance (reads <code>form.non_field_errors</code>)</span>
+              </div>
             </div>
           </section>
           <section id="form-field" class="mb-12" aria-labelledby="form-field-heading">
