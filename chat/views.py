@@ -277,7 +277,7 @@ def case_save(request: HttpRequest) -> JsonResponse:
 
     # Strip model-backed fields before saving to JSON
     key_dates = data.pop("key_dates", [])
-    data.pop("action_items", None)
+    action_items = data.pop("action_items", [])
 
     ownership = _ownership_filter(request)
     case, created = CaseInfo.objects.update_or_create(
@@ -295,6 +295,18 @@ def case_save(request: HttpRequest) -> JsonResponse:
                 label=date_dict.get("label", ""),
                 date=date_dict.get("date", ""),
                 is_deadline=date_dict.get("is_deadline", False),
+            )
+
+    # Upsert action_items into ActionItemModel
+    for item_dict in action_items:
+        title = item_dict.get("title", "")
+        if title and not case.action_items.filter(title=title).exists():
+            case.action_items.create(
+                title=title,
+                description=item_dict.get("description", ""),
+                priority=item_dict.get("priority", "normal"),
+                deadline=item_dict.get("deadline") or "",
+                href=item_dict.get("href") or "",
             )
 
     return JsonResponse({"id": str(case.id), "created": created})
