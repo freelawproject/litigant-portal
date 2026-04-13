@@ -1,0 +1,6 @@
+<c-vars :form />
+{% if form.non_field_errors %}
+  <c-atoms.alert variant="danger" class="mb-4">
+  {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+  </c-atoms.alert>
+{% endif %}

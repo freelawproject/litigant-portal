@@ -12,12 +12,7 @@
     <p class="text-greyscale-600 mb-6">
       {% trans "All fields are optional. The more you share, the more personalized assistance we can provide." %}
     </p>
-    {# Form errors #}
-    {% if form.non_field_errors %}
-      <c-atoms.alert variant="danger" class="mb-4">
-      {% for error in form.non_field_errors %}{{ error }}{% endfor %}
-      </c-atoms.alert>
-    {% endif %}
+    <c-molecules.form-errors :form="form" />
     <form method="post" class="space-y-8">
       {% csrf_token %}
       {# Contact Information #}

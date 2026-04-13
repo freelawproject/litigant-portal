@@ -276,7 +276,7 @@ Components live in `templates/cotton/` using Atomic Design hierarchy:
 ```
 templates/cotton/
 ├── atoms/      # Basic elements: alert, auto_dismiss, button, chat_bubble, checkbox, icon, input, link, nav_link, search_input, select, typing_indicator
-├── molecules/  # Combinations: action_item, deadline_card, form_field, form_field_select, logo, search_bar, search_result, sidebar_section, toast_container, topic_card, user_menu
+├── molecules/  # Combinations: action_item, deadline_card, form_errors, form_field, form_field_select, logo, search_bar, search_result, sidebar_section, toast_container, topic_card, user_menu
 └── organisms/  # Complex sections: footer, header, hero, topic_grid
 ```
 
