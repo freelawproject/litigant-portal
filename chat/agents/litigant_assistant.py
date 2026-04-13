@@ -168,7 +168,7 @@ class UpdateCaseFacts(Tool):
     )
 
     def __call__(self, agent: "Agent") -> ToolOutput:
-        from chat.models import CaseInfo
+        from chat.models import CaseInfo, Deadline
 
         # Build a patch dict in CaseInfo data format (same shape as extracted docs)
         patch: dict = {}
@@ -248,17 +248,19 @@ class UpdateCaseFacts(Tool):
                 data.setdefault("parties", {})
                 data["parties"].update(patch["parties"])
 
+            # key_dates → Deadline model (not JSON)
             if "key_dates" in patch:
-                existing = data.get("key_dates", [])
                 for new_date in patch["key_dates"]:
-                    already_present = any(
-                        d["label"] == new_date["label"]
-                        and d["date"] == new_date["date"]
-                        for d in existing
-                    )
-                    if not already_present:
-                        existing.append(new_date)
-                data["key_dates"] = existing
+                    if not case.deadlines.filter(
+                        label=new_date["label"],
+                        date=new_date["date"],
+                    ).exists():
+                        Deadline.objects.create(
+                            case=case,
+                            label=new_date["label"],
+                            date=new_date["date"],
+                            is_deadline=new_date.get("is_deadline", False),
+                        )
 
             case.data = data
             case.save()
@@ -296,7 +298,7 @@ class UpdateActionPlan(Tool):
     )
 
     def __call__(self, agent: "Agent") -> ToolOutput:
-        from chat.models import CaseInfo
+        from chat.models import ActionItemModel, CaseInfo
 
         patch: dict = {}
 
@@ -318,7 +320,7 @@ class UpdateActionPlan(Tool):
                 for resource in self.new_resources
             ]
 
-        # Persist: append to existing action plan in CaseInfo
+        # Persist
         if agent.session:
             session = agent.session
             ownership = (
@@ -329,7 +331,23 @@ class UpdateActionPlan(Tool):
             case, _ = CaseInfo.objects.get_or_create(**ownership)
             data = dict(case.data) if case.data else {}
 
-            for key in ("action_items", "spotted_issues", "resources"):
+            # action_items → ActionItemModel (not JSON)
+            if "action_items" in patch:
+                for new_item in patch["action_items"]:
+                    if not case.action_items.filter(
+                        title=new_item["title"]
+                    ).exists():
+                        ActionItemModel.objects.create(
+                            case=case,
+                            title=new_item["title"],
+                            description=new_item.get("description", ""),
+                            priority=new_item.get("priority", "normal"),
+                            deadline=new_item.get("deadline") or "",
+                            href=new_item.get("href") or "",
+                        )
+
+            # spotted_issues and resources remain in JSON
+            for key in ("spotted_issues", "resources"):
                 if key in patch:
                     existing = data.get(key, [])
                     for new_item in patch[key]:

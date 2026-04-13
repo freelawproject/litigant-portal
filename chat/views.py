@@ -239,6 +239,11 @@ def case_get(request: HttpRequest) -> JsonResponse:
     if not case:
         return JsonResponse({"case_info": None, "timeline": []})
 
+    # Assemble case_info: JSON fields + model-backed fields
+    case_info = dict(case.data)
+    case_info["key_dates"] = [d.to_dict() for d in case.deadlines.all()]
+    case_info["action_items"] = [a.to_dict() for a in case.action_items.all()]
+
     timeline = list(
         case.timeline_events.values(
             "id", "event_type", "title", "content", "metadata", "created_at"
@@ -249,7 +254,7 @@ def case_get(request: HttpRequest) -> JsonResponse:
         event["id"] = str(event["id"])
         event["created_at"] = event["created_at"].isoformat()
 
-    return JsonResponse({"case_info": case.data, "timeline": timeline})
+    return JsonResponse({"case_info": case_info, "timeline": timeline})
 
 
 @require_POST
@@ -270,11 +275,39 @@ def case_save(request: HttpRequest) -> JsonResponse:
             {"error": "data must be a JSON object"}, status=400
         )
 
+    # Strip model-backed fields before saving to JSON
+    key_dates = data.pop("key_dates", [])
+    action_items = data.pop("action_items", [])
+
     ownership = _ownership_filter(request)
     case, created = CaseInfo.objects.update_or_create(
         defaults={"data": data},
         **ownership,
     )
+
+    # Upsert key_dates into Deadline model
+    for date_dict in key_dates:
+        if not case.deadlines.filter(
+            label=date_dict.get("label", ""),
+            date=date_dict.get("date", ""),
+        ).exists():
+            case.deadlines.create(
+                label=date_dict.get("label", ""),
+                date=date_dict.get("date", ""),
+                is_deadline=date_dict.get("is_deadline", False),
+            )
+
+    # Upsert action_items into ActionItemModel
+    for item_dict in action_items:
+        title = item_dict.get("title", "")
+        if title and not case.action_items.filter(title=title).exists():
+            case.action_items.create(
+                title=title,
+                description=item_dict.get("description", ""),
+                priority=item_dict.get("priority", "normal"),
+                deadline=item_dict.get("deadline") or "",
+                href=item_dict.get("href") or "",
+            )
 
     return JsonResponse({"id": str(case.id), "created": created})
 
@@ -324,6 +357,11 @@ def action_plan(request: HttpRequest):
     case = CaseInfo.objects.filter(**ownership).first()
     data = case.data if case else {}
 
+    key_dates = [d.to_dict() for d in case.deadlines.all()] if case else []
+    action_items = (
+        [a.to_dict() for a in case.action_items.all()] if case else []
+    )
+
     return render(
         request,
         "pages/action_plan.html",
@@ -332,11 +370,11 @@ def action_plan(request: HttpRequest):
             "summary": data.get("summary", ""),
             "court_info": data.get("court_info", {}),
             "parties": data.get("parties", {}),
-            "key_dates": data.get("key_dates", []),
-            "action_items": data.get("action_items", []),
+            "key_dates": key_dates,
+            "action_items": action_items,
             "spotted_issues": data.get("spotted_issues", []),
             "resources": data.get("resources", []),
-            "has_data": bool(data),
+            "has_data": bool(data) or bool(key_dates) or bool(action_items),
         },
     )
 

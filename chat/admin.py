@@ -1,6 +1,13 @@
 from django.contrib import admin
 
-from .models import ChatSession, Document, Message
+from .models import (
+    ActionItemModel,
+    CaseInfo,
+    ChatSession,
+    Deadline,
+    Document,
+    Message,
+)
 
 
 class MessageInline(admin.TabularInline):
@@ -61,6 +68,50 @@ class MessageAdmin(admin.ModelAdmin):
         return content[:100] + "..." if len(content) > 100 else content
 
     content_preview.short_description = "Content"
+
+
+class DeadlineInline(admin.TabularInline):
+    model = Deadline
+    extra = 0
+    readonly_fields = ["id", "label", "date", "is_deadline", "created_at"]
+
+
+class ActionItemInline(admin.TabularInline):
+    model = ActionItemModel
+    extra = 0
+    readonly_fields = [
+        "id",
+        "title",
+        "priority",
+        "deadline",
+        "completed",
+        "created_at",
+    ]
+
+
+@admin.register(CaseInfo)
+class CaseInfoAdmin(admin.ModelAdmin):
+    list_display = ["id", "user", "session_key", "created_at"]
+    list_filter = ["created_at"]
+    search_fields = ["id", "user__email", "session_key"]
+    readonly_fields = ["id", "created_at", "updated_at"]
+    inlines = [DeadlineInline, ActionItemInline]
+
+
+@admin.register(Deadline)
+class DeadlineAdmin(admin.ModelAdmin):
+    list_display = ["label", "date", "is_deadline", "case", "created_at"]
+    list_filter = ["is_deadline", "created_at"]
+    search_fields = ["label", "date"]
+    readonly_fields = ["id", "created_at"]
+
+
+@admin.register(ActionItemModel)
+class ActionItemModelAdmin(admin.ModelAdmin):
+    list_display = ["title", "priority", "completed", "case", "created_at"]
+    list_filter = ["priority", "completed", "created_at"]
+    search_fields = ["title"]
+    readonly_fields = ["id", "created_at"]
 
 
 @admin.register(Document)
