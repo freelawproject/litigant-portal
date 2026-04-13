@@ -13,6 +13,11 @@
 {% trans "Upload PDF document" as upload_pdf_label %}
 {% trans "Describe your situation — what happened?" as input_placeholder %}
 {% trans "Ask a question" as input_aria_label %}
+{% trans "Deadlines" as deadlines_heading %}
+{% trans "Other Dates" as other_dates_heading %}
+{% trans "Your Rights & Defenses" as rights_heading %}
+{% trans "Possible Next Steps" as next_steps_heading %}
+{% trans "Resources" as resources_heading %}
 
 {% block content %}
   {{ topic_context|json_script:"topic-context-data" }}
@@ -154,40 +159,29 @@
           </div>
           {# Key deadlines #}
           <template x-if="hasDeadlines">
-            <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Deadlines" %}</h4>
+            <c-molecules.sidebar-section title="{{ deadlines_heading }}">
               <template x-for="deadline in deadlines" :key="deadline.label">
-                <div class="flex items-start gap-2 p-2 bg-red-50 border border-red-100 rounded-lg">
-                  <c-atoms.icon name="exclamation-circle" class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
-                  <div class="min-w-0">
-                    <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
-                    <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
-                  </div>
-                </div>
+                <c-molecules.deadline-card variant="urgent">
+                  <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
+                  <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
+                </c-molecules.deadline-card>
               </template>
-            </div>
+            </c-molecules.sidebar-section>
           </template>
           {# Other dates #}
           <template x-if="hasOtherDates">
-            <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Other Dates" %}</h4>
+            <c-molecules.sidebar-section title="{{ other_dates_heading }}">
               <template x-for="date in otherDates" :key="date.label">
-                <div class="flex items-start gap-2">
-                  <c-atoms.icon name="calendar" class="w-4 h-4 text-greyscale-400 flex-shrink-0 mt-0.5" />
-                  <div class="min-w-0">
-                    <p class="text-sm text-greyscale-700" x-text="date.date"></p>
-                    <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
-                  </div>
-                </div>
+                <c-molecules.deadline-card>
+                  <p class="text-sm text-greyscale-700" x-text="date.date"></p>
+                  <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
+                </c-molecules.deadline-card>
               </template>
-            </div>
+            </c-molecules.sidebar-section>
           </template>
           {# Action plan — spotted issues #}
           <template x-if="hasSpottedIssues">
-            <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">
-                {% trans "Your Rights & Defenses" %}
-              </h4>
+            <c-molecules.sidebar-section title="{{ rights_heading }}">
               <template x-for="issue in spottedIssues" :key="issue.title">
                 <div class="flex items-start gap-2 p-2 bg-blue-50 border border-blue-100 rounded-lg">
                   <c-atoms.icon name="shield-check" class="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
@@ -202,17 +196,13 @@
                   </div>
                 </div>
               </template>
-            </div>
+            </c-molecules.sidebar-section>
           </template>
           {# Action plan — action items #}
           <template x-if="hasActionItems">
-            <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">
-                {% trans "Possible Next Steps" %}
-              </h4>
+            <c-molecules.sidebar-section title="{{ next_steps_heading }}">
               <template x-for="item in actionItems" :key="item.title">
-                <div class="flex items-start gap-2 p-2 rounded-lg"
-                     x-bind:class="item.bgClass">
+                <c-molecules.action-item x-bind:class="item.bgClass">
                   <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5"
                        x-bind:class="item.borderClass"></div>
                   <div class="min-w-0">
@@ -230,16 +220,13 @@
                       <span x-text="item.deadline"></span>
                     </p>
                   </div>
-                </div>
+                </c-molecules.action-item>
               </template>
-            </div>
+            </c-molecules.sidebar-section>
           </template>
           {# Action plan — resources #}
           <template x-if="hasResources">
-            <div class="space-y-2">
-              <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">
-                {% trans "Resources" %}
-              </h4>
+            <c-molecules.sidebar-section title="{{ resources_heading }}">
               <template x-for="resource in resources" :key="resource.title">
                 <div class="flex items-start gap-2 p-2 bg-green-50 border border-green-100 rounded-lg">
                   <c-atoms.icon name="link" class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
@@ -251,7 +238,7 @@
                   </div>
                 </div>
               </template>
-            </div>
+            </c-molecules.sidebar-section>
           </template>
           {# Printable document link #}
           <div class="pt-3 border-t border-greyscale-200">

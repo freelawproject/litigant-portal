@@ -1,24 +1,31 @@
-<c-vars title="" description="" completed="false" href="" />
-{# Action item - checkbox-style item with optional link #}
-<div class="flex items-start gap-3 p-3 rounded-lg hover:bg-greyscale-50 transition-colors {{ class }}"
+<c-vars title="" description="" deadline="" priority="normal" href="" completed="false" />
+{# Action item with priority coloring. priority: urgent | normal (default) #}
+{# Props mode: pass title (+ optional description, deadline, href, completed). #}
+{# Slot mode: omit title, provide content via slot. Pass x-bind:class via attrs for dynamic wrapper styling. #}
+<div class="flex items-start gap-2 p-2 rounded-lg {% if priority == 'urgent' %}bg-red-50 border border-red-100{% elif title %}bg-greyscale-50 border border-greyscale-200{% endif %} {{ class }}"
      {{ attrs }}>
-  <div class="flex-shrink-0 mt-0.5">
+  {% if title %}
     {% if completed == "true" %}
-      <c-atoms.icon name="check-circle" style="solid" class="w-5 h-5 text-green-500" />
+      <c-atoms.icon name="check-circle" style="solid" class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
     {% else %}
-      <div class="w-5 h-5 rounded-full border-2 border-greyscale-300"></div>
+      <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5 {% if priority == 'urgent' %}border-red-400{% else %}border-greyscale-300{% endif %}"></div>
     {% endif %}
-  </div>
-  <div class="flex-1 min-w-0">
-    {% if href %}
-      <c-atoms.link href="{{ href }}" variant="unstyled" class="text-sm font-medium text-greyscale-800 hover:text-primary-600 {% if completed == 'true' %}line-through text-greyscale-400{% endif %}">
-      {{ title }}
-      </c-atoms.link>
-    {% else %}
-      <p class="text-sm font-medium text-greyscale-800 {% if completed == 'true' %}line-through text-greyscale-400{% endif %}">
-        {{ title }}
-      </p>
-    {% endif %}
-    {% if description %}<p class="mt-0.5 text-xs text-greyscale-500">{{ description }}</p>{% endif %}
-  </div>
+    <div class="min-w-0 flex-1">
+      {% if href %}
+        <a href="{{ href }}" class="text-sm font-medium hover:underline {% if priority == 'urgent' %}text-red-800{% else %}text-greyscale-800{% endif %} {% if completed == 'true' %}line-through text-greyscale-400{% endif %}">{{ title }}</a>
+      {% else %}
+        <p class="text-sm font-medium {% if priority == 'urgent' %}text-red-800{% else %}text-greyscale-800{% endif %} {% if completed == 'true' %}line-through text-greyscale-400{% endif %}">{{ title }}</p>
+      {% endif %}
+      {% if description %}
+        <p class="text-xs mt-0.5 {% if priority == 'urgent' %}text-red-600{% else %}text-greyscale-500{% endif %}">{{ description }}</p>
+      {% endif %}
+      {% if deadline %}
+        <p class="text-xs mt-0.5 {% if priority == 'urgent' %}text-red-500 font-medium{% else %}text-greyscale-400{% endif %}">
+          <c-atoms.icon name="clock" class="w-3 h-3 inline -mt-0.5 mr-0.5" />{{ deadline }}
+        </p>
+      {% endif %}
+    </div>
+  {% else %}
+    {{ slot }}
+  {% endif %}
 </div>

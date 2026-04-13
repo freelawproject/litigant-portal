@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% load i18n %}
+{% load cotton i18n %}
 
 {% block title %}
   {% trans "Case Summary" %} - {% trans "Litigant Portal" %}
@@ -73,17 +73,11 @@
           </h2>
           <div class="space-y-2">
             {% for date in key_dates %}
-              <div class="flex items-start gap-3 p-3 rounded-lg border {% if date.is_deadline %}border-red-200 bg-red-50{% else %}border-greyscale-200 bg-greyscale-50{% endif %}">
-                <span class="font-medium text-sm {% if date.is_deadline %}text-red-700{% else %}text-greyscale-700{% endif %}">
-                  {{ date.date }}
-                </span>
-                <span class="text-sm {% if date.is_deadline %}text-red-600{% else %}text-greyscale-600{% endif %}">
-                  {{ date.label }}
-                  {% if date.is_deadline %}
-                    <span class="inline-block ml-1 text-xs font-semibold uppercase text-red-500">{% trans "Deadline" %}</span>
-                  {% endif %}
-                </span>
-              </div>
+              <c-molecules.deadline-card
+                variant="{% if date.is_deadline %}urgent{% else %}default{% endif %}"
+                title="{{ date.date }}"
+                date="{{ date.label }}"
+              />
             {% endfor %}
           </div>
         </div>
@@ -119,24 +113,12 @@
           </h2>
           <div class="space-y-2">
             {% for item in action_items %}
-              <div class="flex items-start gap-3 p-3 rounded-lg border {% if item.priority == 'urgent' %}border-red-200 bg-red-50{% else %}border-greyscale-200 bg-greyscale-50{% endif %}">
-                <div class="w-5 h-5 rounded-full border-2 flex-shrink-0 mt-0.5 {% if item.priority == 'urgent' %}border-red-400{% else %}border-greyscale-300{% endif %}"></div>
-                <div class="flex-1">
-                  <p class="text-sm font-medium {% if item.priority == 'urgent' %}text-red-800{% else %}text-greyscale-800{% endif %}">
-                    {{ item.title }}
-                  </p>
-                  {% if item.description %}
-                    <p class="text-sm mt-0.5 {% if item.priority == 'urgent' %}text-red-600{% else %}text-greyscale-600{% endif %}">
-                      {{ item.description }}
-                    </p>
-                  {% endif %}
-                  {% if item.deadline %}
-                    <p class="text-xs mt-1 {% if item.priority == 'urgent' %}text-red-500 font-medium{% else %}text-greyscale-400{% endif %}">
-                      {% trans "Due:" %} {{ item.deadline }}
-                    </p>
-                  {% endif %}
-                </div>
-              </div>
+              <c-molecules.action-item
+                title="{{ item.title }}"
+                description="{{ item.description }}"
+                deadline="{{ item.deadline }}"
+                priority="{{ item.priority|default:'normal' }}"
+              />
             {% endfor %}
           </div>
         </div>
