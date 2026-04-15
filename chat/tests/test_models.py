@@ -8,7 +8,14 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from chat.models import CaseInfo, ChatSession, Message, TimelineEvent
+from chat.models import (
+    ActionItemModel,
+    CaseInfo,
+    ChatSession,
+    Deadline,
+    Message,
+    TimelineEvent,
+)
 
 User = get_user_model()
 
@@ -162,3 +169,108 @@ class TimelineEventStrTests(TestCase):
 
         self.assertIn("x" * 50, result)
         self.assertNotIn("x" * 51, result)
+
+    def test_resolution_event_type_accepted(self):
+        """TimelineEvent should accept 'resolution' as a valid event_type."""
+        event = TimelineEvent.objects.create(
+            case=self.case,
+            event_type="resolution",
+            title="Case marked as resolved",
+        )
+
+        result = str(event)
+
+        self.assertIn("Resolution", result)
+
+
+@pytest.mark.postgres
+class CaseInfoStatusTests(TestCase):
+    """Tests for CaseInfo.status field."""
+
+    def test_default_status_is_active(self):
+        """New CaseInfo should default to 'active' status."""
+        case = CaseInfo.objects.create(data={})
+
+        self.assertEqual(case.status, "active")
+
+    def test_status_accepts_resolved(self):
+        case = CaseInfo.objects.create(data={}, status="resolved")
+
+        case.refresh_from_db()
+
+        self.assertEqual(case.status, "resolved")
+
+    def test_status_accepts_archived(self):
+        case = CaseInfo.objects.create(data={}, status="archived")
+
+        case.refresh_from_db()
+
+        self.assertEqual(case.status, "archived")
+
+
+@pytest.mark.postgres
+class DeadlineToDictTests(TestCase):
+    """Tests for Deadline.to_dict() serialization."""
+
+    def setUp(self):
+        self.case = CaseInfo.objects.create(data={})
+
+    def test_to_dict_includes_reminder_requested(self):
+        """to_dict() must include reminder_requested field."""
+        deadline = Deadline.objects.create(
+            case=self.case,
+            label="File Answer",
+            date="2026-05-01",
+            is_deadline=True,
+        )
+
+        result = deadline.to_dict()
+
+        self.assertIn("reminder_requested", result)
+        self.assertIs(result["reminder_requested"], False)
+
+    def test_to_dict_reflects_reminder_requested_true(self):
+        deadline = Deadline.objects.create(
+            case=self.case,
+            label="Court Hearing",
+            date="2026-06-15",
+            reminder_requested=True,
+        )
+
+        result = deadline.to_dict()
+
+        self.assertIs(result["reminder_requested"], True)
+
+
+@pytest.mark.postgres
+class ActionItemToDictTests(TestCase):
+    """Tests for ActionItemModel.to_dict() serialization."""
+
+    def setUp(self):
+        self.case = CaseInfo.objects.create(data={})
+
+    def test_to_dict_includes_id_as_string(self):
+        """to_dict() must include id as a string (not UUID object)."""
+        item = ActionItemModel.objects.create(
+            case=self.case,
+            title="Gather documents",
+        )
+
+        result = item.to_dict()
+
+        self.assertIn("id", result)
+        self.assertIsInstance(result["id"], str)
+        self.assertEqual(result["id"], str(item.id))
+
+    def test_to_dict_includes_completed(self):
+        """to_dict() must include completed boolean."""
+        item = ActionItemModel.objects.create(
+            case=self.case,
+            title="File paperwork",
+            completed=True,
+        )
+
+        result = item.to_dict()
+
+        self.assertIn("completed", result)
+        self.assertIs(result["completed"], True)

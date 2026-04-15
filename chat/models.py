@@ -106,6 +106,18 @@ class CaseInfo(models.Model):
         on_delete=models.SET_NULL,
         related_name="case_infos",
     )
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("resolved", "Resolved"),
+        ("archived", "Archived"),
+    ]
+
+    status = models.CharField(
+        max_length=10,
+        choices=STATUS_CHOICES,
+        default="active",
+        db_index=True,
+    )
     data = models.JSONField(
         default=dict,
         help_text=(
@@ -149,6 +161,7 @@ class TimelineEvent(models.Model):
             ("upload", "Document Upload"),
             ("summary", "Chat Summary"),
             ("change", "Case Info Change"),
+            ("resolution", "Resolution"),
         ],
     )
     title = models.CharField(max_length=500, blank=True)
@@ -183,6 +196,7 @@ class Deadline(models.Model):
         help_text="Date as provided by LLM (YYYY-MM-DD or as stated)",
     )
     is_deadline = models.BooleanField(default=False)
+    reminder_requested = models.BooleanField(default=False)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -199,6 +213,7 @@ class Deadline(models.Model):
             "label": self.label,
             "date": self.date,
             "is_deadline": self.is_deadline,
+            "reminder_requested": self.reminder_requested,
         }
 
 
@@ -239,9 +254,11 @@ class ActionItemModel(models.Model):
     def to_dict(self) -> dict:
         """Return the JSON shape the frontend expects in action_items."""
         d: dict = {
+            "id": str(self.id),
             "title": self.title,
             "description": self.description,
             "priority": self.priority,
+            "completed": self.completed,
         }
         if self.deadline:
             d["deadline"] = self.deadline
