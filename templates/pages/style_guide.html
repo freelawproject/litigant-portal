@@ -965,36 +965,47 @@
                    class="mb-12"
                    aria-labelledby="deadline-card-heading">
             <h3 id="deadline-card-heading" class="mb-4">Deadline Card</h3>
-            <p class="text-greyscale-600 mb-6">Displays a deadline with date and status badge.</p>
+            <p class="text-greyscale-600 mb-6">
+              Displays a date or deadline. Use <code>variant="urgent"</code> for
+              deadlines (red background, exclamation icon) or omit for regular dates
+              (calendar icon). Supports props mode (server-rendered) and slot mode
+              (Alpine-driven content).
+            </p>
             <div class="space-y-3 max-w-sm mb-6">
-              <c-molecules.deadline-card title="File Answer" date="Due Jan 20, 2026" status="urgent" />
-              <c-molecules.deadline-card title="Review Documents" date="Due Jan 25, 2026" status="pending" />
-              <c-molecules.deadline-card title="Initial Consultation" date="Completed Jan 10" status="completed" />
+              <c-molecules.deadline-card variant="urgent" title="Mar 15, 2026" date="Answer deadline" />
+              <c-molecules.deadline-card title="Apr 1, 2026" date="Hearing date" />
             </div>
             <h4 class="mt-8">Props</h4>
             <div class="bg-greyscale-100 rounded-xl p-4 my-3">
               <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+                <span class="p-2.5">"urgent" | "default" (default) — controls background + icon</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
-                <span class="p-2.5">Deadline title</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>date</code></span>
-                <span class="p-2.5">Date text (e.g., "Due Jan 20, 2026")</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>status</code></span>
-                <span class="p-2.5">"urgent" | "pending" | "completed"</span>
+                <span class="p-2.5">Primary text (date or label). Enables props mode when set.</span>
               </div>
               <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
-                <span class="p-2.5">Heroicon name (default: "calendar")</span>
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>date</code></span>
+                <span class="p-2.5">Secondary text (label or date)</span>
               </div>
             </div>
+            <h4 class="mt-8">Slot mode</h4>
+            <p class="text-greyscale-600 my-3">
+              Omit <code>title</code> and provide content via the default slot.
+              The molecule renders the structural wrapper (icon, background) and
+              the slot fills the content area — useful inside Alpine
+              <code>x-for</code> loops with <code>x-text</code> bindings.
+            </p>
           </section>
           <section id="action-item" class="mb-12" aria-labelledby="action-item-heading">
             <h3 id="action-item-heading" class="mb-4">Action Item</h3>
-            <p class="text-greyscale-600 mb-6">Checkbox-style action item with optional link.</p>
+            <p class="text-greyscale-600 mb-6">
+              Checkbox-style action item with priority coloring. Supports props
+              mode (server-rendered) and slot mode (Alpine-driven).
+            </p>
             <div class="space-y-2 max-w-sm mb-6">
+              <c-molecules.action-item priority="urgent" title="File an Appearance" description="Submit to the clerk's office" deadline="Due May 1, 2026" />
               <c-molecules.action-item title="Gather income documents" description="Pay stubs, tax returns" />
               <c-molecules.action-item title="Review lease agreement" href="#" />
               <c-molecules.action-item title="Submit initial paperwork" completed="true" />
@@ -1003,21 +1014,35 @@
             <div class="bg-greyscale-100 rounded-xl p-4 my-3">
               <div class="flex flex-col md:flex-row border-b border-greyscale-200">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>title</code></span>
-                <span class="p-2.5">Action item title</span>
+                <span class="p-2.5">Action item title. Enables props mode when set.</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>priority</code></span>
+                <span class="p-2.5">"urgent" | "normal" (default) — controls background + circle color</span>
               </div>
               <div class="flex flex-col md:flex-row border-b border-greyscale-200">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>description</code></span>
                 <span class="p-2.5">Optional description text</span>
               </div>
               <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>deadline</code></span>
+                <span class="p-2.5">Optional deadline text (shown with clock icon)</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
-                <span class="p-2.5">Optional link URL</span>
+                <span class="p-2.5">Optional link URL (renders title as link)</span>
               </div>
               <div class="flex flex-col md:flex-row">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>completed</code></span>
-                <span class="p-2.5">"true" | "false" (default)</span>
+                <span class="p-2.5">"true" | "false" (default) — shows green checkmark</span>
               </div>
             </div>
+            <h4 class="mt-8">Slot mode</h4>
+            <p class="text-greyscale-600 my-3">
+              Omit <code>title</code> and provide content via the default slot.
+              Pass <code>x-bind:class</code> through attrs for dynamic wrapper
+              styling in Alpine <code>x-for</code> loops.
+            </p>
           </section>
           <section id="sidebar-section"
                    class="mb-12"
@@ -1026,10 +1051,11 @@
             <p class="text-greyscale-600 mb-6">Collapsible section with title and optional count badge.</p>
             <div class="max-w-sm mb-6 space-y-4">
               <c-molecules.sidebar-section title="Deadlines" icon="calendar" count="2">
-              <c-molecules.deadline-card title="File Answer" date="Due Jan 20" status="urgent" />
-              <c-molecules.deadline-card title="Review Docs" date="Due Jan 25" status="pending" />
+              <c-molecules.deadline-card variant="urgent" title="Jan 20, 2026" date="File Answer" />
+              <c-molecules.deadline-card title="Jan 25, 2026" date="Review Documents" />
               </c-molecules.sidebar-section>
               <c-molecules.sidebar-section title="Action Items" icon="clipboard-document-check" collapsible="true">
+              <c-molecules.action-item priority="urgent" title="File an Appearance" deadline="Due Jan 20" />
               <c-molecules.action-item title="Gather documents" />
               <c-molecules.action-item title="Review lease" completed="true" />
               </c-molecules.sidebar-section>
@@ -1260,10 +1286,11 @@
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.case-sidebar case_type="Eviction" county="Bexar County" class="w-80">
               <c-molecules.sidebar-section title="Deadlines" icon="calendar" count="2">
-              <c-molecules.deadline-card title="File Answer" date="Due Jan 20, 2026" status="urgent" />
-              <c-molecules.deadline-card title="Court Hearing" date="Feb 5, 2026" status="pending" />
+              <c-molecules.deadline-card variant="urgent" title="Jan 20, 2026" date="File Answer" />
+              <c-molecules.deadline-card title="Feb 5, 2026" date="Court Hearing" />
               </c-molecules.sidebar-section>
               <c-molecules.sidebar-section title="Action Items" icon="clipboard-document-check" collapsible="true">
+              <c-molecules.action-item priority="urgent" title="File an Appearance" deadline="Due Jan 20" />
               <c-molecules.action-item title="Gather income documents" description="Pay stubs, tax returns" />
               <c-molecules.action-item title="Review lease agreement" />
               <c-molecules.action-item title="Submit initial paperwork" completed="true" />
