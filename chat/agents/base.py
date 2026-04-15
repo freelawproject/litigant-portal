@@ -6,7 +6,7 @@ from uuid import UUID
 
 from django.conf import settings
 from django.http import HttpRequest
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 if TYPE_CHECKING:
@@ -223,10 +223,7 @@ class Tool(BaseModel):
             },
         }
 
-    class Config:
-        """Configuration to allow extra methods on the BaseModel."""
-
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class Agent:
