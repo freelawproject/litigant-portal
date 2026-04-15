@@ -71,7 +71,7 @@
           <c-atoms.button type="button"
                           variant="ghost"
                           class="!p-0 text-xs text-greyscale-400 hover:text-greyscale-600"
-                          x-show="caseInfo"
+                          x-show="isCaseActive"
                           x-cloak
                           x-on:click="clearCaseInfo">
             {% trans "Clear" %}
@@ -91,7 +91,17 @@
         <div x-show="caseInfo" x-cloak x-bind:class="sidebarFlash" class="p-4 space-y-4">
           {# Case type header #}
           <div class="border-b border-greyscale-200 pb-3">
-            <h3 class="text-sm font-semibold text-greyscale-900" x-text="caseTitle"></h3>
+            <div class="flex items-center justify-between gap-2">
+              <h3 class="text-sm font-semibold text-greyscale-900" x-text="caseTitle"></h3>
+              <span
+                x-show="isCaseResolved"
+                x-cloak
+                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"
+              >
+                <c-atoms.icon name="check-circle" class="w-3 h-3" />
+                {% trans "Resolved" %}
+              </span>
+            </div>
             <p class="text-xs text-greyscale-500 mt-1"
                x-show="hasCaseNumber"
                x-text="caseNumber"></p>
@@ -160,10 +170,28 @@
           {# Key deadlines #}
           <template x-if="hasDeadlines">
             <c-molecules.sidebar-section title="{{ deadlines_heading }}">
-              <template x-for="deadline in deadlines" :key="deadline.label">
+              <template x-for="deadline in deadlines" :key="deadline.id">
                 <c-molecules.deadline-card variant="urgent">
-                  <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
-                  <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
+                  <div class="flex items-start justify-between gap-1">
+                    <div class="min-w-0">
+                      <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
+                      <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
+                    </div>
+                    <button
+                      type="button"
+                      x-bind:data-deadline-id="deadline.id"
+                      x-on:click="toggleDeadlineReminder"
+                      x-bind:title="deadline.reminderTitle"
+                      class="flex-shrink-0 p-0.5 rounded hover:bg-red-100"
+                    >
+                      <template x-if="deadline.hasReminder">
+                        <c-atoms.icon name="bell-alert" style="solid" class="w-3.5 h-3.5 text-red-600" />
+                      </template>
+                      <template x-if="deadline.noReminder">
+                        <c-atoms.icon name="bell" class="w-3.5 h-3.5 text-red-400" />
+                      </template>
+                    </button>
+                  </div>
                 </c-molecules.deadline-card>
               </template>
             </c-molecules.sidebar-section>
@@ -201,10 +229,22 @@
           {# Action plan — action items #}
           <template x-if="hasActionItems">
             <c-molecules.sidebar-section title="{{ next_steps_heading }}">
-              <template x-for="item in actionItems" :key="item.title">
-                <c-molecules.action-item x-bind:class="item.bgClass">
-                  <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5"
-                       x-bind:class="item.borderClass"></div>
+              <template x-for="item in actionItems" :key="item.id">
+                <c-molecules.action-item
+                  x-bind:class="item.bgClass"
+                  x-bind:data-item-id="item.id"
+                  x-on:click="toggleActionItem"
+                  role="checkbox"
+                  x-bind:aria-checked="item.isCompleted"
+                  class="cursor-pointer"
+                >
+                  <template x-if="item.isCompleted">
+                    <c-atoms.icon name="check-circle" style="solid" class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                  </template>
+                  <template x-if="item.isNotCompleted">
+                    <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5"
+                         x-bind:class="item.borderClass"></div>
+                  </template>
                   <div class="min-w-0">
                     <p class="text-sm font-medium"
                        x-bind:class="item.titleClass"
@@ -240,8 +280,32 @@
               </template>
             </c-molecules.sidebar-section>
           </template>
-          {# Printable document link #}
-          <div class="pt-3 border-t border-greyscale-200">
+          {# Sidebar footer — resolve, print, new case #}
+          <div class="pt-3 border-t border-greyscale-200 space-y-2">
+            {# Resolve button — active cases with action plan #}
+            <template x-if="showResolveButton">
+              <c-atoms.button
+                type="button"
+                variant="primary"
+                full_width
+                x-on:click="resolveCase"
+              >
+                <c-atoms.icon name="check-circle" class="w-4 h-4" />
+                {% trans "Mark resolved" %}
+              </c-atoms.button>
+            </template>
+            {# New case button — after resolution #}
+            <template x-if="isCaseResolved">
+              <c-atoms.button
+                type="button"
+                variant="outline"
+                full_width
+                x-on:click="clearCaseInfo"
+              >
+                <c-atoms.icon name="plus" class="w-4 h-4" />
+                {% trans "New case" %}
+              </c-atoms.button>
+            </template>
             <a href="{% url 'portal:action_plan' %}"
                target="_blank"
                rel="noopener"
@@ -463,6 +527,9 @@
                   </template>
                   <template x-if="event.isChange">
                     <c-atoms.icon name="pencil-square" class="timeline-event-icon" />
+                  </template>
+                  <template x-if="event.isResolution">
+                    <c-atoms.icon name="check-circle" class="timeline-event-icon text-green-600" />
                   </template>
                   <span class="timeline-event-title" x-text="event.title"></span>
                   <span class="timeline-event-badge" x-text="event.typeLabel"></span>
