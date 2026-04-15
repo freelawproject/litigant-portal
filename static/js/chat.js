@@ -434,6 +434,7 @@ function createHomePage() {
 
     // --- Case management state ---
     caseInfo: null,
+    caseStatus: '',
     showConfirmation: false,
     _documentContextSent: false,
     _isClearingChat: false,
@@ -532,7 +533,16 @@ function createHomePage() {
 
     // Dates (pre-filtered)
     get deadlines() {
-      return (this.caseInfo?.key_dates || []).filter((d) => d.is_deadline)
+      return (this.caseInfo?.key_dates || [])
+        .filter((d) => d.is_deadline)
+        .map((d) => ({
+          ...d,
+          hasReminder: !!d.reminder_requested,
+          noReminder: !d.reminder_requested,
+          reminderTitle: d.reminder_requested
+            ? gettext('Reminder on')
+            : gettext('Set reminder'),
+        }))
     },
     get otherDates() {
       return (this.caseInfo?.key_dates || []).filter((d) => !d.is_deadline)
@@ -549,20 +559,32 @@ function createHomePage() {
       return (this.actionPlan?.action_items || []).map((item) => ({
         ...item,
         isUrgent: item.priority === 'urgent',
-        bgClass:
-          item.priority === 'urgent'
+        isCompleted: !!item.completed,
+        isNotCompleted: !item.completed,
+        dimClass: item.completed ? 'opacity-50' : '',
+        bgClass: item.completed
+          ? 'bg-greyscale-50 border border-greyscale-200'
+          : item.priority === 'urgent'
             ? 'bg-red-50 border border-red-100'
             : 'bg-greyscale-50 border border-greyscale-200',
-        borderClass:
-          item.priority === 'urgent'
+        borderClass: item.completed
+          ? 'border-greyscale-200'
+          : item.priority === 'urgent'
             ? 'border-red-400'
             : 'border-greyscale-300',
-        titleClass:
-          item.priority === 'urgent' ? 'text-red-800' : 'text-greyscale-800',
-        descClass:
-          item.priority === 'urgent' ? 'text-red-600' : 'text-greyscale-500',
-        dateClass:
-          item.priority === 'urgent'
+        titleClass: item.completed
+          ? 'text-greyscale-400 line-through'
+          : item.priority === 'urgent'
+            ? 'text-red-800'
+            : 'text-greyscale-800',
+        descClass: item.completed
+          ? 'text-greyscale-300'
+          : item.priority === 'urgent'
+            ? 'text-red-600'
+            : 'text-greyscale-500',
+        dateClass: item.completed
+          ? 'text-greyscale-300'
+          : item.priority === 'urgent'
             ? 'text-red-500 font-medium'
             : 'text-greyscale-400',
       }))
@@ -600,6 +622,25 @@ function createHomePage() {
     },
     get noTimeline() {
       return this.caseTimeline.length === 0
+    },
+
+    // Case status
+    get isCaseActive() {
+      return this.caseStatus === 'active'
+    },
+    get isCaseResolved() {
+      return this.caseStatus === 'resolved'
+    },
+    get isCaseArchived() {
+      return this.caseStatus === 'archived'
+    },
+
+    // Compound status checks
+    get showResolveButton() {
+      return this.caseInfo && this.isCaseActive && this.hasActionItems
+    },
+    get isCaseNotResolved() {
+      return this.caseStatus !== 'resolved'
     },
 
     // Negated booleans (CSP build can't evaluate `!`)
@@ -649,6 +690,7 @@ function createHomePage() {
           const caseData = await caseResponse.json()
           if (caseData.case_info) {
             this.caseInfo = caseData.case_info
+            this.caseStatus = caseData.case_info.status || 'active'
             // Restore action plan from case info data
             const ap = caseData.case_info
             if (ap.action_items || ap.spotted_issues || ap.resources) {
@@ -670,6 +712,7 @@ function createHomePage() {
               isUpload: e.event_type === 'upload',
               isSummary: e.event_type === 'summary',
               isChange: e.event_type === 'change',
+              isResolution: e.event_type === 'resolution',
               typeLabel: this._timelineTypeLabel(e.event_type),
               formattedTime: this._formatTime(e.created_at),
             }))
@@ -713,6 +756,7 @@ function createHomePage() {
         const patch = data.case_patch
         if (!this.caseInfo) {
           this.caseInfo = patch
+          this.caseStatus = 'active'
           this.addTimelineEvent(
             'change',
             gettext('Case info started'),
@@ -976,6 +1020,88 @@ function createHomePage() {
     },
 
     // =========================================================================
+    // Resolution: toggle, resolve, archive
+    // =========================================================================
+
+    async toggleActionItem(e) {
+      const itemId = e.target.dataset.itemId || e.currentTarget.dataset.itemId
+      if (!itemId) return
+
+      // Optimistic toggle
+      const items = this.actionPlan?.action_items
+      if (!items) return
+      const item = items.find((i) => i.id === itemId)
+      if (!item) return
+      item.completed = !item.completed
+
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch(
+          '/api/chat/case/action-item/' + itemId + '/toggle/',
+          { method: 'POST', body: formData }
+        )
+        if (!response.ok) {
+          // Revert on failure
+          item.completed = !item.completed
+        }
+      } catch {
+        item.completed = !item.completed
+      }
+    },
+
+    async toggleDeadlineReminder(e) {
+      const deadlineId =
+        e.target.dataset.deadlineId || e.currentTarget.dataset.deadlineId
+      if (!deadlineId) return
+
+      // Optimistic toggle
+      const dates = this.caseInfo?.key_dates
+      if (!dates) return
+      const deadline = dates.find((d) => d.id === deadlineId)
+      if (!deadline) return
+      deadline.reminder_requested = !deadline.reminder_requested
+
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch(
+          '/api/chat/case/deadline/' + deadlineId + '/remind/',
+          { method: 'POST', body: formData }
+        )
+        if (!response.ok) {
+          deadline.reminder_requested = !deadline.reminder_requested
+        }
+      } catch {
+        deadline.reminder_requested = !deadline.reminder_requested
+      }
+    },
+
+    async resolveCase() {
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch('/api/chat/case/resolve/', {
+          method: 'POST',
+          body: formData,
+        })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.resolved) {
+            this.caseStatus = 'resolved'
+            this.addTimelineEvent(
+              'resolution',
+              gettext('Case marked as resolved'),
+              ''
+            )
+          }
+        }
+      } catch (err) {
+        console.error('Failed to resolve case:', err)
+      }
+    },
+
+    // =========================================================================
     // Case management
     // =========================================================================
 
@@ -987,6 +1113,7 @@ function createHomePage() {
       } else {
         this.caseInfo = this.extractedData
       }
+      this.caseStatus = 'active'
       this.showConfirmation = false
 
       // Persist to server
@@ -1109,20 +1236,22 @@ function createHomePage() {
     },
 
     async clearCaseInfo() {
-      this.caseInfo = null
-      this.actionPlan = null
-      this.extractedData = null
-      this.caseTimeline = []
-      this._documentContextSent = false
-
-      // Clear server-side data
+      // Archive server-side (non-destructive)
       const formData = new FormData()
       formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
       try {
         await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
       } catch (e) {
-        console.error('Failed to clear case info:', e)
+        console.error('Failed to archive case info:', e)
       }
+
+      // Reset local state
+      this.caseInfo = null
+      this.caseStatus = ''
+      this.actionPlan = null
+      this.extractedData = null
+      this.caseTimeline = []
+      this._documentContextSent = false
     },
 
     // =========================================================================
@@ -1158,6 +1287,7 @@ function createHomePage() {
     _timelineTypeLabel(type) {
       if (type === 'upload') return gettext('Upload')
       if (type === 'summary') return gettext('Summary')
+      if (type === 'resolution') return gettext('Resolution')
       return gettext('Update')
     },
 
@@ -1181,6 +1311,7 @@ function createHomePage() {
         isUpload: type === 'upload',
         isSummary: type === 'summary',
         isChange: type === 'change',
+        isResolution: type === 'resolution',
         typeLabel: this._timelineTypeLabel(type),
         formattedTime: this._formatTime(timestamp),
       }
