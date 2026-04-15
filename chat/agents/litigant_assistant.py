@@ -232,7 +232,9 @@ class UpdateCaseFacts(Tool):
                 if session.user
                 else {"session_key": session.session_key}
             )
-            case, _ = CaseInfo.objects.get_or_create(**ownership)
+            case, _ = CaseInfo.objects.get_or_create(
+                status="active", **ownership
+            )
             data = dict(case.data) if case.data else {}
 
             if "case_type" in patch:
@@ -328,7 +330,9 @@ class UpdateActionPlan(Tool):
                 if session.user
                 else {"session_key": session.session_key}
             )
-            case, _ = CaseInfo.objects.get_or_create(**ownership)
+            case, _ = CaseInfo.objects.get_or_create(
+                status="active", **ownership
+            )
             data = dict(case.data) if case.data else {}
 
             # action_items → ActionItemModel (not JSON)
