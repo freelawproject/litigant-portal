@@ -8,7 +8,7 @@ from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
 from .agents import agent_registry
-from .models import CaseInfo, TimelineEvent
+from .models import ActionItemModel, CaseInfo, Deadline, TimelineEvent
 from .services.chat_service import ChatService
 from .services.pdf_service import pdf_service
 from .services.search_service import search_service
@@ -234,13 +234,14 @@ def summarize_conversation(request: HttpRequest) -> JsonResponse:
 def case_get(request: HttpRequest) -> JsonResponse:
     """Return case info + timeline for the current user/session."""
     ownership = _ownership_filter(request)
-    case = CaseInfo.objects.filter(**ownership).first()
+    case = CaseInfo.objects.filter(status="active", **ownership).first()
 
     if not case:
         return JsonResponse({"case_info": None, "timeline": []})
 
     # Assemble case_info: JSON fields + model-backed fields
     case_info = dict(case.data)
+    case_info["status"] = case.status
     case_info["key_dates"] = [d.to_dict() for d in case.deadlines.all()]
     case_info["action_items"] = [a.to_dict() for a in case.action_items.all()]
 
@@ -281,6 +282,7 @@ def case_save(request: HttpRequest) -> JsonResponse:
 
     ownership = _ownership_filter(request)
     case, created = CaseInfo.objects.update_or_create(
+        status="active",
         defaults={"data": data},
         **ownership,
     )
@@ -321,7 +323,7 @@ def case_timeline_add(request: HttpRequest) -> JsonResponse:
     content = request.POST.get("content", "")
     raw_metadata = request.POST.get("metadata", "{}")
 
-    valid_types = {"upload", "summary", "change"}
+    valid_types = {"upload", "summary", "change", "resolution"}
     if event_type not in valid_types:
         return JsonResponse(
             {
@@ -382,9 +384,80 @@ def action_plan(request: HttpRequest):
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 def case_clear(request: HttpRequest) -> JsonResponse:
-    """Delete case info + cascade timeline. Clear chat session from Django session."""
+    """Archive active case info. Clear chat session from Django session."""
     ownership = _ownership_filter(request)
-    deleted, _ = CaseInfo.objects.filter(**ownership).delete()
+    archived = CaseInfo.objects.filter(status="active", **ownership).update(
+        status="archived"
+    )
     request.session.pop("chat_session_id", None)
 
-    return JsonResponse({"deleted": deleted > 0})
+    return JsonResponse({"archived": archived > 0})
+
+
+@require_POST
+@ratelimit(key="ip", rate="30/m", method="POST", block=True)
+def case_resolve(request: HttpRequest) -> JsonResponse:
+    """Mark the active case as resolved and create a resolution timeline event."""
+    ownership = _ownership_filter(request)
+    case = CaseInfo.objects.filter(status="active", **ownership).first()
+
+    if not case:
+        return JsonResponse({"resolved": False})
+
+    case.status = "resolved"
+    case.save(update_fields=["status"])
+
+    TimelineEvent.objects.create(
+        case=case,
+        event_type="resolution",
+        title="Case marked as resolved",
+    )
+
+    return JsonResponse({"resolved": True})
+
+
+@require_POST
+@ratelimit(key="ip", rate="30/m", method="POST", block=True)
+def action_item_toggle(request: HttpRequest, item_id: str) -> JsonResponse:
+    """Toggle an action item's completed state."""
+    ownership = _ownership_filter(request)
+    item = ActionItemModel.objects.filter(
+        id=item_id,
+        case__status="active",
+        **{"case__" + k: v for k, v in ownership.items()},
+    ).first()
+
+    if not item:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    item.completed = not item.completed
+    item.save(update_fields=["completed"])
+
+    return JsonResponse({"id": str(item.id), "completed": item.completed})
+
+
+@require_POST
+@ratelimit(key="ip", rate="30/m", method="POST", block=True)
+def deadline_reminder_toggle(
+    request: HttpRequest, deadline_id: str
+) -> JsonResponse:
+    """Toggle a deadline's reminder_requested state."""
+    ownership = _ownership_filter(request)
+    deadline = Deadline.objects.filter(
+        id=deadline_id,
+        case__status="active",
+        **{"case__" + k: v for k, v in ownership.items()},
+    ).first()
+
+    if not deadline:
+        return JsonResponse({"error": "Not found"}, status=404)
+
+    deadline.reminder_requested = not deadline.reminder_requested
+    deadline.save(update_fields=["reminder_requested"])
+
+    return JsonResponse(
+        {
+            "id": str(deadline.id),
+            "reminder_requested": deadline.reminder_requested,
+        }
+    )

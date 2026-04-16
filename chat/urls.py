@@ -16,4 +16,15 @@ urlpatterns = [
     path("case/save/", views.case_save, name="case_save"),
     path("case/timeline/", views.case_timeline_add, name="case_timeline_add"),
     path("case/clear/", views.case_clear, name="case_clear"),
+    path("case/resolve/", views.case_resolve, name="case_resolve"),
+    path(
+        "case/action-item/<uuid:item_id>/toggle/",
+        views.action_item_toggle,
+        name="action_item_toggle",
+    ),
+    path(
+        "case/deadline/<uuid:deadline_id>/remind/",
+        views.deadline_reminder_toggle,
+        name="deadline_reminder_toggle",
+    ),
 ]
