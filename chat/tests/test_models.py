@@ -215,6 +215,21 @@ class DeadlineToDictTests(TestCase):
     def setUp(self):
         self.case = CaseInfo.objects.create(data={})
 
+    def test_to_dict_includes_id_as_string(self):
+        """to_dict() must include id as a string (not UUID object)."""
+        deadline = Deadline.objects.create(
+            case=self.case,
+            label="File Answer",
+            date="2026-05-01",
+            is_deadline=True,
+        )
+
+        result = deadline.to_dict()
+
+        self.assertIn("id", result)
+        self.assertEqual(result["id"], str(deadline.id))
+        self.assertIsInstance(result["id"], str)
+
     def test_to_dict_includes_reminder_requested(self):
         """to_dict() must include reminder_requested field."""
         deadline = Deadline.objects.create(

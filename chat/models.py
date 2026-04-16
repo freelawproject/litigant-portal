@@ -210,6 +210,7 @@ class Deadline(models.Model):
     def to_dict(self) -> dict:
         """Return the JSON shape the frontend expects in key_dates."""
         return {
+            "id": str(self.id),
             "label": self.label,
             "date": self.date,
             "is_deadline": self.is_deadline,
