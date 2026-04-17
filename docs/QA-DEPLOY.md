@@ -1,6 +1,6 @@
 # QA Environment Setup
 
-One-time setup for the QA/staging server at `qa.litigant-portal.com`. After setup, deploys are automatic — merge to main triggers a new Docker image build and deploy via GitHub Actions.
+One-time setup for the QA/staging server at `qa.litigantportal.com`. After setup, deploys are automatic — merge to main triggers a new Docker image build and deploy via GitHub Actions.
 
 ## Architecture
 
@@ -58,8 +58,8 @@ cd /opt/litigant-portal
 
 # Non-secret config
 cat > .env << 'EOF'
-DOMAIN=qa.litigant-portal.com
-ALLOWED_HOSTS=qa.litigant-portal.com
+DOMAIN=qa.litigantportal.com
+ALLOWED_HOSTS=qa.litigantportal.com
 CHAT_ENABLED=true
 CHAT_MODEL=openai/gpt-4o-mini
 EOF
@@ -87,7 +87,7 @@ Caddy will auto-provision a Let's Encrypt certificate once DNS resolves.
 
 ## DNS
 
-Point an A record for `qa.litigant-portal.com` at the VPS IP address.
+Point an A record for `qa.litigantportal.com` at the VPS IP address.
 
 ## GitHub Actions Secrets
 
