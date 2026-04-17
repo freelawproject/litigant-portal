@@ -4,17 +4,19 @@ One-time setup for the QA/staging server at `qa.litigantportal.com`. After setup
 
 ## Architecture
 
-- **Server**: DigitalOcean x86 droplet (Ubuntu 24.04, $6/mo basic)
+- **Server**: DigitalOcean x86 droplet (Ubuntu 24.04, $12/mo — 2 vCPU, 2 GB RAM, 50 GB SSD) with automated weekly backups ($2.40/mo)
+- **DNS**: Hurricane Electric free DNS (`ns1.he.net` through `ns5.he.net`)
 - **Stack**: Same docker-compose prod profile as production
 - **Image**: Pulled from `ghcr.io/freelawproject/litigant-portal:latest` (built by CI)
 - **HTTPS**: Caddy auto-provisions via Let's Encrypt
 - **Database**: Postgres (pgvector) on the same server via docker-compose
+- **Deploy user**: `deploy` (non-root with sudo rights) — CI/CD uses a dedicated SSH key
 
 ## Provision the Server
 
 1. Create a DigitalOcean droplet:
    - Image: Ubuntu 24.04 LTS
-   - Plan: Basic $6/mo (1 vCPU, 1 GB RAM, 25 GB SSD)
+   - Plan: Basic $12/mo (2 vCPU, 2 GB RAM, 50 GB SSD)
    - Region: NYC or closest to demo audience
    - Add your SSH key during creation
 
@@ -93,10 +95,10 @@ Point an A record for `qa.litigantportal.com` at the VPS IP address.
 
 Add these to the repo at Settings → Secrets and variables → Actions:
 
-| Secret | Value |
-|--------|-------|
-| `QA_HOST` | VPS IP address |
-| `QA_USER` | `deploy` |
+| Secret       | Value                              |
+| ------------ | ---------------------------------- |
+| `QA_HOST`    | VPS IP address                     |
+| `QA_USER`    | `deploy`                           |
 | `QA_SSH_KEY` | Contents of the deploy private key |
 
 Generate the deploy key:
