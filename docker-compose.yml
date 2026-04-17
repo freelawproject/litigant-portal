@@ -81,6 +81,7 @@ services:
   # Production Django Server
   # ---------------------------------------------------------------------------
   django-prod:
+    image: ghcr.io/freelawproject/litigant-portal:latest
     build: .
     profiles: ['prod']
     command: web-prod
