@@ -110,7 +110,7 @@
       {# Account Section (mobile) #}
       <div class="p-4 border-t border-greyscale-200 sm:hidden">
         {% if user.is_authenticated %}
-          <div class="mb-2 px-1 py-1 text-sm text-greyscale-600 truncate">{{ user.email }}</div>
+          <div class="mb-2 px-1 py-1 text-sm text-greyscale-600">{% trans "You are logged in" %}</div>
           <c-atoms.nav-link icon="arrow-right-start-on-rectangle" href="{% url 'account_logout' %}" icon_bg="bg-greyscale-100" icon_color="text-greyscale-600">{% trans "Sign out" %}</c-atoms.nav-link>
         {% else %}
           <c-atoms.nav-link icon="arrow-right-end-on-rectangle" href="{% url 'account_login' %}" icon_bg="bg-primary-50" icon_color="text-primary-600">{% trans "Sign in" %}</c-atoms.nav-link>
