@@ -1,6 +1,6 @@
 .PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
        messages compilemessages \
-       docker-build docker-dev docker-prod docker-down docker-logs docker-shell docker-migrate docker-clean
+       docker-build docker-dev docker-prod docker-rebuild docker-down docker-logs docker-shell docker-migrate docker-clean
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -81,6 +81,10 @@ docker-prod: ## Start production environment (Caddy + Gunicorn)
 
 docker-prod-build: ## Build and start production environment
 	docker compose --profile prod up --build
+
+docker-rebuild: ## Rebuild and restart prod (for QA deploys)
+	docker compose --profile prod down
+	docker compose --profile prod up -d --build
 
 docker-down: ## Stop all containers
 	docker compose --profile dev --profile prod down

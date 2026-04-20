@@ -248,6 +248,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 if not DEBUG:
     # HTTPS/SSL
     SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r"^health/$"]
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
     # HSTS (HTTP Strict Transport Security)
