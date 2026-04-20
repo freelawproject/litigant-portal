@@ -168,10 +168,10 @@ class UserMenuAuthenticatedTests(TestCase):
         )
         self.client.login(username="testuser", password="testpass123")
 
-    def test_header_shows_user_email(self):
-        """Header should display user's email when logged in."""
+    def test_header_does_not_expose_user_email(self):
+        """Header must not render the user's email (PII privacy — #273, #304)."""
         response = self.client.get("/")
-        self.assertContains(response, "test@example.com")
+        self.assertNotContains(response, "test@example.com")
 
     def test_header_shows_sign_out_link(self):
         """Header should show 'Sign out' option when logged in."""
