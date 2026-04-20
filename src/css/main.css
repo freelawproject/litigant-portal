@@ -285,7 +285,7 @@
 
   .topic-card-description {
     @apply text-sm text-greyscale-500 mt-0.5 m-0;
-    @apply line-clamp-1;
+    @apply line-clamp-2;
   }
 
   .topic-card-arrow {
