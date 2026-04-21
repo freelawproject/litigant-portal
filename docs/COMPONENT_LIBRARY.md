@@ -66,7 +66,7 @@ This approach was chosen over Storybook for simplicity and to stay Django-native
 
 ### URL
 
-- Development: http://portal.localhost:8000/style-guide/
+- Development: http://portal.localhost/style-guide/
 - Template: `templates/pages/style_guide.html`
 - View: `portal/views.py::style_guide()`
 
@@ -318,7 +318,7 @@ tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 **Note:** We use Tailwind v4 with CSS-based configuration. Theme tokens are defined
 in `@theme { }` blocks within `static/css/main.css` - no `tailwind.config.js` needed.
 
-Visit http://portal.localhost:8000/style-guide/ to view component library.
+Visit http://portal.localhost/style-guide/ to view component library.
 
 ---
 

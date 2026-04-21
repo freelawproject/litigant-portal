@@ -52,6 +52,8 @@ make docker-shell           # Shell into container
 make docker-down            # Stop containers
 ```
 
+**Dev URL:** `http://localhost` (or `http://portal.localhost`). Caddy runs on port 80 — **not** `:8000`. The `:8000` you'll see in `docker-compose.yml:101` is the container-internal gunicorn port, behind Caddy.
+
 ### Testing & Linting
 
 ```sh
