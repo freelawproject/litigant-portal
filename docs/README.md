@@ -5,7 +5,7 @@
 ```bash
 cp .env.example .env        # Add your GROQ_API_KEY
 make docker-dev             # Start dev environment
-# Visit: http://portal.localhost:8000/style-guide/
+# Visit: http://portal.localhost/style-guide/
 ```
 
 **Other Commands:**
@@ -36,12 +36,12 @@ make test                   # Run tests
 
 ## URLs (Development)
 
-| URL                                       | Purpose                   |
-| ----------------------------------------- | ------------------------- |
-| http://portal.localhost:8000/             | Dashboard (hero + topics) |
-| http://portal.localhost:8000/chat/        | AI chat interface         |
-| http://portal.localhost:8000/style-guide/ | Component library / guide |
-| http://portal.localhost:8000/admin/       | Django admin              |
+| URL                                  | Purpose                   |
+| ------------------------------------ | ------------------------- |
+| http://portal.localhost/             | Dashboard (hero + topics) |
+| http://portal.localhost/chat/        | AI chat interface         |
+| http://portal.localhost/style-guide/ | Component library / guide |
+| http://portal.localhost/admin/       | Django admin              |
 
 ---
 

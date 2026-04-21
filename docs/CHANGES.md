@@ -19,7 +19,7 @@
 - **Completed:** Docker-first development
   - Removed `dev.sh` in favor of `make docker-dev`
   - PostgreSQL for local development
-  - `portal.localhost:8000` for dev URLs (1Password friendly)
+  - `portal.localhost` for dev URLs (1Password friendly)
 
 - **Completed:** Form components
   - New molecule: `form_field` (label + input + help/error display)
