@@ -16,7 +16,9 @@ def _load_topic_prompts() -> None:
     """Lazy-load topic prompt modules into the registry."""
     if _TOPIC_PROMPTS:
         return
-    from chat.prompts.adult_name_change_nd import PROMPT as adult_name_change_nd
+    from chat.prompts.adult_name_change_nd import (
+        PROMPT as adult_name_change_nd,
+    )
     from chat.prompts.eviction_il import PROMPT as eviction_il
 
     _TOPIC_PROMPTS[("eviction", "il")] = eviction_il
