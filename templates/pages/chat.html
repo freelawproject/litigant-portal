@@ -243,7 +243,13 @@
                   <template x-if="item.isCompleted">
                     <c-atoms.icon name="check-circle" style="solid" class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
                   </template>
-                  <template x-if="item.isNotCompleted">
+                  <template x-if="item.isUrgentOpen">
+                    <span class="flex-shrink-0 mt-0.5">
+                      <c-atoms.icon name="exclamation-triangle" style="solid" class="w-4 h-4 text-red-500" />
+                      <span class="sr-only">{% trans "Urgent" %}</span>
+                    </span>
+                  </template>
+                  <template x-if="item.isNormalOpen">
                     <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5"
                          x-bind:class="item.borderClass"></div>
                   </template>

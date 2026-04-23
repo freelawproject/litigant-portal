@@ -70,6 +70,18 @@ class ChatPageTests(TestCase):
         response = self.client.get("/chat/")
         self.assertContains(response, "chat-subheader")
 
+    def test_chat_page_renders_urgent_blocker_affordance(self):
+        """Chat page template must include the urgent blocker warning icon (#329).
+
+        The icon is Alpine-rendered conditionally on ``item.isUrgentOpen``,
+        so the raw template markup is what we assert here — if this
+        exclamation-triangle block is removed, the urgent pin affordance
+        regresses silently.
+        """
+        response = self.client.get("/chat/")
+        self.assertContains(response, "isUrgentOpen")
+        self.assertContains(response, "exclamation-triangle")
+
 
 # =============================================================================
 # Auth Template Tests

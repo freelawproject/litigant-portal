@@ -563,6 +563,10 @@ function createHomePage() {
         isUrgent: item.priority === 'urgent',
         isCompleted: !!item.completed,
         isNotCompleted: !item.completed,
+        // Composed flags for CSP-safe template conditionals — needed
+        // because x-if can't evaluate compound expressions (&&, !).
+        isUrgentOpen: item.priority === 'urgent' && !item.completed,
+        isNormalOpen: item.priority !== 'urgent' && !item.completed,
         dimClass: item.completed ? 'opacity-50' : '',
         bgClass: item.completed
           ? 'bg-greyscale-50 border border-greyscale-200'
