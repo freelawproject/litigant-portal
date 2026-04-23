@@ -99,18 +99,55 @@ TOPICS = {
         "prompts": [],
         "context_sections": [],
     },
-    "expungement": {
-        "title": _("Expungement"),
+    "adult_name_change": {
+        "title": _("Adult Name Change"),
         "subtitle": _(
-            "Clearing or sealing your criminal record and restoring opportunities"
+            "Legally changing your name — standalone petition process"
         ),
-        "description": _("Clear your record, seal court files"),
-        "icon": "document-text",
+        "description": _("Petition, publication, and records cascade"),
+        "icon": "identification",
         "meta_description": _(
-            "Learn about expungement, record sealing, and eligibility requirements. General legal information for self-represented litigants."
+            "Learn about legally changing your name as an adult — petition process, publication requirements, and updating your records. General legal information for self-represented litigants."
         ),
-        "prompts": [],
-        "context_sections": [],
+        "prompts": [
+            _("I want to change my last name back after a divorce"),
+            _("I want to change my first or middle name"),
+            _("What forms do I need for a name change?"),
+        ],
+        "context_sections": [
+            {
+                "heading": _("Standalone vs. divorce-bundled"),
+                "body": _(
+                    "An adult name change is usually a standalone court"
+                    " petition, separate from any divorce case. If your divorce"
+                    " decree didn't include a name change, you'll file a new"
+                    " petition in your local district court."
+                ),
+            },
+            {
+                "heading": _("Two tracks: standard and waiver"),
+                "body": _(
+                    "Most jurisdictions offer two paths. A standard track —"
+                    " for any change involving the last name — usually requires"
+                    " publishing notice in a newspaper and a waiting period."
+                    " A waiver track — for first or middle name only — may"
+                    " allow the publication requirement to be waived by the"
+                    " judge."
+                ),
+            },
+            {
+                "heading": _("What to know up front"),
+                "body": _(
+                    "You'll file a petition with supporting forms, pay a"
+                    " filing fee (waivers are often available for"
+                    " income-qualifying filers), and — on the standard track —"
+                    " publish notice and wait before the judge reviews your"
+                    " petition. Background check timing varies by judge; a"
+                    " quick call to the clerk of court can confirm whether it"
+                    " happens before or after you file."
+                ),
+            },
+        ],
     },
     "traffic": {
         "title": _("Traffic & Fines"),
