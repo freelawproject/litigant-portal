@@ -30,15 +30,25 @@ class ChatService:
         session_id: str | UUID | None = None,
         agent_name: str | None = None,
         topic: str | None = None,
+        court: str | None = None,
     ):
         self.request = request
         agent_class = agent_registry[agent_name or settings.DEFAULT_CHAT_AGENT]
         agent_kwargs = {}
         if topic:
             agent_kwargs["topic"] = topic
+            # Jurisdiction default (for session storage + backward-compat
+            # composition on resume). Replaced when #179 carries jurisdiction
+            # through the request.
             jurisdiction = self._DEFAULT_JURISDICTION_FOR_TOPIC.get(topic)
             if jurisdiction:
                 agent_kwargs["jurisdiction"] = jurisdiction
+        if court:
+            # Explicit court (from deep-link) wins over the jurisdiction
+            # default in build_system_prompt (explicit ``court`` > mapped
+            # from ``jurisdiction``). Session still stores jurisdiction for
+            # resume-time composition.
+            agent_kwargs["court"] = court
         # Phase is derived from session state inside from_session_id for
         # existing sessions; new sessions default to "triage" there.
         self.agent = agent_class.from_session_id(

@@ -188,3 +188,33 @@ class ChatSessionTopicServiceTests(TestCase):
 
         self.assertIn("ADULT NAME CHANGE", prompt)
         self.assertIn("NORTH DAKOTA", prompt)
+
+    def test_explicit_court_kwarg_composes_court_layer(self):
+        """ChatService accepts an explicit court kwarg (#327 deep-link path)."""
+        from chat.services.chat_service import ChatService
+
+        request = self._make_request()
+        chat = ChatService(request, topic="adult_name_change", court="nd")
+
+        prompt = chat.agent.messages[0]["content"]
+        self.assertIn("ADULT NAME CHANGE", prompt)
+        self.assertIn("NORTH DAKOTA", prompt)
+
+        session = chat.agent.session
+        session.refresh_from_db()
+        self.assertEqual(session.topic, "adult_name_change")
+        # Explicit court flows to jurisdiction storage via backward-compat alias.
+        self.assertEqual(session.jurisdiction, "nd")
+
+    def test_explicit_court_wins_over_topic_default(self):
+        """court kwarg overrides _DEFAULT_JURISDICTION_FOR_TOPIC mapping."""
+        from chat.services.chat_service import ChatService
+
+        request = self._make_request()
+        # eviction's default court is dupage_il; pass court=nd to override.
+        chat = ChatService(request, topic="eviction", court="nd")
+
+        prompt = chat.agent.messages[0]["content"]
+        self.assertIn("EVICTION", prompt)
+        self.assertIn("NORTH DAKOTA", prompt)
+        self.assertNotIn("DUPAGE COUNTY", prompt)
