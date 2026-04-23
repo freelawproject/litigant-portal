@@ -41,7 +41,7 @@ Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `opena
 
 ## Commands
 
-**`make lint` and `make test`** — sandbox restrictions prevent Claude from running them. Always ask the user to run these manually. Never attempt to run them yourself.
+**`make lint`, `make test`, `make pre-commit`** — sandbox restrictions prevent Claude from running them. Always ask the user to run these manually. Never attempt to run them yourself.
 
 ### Local Development (Docker)
 
@@ -99,9 +99,10 @@ Run all hooks manually: `pre-commit run --all-files`
 Always run before commits (especially after rebases or batch edits):
 
 ```bash
-make lint    # Format + lint all code
-make test    # Run test suite
+make pre-commit   # lint → test, short-circuits if lint fails/fixes anything
 ```
+
+Equivalent to `make lint && make test`. If lint auto-fixes files, the target stops before tests — re-stage the changes and re-run. The name mirrors the `pre-commit` hook tool intentionally — same concept, different invocation surface.
 
 ### Template Formatting (Manual Conventions)
 
