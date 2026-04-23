@@ -289,3 +289,54 @@ class ActionItemToDictTests(TestCase):
 
         self.assertIn("completed", result)
         self.assertIs(result["completed"], True)
+
+    def test_to_dict_includes_priority(self):
+        """to_dict() must include the priority field (#329 sidebar pin)."""
+        urgent = ActionItemModel.objects.create(
+            case=self.case, title="Call clerk", priority="urgent"
+        )
+        normal = ActionItemModel.objects.create(
+            case=self.case, title="Gather docs", priority="normal"
+        )
+
+        self.assertEqual(urgent.to_dict()["priority"], "urgent")
+        self.assertEqual(normal.to_dict()["priority"], "normal")
+
+
+class ActionItemOrderingTests(TestCase):
+    """Tests for ActionItemModel default ordering (#329 sidebar pin).
+
+    Urgent items must come before normal items so blockers pin to the
+    top of the sidebar. Within a priority bucket, items sort by title.
+    """
+
+    def setUp(self):
+        self.case = CaseInfo.objects.create(data={})
+
+    def test_urgent_items_come_before_normal(self):
+        ActionItemModel.objects.create(
+            case=self.case, title="Gather documents", priority="normal"
+        )
+        ActionItemModel.objects.create(
+            case=self.case, title="Call clerk", priority="urgent"
+        )
+        ActionItemModel.objects.create(
+            case=self.case, title="Review lease", priority="normal"
+        )
+
+        titles = [item.title for item in self.case.action_items.all()]
+
+        self.assertEqual(titles[0], "Call clerk")
+        self.assertEqual(titles[1:], ["Gather documents", "Review lease"])
+
+    def test_within_priority_sorted_by_title(self):
+        ActionItemModel.objects.create(
+            case=self.case, title="Zebra task", priority="urgent"
+        )
+        ActionItemModel.objects.create(
+            case=self.case, title="Alpha task", priority="urgent"
+        )
+
+        titles = [item.title for item in self.case.action_items.all()]
+
+        self.assertEqual(titles, ["Alpha task", "Zebra task"])
