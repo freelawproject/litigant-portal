@@ -13,7 +13,7 @@ from .forms import UserProfileForm
 from .models import UserProfile
 
 TOPICS = {
-    "housing": {
+    "eviction": {
         "title": _("Housing & Eviction"),
         "subtitle": _(
             "Understanding the eviction process, tenant rights, and landlord obligations"

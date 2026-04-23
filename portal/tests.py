@@ -427,9 +427,9 @@ class TopicDetailTests(TestCase):
 
     def test_topic_detail_passes_slug(self):
         """Topic detail page should pass slug in template context."""
-        response = self.client.get("/topics/housing/")
+        response = self.client.get("/topics/eviction/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["slug"], "housing")
+        self.assertEqual(response.context["slug"], "eviction")
 
     def test_invalid_slug_returns_404(self):
         """An unknown topic slug should return 404."""
@@ -451,10 +451,10 @@ class ChatPageTopicTests(TestCase):
 
     def test_valid_topic_passes_context(self):
         """Chat page with valid topic param should pass topic and slug."""
-        response = self.client.get("/chat/?topic=housing")
+        response = self.client.get("/chat/?topic=eviction")
         self.assertEqual(response.status_code, 200)
         self.assertIsNotNone(response.context["topic"])
-        self.assertEqual(response.context["topic_slug"], "housing")
+        self.assertEqual(response.context["topic_slug"], "eviction")
 
     def test_invalid_topic_falls_back(self):
         """Chat page with invalid topic param should fall back to generic."""

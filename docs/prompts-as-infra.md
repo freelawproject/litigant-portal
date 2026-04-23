@@ -94,6 +94,15 @@ The evolution from current to target is tracked by [#314](https://github.com/fre
 
 Steps 1–4 live under #314. Step 5 is future work under separate tracking as each capability becomes real.
 
+## Slug vocabulary
+
+One canonical slug per topic, per court. Every surface — grid, URL, chat session, prompt registry — uses the same string.
+
+- **Topic slugs** are lowercase-underscore identifiers that name the legal matter as-registered in `chat/prompts/topics/*.py`. Examples: `eviction`, `adult_name_change`. When a new topic ships, its module name in `topics/` is the canonical slug everywhere else.
+- **Court slugs** are lowercase-underscore identifiers that name the court module in `chat/prompts/courts/*.py`. Examples: `dupage_il`, `nd`. A two-letter state code (`il`, `nd`) is a deprecated alias that maps to a default court via `_JURISDICTION_TO_COURT` in `chat/prompts/__init__.py`; prefer the explicit court slug in new code.
+
+No aliases, no translation layers. If the grid's topic key doesn't match a module in `topics/`, the Topic prompt silently drops from composition — historically this happened and went unnoticed for a while. A regression test in `chat/tests/test_chat_session_topic.py::test_grid_eviction_slug_composes_topic_and_court_layers` reads the grid's eviction slug from `TOPICS` and asserts the composed prompt contains the eviction and court anchors; similar guards should exist for each new (topic, court) pair as they land.
+
 ## Rationale — why this emerged from two demos
 
 Jane (DuPage eviction) shipped first with a combined Topic+Jurisdiction prompt file. Sandra (ND Adult Name Change) followed the same shape. Comparing them side by side, two things became obvious:
