@@ -6,6 +6,7 @@ from chat.prompts import (
     _VALID_PHASES,
     BASE_PROMPT,
     build_system_prompt,
+    get_court_name,
     phase_for_session,
 )
 
@@ -142,3 +143,25 @@ class PhaseForSessionTests(TestCase):
             resolution = {"status": "granted"}
 
         self.assertEqual(phase_for_session(FakeSession()), "resolve")
+
+
+class CourtNameTests(TestCase):
+    """Tests for get_court_name display-name lookup (#328)."""
+
+    def test_known_court_nd(self):
+        self.assertEqual(get_court_name("nd"), "North Dakota Courts")
+
+    def test_known_court_dupage_il(self):
+        self.assertEqual(
+            get_court_name("dupage_il"), "DuPage County Circuit Court"
+        )
+
+    def test_empty_court_returns_empty(self):
+        self.assertEqual(get_court_name(""), "")
+        self.assertEqual(get_court_name(None), "")
+
+    def test_unknown_court_returns_empty(self):
+        self.assertEqual(get_court_name("not_a_court"), "")
+
+    def test_case_insensitive_lookup(self):
+        self.assertEqual(get_court_name("ND"), "North Dakota Courts")

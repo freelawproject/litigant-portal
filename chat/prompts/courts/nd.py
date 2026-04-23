@@ -5,6 +5,8 @@ Topic layer's abstract framing with ND statutes, specific forms, fees,
 timelines, and procedural details.
 """
 
+COURT_NAME = "North Dakota Courts"
+
 PROMPT = """\
 NORTH DAKOTA
 You are assisting someone whose matter is in North Dakota district court. \

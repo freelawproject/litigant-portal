@@ -528,6 +528,28 @@ class ChatPageCourtTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["court_slug"], "")
 
+    def test_valid_court_passes_display_name(self):
+        """Chat page with valid court should expose its display name in context."""
+        response = self.client.get("/chat/?topic=adult_name_change&court=nd")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["court_name"], "North Dakota Courts")
+
+    def test_missing_court_display_name_is_empty(self):
+        response = self.client.get("/chat/?topic=eviction")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["court_name"], "")
+
+    def test_court_name_rendered_in_subheader(self):
+        """Template renders the court-branding eyebrow when court_name is set."""
+        response = self.client.get("/chat/?topic=adult_name_change&court=nd")
+        self.assertContains(response, "North Dakota Courts")
+
+    def test_court_name_absent_when_no_court(self):
+        """Template does not render the eyebrow when no court is set."""
+        response = self.client.get("/chat/?topic=eviction")
+        self.assertNotContains(response, "North Dakota Courts")
+        self.assertNotContains(response, "DuPage County Circuit Court")
+
 
 # =============================================================================
 # Context Processor Tests

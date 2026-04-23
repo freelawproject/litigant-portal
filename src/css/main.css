@@ -370,6 +370,10 @@
     @apply text-sm text-greyscale-600 mt-0.5 m-0;
   }
 
+  .court-branding {
+    @apply text-xs font-semibold tracking-wide uppercase text-greyscale-500 m-0 mb-0.5;
+  }
+
   .topic-prompts {
     @apply flex flex-col gap-2 mt-6;
   }

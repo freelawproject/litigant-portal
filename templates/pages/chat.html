@@ -330,6 +330,9 @@
                 <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
               </div>
               <div class="flex-1 min-w-0">
+                {% if court_name %}
+                  <p class="court-branding">{{ court_name }}</p>
+                {% endif %}
                 <h1 class="topic-entry-title">{{ topic.title }}</h1>
                 <p class="topic-entry-subtitle">{{ topic.subtitle }}</p>
               </div>
