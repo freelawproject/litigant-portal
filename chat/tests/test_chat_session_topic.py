@@ -120,3 +120,38 @@ class ChatSessionTopicServiceTests(TestCase):
 
         self.assertEqual(session.topic, "")
         self.assertEqual(session.jurisdiction, "")
+
+    def test_grid_eviction_slug_composes_topic_and_court_layers(self):
+        """The grid slug for eviction must compose Topic + Court layers.
+
+        Regression guard for #330: before this fix, the grid used "housing"
+        as its slug but the prompt registry was keyed on "eviction", so
+        clicking the topic card silently dropped the Topic + Court layers
+        and users got BASE + Phase only. This test reads the grid's slug
+        from TOPICS and asserts that passing it through ChatService yields
+        a prompt with the eviction and DuPage anchors present.
+        """
+        from chat.services.chat_service import ChatService
+        from portal.views import TOPICS
+
+        eviction_slugs = [
+            slug
+            for slug, meta in TOPICS.items()
+            if "Eviction" in str(meta.get("title", ""))
+        ]
+        self.assertEqual(
+            len(eviction_slugs),
+            1,
+            f"Expected exactly one eviction tile in grid, found {eviction_slugs}",
+        )
+        grid_slug = eviction_slugs[0]
+
+        request = self._make_request()
+        chat = ChatService(request, topic=grid_slug)
+
+        system_message = chat.agent.messages[0]
+        self.assertEqual(system_message["role"], "system")
+        prompt = system_message["content"]
+
+        self.assertIn("EVICTION", prompt)
+        self.assertIn("DUPAGE COUNTY", prompt)
