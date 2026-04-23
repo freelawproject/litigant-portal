@@ -188,7 +188,11 @@ def topic_detail(request, slug):
 
 def chat_page(request):
     """Chat page - AI-powered legal assistance chat interface."""
-    from chat.prompts import _COURT_PROMPTS, _load_court_prompts
+    from chat.prompts import (
+        _COURT_PROMPTS,
+        _load_court_prompts,
+        get_court_name,
+    )
 
     slug = request.GET.get("topic", "").strip()
     topic = TOPICS.get(slug) if slug else None
@@ -213,6 +217,7 @@ def chat_page(request):
             "topic_slug": slug if topic else "",
             "topic_context": topic_context,
             "court_slug": court_slug,
+            "court_name": get_court_name(court_slug),
         },
     )
 

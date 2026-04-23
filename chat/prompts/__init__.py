@@ -26,6 +26,7 @@ from chat.prompts.base import BASE_PROMPT
 _PHASE_PROMPTS: dict[str, str] = {}
 _TOPIC_PROMPTS: dict[str, str] = {}
 _COURT_PROMPTS: dict[str, str] = {}
+_COURT_NAMES: dict[str, str] = {}
 
 # Backward-compat: old callers passed jurisdiction (two-letter state code).
 # Map known states to their default court. Additional mappings land here as
@@ -73,6 +74,29 @@ def _load_court_prompts() -> None:
 
     _COURT_PROMPTS["dupage_il"] = dupage_il
     _COURT_PROMPTS["nd"] = nd
+
+
+def _load_court_names() -> None:
+    """Lazy-load court display names into the registry."""
+    if _COURT_NAMES:
+        return
+    from chat.prompts.courts.dupage_il import COURT_NAME as dupage_il_name
+    from chat.prompts.courts.nd import COURT_NAME as nd_name
+
+    _COURT_NAMES["dupage_il"] = dupage_il_name
+    _COURT_NAMES["nd"] = nd_name
+
+
+def get_court_name(court: str | None) -> str:
+    """Return the human-readable display name for a court slug.
+
+    Empty string for unknown or missing slugs — callers should treat empty
+    as "no court branding" and omit the UI slot entirely.
+    """
+    if not court:
+        return ""
+    _load_court_names()
+    return _COURT_NAMES.get(court.lower(), "")
 
 
 def build_system_prompt(

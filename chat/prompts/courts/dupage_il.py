@@ -4,6 +4,8 @@ Jurisdictional content that fills in the Topic layer's abstract framing with
 Illinois statutes, DuPage County logistics, and local Illinois programs.
 """
 
+COURT_NAME = "DuPage County Circuit Court"
+
 PROMPT = """\
 ILLINOIS — DUPAGE COUNTY (18TH JUDICIAL CIRCUIT)
 You are assisting someone whose matter is in Illinois, specifically DuPage \
