@@ -155,3 +155,36 @@ class ChatSessionTopicServiceTests(TestCase):
 
         self.assertIn("EVICTION", prompt)
         self.assertIn("DUPAGE COUNTY", prompt)
+
+    def test_grid_name_change_slug_composes_topic_and_court_layers(self):
+        """The grid slug for adult name change must compose Topic + Court layers.
+
+        Companion to ``test_grid_eviction_slug_composes_topic_and_court_layers``
+        (#330): reads the grid's name-change slug from TOPICS and asserts
+        the composed prompt contains the adult-name-change and North Dakota
+        anchors. Regression guard for #326.
+        """
+        from chat.services.chat_service import ChatService
+        from portal.views import TOPICS
+
+        name_change_slugs = [
+            slug
+            for slug, meta in TOPICS.items()
+            if "Name Change" in str(meta.get("title", ""))
+        ]
+        self.assertEqual(
+            len(name_change_slugs),
+            1,
+            f"Expected exactly one name-change tile in grid, found {name_change_slugs}",
+        )
+        grid_slug = name_change_slugs[0]
+
+        request = self._make_request()
+        chat = ChatService(request, topic=grid_slug)
+
+        system_message = chat.agent.messages[0]
+        self.assertEqual(system_message["role"], "system")
+        prompt = system_message["content"]
+
+        self.assertIn("ADULT NAME CHANGE", prompt)
+        self.assertIn("NORTH DAKOTA", prompt)
