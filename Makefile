@@ -53,6 +53,9 @@ shell: ## Open Django shell
 lint: ## Lint and format all code (via pre-commit)
 	pre-commit run --all-files
 
+pre-commit: ## Lint then test — stops if lint fails/fixes anything
+	$(MAKE) lint && $(MAKE) test
+
 fmt-check: ## Check template formatting (dry run, no writes)
 	npx prettier --plugin prettier-plugin-django-cotton --parser django-html --check "templates/**/*.html"
 
