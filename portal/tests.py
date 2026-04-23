@@ -471,6 +471,65 @@ class ChatPageTopicTests(TestCase):
 
 
 # =============================================================================
+# Deep-link Entry Tests (#327)
+# =============================================================================
+
+
+@pytest.mark.postgres
+class DeepLinkTests(TestCase):
+    """Tests for /t/{court}/{topic}/ deep-link entry."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_valid_court_and_topic_redirects_to_chat(self):
+        """Valid pair redirects to /chat/ with both params set."""
+        response = self.client.get("/t/nd/adult_name_change/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("topic=adult_name_change", response.url)
+        self.assertIn("court=nd", response.url)
+
+    def test_unknown_court_returns_404(self):
+        response = self.client.get("/t/xx/adult_name_change/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_unknown_topic_returns_404(self):
+        response = self.client.get("/t/nd/not_a_topic/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_deep_link_il_eviction(self):
+        """Second registered pair (DuPage/IL + eviction) also works."""
+        response = self.client.get("/t/dupage_il/eviction/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("topic=eviction", response.url)
+        self.assertIn("court=dupage_il", response.url)
+
+
+@pytest.mark.postgres
+class ChatPageCourtTests(TestCase):
+    """Tests for court parameter handling on /chat/ (#327)."""
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_valid_court_passes_context(self):
+        response = self.client.get("/chat/?topic=adult_name_change&court=nd")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["court_slug"], "nd")
+
+    def test_missing_court_context_is_empty(self):
+        response = self.client.get("/chat/?topic=eviction")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["court_slug"], "")
+
+    def test_unknown_court_context_is_empty(self):
+        """Unknown court on /chat/ silently drops (view is permissive; deep-link is the gatekeeper)."""
+        response = self.client.get("/chat/?topic=eviction&court=made_up")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["court_slug"], "")
+
+
+# =============================================================================
 # Context Processor Tests
 # =============================================================================
 

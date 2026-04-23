@@ -184,6 +184,7 @@ function createChat() {
         if (this.sessionId) formData.append('session_id', this.sessionId)
         if (this.agentName) formData.append('agent_name', this.agentName)
         if (this.topicSlug) formData.append('topic', this.topicSlug)
+        if (this.courtSlug) formData.append('court', this.courtSlug)
 
         const response = await fetch('/api/chat/stream/', {
           method: 'POST',
@@ -421,6 +422,7 @@ function createHomePage() {
 
     // --- Topic state ---
     topicSlug: '',
+    courtSlug: '',
     topicContext: '',
     _topicContextSent: false,
 
@@ -662,6 +664,7 @@ function createHomePage() {
       // Read config from data-* attributes
       this.agentName = this.$el.dataset.agentName || ''
       this.topicSlug = this.$el.dataset.topicSlug || ''
+      this.courtSlug = this.$el.dataset.courtSlug || ''
       const topicContextEl = document.getElementById('topic-context-data')
       this.topicContext = topicContextEl
         ? JSON.parse(topicContextEl.textContent)

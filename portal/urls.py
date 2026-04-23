@@ -12,6 +12,7 @@ urlpatterns = [
     path("privacy/", views.privacy, name="privacy"),
     path("accessibility/", views.accessibility, name="accessibility"),
     path("topics/<slug:slug>/", views.topic_detail, name="topic_detail"),
+    path("t/<slug:court>/<slug:topic>/", views.deep_link, name="deep_link"),
     path("chat/", views.chat_page, name="chat"),
     path("chat/action-plan/", action_plan, name="action_plan"),
     path("health/", views.health, name="health"),

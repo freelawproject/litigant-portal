@@ -1,8 +1,9 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpResponse
-from django.shortcuts import render
-from django.urls import reverse_lazy
+from django.shortcuts import redirect, render
+from django.urls import reverse, reverse_lazy
+from django.utils.http import urlencode
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView, UpdateView
@@ -187,6 +188,8 @@ def topic_detail(request, slug):
 
 def chat_page(request):
     """Chat page - AI-powered legal assistance chat interface."""
+    from chat.prompts import _COURT_PROMPTS, _load_court_prompts
+
     slug = request.GET.get("topic", "").strip()
     topic = TOPICS.get(slug) if slug else None
     topic_context = ""
@@ -195,6 +198,13 @@ def chat_page(request):
         for section in topic["context_sections"]:
             lines.append(f"{section['heading']}: {section['body']}")
         topic_context = "\n".join(lines)
+
+    court_slug = request.GET.get("court", "").strip().lower()
+    if court_slug:
+        _load_court_prompts()
+        if court_slug not in _COURT_PROMPTS:
+            court_slug = ""
+
     return render(
         request,
         "pages/chat.html",
@@ -202,8 +212,35 @@ def chat_page(request):
             "topic": topic,
             "topic_slug": slug if topic else "",
             "topic_context": topic_context,
+            "court_slug": court_slug,
         },
     )
+
+
+def deep_link(request, court, topic):
+    """Deep-link entry: /t/{court}/{topic}/ → chat with both pre-set.
+
+    Validates the pair against the prompt registries. Unknown court or
+    topic returns 404. On success, 302 to /chat/?topic=X&court=Y so the
+    existing chat page handles the heavy lifting.
+    """
+    from chat.prompts import (
+        _COURT_PROMPTS,
+        _TOPIC_PROMPTS,
+        _load_court_prompts,
+        _load_topic_prompts,
+    )
+
+    _load_topic_prompts()
+    _load_court_prompts()
+
+    if topic.lower() not in _TOPIC_PROMPTS:
+        raise Http404(f"Topic '{topic}' not registered")
+    if court.lower() not in _COURT_PROMPTS:
+        raise Http404(f"Court '{court}' not registered")
+
+    query = urlencode({"topic": topic.lower(), "court": court.lower()})
+    return redirect(f"{reverse('portal:chat')}?{query}")
 
 
 def test_agent(request, agent_name):
