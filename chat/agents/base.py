@@ -537,15 +537,20 @@ class Agent:
         if not session_id:
             topic = kwargs.pop("topic", "")
             jurisdiction = kwargs.pop("jurisdiction", "")
+            court = kwargs.pop("court", None)
+            phase = kwargs.pop("phase", None)
             session = ChatSession.objects.create(
                 user=user,
                 session_key=session_key,
                 topic=topic,
                 jurisdiction=jurisdiction,
             )
+            # New sessions start in triage unless explicitly overridden.
+            kwargs.setdefault("phase", phase or "triage")
             agent = cls(
                 session=session,
                 topic=topic,
+                court=court,
                 jurisdiction=jurisdiction,
                 **kwargs,
             )
@@ -572,6 +577,10 @@ class Agent:
                 kwargs.setdefault("topic", session.topic)
             if session.jurisdiction:
                 kwargs.setdefault("jurisdiction", session.jurisdiction)
+            # Derive current phase from session state (see chat.prompts.phase_for_session)
+            from chat.prompts import phase_for_session
+
+            kwargs.setdefault("phase", phase_for_session(session))
             agent = cls(session=session, messages=messages, **kwargs)
             return agent
 

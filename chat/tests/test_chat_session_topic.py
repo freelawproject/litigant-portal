@@ -74,19 +74,19 @@ class ChatSessionTopicServiceTests(TestCase):
         from chat.services.chat_service import ChatService
 
         request = self._make_request()
-        chat = ChatService(request, topic="housing")
+        chat = ChatService(request, topic="eviction")
 
         session = chat.agent.session
         session.refresh_from_db()
 
-        self.assertEqual(session.topic, "housing")
+        self.assertEqual(session.topic, "eviction")
 
     def test_new_session_persists_jurisdiction(self):
         """ChatService should save jurisdiction on the session when creating."""
         from chat.services.chat_service import ChatService
 
         request = self._make_request()
-        chat = ChatService(request, topic="housing")
+        chat = ChatService(request, topic="eviction")
 
         session = chat.agent.session
         session.refresh_from_db()
@@ -99,13 +99,13 @@ class ChatSessionTopicServiceTests(TestCase):
 
         request = self._make_request()
         # Create initial session with topic
-        chat = ChatService(request, topic="housing")
+        chat = ChatService(request, topic="eviction")
         session_id = chat.agent.session.id
 
         # Resume without passing topic
         chat2 = ChatService(request, session_id=session_id)
 
-        self.assertEqual(chat2.agent.session.topic, "housing")
+        self.assertEqual(chat2.agent.session.topic, "eviction")
         self.assertEqual(chat2.agent.session.jurisdiction, "il")
 
     def test_no_topic_creates_generic_session(self):

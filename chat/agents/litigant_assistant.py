@@ -375,12 +375,13 @@ class UpdateActionPlan(Tool):
 class LitigantAssistantAgent(Agent):
     """Main agent for the litigant portal assistant.
 
-    System prompt is composed from base + optional topic/jurisdiction layers
-    via chat.prompts.build_system_prompt(). For the beta demo, the eviction/IL
-    layer bakes domain knowledge directly into the prompt ("fake RAG").
+    System prompt is composed from Base + Phase + Topic + Court layers via
+    chat.prompts.build_system_prompt(). See docs/prompts-as-infra.md for the
+    architectural principle.
 
-    Topic and jurisdiction can be passed as kwargs to from_session_id() or
-    __init__() to activate topic-specific prompt layers.
+    Phase, topic, and court can be passed as kwargs to from_session_id() or
+    __init__() to activate the corresponding prompt layers. ``jurisdiction``
+    is accepted as a deprecated alias for ``court`` (see #314).
     """
 
     default_tools = [UpdateCaseFacts, UpdateActionPlan]
@@ -388,14 +389,21 @@ class LitigantAssistantAgent(Agent):
 
     def __init__(
         self,
+        phase: str | None = None,
         topic: str | None = None,
+        court: str | None = None,
         jurisdiction: str | None = None,
         **kwargs,
     ):
-        if topic or jurisdiction:
+        if any((phase, topic, court, jurisdiction)):
             prompt = build_system_prompt(
-                topic=topic, jurisdiction=jurisdiction
+                phase=phase or "triage",
+                topic=topic,
+                court=court,
+                jurisdiction=jurisdiction,
             )
-            if "messages" not in kwargs:
-                kwargs["messages"] = [{"role": "system", "content": prompt}]
+            kwargs.setdefault(
+                "messages",
+                [{"role": "system", "content": prompt}],
+            )
         super().__init__(**kwargs)

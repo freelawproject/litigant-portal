@@ -16,6 +16,14 @@ logger = logging.getLogger(__name__)
 class ChatService:
     """Service for managing a chat conversation."""
 
+    # Temporary topic → default jurisdiction map. Replaced when
+    # #179 (court-configurable context) lands and the deep-link / topic-card
+    # carries jurisdiction through the request.
+    _DEFAULT_JURISDICTION_FOR_TOPIC: dict[str, str] = {
+        "eviction": "il",
+        "adult_name_change": "nd",
+    }
+
     def __init__(
         self,
         request: HttpRequest,
@@ -28,9 +36,11 @@ class ChatService:
         agent_kwargs = {}
         if topic:
             agent_kwargs["topic"] = topic
-            # TODO: #179 — jurisdiction will become dynamic when
-            # court-configurable context lands.
-            agent_kwargs["jurisdiction"] = "il"
+            jurisdiction = self._DEFAULT_JURISDICTION_FOR_TOPIC.get(topic)
+            if jurisdiction:
+                agent_kwargs["jurisdiction"] = jurisdiction
+        # Phase is derived from session state inside from_session_id for
+        # existing sessions; new sessions default to "triage" there.
         self.agent = agent_class.from_session_id(
             request, session_id, **agent_kwargs
         )
