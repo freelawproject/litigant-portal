@@ -11,4 +11,49 @@
 {% endblock meta_description %}
 
 {% block content %}
+  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+    <h1 class="text-3xl font-bold text-greyscale-900">{% trans "Admin" %}</h1>
+    <p class="mt-2 text-greyscale-600">
+      {% trans "Manage site-wide settings and configuration." %}
+    </p>
+    <div class="mt-8 space-y-4">
+      <a href="{% url 'admin_site:site_edit' %}"
+         class="block rounded-lg border border-greyscale-200 bg-white p-6 transition-colors hover:border-primary-300 hover:bg-primary-25">
+        <div class="flex items-start gap-4">
+          <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700 flex-shrink-0">
+            <c-atoms.icon name="building-library" class="w-6 h-6" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <h2 class="text-lg font-semibold text-greyscale-900">{% trans "Site settings" %}</h2>
+            {% trans "not set" as not_set %}
+            <p class="mt-1 text-sm text-greyscale-600">
+              {% blocktrans with court=site.court_name|default:not_set %}Court name: <span class="font-medium text-greyscale-800">{{ court }}</span>{% endblocktrans %}
+            </p>
+          </div>
+          <c-atoms.icon name="chevron-right" class="w-5 h-5 text-greyscale-400 flex-shrink-0" />
+        </div>
+      </a>
+      <a href="{% url 'admin_site:chat_model_list' %}"
+         class="block rounded-lg border border-greyscale-200 bg-white p-6 transition-colors hover:border-primary-300 hover:bg-primary-25">
+        <div class="flex items-start gap-4">
+          <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700 flex-shrink-0">
+            <c-atoms.icon name="cpu-chip" class="w-6 h-6" />
+          </div>
+          <div class="flex-1 min-w-0">
+            <h2 class="text-lg font-semibold text-greyscale-900">{% trans "Chat models" %}</h2>
+            <p class="mt-1 text-sm text-greyscale-600">
+              {% if site.chat_model %}
+                {% blocktrans with name=site.chat_model.name %}Active: <span class="font-medium text-greyscale-800">{{ name }}</span>{% endblocktrans %}
+              {% else %}
+                <span class="text-greyscale-500">{% trans "Chat is disabled — no model selected" %}</span>
+              {% endif %}
+              <span class="text-greyscale-400">·</span>
+              {% blocktrans count count=chat_model_count %}{{ count }} model configured{% plural %}{{ count }} models configured{% endblocktrans %}
+            </p>
+          </div>
+          <c-atoms.icon name="chevron-right" class="w-5 h-5 text-greyscale-400 flex-shrink-0" />
+        </div>
+      </a>
+    </div>
+  </div>
 {% endblock content %}

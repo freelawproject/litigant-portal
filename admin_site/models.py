@@ -11,7 +11,6 @@ class ChatModel(models.Model):
 
 class Site(models.Model):
     court_name = models.CharField(max_length=255, blank=True)
-    chat_enabled = models.BooleanField(default=True)
     chat_model = models.ForeignKey(
         ChatModel,
         null=True,
