@@ -8,94 +8,91 @@
 
 {% block content %}
   <c-organisms.admin-shell active_tab="users">
-  <div x-data="adminUsers" data-url="{% url 'admin_site:users_data' %}">
-    <div class="flex items-baseline gap-3 mb-2">
+  <div x-data="adminUsers" data-url="{% url 'admin_site:users_data' %}" class="max-w-5xl space-y-6">
+    <header class="flex items-baseline gap-3 flex-wrap">
       <h1 class="text-2xl font-semibold text-greyscale-900">{% trans "Users" %}</h1>
       <span class="text-sm text-greyscale-500">
         <span x-text="total"></span> {% trans "total" %}
       </span>
-    </div>
-    <p class="text-greyscale-600 mb-6">
-      {% trans "Browse registered accounts. Filter by email and page through results." %}
-    </p>
-
-    {# Search #}
-    {% trans "Search by email…" as search_placeholder %}
-    <div class="flex mb-4">
-      <c-atoms.search-input placeholder="{{ search_placeholder }}" x-bind:value="query" x-on:input="onQueryInput" />
-    </div>
+    </header>
 
     {# Error banner #}
     <template x-if="hasError">
-      <c-atoms.alert variant="danger" class="mb-4">
+      <c-atoms.alert variant="danger">
       <p x-text="error"></p>
       </c-atoms.alert>
     </template>
 
-    {# Results summary #}
-    <div class="flex items-center justify-between text-sm text-greyscale-500 mb-3">
-      <span x-text="summaryText"></span>
-      <span x-show="loading" class="inline-flex items-center gap-1.5 text-greyscale-400">
-        <c-atoms.icon name="arrow-path" class="w-4 h-4 animate-spin" />
-        {% trans "Loading…" %}
-      </span>
-    </div>
-
-    {# Empty state #}
-    <template x-if="isEmpty">
-      <div class="rounded-lg border border-dashed border-greyscale-300 bg-white p-10 text-center">
-        <c-atoms.icon name="users" class="w-10 h-10 text-greyscale-300 mx-auto mb-3" />
-        <p class="text-sm font-medium text-greyscale-700">{% trans "No users match" %}</p>
-        <p class="mt-1 text-sm text-greyscale-500">{% trans "Try a different search." %}</p>
+    <section class="rounded-lg border border-greyscale-200 bg-white overflow-hidden">
+      {# Card header: search + result summary #}
+      <div class="px-6 py-4 border-b border-greyscale-200 space-y-3">
+        {% trans "Search by email…" as search_placeholder %}
+        <c-atoms.search-input placeholder="{{ search_placeholder }}" x-bind:value="query" x-on:input="onQueryInput" />
+        <div class="flex items-center justify-between text-sm text-greyscale-500">
+          <span x-text="summaryText"></span>
+          <span x-show="loading" class="inline-flex items-center gap-1.5 text-greyscale-400">
+            <c-atoms.icon name="arrow-path" class="w-4 h-4 animate-spin" />
+            {% trans "Loading…" %}
+          </span>
+        </div>
       </div>
-    </template>
 
-    {# Results — connected rows in a single bordered container #}
-    <template x-if="hasResults">
-      <div class="rounded-lg border border-greyscale-200 bg-white divide-y divide-greyscale-200 mb-6">
-        <template x-for="user in users" :key="user.id">
-          <div class="flex items-center justify-between gap-4 px-4 py-3 flex-wrap">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span class="font-medium text-greyscale-900 break-all" x-text="user.email"></span>
-                <template x-if="user.isSuperuser">
-                  <c-atoms.badge variant="completed">{% trans "Superuser" %}</c-atoms.badge>
-                </template>
-                <template x-if="user.isStaffOnly">
-                  <c-atoms.badge variant="info">{% trans "Staff" %}</c-atoms.badge>
-                </template>
-                <template x-if="user.isInactive">
-                  <c-atoms.badge variant="urgent">{% trans "Inactive" %}</c-atoms.badge>
-                </template>
-              </div>
-              <div class="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-greyscale-500">
-                <span>
-                  {% trans "Joined" %}
-                  <span class="text-greyscale-700" x-text="user.dateJoinedFormatted"></span>
-                </span>
-                <span>
-                  {% trans "Last seen" %}
-                  <span class="text-greyscale-700" x-text="user.lastLoginFormatted"></span>
-                </span>
+      {# Empty state #}
+      <template x-if="isEmpty">
+        <div class="px-6 py-12 text-center">
+          <c-atoms.icon name="users" class="w-10 h-10 text-greyscale-300 mx-auto mb-3" />
+          <p class="text-sm font-medium text-greyscale-700">{% trans "No users match" %}</p>
+          <p class="mt-1 text-sm text-greyscale-500">{% trans "Try a different search." %}</p>
+        </div>
+      </template>
+
+      {# Results #}
+      <template x-if="hasResults">
+        <div class="divide-y divide-greyscale-200">
+          <template x-for="user in users" :key="user.id">
+            <div class="flex items-center justify-between gap-4 px-6 py-4 flex-wrap">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-medium text-greyscale-900 break-all" x-text="user.email"></span>
+                  <template x-if="user.isSuperuser">
+                    <c-atoms.badge variant="completed">{% trans "Superuser" %}</c-atoms.badge>
+                  </template>
+                  <template x-if="user.isStaffOnly">
+                    <c-atoms.badge variant="info">{% trans "Staff" %}</c-atoms.badge>
+                  </template>
+                  <template x-if="user.isInactive">
+                    <c-atoms.badge variant="urgent">{% trans "Inactive" %}</c-atoms.badge>
+                  </template>
+                </div>
+                <div class="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-greyscale-500">
+                  <span>
+                    {% trans "Joined" %}
+                    <span class="text-greyscale-700" x-text="user.dateJoinedFormatted"></span>
+                  </span>
+                  <span>
+                    {% trans "Last seen" %}
+                    <span class="text-greyscale-700" x-text="user.lastLoginFormatted"></span>
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-        </template>
-      </div>
-    </template>
+          </template>
+        </div>
+      </template>
 
-    {# Pagination #}
-    <div class="flex items-center justify-between gap-3 pt-2">
-      <c-atoms.button type="button" variant="outline" size="sm" x-on:click="prevPage" x-bind:disabled="prevDisabled">
-      <c-atoms.icon name="chevron-left" class="w-4 h-4" />
-      {% trans "Previous" %}
-      </c-atoms.button>
-      <span class="text-sm text-greyscale-500" x-text="pageLabel"></span>
-      <c-atoms.button type="button" variant="outline" size="sm" x-on:click="nextPage" x-bind:disabled="nextDisabled">
-      {% trans "Next" %}
-      <c-atoms.icon name="chevron-right" class="w-4 h-4" />
-      </c-atoms.button>
-    </div>
+      {# Pagination footer #}
+      <div class="flex items-center justify-between gap-3 px-6 py-3 bg-greyscale-50 border-t border-greyscale-200">
+        <c-atoms.button type="button" variant="outline" size="sm" x-on:click="prevPage" x-bind:disabled="prevDisabled">
+        <c-atoms.icon name="chevron-left" class="w-4 h-4" />
+        {% trans "Previous" %}
+        </c-atoms.button>
+        <span class="text-sm text-greyscale-500" x-text="pageLabel"></span>
+        <c-atoms.button type="button" variant="outline" size="sm" x-on:click="nextPage" x-bind:disabled="nextDisabled">
+        {% trans "Next" %}
+        <c-atoms.icon name="chevron-right" class="w-4 h-4" />
+        </c-atoms.button>
+      </div>
+    </section>
   </div>
   </c-organisms.admin-shell>
 {% endblock content %}
