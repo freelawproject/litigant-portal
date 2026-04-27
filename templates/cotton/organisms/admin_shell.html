@@ -3,12 +3,11 @@
 <c-vars active_tab="settings" />
 
 <div class="max-w-6xl mx-auto px-4 py-6 sm:py-8">
-  <div class="flex flex-col gap-6 md:flex-row md:gap-8">
-    <aside class="md:w-56 md:flex-shrink-0">
-      <nav class="flex md:flex-col gap-1 overflow-x-auto md:overflow-visible -mx-4 px-4 md:mx-0 md:px-0"
-           aria-label="{% trans 'Admin sections' %}">
-        {% with item_base="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap" %}
-        {% with item_active="bg-primary-50 text-primary-700" item_idle="text-greyscale-700 hover:bg-greyscale-100" %}
+  <div class="flex flex-col gap-6 md:flex-row md:gap-0">
+    <aside class="md:w-56 md:flex-shrink-0 md:border-r md:border-greyscale-200 md:pr-6">
+      <nav class="flex flex-col gap-1" aria-label="{% trans 'Admin sections' %}">
+        {% with item_base="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors" %}
+        {% with item_active="bg-greyscale-100 text-greyscale-900" item_idle="text-greyscale-600 hover:bg-greyscale-50 hover:text-greyscale-900" %}
         <a href="{% url 'admin_site:index' %}"
            class="{{ item_base }} {% if active_tab == 'settings' %}{{ item_active }}{% else %}{{ item_idle }}{% endif %}"
            {% if active_tab == 'settings' %}aria-current="page"{% endif %}>
@@ -25,6 +24,6 @@
         {% endwith %}
       </nav>
     </aside>
-    <div class="flex-1 min-w-0">{{ slot }}</div>
+    <div class="flex-1 min-w-0 md:pl-6">{{ slot }}</div>
   </div>
 </div>

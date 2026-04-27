@@ -15,41 +15,20 @@ USERS_PAGE_SIZE = 25
 @superuser_required
 def index(request):
     site = Site.load()
-    return render(
-        request,
-        "pages/admin/index.html",
-        {
-            "site": site,
-            "chat_model_count": ChatModel.objects.count(),
-        },
-    )
-
-
-@superuser_required
-def site_edit(request):
-    site = Site.load()
     if request.method == "POST":
         form = SiteForm(request.POST, instance=site)
         if form.is_valid():
             form.save()
-            messages.success(request, _("Site settings saved."))
+            messages.success(request, _("Settings saved."))
             return redirect("admin_site:index")
     else:
         form = SiteForm(instance=site)
     return render(
         request,
-        "pages/admin/site_edit.html",
-        {"form": form, "site": site},
-    )
-
-
-@superuser_required
-def chat_model_list(request):
-    site = Site.load()
-    return render(
-        request,
-        "pages/admin/chat_model_list.html",
+        "pages/admin/index.html",
         {
+            "site": site,
+            "form": form,
             "chat_models": ChatModel.objects.order_by("name"),
             "active_model": site.chat_model,
         },
@@ -66,7 +45,7 @@ def chat_model_create(request):
                 request,
                 _("Added chat model “%(name)s”.") % {"name": obj.name},
             )
-            return redirect("admin_site:chat_model_list")
+            return redirect("admin_site:index")
     else:
         form = ChatModelForm()
     return render(
@@ -88,7 +67,7 @@ def chat_model_activate(request, pk):
         request,
         _("Activated “%(name)s” for chat.") % {"name": chat_model.name},
     )
-    return redirect("admin_site:chat_model_list")
+    return redirect("admin_site:index")
 
 
 @superuser_required
@@ -99,7 +78,7 @@ def chat_model_deactivate(request):
     site.chat_model = None
     site.save()
     messages.success(request, _("Chat disabled."))
-    return redirect("admin_site:chat_model_list")
+    return redirect("admin_site:index")
 
 
 @superuser_required
@@ -112,7 +91,7 @@ def chat_model_delete(request, pk):
     messages.success(
         request, _("Removed chat model “%(name)s”.") % {"name": name}
     )
-    return redirect("admin_site:chat_model_list")
+    return redirect("admin_site:index")
 
 
 @superuser_required

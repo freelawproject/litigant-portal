@@ -10,9 +10,9 @@
   <c-organisms.admin-shell active_tab="settings">
   <div class="max-w-2xl">
     <nav class="mb-6">
-      <c-atoms.link href="{% url 'admin_site:chat_model_list' %}" class="inline-flex items-center gap-1 text-sm">
+      <c-atoms.link href="{% url 'admin_site:index' %}" class="inline-flex items-center gap-1 text-sm">
       <c-atoms.icon name="arrow-left" class="w-4 h-4" />
-      {% trans "Back to chat models" %}
+      {% trans "Back to settings" %}
       </c-atoms.link>
     </nav>
     <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Add chat model" %}</h1>
@@ -49,7 +49,7 @@
       />
       <div class="flex flex-col sm:flex-row gap-3 pt-2">
         <c-atoms.button type="submit" variant="primary" size="xl">{% trans "Add model" %}</c-atoms.button>
-        <c-atoms.button href="{% url 'admin_site:chat_model_list' %}" variant="ghost" size="xl">{% trans "Cancel" %}</c-atoms.button>
+        <c-atoms.button href="{% url 'admin_site:index' %}" variant="ghost" size="xl">{% trans "Cancel" %}</c-atoms.button>
       </div>
     </form>
   </div>

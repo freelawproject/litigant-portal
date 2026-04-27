@@ -161,10 +161,8 @@ document.addEventListener('alpine:init', () => {
     loading: false,
     loaded: false,
     searchTimer: null,
-    dataUrl: '',
 
     init() {
-      this.dataUrl = this.$el.dataset.url || '/admin/users/data/'
       this.fetch()
     },
 
@@ -180,12 +178,19 @@ document.addEventListener('alpine:init', () => {
     async fetch() {
       this.loading = true
       try {
+        const url = this.$el.dataset.url || '/admin/users/data/'
         const params = new URLSearchParams({
           q: this.query,
           page: String(this.page),
         })
-        const response = await fetch(`${this.dataUrl}?${params.toString()}`)
-        if (!response.ok) return
+        const response = await fetch(`${url}?${params.toString()}`, {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+        })
+        if (!response.ok) {
+          console.error('Users fetch failed:', response.status)
+          return
+        }
         const data = await response.json()
         this.users = (data.users || []).map((u) => ({
           ...u,

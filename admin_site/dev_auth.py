@@ -28,6 +28,11 @@ def ensure_dev_superuser():
             password=password,
         )
         logger.info("Created dev superuser %s", email)
+    elif not (user.is_staff and user.is_superuser):
+        user.is_staff = True
+        user.is_superuser = True
+        user.save(update_fields=["is_staff", "is_superuser"])
+        logger.info("Promoted existing user %s to superuser", email)
 
     EmailAddress.objects.get_or_create(
         user=user,

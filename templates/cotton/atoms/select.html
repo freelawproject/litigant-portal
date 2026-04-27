@@ -6,7 +6,7 @@
   <select {% if name %}name="{{ name }}"{% endif %}
           {% if id %}id="{{ id }}"{% endif %}
           {% if disabled %}disabled{% endif %}
-          {% if required %}required{% endif %}
+          {% if required and required != 'false' %}required{% endif %}
           {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
           {% if aria_describedby %}aria-describedby="{{ aria_describedby }}"{% endif %}
           {% if error %}aria-invalid="true"{% endif %}

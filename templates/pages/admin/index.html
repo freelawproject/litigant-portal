@@ -12,50 +12,108 @@
 
 {% block content %}
   <c-organisms.admin-shell active_tab="settings">
-  <div class="max-w-2xl">
-    <h1 class="text-2xl font-semibold text-greyscale-900">{% trans "Settings" %}</h1>
-    <p class="mt-2 text-greyscale-600">
-      {% trans "Manage site-wide settings and configuration." %}
-    </p>
-    <div class="mt-8 space-y-4">
-      <a href="{% url 'admin_site:site_edit' %}"
-         class="block rounded-lg border border-greyscale-200 bg-white p-6 transition-colors hover:border-primary-300 hover:bg-primary-25">
-        <div class="flex items-start gap-4">
-          <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700 flex-shrink-0">
-            <c-atoms.icon name="building-library" class="w-6 h-6" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <h2 class="text-lg font-semibold text-greyscale-900">{% trans "Site settings" %}</h2>
-            {% trans "not set" as not_set %}
-            <p class="mt-1 text-sm text-greyscale-600">
-              {% blocktrans with court=site.court_name|default:not_set %}Court name: <span class="font-medium text-greyscale-800">{{ court }}</span>{% endblocktrans %}
-            </p>
-          </div>
-          <c-atoms.icon name="chevron-right" class="w-5 h-5 text-greyscale-400 flex-shrink-0" />
+  <div class="max-w-2xl space-y-12">
+    {# ---------- Site settings ---------- #}
+    <section>
+      <h1 class="text-2xl font-semibold text-greyscale-900">{% trans "Settings" %}</h1>
+      <p class="mt-2 text-greyscale-600">
+        {% trans "Configure court branding for chat sessions." %}
+      </p>
+      <c-molecules.form-errors :form="form" class="mt-6" />
+      <form method="post" action="{% url 'admin_site:index' %}" class="mt-6 space-y-6">
+        {% csrf_token %}
+        {% trans "Court name" as court_name_label %}
+        {% trans "Shown in the chat sub-header for court-branded sessions." as court_name_help %}
+        <c-molecules.form-field
+          label="{{ court_name_label }}"
+          type="text"
+          name="court_name"
+          id="id_court_name"
+          placeholder="{{ form.court_name.field.widget.attrs.placeholder }}"
+          value="{{ form.court_name.value|default:'' }}"
+          help_text="{{ court_name_help }}"
+          :errors="form.court_name.errors"
+        />
+        <c-atoms.button type="submit" variant="primary">{% trans "Save" %}</c-atoms.button>
+      </form>
+    </section>
+
+    {# ---------- Chat models ---------- #}
+    <section>
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h2 class="text-lg font-semibold text-greyscale-900">{% trans "Chat models" %}</h2>
+          <p class="mt-1 text-sm text-greyscale-600">
+            {% trans "Pick which model powers the AI chat. With no active model, chat is disabled." %}
+          </p>
         </div>
-      </a>
-      <a href="{% url 'admin_site:chat_model_list' %}"
-         class="block rounded-lg border border-greyscale-200 bg-white p-6 transition-colors hover:border-primary-300 hover:bg-primary-25">
-        <div class="flex items-start gap-4">
-          <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-brand-100 text-brand-700 flex-shrink-0">
-            <c-atoms.icon name="cpu-chip" class="w-6 h-6" />
+        <c-atoms.button href="{% url 'admin_site:chat_model_create' %}" variant="primary" size="sm">
+        <c-atoms.icon name="plus" class="w-4 h-4" />
+        {% trans "Add model" %}
+        </c-atoms.button>
+      </div>
+
+      {% if chat_models %}
+        <ul class="mt-4 space-y-3">
+          {% for model in chat_models %}
+            {% if active_model and active_model.pk == model.pk %}
+              <li class="rounded-lg border-2 border-primary-500 bg-primary-25 p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-semibold text-greyscale-900">{{ model.name }}</span>
+                      <c-atoms.badge variant="completed">
+                      <c-atoms.icon name="check" class="w-3 h-3" />
+                      {% trans "Active" %}
+                      </c-atoms.badge>
+                    </div>
+                    <p class="mt-1 text-sm font-mono text-greyscale-600 break-all">{{ model.slug }}</p>
+                  </div>
+                  <form method="post" action="{% url 'admin_site:chat_model_deactivate' %}" class="flex-shrink-0">
+                    {% csrf_token %}
+                    <c-atoms.button type="submit" variant="ghost" size="sm">{% trans "Deactivate" %}</c-atoms.button>
+                  </form>
+                </div>
+              </li>
+            {% else %}
+              <li class="rounded-lg border border-greyscale-200 bg-white p-4">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="min-w-0">
+                    <span class="font-semibold text-greyscale-900">{{ model.name }}</span>
+                    <p class="mt-1 text-sm font-mono text-greyscale-600 break-all">{{ model.slug }}</p>
+                  </div>
+                  <div class="flex items-center gap-2 flex-shrink-0">
+                    <form method="post" action="{% url 'admin_site:chat_model_activate' pk=model.pk %}">
+                      {% csrf_token %}
+                      <c-atoms.button type="submit" variant="outline" size="sm">{% trans "Activate" %}</c-atoms.button>
+                    </form>
+                    {% trans "Remove model" as remove_label %}
+                    <form method="post" action="{% url 'admin_site:chat_model_delete' pk=model.pk %}">
+                      {% csrf_token %}
+                      <c-atoms.button type="submit" variant="ghost" size="icon" aria_label="{{ remove_label }}" class="text-greyscale-500 hover:text-red-600">
+                      <c-atoms.icon name="trash" class="w-4 h-4" />
+                      </c-atoms.button>
+                    </form>
+                  </div>
+                </div>
+              </li>
+            {% endif %}
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="mt-4 rounded-lg border border-dashed border-greyscale-300 bg-white p-10 text-center">
+          <c-atoms.icon name="cpu-chip" class="w-10 h-10 text-greyscale-300 mx-auto mb-3" />
+          <p class="text-sm font-medium text-greyscale-700">{% trans "No chat models yet" %}</p>
+          <p class="mt-1 text-sm text-greyscale-500">{% trans "Add a model to enable AI chat for users." %}</p>
+          <div class="mt-4 flex justify-center">
+            <c-atoms.button href="{% url 'admin_site:chat_model_create' %}" variant="primary" size="sm">
+            <c-atoms.icon name="plus" class="w-4 h-4" />
+            {% trans "Add your first model" %}
+            </c-atoms.button>
           </div>
-          <div class="flex-1 min-w-0">
-            <h2 class="text-lg font-semibold text-greyscale-900">{% trans "Chat models" %}</h2>
-            <p class="mt-1 text-sm text-greyscale-600">
-              {% if site.chat_model %}
-                {% blocktrans with name=site.chat_model.name %}Active: <span class="font-medium text-greyscale-800">{{ name }}</span>{% endblocktrans %}
-              {% else %}
-                <span class="text-greyscale-500">{% trans "Chat is disabled — no model selected" %}</span>
-              {% endif %}
-              <span class="text-greyscale-400">·</span>
-              {% blocktrans count count=chat_model_count %}{{ count }} model configured{% plural %}{{ count }} models configured{% endblocktrans %}
-            </p>
-          </div>
-          <c-atoms.icon name="chevron-right" class="w-5 h-5 text-greyscale-400 flex-shrink-0" />
         </div>
-      </a>
-    </div>
+      {% endif %}
+    </section>
   </div>
   </c-organisms.admin-shell>
 {% endblock content %}

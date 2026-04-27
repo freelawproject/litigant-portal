@@ -6,8 +6,6 @@ app_name = "admin_site"
 
 urlpatterns = [
     path("", views.index, name="index"),
-    path("site/", views.site_edit, name="site_edit"),
-    path("chat-models/", views.chat_model_list, name="chat_model_list"),
     path(
         "chat-models/new/",
         views.chat_model_create,
