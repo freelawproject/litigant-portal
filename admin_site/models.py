@@ -9,7 +9,7 @@ class ChatModel(models.Model):
         return self.name
 
 
-class Settings(models.Model):
+class Site(models.Model):
     court_name = models.CharField(max_length=255, blank=True)
     chat_enabled = models.BooleanField(default=True)
     chat_model = models.ForeignKey(
@@ -21,11 +21,11 @@ class Settings(models.Model):
     )
 
     class Meta:
-        verbose_name = "Settings"
-        verbose_name_plural = "Settings"
+        verbose_name = "Site"
+        verbose_name_plural = "Site"
 
     def __str__(self):
-        return "Site settings"
+        return self.court_name or "Site"
 
     def save(self, *args, **kwargs):
         self.pk = 1
