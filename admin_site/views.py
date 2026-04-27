@@ -1,15 +1,14 @@
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import reverse
 from django.utils.translation import gettext as _
 
+from .decorators import superuser_required
 from .forms import ChatModelForm, SiteForm
 from .models import ChatModel, Site
 
 
-@staff_member_required(login_url="/accounts/login/")
+@superuser_required
 def index(request):
     site = Site.load()
     return render(
@@ -22,7 +21,7 @@ def index(request):
     )
 
 
-@staff_member_required(login_url="/accounts/login/")
+@superuser_required
 def site_edit(request):
     site = Site.load()
     if request.method == "POST":
@@ -40,7 +39,7 @@ def site_edit(request):
     )
 
 
-@staff_member_required(login_url="/accounts/login/")
+@superuser_required
 def chat_model_list(request):
     site = Site.load()
     return render(
@@ -53,7 +52,7 @@ def chat_model_list(request):
     )
 
 
-@staff_member_required(login_url="/accounts/login/")
+@superuser_required
 def chat_model_create(request):
     if request.method == "POST":
         form = ChatModelForm(request.POST)
@@ -73,7 +72,7 @@ def chat_model_create(request):
     )
 
 
-@staff_member_required(login_url="/accounts/login/")
+@superuser_required
 def chat_model_activate(request, pk):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -88,7 +87,7 @@ def chat_model_activate(request, pk):
     return redirect("admin_site:chat_model_list")
 
 
-@staff_member_required(login_url="/accounts/login/")
+@superuser_required
 def chat_model_deactivate(request):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -99,7 +98,7 @@ def chat_model_deactivate(request):
     return redirect("admin_site:chat_model_list")
 
 
-@staff_member_required(login_url="/accounts/login/")
+@superuser_required
 def chat_model_delete(request, pk):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])

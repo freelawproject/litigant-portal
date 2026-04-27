@@ -20,9 +20,16 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.i18n import JavaScriptCatalog
 
+from admin_site.dev_auth import DevAwareLoginView
+
 urlpatterns = [
     path("django/admin/", admin.site.urls),
     path("admin/", include("admin_site.urls")),
+    path(
+        "accounts/login/",
+        DevAwareLoginView.as_view(),
+        name="account_login",
+    ),
     path("accounts/", include("allauth.urls")),
     path("api/chat/", include("chat.urls")),
     path("i18n/", include("django.conf.urls.i18n")),

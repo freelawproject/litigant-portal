@@ -65,6 +65,9 @@ services:
       - POSTGRES_HOST=postgres-dev
       - POSTGRES_PASSWORD=postgres
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
+      # Dev superuser auto-bootstrap (lazily created on first login page hit)
+      - DEV_EMAIL=dev@free.law
+      - DEV_PASSWORD=dev
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
       - CHAT_MODEL=openai/gpt-4o-mini
