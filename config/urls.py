@@ -21,7 +21,8 @@ from django.urls import include, path
 from django.views.i18n import JavaScriptCatalog
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("django/admin/", admin.site.urls),
+    path("admin/", include("admin_site.urls")),
     path("accounts/", include("allauth.urls")),
     path("api/chat/", include("chat.urls")),
     path("i18n/", include("django.conf.urls.i18n")),

@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "portal",
     "litigant_portal",
     "chat",
+    "admin_site",
 ]
 
 MIDDLEWARE = [
