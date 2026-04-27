@@ -146,6 +146,20 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
+  // Chat model manager modal (admin Settings page)
+  // ===========================================================================
+
+  Alpine.data('chatModelManager', () => ({
+    isOpen: false,
+    open() {
+      this.isOpen = true
+    },
+    close() {
+      this.isOpen = false
+    },
+  }))
+
+  // ===========================================================================
   // Admin users list (search + pagination)
   // ===========================================================================
 

@@ -37,47 +37,17 @@ def index(request):
 
 @admin_required
 def chat_model_create(request):
-    if request.method == "POST":
-        form = ChatModelForm(request.POST)
-        if form.is_valid():
-            obj = form.save()
-            messages.success(
-                request,
-                _("Added chat model “%(name)s”.") % {"name": obj.name},
-            )
-            return redirect("admin_site:index")
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    form = ChatModelForm(request.POST)
+    if form.is_valid():
+        obj = form.save()
+        messages.success(
+            request,
+            _("Added chat model “%(name)s”.") % {"name": obj.name},
+        )
     else:
-        form = ChatModelForm()
-    return render(
-        request,
-        "pages/admin/chat_model_form.html",
-        {"form": form},
-    )
-
-
-@admin_required
-def chat_model_activate(request, pk):
-    if request.method != "POST":
-        return HttpResponseNotAllowed(["POST"])
-    chat_model = get_object_or_404(ChatModel, pk=pk)
-    site = Site.load()
-    site.chat_model = chat_model
-    site.save()
-    messages.success(
-        request,
-        _("Activated “%(name)s” for chat.") % {"name": chat_model.name},
-    )
-    return redirect("admin_site:index")
-
-
-@admin_required
-def chat_model_deactivate(request):
-    if request.method != "POST":
-        return HttpResponseNotAllowed(["POST"])
-    site = Site.load()
-    site.chat_model = None
-    site.save()
-    messages.success(request, _("Chat disabled."))
+        messages.error(request, _("Could not add model — check the fields."))
     return redirect("admin_site:index")
 
 
