@@ -96,7 +96,12 @@ def chat_model_delete(request, pk):
 
 @admin_required
 def users(request):
-    return render(request, "pages/admin/users.html")
+    User = get_user_model()
+    return render(
+        request,
+        "pages/admin/users.html",
+        {"total_users": User.objects.count()},
+    )
 
 
 @admin_required

@@ -12,7 +12,7 @@
     <div class="flex items-baseline gap-3 mb-2">
       <h1 class="text-2xl font-semibold text-greyscale-900">{% trans "Users" %}</h1>
       <span class="text-sm text-greyscale-500">
-        <span x-text="total"></span> {% trans "total" %}
+        {% blocktrans count counter=total_users %}{{ counter }} total{% plural %}{{ counter }} total{% endblocktrans %}
       </span>
     </div>
     <p class="text-greyscale-600 mb-6">
