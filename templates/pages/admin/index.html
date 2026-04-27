@@ -3,7 +3,7 @@
 {% load i18n %}
 
 {% block title %}
-  {% trans "Admin" %} - {% trans "Litigant Portal" %}
+  {% trans "Settings" %} - {% trans "Admin" %} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
 {% block meta_description %}
@@ -11,8 +11,9 @@
 {% endblock meta_description %}
 
 {% block content %}
-  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
-    <h1 class="text-3xl font-bold text-greyscale-900">{% trans "Admin" %}</h1>
+  <c-organisms.admin-shell active_tab="settings">
+  <div class="max-w-2xl">
+    <h1 class="text-2xl font-semibold text-greyscale-900">{% trans "Settings" %}</h1>
     <p class="mt-2 text-greyscale-600">
       {% trans "Manage site-wide settings and configuration." %}
     </p>
@@ -56,4 +57,5 @@
       </a>
     </div>
   </div>
+  </c-organisms.admin-shell>
 {% endblock content %}

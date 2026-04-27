@@ -7,7 +7,8 @@
 {% endblock title %}
 
 {% block content %}
-  <div class="max-w-2xl mx-auto px-4 py-8">
+  <c-organisms.admin-shell active_tab="settings">
+  <div class="max-w-2xl">
     <nav class="mb-6">
       <c-atoms.link href="{% url 'admin_site:chat_model_list' %}" class="inline-flex items-center gap-1 text-sm">
       <c-atoms.icon name="arrow-left" class="w-4 h-4" />
@@ -52,4 +53,5 @@
       </div>
     </form>
   </div>
+  </c-organisms.admin-shell>
 {% endblock content %}

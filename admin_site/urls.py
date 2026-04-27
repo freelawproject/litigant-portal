@@ -28,4 +28,6 @@ urlpatterns = [
         views.chat_model_delete,
         name="chat_model_delete",
     ),
+    path("users/", views.users, name="users"),
+    path("users/data/", views.users_data, name="users_data"),
 ]

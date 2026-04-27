@@ -7,11 +7,12 @@
 {% endblock title %}
 
 {% block content %}
-  <div class="max-w-2xl mx-auto px-4 py-8">
+  <c-organisms.admin-shell active_tab="settings">
+  <div class="max-w-2xl">
     <nav class="mb-6">
       <c-atoms.link href="{% url 'admin_site:index' %}" class="inline-flex items-center gap-1 text-sm">
       <c-atoms.icon name="arrow-left" class="w-4 h-4" />
-      {% trans "Back to admin" %}
+      {% trans "Back to settings" %}
       </c-atoms.link>
     </nav>
     <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Site settings" %}</h1>
@@ -56,4 +57,5 @@
       </div>
     </form>
   </div>
+  </c-organisms.admin-shell>
 {% endblock content %}
