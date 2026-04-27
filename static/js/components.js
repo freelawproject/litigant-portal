@@ -162,6 +162,8 @@ document.addEventListener('alpine:init', () => {
     loaded: false,
     searchTimer: null,
 
+    error: '',
+
     init() {
       this.fetch()
     },
@@ -177,6 +179,7 @@ document.addEventListener('alpine:init', () => {
 
     async fetch() {
       this.loading = true
+      this.error = ''
       try {
         const url = this.$el.dataset.url || '/admin/users/data/'
         const params = new URLSearchParams({
@@ -188,7 +191,8 @@ document.addEventListener('alpine:init', () => {
           headers: { Accept: 'application/json' },
         })
         if (!response.ok) {
-          console.error('Users fetch failed:', response.status)
+          this.error = `Request failed (${response.status}). Try reloading.`
+          console.error('Users fetch failed:', response.status, response.url)
           return
         }
         const data = await response.json()
@@ -219,6 +223,7 @@ document.addEventListener('alpine:init', () => {
         this.hasNext = data.has_next
         this.hasPrev = data.has_prev
       } catch (e) {
+        this.error = `Couldn't load users: ${e.message || e}`
         console.error('Failed to load users:', e)
       } finally {
         this.loading = false
@@ -253,10 +258,13 @@ document.addEventListener('alpine:init', () => {
       return !this.hasNext || this.loading
     },
     get summaryText() {
-      if (this.total === 0) return 'No users'
+      if (this.total === 0) return '0 users'
       const start = (this.page - 1) * this.pageSize + 1
       const end = Math.min(start + this.users.length - 1, this.total)
       return `Showing ${start}–${end} of ${this.total}`
+    },
+    get hasError() {
+      return this.error.length > 0
     },
     get pageLabel() {
       return `Page ${this.page} of ${this.pageCount}`
