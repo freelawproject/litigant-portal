@@ -26,6 +26,12 @@ class Site(models.Model):
     def __str__(self):
         return self.court_name or "Site"
 
+    @property
+    def chat_model_slug(self) -> str | None:
+        if self.chat_model_id is None:
+            return None
+        return self.chat_model.slug
+
     def save(self, *args, **kwargs):
         self.pk = 1
         super().save(*args, **kwargs)

@@ -120,18 +120,16 @@ def search(request: HttpRequest):
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def status(request: HttpRequest) -> JsonResponse:
     """Check if chat service is available."""
+    from admin_site.models import Site
+
+    enabled = Site.load().chat_model_id is not None
     available = False
-    if getattr(settings, "CHAT_ENABLED", True):
+    if enabled:
         agent_name = settings.DEFAULT_CHAT_AGENT
         if agent_name in agent_registry:
             available = agent_registry[agent_name]().ping()
 
-    return JsonResponse(
-        {
-            "enabled": getattr(settings, "CHAT_ENABLED", True),
-            "available": available,
-        }
-    )
+    return JsonResponse({"enabled": enabled, "available": available})
 
 
 @require_POST

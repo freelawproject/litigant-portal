@@ -68,9 +68,7 @@ services:
       # Dev superuser auto-bootstrap (lazily created on first login page hit)
       - DEV_EMAIL=dev@free.law
       - DEV_PASSWORD=dev
-      # AI Chat configuration
-      - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_MODEL=openai/gpt-4o-mini
+      # AI Chat configuration (active model is managed in /admin/)
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - .:/app
@@ -96,9 +94,7 @@ services:
       - ALLOWED_HOSTS=localhost,${ALLOWED_HOSTS:-localhost}
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
-      # AI Chat configuration
-      - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
+      # AI Chat configuration (active model is managed in /admin/)
       - OPENAI_API_KEY_FILE=/run/secrets/openai_api_key
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/health/']

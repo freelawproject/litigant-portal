@@ -253,12 +253,20 @@ class SearchTests(TestCase):
 
 
 @pytest.mark.postgres
-@override_settings(CHAT_ENABLED=True, DEFAULT_CHAT_AGENT="MockAgent")
+@override_settings(DEFAULT_CHAT_AGENT="MockAgent")
 class StatusTests(TestCase):
     """Tests for chat status endpoint."""
 
     def setUp(self):
+        from admin_site.models import ChatModel, Site
+
         self.client = Client()
+        self.chat_model = ChatModel.objects.create(
+            name="Test", slug="mock/model"
+        )
+        site = Site.load()
+        site.chat_model = self.chat_model
+        site.save()
 
     def test_returns_availability_status(self):
         """Status endpoint should return current availability."""
@@ -268,9 +276,14 @@ class StatusTests(TestCase):
         self.assertTrue(data["available"])
         self.assertTrue(data["enabled"])
 
-    @override_settings(CHAT_ENABLED=False)
     def test_reflects_disabled_setting(self):
-        """Status should reflect CHAT_ENABLED=False."""
+        """Status should reflect Site.chat_model = None as disabled."""
+        from admin_site.models import Site
+
+        site = Site.load()
+        site.chat_model = None
+        site.save()
+
         response = self.client.get("/api/chat/status/")
 
         data = json.loads(response.content)

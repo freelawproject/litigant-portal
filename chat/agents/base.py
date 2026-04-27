@@ -239,8 +239,8 @@ class Agent:
                 {"role": "system", "content": "You are a helpful legal assistant..."}
             ]
 
-    The model is read from the CHAT_MODEL env var, defaulting to
-    "openai/gpt-4o-mini".
+    The model is read from the active Site.chat_model in admin_site.
+    Subclasses can pin a model via ``default_model`` to override.
     """
 
     default_model: ClassVar[str] = ""
@@ -262,7 +262,7 @@ class Agent:
         """Initialize the agent.
 
         Args:
-            model: LiteLLM model string. Defaults to CHAT_MODEL env var.
+            model: LiteLLM model string. Defaults to the active Site.chat_model.
             tools: List of Tool classes available to the agent.
             messages: Initial message history (dicts matching Message schema).
             state: Initial state dictionary for tool data storage.
@@ -270,8 +270,14 @@ class Agent:
             session: ChatSession object to associate with the agent.
             **completion_args: Additional args passed to litellm.completion().
         """
+        from admin_site.models import Site
+
         self.session = session
-        self.model = model or self.default_model or settings.CHAT_MODEL
+        self.model = model or self.default_model or Site.load().chat_model_slug
+        if not self.model:
+            raise RuntimeError(
+                "No chat model configured. Set the active model in /admin/."
+            )
         self.completion_args = {
             **self.default_completion_args,
             **completion_args,

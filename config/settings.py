@@ -272,11 +272,11 @@ if not DEBUG:
 
 
 # AI Chat configuration
-CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
+# Active chat model is managed via the admin UI (admin_site.Site.chat_model);
+# `None` means chat is disabled site-wide.
 DEFAULT_CHAT_AGENT = os.environ.get(
     "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
 )
-CHAT_MODEL = os.environ.get("CHAT_MODEL", "openai/gpt-4o-mini")
 
 # Read OPENAI_API_KEY from env or secret file; passed to LiteLLM at call time
 # via llm_completion() wrapper — never written back to os.environ.
