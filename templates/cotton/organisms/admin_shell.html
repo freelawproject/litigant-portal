@@ -4,21 +4,21 @@
 
 <div class="max-w-6xl mx-auto px-4 py-6 sm:py-8">
   <div class="flex flex-col gap-6 md:flex-row md:gap-0">
-    <aside class="md:w-56 md:flex-shrink-0 md:border-r md:border-greyscale-200 md:pr-6">
-      <nav class="flex flex-col gap-1" aria-label="{% trans 'Admin sections' %}">
-        {% with item_base="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors" %}
-        {% with item_active="bg-greyscale-100 text-greyscale-900" item_idle="text-greyscale-600 hover:bg-greyscale-50 hover:text-greyscale-900" %}
+    <aside class="md:w-64 md:flex-shrink-0 md:border-r md:border-greyscale-200 md:pr-6">
+      <nav class="flex flex-col gap-2" aria-label="{% trans 'Admin sections' %}">
+        {% with item_base="w-full flex items-center gap-3 px-4 py-3 rounded-md border text-sm font-medium transition-colors" %}
+        {% with item_active="border-primary-500 bg-primary-50 text-primary-700" item_idle="border-greyscale-200 bg-white text-greyscale-700 hover:border-greyscale-300 hover:bg-greyscale-50" %}
         <a href="{% url 'admin_site:index' %}"
            class="{{ item_base }} {% if active_tab == 'settings' %}{{ item_active }}{% else %}{{ item_idle }}{% endif %}"
            {% if active_tab == 'settings' %}aria-current="page"{% endif %}>
-          <c-atoms.icon name="cog-6-tooth" class="w-5 h-5" />
-          {% trans "Settings" %}
+          <c-atoms.icon name="cog-6-tooth" class="w-5 h-5 flex-shrink-0" />
+          <span>{% trans "Settings" %}</span>
         </a>
         <a href="{% url 'admin_site:users' %}"
            class="{{ item_base }} {% if active_tab == 'users' %}{{ item_active }}{% else %}{{ item_idle }}{% endif %}"
            {% if active_tab == 'users' %}aria-current="page"{% endif %}>
-          <c-atoms.icon name="users" class="w-5 h-5" />
-          {% trans "Users" %}
+          <c-atoms.icon name="users" class="w-5 h-5 flex-shrink-0" />
+          <span>{% trans "Users" %}</span>
         </a>
         {% endwith %}
         {% endwith %}
