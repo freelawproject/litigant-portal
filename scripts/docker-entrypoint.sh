@@ -22,8 +22,20 @@ run_compilemessages() {
 case "$1" in
     web-dev)
         echo "Starting development server at http://localhost ..."
-        # Start Tailwind watch in background
-        tailwindcss -i src/css/main.css -o static/css/main.built.css --watch &
+
+        # Ensure the CSS output directory exists. It's gitignored, so a fresh
+        # checkout won't have it on the host (and the bind mount shadows the
+        # one baked into the image).
+        mkdir -p static/css
+
+        # One-shot initial build so the first request renders correctly even
+        # before the watcher's first cycle completes.
+        tailwindcss -i src/css/main.css -o static/css/main.built.css
+
+        # Start Tailwind watch in background. --watch=always forces polling,
+        # which is reliable across Docker bind mounts (native inotify often
+        # drops events from host edits, especially on macOS).
+        tailwindcss -i src/css/main.css -o static/css/main.built.css --watch=always &
 
         run_migrations
 
