@@ -5,14 +5,14 @@ from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
-from .decorators import superuser_required
+from .decorators import admin_required
 from .forms import ChatModelForm, SiteForm
 from .models import ChatModel, Site
 
 USERS_PAGE_SIZE = 25
 
 
-@superuser_required
+@admin_required
 def index(request):
     site = Site.load()
     if request.method == "POST":
@@ -35,7 +35,7 @@ def index(request):
     )
 
 
-@superuser_required
+@admin_required
 def chat_model_create(request):
     if request.method == "POST":
         form = ChatModelForm(request.POST)
@@ -55,7 +55,7 @@ def chat_model_create(request):
     )
 
 
-@superuser_required
+@admin_required
 def chat_model_activate(request, pk):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -70,7 +70,7 @@ def chat_model_activate(request, pk):
     return redirect("admin_site:index")
 
 
-@superuser_required
+@admin_required
 def chat_model_deactivate(request):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -81,7 +81,7 @@ def chat_model_deactivate(request):
     return redirect("admin_site:index")
 
 
-@superuser_required
+@admin_required
 def chat_model_delete(request, pk):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
@@ -94,12 +94,12 @@ def chat_model_delete(request, pk):
     return redirect("admin_site:index")
 
 
-@superuser_required
+@admin_required
 def users(request):
     return render(request, "pages/admin/users.html")
 
 
-@superuser_required
+@admin_required
 def users_data(request):
     User = get_user_model()
     query = request.GET.get("q", "").strip()
