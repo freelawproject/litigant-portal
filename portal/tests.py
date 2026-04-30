@@ -496,25 +496,61 @@ class DeepLinkTests(TestCase):
 
     def test_valid_court_and_topic_redirects_to_chat(self):
         """Valid pair redirects to /chat/ with both params set."""
-        response = self.client.get("/t/nd/adult_name_change/")
+        response = self.client.get("/t/north-dakota/adult_name_change/")
         self.assertEqual(response.status_code, 302)
         self.assertIn("topic=adult_name_change", response.url)
-        self.assertIn("court=nd", response.url)
+        self.assertIn("court=north-dakota", response.url)
 
     def test_unknown_court_returns_404(self):
         response = self.client.get("/t/xx/adult_name_change/")
         self.assertEqual(response.status_code, 404)
 
     def test_unknown_topic_returns_404(self):
-        response = self.client.get("/t/nd/not_a_topic/")
+        response = self.client.get("/t/north-dakota/not_a_topic/")
         self.assertEqual(response.status_code, 404)
 
     def test_deep_link_il_eviction(self):
         """Second registered pair (DuPage/IL + eviction) also works."""
-        response = self.client.get("/t/dupage_il/eviction/")
+        response = self.client.get("/t/dupage-il/eviction/")
         self.assertEqual(response.status_code, 302)
         self.assertIn("topic=eviction", response.url)
-        self.assertIn("court=dupage_il", response.url)
+        self.assertIn("court=dupage-il", response.url)
+
+    def test_legacy_underscore_court_slug_returns_404(self):
+        """Pre-#338 internal slugs like 'nd' / 'dupage_il' are no longer
+        registered — only the canonical hyphenated slugs work."""
+        for legacy in ("/t/nd/adult_name_change/", "/t/dupage_il/eviction/"):
+            response = self.client.get(legacy)
+            self.assertEqual(
+                response.status_code,
+                404,
+                msg=f"Legacy slug {legacy!r} should 404 after #338",
+            )
+
+    def test_every_registered_court_resolves_via_deep_link(self):
+        """#332-style round-trip: every key in _COURT_PROMPTS must be reachable
+        via /t/{court}/{topic}/. Catches a future court being added to the
+        registry under a non-canonical slug."""
+        from chat.prompts import (
+            _COURT_PROMPTS,
+            _TOPIC_PROMPTS,
+            _load_court_prompts,
+            _load_topic_prompts,
+        )
+
+        _load_court_prompts()
+        _load_topic_prompts()
+        # Pick any registered topic for the round-trip — we're testing court
+        # resolution, not topic. Sorted for stable failure messages.
+        topic = sorted(_TOPIC_PROMPTS.keys())[0]
+        for court in sorted(_COURT_PROMPTS.keys()):
+            response = self.client.get(f"/t/{court}/{topic}/")
+            self.assertEqual(
+                response.status_code,
+                302,
+                msg=f"Registered court {court!r} should resolve via deep-link",
+            )
+            self.assertIn(f"court={court}", response.url)
 
 
 @pytest.mark.postgres
@@ -525,9 +561,11 @@ class ChatPageCourtTests(TestCase):
         self.client = Client()
 
     def test_valid_court_passes_context(self):
-        response = self.client.get("/chat/?topic=adult_name_change&court=nd")
+        response = self.client.get(
+            "/chat/?topic=adult_name_change&court=north-dakota"
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["court_slug"], "nd")
+        self.assertEqual(response.context["court_slug"], "north-dakota")
 
     def test_missing_court_context_is_empty(self):
         response = self.client.get("/chat/?topic=eviction")
@@ -542,7 +580,9 @@ class ChatPageCourtTests(TestCase):
 
     def test_valid_court_passes_display_name(self):
         """Chat page with valid court should expose its display name in context."""
-        response = self.client.get("/chat/?topic=adult_name_change&court=nd")
+        response = self.client.get(
+            "/chat/?topic=adult_name_change&court=north-dakota"
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["court_name"], "North Dakota Courts")
 
@@ -553,7 +593,9 @@ class ChatPageCourtTests(TestCase):
 
     def test_court_name_rendered_in_subheader(self):
         """Template renders the court-branding eyebrow when court_name is set."""
-        response = self.client.get("/chat/?topic=adult_name_change&court=nd")
+        response = self.client.get(
+            "/chat/?topic=adult_name_change&court=north-dakota"
+        )
         self.assertContains(response, "North Dakota Courts")
 
     def test_court_name_absent_when_no_court(self):

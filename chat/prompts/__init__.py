@@ -67,8 +67,8 @@ _COURT_META: dict[str, dict] = {}
 # Map known states to their default court. Additional mappings land here as
 # more courts are added.
 _JURISDICTION_TO_COURT: dict[str, str] = {
-    "il": "dupage_il",
-    "nd": "nd",
+    "il": "dupage-il",
+    "nd": "north-dakota",
 }
 
 _VALID_PHASES = ("triage", "prepare", "resolve")
@@ -169,7 +169,9 @@ def build_system_prompt(
             get the right starting behavior.
         topic: Legal topic slug (e.g. "eviction", "adult_name_change"). None
             or unrecognized slugs omit the topic layer silently.
-        court: Court slug (e.g. "dupage_il", "nd"). None or unrecognized
+        court: Canonical court slug (e.g. "dupage-il", "north-dakota").
+            Hyphenated, URL-safe — these are the public surface used in
+            deep-link routes like /t/{court}/{topic}/. None or unrecognized
             slugs omit the court layer silently.
         jurisdiction: Deprecated — backward-compat for callers passing a
             two-letter state code. Maps to a default court via
