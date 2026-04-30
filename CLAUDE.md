@@ -17,6 +17,15 @@ Building a complete eviction flow from discovery to resolution for court partner
 - [User Flows Matrix](docs/user-flows.md) - 3×2 matrix (Full AI / Hybrid / Basic × Anon / Auth)
 - [Retro Notes](docs/itc-demo-retro.md) - Lessons learned from ITC demo (Jan 2026)
 
+## Sprint Cadence & Naming
+
+- Sprints are named after **musical artists**, alphabetical (A → B → C → …).
+- During the sprint-web-team retro, the team votes for the artist who will name the next sprint.
+- Current and previous sprints can be referred to by **letter** OR by the **artist** that won the vote (e.g. "Sprint B" or "Beyoncé").
+- Future sprints (not yet voted on) display by letter only, often with a matching generic emoji — e.g. `B 🐝`, `C 💻`.
+
+Sprint board (`#61`) has letter-coded columns for past, current, and (when planning rolls) future sprints, alongside standard hygiene columns (Ancestors, To Do, In Progress, Buffer Zone, Blocked, In Review, Done, General Backlog, Someday). Brand-new untriaged work goes to **General Backlog** until grooming places it in a sprint column. Don't move issues that are already on the board without direction — placement is intentional.
+
 ## Environment Philosophy
 
 Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker everywhere.
