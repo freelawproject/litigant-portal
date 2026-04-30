@@ -78,6 +78,13 @@
             {% trans "Clear" %}
           </c-atoms.button>
         </c-slot>
+        {# Clear-failed error — surfaced when archive request fails so case isn't silently wiped. #}
+        {# c-atoms.alert hardcodes role="alert"; no extra aria-live wrapper needed. #}
+        <div x-show="caseInfoError" x-cloak>
+          <c-atoms.alert variant="danger" class="text-sm">
+            <span x-text="caseInfoError"></span>
+          </c-atoms.alert>
+        </div>
         {# Empty state #}
         <div x-show="noCaseInfo" class="text-center py-8 px-4">
           <div class="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mx-auto mb-3">
