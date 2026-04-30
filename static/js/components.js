@@ -65,7 +65,7 @@ document.addEventListener('alpine:init', () => {
       this.menuOpen = false
     },
 
-    async clearDemo() {
+    async resetDemo() {
       const csrfToken =
         document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
         document.cookie
@@ -78,7 +78,7 @@ document.addEventListener('alpine:init', () => {
       try {
         await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
       } catch (e) {
-        console.error('Failed to clear demo:', e)
+        console.error('Failed to reset demo:', e)
       }
       location.reload()
     },
