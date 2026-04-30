@@ -441,6 +441,7 @@ function createHomePage() {
     showConfirmation: false,
     _documentContextSent: false,
     _isClearingChat: false,
+    _isClearingCase: false,
 
     // --- Action plan state ---
     actionPlan: null, // { action_items: [], spotted_issues: [], resources: [] }
@@ -1247,6 +1248,12 @@ function createHomePage() {
       // Archive server-side (non-destructive). Only reset local state after
       // the server confirms; otherwise a network blip or 5xx would silently
       // wipe the user's case context with no recovery path.
+      // Guard against rapid double-click — without it, a failing fetch
+      // resolving after a succeeding one would re-set the error banner over
+      // an already-cleared state.
+      if (this._isClearingCase) return
+      this._isClearingCase = true
+
       const formData = new FormData()
       formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
 
@@ -1265,6 +1272,7 @@ function createHomePage() {
         this.caseInfoError = gettext(
           "Couldn't clear your case — please try again."
         )
+        this._isClearingCase = false
         return
       }
 
@@ -1276,6 +1284,7 @@ function createHomePage() {
       this.extractedData = null
       this.caseTimeline = []
       this._documentContextSent = false
+      this._isClearingCase = false
     },
 
     // =========================================================================
