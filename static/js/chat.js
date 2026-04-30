@@ -437,6 +437,7 @@ function createHomePage() {
     // --- Case management state ---
     caseInfo: null,
     caseStatus: '',
+    caseInfoError: null,
     showConfirmation: false,
     _documentContextSent: false,
     _isClearingChat: false,
@@ -1243,16 +1244,32 @@ function createHomePage() {
     },
 
     async clearCaseInfo() {
-      // Archive server-side (non-destructive)
+      // Archive server-side (non-destructive). Only reset local state after
+      // the server confirms; otherwise a network blip or 5xx would silently
+      // wipe the user's case context with no recovery path.
       const formData = new FormData()
       formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+
+      let serverConfirmed = false
       try {
-        await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
+        const response = await fetch('/api/chat/case/clear/', {
+          method: 'POST',
+          body: formData,
+        })
+        serverConfirmed = response.ok
       } catch (e) {
         console.error('Failed to archive case info:', e)
       }
 
-      // Reset local state
+      if (!serverConfirmed) {
+        this.caseInfoError = gettext(
+          "Couldn't clear your case — please try again."
+        )
+        return
+      }
+
+      // Server confirmed archive — reset local state.
+      this.caseInfoError = null
       this.caseInfo = null
       this.caseStatus = ''
       this.actionPlan = null
