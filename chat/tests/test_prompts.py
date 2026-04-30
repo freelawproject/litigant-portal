@@ -166,7 +166,7 @@ class CourtNameTests(TestCase):
         self.assertEqual(get_court_name("not_a_court"), "")
 
     def test_case_insensitive_lookup(self):
-        self.assertEqual(get_court_name("ND"), "North Dakota Courts")
+        self.assertEqual(get_court_name("NORTH-DAKOTA"), "North Dakota Courts")
 
 
 class IsKnownTopicTests(TestCase):
