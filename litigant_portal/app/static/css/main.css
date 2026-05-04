@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+@source "../../**/*.{html,py}";
+
+@theme {
+  --color-cream: #f8f4eb;
+  --color-paper: #f0e9da;
+  --color-ink: #1a1612;
+  --color-ink-soft: #3a332b;
+  --color-muted: #8a8275;
+  --color-oxblood: #7a2d24;
+  --color-oxblood-hover: #5e211b;
+  --color-accent: #c4502e;
+  --color-rule: #d9cfb8;
+  --color-rule-soft: #e5dcc6;
+
+  --font-display: "Fraunces", "Times New Roman", serif;
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --animate-fade-up-d2: fadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both;
+  --animate-fade-up-d3: fadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.25s both;
+  --animate-fade-up-d4: fadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+::selection {
+  background: #7a2d24;
+  color: #f8f4eb;
+}
+
+#search-input::placeholder {
+  color: #8a8275;
+  opacity: 1;
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-weight: 300;
+  font-variation-settings: "opsz" 144;
+}
+
+.underline-link {
+  background-image: linear-gradient(#7a2d24, #7a2d24);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 0.35s ease, color 0.25s ease;
+}
+.underline-link:hover {
+  background-size: 100% 1px;
+  color: #7a2d24;
+}
+
+.underline-link-soft {
+  background-image: linear-gradient(#1a1612, #1a1612);
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 0% 1px;
+  transition: background-size 0.35s ease;
+}
+.underline-link-soft:hover {
+  background-size: 100% 1px;
+}
+
+.topic-mini {
+  background: #f8f4eb;
+  position: relative;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+.topic-mini::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 3px;
+  width: 0;
+  background: #7a2d24;
+  transition: width 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  z-index: 1;
+}
+.topic-mini:hover {
+  background: #f0e9da;
+  box-shadow: 0 6px 24px -12px rgba(26, 22, 18, 0.18);
+}
+.topic-mini:hover::before {
+  width: 100%;
+}
+.topic-mini:hover .topic-mini-arrow {
+  transform: translate(3px, -3px);
+  color: #7a2d24;
+}
+.topic-mini:hover .topic-mini-title {
+  color: #7a2d24;
+}
+.topic-mini-arrow {
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.2, 1), color 0.25s ease;
+}
+.topic-mini-title {
+  transition: color 0.25s ease;
+}
