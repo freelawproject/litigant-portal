@@ -16,31 +16,49 @@ decomposition.
 - **Court** (optional): jurisdictional content — statutes, forms, fees,
   courthouse details, handoff referrals.
 
-Topic and Court content live as `.md` files alongside this module so
-non-engineers can edit corpus content via PR. Base and Phase stay as `.py`
-because they encode cross-cutting infrastructure, not per-court content.
+## Storage layout
+
+Each Court and Topic lives in its own directory beneath this module:
+
+    chat/prompts/
+      courts/
+        <slug>/
+          court.json    # identity: name (more fields land with #363/#365)
+          prompt.md     # corpus content
+      topics/
+        <slug>/
+          prompt.md     # corpus content
+          (topic.json lands with #363 — card display data)
+
+Markdown lets non-engineer contributors edit corpus content via PR. The
+per-court directory matches the eventual wiki tree (#355) so when AI-team
+ingestion + retrieval lands, today's `prompt.md` files become the seed
+corpus and `court.json` becomes the structured identity record. Base and
+Phase stay as `.py` because they encode cross-cutting infrastructure, not
+per-court content.
+
 When real RAG / agentic tooling lands, Topic and Court shrink to retrieval
 calls; Base and Phase stay. The composition interface does not change.
 """
 
+import json
+import re
 from pathlib import Path
 
 from chat.prompts.base import BASE_PROMPT
 
 _PROMPTS_DIR = Path(__file__).parent
 
+# Slug shape — alphanumeric, underscore, hyphen. Validated at the public
+# boundary so path-traversal slugs (`..`, `/`) can never reach the
+# filesystem layer.
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+
 # Lazy-loaded registries, keyed by phase / topic / court slug.
 _PHASE_PROMPTS: dict[str, str] = {}
 _TOPIC_PROMPTS: dict[str, str] = {}
 _COURT_PROMPTS: dict[str, str] = {}
-
-# Court display names. Kept here (not in the .md files) until per-court
-# metadata grows beyond a single field — at that point this becomes
-# frontmatter on the Court markdown files.
-_COURT_NAMES: dict[str, str] = {
-    "dupage_il": "DuPage County Circuit Court",
-    "nd": "North Dakota Courts",
-}
+_COURT_META: dict[str, dict] = {}
 
 # Backward-compat: old callers passed jurisdiction (two-letter state code).
 # Map known states to their default court. Additional mappings land here as
@@ -53,26 +71,49 @@ _JURISDICTION_TO_COURT: dict[str, str] = {
 _VALID_PHASES = ("triage", "prepare", "resolve")
 
 
-def _read_md(category: str, slug: str) -> str | None:
-    """Read a `.md` prompt file. Returns None if not present."""
-    path = _PROMPTS_DIR / category / f"{slug}.md"
+def _safe_slug(slug: str | None) -> str | None:
+    """Return the lowercased slug if it matches the safe shape, else None."""
+    if not slug:
+        return None
+    lowered = slug.lower()
+    if not _SLUG_RE.fullmatch(lowered):
+        return None
+    return lowered
+
+
+def _read_prompt(category: str, slug: str) -> str | None:
+    """Read `<category>/<slug>/prompt.md`. Returns None if missing."""
+    path = _PROMPTS_DIR / category / slug / "prompt.md"
     if not path.is_file():
         return None
-    return path.read_text()
+    return path.read_text(encoding="utf-8")
+
+
+def _read_court_meta(slug: str) -> dict | None:
+    """Read `courts/<slug>/court.json`. Returns None if missing or invalid."""
+    path = _PROMPTS_DIR / "courts" / slug / "court.json"
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
 
 
 def is_known_topic(slug: str | None) -> bool:
-    """True iff a topic prompt `.md` is registered for the slug."""
-    if not slug:
+    """True iff a topic prompt is registered for the slug."""
+    safe = _safe_slug(slug)
+    if safe is None:
         return False
-    return (_PROMPTS_DIR / "topics" / f"{slug.lower()}.md").is_file()
+    return (_PROMPTS_DIR / "topics" / safe / "prompt.md").is_file()
 
 
 def is_known_court(slug: str | None) -> bool:
-    """True iff a court prompt `.md` is registered for the slug."""
-    if not slug:
+    """True iff a court prompt is registered for the slug."""
+    safe = _safe_slug(slug)
+    if safe is None:
         return False
-    return (_PROMPTS_DIR / "courts" / f"{slug.lower()}.md").is_file()
+    return (_PROMPTS_DIR / "courts" / safe / "prompt.md").is_file()
 
 
 def _load_phase_prompts() -> None:
@@ -94,9 +135,14 @@ def get_court_name(court: str | None) -> str:
     Empty string for unknown or missing slugs — callers should treat empty
     as "no court branding" and omit the UI slot entirely.
     """
-    if not court:
+    safe = _safe_slug(court)
+    if safe is None:
         return ""
-    return _COURT_NAMES.get(court.lower(), "")
+    if safe not in _COURT_META:
+        meta = _read_court_meta(safe)
+        if meta is not None:
+            _COURT_META[safe] = meta
+    return _COURT_META.get(safe, {}).get("name", "")
 
 
 def build_system_prompt(
@@ -112,9 +158,9 @@ def build_system_prompt(
             "triage" so callers that haven't adopted the new signature yet
             get the right starting behavior.
         topic: Legal topic slug (e.g. "eviction", "adult_name_change"). None
-            omits the topic layer.
-        court: Court slug (e.g. "dupage_il", "nd"). None omits the court
-            layer.
+            or unrecognized slugs omit the topic layer silently.
+        court: Court slug (e.g. "dupage_il", "nd"). None or unrecognized
+            slugs omit the court layer silently.
         jurisdiction: Deprecated — backward-compat for callers passing a
             two-letter state code. Maps to a default court via
             ``_JURISDICTION_TO_COURT``. Prefer ``court`` for new code.
@@ -136,23 +182,23 @@ def build_system_prompt(
     _load_phase_prompts()
     sections.append(_PHASE_PROMPTS[phase])
 
-    if topic:
-        slug = topic.lower()
-        if slug not in _TOPIC_PROMPTS:
-            content = _read_md("topics", slug)
+    topic_slug = _safe_slug(topic)
+    if topic_slug:
+        if topic_slug not in _TOPIC_PROMPTS:
+            content = _read_prompt("topics", topic_slug)
             if content is not None:
-                _TOPIC_PROMPTS[slug] = content
-        topic_prompt = _TOPIC_PROMPTS.get(slug)
+                _TOPIC_PROMPTS[topic_slug] = content
+        topic_prompt = _TOPIC_PROMPTS.get(topic_slug)
         if topic_prompt:
             sections.append(topic_prompt)
 
-    if court:
-        slug = court.lower()
-        if slug not in _COURT_PROMPTS:
-            content = _read_md("courts", slug)
+    court_slug = _safe_slug(court)
+    if court_slug:
+        if court_slug not in _COURT_PROMPTS:
+            content = _read_prompt("courts", court_slug)
             if content is not None:
-                _COURT_PROMPTS[slug] = content
-        court_prompt = _COURT_PROMPTS.get(slug)
+                _COURT_PROMPTS[court_slug] = content
+        court_prompt = _COURT_PROMPTS.get(court_slug)
         if court_prompt:
             sections.append(court_prompt)
 
