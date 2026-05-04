@@ -1,0 +1,97 @@
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = [
+  "setuptools",
+]
+
+[project]
+name = "litigant-portal"
+version = "0.0.1"
+description = "Litigant Portal"
+authors = [{ name = "Free Law Project", email = "info@free.law" }]
+requires-python = ">=3.10"
+readme = "README.md"
+license = "BSD-2-Clause"
+keywords = [
+    "legal",
+    "courts",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+urls.Repository = "https://github.com/freelawproject/litigant-portal"
+urls."Organisation Homepage" = "https://free.law/"
+
+dependencies = [
+    "click>=8.0.0",
+    "django>=5.2.0",
+    "django-storages[s3]>=1.14.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "mypy>=1.10.0",
+    "pre-commit>=4.5.1",
+    "pytest>=8.0.0",
+    "ruff>=0.4.0",
+    "tox-uv>=1.29.0",
+]
+
+[project.scripts]
+litigant-portal = "litigant_portal:cli.cli"
+
+[tool.setuptools.packages.find]
+include = ["litigant_portal*"]
+
+[tool.ruff]
+line-length = 79
+lint.extend-safe-fixes = [
+  # non-pep585-annotation
+  "UP006",
+]
+lint.select = [
+  # flake8-bugbear
+  "B",
+  # flake8-comprehensions
+  "C4",
+  # pycodestyle
+  "E",
+  # Pyflakes errors
+  "F",
+  # isort
+  "I",
+  # flake8-simplify
+  "SIM",
+  # flake8-tidy-imports
+  "TID",
+  # pyupgrade
+  "UP",
+  # Pyflakes warnings
+  "W",
+]
+lint.ignore = [
+  # flake8-bugbear opinionated rules
+  "B9",
+  # line-too-long
+  "E501",
+  # suppressible-exception
+  "SIM105",
+  # if-else-block-instead-of-if-exp
+  "SIM108",
+  # printf-string-formatting
+  "UP031",
+]
