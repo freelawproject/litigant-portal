@@ -16,17 +16,31 @@ decomposition.
 - **Court** (optional): jurisdictional content — statutes, forms, fees,
   courthouse details, handoff referrals.
 
+Topic and Court content live as `.md` files alongside this module so
+non-engineers can edit corpus content via PR. Base and Phase stay as `.py`
+because they encode cross-cutting infrastructure, not per-court content.
 When real RAG / agentic tooling lands, Topic and Court shrink to retrieval
 calls; Base and Phase stay. The composition interface does not change.
 """
 
+from pathlib import Path
+
 from chat.prompts.base import BASE_PROMPT
+
+_PROMPTS_DIR = Path(__file__).parent
 
 # Lazy-loaded registries, keyed by phase / topic / court slug.
 _PHASE_PROMPTS: dict[str, str] = {}
 _TOPIC_PROMPTS: dict[str, str] = {}
 _COURT_PROMPTS: dict[str, str] = {}
-_COURT_NAMES: dict[str, str] = {}
+
+# Court display names. Kept here (not in the .md files) until per-court
+# metadata grows beyond a single field — at that point this becomes
+# frontmatter on the Court markdown files.
+_COURT_NAMES: dict[str, str] = {
+    "dupage_il": "DuPage County Circuit Court",
+    "nd": "North Dakota Courts",
+}
 
 # Backward-compat: old callers passed jurisdiction (two-letter state code).
 # Map known states to their default court. Additional mappings land here as
@@ -37,6 +51,28 @@ _JURISDICTION_TO_COURT: dict[str, str] = {
 }
 
 _VALID_PHASES = ("triage", "prepare", "resolve")
+
+
+def _read_md(category: str, slug: str) -> str | None:
+    """Read a `.md` prompt file. Returns None if not present."""
+    path = _PROMPTS_DIR / category / f"{slug}.md"
+    if not path.is_file():
+        return None
+    return path.read_text()
+
+
+def is_known_topic(slug: str | None) -> bool:
+    """True iff a topic prompt `.md` is registered for the slug."""
+    if not slug:
+        return False
+    return (_PROMPTS_DIR / "topics" / f"{slug.lower()}.md").is_file()
+
+
+def is_known_court(slug: str | None) -> bool:
+    """True iff a court prompt `.md` is registered for the slug."""
+    if not slug:
+        return False
+    return (_PROMPTS_DIR / "courts" / f"{slug.lower()}.md").is_file()
 
 
 def _load_phase_prompts() -> None:
@@ -52,41 +88,6 @@ def _load_phase_prompts() -> None:
     _PHASE_PROMPTS["resolve"] = resolve
 
 
-def _load_topic_prompts() -> None:
-    """Lazy-load topic prompt modules into the registry."""
-    if _TOPIC_PROMPTS:
-        return
-    from chat.prompts.topics.adult_name_change import (
-        PROMPT as adult_name_change,
-    )
-    from chat.prompts.topics.eviction import PROMPT as eviction
-
-    _TOPIC_PROMPTS["eviction"] = eviction
-    _TOPIC_PROMPTS["adult_name_change"] = adult_name_change
-
-
-def _load_court_prompts() -> None:
-    """Lazy-load court prompt modules into the registry."""
-    if _COURT_PROMPTS:
-        return
-    from chat.prompts.courts.dupage_il import PROMPT as dupage_il
-    from chat.prompts.courts.nd import PROMPT as nd
-
-    _COURT_PROMPTS["dupage_il"] = dupage_il
-    _COURT_PROMPTS["nd"] = nd
-
-
-def _load_court_names() -> None:
-    """Lazy-load court display names into the registry."""
-    if _COURT_NAMES:
-        return
-    from chat.prompts.courts.dupage_il import COURT_NAME as dupage_il_name
-    from chat.prompts.courts.nd import COURT_NAME as nd_name
-
-    _COURT_NAMES["dupage_il"] = dupage_il_name
-    _COURT_NAMES["nd"] = nd_name
-
-
 def get_court_name(court: str | None) -> str:
     """Return the human-readable display name for a court slug.
 
@@ -95,7 +96,6 @@ def get_court_name(court: str | None) -> str:
     """
     if not court:
         return ""
-    _load_court_names()
     return _COURT_NAMES.get(court.lower(), "")
 
 
@@ -137,14 +137,22 @@ def build_system_prompt(
     sections.append(_PHASE_PROMPTS[phase])
 
     if topic:
-        _load_topic_prompts()
-        topic_prompt = _TOPIC_PROMPTS.get(topic.lower())
+        slug = topic.lower()
+        if slug not in _TOPIC_PROMPTS:
+            content = _read_md("topics", slug)
+            if content is not None:
+                _TOPIC_PROMPTS[slug] = content
+        topic_prompt = _TOPIC_PROMPTS.get(slug)
         if topic_prompt:
             sections.append(topic_prompt)
 
     if court:
-        _load_court_prompts()
-        court_prompt = _COURT_PROMPTS.get(court.lower())
+        slug = court.lower()
+        if slug not in _COURT_PROMPTS:
+            content = _read_md("courts", slug)
+            if content is not None:
+                _COURT_PROMPTS[slug] = content
+        court_prompt = _COURT_PROMPTS.get(slug)
         if court_prompt:
             sections.append(court_prompt)
 
