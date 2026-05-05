@@ -42,10 +42,13 @@ calls; Base and Phase stay. The composition interface does not change.
 """
 
 import json
+import logging
 import re
 from pathlib import Path
 
 from chat.prompts.base import BASE_PROMPT
+
+logger = logging.getLogger(__name__)
 
 _PROMPTS_DIR = Path(__file__).parent
 
@@ -90,13 +93,20 @@ def _read_prompt(category: str, slug: str) -> str | None:
 
 
 def _read_court_meta(slug: str) -> dict | None:
-    """Read `courts/<slug>/court.json`. Returns None if missing or invalid."""
+    """Read `courts/<slug>/court.json`. Returns None if missing or unparseable.
+
+    Missing files return silently — a court may legitimately have no
+    metadata yet. Parse errors log a warning so deploy-time bugs surface in
+    logs while branding falls back gracefully to "no court" rather than
+    crashing the request.
+    """
     path = _PROMPTS_DIR / "courts" / slug / "court.json"
     if not path.is_file():
         return None
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        logger.warning("Failed to parse court metadata at %s: %s", path, exc)
         return None
 
 
