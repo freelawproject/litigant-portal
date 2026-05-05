@@ -7,6 +7,8 @@ from chat.prompts import (
     BASE_PROMPT,
     build_system_prompt,
     get_court_name,
+    is_known_court,
+    is_known_topic,
     phase_for_session,
 )
 
@@ -165,3 +167,80 @@ class CourtNameTests(TestCase):
 
     def test_case_insensitive_lookup(self):
         self.assertEqual(get_court_name("ND"), "North Dakota Courts")
+
+
+class IsKnownTopicTests(TestCase):
+    """Tests for is_known_topic registry check."""
+
+    def test_known_topic_returns_true(self):
+        self.assertTrue(is_known_topic("eviction"))
+        self.assertTrue(is_known_topic("adult_name_change"))
+
+    def test_unknown_topic_returns_false(self):
+        self.assertFalse(is_known_topic("not_a_topic"))
+
+    def test_none_returns_false(self):
+        self.assertFalse(is_known_topic(None))
+
+    def test_empty_string_returns_false(self):
+        self.assertFalse(is_known_topic(""))
+
+    def test_case_insensitive(self):
+        self.assertTrue(is_known_topic("EVICTION"))
+
+
+class IsKnownCourtTests(TestCase):
+    """Tests for is_known_court registry check."""
+
+    def test_known_court_returns_true(self):
+        self.assertTrue(is_known_court("nd"))
+        self.assertTrue(is_known_court("dupage_il"))
+
+    def test_unknown_court_returns_false(self):
+        self.assertFalse(is_known_court("not_a_court"))
+
+    def test_none_returns_false(self):
+        self.assertFalse(is_known_court(None))
+
+    def test_empty_string_returns_false(self):
+        self.assertFalse(is_known_court(""))
+
+    def test_case_insensitive(self):
+        self.assertTrue(is_known_court("ND"))
+
+
+class SlugValidationTests(TestCase):
+    """Tests for the _safe_slug security perimeter.
+
+    _safe_slug is private; assert via the public is_known_* helpers, which
+    are the routes user input takes into the filesystem layer.
+    """
+
+    def test_path_traversal_rejected(self):
+        self.assertFalse(is_known_court("../base"))
+        self.assertFalse(is_known_topic("../eviction"))
+
+    def test_forward_slash_rejected(self):
+        self.assertFalse(is_known_court("nd/extra"))
+        self.assertFalse(is_known_topic("eviction/extra"))
+
+    def test_leading_hyphen_rejected(self):
+        self.assertFalse(is_known_court("-nd"))
+        self.assertFalse(is_known_topic("-eviction"))
+
+    def test_leading_underscore_rejected(self):
+        self.assertFalse(is_known_court("_nd"))
+        self.assertFalse(is_known_topic("_eviction"))
+
+    def test_dot_rejected(self):
+        self.assertFalse(is_known_court("nd.json"))
+        self.assertFalse(is_known_topic("eviction.md"))
+
+    def test_special_chars_rejected(self):
+        self.assertFalse(is_known_court("nd*"))
+        self.assertFalse(is_known_court("nd;rm"))
+        self.assertFalse(is_known_court("nd%2e%2e"))
+
+    def test_whitespace_rejected(self):
+        self.assertFalse(is_known_court("nd "))
+        self.assertFalse(is_known_court(" nd"))
