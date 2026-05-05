@@ -11,7 +11,7 @@ Access to justice portal for self-represented litigants. Django 5.2 with server-
 Building a complete eviction flow from discovery to resolution for court partner demos. One topic, end-to-end, at production quality — every button/link does something, no placeholders. Court-neutral information where partner-specific data isn't available yet.
 
 - [Milestone](https://github.com/freelawproject/litigant-portal/milestone/3) - Beta Demo: Housing Eviction Flow
-- [Legal Flow](docs/legal-flow.md) - Generic 9-stage flow (Triage / Prepare / Resolve); legal review artifact
+- [Legal Flow](docs/overview-mapped-legal-flow.md) - Generic 9-stage flow (Triage / Prepare / Resolve); legal review artifact
 - [Happy Path Narrative](docs/happy-path-jane.md) - Full AI · Auth end-to-end story (base for all variations)
 - [Demo Flow](docs/demo-flow-jane.md) - Jane's 8-step demo flow (abbreviated)
 - [User Flows Matrix](docs/user-flows.md) - 3×2 matrix (Full AI / Hybrid / Basic × Anon / Auth)

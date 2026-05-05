@@ -188,11 +188,7 @@ def topic_detail(request, slug):
 
 def chat_page(request):
     """Chat page - AI-powered legal assistance chat interface."""
-    from chat.prompts import (
-        _COURT_PROMPTS,
-        _load_court_prompts,
-        get_court_name,
-    )
+    from chat.prompts import get_court_name, is_known_court
 
     slug = request.GET.get("topic", "").strip()
     topic = TOPICS.get(slug) if slug else None
@@ -204,10 +200,8 @@ def chat_page(request):
         topic_context = "\n".join(lines)
 
     court_slug = request.GET.get("court", "").strip().lower()
-    if court_slug:
-        _load_court_prompts()
-        if court_slug not in _COURT_PROMPTS:
-            court_slug = ""
+    if court_slug and not is_known_court(court_slug):
+        court_slug = ""
 
     return render(
         request,
@@ -229,19 +223,11 @@ def deep_link(request, court, topic):
     topic returns 404. On success, 302 to /chat/?topic=X&court=Y so the
     existing chat page handles the heavy lifting.
     """
-    from chat.prompts import (
-        _COURT_PROMPTS,
-        _TOPIC_PROMPTS,
-        _load_court_prompts,
-        _load_topic_prompts,
-    )
+    from chat.prompts import is_known_court, is_known_topic
 
-    _load_topic_prompts()
-    _load_court_prompts()
-
-    if topic.lower() not in _TOPIC_PROMPTS:
+    if not is_known_topic(topic):
         raise Http404(f"Topic '{topic}' not registered")
-    if court.lower() not in _COURT_PROMPTS:
+    if not is_known_court(court):
         raise Http404(f"Court '{court}' not registered")
 
     query = urlencode({"topic": topic.lower(), "court": court.lower()})
