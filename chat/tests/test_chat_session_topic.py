@@ -194,7 +194,9 @@ class ChatSessionTopicServiceTests(TestCase):
         from chat.services.chat_service import ChatService
 
         request = self._make_request()
-        chat = ChatService(request, topic="adult_name_change", court="nd")
+        chat = ChatService(
+            request, topic="adult_name_change", court="north-dakota"
+        )
 
         prompt = chat.agent.messages[0]["content"]
         self.assertIn("ADULT NAME CHANGE", prompt)
@@ -203,7 +205,8 @@ class ChatSessionTopicServiceTests(TestCase):
         session = chat.agent.session
         session.refresh_from_db()
         self.assertEqual(session.topic, "adult_name_change")
-        # Explicit court flows to jurisdiction storage via backward-compat alias.
+        # Session still stores the two-letter jurisdiction (independent of the
+        # canonical court slug used for prompt composition / deep-link URLs).
         self.assertEqual(session.jurisdiction, "nd")
 
     def test_explicit_court_wins_over_topic_default(self):
@@ -211,8 +214,9 @@ class ChatSessionTopicServiceTests(TestCase):
         from chat.services.chat_service import ChatService
 
         request = self._make_request()
-        # eviction's default court is dupage_il; pass court=nd to override.
-        chat = ChatService(request, topic="eviction", court="nd")
+        # eviction's default jurisdiction is "il" (→ dupage-il court); pass
+        # court=north-dakota to override and prove explicit court wins.
+        chat = ChatService(request, topic="eviction", court="north-dakota")
 
         prompt = chat.agent.messages[0]["content"]
         self.assertIn("EVICTION", prompt)

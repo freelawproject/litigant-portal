@@ -52,7 +52,7 @@ class BuildSystemPromptTests(TestCase):
         self.assertNotIn("ADULT NAME CHANGE", result)
 
     def test_court_layer_included(self):
-        result = build_system_prompt(court="dupage_il")
+        result = build_system_prompt(court="dupage-il")
 
         self.assertIn("DUPAGE COUNTY", result)
 
@@ -66,7 +66,7 @@ class BuildSystemPromptTests(TestCase):
         result = build_system_prompt(
             phase="prepare",
             topic="adult_name_change",
-            court="nd",
+            court="north-dakota",
         )
 
         self.assertIn(BASE_PROMPT, result)
@@ -75,7 +75,7 @@ class BuildSystemPromptTests(TestCase):
         self.assertIn("NORTH DAKOTA", result)
 
     def test_jurisdiction_backward_compat_il(self):
-        # Callers that pass jurisdiction="il" should resolve to dupage_il court.
+        # Callers that pass jurisdiction="il" should resolve to the dupage-il court.
         result = build_system_prompt(topic="eviction", jurisdiction="il")
 
         self.assertIn("EVICTION", result)
@@ -90,7 +90,7 @@ class BuildSystemPromptTests(TestCase):
         self.assertIn("NORTH DAKOTA", result)
 
     def test_explicit_court_wins_over_jurisdiction(self):
-        result = build_system_prompt(court="nd", jurisdiction="il")
+        result = build_system_prompt(court="north-dakota", jurisdiction="il")
 
         self.assertIn("NORTH DAKOTA", result)
         self.assertNotIn("DUPAGE COUNTY", result)
@@ -151,11 +151,11 @@ class CourtNameTests(TestCase):
     """Tests for get_court_name display-name lookup (#328)."""
 
     def test_known_court_nd(self):
-        self.assertEqual(get_court_name("nd"), "North Dakota Courts")
+        self.assertEqual(get_court_name("north-dakota"), "North Dakota Courts")
 
     def test_known_court_dupage_il(self):
         self.assertEqual(
-            get_court_name("dupage_il"), "DuPage County Circuit Court"
+            get_court_name("dupage-il"), "DuPage County Circuit Court"
         )
 
     def test_empty_court_returns_empty(self):
@@ -166,7 +166,7 @@ class CourtNameTests(TestCase):
         self.assertEqual(get_court_name("not_a_court"), "")
 
     def test_case_insensitive_lookup(self):
-        self.assertEqual(get_court_name("ND"), "North Dakota Courts")
+        self.assertEqual(get_court_name("NORTH-DAKOTA"), "North Dakota Courts")
 
 
 class IsKnownTopicTests(TestCase):
@@ -193,8 +193,8 @@ class IsKnownCourtTests(TestCase):
     """Tests for is_known_court registry check."""
 
     def test_known_court_returns_true(self):
-        self.assertTrue(is_known_court("nd"))
-        self.assertTrue(is_known_court("dupage_il"))
+        self.assertTrue(is_known_court("north-dakota"))
+        self.assertTrue(is_known_court("dupage-il"))
 
     def test_unknown_court_returns_false(self):
         self.assertFalse(is_known_court("not_a_court"))
@@ -206,7 +206,7 @@ class IsKnownCourtTests(TestCase):
         self.assertFalse(is_known_court(""))
 
     def test_case_insensitive(self):
-        self.assertTrue(is_known_court("ND"))
+        self.assertTrue(is_known_court("NORTH-DAKOTA"))
 
 
 class SlugValidationTests(TestCase):
