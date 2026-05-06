@@ -528,22 +528,33 @@ class DeepLinkTests(TestCase):
             )
 
     def test_every_registered_court_resolves_via_deep_link(self):
-        """#332-style round-trip: every key in _COURT_PROMPTS must be reachable
-        via /t/{court}/{topic}/. Catches a future court being added to the
-        registry under a non-canonical slug."""
-        from chat.prompts import (
-            _COURT_PROMPTS,
-            _TOPIC_PROMPTS,
-            _load_court_prompts,
-            _load_topic_prompts,
-        )
+        """#332-style round-trip: every court directory under
+        chat/prompts/courts/ must be reachable via /t/{court}/{topic}/, and
+        must use canonical hyphenated slugs (no underscores). Catches a future
+        court being added under a non-canonical slug."""
+        from chat.prompts import _PROMPTS_DIR
 
-        _load_court_prompts()
-        _load_topic_prompts()
+        courts = sorted(
+            p.name
+            for p in (_PROMPTS_DIR / "courts").iterdir()
+            if p.is_dir() and (p / "prompt.md").is_file()
+        )
+        topics = sorted(
+            p.name
+            for p in (_PROMPTS_DIR / "topics").iterdir()
+            if p.is_dir() and (p / "prompt.md").is_file()
+        )
+        self.assertTrue(courts, "Expected at least one registered court")
+        self.assertTrue(topics, "Expected at least one registered topic")
         # Pick any registered topic for the round-trip — we're testing court
-        # resolution, not topic. Sorted for stable failure messages.
-        topic = sorted(_TOPIC_PROMPTS.keys())[0]
-        for court in sorted(_COURT_PROMPTS.keys()):
+        # resolution, not topic.
+        topic = topics[0]
+        for court in courts:
+            self.assertNotIn(
+                "_",
+                court,
+                msg=f"Court slug {court!r} must use hyphens, not underscores",
+            )
             response = self.client.get(f"/t/{court}/{topic}/")
             self.assertEqual(
                 response.status_code,
