@@ -55,6 +55,8 @@ dependencies = [
     "django-ratelimit>=4.1",
     # PDF text extraction
     "pdfplumber>=0.11",
+    # JSON Schema validation (court.json + future partner config)
+    "jsonschema>=4.20",
 ]
 
 [project.optional-dependencies]

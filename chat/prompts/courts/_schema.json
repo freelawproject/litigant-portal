@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://litigantportal.com/schemas/court.json",
+  "title": "Court",
+  "description": "Identity and metadata for a partner court. Lives at chat/prompts/courts/<slug>/court.json alongside the corpus prompt.md. Composed into the system prompt and consumed by routing and UI layers. Schema is intentionally minimal in v1 — additional fields will be driven by partner-court needs and current practices, not preemptive design.",
+  "type": "object",
+  "required": ["name", "jurisdiction_level"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Full canonical court name shown in UI."
+    },
+    "jurisdiction_level": {
+      "type": "string",
+      "enum": ["state", "county", "district", "federal", "tribal"],
+      "description": "Court's jurisdictional scope. Used to pick the layout/UX register without forcing the deeper jurisdiction-nesting decision yet."
+    },
+    "state": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$",
+      "description": "USPS two-letter state code where applicable. Omit for federal or tribal courts that don't sit under a single state."
+    },
+    "official_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Court homepage URL."
+    },
+    "official_resources_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Self-help / forms landing page URL. Where the corpus prompt.md should point users for authoritative court resources."
+    }
+  }
+}

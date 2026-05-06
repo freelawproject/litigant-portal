@@ -1,3 +1,5 @@
 {
-  "name": "North Dakota Courts"
+  "name": "North Dakota Courts",
+  "jurisdiction_level": "state",
+  "state": "ND"
 }
