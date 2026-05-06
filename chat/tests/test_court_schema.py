@@ -2,10 +2,14 @@
 system check that enforces the schema at app startup (#371)."""
 
 import json
+import tempfile
+from pathlib import Path
+from unittest import mock
 
 import jsonschema
 from django.test import TestCase
 
+from chat import checks as chat_checks
 from chat.checks import check_court_json_schema
 from chat.prompts import _PROMPTS_DIR, iter_courts
 
@@ -72,6 +76,28 @@ class CourtSchemaTests(TestCase):
         with self.assertRaises(jsonschema.ValidationError):
             self.validator.validate(bad)
 
+    def test_url_pattern_enforced(self):
+        # Court URLs must use http(s) scheme; "format": "uri" alone wouldn't
+        # be enforced by Draft202012Validator without a FormatChecker, so the
+        # schema uses an explicit pattern.
+        for field in ("official_url", "official_resources_url"):
+            for bad_url in ("not a url", "ftp://example.com", "example.com"):
+                meta = {
+                    "name": "Test",
+                    "jurisdiction_level": "state",
+                    field: bad_url,
+                }
+                with self.assertRaises(jsonschema.ValidationError):
+                    self.validator.validate(meta)
+        # Sanity: a well-formed URL passes.
+        self.validator.validate(
+            {
+                "name": "Test",
+                "jurisdiction_level": "state",
+                "official_url": "https://example.gov",
+            }
+        )
+
 
 class IterCourtsTests(TestCase):
     """Tests for the iter_courts() public helper."""
@@ -120,3 +146,64 @@ class CourtJsonCheckTests(TestCase):
         self.assertTrue(
             errors, "Expected schema errors for incomplete court.json"
         )
+
+
+class CourtJsonCheckErrorPathTests(TestCase):
+    """Exercise the check function's error-emission paths against fixture
+    dirs. Complements CourtJsonCheckTests, which only proves the green path
+    against the real chat/prompts/courts/ tree."""
+
+    def _run_check_with_fixture(self, court_json_text: str) -> list:
+        """Set up a temp courts dir with one fake court whose court.json
+        contains the given raw text, then run the check against it."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            (tmpdir_path / "_schema.json").write_text(
+                SCHEMA_PATH.read_text(encoding="utf-8"),
+                encoding="utf-8",
+            )
+            court_dir = tmpdir_path / "fake-court"
+            court_dir.mkdir()
+            (court_dir / "prompt.md").write_text("placeholder corpus\n")
+            (court_dir / "court.json").write_text(
+                court_json_text, encoding="utf-8"
+            )
+            with (
+                mock.patch.object(chat_checks, "_COURTS_DIR", tmpdir_path),
+                mock.patch.object(
+                    chat_checks,
+                    "_SCHEMA_PATH",
+                    tmpdir_path / "_schema.json",
+                ),
+            ):
+                return check_court_json_schema(app_configs=None)
+
+    def test_invalid_json_emits_e003(self):
+        errors = self._run_check_with_fixture("not valid json {")
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].id, "chat.E003")
+        self.assertIn("invalid JSON", errors[0].msg)
+
+    def test_schema_violation_emits_e004(self):
+        # Missing the required jurisdiction_level field.
+        errors = self._run_check_with_fixture(
+            json.dumps({"name": "Fake Court"})
+        )
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].id, "chat.E004")
+        self.assertIn("jurisdiction_level", errors[0].msg)
+
+    def test_missing_schema_emits_e001(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmpdir_path = Path(tmpdir)
+            with (
+                mock.patch.object(chat_checks, "_COURTS_DIR", tmpdir_path),
+                mock.patch.object(
+                    chat_checks,
+                    "_SCHEMA_PATH",
+                    tmpdir_path / "missing.json",
+                ),
+            ):
+                errors = check_court_json_schema(app_configs=None)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0].id, "chat.E001")

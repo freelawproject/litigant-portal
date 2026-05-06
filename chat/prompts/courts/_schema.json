@@ -24,13 +24,13 @@
     },
     "official_url": {
       "type": "string",
-      "format": "uri",
-      "description": "Court homepage URL."
+      "pattern": "^https?://\\S+$",
+      "description": "Court homepage URL. Must start with http:// or https://."
     },
     "official_resources_url": {
       "type": "string",
-      "format": "uri",
-      "description": "Self-help / forms landing page URL. Where the corpus prompt.md should point users for authoritative court resources."
+      "pattern": "^https?://\\S+$",
+      "description": "Self-help / forms landing page URL. Where the corpus prompt.md should point users for authoritative court resources. Must start with http:// or https://."
     }
   }
 }
