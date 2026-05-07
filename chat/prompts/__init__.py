@@ -62,6 +62,7 @@ _PHASE_PROMPTS: dict[str, str] = {}
 _TOPIC_PROMPTS: dict[str, str] = {}
 _COURT_PROMPTS: dict[str, str] = {}
 _COURT_META: dict[str, dict] = {}
+_TOPIC_META: dict[str, dict] = {}
 
 # Backward-compat: old callers passed jurisdiction (two-letter state code).
 # Map known states to their default court. Additional mappings land here as
@@ -217,6 +218,28 @@ def get_court_name(court: str | None) -> str:
         if meta is not None:
             _COURT_META[safe] = meta
     return _COURT_META.get(safe, {}).get("name", "")
+
+
+def get_topic_name(topic: str | None) -> str:
+    """Return the English display name for a topic slug from topic.json.
+
+    Pulls from ``topics/<slug>/topic.json:name`` — the structural source of
+    truth for topic identity. Returns empty string for unknown or missing
+    slugs.
+
+    Note: ``portal/views.py:TOPICS["<slug>"]["title"]`` still holds the
+    translatable display title used by current rendering paths. This helper
+    is the read-site that grounds ``topic.json`` in the codebase; broader
+    consumption follows the i18n-for-JSON consolidation in #377.
+    """
+    safe = _safe_slug(topic)
+    if safe is None:
+        return ""
+    if safe not in _TOPIC_META:
+        meta = _read_topic_meta(safe)
+        if meta is not None:
+            _TOPIC_META[safe] = meta
+    return _TOPIC_META.get(safe, {}).get("name", "")
 
 
 def build_system_prompt(

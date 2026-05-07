@@ -11,7 +11,7 @@ from django.test import TestCase
 
 from chat import checks as chat_checks
 from chat.checks import check_topic_json_schema
-from chat.prompts import _PROMPTS_DIR, iter_topics
+from chat.prompts import _PROMPTS_DIR, get_topic_name, iter_topics
 
 TOPICS_DIR = _PROMPTS_DIR / "topics"
 SCHEMA_PATH = TOPICS_DIR / "_schema.json"
@@ -78,6 +78,28 @@ class IterTopicsTests(TestCase):
     def test_sorted_by_slug(self):
         slugs = [slug for slug, _ in iter_topics()]
         self.assertEqual(slugs, sorted(slugs))
+
+
+class TopicNameTests(TestCase):
+    """Tests for get_topic_name display-name lookup from topic.json."""
+
+    def test_known_topic_eviction(self):
+        self.assertEqual(get_topic_name("eviction"), "Housing & Eviction")
+
+    def test_known_topic_adult_name_change(self):
+        self.assertEqual(
+            get_topic_name("adult_name_change"), "Adult Name Change"
+        )
+
+    def test_empty_topic_returns_empty(self):
+        self.assertEqual(get_topic_name(""), "")
+        self.assertEqual(get_topic_name(None), "")
+
+    def test_unknown_topic_returns_empty(self):
+        self.assertEqual(get_topic_name("not_a_topic"), "")
+
+    def test_case_insensitive_lookup(self):
+        self.assertEqual(get_topic_name("EVICTION"), "Housing & Eviction")
 
 
 class TopicJsonCheckTests(TestCase):
