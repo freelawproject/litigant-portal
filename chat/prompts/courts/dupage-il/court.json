@@ -1,3 +1,5 @@
 {
-  "name": "DuPage County Circuit Court"
+  "name": "DuPage County Circuit Court",
+  "jurisdiction_level": "county",
+  "state": "IL"
 }

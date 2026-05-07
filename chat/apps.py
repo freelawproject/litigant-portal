@@ -6,4 +6,5 @@ class ChatConfig(AppConfig):
     name = "chat"
 
     def ready(self):
+        import chat.checks  # noqa: F401
         import chat.signals  # noqa: F401

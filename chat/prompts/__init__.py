@@ -126,6 +126,28 @@ def is_known_court(slug: str | None) -> bool:
     return (_PROMPTS_DIR / "courts" / safe / "prompt.md").is_file()
 
 
+def iter_courts() -> list[tuple[str, dict]]:
+    """Return ``(slug, metadata)`` for every registered court.
+
+    A court is registered when ``courts/<slug>/prompt.md`` exists. Metadata
+    comes from ``courts/<slug>/court.json`` and is validated against
+    ``courts/_schema.json`` at app startup (see ``chat.checks``); at runtime,
+    callers can rely on shape conforming to the schema. Courts without a
+    ``court.json`` yield an empty dict — legacy/incomplete entries fall back
+    gracefully rather than raise.
+    """
+    courts_dir = _PROMPTS_DIR / "courts"
+    out: list[tuple[str, dict]] = []
+    for path in sorted(courts_dir.iterdir()):
+        if not path.is_dir():
+            continue
+        if not (path / "prompt.md").is_file():
+            continue
+        meta = _read_court_meta(path.name) or {}
+        out.append((path.name, meta))
+    return out
+
+
 def _load_phase_prompts() -> None:
     """Lazy-load phase prompt modules into the registry."""
     if _PHASE_PROMPTS:
