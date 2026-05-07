@@ -27,8 +27,8 @@ Each Court and Topic lives in its own directory beneath this module:
           prompt.md     # corpus content
       topics/
         <slug>/
+          topic.json    # identity: name, icon (more fields land with #363)
           prompt.md     # corpus content
-          (topic.json lands with #363 — card display data)
 
 Markdown lets non-engineer contributors edit corpus content via PR. The
 per-court directory matches the eventual wiki tree (#355) so when AI-team
@@ -62,6 +62,7 @@ _PHASE_PROMPTS: dict[str, str] = {}
 _TOPIC_PROMPTS: dict[str, str] = {}
 _COURT_PROMPTS: dict[str, str] = {}
 _COURT_META: dict[str, dict] = {}
+_TOPIC_META: dict[str, dict] = {}
 
 # Backward-compat: old callers passed jurisdiction (two-letter state code).
 # Map known states to their default court. Additional mappings land here as
@@ -110,6 +111,23 @@ def _read_court_meta(slug: str) -> dict | None:
         return None
 
 
+def _read_topic_meta(slug: str) -> dict | None:
+    """Read `topics/<slug>/topic.json`. Returns None if missing or unparseable.
+
+    Mirrors `_read_court_meta`: parse errors log a warning rather than
+    crashing the request — the schema check at startup (chat.E007/E008) is
+    the loud signal; this is a graceful runtime fallback.
+    """
+    path = _PROMPTS_DIR / "topics" / slug / "topic.json"
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        logger.warning("Failed to parse topic metadata at %s: %s", path, exc)
+        return None
+
+
 def is_known_topic(slug: str | None) -> bool:
     """True iff a topic prompt is registered for the slug."""
     safe = _safe_slug(slug)
@@ -148,6 +166,31 @@ def iter_courts() -> list[tuple[str, dict]]:
     return out
 
 
+def iter_topics() -> list[tuple[str, dict]]:
+    """Return ``(slug, metadata)`` for every registered topic.
+
+    A topic is registered when ``topics/<slug>/prompt.md`` exists. Metadata
+    comes from ``topics/<slug>/topic.json`` and is validated against
+    ``topics/_schema.json`` at app startup (see ``chat.checks``). Topics
+    without a ``topic.json`` yield an empty dict.
+
+    The schema is intentionally minimal in v1; translatable display copy
+    (subtitle, description, prompts, context_sections) still lives in
+    ``portal/views.py:TOPICS`` so makemessages can extract gettext_lazy
+    strings. See #355 follow-up for the full consolidation plan.
+    """
+    topics_dir = _PROMPTS_DIR / "topics"
+    out: list[tuple[str, dict]] = []
+    for path in sorted(topics_dir.iterdir()):
+        if not path.is_dir():
+            continue
+        if not (path / "prompt.md").is_file():
+            continue
+        meta = _read_topic_meta(path.name) or {}
+        out.append((path.name, meta))
+    return out
+
+
 def _load_phase_prompts() -> None:
     """Lazy-load phase prompt modules into the registry."""
     if _PHASE_PROMPTS:
@@ -175,6 +218,28 @@ def get_court_name(court: str | None) -> str:
         if meta is not None:
             _COURT_META[safe] = meta
     return _COURT_META.get(safe, {}).get("name", "")
+
+
+def get_topic_name(topic: str | None) -> str:
+    """Return the English display name for a topic slug from topic.json.
+
+    Pulls from ``topics/<slug>/topic.json:name`` — the structural source of
+    truth for topic identity. Returns empty string for unknown or missing
+    slugs.
+
+    Note: ``portal/views.py:TOPICS["<slug>"]["title"]`` still holds the
+    translatable display title used by current rendering paths. This helper
+    is the read-site that grounds ``topic.json`` in the codebase; broader
+    consumption follows the i18n-for-JSON consolidation in #377.
+    """
+    safe = _safe_slug(topic)
+    if safe is None:
+        return ""
+    if safe not in _TOPIC_META:
+        meta = _read_topic_meta(safe)
+        if meta is not None:
+            _TOPIC_META[safe] = meta
+    return _TOPIC_META.get(safe, {}).get("name", "")
 
 
 def build_system_prompt(

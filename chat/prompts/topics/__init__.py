@@ -8,8 +8,13 @@ lives at `chat.prompts.build_system_prompt`. Topic prompts are reusable
 across courts: when a second jurisdiction adopts the same topic, the Topic
 prompt stays; only the Court prompt changes.
 
-A `<slug>/topic.json` for card display data (title, subtitle, prompts,
-context_sections currently in `portal/views.py:TOPICS`) lands with #363.
+`<slug>/topic.json` carries structural identity for the topic — display
+name and icon today (validated at app startup via `chat.checks`). The
+schema is intentionally minimal in v1; translatable copy (subtitle,
+description, prompts, context_sections) stays in `portal/views.py:TOPICS`
+where `makemessages` can extract `gettext_lazy` strings. Full consolidation
+of TOPICS into topic.json is tracked as a follow-up to #372 once the
+i18n-for-JSON pattern is decided.
 
 When RAG over topic corpus lands, the Topic prompt shrinks to framing
 only; factual content is retrieved dynamically.
