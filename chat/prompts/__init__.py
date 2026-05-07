@@ -27,8 +27,8 @@ Each Court and Topic lives in its own directory beneath this module:
           prompt.md     # corpus content
       topics/
         <slug>/
+          topic.json    # identity: name, icon (more fields land with #363)
           prompt.md     # corpus content
-          (topic.json lands with #363 — card display data)
 
 Markdown lets non-engineer contributors edit corpus content via PR. The
 per-court directory matches the eventual wiki tree (#355) so when AI-team
@@ -110,6 +110,23 @@ def _read_court_meta(slug: str) -> dict | None:
         return None
 
 
+def _read_topic_meta(slug: str) -> dict | None:
+    """Read `topics/<slug>/topic.json`. Returns None if missing or unparseable.
+
+    Mirrors `_read_court_meta`: parse errors log a warning rather than
+    crashing the request — the schema check at startup (chat.E007/E008) is
+    the loud signal; this is a graceful runtime fallback.
+    """
+    path = _PROMPTS_DIR / "topics" / slug / "topic.json"
+    if not path.is_file():
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        logger.warning("Failed to parse topic metadata at %s: %s", path, exc)
+        return None
+
+
 def is_known_topic(slug: str | None) -> bool:
     """True iff a topic prompt is registered for the slug."""
     safe = _safe_slug(slug)
@@ -144,6 +161,31 @@ def iter_courts() -> list[tuple[str, dict]]:
         if not (path / "prompt.md").is_file():
             continue
         meta = _read_court_meta(path.name) or {}
+        out.append((path.name, meta))
+    return out
+
+
+def iter_topics() -> list[tuple[str, dict]]:
+    """Return ``(slug, metadata)`` for every registered topic.
+
+    A topic is registered when ``topics/<slug>/prompt.md`` exists. Metadata
+    comes from ``topics/<slug>/topic.json`` and is validated against
+    ``topics/_schema.json`` at app startup (see ``chat.checks``). Topics
+    without a ``topic.json`` yield an empty dict.
+
+    The schema is intentionally minimal in v1; translatable display copy
+    (subtitle, description, prompts, context_sections) still lives in
+    ``portal/views.py:TOPICS`` so makemessages can extract gettext_lazy
+    strings. See #355 follow-up for the full consolidation plan.
+    """
+    topics_dir = _PROMPTS_DIR / "topics"
+    out: list[tuple[str, dict]] = []
+    for path in sorted(topics_dir.iterdir()):
+        if not path.is_dir():
+            continue
+        if not (path / "prompt.md").is_file():
+            continue
+        meta = _read_topic_meta(path.name) or {}
         out.append((path.name, meta))
     return out
 
