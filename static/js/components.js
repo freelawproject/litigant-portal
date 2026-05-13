@@ -31,40 +31,17 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
-  // Activity timeline (header slide-out panel)
+  // Dev menu (header dropdown — visible in dev + QA only)
   // ===========================================================================
 
-  Alpine.data('activityTimeline', () => ({
-    menuOpen: false,
-    isLoading: false,
-    timeline: [],
-
-    async openMenu() {
-      this.menuOpen = true
-      this.isLoading = true
-      try {
-        const response = await fetch('/api/chat/case/')
-        if (response.ok) {
-          const data = await response.json()
-          this.timeline = (data.timeline || []).map((e) => ({
-            id: e.id,
-            type: e.event_type,
-            timestamp: e.created_at,
-            title: e.title,
-            content: e.content,
-            metadata: e.metadata,
-          }))
-        }
-      } catch (e) {
-        console.error('Failed to load timeline:', e)
-      } finally {
-        this.isLoading = false
-      }
+  Alpine.data('devMenu', () => ({
+    open: false,
+    toggle() {
+      this.open = !this.open
     },
-    closeMenu() {
-      this.menuOpen = false
+    close() {
+      this.open = false
     },
-
     async resetDemo() {
       const csrfToken =
         document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
@@ -81,57 +58,6 @@ document.addEventListener('alpine:init', () => {
         console.error('Failed to reset demo:', e)
       }
       location.reload()
-    },
-
-    get isLoadingTimeline() {
-      return this.isLoading
-    },
-    get notLoadingTimeline() {
-      return !this.isLoading
-    },
-    get hasTimeline() {
-      return !this.isLoading && this.timeline.length > 0
-    },
-    get noTimeline() {
-      return !this.isLoading && this.timeline.length === 0
-    },
-
-    get reversedTimeline() {
-      return this.timeline
-        .slice()
-        .reverse()
-        .map((event) => ({
-          ...event,
-          borderClass:
-            {
-              upload: 'border-primary-300 bg-primary-50/50',
-              summary: 'border-blue-300 bg-blue-50/50',
-              change: 'border-greyscale-300 bg-greyscale-50',
-            }[event.type] || 'border-greyscale-300 bg-greyscale-50',
-          formattedDate: new Date(event.timestamp).toLocaleDateString('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-          }),
-          isUpload: event.type === 'upload',
-          isSummary: event.type === 'summary',
-          isChange: event.type === 'change',
-        }))
-    },
-  }))
-
-  // ===========================================================================
-  // Timeline event card (nested inside activity timeline)
-  // ===========================================================================
-
-  Alpine.data('timelineEvent', () => ({
-    expanded: false,
-    toggle() {
-      this.expanded = !this.expanded
-    },
-    get clampClass() {
-      return this.expanded ? '' : 'line-clamp-2'
     },
   }))
 

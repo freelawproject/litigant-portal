@@ -62,6 +62,7 @@ cd /opt/litigant-portal
 cat > .env << 'EOF'
 DOMAIN=qa.litigantportal.com
 ALLOWED_HOSTS=qa.litigantportal.com
+DEPLOYMENT_ENV=qa
 CHAT_ENABLED=true
 CHAT_MODEL=openai/gpt-4o-mini
 EOF

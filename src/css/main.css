@@ -306,10 +306,6 @@
     @apply max-w-content mx-auto;
   }
 
-  .mobile-header-menu-btn {
-    @apply p-2 -mr-2; /* Extend touch target */
-  }
-
   /* Hero Section */
   .hero {
     @apply px-4 py-8 md:py-12 bg-greyscale-50;
