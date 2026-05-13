@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches:
-      - main
+      - qa
 
 permissions:
   contents: read
@@ -27,13 +27,13 @@ jobs:
           push: false
 
   # ---------------------------------------------------------------------------
-  # Main: build, push to GHCR, deploy to QA
+  # qa: build, push to GHCR, deploy to QA
   # ---------------------------------------------------------------------------
   build-and-deploy:
     name: Build, push, deploy to QA
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    # Serialize main-branch deploys so back-to-back merges don't race the SSH
+    if: github.event_name == 'push' && github.ref == 'refs/heads/qa'
+    # Serialize qa-branch deploys so back-to-back merges don't race the SSH
     # step. cancel-in-progress=false queues subsequent commits in order.
     concurrency:
       group: qa-deploy
