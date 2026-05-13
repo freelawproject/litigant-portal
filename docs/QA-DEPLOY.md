@@ -1,6 +1,6 @@
 # QA Environment Setup
 
-One-time setup for the QA/staging server at `qa.litigantportal.com`. After setup, deploys are automatic — merge to main triggers a new Docker image build and deploy via GitHub Actions.
+One-time setup for the QA/staging server at `qa.litigantportal.com`. After setup, deploys are automatic — merge to `qa` triggers a new Docker image build and deploy via GitHub Actions.
 
 ## Architecture
 
@@ -114,7 +114,7 @@ cat ~/.ssh/lp_qa_deploy
 
 ## GHCR Package Visibility
 
-After the first merge to main pushes an image, set the package to public:
+After the first merge to `qa` pushes an image, set the package to public:
 
 1. Go to https://github.com/orgs/freelawproject/packages/container/litigant-portal/settings
 2. Change visibility to **Public**
@@ -145,7 +145,7 @@ docker compose --profile prod up -d --no-build
 
 ## How Deploys Work
 
-1. Developer merges PR to `main`
+1. Developer merges PR to `qa`
 2. GitHub Actions `cd.yml` workflow triggers:
    - Builds Docker image
    - Pushes to GHCR with `latest` + SHA tags

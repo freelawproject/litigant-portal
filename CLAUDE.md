@@ -28,7 +28,7 @@ Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker e
 | QA/Staging  | OpenAI        | docker-compose prod profile + secrets/     |
 | Production  | OpenAI        | docker-compose.yml + `.env` + secrets/     |
 
-**QA environment:** `https://qa.litigantportal.com` — auto-deploys on merge to main via GitHub Actions CD workflow. See `docs/QA-DEPLOY.md` for server setup. Uses the same docker-compose prod profile on a DigitalOcean VPS.
+**QA environment:** `https://qa.litigantportal.com` — auto-deploys on merge to `qa` via GitHub Actions CD workflow. See `docs/QA-DEPLOY.md` for server setup. Uses the same docker-compose prod profile on a DigitalOcean VPS.
 
 **Local dev setup:**
 
@@ -468,7 +468,7 @@ curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o 
 
 ### QA/Staging
 
-QA runs at `https://qa.litigantportal.com` on a DigitalOcean VPS. Auto-deploys on merge to main via the `cd.yml` GitHub Actions workflow (build → push to GHCR → SSH deploy). Uses the docker-compose prod profile. See `docs/QA-DEPLOY.md` for full setup runbook and gotchas.
+QA runs at `https://qa.litigantportal.com` on a DigitalOcean VPS. Auto-deploys on merge to `qa` via the `cd.yml` GitHub Actions workflow (build → push to GHCR → SSH deploy). Uses the docker-compose prod profile. See `docs/QA-DEPLOY.md` for full setup runbook and gotchas.
 
 Manual deploy on the QA server: `make docker-rebuild`
 
