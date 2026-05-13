@@ -130,10 +130,6 @@
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth Status</a>
             </li>
             <li>
-              <a href="#chat-message"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Chat Message</a>
-            </li>
-            <li>
               <a href="#timeline-event-card"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Timeline Event Card</a>
             </li>
@@ -1152,29 +1148,6 @@
               <div class="flex flex-col md:flex-row">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
                 <span class="p-2.5">CTA area — button, link, or form</span>
-              </div>
-            </div>
-          </section>
-          <section id="chat-message" class="mb-12" aria-labelledby="chat-message-heading">
-            <h3 id="chat-message-heading" class="mb-4">Chat Message</h3>
-            <p class="text-greyscale-600 mb-6">Server-rendered chat message bubble with avatar. Used for static/initial message display.</p>
-            <div class="space-y-4 mb-6 max-w-lg">
-              <c-molecules.chat-message role="user" content="I just received an eviction notice. What should I do?" timestamp="2:30 PM" />
-              <c-molecules.chat-message role="assistant" content="I can help you understand your rights. First, what state are you in?" timestamp="2:31 PM" />
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>role</code></span>
-                <span class="p-2.5">"user" | "assistant"</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>content</code></span>
-                <span class="p-2.5">Message text (alternative to slot)</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>timestamp</code></span>
-                <span class="p-2.5">Displayed time string</span>
               </div>
             </div>
           </section>
