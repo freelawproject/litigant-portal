@@ -7,7 +7,8 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
-from .agents import agent_registry
+from litigant_portal.agents import agent_registry
+
 from .models import ActionItemModel, CaseInfo, Deadline, TimelineEvent
 from .services.chat_service import ChatService
 from .services.pdf_service import pdf_service
