@@ -564,6 +564,33 @@ class DeepLinkTests(TestCase):
             self.assertIn(f"court={court}", response.url)
 
 
+# =============================================================================
+# Topic Flow Registry Tests (#390)
+# =============================================================================
+
+
+class TopicFlowRegistryTests(SimpleTestCase):
+    """Tests for the Topic Flow registry stub (#390).
+
+    The skeleton ships a registry that always returns False — no corpora
+    are registered yet. Combined with the do-no-harm shim in
+    ``portal.views.deep_link``, every existing deep-link continues to 302
+    to chat unchanged (covered by ``DeepLinkTests`` above).
+    """
+
+    def test_has_corpus_returns_false_for_known_pair(self):
+        from portal.topic_flow import registry
+
+        self.assertFalse(
+            registry.has_corpus("north-dakota", "adult_name_change")
+        )
+
+    def test_has_corpus_returns_false_for_unknown_pair(self):
+        from portal.topic_flow import registry
+
+        self.assertFalse(registry.has_corpus("bogus", "anything"))
+
+
 @pytest.mark.postgres
 class ChatPageCourtTests(TestCase):
     """Tests for court parameter handling on /chat/ (#327)."""

@@ -217,18 +217,26 @@ def chat_page(request):
 
 
 def deep_link(request, court, topic):
-    """Deep-link entry: /t/{court}/{topic}/ → chat with both pre-set.
+    """Deep-link entry: /t/{court}/{topic}/ → Topic Flow or chat fallback.
 
     Validates the pair against the prompt registries. Unknown court or
-    topic returns 404. On success, 302 to /chat/?topic=X&court=Y so the
-    existing chat page handles the heavy lifting.
+    topic returns 404. If a Topic Flow corpus is registered for the pair
+    (see ``portal.topic_flow.registry``), delegate to the Topic Flow
+    view; otherwise 302 to /chat/?topic=X&court=Y so the existing chat
+    page handles the heavy lifting.
     """
     from chat.prompts import is_known_court, is_known_topic
+    from portal.topic_flow import registry
 
     if not is_known_topic(topic):
         raise Http404(f"Topic '{topic}' not registered")
     if not is_known_court(court):
         raise Http404(f"Court '{court}' not registered")
+
+    if registry.has_corpus(court, topic):
+        from portal.topic_flow.views import topic_flow
+
+        return topic_flow(request, court, topic)
 
     query = urlencode({"topic": topic.lower(), "court": court.lower()})
     return redirect(f"{reverse('portal:chat')}?{query}")
