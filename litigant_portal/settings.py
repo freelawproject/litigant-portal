@@ -53,6 +53,9 @@ DATABASES = {
     }
 }
 
+LOGIN_URL = "/login/"
+LOGIN_REDIRECT_URL = "/app/"
+
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
