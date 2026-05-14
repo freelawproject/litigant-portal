@@ -38,7 +38,11 @@ urls."Organisation Homepage" = "https://free.law/"
 dependencies = [
     "click>=8.0.0",
     "django>=5.2.0",
+    "django-pydantic-field>=0.5.1",
     "django-storages[s3]>=1.14.0",
+    "gunicorn>=23.0",
+    "litellm>=1.50",
+    "pydantic>=2.0",
     "python-dotenv>=1.0.0",
     "whitenoise>=6.12.0",
 ]
