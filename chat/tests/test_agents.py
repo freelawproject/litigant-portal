@@ -11,7 +11,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 
-from chat.agents.litigant_assistant import (
+from chat.models import ActionItemModel, CaseInfo, ChatSession, Deadline
+from litigant_portal.agents.litigant_assistant import (
     ActionItem,
     FactDate,
     Resource,
@@ -19,7 +20,6 @@ from chat.agents.litigant_assistant import (
     UpdateActionPlan,
     UpdateCaseFacts,
 )
-from chat.models import ActionItemModel, CaseInfo, ChatSession, Deadline
 
 User = get_user_model()
 
@@ -144,7 +144,7 @@ class UpdateCaseFactsPatchBuildingTests(SimpleTestCase):
         self.assertNotIn("parties", patch)
 
     def test_returns_tool_output_with_case_patch_key(self):
-        from chat.agents.base import ToolOutput
+        from litigant_portal.agents.base import ToolOutput
 
         tool = UpdateCaseFacts(case_type="Small Claims")
         result = tool(_mock_agent(session=None))
@@ -369,7 +369,7 @@ class UpdateActionPlanPatchBuildingTests(SimpleTestCase):
         self.assertEqual(patch, {})
 
     def test_returns_tool_output_with_action_plan_patch_key(self):
-        from chat.agents.base import ToolOutput
+        from litigant_portal.agents.base import ToolOutput
 
         tool = UpdateActionPlan(new_action_items=[ActionItem(title="Test")])
         result = tool(_mock_agent(session=None))

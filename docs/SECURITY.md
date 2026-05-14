@@ -45,7 +45,7 @@ All secrets use the `_FILE` convention — `settings.py` checks `<VAR>_FILE` for
 | OpenAI API key    | `OPENAI_API_KEY_FILE=/run/secrets/openai_api_key` | `OPENAI_API_KEY`    |
 | Postgres password | `POSTGRES_PASSWORD_FILE=/run/secrets/db_password` | `POSTGRES_PASSWORD` |
 
-Secrets are never exported to the process environment. `OPENAI_API_KEY` is passed directly to LiteLLM via the `llm_completion()` wrapper in `chat/agents/base.py`.
+Secrets are never exported to the process environment. `OPENAI_API_KEY` is passed directly to LiteLLM via the `llm_completion()` wrapper in `litigant_portal/agents/base.py`.
 
 ```bash
 # Create production secrets

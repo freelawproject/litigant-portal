@@ -8,7 +8,7 @@ from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView, UpdateView
 
-from chat.agents import agent_registry
+from litigant_portal.agents import agent_registry
 
 from .forms import UserProfileForm
 from .models import UserProfile

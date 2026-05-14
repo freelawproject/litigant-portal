@@ -76,7 +76,7 @@ class UpdateCaseFacts(Tool):
     details. Call it as soon as you have facts — partial updates are fine and
     preferred. Do not wait until you know everything.
 
-    NOTE: Field schema mirrors chat.agents.document_extraction.CourtDocumentData.
+    NOTE: Field schema mirrors litigant_portal.agents.document_extraction.CourtDocumentData.
     Keep both in sync until #207 consolidates them.
     """
 

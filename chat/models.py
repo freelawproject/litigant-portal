@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import models
 from django_pydantic_field import SchemaField
 
-from chat.agents.base import Message as MessageSchema
+from litigant_portal.agents.base import Message as MessageSchema
 
 
 class ChatSession(models.Model):
@@ -42,7 +42,7 @@ class Message(models.Model):
     """A message within a chat session.
 
     The `data` field stores the full message dict, validated against the
-    Message schema from chat.agents.base (SystemMessage, UserMessage,
+    Message schema from litigant_portal.agents.base (SystemMessage, UserMessage,
     AssistantMessage, or ToolMessage).
     """
 

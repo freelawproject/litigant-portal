@@ -8,7 +8,7 @@ from uuid import UUID
 from django.conf import settings
 from django.http import HttpRequest, StreamingHttpResponse
 
-from chat.agents import agent_registry
+from litigant_portal.agents import agent_registry
 
 logger = logging.getLogger(__name__)
 

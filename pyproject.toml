@@ -74,8 +74,8 @@ test = [
     "tox-uv>=1.29.0",
 ]
 
-[tool.setuptools]
-packages = [ "litigant_portal" ]
+[tool.setuptools.packages.find]
+include = [ "litigant_portal*" ]
 
 [tool.ruff]
 line-length = 79
