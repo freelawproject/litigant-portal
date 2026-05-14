@@ -16,10 +16,21 @@
 
   --font-display: "Fraunces", "Times New Roman", serif;
   --font-sans: "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --animate-fade-up-d2: fadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.15s both;
   --animate-fade-up-d3: fadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.25s both;
   --animate-fade-up-d4: fadeUp 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) 0.35s both;
+  --animate-msg-in: msgIn 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-backdrop-in: backdropIn 0.25s ease both;
+  --animate-modal-in: modalIn 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+
+  --shadow-modal: 0 32px 64px -24px rgba(26, 22, 18, 0.4),
+    0 8px 16px -8px rgba(26, 22, 18, 0.12);
+  --shadow-menu: 0 12px 28px -16px rgba(26, 22, 18, 0.25),
+    0 4px 8px -4px rgba(26, 22, 18, 0.08);
+  --shadow-card-hover: 0 4px 16px -10px rgba(26, 22, 18, 0.18);
+  --shadow-composer-focus: 0 0 0 3px #f0e9da;
 }
 
 @keyframes fadeUp {
@@ -31,6 +42,47 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes msgIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes backdropIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+[x-cloak] {
+  display: none !important;
+}
+
+@utility grain {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n' x='0' y='0' width='100%' height='100%'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch' seed='3'/><feColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.40 0 0 0 0 0.32 0 0 0 0.22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 200px 200px;
+  background-repeat: repeat;
 }
 
 ::selection {
@@ -106,4 +158,121 @@
 }
 .topic-mini-title {
   transition: color 0.25s ease;
+}
+
+.font-display-roman {
+  font-family: "Fraunces", "Times New Roman", serif;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+  letter-spacing: 0.005em;
+}
+.font-display-italic {
+  font-family: "Fraunces", "Times New Roman", serif;
+  font-style: italic;
+  font-variation-settings: "opsz" 144, "SOFT" 100;
+  letter-spacing: 0.005em;
+}
+.eyebrow {
+  font-family: "Geist", sans-serif;
+  font-size: 10.5px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.scroll-area {
+  overflow-y: auto;
+}
+.scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-area::-webkit-scrollbar-thumb {
+  background: #d9cfb8;
+  border-radius: 999px;
+}
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: #8a8275;
+}
+
+.composer-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: "Geist", sans-serif;
+  font-style: normal;
+  font-weight: 400;
+  width: 100%;
+}
+.composer-input::placeholder {
+  color: #8a8275;
+  opacity: 1;
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-weight: 300;
+  font-variation-settings: "opsz" 144;
+}
+
+.tool-row {
+  background: transparent;
+  border: 1px solid #d9cfb8;
+  border-radius: 10px;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+.tool-row:hover,
+.tool-row.expanded {
+  background: #f0e9da;
+}
+
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  color: #3a332b;
+}
+.side-item:hover,
+.side-item.active {
+  background: #f0e9da;
+  color: #1a1612;
+}
+.side-item.active::before {
+  content: "";
+  width: 2px;
+  height: 14px;
+  background: #7a2d24;
+  border-radius: 2px;
+  margin-right: 4px;
+  margin-left: -4px;
+}
+
+.dropzone {
+  border: 1.5px dashed #d9cfb8;
+  border-radius: 14px;
+  background: #f8f4eb;
+  transition: border-color 0.25s ease, background 0.25s ease,
+    transform 0.25s ease;
+}
+.dropzone:hover {
+  border-color: #8a8275;
+  background: #f0e9da;
+}
+.dropzone.dragging {
+  border-color: #1a1612;
+  border-style: solid;
+  background: #f0e9da;
+  transform: scale(1.005);
+}
+.dropzone.dragging .dropzone-icon {
+  color: #7a2d24;
+  transform: translateY(-2px);
+}
+.dropzone-icon {
+  transition: color 0.25s ease, transform 0.3s cubic-bezier(0.2, 0.7, 0.2, 1);
+  color: #8a8275;
 }

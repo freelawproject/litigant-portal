@@ -1,0 +1,447 @@
+{% comment %}
+Chat component — chatApp() Alpine factory + tool render registry.
+
+Self-contained. The factory is exposed on `window.chatApp` so any markup
+that wraps itself in `x-data="chatApp({ agentName: '...' })"` participates
+in the same conversation state. Markup lives in:
+  - includes/chat/conversations.html (sidebar)
+  - includes/chat/thread.html       (center column)
+
+Public surface:
+  window.chatApp({ agentName })            → Alpine factory
+  window.registerChatTool(name, handlers)  → register custom tool renderers
+    handlers = { renderCall(item, ctx) → body HTML }
+    ctx.findResponse(id) → matching tool_response item, or null
+
+Tool rendering: every tool invocation is rendered as a single row driven by
+the tool_call item. The renderer can look ahead via ctx.findResponse(id) to
+pull in the result once it arrives — the row's status badge flips from
+"Working…" to "Done" automatically. tool_response items live in the items
+array as pure data and are never rendered on their own.
+
+Wire protocol — the streaming endpoint speaks NDJSON: one JSON event per
+line, each event being whatever Agent.stream_run yielded. The thread id
+for the current request lives in the X-Thread-Id response header so the
+event stream itself stays unmodified.
+{% endcomment %}
+<script>
+(function () {
+  // ---------------- Tool render registry ----------------
+  // Each entry maps a tool name → { renderCall, renderResponse }.
+  // Either function may be omitted to fall back to the defaults below.
+  window.chatToolRegistry = window.chatToolRegistry || {};
+
+  window.registerChatTool = function (name, handlers) {
+    window.chatToolRegistry[name] = {
+      ...(window.chatToolRegistry[name] || {}),
+      ...handlers,
+    };
+  };
+
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+      }[c];
+    });
+  }
+
+  function jsonBlock(obj) {
+    var json;
+    try {
+      json = JSON.stringify(obj, null, 2);
+    } catch (e) {
+      json = String(obj);
+    }
+    return (
+      '<div class="font-mono text-[11.5px] text-ink-soft bg-cream border ' +
+      'border-rule rounded-lg px-3 py-2.5 leading-relaxed ' +
+      'whitespace-pre-wrap break-words">' +
+      escapeHtml(json) +
+      '</div>'
+    );
+  }
+
+  // Renderers return only the BODY of a tool row — the surrounding chrome
+  // (wrench icon, tool name, status badge, collapse toggle) is owned by
+  // the template so it can stay interactive.
+
+  // Default: arguments first, then the result block once a matching
+  // tool_response has landed (looked up via ctx.findResponse).
+  function defaultRenderCall(item, ctx) {
+    var body =
+      '<div>' +
+      '<div class="eyebrow text-muted text-[9px] mb-1.5">Arguments</div>' +
+      jsonBlock(item.args) +
+      '</div>';
+    var response = ctx.findResponse(item.id);
+    if (response && response.data !== null && response.data !== undefined) {
+      body +=
+        '<div>' +
+        '<div class="eyebrow text-muted text-[9px] mb-1.5">Result</div>' +
+        jsonBlock(response.data) +
+        '</div>';
+    }
+    return body;
+  }
+
+  // Convert the raw stored message history (whatever Agent persists, in
+  // OpenAI-ish chat-message shape) into the flat item list the UI renders.
+  // Streaming events already arrive in this flat shape, so this is the only
+  // place that needs to translate.
+  function flattenMessages(messages) {
+    var items = [];
+    for (var i = 0; i < messages.length; i++) {
+      var msg = messages[i] || {};
+      var role = msg.role;
+      if (role === 'user') {
+        items.push({ type: 'user', content: msg.content || '' });
+      } else if (role === 'assistant') {
+        var content = msg.content || '';
+        if (content) items.push({ type: 'assistant', content: content });
+        var tcs = msg.tool_calls || [];
+        for (var j = 0; j < tcs.length; j++) {
+          var tc = tcs[j] || {};
+          var fn = tc.function || {};
+          var args = {};
+          try {
+            args = JSON.parse(fn.arguments || '{}');
+          } catch (e) {}
+          items.push({
+            type: 'tool_call',
+            id: tc.id || '',
+            name: fn.name || '',
+            args: args,
+          });
+        }
+      } else if (role === 'tool') {
+        items.push({
+          type: 'tool_response',
+          id: msg.tool_call_id || '',
+          name: msg.name || '',
+          data: msg.data == null ? null : msg.data,
+        });
+      }
+    }
+    return items;
+  }
+
+  // ---------------- chatApp factory ----------------
+  window.chatApp = function (opts) {
+    var agentName = (opts && opts.agentName) || 'weather-agent';
+    return {
+      agentName: agentName,
+      threads: [],
+      activeThreadId: null,
+      items: [],
+      composerInput: '',
+      streaming: false,
+      error: null,
+      deleteConfirmOpen: false,
+      deleting: false,
+      _itemKey: 0,
+      _pendingAssistantIdx: null,
+
+      async init() {
+        await this.refreshThreads();
+      },
+
+      // ----- helpers -----
+      nextKey() {
+        this._itemKey += 1;
+        return 'item-' + this._itemKey;
+      },
+
+      titleFor(id) {
+        return id ? 'Chat #' + id : 'New conversation';
+      },
+
+      formatTime(iso) {
+        if (!iso) return '';
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        var now = new Date();
+        var dayDiff = Math.floor((now - d) / 86400000);
+        if (dayDiff <= 0) return 'Today';
+        if (dayDiff === 1) return 'Yesterday';
+        if (dayDiff < 7) return dayDiff + ' days ago';
+        return d.toLocaleDateString();
+      },
+
+      get threadTitle() {
+        return this.titleFor(this.activeThreadId);
+      },
+
+      get hasItems() {
+        return this.items.length > 0;
+      },
+
+      // tool_response items aren't rendered on their own — they're consumed
+      // by their matching tool_call row. Filter them out for x-for.
+      get visibleItems() {
+        return this.items.filter((it) => it.type !== 'tool_response');
+      },
+
+      // Find the matching tool_response for a tool_call id (or null).
+      findResponse(id) {
+        for (var i = 0; i < this.items.length; i++) {
+          var it = this.items[i];
+          if (it.type === 'tool_response' && it.id === id) return it;
+        }
+        return null;
+      },
+
+      // Render a tool_call's body. The renderer can use ctx.findResponse(id)
+      // to pull in result data once it's available.
+      renderToolCall(item) {
+        var handler = window.chatToolRegistry[item.name] || {};
+        var fn = handler.renderCall || defaultRenderCall;
+        try {
+          return fn(item, { findResponse: (id) => this.findResponse(id) }) || '';
+        } catch (e) {
+          console.error('renderToolCall failed', e);
+          return '';
+        }
+      },
+
+      // ----- thread list / selection -----
+      async refreshThreads() {
+        try {
+          var resp = await fetch('/chat/' + this.agentName + '/threads/', {
+            credentials: 'same-origin',
+          });
+          if (!resp.ok) return;
+          var json = await resp.json();
+          this.threads = (json.threads || []).map((t) => ({
+            id: t.id,
+            updated_at: t.updated_at,
+          }));
+        } catch (e) {
+          console.error(e);
+        }
+      },
+
+      newConversation() {
+        if (this.streaming) return;
+        this.activeThreadId = null;
+        this.items = [];
+        this.error = null;
+        this.composerInput = '';
+      },
+
+      async selectThread(id) {
+        if (this.streaming) return;
+        if (id === this.activeThreadId) return;
+        this.activeThreadId = id;
+        this.items = [];
+        this.error = null;
+        try {
+          var resp = await fetch(
+            '/chat/' + this.agentName + '/threads/' + id + '/',
+            { credentials: 'same-origin' }
+          );
+          if (!resp.ok) {
+            this.error = 'Failed to load conversation.';
+            return;
+          }
+          var json = await resp.json();
+          var self = this;
+          this.items = flattenMessages(json.messages || []).map((it) =>
+            Object.assign(it, { key: self.nextKey() })
+          );
+          this.scrollToBottom();
+        } catch (e) {
+          this.error = String(e);
+        }
+      },
+
+      // Delete the currently-active thread on the server, drop it from the
+      // sidebar, and reset to the empty "new conversation" state.
+      async deleteActiveThread() {
+        if (this.streaming || this.deleting) return;
+        var id = this.activeThreadId;
+        if (!id) {
+          this.deleteConfirmOpen = false;
+          return;
+        }
+        this.deleting = true;
+        try {
+          var resp = await fetch(
+            '/chat/' + this.agentName + '/threads/' + id + '/',
+            {
+              method: 'DELETE',
+              credentials: 'same-origin',
+              headers: { 'X-CSRFToken': this._getCsrfToken() },
+            }
+          );
+          if (!resp.ok) {
+            this.error = 'Failed to delete conversation (' + resp.status + ').';
+            return;
+          }
+          this.threads = this.threads.filter((t) => t.id !== id);
+          this.activeThreadId = null;
+          this.items = [];
+          this.composerInput = '';
+          this.deleteConfirmOpen = false;
+        } catch (e) {
+          this.error = String(e);
+        } finally {
+          this.deleting = false;
+        }
+      },
+
+      // ----- send + stream -----
+      async sendMessage() {
+        var text = this.composerInput.trim();
+        if (!text || this.streaming) return;
+        this.composerInput = '';
+        this.error = null;
+        this.streaming = true;
+
+        // Optimistic user item.
+        this.items.push({
+          type: 'user',
+          content: text,
+          key: this.nextKey(),
+        });
+        this.scrollToBottom();
+        this._pendingAssistantIdx = null;
+
+        try {
+          var resp = await fetch('/chat/' + this.agentName + '/', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': this._getCsrfToken(),
+            },
+            body: JSON.stringify({
+              message: text,
+              thread_id: this.activeThreadId,
+            }),
+          });
+
+          if (!resp.ok || !resp.body) {
+            this.error = 'Request failed (' + resp.status + ').';
+            return;
+          }
+
+          // Pick up the thread id straight from the response headers, and
+          // slot the thread into the sidebar list immediately if it's new.
+          var threadId = parseInt(resp.headers.get('X-Thread-Id') || '', 10);
+          if (threadId) {
+            this.activeThreadId = threadId;
+            if (!this.threads.find((t) => t.id === threadId)) {
+              this.threads = [
+                { id: threadId, updated_at: new Date().toISOString() },
+              ].concat(this.threads);
+            }
+          }
+
+          // NDJSON: one JSON event per line, exactly as yielded by the agent.
+          var reader = resp.body.getReader();
+          var decoder = new TextDecoder();
+          var buffer = '';
+
+          while (true) {
+            var chunk = await reader.read();
+            if (chunk.done) break;
+            buffer += decoder.decode(chunk.value, { stream: true });
+            var lines = buffer.split('\n');
+            buffer = lines.pop();
+            for (var i = 0; i < lines.length; i++) {
+              this._consumeLine(lines[i]);
+            }
+          }
+          if (buffer.trim()) this._consumeLine(buffer);
+        } catch (e) {
+          console.error(e);
+          this.error = String(e);
+        } finally {
+          this.streaming = false;
+          this._pendingAssistantIdx = null;
+        }
+      },
+
+      _consumeLine(line) {
+        if (!line || !line.trim()) return;
+        try {
+          this._handleEvent(JSON.parse(line));
+        } catch (e) {
+          console.error('Failed to parse stream line', line, e);
+        }
+      },
+
+      _handleEvent(evt) {
+        if (evt.type === 'content_delta') {
+          if (this._pendingAssistantIdx === null) {
+            this.items.push({
+              type: 'assistant',
+              content: '',
+              key: this.nextKey(),
+            });
+            this._pendingAssistantIdx = this.items.length - 1;
+          }
+          // Mutate via the array index so Alpine's proxy sees the change.
+          var current = this.items[this._pendingAssistantIdx];
+          this.items[this._pendingAssistantIdx] = Object.assign({}, current, {
+            content: current.content + (evt.content || ''),
+          });
+          this.scrollToBottom();
+          return;
+        }
+        if (evt.type === 'tool_call') {
+          this._pendingAssistantIdx = null;
+          this.items.push({
+            type: 'tool_call',
+            id: evt.id,
+            name: evt.name,
+            args: evt.args || {},
+            key: this.nextKey(),
+          });
+          this.scrollToBottom();
+          return;
+        }
+        if (evt.type === 'tool_response') {
+          this._pendingAssistantIdx = null;
+          this.items.push({
+            type: 'tool_response',
+            id: evt.id,
+            name: evt.name,
+            data: evt.data === undefined ? null : evt.data,
+            key: this.nextKey(),
+          });
+          this.scrollToBottom();
+          return;
+        }
+        if (evt.type === 'done') {
+          this._pendingAssistantIdx = null;
+          this.refreshThreads();
+          return;
+        }
+        if (evt.type === 'error') {
+          this.error = evt.error || 'An error occurred.';
+          this._pendingAssistantIdx = null;
+        }
+      },
+
+      scrollToBottom() {
+        this.$nextTick(() => {
+          var el = this.$refs && this.$refs.messages;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      },
+
+      _getCsrfToken() {
+        var m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/);
+        return m ? decodeURIComponent(m[1]) : '';
+      },
+    };
+  };
+})();
+</script>

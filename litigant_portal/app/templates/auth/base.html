@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block body_class %}bg-cream grain text-ink font-sans min-h-screen w-full relative flex items-center justify-center sm:px-6 sm:py-12 transition-colors duration-300{% endblock %}
+
+{% block content %}
+  <div class="absolute top-0 left-0 right-0">
+    <div class="max-w-screen-2xl mx-auto px-6 md:px-10 flex items-center h-[72px]">
+      <a href="{% url 'index' %}" class="group flex items-center gap-3">
+        {% include "includes/brand-mark.html" with size=36 icon_size=14 %}
+        <div class="flex flex-col leading-none">
+          <span class="font-display font-medium text-[22px] tracking-tight" style="font-variation-settings: 'opsz' 144, 'SOFT' 30;">
+            Litigant Portal<span class="text-oxblood">.</span>
+          </span>
+          <span class="font-sans uppercase font-medium text-muted text-[9.5px] tracking-[0.18em] mt-1">
+            Powered by Free Law Project
+          </span>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <div class="w-full max-w-[480px]">
+    <div class="flex flex-col items-center sm:bg-cream border border-transparent rounded-2xl p-10 sm:border-rule sm:shadow-card-hover transition duration-300">
+      {% if messages %}
+        <div class="w-full mb-6 flex flex-col gap-2">
+          {% for message in messages %}
+            <div class="text-[13px] text-oxblood text-center">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+      {% block card_content %}{% endblock %}
+    </div>
+  </div>
+{% endblock %}

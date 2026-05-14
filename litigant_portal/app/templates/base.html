@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Geist:wght@300..700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=Geist:wght@300..700&family=Geist+Mono:wght@400..600&display=swap"
       rel="stylesheet"
     />
 
@@ -20,7 +20,7 @@
     {% block head %}{% endblock %}
   </head>
   <body
-    class="bg-cream text-ink font-sans min-h-screen w-full"
+    class="{% block body_class %}bg-cream text-ink font-sans min-h-screen w-full{% endblock %}"
     style="font-feature-settings: 'ss01','cv01','cv11'; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;"
     {% block body_attrs %}{% endblock %}
   >

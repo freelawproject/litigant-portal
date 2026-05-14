@@ -1,0 +1,270 @@
+{% comment %}
+Center-column piece of the chat component: title bar + messages + composer.
+Must be rendered inside an x-data="chatApp(...)" scope.
+{% endcomment %}
+<div class="flex-shrink-0 flex items-center justify-between pl-4 pr-5 h-12 border-b border-rule-soft">
+  <span
+    class="font-display-roman truncate text-[15px] font-medium"
+    x-text="threadTitle"
+  ></span>
+  <div
+    x-data="{ menuOpen: false }"
+    @keydown.escape.window="menuOpen = false"
+    x-show="activeThreadId"
+    x-cloak
+    class="relative"
+  >
+    <button
+      type="button"
+      @click="menuOpen = !menuOpen"
+      @click.outside="menuOpen = false"
+      class="text-muted hover:text-ink hover:bg-paper p-2 rounded-md cursor-pointer transition-colors"
+      :class="menuOpen ? 'text-ink bg-paper' : ''"
+      aria-haspopup="menu"
+      :aria-expanded="menuOpen"
+    >
+      <svg width="16" height="16"><use href="#i-more-horizontal" /></svg>
+    </button>
+    <div
+      x-show="menuOpen"
+      x-cloak
+      x-transition.opacity.duration.120ms
+      class="absolute right-0 top-full mt-1 z-30 min-w-[160px] bg-cream border border-rule rounded-lg shadow-card overflow-hidden py-1"
+      role="menu"
+    >
+      <button
+        type="button"
+        role="menuitem"
+        @click="menuOpen = false; deleteConfirmOpen = true"
+        class="w-full flex items-center gap-2.5 text-left px-3 py-1.5 text-[13px] text-ink hover:bg-paper hover:text-oxblood cursor-pointer transition-colors"
+      >
+        <svg width="13" height="13"><use href="#i-trash-2" /></svg>
+        <span>Delete chat</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="flex-1 scroll-area" x-ref="messages">
+  <div class="mx-auto px-6 md:px-10 py-10 flex flex-col gap-7 max-w-[760px]">
+    {# Empty state #}
+    <template x-if="!hasItems && !streaming">
+      <div class="text-center py-16">
+        <div class="font-display-roman text-[20px] font-medium">
+          Start a new conversation
+        </div>
+        <div class="text-[13px] text-muted mt-2">
+          Ask a question to begin.
+        </div>
+      </div>
+    </template>
+
+    {# Items #}
+    <template x-for="item in visibleItems" :key="item.key">
+      <div>
+        <template x-if="item.type === 'user'">
+          <div class="animate-msg-in flex justify-end">
+            <div
+              class="max-w-[75%] bg-paper rounded-2xl rounded-tr-[4px] px-4 py-3 text-[14.5px] leading-snug text-ink whitespace-pre-wrap [overflow-wrap:anywhere]"
+              x-text="item.content"
+            ></div>
+          </div>
+        </template>
+
+        {# assistant text #}
+        <template x-if="item.type === 'assistant'">
+          <div class="animate-msg-in flex gap-3 items-start">
+            <div class="flex-shrink-0 mt-0.5 group">
+              {% include "includes/brand-mark.html" with size=28 icon_size=12 %}
+            </div>
+            <div class="flex-1 min-w-0 pt-0.5">
+              <div class="mb-1.5">
+                <span class="eyebrow text-muted text-[9px] tracking-[0.16em]">Assistant</span>
+              </div>
+              <div
+                class="text-[14.5px] leading-relaxed text-ink whitespace-pre-wrap [overflow-wrap:anywhere]"
+                x-text="item.content"
+              ></div>
+            </div>
+          </div>
+        </template>
+
+        {% comment %}
+          tool_call — single collapsible row that covers a tool's whole
+          lifecycle. The renderer (renderToolCall) looks ahead for a matching
+          tool_response via ctx.findResponse and adds the result block once
+          it arrives. The status badge flips Working… → Done in lockstep.
+        {% endcomment %}
+        <template x-if="item.type === 'tool_call'">
+          <div class="animate-msg-in flex gap-3 items-start">
+            <div class="flex-shrink-0 mt-0.5 group">
+              {% include "includes/brand-mark.html" with size=28 icon_size=12 %}
+            </div>
+            <div class="flex-1 min-w-0 pt-0.5">
+              <div
+                x-data="{ open: true }"
+                :class="open ? 'tool-row expanded' : 'tool-row'"
+              >
+                <button
+                  type="button"
+                  @click="open = !open"
+                  class="w-full flex items-center gap-3 px-3 py-2.5 text-left cursor-pointer"
+                >
+                  <svg class="text-muted flex-shrink-0" width="13" height="13"><use href="#i-wrench" /></svg>
+                  <span class="font-mono text-[12px] text-ink-soft flex-1">
+                    <span class="text-muted">tool · </span>
+                    <span class="font-semibold" x-text="item.name"></span>
+                  </span>
+                  <template x-if="findResponse(item.id)">
+                    <span class="flex items-center gap-1.5">
+                      <svg class="text-oxblood" width="12" height="12"><use href="#i-circle-check" /></svg>
+                      <span class="eyebrow text-oxblood text-[9px]">Done</span>
+                    </span>
+                  </template>
+                  <template x-if="!findResponse(item.id)">
+                    <span class="flex items-center gap-1.5">
+                      <span class="eyebrow text-muted text-[9px]">Working…</span>
+                    </span>
+                  </template>
+                  <svg x-show="open" class="text-muted flex-shrink-0" width="14" height="14"><use href="#i-chevron-down" /></svg>
+                  <svg x-show="!open" class="text-muted flex-shrink-0" width="14" height="14"><use href="#i-chevron-right" /></svg>
+                </button>
+                <div
+                  x-show="open"
+                  x-cloak
+                  class="px-3 pb-3 flex flex-col gap-2"
+                  x-html="renderToolCall(item)"
+                ></div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+    </template>
+
+    {% comment %}
+      Streaming indicator: show a thinking pip if we're streaming but no
+      assistant content has landed for the current turn yet.
+    {% endcomment %}
+    <template x-if="streaming && _pendingAssistantIdx === null && (items.length === 0 || items[items.length - 1].type === 'user')">
+      <div class="animate-msg-in flex gap-3 items-start">
+        <div class="flex-shrink-0 mt-0.5 group">
+          {% include "includes/brand-mark.html" with size=28 icon_size=12 %}
+        </div>
+        <div class="flex-1 min-w-0 pt-0.5">
+          <div class="mb-1.5">
+            <span class="eyebrow text-muted text-[9px] tracking-[0.16em]">Assistant</span>
+          </div>
+          <div class="text-[13px] text-muted italic">Thinking…</div>
+        </div>
+      </div>
+    </template>
+
+    {# Error #}
+    <template x-if="error">
+      <div class="text-[13px] text-oxblood text-center" x-text="error"></div>
+    </template>
+  </div>
+</div>
+
+{# Composer #}
+<div class="flex-shrink-0 relative bg-cream">
+  <div
+    aria-hidden="true"
+    class="absolute left-0 right-0 bottom-full h-7 pointer-events-none"
+    style="background: linear-gradient(to bottom, rgba(248, 244, 235, 0) 0%, #F8F4EB 100%);"
+  ></div>
+  <div class="px-6 md:px-10 pt-4 pb-6">
+    <div class="mx-auto max-w-[760px]">
+      <div
+        class="flex items-end gap-2 bg-cream border border-ink rounded-[18px] px-2.5 py-2.5 pl-3.5 transition-shadow"
+        x-data="{ focused: false }"
+        :class="focused ? 'shadow-composer-focus' : ''"
+      >
+        <button
+          type="button"
+          @click="uploadOpen = true"
+          class="text-muted hover:text-ink hover:bg-paper p-2 rounded-md mb-0.5 cursor-pointer transition-colors"
+          title="Attach"
+        >
+          <svg width="15" height="15"><use href="#i-paperclip" /></svg>
+        </button>
+        <textarea
+          class="composer-input flex-1 py-2 text-[14.5px] leading-snug max-h-[180px] min-h-[22px]"
+          rows="1"
+          placeholder="Reply, or describe your situation…"
+          x-model="composerInput"
+          @focus="focused = true"
+          @blur="focused = false"
+          @input="autosize($event.target)"
+          @keydown.enter.prevent="if (!$event.shiftKey) sendMessage()"
+          :disabled="streaming"
+        ></textarea>
+        <button
+          type="button"
+          class="bg-ink text-cream flex items-center justify-center mb-0.5 w-[34px] h-[34px] rounded-full cursor-pointer transition-colors hover:bg-oxblood disabled:bg-rule disabled:text-muted disabled:cursor-not-allowed"
+          :disabled="!composerInput.trim() || streaming"
+          @click="sendMessage()"
+          title="Send"
+        >
+          <svg width="16" height="16"><use href="#i-arrow-up" /></svg>
+        </button>
+      </div>
+      <div class="flex items-center justify-between mt-2.5 px-1">
+        <span class="eyebrow text-muted text-[9px]">
+          <svg class="inline mr-1.5 -mb-px" width="10" height="10"><use href="#i-sparkles" /></svg>
+          Plain-language guidance · Not a substitute for legal advice
+        </span>
+        <span class="eyebrow text-muted text-[9px]">⏎ to send · ⇧⏎ for newline</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# Delete-chat confirmation modal #}
+<div
+  x-show="deleteConfirmOpen"
+  x-cloak
+  @keydown.escape.window="deleteConfirmOpen = false"
+  class="fixed inset-0 z-[100] bg-ink/45 backdrop-blur-md flex items-center justify-center p-5 animate-backdrop-in"
+  @mousedown.self="deleteConfirmOpen = false"
+>
+  <div
+    class="bg-cream border border-rule rounded-[18px] shadow-modal w-full max-w-[440px] flex flex-col overflow-hidden animate-modal-in"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="delete-chat-title"
+  >
+    <div class="px-6 pt-6 pb-4">
+      <div class="flex items-center gap-3 mb-2">
+        <span class="eyebrow text-oxblood">Delete</span>
+        <span class="w-6 h-px bg-rule"></span>
+      </div>
+      <h2 id="delete-chat-title" class="font-display-roman text-[22px] leading-tight font-normal">
+        Delete this <span class="font-display-italic text-oxblood font-light">conversation?</span>
+      </h2>
+      <p class="text-[13px] text-ink-soft mt-2 leading-relaxed">
+        This will permanently remove the chat and all of its messages. This action cannot be undone.
+      </p>
+    </div>
+    <div class="flex items-center justify-end gap-2 px-6 py-4 border-t border-rule-soft">
+      <button
+        type="button"
+        @click="deleteConfirmOpen = false"
+        :disabled="deleting"
+        class="text-sm px-4 py-2 rounded-full text-ink-soft hover:text-oxblood cursor-pointer transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        @click="deleteActiveThread()"
+        :disabled="deleting || !activeThreadId"
+        class="bg-oxblood text-cream text-sm px-5 py-2 rounded-full font-medium cursor-pointer transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <span x-show="!deleting">Delete chat</span>
+        <span x-show="deleting" x-cloak>Deleting…</span>
+      </button>
+    </div>
+  </div>
+</div>

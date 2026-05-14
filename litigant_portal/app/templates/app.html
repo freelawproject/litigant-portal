@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}Litigant Portal — Dashboard{% endblock %}
+
+{% block body_class %}bg-cream text-ink font-sans h-screen overflow-hidden flex flex-col{% endblock %}
+
+{% block body_attrs %}x-data="portalApp()" @keydown.escape.window="uploadOpen = false"{% endblock %}
+
+{% block content %}
+  {% include "includes/chat/script.html" %}
+
+  <!-- ============== HEADER ============== -->
+  <header class="flex-shrink-0 relative z-30">
+    <div class="h-px bg-rule-soft"></div>
+    <div class="flex items-center justify-between px-5 h-[56px]">
+      <a href="{% url 'index' %}" class="group flex items-center gap-3">
+        {% include "includes/brand-mark.html" with size=32 icon_size=13 %}
+        <div class="flex flex-col leading-none">
+          <span class="font-display-roman font-medium text-[18px] tracking-tight">
+            Litigant Portal<span class="text-oxblood">.</span>
+          </span>
+          <span class="font-sans uppercase font-medium text-muted text-[9px] tracking-[0.18em] mt-[3px]">
+            Powered by Free Law Project
+          </span>
+        </div>
+      </a>
+
+      {% include "includes/user-nav.html" %}
+    </div>
+    <div class="h-px bg-rule-soft"></div>
+  </header>
+
+  <!-- ============== MAIN ROW ============== -->
+  <div
+    class="flex-1 flex min-h-0"
+    x-data="chatApp({ agentName: '{{ agent_name|default:"weather-agent"|escapejs }}' })"
+    x-init="init()"
+  >
+    <!-- ============== LEFT SIDEBAR ============== -->
+    <aside class="flex-shrink-0 flex flex-col scroll-area w-[280px] border-r border-rule-soft bg-cream">
+      {% include "includes/chat/conversations.html" %}
+
+      <div class="px-4 pt-2 pb-3">
+        <div class="flex items-center gap-3 mb-3">
+          <span class="eyebrow text-muted">Topics</span>
+          <span class="flex-1 h-px bg-rule-soft"></span>
+        </div>
+        <div class="flex flex-col gap-0.5">
+          <div class="side-item"><span class="text-[13px]">Housing</span></div>
+          <div class="side-item"><span class="text-[13px]">Family</span></div>
+          <div class="side-item"><span class="text-[13px]">Small Claims</span></div>
+          <div class="side-item"><span class="text-[13px]">Consumer</span></div>
+          <div class="side-item"><span class="text-[13px]">Expungement</span></div>
+          <div class="side-item"><span class="text-[13px]">Traffic</span></div>
+        </div>
+      </div>
+
+      <div class="flex-1"></div>
+
+      <div class="p-4 border-t border-rule-soft">
+        <div class="text-[11.5px] text-muted leading-snug">
+          Plain-language guidance, not legal advice. For complex matters, consult an attorney.
+        </div>
+      </div>
+    </aside>
+
+    <!-- ============== CENTER COLUMN ============== -->
+    <main class="flex-1 flex flex-col min-w-0 bg-cream">
+      {% include "includes/chat/thread.html" %}
+    </main>
+
+    <!-- ============== RIGHT SIDEBAR ============== -->
+    <aside class="flex-shrink-0 flex flex-col scroll-area w-[340px] border-l border-rule-soft bg-cream">
+      <!-- Cases -->
+      <div class="px-5 pt-5 pb-5">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="eyebrow text-muted">Cases</span>
+          <span class="flex-1 h-px bg-rule-soft"></span>
+        </div>
+
+        <div
+          x-data="{ contextOpen: false }"
+          class="border border-rule rounded-xl bg-cream overflow-hidden transition-colors"
+        >
+          <button @click="contextOpen = !contextOpen" class="w-full flex items-start gap-3 text-left p-4">
+            <div class="flex-1 min-w-0">
+              <div class="font-display-roman text-[17px] font-medium leading-tight">Sealing a misdemeanor</div>
+              <div class="text-[12px] text-muted mt-1">North Carolina · G.S. 15A-145.5</div>
+            </div>
+            <svg
+              width="16" height="16"
+              class="text-muted mt-1 flex-shrink-0 transition-transform duration-300"
+              :class="contextOpen ? 'rotate-180' : ''"
+            ><use href="#i-chevron-down" /></svg>
+          </button>
+
+          <template x-if="contextOpen">
+            <div>
+              <div class="h-px bg-rule-soft"></div>
+              <div class="px-4 pt-3.5 pb-4">
+                <div class="flex flex-col gap-2.5">
+                  <div class="flex items-baseline justify-between">
+                    <span class="eyebrow text-muted tracking-[0.14em]">Filing fee</span>
+                    <span class="text-[13px] text-ink font-medium">$175</span>
+                  </div>
+                  <div class="flex items-baseline justify-between">
+                    <span class="eyebrow text-muted tracking-[0.14em]">Wait period</span>
+                    <span class="text-[13px] text-ink font-medium">Met (5+ yrs)</span>
+                  </div>
+                  <div class="flex items-baseline justify-between">
+                    <span class="eyebrow text-muted tracking-[0.14em]">Eligibility</span>
+                    <span class="text-[13px] text-ink font-medium">Likely</span>
+                  </div>
+                  <div class="flex items-baseline justify-between">
+                    <span class="eyebrow text-muted tracking-[0.14em]">Forms needed</span>
+                    <span class="text-[13px] text-ink font-medium">AOC-CR-264</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <a
+          href="#"
+          class="flex items-center justify-center gap-1.5 mt-3 text-[12px] text-ink-soft hover:text-oxblood transition-colors"
+        >
+          View all cases
+          <svg width="12" height="12"><use href="#i-chevron-right" /></svg>
+        </a>
+      </div>
+
+      <!-- Upcoming -->
+      <div class="px-5 pb-5">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="eyebrow text-muted">Upcoming</span>
+          <span class="flex-1 h-px bg-rule-soft"></span>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <a
+            href="#"
+            class="relative flex items-stretch overflow-hidden border border-rule rounded-xl bg-cream text-ink transition-all hover:bg-paper hover:border-oxblood hover:shadow-card-hover"
+          >
+            <span class="absolute left-0 top-0 bottom-0 w-[3px] bg-oxblood"></span>
+            <div class="flex flex-col items-center justify-center flex-shrink-0 w-14 pl-[3px] border-r border-rule-soft" style="background: rgba(122,45,36,0.04);">
+              <span class="eyebrow text-oxblood text-[9.5px] tracking-[0.2em]">MAY</span>
+              <span class="font-display-italic text-[28px] leading-none text-oxblood mt-0.5">5</span>
+            </div>
+            <div class="flex-1 min-w-0 px-3 py-2.5">
+              <div class="flex items-baseline justify-between gap-2 mb-1">
+                <span class="eyebrow truncate text-oxblood text-[9px] tracking-[0.18em]">Filing deadline</span>
+                <span class="eyebrow flex-shrink-0 text-oxblood text-[9px] tracking-[0.16em] font-semibold">5 days</span>
+              </div>
+              <div class="font-display-roman truncate text-[13.5px] font-medium leading-tight" title="Petition for Expunction">Petition for Expunction</div>
+              <div class="truncate text-[11px] text-muted mt-1 leading-snug" title="AOC-CR-264 · Wake County Clerk">AOC-CR-264 · Wake County Clerk</div>
+            </div>
+          </a>
+
+          <a
+            href="#"
+            class="relative flex items-stretch overflow-hidden border border-rule-soft rounded-xl bg-cream text-ink transition-all hover:bg-paper hover:border-muted hover:shadow-card-hover"
+          >
+            <div class="flex flex-col items-center justify-center flex-shrink-0 w-14 border-r border-rule-soft">
+              <span class="eyebrow text-muted text-[9.5px] tracking-[0.2em]">MAY</span>
+              <span class="font-display-italic text-[28px] leading-none text-ink mt-0.5">21</span>
+            </div>
+            <div class="flex-1 min-w-0 px-3 py-2.5">
+              <div class="flex items-baseline justify-between gap-2 mb-1">
+                <span class="eyebrow truncate text-muted text-[9px] tracking-[0.18em]">Hearing</span>
+                <span class="eyebrow flex-shrink-0 text-muted text-[9px] tracking-[0.16em]">in 3 wks</span>
+              </div>
+              <div class="font-display-roman truncate text-[13.5px] font-medium leading-tight" title="Expunction Petition">Expunction Petition</div>
+              <div class="truncate text-[11px] text-muted mt-1 leading-snug" title="Wake County Courthouse · Rm 4B">
+                <span class="text-ink-soft font-medium">9:30 AM · </span>Wake County Courthouse · Rm 4B
+              </div>
+            </div>
+          </a>
+
+          <a
+            href="#"
+            class="relative flex items-stretch overflow-hidden border border-rule-soft rounded-xl bg-cream text-ink transition-all hover:bg-paper hover:border-muted hover:shadow-card-hover"
+          >
+            <div class="flex flex-col items-center justify-center flex-shrink-0 w-14 border-r border-rule-soft">
+              <span class="eyebrow text-muted text-[9.5px] tracking-[0.2em]">JUN</span>
+              <span class="font-display-italic text-[28px] leading-none text-ink mt-0.5">11</span>
+            </div>
+            <div class="flex-1 min-w-0 px-3 py-2.5">
+              <div class="flex items-baseline justify-between gap-2 mb-1">
+                <span class="eyebrow truncate text-muted text-[9px] tracking-[0.18em]">Document due</span>
+                <span class="eyebrow flex-shrink-0 text-muted text-[9px] tracking-[0.16em]">in 6 wks</span>
+              </div>
+              <div class="font-display-roman truncate text-[13.5px] font-medium leading-tight" title="Two character affidavits">Two character affidavits</div>
+              <div class="truncate text-[11px] text-muted mt-1 leading-snug" title="Notarized · sent to clerk">Notarized · sent to clerk</div>
+            </div>
+          </a>
+        </div>
+
+        <a
+          href="#"
+          class="flex items-center justify-center gap-1.5 mt-3 text-[12px] text-ink-soft hover:text-oxblood transition-colors"
+        >
+          View all deadlines
+          <svg width="12" height="12"><use href="#i-chevron-right" /></svg>
+        </a>
+      </div>
+
+      <!-- Suggested Resources -->
+      <div class="px-5 pb-5">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="eyebrow text-muted">Suggested Resources</span>
+          <span class="flex-1 h-px bg-rule-soft"></span>
+        </div>
+        <div class="flex flex-col gap-2">
+          <template x-for="t in ['Petition for Expunction — walkthrough', 'What happens at the hearing', 'After your record is sealed']" :key="t">
+            <a
+              href="#"
+              class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-rule-soft text-ink hover:bg-paper transition-colors"
+            >
+              <svg class="text-muted flex-shrink-0" width="14" height="14"><use href="#i-file-text" /></svg>
+              <span class="text-[12.5px] leading-snug" x-text="t"></span>
+            </a>
+          </template>
+        </div>
+      </div>
+
+      <!-- Your Documents -->
+      <div class="px-5 pb-5">
+        <div class="flex items-center gap-3 mb-4">
+          <span class="eyebrow text-muted">Your Documents</span>
+          <span class="flex-1 h-px bg-rule-soft"></span>
+        </div>
+        <div class="flex flex-col gap-2">
+          <template x-if="documents.length === 0">
+            <div class="px-3 py-4 rounded-lg text-center border border-rule-soft">
+              <div class="text-[12.5px] text-ink-soft leading-snug">No documents yet.</div>
+              <div class="text-[11.5px] text-muted mt-1 leading-snug">Add court papers, IDs, or prior judgments here.</div>
+            </div>
+          </template>
+
+          <template x-for="d in documents" :key="d.name">
+            <a
+              href="#"
+              class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-rule-soft text-ink hover:bg-paper transition-colors"
+            >
+              <svg class="text-muted flex-shrink-0" width="14" height="14"><use href="#i-file-text" /></svg>
+              <div class="flex-1 min-w-0">
+                <div class="truncate text-[12.5px] leading-tight font-medium" x-text="d.name"></div>
+                <div class="text-[10.5px] text-muted mt-px" x-text="d.meta"></div>
+              </div>
+            </a>
+          </template>
+
+          <button
+            @click="uploadOpen = true"
+            class="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg mt-1 border border-dashed border-rule text-ink-soft transition-colors hover:bg-paper hover:border-muted hover:text-ink"
+          >
+            <svg width="13" height="13"><use href="#i-plus" /></svg>
+            <span class="text-[12.5px] font-medium">Upload a document</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ============== UPLOAD MODAL ============== -->
+  <div
+    x-show="uploadOpen"
+    x-cloak
+    class="fixed inset-0 z-[100] bg-ink/45 backdrop-blur-md flex items-center justify-center p-5 animate-backdrop-in"
+    @mousedown.self="uploadOpen = false"
+  >
+    <div class="bg-cream border border-rule rounded-[18px] shadow-modal w-full max-w-[540px] max-h-[calc(100vh-40px)] flex flex-col overflow-hidden animate-modal-in" role="dialog" aria-modal="true" aria-labelledby="upload-title">
+      <div class="flex items-start justify-between px-6 pt-6 pb-4">
+        <div>
+          <div class="flex items-center gap-3 mb-2">
+            <span class="eyebrow text-oxblood">Upload</span>
+            <span class="w-6 h-px bg-rule"></span>
+            <span class="eyebrow text-muted">PDF, JPG, PNG, DOCX</span>
+          </div>
+          <h2 id="upload-title" class="font-display-roman text-[26px] leading-tight font-normal">
+            Add to your <span class="font-display-italic text-oxblood font-light">documents.</span>
+          </h2>
+          <p class="text-[13px] text-ink-soft mt-2 leading-relaxed max-w-[380px]">
+            Court papers, IDs, prior judgments — drop them in and we'll keep them organized with your case.
+          </p>
+        </div>
+        <button
+          @click="uploadOpen = false"
+          class="text-muted hover:text-ink hover:bg-paper rounded-full flex items-center justify-center flex-shrink-0 w-8 h-8 transition-colors"
+          aria-label="Close"
+        >
+          <svg width="16" height="16"><use href="#i-x" /></svg>
+        </button>
+      </div>
+
+      <div class="scroll-area px-6 flex-1 overflow-y-auto">
+        <label
+          class="dropzone block cursor-pointer text-center px-5 py-8"
+          :class="dragActive ? 'dragging' : ''"
+          @dragenter.prevent.stop="onDragEnter"
+          @dragover.prevent.stop
+          @dragleave.prevent.stop="onDragLeave"
+          @drop.prevent.stop="onDrop"
+        >
+          <input type="file" multiple class="hidden" @change="onFileInput" />
+          <div class="dropzone-icon flex justify-center mb-3">
+            <svg width="32" height="32"><use href="#i-cloud-upload" /></svg>
+          </div>
+          <div class="font-display-roman text-[17px] font-medium text-ink">
+            <template x-if="dragActive">
+              <span class="font-display-italic text-oxblood font-light">Release to add files</span>
+            </template>
+            <template x-if="!dragActive">
+              <span>Drop files here, or <span class="text-oxblood underline underline-offset-[3px]">browse</span></span>
+            </template>
+          </div>
+          <div class="text-[12px] text-muted mt-1.5">Up to 25MB per file · multiple files supported</div>
+        </label>
+
+        <div x-show="files.length > 0" x-cloak class="mt-5">
+          <div class="flex items-center gap-3 mb-3">
+            <span class="eyebrow text-muted">
+              <span x-text="files.length"></span>
+              <span x-text="files.length === 1 ? 'file' : 'files'"></span>
+              ·
+              <span x-text="formatBytes(totalBytes())"></span>
+            </span>
+            <span class="flex-1 h-px bg-rule-soft"></span>
+            <button
+              @click="files = []"
+              class="eyebrow underline-link-soft text-muted text-[9.5px]"
+            >
+              Clear all
+            </button>
+          </div>
+          <div class="flex flex-col gap-2 pb-2">
+            <template x-for="f in files" :key="f.id">
+              <div class="flex items-center gap-3 px-3 py-2.5 border border-rule-soft rounded-lg bg-cream transition-colors hover:border-rule hover:bg-paper">
+                <div class="flex items-center justify-center flex-shrink-0 w-9 h-9 rounded-lg bg-paper border border-rule text-oxblood">
+                  <svg width="15" height="15"><use href="#i-file-text" /></svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="truncate text-[13px] font-medium text-ink" x-text="f.name" :title="f.name"></div>
+                  <div class="text-[11px] text-muted mt-0.5" x-text="formatBytes(f.size)"></div>
+                </div>
+                <button
+                  @click="removeFile(f.id)"
+                  class="text-muted hover:text-oxblood hover:bg-cream rounded-full flex items-center justify-center flex-shrink-0 w-7 h-7 transition-colors"
+                  :aria-label="'Remove ' + f.name"
+                >
+                  <svg width="14" height="14"><use href="#i-x" /></svg>
+                </button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-rule-soft bg-cream">
+        <span class="text-[12px] text-muted leading-snug">Files are encrypted at rest and visible only to you.</span>
+        <div class="flex items-center gap-2">
+          <button
+            @click="uploadOpen = false"
+            class="text-sm px-4 py-2 rounded-full text-ink-soft hover:text-oxblood transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            @click="handleUpload"
+            :disabled="files.length === 0"
+            class="bg-ink text-cream text-sm px-5 py-2 rounded-full inline-flex items-center gap-2 font-medium transition-colors hover:bg-oxblood disabled:bg-rule disabled:text-muted disabled:cursor-not-allowed"
+          >
+            <span x-show="files.length === 0">Upload</span>
+            <span x-show="files.length > 0">
+              Upload <span x-text="files.length"></span>
+              <span x-text="files.length === 1 ? 'file' : 'files'"></span>
+            </span>
+            <svg class="rotate-45" width="13" height="13"><use href="#i-arrow-up" /></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function portalApp() {
+      return {
+        uploadOpen: false,
+        documents: [
+          { name: 'Judgment_2018-Wake.pdf', meta: 'Uploaded 2 days ago' },
+          { name: 'Drivers_License.jpg', meta: 'Uploaded last week' },
+        ],
+        files: [],
+        dragActive: false,
+        dragDepth: 0,
+
+        autosize(el) {
+          el.style.height = 'auto';
+          el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+        },
+        formatBytes(bytes) {
+          if (bytes < 1024) return bytes + ' B';
+          if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+          if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+          return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+        },
+        totalBytes() {
+          return this.files.reduce((sum, f) => sum + f.size, 0);
+        },
+        addFiles(incoming) {
+          const arr = Array.from(incoming).map((f) => ({
+            id: `${f.name}-${f.size}-${f.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
+            name: f.name,
+            size: f.size,
+            type: f.type,
+            file: f,
+          }));
+          this.files = [...this.files, ...arr];
+        },
+        removeFile(id) {
+          this.files = this.files.filter((f) => f.id !== id);
+        },
+        onFileInput(e) {
+          if (e.target.files && e.target.files.length) {
+            this.addFiles(e.target.files);
+            e.target.value = '';
+          }
+        },
+        onDragEnter() { this.dragDepth += 1; this.dragActive = true; },
+        onDragLeave() {
+          this.dragDepth -= 1;
+          if (this.dragDepth <= 0) { this.dragDepth = 0; this.dragActive = false; }
+        },
+        onDrop(e) {
+          this.dragDepth = 0;
+          this.dragActive = false;
+          if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+            this.addFiles(e.dataTransfer.files);
+          }
+        },
+        handleUpload() { this.uploadOpen = false; },
+
+        init() {
+          this.$watch('uploadOpen', (val) => {
+            if (!val) {
+              this.files = [];
+              this.dragActive = false;
+              this.dragDepth = 0;
+            }
+          });
+        },
+      };
+    }
+  </script>
+{% endblock %}

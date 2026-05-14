@@ -1,0 +1,50 @@
+{% comment %}
+Sidebar piece of the chat component: New conversation button + threads list.
+Must be rendered inside an x-data="chatApp(...)" scope.
+{% endcomment %}
+<div class="p-4">
+  <button
+    @click="newConversation()"
+    :disabled="streaming"
+    class="w-full flex items-center justify-between px-3 py-2.5 rounded-full bg-ink text-cream cursor-pointer transition-colors hover:bg-oxblood disabled:bg-rule disabled:text-muted disabled:cursor-not-allowed"
+  >
+    <span class="text-sm font-medium flex items-center gap-2">
+      <svg width="14" height="14"><use href="#i-plus" /></svg>
+      New conversation
+    </span>
+    <span class="eyebrow text-[9px] text-cream/60 tracking-[0.16em]">⌘N</span>
+  </button>
+</div>
+
+<div class="px-4 pb-3">
+  <div class="flex items-center gap-3 mb-3">
+    <span class="eyebrow text-muted">Conversations</span>
+    <span class="flex-1 h-px bg-rule-soft"></span>
+  </div>
+
+  <template x-if="threads.length === 0">
+    <div class="text-[12px] text-muted px-1 py-1 leading-snug">
+      No conversations yet.
+    </div>
+  </template>
+
+  <div class="flex flex-col gap-0.5">
+    <template x-for="t in threads" :key="t.id">
+      <div
+        @click="selectThread(t.id)"
+        :class="t.id === activeThreadId ? 'side-item active' : 'side-item'"
+      >
+        <div class="flex-1 min-w-0">
+          <div
+            class="truncate text-[13px] font-medium"
+            x-text="titleFor(t.id)"
+          ></div>
+          <div
+            class="text-[11px] text-muted mt-px"
+            x-text="formatTime(t.updated_at)"
+          ></div>
+        </div>
+      </div>
+    </template>
+  </div>
+</div>

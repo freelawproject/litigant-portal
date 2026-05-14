@@ -1,1 +1,185 @@
-index
+{% extends "base.html" %}
+
+{% block title %}Litigant Portal — Self-help for the courts{% endblock %}
+
+{% block body_attrs %}x-data="landingApp()"{% endblock %}
+
+{% block content %}
+  <div class="bg-cream grain">
+    <!-- ============== NAV ============== -->
+    <nav
+      class="z-30 sticky top-0"
+      x-data="{ scrolled: window.scrollY > 24 }"
+      @scroll.window="scrolled = window.scrollY > 24"
+      style="transition: background-color .5s ease, border-color .5s ease; border-bottom: 1px solid transparent;"
+      :style="{
+        backgroundColor: scrolled ? '#F8F4EB' : 'transparent',
+        borderBottomColor: scrolled ? '#E5DCC6' : 'transparent'
+      }"
+    >
+      <div class="max-w-screen-2xl mx-auto px-6 md:px-10 flex items-center justify-between h-[72px]">
+        <a href="{% url 'index' %}" class="group flex items-center gap-3">
+          {% include "includes/brand-mark.html" with size=36 icon_size=14 %}
+          <div class="flex flex-col leading-none">
+            <span class="font-display font-medium text-[22px] tracking-tight" style="font-variation-settings: 'opsz' 144, 'SOFT' 30;">
+              Litigant Portal<span class="text-oxblood">.</span>
+            </span>
+            <span class="font-sans uppercase font-medium text-muted text-[9.5px] tracking-[0.18em] mt-1">
+              Powered by Free Law Project
+            </span>
+          </div>
+        </a>
+
+        {% include "includes/user-nav.html" %}
+      </div>
+    </nav>
+
+    <!-- ============== HERO ============== -->
+    <section
+      id="search"
+      class="relative"
+      x-data="{
+        q: '',
+        phIdx: 0,
+        placeholders: [
+          'I got served with eviction papers…',
+          'I need to seal a misdemeanor from 2018…',
+          'my ex stopped paying child support…',
+          'I want to contest a $480 ticket…',
+          'a contractor took my deposit and disappeared…'
+        ],
+        init() {
+          setInterval(() => { this.phIdx = (this.phIdx + 1) % this.placeholders.length }, 3200)
+        }
+      }"
+    >
+      <div class="max-w-6xl mx-auto px-6 md:px-10 pt-12 md:pt-16 pb-20 md:pb-24 text-center relative">
+        <h1
+          class="font-display animate-fade-up-d2 font-normal tracking-[0.005em]"
+          style="font-size: clamp(48px, 7vw, 108px); line-height: 0.95; font-variation-settings: 'opsz' 144, 'SOFT' 30;"
+        >
+          Let's <span class="italic font-light text-oxblood" style="font-variation-settings: 'opsz' 144, 'SOFT' 100;">figure this out.</span>
+        </h1>
+        <p class="animate-fade-up-d3 mt-7 max-w-xl mx-auto text-[17px] leading-[1.55] text-ink-soft">
+          One sentence is enough to find the right forms, deadlines, and next
+          steps for your situation — in plain English.
+        </p>
+
+        <div class="animate-fade-up-d4 mt-8 mx-auto max-w-[820px]">
+          <!-- Search bar -->
+          <div class="flex items-stretch bg-cream border border-ink rounded-full">
+            <div class="flex items-center pl-6 pr-3 text-muted">
+              <svg width="18" height="18"><use href="#i-search" /></svg>
+            </div>
+            <input
+              type="text"
+              id="search-input"
+              class="flex-1 py-5 min-w-0 text-[18px] bg-transparent border-none outline-none text-ink"
+              x-model="q"
+              :placeholder="placeholders[phIdx]"
+            />
+            <button class="bg-ink text-cream text-sm px-7 m-1.5 rounded-full cursor-pointer inline-flex items-center gap-2 font-medium transition-colors duration-[250ms] hover:bg-oxblood">
+              Begin
+              <svg width="14" height="14"><use href="#i-arrow-right" /></svg>
+            </button>
+          </div>
+
+          <!-- Topic cards -->
+          <div class="mt-10">
+            <div class="flex items-center gap-3 mb-5">
+              <span class="flex-1 h-px bg-rule"></span>
+              <span class="font-sans uppercase font-medium text-muted text-[11px] tracking-[0.22em]">Or, browse by topic</span>
+              <span class="flex-1 h-px bg-rule"></span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <template x-for="t in topics" :key="t.id">
+                <a :href="t.href" class="topic-mini block border border-rule rounded-[14px] overflow-hidden text-left">
+                  <div class="px-5 py-4 flex items-center gap-4">
+                    <div class="flex items-center justify-center flex-shrink-0 w-10 h-10 rounded-[10px] bg-paper border border-rule text-oxblood">
+                      <svg width="17" height="17"><use :href="'#' + t.icon" /></svg>
+                    </div>
+                    <div class="flex-1 min-w-0 text-left">
+                      <div
+                        class="topic-mini-title font-display text-[17px] font-medium leading-[1.15]"
+                        x-html="t.title"
+                        style="font-variation-settings: 'opsz' 144, 'SOFT' 30;"
+                      ></div>
+                      <div class="text-[12.5px] text-muted mt-[3px] leading-[1.35]" x-text="t.subtitle"></div>
+                    </div>
+                    <svg class="topic-mini-arrow flex-shrink-0 text-ink" width="16" height="16"><use href="#i-arrow-up-right" /></svg>
+                  </div>
+                </a>
+              </template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============== FOOTER ============== -->
+  <footer id="contact" class="relative bg-cream border-t border-rule">
+    <div class="max-w-screen-2xl mx-auto px-6 md:px-10 py-16 md:py-20">
+      <div class="grid grid-cols-12 gap-8">
+        <div class="col-span-12 md:col-span-6">
+          <div class="flex items-start gap-5">
+            <div class="group">
+              {% include "includes/brand-mark.html" with size=96 icon_size=34 seal_text="· LITIGANT PORTAL · OPEN COURT · EST 2026 ·" %}
+            </div>
+            <div>
+              <div class="font-display font-medium text-[32px] leading-none tracking-[0.005em]" style="font-variation-settings: 'opsz' 144, 'SOFT' 30;">
+                Litigant Portal<span class="text-oxblood">.</span>
+              </div>
+              <p class="mt-3 text-[14px] text-ink-soft max-w-[340px] leading-[1.5]">
+                An official self-help service of the court. Built on Litigant Portal, an open-source project of the Free Law Project.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <template x-for="col in footerColumns" :key="col.heading">
+          <div class="col-span-6 md:col-span-3">
+            <div class="font-sans uppercase font-medium text-muted text-[11px] tracking-[0.22em] mb-4" x-text="col.heading"></div>
+            <ul class="space-y-2 text-[14px]">
+              <template x-for="link in col.links" :key="link">
+                <li><a href="#" class="underline-link-soft" x-text="link"></a></li>
+              </template>
+            </ul>
+          </div>
+        </template>
+      </div>
+
+      <div class="mt-16 pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-t border-rule-soft">
+        <div class="font-sans uppercase font-medium text-muted text-[11px] tracking-[0.22em]">
+          © 2026 Free Law Project · 501(c)(3) · EIN 46-3342480
+        </div>
+        <div class="flex items-center gap-5 font-sans uppercase font-medium text-muted text-[11px] tracking-[0.22em]">
+          <template x-for="link in legalLinks" :key="link">
+            <a href="#" class="underline-link" x-text="link"></a>
+          </template>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function landingApp() {
+      return {
+        topics: [
+          { id: 'housing',     icon: 'i-house',         title: 'Housing &amp; Eviction', subtitle: 'Lease, deposits, eviction defense', href: '#' },
+          { id: 'family',      icon: 'i-users',         title: 'Family &amp; Divorce',    subtitle: 'Custody, support, separation',       href: '#' },
+          { id: 'small-claims',icon: 'i-coins',         title: 'Small Claims',            subtitle: 'Disputes under $10,000',             href: '#' },
+          { id: 'consumer',    icon: 'i-shield-check',  title: 'Consumer Rights',         subtitle: 'Scams, debt, credit reports',        href: '#' },
+          { id: 'expungement', icon: 'i-file-text',     title: 'Expungement',             subtitle: 'Sealing records &amp; convictions',  href: '#' },
+          { id: 'traffic',     icon: 'i-truck',         title: 'Traffic &amp; Fines',     subtitle: 'Tickets, license, contesting',       href: '#' },
+        ],
+        footerColumns: [
+          { heading: 'Areas',   links: ['Housing', 'Family', 'Small Claims', 'Consumer', 'Expungement', 'Traffic'] },
+          { heading: 'Project', links: ['Methodology', 'Editorial bench', 'API & data', 'Donate', 'Volunteer'] },
+        ],
+        legalLinks: ['Privacy', 'Terms', 'Disclaimer — not legal advice'],
+      };
+    }
+  </script>
+{% endblock %}
