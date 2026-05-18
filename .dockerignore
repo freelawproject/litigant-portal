@@ -1,33 +1,17 @@
-# Whitelist approach - ignore everything, then allow specific files/dirs
+# Docker Whitelist
 *
 
 # Python project files
 !pyproject.toml
 !uv.lock
-!manage.py
+!README.md
+!LICENSE
 
 # Application code
-!config/
-!portal/
-!chat/
 !litigant_portal/
-!templates/
-
-# CSS source (Tailwind input - not collected by Django)
-!src/
-
-# Static files (built CSS output)
-!static/
-static/css/main.built.css
-
-# Translations
-!locale/
 
 # Docker files
-!Dockerfile
-!docker-compose.yml
-!scripts/
-!deploy/
+!docker/
 
 # Ignore within allowed directories
 **/__pycache__/
