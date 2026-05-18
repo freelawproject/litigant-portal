@@ -56,7 +56,7 @@ services:
   # Development Django Server
   # ---------------------------------------------------------------------------
   django-dev:
-    build: .
+    build: ./docker/django
     profiles: ['dev']
     command: web-dev
     environment:
@@ -82,7 +82,7 @@ services:
   # ---------------------------------------------------------------------------
   django-prod:
     image: ghcr.io/freelawproject/litigant-portal:latest
-    build: .
+    build: ./docker/django
     profiles: ['prod']
     command: web-prod
     environment:
