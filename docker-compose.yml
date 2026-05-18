@@ -122,7 +122,7 @@ services:
     ports:
       - '80:80'
     volumes:
-      - ./deploy/caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - ./docker/caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
     depends_on:
       - django-dev
 
@@ -138,7 +138,7 @@ services:
     environment:
       - DOMAIN=${DOMAIN:-}
     volumes:
-      - ./deploy/caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - ./docker/caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
       - staticfiles:/srv/staticfiles:ro
