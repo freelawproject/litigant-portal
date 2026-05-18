@@ -10,11 +10,14 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
 
 from config.secrets import read_secret
+
+logger = logging.getLogger(__name__)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,7 +32,14 @@ DEBUG = os.environ.get("DEBUG", "true").lower() not in ("false", "0")
 
 # Deployment environment label. Distinguishes QA from prod (both run DEBUG=false).
 # Used by template context processor to gate non-prod-only UI (build-time chip).
+# Invalid values are kept as-is (fail-closed: non-prod UI won't match and stays hidden).
 DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "dev")
+if DEPLOYMENT_ENV not in {"dev", "qa", "prod"}:
+    logger.warning(
+        "DEPLOYMENT_ENV=%r is not one of {'dev', 'qa', 'prod'}; "
+        "non-prod UI gates may not behave as expected.",
+        DEPLOYMENT_ENV,
+    )
 
 # Captured at module import — approximates container/process start time. Shown
 # in the dev/QA header so testers can disambiguate deploys by the minute.
@@ -54,7 +64,7 @@ ALLOWED_HOSTS = [
 if DEBUG:
     # In DEBUG mode, treat all IPs as internal (for Docker networking)
     class AllIPs:
-        def __contains__(self, item):
+        def __contains__(self, _item):
             return True
 
     INTERNAL_IPS = AllIPs()
