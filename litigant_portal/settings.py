@@ -5,32 +5,16 @@ from django.core.management.utils import get_random_secret_key
 
 BASE_DIR = Path(__file__).resolve().parent
 
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
 
-# Parse ALLOWED_HOSTS from env (comma-separated), default to localhost in debug
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
     if h.strip()
 ] or (["localhost", "127.0.0.1", "0.0.0.0"] if DEBUG else [])
 
-# Required for Django's debug context processor to expose 'debug' in templates
-if DEBUG:
-    # In DEBUG mode, treat all IPs as internal (for Docker networking)
-    class AllIPs:
-        def __contains__(self, item):
-            return True
-
-    INTERNAL_IPS = AllIPs()
-else:
-    INTERNAL_IPS = ["127.0.0.1"]
-
-
-# Application definition
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -68,9 +52,7 @@ ROOT_URLCONF = "litigant_portal.app.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [
-            BASE_DIR / "app" / "templates",
-        ],
+        "DIRS": [BASE_DIR / "app" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -91,8 +73,6 @@ WSGI_APPLICATION = "litigant_portal.main.application"
 
 
 # Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-# Built from individual env vars for clarity and secret-file support.
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
@@ -107,8 +87,6 @@ DATABASES = {
 }
 
 # Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
@@ -126,8 +104,6 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
 LANGUAGE_CODE = "en-us"
 
 LANGUAGES = [
@@ -135,7 +111,7 @@ LANGUAGES = [
     ("es", "Spanish"),
 ]
 
-LOCALE_PATHS = [BASE_DIR / "locale"]
+LOCALE_PATHS = [BASE_DIR / "app" / "locale"]
 
 TIME_ZONE = "UTC"
 
@@ -145,13 +121,10 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-# STATIC_URL can be overridden for GitHub Pages (e.g., /litigant-portal/static/)
 STATIC_URL = os.environ.get("STATIC_URL", "/static/")
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / "app" / "staticfiles"
 STATICFILES_DIRS = [
-    BASE_DIR / "static",
+    BASE_DIR / "app" / "static",
 ]
 
 # Use ManifestStaticFilesStorage in production for cache busting

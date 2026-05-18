@@ -1,6 +1,6 @@
 .PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
-       messages compilemessages \
-       docker-build docker-dev docker-prod docker-rebuild docker-down docker-logs docker-shell docker-migrate docker-clean
+       messages compilemessages docker-build docker-dev docker-prod docker-rebuild \
+	   docker-down docker-logs docker-shell docker-migrate docker-clean
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -12,7 +12,7 @@ install: ## Install Python dependencies (includes Tailwind CSS)
 	.venv/bin/pip install -e ".[dev]"
 
 css: ## Build Tailwind CSS (one-time)
-	tailwindcss -i src/css/main.css -o static/css/main.built.css
+	tailwindcss -i litigant_portal/app/static/css/main.css -o litigant_portal/app/static/css/main.built.css
 
 css-watch: ## Watch Tailwind CSS for changes
 	tailwindcss -i src/css/main.css -o static/css/main.built.css --watch
