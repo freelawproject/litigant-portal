@@ -1,0 +1,292 @@
+from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http import Http404, HttpResponse
+from django.shortcuts import redirect, render
+from django.urls import reverse, reverse_lazy
+from django.utils.http import urlencode
+from django.utils.translation import gettext
+from django.utils.translation import gettext_lazy as _
+from django.views.generic import DetailView, UpdateView
+
+from litigant_portal.agents import agent_registry
+
+from .forms import UserProfileForm
+from .models import UserProfile
+
+TOPICS = {
+    "eviction": {
+        "title": _("Housing & Eviction"),
+        "subtitle": _(
+            "Understanding the eviction process, tenant rights, and landlord obligations"
+        ),
+        "description": _("Landlord disputes, eviction defense, tenant rights"),
+        "icon": "home",
+        "meta_description": _(
+            "Learn about the eviction process, tenant rights, and landlord obligations. General legal information for self-represented litigants."
+        ),
+        "prompts": [
+            _(
+                "I received an eviction notice and need to understand my options"
+            ),
+            _("My landlord isn't making repairs — what are my rights?"),
+            _("I'm behind on rent and worried about eviction"),
+        ],
+        "context_sections": [
+            {
+                "heading": _("The eviction process"),
+                "body": _(
+                    "Eviction follows a legal process: written notice, court"
+                    " filing, hearing, judgment, and enforcement. A landlord"
+                    " cannot skip steps or use self-help eviction (changing"
+                    " locks, shutting off utilities)."
+                ),
+            },
+            {
+                "heading": _("Key tenant rights"),
+                "body": _(
+                    "You have the right to proper written notice, habitable"
+                    " living conditions, protection from retaliation, freedom"
+                    " from discrimination under the Fair Housing Act, and the"
+                    " right to appear and respond in court."
+                ),
+            },
+            {
+                "heading": _("If you received a notice"),
+                "body": _(
+                    "Read the notice carefully and note any deadlines. Do not"
+                    " ignore it — missing a court date usually results in a"
+                    " default judgment. Gather your lease, rent receipts,"
+                    " photos, and communications with your landlord."
+                ),
+            },
+        ],
+    },
+    "family": {
+        "title": _("Family & Divorce"),
+        "subtitle": _(
+            "Divorce, custody, child support, and domestic violence resources"
+        ),
+        "description": _("Divorce, custody, child support, domestic issues"),
+        "icon": "users",
+        "meta_description": _(
+            "Learn about divorce, child custody, child support, and family court. General legal information for self-represented litigants."
+        ),
+        "prompts": [],
+        "context_sections": [],
+    },
+    "small-claims": {
+        "title": _("Small Claims"),
+        "subtitle": _(
+            "Resolving disputes and understanding the small claims court process"
+        ),
+        "description": _("Disputes under $10,000, debt collection defense"),
+        "icon": "currency-dollar",
+        "meta_description": _(
+            "Learn about filing or defending a small claims case. General legal information for self-represented litigants."
+        ),
+        "prompts": [],
+        "context_sections": [],
+    },
+    "consumer": {
+        "title": _("Consumer Rights"),
+        "subtitle": _(
+            "Debt collection rules, contract disputes, and consumer protections"
+        ),
+        "description": _("Scams, unfair business practices, contracts"),
+        "icon": "shield-check",
+        "meta_description": _(
+            "Learn about consumer rights, debt collection rules, and contract disputes. General legal information for self-represented litigants."
+        ),
+        "prompts": [],
+        "context_sections": [],
+    },
+    "adult_name_change": {
+        "title": _("Adult Name Change"),
+        "subtitle": _(
+            "Legally changing your name — standalone petition process"
+        ),
+        "description": _("Petition, publication, and records cascade"),
+        "icon": "identification",
+        "meta_description": _(
+            "Learn about legally changing your name as an adult — petition process, publication requirements, and updating your records. General legal information for self-represented litigants."
+        ),
+        "prompts": [
+            _("I want to change my last name back after a divorce"),
+            _("I want to change my first or middle name"),
+            _("What forms do I need for a name change?"),
+        ],
+        "context_sections": [
+            {
+                "heading": _("Standalone vs. divorce-bundled"),
+                "body": _(
+                    "An adult name change is usually a standalone court"
+                    " petition, separate from any divorce case. If your divorce"
+                    " decree didn't include a name change, you'll file a new"
+                    " petition in your local district court."
+                ),
+            },
+            {
+                "heading": _("Two tracks: standard and waiver"),
+                "body": _(
+                    "Most jurisdictions offer two paths. A standard track —"
+                    " for any change involving the last name — usually requires"
+                    " publishing notice in a newspaper and a waiting period."
+                    " A waiver track — for first or middle name only — may"
+                    " allow the publication requirement to be waived by the"
+                    " judge."
+                ),
+            },
+            {
+                "heading": _("What to know up front"),
+                "body": _(
+                    "You'll file a petition with supporting forms, pay a"
+                    " filing fee (waivers are often available for"
+                    " income-qualifying filers), and — on the standard track —"
+                    " publish notice and wait before the judge reviews your"
+                    " petition. Background check timing varies by judge; a"
+                    " quick call to the clerk of court can confirm whether it"
+                    " happens before or after you file."
+                ),
+            },
+        ],
+    },
+    "traffic": {
+        "title": _("Traffic & Fines"),
+        "subtitle": _(
+            "Traffic violations, fines, license issues, and your options"
+        ),
+        "description": _("Tickets, license issues, court fines"),
+        "icon": "truck",
+        "meta_description": _(
+            "Learn about traffic tickets, fines, license suspension, and your options. General legal information for self-represented litigants."
+        ),
+        "prompts": [],
+        "context_sections": [],
+    },
+}
+
+
+def health(request):
+    """Lightweight health check for container orchestration."""
+    return HttpResponse("ok")
+
+
+def home(request):
+    """Home page - dashboard with hero and topic grid."""
+    return render(request, "pages/home.html", {"topics": TOPICS})
+
+
+def topic_detail(request, slug):
+    """Topic detail page - informational content about a legal topic."""
+    topic = TOPICS.get(slug)
+    if not topic:
+        raise Http404(f"Topic '{slug}' not found")
+    return render(
+        request, f"pages/topics/{slug}.html", {"topic": topic, "slug": slug}
+    )
+
+
+def chat_page(request):
+    """Chat page - AI-powered legal assistance chat interface."""
+    from chat.prompts import get_court_name, is_known_court
+
+    slug = request.GET.get("topic", "").strip()
+    topic = TOPICS.get(slug) if slug else None
+    topic_context = ""
+    if topic and topic.get("context_sections"):
+        lines = [f"Topic: {topic['title']}"]
+        for section in topic["context_sections"]:
+            lines.append(f"{section['heading']}: {section['body']}")
+        topic_context = "\n".join(lines)
+
+    court_slug = request.GET.get("court", "").strip().lower()
+    if court_slug and not is_known_court(court_slug):
+        court_slug = ""
+
+    return render(
+        request,
+        "pages/chat.html",
+        {
+            "topic": topic,
+            "topic_slug": slug if topic else "",
+            "topic_context": topic_context,
+            "court_slug": court_slug,
+            "court_name": get_court_name(court_slug),
+        },
+    )
+
+
+def deep_link(request, court, topic):
+    """Deep-link entry: /t/{court}/{topic}/ → chat with both pre-set.
+
+    Validates the pair against the prompt registries. Unknown court or
+    topic returns 404. On success, 302 to /chat/?topic=X&court=Y so the
+    existing chat page handles the heavy lifting.
+    """
+    from chat.prompts import is_known_court, is_known_topic
+
+    if not is_known_topic(topic):
+        raise Http404(f"Topic '{topic}' not registered")
+    if not is_known_court(court):
+        raise Http404(f"Court '{court}' not registered")
+
+    query = urlencode({"topic": topic.lower(), "court": court.lower()})
+    return redirect(f"{reverse('portal:chat')}?{query}")
+
+
+def test_agent(request, agent_name):
+    """Test page for a specific agent."""
+    if agent_name not in agent_registry:
+        raise Http404(f"Agent '{agent_name}' not found")
+    return render(request, "pages/chat.html", {"agent_name": agent_name})
+
+
+def about(request):
+    """About page - mission, disclaimers, FLP info."""
+    return render(request, "pages/about.html")
+
+
+def privacy(request):
+    """Privacy page - data practices and user rights."""
+    return render(request, "pages/privacy.html")
+
+
+def accessibility(request):
+    """Accessibility page - WCAG conformance and feedback."""
+    return render(request, "pages/accessibility.html")
+
+
+def style_guide(request):
+    """Design tokens and component library"""
+    return render(request, "pages/style_guide.html", {"topics": TOPICS})
+
+
+class ProfileDetailView(LoginRequiredMixin, DetailView):
+    """Display user's profile information."""
+
+    model = UserProfile
+    template_name = "pages/profile/detail.html"
+    context_object_name = "profile"
+
+    def get_object(self):
+        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
+        return profile
+
+
+class ProfileEditView(LoginRequiredMixin, UpdateView):
+    """Edit user profile."""
+
+    model = UserProfile
+    form_class = UserProfileForm
+    template_name = "pages/profile/edit.html"
+    success_url = reverse_lazy("portal:profile")
+
+    def get_object(self):
+        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
+        return profile
+
+    def form_valid(self, form):
+        messages.success(
+            self.request, gettext("Profile updated successfully.")
+        )
+        return super().form_valid(form)
