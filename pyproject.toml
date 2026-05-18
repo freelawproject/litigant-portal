@@ -74,6 +74,9 @@ test = [
     "tox-uv>=1.29.0",
 ]
 
+[project.scripts]
+manage = "litigant_portal.manage:main"
+
 [tool.setuptools.packages.find]
 include = [ "litigant_portal*" ]
 
