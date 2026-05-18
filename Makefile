@@ -25,14 +25,14 @@ migrate: ## Run Django migrations
 
 test: ## Run tests — dots + warnings + failures + summary
 	@if docker compose --profile dev exec -T django-dev true 2>/dev/null; then \
-	  docker compose --profile dev exec django-dev /docker-entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS)); \
+	  docker compose --profile dev exec django-dev /docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS)); \
 	else \
 	  tox -q -e fast -- -q --tb=short; \
 	fi
 
 test-v: ## Run tests — verbose output (full tox + pytest details)
 	@if docker compose --profile dev exec -T django-dev true 2>/dev/null; then \
-	  docker compose --profile dev exec django-dev /docker-entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS)); \
+	  docker compose --profile dev exec django-dev /docker/django/entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS)); \
 	else \
 	  tox -e fast; \
 	fi

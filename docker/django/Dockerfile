@@ -37,12 +37,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 FROM base AS tailwind
 
 ARG TAILWIND_VERSION=v4.1.16
-COPY scripts/install-tailwind.sh /tmp/install-tailwind.sh
+COPY docker/django/install-tailwind.sh /tmp/install-tailwind.sh
 RUN TAILWIND_VERSION=${TAILWIND_VERSION} TAILWIND_DEST=/usr/local/bin/tailwindcss \
     bash /tmp/install-tailwind.sh
-
-COPY src/css/main.css ./src/css/main.css
-COPY templates/ ./templates/
 
 RUN tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
 
@@ -62,18 +59,16 @@ COPY --from=tailwind /app/static/css/main.built.css ./static/css/main.built.css
 COPY --from=tailwind /usr/local/bin/tailwindcss /usr/local/bin/tailwindcss
 
 # Application code
-COPY config/ ./config/
-COPY portal/ ./portal/
-COPY chat/ ./chat/
 COPY litigant_portal/ ./litigant_portal/
-COPY templates/ ./templates/
-COPY static/ ./static/
-COPY locale/ ./locale/
-COPY manage.py ./
+COPY pyproject.toml README.md LICENSE ./
+
+# Install the project package
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --no-deps --python /opt/venv/bin/python -e .
 
 # Entrypoint
-COPY scripts/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
+COPY docker/django/entrypoint.sh /docker/django/entrypoint.sh
+RUN chmod +x /docker/django/entrypoint.sh
 
 # Non-root user
 RUN useradd --create-home --shell /bin/bash appuser \
@@ -83,5 +78,5 @@ USER appuser
 
 EXPOSE 8000
 
-ENTRYPOINT ["/docker-entrypoint.sh"]
+ENTRYPOINT ["/docker/django/entrypoint.sh"]
 CMD ["web-prod"]

@@ -6,17 +6,17 @@ set -e
 
 run_migrations() {
     echo "Running migrations..."
-    python manage.py migrate --noinput
+    manage migrate --noinput
 }
 
 run_collectstatic() {
     echo "Collecting static files..."
-    python manage.py collectstatic --noinput --clear
+    manage collectstatic --noinput --clear
 }
 
 run_compilemessages() {
     echo "Compiling translation messages..."
-    python manage.py compilemessages
+    manage compilemessages
 }
 
 case "$1" in
@@ -27,7 +27,7 @@ case "$1" in
 
         run_migrations
 
-        exec python manage.py runserver 0.0.0.0:8000
+        exec manage runserver 0.0.0.0:8000
         ;;
 
     web-prod)
@@ -36,7 +36,7 @@ case "$1" in
         run_collectstatic
         run_migrations
 
-        exec gunicorn config.wsgi:application \
+        exec gunicorn litigant_portal.main:application \
             --bind 0.0.0.0:8000 \
             --workers "${GUNICORN_WORKERS:-3}" \
             --threads "${GUNICORN_THREADS:-2}" \
@@ -55,7 +55,7 @@ case "$1" in
         ;;
 
     shell)
-        exec python manage.py shell
+        exec manage shell
         ;;
 
     test)
