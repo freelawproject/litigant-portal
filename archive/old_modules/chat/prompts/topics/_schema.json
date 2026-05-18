@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://litigantportal.com/schemas/topic.json",
+  "title": "Topic",
+  "description": "Structural identity for a legal topic. Lives at chat/prompts/topics/<slug>/topic.json alongside the corpus prompt.md. Schema is intentionally minimal in v1 — translatable display copy (subtitle, description, prompts, context_sections) stays in portal/views.py:TOPICS where Django's i18n pipeline can extract strings via makemessages. Additional structured fields will be driven by partner-court need (court-content overrides #363) and any decision on the JSON-i18n boundary, not preemptive design.",
+  "type": "object",
+  "required": ["name", "icon"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name for the topic (English source). Translatable copy mirroring this currently lives as gettext_lazy strings in portal/views.py:TOPICS until the i18n-for-JSON pattern is decided."
+    },
+    "icon": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "description": "Heroicon identifier rendered on the topic card (e.g. \"home\", \"identification\")."
+    }
+  }
+}
