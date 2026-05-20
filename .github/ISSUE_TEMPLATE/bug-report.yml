@@ -1,0 +1,63 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly
+title: 'fix: '
+labels: ['bug', 'qa-feedback']
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe what you saw and what you expected
+      placeholder: ex. Clicking "Save" did nothing; I expected the form to submit
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See ...
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did this happen?
+      options:
+        - Production (litigantportal.com)
+        - QA (qa.litigantportal.com)
+        - Local dev
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: 'P0 = fire · P1 = this sprint · P2 = stretch · P3 = eventually'
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: accessibility
+    attributes:
+      label: Accessibility impact (tick if any apply)
+      options:
+        - label: Screen reader
+        - label: Keyboard-only navigation
+        - label: Mobile / small screens
+        - label: Color contrast / visual
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, logs, anything else (optional)
+      description: Drag images directly into this box. Wrap log snippets in triple backticks.

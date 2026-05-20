@@ -1,0 +1,53 @@
+name: Task
+description: Chore, refactor, docs, infra, tech debt, or other non-feature work
+title: 'chore: '
+labels: []
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs to change?
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: Motivation — bug-prone code, slow tests, drift, missing docs, etc.
+
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of done
+      value: |
+        - [ ]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: 'P0 = fire · P1 = this sprint · P2 = stretch · P3 = eventually'
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+    validations:
+      required: true
+
+  - type: dropdown
+    id: size
+    attributes:
+      label: Size estimate
+      description: 'XS ≈ 1–2 hr · S ≈ half day · M ≈ 1–2 days · L ≈ 3–4 days · XL → break into sub-issues first'
+      options:
+        - XS
+        - S
+        - M
+        - L
+        - XL
+    validations:
+      required: true
