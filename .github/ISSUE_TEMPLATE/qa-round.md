@@ -7,7 +7,7 @@ labels: question
 
 QA testing round for the current sprint/milestone.
 
-**QA environment:** https://litigant-portal.nates.ai
+**QA environment:** https://qa.litigantportal.com
 
 ## How to use this issue
 
