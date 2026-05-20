@@ -245,6 +245,25 @@ Prettier adds `/>` to void HTML elements and self-closing components alike. Foll
 
 **9. Long `class` values.** Tailwind classes stay on one line inside the `class` attribute even when long — don't break a class string across lines. If the element also has many other attributes, the `class` attribute gets its own line in the multi-line format (rule 2), but the value itself stays unbroken.
 
+## Issue creation
+
+New issues use the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are disabled in `config.yml`, so the web UI forces a template; the CLI must opt in explicitly.
+
+| Template         | Title prefix                     | Use for                                                                                      |
+| ---------------- | -------------------------------- | -------------------------------------------------------------------------------------------- |
+| `bug-report.yml` | `fix: `                          | Something broken — includes environment + priority dropdowns + accessibility-impact checkbox |
+| `feature.yml`    | `feat: `                         | New capability or enhancement — out-of-scope + DoD + priority + size                         |
+| `task.yml`       | `chore: `                        | Refactor / docs / infra / tech debt — what + why + DoD + priority + size                     |
+| `qa-round.md`    | `QA: [Month Year] testing round` | Recurring sprint QA artifact (markdown, prose-heavy)                                         |
+
+When filing from the CLI, pass `--template` so dropdowns and required fields are honored:
+
+```bash
+gh issue create --template bug-report.yml
+gh issue create --template feature.yml
+gh issue create --template task.yml
+```
+
 ## Architecture
 
 ### Front-End Principles
