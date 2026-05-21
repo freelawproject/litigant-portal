@@ -247,21 +247,28 @@ Prettier adds `/>` to void HTML elements and self-closing components alike. Foll
 
 ## Issue creation
 
-New issues use the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are disabled in `config.yml`, so the web UI forces a template; the CLI must opt in explicitly.
+New issues use the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are disabled in `config.yml`, so the web UI forces a template; the CLI must opt in via `--template`.
 
-| Template         | Title prefix                     | Use for                                                                                      |
-| ---------------- | -------------------------------- | -------------------------------------------------------------------------------------------- |
-| `bug-report.yml` | `fix: `                          | Something broken — includes environment + priority dropdowns + accessibility-impact checkbox |
-| `feature.yml`    | `feat: `                         | New capability or enhancement — out-of-scope + DoD + priority + size                         |
-| `task.yml`       | `chore: `                        | Refactor / docs / infra / tech debt — what + why + DoD + priority + size                     |
-| `qa-round.md`    | `QA: [Month Year] testing round` | Recurring sprint QA artifact (markdown, prose-heavy)                                         |
+| Template          | Auto-label    | Use for                                                                          |
+| ----------------- | ------------- | -------------------------------------------------------------------------------- |
+| `bug-report.yml`  | `bug`         | Something broken — environment + accessibility-impact (optional)                 |
+| `enhancement.yml` | `enhancement` | Improvement or change — problem + what you'd like + mockups (optional)           |
+| `task.yml`        | `task`        | Chore, refactor, docs, infra, tech debt — what + why (optional) + DoD (optional) |
+| `qa-round.yml`    | `qa`          | QA round — request side + findings side, two halves in one issue                 |
 
-When filing from the CLI, pass `--template` so dropdowns and required fields are honored:
+**No title prefixes** — the auto-applied label carries the type signal. Filers can layer additional labels at creation (e.g., `tech-debt`, `frontend`) or during triage.
+
+**Priority and size are not in the templates** — they're assigned by the team during sprint grooming, not by the filer.
+
+**Security vulnerabilities** route through `SECURITY.md` at the repo root, which points to FLP's VDP (`https://free.law/vulnerability-disclosure-policy/`). The GitHub "Report a security vulnerability" chooser entry picks up `SECURITY.md` automatically.
+
+When filing from the CLI:
 
 ```bash
 gh issue create --template bug-report.yml
-gh issue create --template feature.yml
+gh issue create --template enhancement.yml
 gh issue create --template task.yml
+gh issue create --template qa-round.yml
 ```
 
 ## Architecture

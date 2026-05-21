@@ -1,0 +1,37 @@
+name: QA Round
+description: Scope of work for QA — both the request and the feedback live in this same issue
+labels: ['qa']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        QA rounds have two sides — both live in this same issue:
+
+        - **Request side** (filled at creation): what to QA + setup notes
+        - **Findings side** (filled by QA during the round): bugs, observations, notes
+
+        Assignees typically include both the requester and the QA reviewer.
+
+        QA environment: https://qa.litigantportal.com
+
+        If a finding is a substantive bug, file it as a separate bug-report and link back.
+
+  - type: textarea
+    id: request
+    attributes:
+      label: What to QA
+      description: Describe what's being QA'd and what to verify. Can be a single sentence (e.g., "make sure the new button launches the modal") or a checklist of features with links to QA scripts.
+    validations:
+      required: true
+
+  - type: textarea
+    id: setup
+    attributes:
+      label: Setup notes (optional)
+      description: Special accounts, fixture data, environment quirks — anything QA needs before starting.
+
+  - type: textarea
+    id: findings
+    attributes:
+      label: QA findings
+      description: Filled by QA during the round.
