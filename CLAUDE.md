@@ -247,6 +247,8 @@ Prettier adds `/>` to void HTML elements and self-closing components alike. Foll
 
 ## Issue creation
 
+See [`docs/issue-conventions.md`](docs/issue-conventions.md) for the full label color scheme and template rationale.
+
 New issues use the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are disabled in `config.yml`, so the web UI forces a template; the CLI must opt in via `--template`.
 
 | Template          | Auto-label    | Use for                                                                          |
