@@ -1,0 +1,25 @@
+name: Enhancement
+description: Suggest an improvement or change
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Who is affected and why does this matter?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like to see?
+      description: Describe what you'd like. Examples, sketches, links, or references all welcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups, sketches, or references (optional)
+      description: Drag images directly into this box, or paste links to anything relevant.

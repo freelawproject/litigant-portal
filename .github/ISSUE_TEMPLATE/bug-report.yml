@@ -1,7 +1,6 @@
 name: Bug report
 description: Something is broken or behaving unexpectedly
-title: 'fix: '
-labels: ['bug', 'qa-feedback']
+labels: ['bug']
 body:
   - type: textarea
     id: what-happened
@@ -33,19 +32,6 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: priority
-    attributes:
-      label: Priority
-      description: 'P0 = fire · P1 = this sprint · P2 = stretch · P3 = eventually'
-      options:
-        - P0
-        - P1
-        - P2
-        - P3
-    validations:
-      required: true
-
   - type: checkboxes
     id: accessibility
     attributes:
@@ -60,4 +46,4 @@ body:
     id: extra
     attributes:
       label: Screenshots, logs, anything else (optional)
-      description: Drag images directly into this box. Wrap log snippets in triple backticks.
+      description: Drag images directly into this box. Paste any log text or error messages — no formatting required.

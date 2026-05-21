@@ -1,8 +1,1 @@
 blank_issues_enabled: false
-contact_links:
-  - name: FLP wiki
-    url: https://wiki.free.law/
-    about: Practices, runbooks, decisions
-  - name: GitHub Discussions
-    url: https://github.com/freelawproject/courtlistener/discussions
-    about: Question or open-ended idea? Start a discussion in CourtListener.
