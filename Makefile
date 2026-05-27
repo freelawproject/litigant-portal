@@ -1,4 +1,5 @@
 .PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
+       file-issue \
        messages compilemessages \
        docker-build docker-dev docker-prod docker-rebuild docker-down docker-logs docker-shell docker-migrate docker-clean
 
@@ -61,6 +62,9 @@ fmt-check: ## Check template formatting (dry run, no writes)
 
 fmt: ## Format all templates with prettier-plugin-django-cotton
 	npx prettier --plugin prettier-plugin-django-cotton --parser django-html --write "templates/**/*.html"
+
+file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
+	@python3 scripts/file_issue.py $(FILE)
 
 messages: ## Extract translation strings (all languages)
 	SECRET_KEY=dev .venv/bin/python manage.py makemessages -a --no-location
