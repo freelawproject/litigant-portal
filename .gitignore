@@ -47,10 +47,10 @@ static/assets/
 tailwindcss
 
 # Tailwind CLI output (source is static/css/main.css)
-static/css/main.built.css
+litigant_portal/app/static/css/main.built.css
 
 # Django collectstatic output
-staticfiles/
+litigant_portal/app/staticfiles
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

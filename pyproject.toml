@@ -120,10 +120,11 @@ lint.ignore = [
 ]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings"
+DJANGO_SETTINGS_MODULE = "litigant_portal.settings"
 python_files = ["tests.py", "test_*.py"]
 python_classes = ["*Tests"]
 pythonpath = ["."]
+testpaths = ["litigant_portal"]
 addopts = "-ra --strict-markers"
 markers = [
     "postgres: test requires a PostgreSQL database",
