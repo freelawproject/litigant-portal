@@ -6,12 +6,12 @@ How issues are filed, categorized, and labeled in litigant-portal. Captures the 
 
 Four issue-form templates in `.github/ISSUE_TEMPLATE/`. Each auto-applies a single matching label (1-to-1) on creation.
 
-| Template          | Auto-label    | For                                                  |
-| ----------------- | ------------- | ---------------------------------------------------- |
-| `bug-report.yml`  | `bug`         | Something broken                                     |
-| `enhancement.yml` | `enhancement` | Improvement or change                                |
-| `task.yml`        | `task`        | Chore, refactor, docs, infra, tech debt              |
-| `qa-round.yml`    | `qa`          | QA round — request and findings live in one issue    |
+| Template          | Auto-label    | For                                               |
+| ----------------- | ------------- | ------------------------------------------------- |
+| `bug-report.yml`  | `bug`         | Something broken                                  |
+| `enhancement.yml` | `enhancement` | Improvement or change                             |
+| `task.yml`        | `task`        | Chore, refactor, docs, infra, tech debt           |
+| `qa-round.yml`    | `qa`          | QA round — request and findings live in one issue |
 
 **Filers layer additional labels** (e.g., `tech debt`, `frontend`, `a11y`) at creation or triage.
 
@@ -38,12 +38,12 @@ Labels are visually grouped by category. Colors are chosen deliberately — don'
 
 ### Priority — heat map (hot → cool with urgency)
 
-| Label | Color     | Meaning                            |
-| ----- | --------- | ---------------------------------- |
-| `P0`  | `#B60205` | Critical — fire                    |
-| `P1`  | `#D93F0B` | High — sprint commitment           |
-| `P2`  | `#FBCA04` | Medium — sprint stretch            |
-| `P3`  | `#C5DEF5` | Low — known work, not urgent       |
+| Label | Color     | Meaning                      |
+| ----- | --------- | ---------------------------- |
+| `P0`  | `#B60205` | Critical — fire              |
+| `P1`  | `#D93F0B` | High — sprint commitment     |
+| `P2`  | `#FBCA04` | Medium — sprint stretch      |
+| `P3`  | `#C5DEF5` | Low — known work, not urgent |
 
 ### Size — uniform soft grey (intentionally muted)
 
@@ -61,28 +61,28 @@ All `size:` labels share `#cfd3d7`. Sizing is metadata, not urgency. Uniform gre
 
 Each surface area gets its own distinct hue so multi-label issues are scannable.
 
-| Label           | Color     | Notes                                            |
-| --------------- | --------- | ------------------------------------------------ |
-| `ai`            | `#7B61FF` | AI, LLM, agents, prompts, RAG                    |
-| `backend`       | `#D4A017` | Django views, services, models, business logic   |
-| `frontend`      | `#aaaaaa` | Templates, CSS, JS, Alpine.js — the UI layer     |
-| `infra`         | `#333333` | DevOps, hosting, CI/CD, environment              |
-| `documentation` | `#0075ca` | Docs additions or improvements                   |
-| `security`      | `#9333EA` | CSP, auth, PII, data retention, trust            |
-| `a11y`          | `#EC4899` | Accessibility — mission-aligned user impact      |
+| Label           | Color     | Notes                                          |
+| --------------- | --------- | ---------------------------------------------- |
+| `ai`            | `#7B61FF` | AI, LLM, agents, prompts, RAG                  |
+| `backend`       | `#D4A017` | Django views, services, models, business logic |
+| `frontend`      | `#aaaaaa` | Templates, CSS, JS, Alpine.js — the UI layer   |
+| `infra`         | `#333333` | DevOps, hosting, CI/CD, environment            |
+| `documentation` | `#0075ca` | Docs additions or improvements                 |
+| `security`      | `#9333EA` | CSP, auth, PII, data retention, trust          |
+| `a11y`          | `#EC4899` | Accessibility — mission-aligned user impact    |
 
 ### Workflow / state
 
-| Label              | Color     | Notes                                                |
-| ------------------ | --------- | ---------------------------------------------------- |
-| `duplicate`        | `#cfd3d7` | GH default — triage convenience                      |
-| `good first issue` | `#7057ff` | GH default                                           |
-| `help wanted`      | `#008672` | GH default                                           |
-| `pinned`           | `#006b75` | Exempt from stale bot                                |
-| `question`         | `#d876e3` | GH default — further information requested           |
-| `research`         | `#06B6D4` | Investigation / learning, not code                   |
-| `stale`            | `#ededed` | No activity for 90+ days                             |
-| `tech debt`        | `#D4C5F9` | Deferred cleanup, consolidation, refactoring         |
+| Label              | Color     | Notes                                        |
+| ------------------ | --------- | -------------------------------------------- |
+| `duplicate`        | `#cfd3d7` | GH default — triage convenience              |
+| `good first issue` | `#7057ff` | GH default                                   |
+| `help wanted`      | `#008672` | GH default                                   |
+| `pinned`           | `#006b75` | Exempt from stale bot                        |
+| `question`         | `#d876e3` | GH default — further information requested   |
+| `research`         | `#06B6D4` | Investigation / learning, not code           |
+| `stale`            | `#ededed` | No activity for 90+ days                     |
+| `tech debt`        | `#D4C5F9` | Deferred cleanup, consolidation, refactoring |
 
 ## Conventions
 
