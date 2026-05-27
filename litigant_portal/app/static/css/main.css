@@ -1,0 +1,679 @@
+/**
+ * Litigant Portal - Main Stylesheet (Tailwind v4)
+ * Based on CourtListener's design system
+ * Build: tailwindcss -i static/css/main.css -o static/css/main.built.css
+ */
+
+@import 'tailwindcss';
+
+/* ==========================================================================
+   THEME - Custom design tokens
+   ========================================================================== */
+
+@theme {
+  /* Breakpoints */
+  --breakpoint-xs: 392px;
+
+  /* Custom spacing */
+  --spacing-4_5: 1.125rem;
+  --spacing-7_5: 1.875rem;
+  --spacing-13: 3.25rem;
+  --spacing-15: 3.75rem;
+  --spacing-18: 4.5rem;
+  --spacing-21: 5.25rem;
+  --spacing-26: 6.5rem;
+  --spacing-35: 8.75rem;
+  --spacing-41: 10.25rem;
+  --spacing-42: 10.5rem;
+  --spacing-45: 11.25rem;
+  --spacing-53: 13.25rem;
+  --spacing-55: 13.75rem;
+  --spacing-70: 17.5rem;
+
+  /* Fonts */
+  --font-sans: 'Inter', sans-serif;
+  --font-cooper: 'Cooper Hewitt', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  /* Greyscale colors */
+  --color-greyscale-25: #fdfcfb;
+  --color-greyscale-50: #fbfaf8;
+  --color-greyscale-100: #f5f3ef;
+  --color-greyscale-200: #e8e4de;
+  --color-greyscale-300: #d6d0c6;
+  --color-greyscale-400: #a8a091;
+  --color-greyscale-500: #776f61;
+  --color-greyscale-600: #574f40;
+  --color-greyscale-700: #453f35;
+  --color-greyscale-800: #29261f;
+  --color-greyscale-900: #1c1814;
+  --color-greyscale-950: #171411;
+
+  /* Primary colors (coral/red) */
+  --color-primary-25: #fdf9f7;
+  --color-primary-50: #fbf4ef;
+  --color-primary-100: #f7e6de;
+  --color-primary-200: #efcbbd;
+  --color-primary-300: #e19684;
+  --color-primary-400: #d56958;
+  --color-primary-500: #cd4137;
+  --color-primary-600: #b5362d;
+  --color-primary-700: #9b2e27;
+  --color-primary-800: #832720;
+  --color-primary-900: #6a201a;
+  --color-primary-950: #4e1713;
+
+  /* Brand colors (purple) */
+  --color-brand-100: #f4ebff;
+  --color-brand-300: #d6bbfb;
+  --color-brand-600: #7f56d9;
+  --color-brand-700: #6941c6;
+
+  /* Accent colors */
+  --color-yellow-50: #fffaeb;
+  --color-yellow-400: #fdb022;
+  --color-yellow-700: #b54708;
+  --color-blue-700: #004eeb;
+  --color-red-100: #fee4e2;
+  --color-red-200: #fecdca;
+  --color-red-300: #fda29b;
+  --color-red-400: #ff692e;
+  --color-red-500: #e62e05;
+  --color-red-600: #d92d20;
+  --color-red-700: #b42318;
+  --color-green-100: #d1fadf;
+  --color-green-500: #12b76a;
+  --color-green-600: #039855;
+  --color-green-700: #027a48;
+
+  /* Font sizes with line heights */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1.125rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-md: 1rem;
+  --text-md--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-display-xs: 1.5rem;
+  --text-display-xs--line-height: 2rem;
+  --text-display-sm: 1.875rem;
+  --text-display-sm--line-height: 2.375rem;
+  --text-display-md: 2rem;
+  --text-display-md--line-height: 2.5rem;
+  --text-display-lg: 2.5rem;
+  --text-display-lg--line-height: 3rem;
+  --text-display-xl: 2.75rem;
+  --text-display-xl--line-height: 3.25rem;
+
+  /* Max widths */
+  --container-content: 948px;
+}
+
+/* ==========================================================================
+   BASE LAYER - Element defaults
+   ========================================================================== */
+
+@layer base {
+  /* CSS Variables for responsive calculations */
+  :root {
+    --mobile-main-padding: 1rem;
+    --padded-full-width: calc(100vw - (2 * var(--mobile-main-padding)));
+    --content-max-width: 948px;
+  }
+
+  /* Alpine.js cloak - hide elements until Alpine initializes */
+  [x-cloak] {
+    display: none !important;
+  }
+
+  /* Base HTML element styles */
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Anchor scroll offset for sticky header */
+  [id] {
+    scroll-margin-top: 5rem;
+  }
+
+  body {
+    @apply font-sans text-greyscale-900 bg-greyscale-25;
+  }
+
+  /* Headings */
+  h1 {
+    @apply font-cooper text-display-sm font-semibold md:text-display-lg;
+  }
+
+  h2 {
+    @apply text-display-xs font-semibold text-greyscale-900;
+  }
+
+  h3 {
+    @apply text-xl font-semibold text-greyscale-900;
+  }
+
+  h4 {
+    @apply text-lg font-semibold text-greyscale-900;
+  }
+
+  /* Lists */
+  ul {
+    @apply list-disc pl-6;
+  }
+
+  ol {
+    @apply list-decimal pl-6;
+  }
+
+  /* Blockquote */
+  blockquote {
+    @apply border-l-4 border-l-greyscale-200 pl-6 py-2 text-xl font-normal;
+  }
+
+  /* Tables */
+  table {
+    @apply w-full;
+  }
+
+  tr {
+    @apply border-b border-greyscale-200 text-base font-normal;
+  }
+
+  th {
+    @apply p-2 text-start text-greyscale-700 font-normal bg-greyscale-100;
+  }
+
+  td {
+    @apply p-2;
+  }
+
+  /* Code */
+  code {
+    @apply font-mono text-sm bg-brand-100 text-brand-600 border border-brand-300 rounded-sm px-1;
+  }
+
+  /* Custom Checkbox */
+  input[type='checkbox'] {
+    @apply relative appearance-none shrink-0 w-5 h-5 rounded border border-greyscale-300 bg-white;
+    @apply checked:border-primary-600 checked:bg-primary-600;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary-600/60;
+    @apply disabled:border-greyscale-300 disabled:bg-greyscale-100 disabled:checked:bg-greyscale-100;
+    @apply before:absolute before:inset-0 before:m-auto before:w-4 before:h-4 before:bg-white;
+    @apply checked:before:scale-100 before:scale-0 before:transform before:duration-200 transition-colors;
+  }
+
+  input[type='checkbox']::before {
+    content: '';
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E")
+      no-repeat center/contain;
+  }
+
+  /* Custom Radio */
+  input[type='radio'] {
+    @apply relative appearance-none shrink-0 w-5 h-5 rounded-full border border-greyscale-300;
+    @apply checked:border-primary-600 checked:bg-primary-600;
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600/60;
+    @apply disabled:border-greyscale-300 disabled:bg-greyscale-100;
+    @apply before:absolute before:inset-0 before:m-auto before:w-2 before:h-2 before:rounded-full before:bg-white;
+    @apply before:scale-0 checked:before:scale-100 before:transform before:duration-200 transition-colors;
+    @apply disabled:checked:before:bg-greyscale-400;
+  }
+
+  /* Base select styling */
+  select {
+    @apply border bg-white py-3 px-3.5 rounded-lg text-sm font-medium text-greyscale-900;
+  }
+}
+
+/* ==========================================================================
+   COMPONENTS LAYER - Reusable component classes
+   ========================================================================== */
+
+@layer components {
+  /* Logo */
+  .logo {
+    @apply inline-flex items-center gap-2 no-underline;
+    @apply text-greyscale-900 font-cooper font-semibold;
+    @apply hover:text-primary-600 transition-colors;
+  }
+
+  .logo-image {
+    @apply h-10 w-auto; /* 40px - default */
+  }
+
+  .logo-sm .logo-image {
+    @apply h-8; /* 32px - compact (mobile header) */
+  }
+
+  .logo-lg .logo-image {
+    @apply h-15; /* 60px - prominent (footer, hero) */
+  }
+
+  /* Search Bar */
+  .search-bar {
+    @apply flex gap-2 w-full;
+  }
+
+  /* Topic Card */
+  .topic-card {
+    @apply flex items-center gap-4 p-4 rounded-xl no-underline;
+    @apply bg-white border border-greyscale-200;
+    @apply text-greyscale-900 transition-all duration-200;
+    @apply hover:border-primary-300 hover:shadow-sm;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:ring-offset-2;
+    min-height: 72px; /* Good touch target */
+  }
+
+  .topic-card-icon {
+    @apply flex-shrink-0 w-12 h-12 rounded-lg;
+    @apply bg-primary-50 text-primary-600;
+    @apply flex items-center justify-center;
+  }
+
+  .topic-card-content {
+    @apply flex-1 min-w-0;
+  }
+
+  .topic-card-title {
+    @apply text-md font-semibold text-greyscale-900 m-0;
+  }
+
+  .topic-card-description {
+    @apply text-sm text-greyscale-500 mt-0.5 m-0;
+    @apply line-clamp-2;
+  }
+
+  .topic-card-arrow {
+    @apply flex-shrink-0 text-greyscale-400;
+  }
+
+  /* Mobile Header */
+  .mobile-header {
+    @apply bg-white border-b border-greyscale-200;
+  }
+
+  .mobile-header-sticky {
+    @apply sticky top-0 z-40;
+  }
+
+  .mobile-header-inner {
+    @apply flex items-center justify-between px-4 py-2;
+    @apply max-w-content mx-auto;
+  }
+
+  .mobile-header-menu-btn {
+    @apply p-2 -mr-2; /* Extend touch target */
+  }
+
+  /* Hero Section */
+  .hero {
+    @apply px-4 py-8 md:py-12 bg-greyscale-50;
+  }
+
+  .hero-content {
+    @apply max-w-xl mx-auto text-center;
+  }
+
+  .hero-heading {
+    @apply text-display-sm md:text-display-md lg:text-display-lg;
+    @apply font-cooper font-semibold text-greyscale-900;
+    @apply mb-3;
+  }
+
+  .hero-subheading {
+    @apply text-md md:text-lg text-greyscale-600;
+    @apply mb-4;
+  }
+
+  /* Topic Grid */
+  .topic-grid-section {
+    @apply px-4 py-4 md:py-6;
+    transition: all 0.3s ease;
+  }
+
+  .topic-grid-heading {
+    @apply text-display-xs font-semibold text-greyscale-900;
+    @apply mb-4 text-center md:text-left;
+    @apply max-w-content mx-auto;
+  }
+
+  .topic-grid {
+    @apply grid gap-3 md:gap-4;
+    @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3;
+    @apply max-w-content mx-auto;
+  }
+
+  /* ==========================================================================
+     TOPIC CHAT ENTRY
+     ========================================================================== */
+
+  .topic-entry-header {
+    @apply flex items-center gap-3 text-left;
+  }
+
+  .topic-entry-icon {
+    @apply flex-shrink-0 w-10 h-10 rounded-lg;
+    @apply bg-primary-50 text-primary-600;
+    @apply flex items-center justify-center;
+  }
+
+  .topic-entry-title {
+    @apply font-cooper font-semibold text-display-xs text-greyscale-900 m-0;
+  }
+
+  .topic-entry-subtitle {
+    @apply text-sm text-greyscale-600 mt-0.5 m-0;
+  }
+
+  .court-branding {
+    @apply text-xs font-semibold tracking-wide uppercase text-greyscale-500 m-0 mb-0.5;
+  }
+
+  .topic-prompts {
+    @apply flex flex-col gap-2 mt-6;
+  }
+
+  /* Topic Context — collapsible info panel */
+  .topic-context-card {
+    @apply mt-1;
+  }
+
+  /* Hide native disclosure triangle across browsers */
+  .topic-context-card > .topic-context-toggle {
+    list-style: none;
+  }
+
+  .topic-context-card > .topic-context-toggle::-webkit-details-marker {
+    display: none;
+  }
+
+  .topic-context-toggle {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md;
+    @apply bg-greyscale-100 border border-greyscale-200;
+    @apply text-xs font-medium text-greyscale-600 cursor-pointer;
+    @apply hover:bg-greyscale-200 transition-colors;
+  }
+
+  .topic-context-body {
+    @apply pt-3 pb-1 space-y-3 text-left;
+    @apply max-h-44 overflow-y-auto;
+  }
+
+  .topic-context-body h3 {
+    @apply text-xs font-semibold uppercase tracking-wider text-greyscale-500;
+  }
+  /* ==========================================================================
+     FALLBACK RESOURCES SECTION
+     ========================================================================== */
+
+  .fallback-resources {
+    @apply px-4 py-8 md:py-12;
+  }
+
+  .fallback-resources-inner {
+    @apply max-w-content mx-auto;
+  }
+
+  .fallback-resources-heading {
+    @apply text-display-xs font-semibold text-greyscale-900 mb-6;
+  }
+
+  .fallback-resources-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-6;
+  }
+
+  .fallback-resources-links {
+    @apply border border-greyscale-200 rounded-xl p-5 bg-white flex flex-col gap-3;
+  }
+
+  .fallback-accordion {
+    @apply border border-greyscale-200 rounded-xl bg-white mb-3 last:mb-0;
+  }
+
+  .fallback-accordion-summary {
+    @apply flex w-full items-center justify-between px-4 py-3.5;
+    @apply text-sm font-medium text-greyscale-900 cursor-pointer;
+    @apply list-none [&::-webkit-details-marker]:hidden;
+  }
+
+  /* ==========================================================================
+     AUTH CTA SECTION
+     ========================================================================== */
+
+  .auth-cta {
+    @apply bg-greyscale-100 px-4 py-10 md:py-14;
+  }
+
+  .auth-cta-inner {
+    @apply max-w-content mx-auto flex flex-col sm:flex-row gap-8 items-start justify-between;
+  }
+
+  .auth-cta-content {
+    @apply flex-1;
+  }
+
+  .auth-cta-heading {
+    @apply text-display-sm font-semibold text-greyscale-900 mb-4;
+  }
+
+  .auth-cta-benefits {
+    @apply space-y-2 text-md font-semibold text-greyscale-800 list-disc list-inside;
+  }
+
+  .auth-cta-actions {
+    @apply flex flex-col gap-3 w-full sm:w-64 flex-shrink-0;
+  }
+
+  /* ==========================================================================
+     CHAT PAGE LAYOUT
+     ========================================================================== */
+
+  /* Sub-header — stable context bar, never changes with state */
+  .chat-subheader {
+    @apply border-b border-greyscale-200 bg-greyscale-50;
+    @apply flex-shrink-0 py-4;
+  }
+
+  /* Content — scrollable area where messages + input flow together */
+  .chat-content {
+    @apply flex-1 overflow-y-auto;
+    @apply min-h-0; /* Critical for scroll to work in flex container */
+  }
+
+  .chat-input-form {
+    @apply flex gap-2;
+    @apply max-w-3xl mx-auto;
+  }
+
+  .chat-input {
+    @apply w-full text-md font-normal py-3 px-4 rounded-lg;
+    @apply border border-greyscale-300 bg-white text-greyscale-900;
+    @apply placeholder:text-greyscale-500;
+    @apply transition-colors duration-200;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-600 focus:border-primary-600;
+    min-height: 48px; /* 44px touch target + padding */
+  }
+
+  .chat-disclaimer {
+    @apply max-w-2xl mx-auto px-2 text-xs text-greyscale-400 text-center;
+  }
+
+  /* Mobile Footer */
+  .mobile-footer {
+    @apply bg-greyscale-100 border-t border-greyscale-200;
+    @apply px-4 py-2;
+  }
+
+  /* Style Guide Navigation Accordion */
+  .nav-chevron {
+    transition: transform 0.2s ease;
+    transform-origin: center;
+  }
+
+  .nav-accordion[open] .nav-chevron {
+    transform: rotate(90deg);
+  }
+
+  /* ==========================================================================
+     CHAT COMPONENTS
+     ========================================================================== */
+
+  /* Chat Window - uses calc to fill available viewport minus header/footer/chrome */
+  .chat-window {
+    @apply flex flex-col;
+    height: calc(
+      100dvh - 240px
+    ); /* viewport minus header, footer, page header, padding, disclaimer */
+    min-height: 300px;
+    @apply bg-white rounded-xl border border-greyscale-200;
+    @apply shadow-sm;
+  }
+
+  .chat-messages {
+    @apply flex-1 overflow-y-auto p-4 space-y-4;
+  }
+
+  .chat-fallback-notice {
+    @apply px-4 py-3 bg-yellow-50 border-t border-yellow-400 text-center;
+  }
+
+  /* Chat Message */
+  .chat-message {
+    @apply flex gap-3;
+  }
+
+  .chat-message-user {
+    @apply flex-row-reverse;
+  }
+
+  .chat-message-avatar {
+    @apply flex-shrink-0;
+  }
+
+  .chat-message-content {
+    @apply flex flex-col max-w-[80%];
+  }
+
+  .chat-message-user .chat-message-content {
+    @apply items-end;
+  }
+
+  .chat-message-time {
+    @apply text-xs text-greyscale-400 mt-1;
+  }
+
+  /* Typing Indicator — animation requires CSS selectors, utilities inlined in template */
+  .typing-dot {
+    @apply w-2 h-2 bg-greyscale-400 rounded-full;
+    animation: typing-bounce 1.4s infinite ease-in-out both;
+  }
+
+  .typing-dot:nth-child(1) {
+    animation-delay: -0.32s;
+  }
+
+  .typing-dot:nth-child(2) {
+    animation-delay: -0.16s;
+  }
+
+  /* Auto-dismiss animation - used by autoDismiss Alpine component */
+  @keyframes auto-dismiss {
+    0%,
+    80% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+
+  @keyframes typing-bounce {
+    0%,
+    80%,
+    100% {
+      transform: scale(0.8);
+      opacity: 0.5;
+    }
+    40% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  /* Sidebar flash — brief highlight when new case facts arrive from AI */
+  @keyframes sidebar-flash {
+    0% {
+      background-color: #fef9c3;
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+
+  .sidebar-flash {
+    border-radius: 0.5rem;
+    animation: sidebar-flash 1.5s ease-out;
+  }
+
+  /* Activity panel */
+  .activity-panel {
+    @apply flex flex-col h-full;
+  }
+
+  .timeline-event-card {
+    @apply rounded-lg border border-greyscale-200 bg-white overflow-hidden;
+  }
+
+  .timeline-event-summary {
+    @apply flex items-center gap-2 p-3 cursor-pointer select-none list-none text-sm text-greyscale-700 hover:bg-greyscale-50;
+  }
+
+  .timeline-event-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .timeline-event-icon {
+    @apply w-4 h-4 text-greyscale-400 flex-shrink-0;
+  }
+
+  .timeline-event-title {
+    @apply flex-1 truncate font-medium;
+  }
+
+  .timeline-event-badge {
+    @apply text-xs text-greyscale-400 flex-shrink-0;
+  }
+
+  .timeline-event-body {
+    @apply px-3 pb-3 border-t border-greyscale-100 pt-2;
+  }
+
+  /* Search Results (fallback) */
+  .search-results {
+    @apply space-y-4;
+  }
+
+  .search-result-card {
+    @apply p-4 bg-white border border-greyscale-200 rounded-lg;
+    @apply hover:border-primary-300 hover:shadow-sm transition-all;
+  }
+
+  /* ==========================================================================
+     PRINT STYLES — action plan document view
+     ========================================================================== */
+
+  @media print {
+    .no-print {
+      display: none !important;
+    }
+
+    .print-section {
+      break-inside: avoid;
+    }
+  }
+}

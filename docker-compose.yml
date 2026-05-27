@@ -159,7 +159,7 @@ secrets:
     file: ./secrets/openai_api_key.txt
 
 volumes:
-  postgres_data_dev:
-  postgres_data_prod:
+  postgres_data_dev_pg17:
+  postgres_data_prod_pg17:
   caddy_data:
   caddy_config:
