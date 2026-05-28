@@ -46,7 +46,7 @@ import logging
 import re
 from pathlib import Path
 
-from chat.prompts.base import BASE_PROMPT
+from litigant_portal.prompts.base import BASE_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -195,9 +195,9 @@ def _load_phase_prompts() -> None:
     """Lazy-load phase prompt modules into the registry."""
     if _PHASE_PROMPTS:
         return
-    from chat.prompts.phases.prepare import PROMPT as prepare
-    from chat.prompts.phases.resolve import PROMPT as resolve
-    from chat.prompts.phases.triage import PROMPT as triage
+    from litigant_portal.prompts.phases.prepare import PROMPT as prepare
+    from litigant_portal.prompts.phases.resolve import PROMPT as resolve
+    from litigant_portal.prompts.phases.triage import PROMPT as triage
 
     _PHASE_PROMPTS["triage"] = triage
     _PHASE_PROMPTS["prepare"] = prepare
