@@ -1,0 +1,1408 @@
+/**
+ * Chat Utilities
+ */
+const chatUtils = {
+  getCsrfToken() {
+    const input = document.querySelector('[name=csrfmiddlewaretoken]')
+    if (input) return input.value
+
+    const cookies = document.cookie.split(';')
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=')
+      if (name === 'csrftoken') return value
+    }
+    return ''
+  },
+
+  escapeHtml(text) {
+    if (!text) return ''
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+  },
+
+  // Simple markdown to HTML renderer
+  // SECURITY: HTML must be escaped BEFORE markdown transformations to prevent XSS.
+  // LLM output may contain malicious content - escaping first neutralizes it.
+  renderMarkdown(text) {
+    if (!text) return ''
+    return (
+      text
+        // Strip LLM artifacts
+        .replace(/\\+/g, '') // Backslash escapes (e.g., \\Address:\\ → Address:)
+        .replace(/<!--.*?-->/g, '') // HTML comments
+        // SECURITY: Escape HTML first (before markdown) to prevent XSS
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        // Bold: **text** or __text__
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/__(.+?)__/g, '<strong>$1</strong>')
+        // Italic: *text* or _text_
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/_([^_]+)_/g, '<em>$1</em>')
+        // Links: [text](url) - only allow http/https to prevent javascript: XSS
+        .replace(
+          /\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+          '<a href="$2" class="text-primary-600 underline" target="_blank" rel="noopener noreferrer">$1</a>'
+        )
+        // Ordered lists: 1. item or 1\. item (escaped period)
+        .replace(/^\d+[.\\]+\s+(.+)$/gm, '<li>$1</li>')
+        // Unordered lists: * item or - item
+        .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
+        // Wrap consecutive <li> in <ul> (works for both ol and ul for simplicity)
+        .replace(
+          /(<li>.*<\/li>\n?)+/g,
+          '<ul class="list-disc ml-4 my-2">$&</ul>'
+        )
+        // Headers: ## text
+        .replace(
+          /^###\s+(.+)$/gm,
+          '<h4 class="font-semibold mt-3 mb-1">$1</h4>'
+        )
+        .replace(
+          /^##\s+(.+)$/gm,
+          '<h3 class="font-semibold text-lg mt-3 mb-1">$1</h3>'
+        )
+        // Paragraphs: double newlines
+        .replace(/\n\n+/g, '</p><p class="my-2">')
+        // Single newlines to <br>
+        .replace(/\n/g, '<br>')
+        // Wrap in paragraph
+        .replace(/^(.+)$/, '<p class="my-2">$1</p>')
+    )
+  },
+}
+
+// =============================================================================
+// Chat Component
+// =============================================================================
+
+/**
+ * Creates a standalone chat component.
+ *
+ * Can be used directly via Alpine.data('chat'), or composed into larger
+ * components via object spread:
+ *
+ *   Alpine.data('myPage', () => ({
+ *     ...createChat(),
+ *     // add your own state and methods
+ *   }))
+ *
+ * Hooks (set these to customize behavior):
+ *   onBeforeSend(content)       - Modify message before sending. Return new content or null.
+ *   onSessionCreated(sessionId) - Called when a chat session is established.
+ *   onStreamComplete(message)   - Called when streaming response finishes.
+ *   onCleared()                 - Called after chat history is cleared.
+ *
+ * Public API:
+ *   sendMessage()                      - Send the current inputText as a message.
+ *   clearChat()                        - Clear messages and session.
+ *   pushMessage(role, content, extra)  - Programmatically add a message.
+ *   scrollToBottom(force)              - Scroll the message container to bottom.
+ */
+function createChat() {
+  return {
+    // --- State ---
+    sessionId: '',
+    agentName: '',
+    messages: [],
+    inputText: '',
+    isStreaming: false,
+    activeToolCall: null,
+
+    // --- Hooks (override for custom behavior) ---
+    onBeforeSend: null,
+    onSessionCreated: null,
+    onStreamComplete: null,
+    onToolResponse: null,
+    onCleared: null,
+
+    // --- Initialization (reads config from data-* attributes) ---
+    init() {
+      if (this.$el.dataset.sessionId) {
+        this.sessionId = this.$el.dataset.sessionId
+      }
+    },
+
+    // --- Input binding (x-model unsupported in CSP build) ---
+    updateInput(e) {
+      this.inputText = e.target.value
+    },
+
+    // --- Core messaging ---
+    async sendMessage() {
+      let content = this.inputText.trim()
+      if (!content || this.isStreaming) return
+
+      // Save display text before hook may prepend invisible context
+      const displayContent = content
+
+      // Hook: allow message modification before sending
+      if (typeof this.onBeforeSend === 'function') {
+        const modified = await this.onBeforeSend(content)
+        if (modified) content = modified
+      }
+
+      this.inputText = ''
+      this.isStreaming = true
+      this.activeToolCall = null
+
+      this.messages.push({
+        id: Date.now(),
+        role: 'user',
+        content,
+        renderedContent: chatUtils.escapeHtml(displayContent),
+        bubbleClass: 'bg-primary-600 text-white rounded-br-sm',
+        messageClass: 'chat-message-user',
+        isUser: true,
+        isAssistant: false,
+      })
+      this.scrollToLatestQuestion()
+
+      const msgIndex = this.messages.length
+      this.messages.push({
+        id: Date.now() + 1,
+        role: 'assistant',
+        content: '',
+        renderedContent: '',
+        bubbleClass: 'bg-greyscale-100 text-greyscale-900 rounded-bl-sm',
+        messageClass: 'chat-message-assistant',
+        isUser: false,
+        isAssistant: true,
+        toolCalls: [],
+        toolResponses: [],
+      })
+
+      try {
+        const formData = new FormData()
+        formData.append('message', content)
+        formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+        if (this.sessionId) formData.append('session_id', this.sessionId)
+        if (this.agentName) formData.append('agent_name', this.agentName)
+        if (this.topicSlug) formData.append('topic', this.topicSlug)
+        if (this.courtSlug) formData.append('court', this.courtSlug)
+
+        const response = await fetch('/api/chat/stream/', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || gettext('Failed to send message'))
+        }
+
+        // Stream SSE response
+        const reader = response.body.getReader()
+        const decoder = new TextDecoder()
+        let buffer = ''
+
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+
+          buffer += decoder.decode(value, { stream: true })
+          const lines = buffer.split('\n')
+          buffer = lines.pop() || ''
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue
+            const data = line.slice(6).trim()
+            if (!data) continue
+
+            try {
+              const event = JSON.parse(data)
+              const msg = this.messages[msgIndex]
+
+              switch (event.type) {
+                case 'session':
+                  this.sessionId = event.session_id
+                  if (typeof this.onSessionCreated === 'function') {
+                    this.onSessionCreated(event.session_id)
+                  }
+                  break
+
+                case 'content_delta': {
+                  const updated = msg.content + (event.content || '')
+                  this.messages[msgIndex] = {
+                    ...msg,
+                    content: updated,
+                    renderedContent: chatUtils.renderMarkdown(updated),
+                  }
+                  break
+                }
+
+                case 'tool_call':
+                  this.activeToolCall = {
+                    name: event.name,
+                    args: event.args,
+                  }
+                  msg.toolCalls.push({
+                    id: event.id,
+                    name: event.name,
+                    args: event.args,
+                  })
+                  break
+
+                case 'tool_response':
+                  this.activeToolCall = null
+                  msg.toolResponses.push({
+                    id: event.id,
+                    name: event.name,
+                    response: event.response,
+                    data: event.data,
+                  })
+                  if (typeof this.onToolResponse === 'function') {
+                    this.onToolResponse(event.name, event.data)
+                  }
+                  break
+
+                case 'done':
+                  if (typeof this.onStreamComplete === 'function') {
+                    this.onStreamComplete(this.messages[msgIndex])
+                  }
+                  break
+
+                case 'error':
+                  console.error('Stream error:', event.error)
+                  if (event.error) {
+                    this.messages[msgIndex] = {
+                      ...msg,
+                      content: event.error,
+                      renderedContent: chatUtils.escapeHtml(event.error),
+                    }
+                  }
+                  break
+              }
+            } catch (e) {
+              // Ignore parse errors for incomplete chunks
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Chat error:', error)
+        const errorMsg = gettext(
+          'Sorry, I encountered an error. Please try again.'
+        )
+        this.messages[msgIndex] = {
+          ...this.messages[msgIndex],
+          content: errorMsg,
+          renderedContent: chatUtils.escapeHtml(errorMsg),
+        }
+      } finally {
+        this.isStreaming = false
+        this.activeToolCall = null
+      }
+    },
+
+    // --- UI helpers ---
+
+    /**
+     * Scroll so the latest user message is at the top of the visible area.
+     * First message: no scroll (already visible).
+     * Follow-ups: smooth scroll the user message to the top.
+     */
+    scrollToLatestQuestion() {
+      this.$nextTick(() => {
+        const el = this.$refs.messagesArea
+        if (!el) return
+
+        // Find the last user message element
+        const userMessages = el.querySelectorAll('.chat-message-user')
+        const latest = userMessages[userMessages.length - 1]
+        if (!latest) return
+
+        // First message — already at top, no scroll needed
+        if (userMessages.length <= 1) return
+
+        latest.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    },
+
+    scrollToBottom(force = false) {
+      this.$nextTick(() => {
+        const el = this.$refs.messages || this.$refs.messagesArea
+        if (!el) return
+        const isNearBottom =
+          el.scrollHeight - el.scrollTop - el.clientHeight < 150
+        if (force || isNearBottom) {
+          el.scrollTop = el.scrollHeight
+        }
+      })
+    },
+
+    // --- Session management ---
+    clearChat() {
+      this.messages = []
+      this.sessionId = ''
+      if (typeof this.onCleared === 'function') {
+        this.onCleared()
+      }
+    },
+
+    /**
+     * Add a message to the chat programmatically.
+     * Useful for upload responses, system messages, etc.
+     */
+    pushMessage(role, content, extra = {}) {
+      const isUser = role === 'user'
+      this.messages.push({
+        id: Date.now(),
+        role,
+        content,
+        renderedContent: isUser
+          ? chatUtils.escapeHtml(content)
+          : chatUtils.renderMarkdown(content),
+        bubbleClass: isUser
+          ? 'bg-primary-600 text-white rounded-br-sm'
+          : 'bg-greyscale-100 text-greyscale-900 rounded-bl-sm',
+        messageClass: isUser ? 'chat-message-user' : 'chat-message-assistant',
+        isUser,
+        isAssistant: !isUser,
+        ...extra,
+      })
+      this.scrollToBottom()
+    },
+
+    // --- Getters for CSP-safe dot-path access ---
+    get hasMessages() {
+      return this.messages.length > 0
+    },
+    get noMessages() {
+      return this.messages.length === 0
+    },
+    get sendDisabled() {
+      return this.isStreaming || !this.inputText.trim()
+    },
+
+    // --- Template compatibility aliases ---
+    askQuestion() {
+      return this.sendMessage()
+    },
+    get dynamicMessages() {
+      return this.messages
+    },
+  }
+}
+
+// =============================================================================
+// Home Page Component
+// =============================================================================
+
+/**
+ * Home page: chat + file upload + case management + timeline + summarization.
+ * Composes createChat() for core messaging, adds everything else directly.
+ *
+ * Usage: <div x-data="homePage" data-agent-name="litigant_assistant">
+ */
+function createHomePage() {
+  return {
+    // Compose chat
+    ...createChat(),
+
+    // Re-define chat getters lost during spread (spread flattens getters
+    // into static values — a JS language gotcha with object spread).
+    get hasMessages() {
+      return this.messages.length > 0
+    },
+    get noMessages() {
+      return this.messages.length === 0
+    },
+    get sendDisabled() {
+      return this.isStreaming || !this.inputText.trim()
+    },
+
+    // --- Availability state ---
+    chatAvailable: true,
+    showUnavailableWarning: false,
+
+    // --- Topic state ---
+    topicSlug: '',
+    courtSlug: '',
+    topicContext: '',
+    _topicContextSent: false,
+
+    // --- Upload state ---
+    selectedFile: null,
+    isUploading: false,
+    uploadStatus: '', // 'uploading' | 'analyzing' | ''
+    uploadError: null,
+    extractedText: null,
+    extractedData: null,
+
+    // --- Case management state ---
+    caseInfo: null,
+    caseStatus: '',
+    caseInfoError: null,
+    showConfirmation: false,
+    _documentContextSent: false,
+    _isClearingChat: false,
+    _isClearingCase: false,
+
+    // --- Action plan state ---
+    actionPlan: null, // { action_items: [], spotted_issues: [], resources: [] }
+
+    // --- Timeline state ---
+    caseTimeline: [],
+
+    // --- Sidebar flash state ---
+    _sidebarFlash: false,
+
+    // --- Getters for CSP-safe dot-path access ---
+
+    // Case header
+    get caseTitle() {
+      return this.caseInfo?.case_type || 'Your Case'
+    },
+    get caseNumber() {
+      const num = this.caseInfo?.court_info?.case_number
+      return num ? 'Case #' + num : ''
+    },
+    get hasCaseNumber() {
+      return !!this.caseInfo?.court_info?.case_number
+    },
+
+    // Court info
+    get showCourtSection() {
+      return !!(
+        this.caseInfo?.court_info?.court_name ||
+        this.caseInfo?.court_info?.county
+      )
+    },
+    get courtName() {
+      return this.caseInfo?.court_info?.court_name || ''
+    },
+    get courtCounty() {
+      return this.caseInfo?.court_info?.county || ''
+    },
+    get courtAddress() {
+      return this.caseInfo?.court_info?.address || ''
+    },
+    get courtPhone() {
+      return this.caseInfo?.court_info?.phone || ''
+    },
+    get courtEmail() {
+      return this.caseInfo?.court_info?.email || ''
+    },
+    get courtPhoneHref() {
+      return this.courtPhone ? 'tel:' + this.courtPhone : ''
+    },
+    get courtEmailHref() {
+      return this.courtEmail ? 'mailto:' + this.courtEmail : ''
+    },
+
+    // Opposing party
+    get opposingParty() {
+      return this.caseInfo?.parties?.opposing_party || ''
+    },
+    get opposingAddress() {
+      return this.caseInfo?.parties?.opposing_address || ''
+    },
+    get opposingPhone() {
+      return this.caseInfo?.parties?.opposing_phone || ''
+    },
+    get opposingEmail() {
+      return this.caseInfo?.parties?.opposing_email || ''
+    },
+    get opposingWebsite() {
+      return this.caseInfo?.parties?.opposing_website || ''
+    },
+    get opposingPhoneHref() {
+      return this.opposingPhone ? 'tel:' + this.opposingPhone : ''
+    },
+    get opposingEmailHref() {
+      return this.opposingEmail ? 'mailto:' + this.opposingEmail : ''
+    },
+
+    // Attorney
+    get attorneyName() {
+      return this.caseInfo?.parties?.attorney_name || ''
+    },
+    get attorneyPhone() {
+      return this.caseInfo?.parties?.attorney_phone || ''
+    },
+    get attorneyEmail() {
+      return this.caseInfo?.parties?.attorney_email || ''
+    },
+    get attorneyPhoneHref() {
+      return this.attorneyPhone ? 'tel:' + this.attorneyPhone : ''
+    },
+    get attorneyEmailHref() {
+      return this.attorneyEmail ? 'mailto:' + this.attorneyEmail : ''
+    },
+
+    // Dates (pre-filtered)
+    get deadlines() {
+      return (this.caseInfo?.key_dates || [])
+        .filter((d) => d.is_deadline)
+        .map((d) => ({
+          ...d,
+          hasReminder: !!d.reminder_requested,
+          noReminder: !d.reminder_requested,
+          reminderTitle: d.reminder_requested
+            ? gettext('Reminder on')
+            : gettext('Set reminder'),
+        }))
+    },
+    get otherDates() {
+      return (this.caseInfo?.key_dates || []).filter((d) => !d.is_deadline)
+    },
+    get hasDeadlines() {
+      return this.deadlines.length > 0
+    },
+    get hasOtherDates() {
+      return this.otherDates.length > 0
+    },
+
+    // Action plan
+    get actionItems() {
+      return (this.actionPlan?.action_items || []).map((item) => ({
+        ...item,
+        isUrgent: item.priority === 'urgent',
+        isCompleted: !!item.completed,
+        isNotCompleted: !item.completed,
+        // Composed flags for CSP-safe template conditionals — needed
+        // because x-if can't evaluate compound expressions (&&, !).
+        isUrgentOpen: item.priority === 'urgent' && !item.completed,
+        isNormalOpen: item.priority !== 'urgent' && !item.completed,
+        dimClass: item.completed ? 'opacity-50' : '',
+        bgClass: item.completed
+          ? 'bg-greyscale-50 border border-greyscale-200'
+          : item.priority === 'urgent'
+            ? 'bg-red-50 border border-red-100'
+            : 'bg-greyscale-50 border border-greyscale-200',
+        borderClass: item.completed
+          ? 'border-greyscale-200'
+          : item.priority === 'urgent'
+            ? 'border-red-400'
+            : 'border-greyscale-300',
+        titleClass: item.completed
+          ? 'text-greyscale-400 line-through'
+          : item.priority === 'urgent'
+            ? 'text-red-800'
+            : 'text-greyscale-800',
+        descClass: item.completed
+          ? 'text-greyscale-300'
+          : item.priority === 'urgent'
+            ? 'text-red-600'
+            : 'text-greyscale-500',
+        dateClass: item.completed
+          ? 'text-greyscale-300'
+          : item.priority === 'urgent'
+            ? 'text-red-500 font-medium'
+            : 'text-greyscale-400',
+      }))
+    },
+    get spottedIssues() {
+      return this.actionPlan?.spotted_issues || []
+    },
+    get resources() {
+      return this.actionPlan?.resources || []
+    },
+    get hasActionItems() {
+      return this.actionItems.length > 0
+    },
+    get hasSpottedIssues() {
+      return this.spottedIssues.length > 0
+    },
+    get hasResources() {
+      return this.resources.length > 0
+    },
+    get hasActionPlan() {
+      return this.hasActionItems || this.hasSpottedIssues || this.hasResources
+    },
+    get noActionPlan() {
+      return !this.hasActionPlan
+    },
+
+    // Sidebar flash (brief highlight when new facts arrive)
+    get sidebarFlash() {
+      return this._sidebarFlash ? 'sidebar-flash' : ''
+    },
+
+    // Timeline
+    get hasTimeline() {
+      return this.caseTimeline.length > 0
+    },
+    get noTimeline() {
+      return this.caseTimeline.length === 0
+    },
+
+    // Case status
+    get isCaseActive() {
+      return this.caseStatus === 'active'
+    },
+    get isCaseResolved() {
+      return this.caseStatus === 'resolved'
+    },
+    get isCaseArchived() {
+      return this.caseStatus === 'archived'
+    },
+
+    // Compound status checks
+    get showResolveButton() {
+      return this.caseInfo && this.isCaseActive && this.hasActionItems
+    },
+    get isCaseNotResolved() {
+      return this.caseStatus !== 'resolved'
+    },
+
+    // Negated booleans (CSP build can't evaluate `!`)
+    get noCaseInfo() {
+      return !this.caseInfo
+    },
+    get notUploading() {
+      return !this.isUploading
+    },
+
+    // Upload overlay text (CSP build can't evaluate ternaries in templates)
+    get uploadStatusText() {
+      if (this.uploadStatus === 'analyzing') return 'Analyzing document…'
+      return 'Uploading document…'
+    },
+
+    // --- Initialization ---
+    async init() {
+      // Read config from data-* attributes
+      this.agentName = this.$el.dataset.agentName || ''
+      this.topicSlug = this.$el.dataset.topicSlug || ''
+      this.courtSlug = this.$el.dataset.courtSlug || ''
+      const topicContextEl = document.getElementById('topic-context-data')
+      this.topicContext = topicContextEl
+        ? JSON.parse(topicContextEl.textContent)
+        : ''
+
+      // Check chat service availability
+      try {
+        const response = await fetch('/api/chat/status/')
+        if (response.ok) {
+          const status = await response.json()
+          this.chatAvailable = status.available
+          this.showUnavailableWarning = !status.available
+        } else {
+          this.chatAvailable = false
+          this.showUnavailableWarning = true
+        }
+      } catch {
+        this.chatAvailable = false
+        this.showUnavailableWarning = true
+      }
+
+      // Restore case info and timeline from server
+      try {
+        const caseResponse = await fetch('/api/chat/case/')
+        if (caseResponse.ok) {
+          const caseData = await caseResponse.json()
+          if (caseData.case_info) {
+            this.caseInfo = caseData.case_info
+            this.caseStatus = caseData.case_info.status || 'active'
+            // Restore action plan from case info data
+            const ap = caseData.case_info
+            if (ap.action_items || ap.spotted_issues || ap.resources) {
+              this.actionPlan = {
+                action_items: ap.action_items || [],
+                spotted_issues: ap.spotted_issues || [],
+                resources: ap.resources || [],
+              }
+            }
+          }
+          if (caseData.timeline) {
+            this.caseTimeline = caseData.timeline.map((e) => ({
+              id: e.id,
+              type: e.event_type,
+              timestamp: e.created_at,
+              title: e.title,
+              content: e.content,
+              metadata: e.metadata,
+              isUpload: e.event_type === 'upload',
+              isSummary: e.event_type === 'summary',
+              isChange: e.event_type === 'change',
+              isResolution: e.event_type === 'resolution',
+              typeLabel: this._timelineTypeLabel(e.event_type),
+              formattedTime: this._formatTime(e.created_at),
+            }))
+          }
+        }
+      } catch {
+        // Server unavailable — start with empty state
+      }
+
+      // Wire up chat hooks
+      this.onBeforeSend = this._augmentWithDocumentContext.bind(this)
+      this.onToolResponse = this._handleToolResponse.bind(this)
+
+      // Auto-send question from ?q= param (home page handoff)
+      const urlParams = new URLSearchParams(window.location.search)
+      const question = urlParams.get('q')?.trim()
+      if (question && this.chatAvailable) {
+        this.inputText = question
+        this.sendMessage()
+        // Clean URL without triggering navigation
+        const url = new URL(window.location)
+        url.searchParams.delete('q')
+        history.replaceState(null, '', url)
+      }
+    },
+
+    dismissWarning() {
+      this.showUnavailableWarning = false
+    },
+
+    // =========================================================================
+    // Tool response handlers
+    // =========================================================================
+
+    /**
+     * Handle tool_response events from the AI stream.
+     * Routes UpdateCaseFacts responses to live sidebar updates.
+     */
+    _handleToolResponse(toolName, data) {
+      if (toolName === 'UpdateCaseFacts' && data?.case_patch) {
+        const patch = data.case_patch
+        if (!this.caseInfo) {
+          this.caseInfo = patch
+          this.caseStatus = 'active'
+          this.addTimelineEvent(
+            'change',
+            gettext('Case info started'),
+            Object.keys(patch).join(', ')
+          )
+        } else {
+          this.mergeCaseInfo(patch)
+        }
+        this._triggerSidebarFlash()
+      }
+
+      if (toolName === 'UpdateActionPlan' && data?.action_plan_patch) {
+        this.mergeActionPlan(data.action_plan_patch)
+        this._triggerSidebarFlash()
+      }
+    },
+
+    /**
+     * Trigger a brief highlight flash on the sidebar case info section.
+     * Resets first so the animation replays if facts arrive in quick succession.
+     */
+    _triggerSidebarFlash() {
+      this._sidebarFlash = false
+      this.$nextTick(() => {
+        this._sidebarFlash = true
+        setTimeout(() => {
+          this._sidebarFlash = false
+        }, 1500)
+      })
+    },
+
+    sendPrompt(e) {
+      const prompt = e.target.dataset.prompt || e.currentTarget.dataset.prompt
+      if (!prompt) return
+      this.inputText = prompt
+      this.sendMessage()
+    },
+
+    // =========================================================================
+    // Chat hooks
+    // =========================================================================
+
+    /**
+     * Injects document context into the first message after an upload,
+     * so the LLM has case details available.
+     */
+    _augmentWithDocumentContext(content) {
+      let prefix = ''
+
+      // Inject topic context on first message when entering from a topic card
+      if (this.topicContext && !this._topicContextSent) {
+        prefix += `[Topic Context]\n${this.topicContext}\n[End Topic Context]\n\n`
+        this._topicContextSent = true
+      }
+
+      if (!this.extractedData || this._documentContextSent) {
+        return prefix ? prefix + content : content
+      }
+
+      const ctx = this.extractedData
+      prefix += '[Document Context]\n'
+      if (ctx.case_type) prefix += `Case Type: ${ctx.case_type}\n`
+      if (ctx.summary) prefix += `Summary: ${ctx.summary}\n`
+      if (ctx.court_info?.court_name)
+        prefix += `Court: ${ctx.court_info.court_name}\n`
+      if (ctx.court_info?.case_number)
+        prefix += `Case Number: ${ctx.court_info.case_number}\n`
+      if (ctx.parties?.opposing_party)
+        prefix += `Opposing Party: ${ctx.parties.opposing_party}\n`
+      if (ctx.key_dates?.length > 0) {
+        const deadlines = ctx.key_dates.filter((d) => d.is_deadline)
+        if (deadlines.length > 0) {
+          prefix += 'Deadlines:\n'
+          for (const d of deadlines) {
+            prefix += `- ${d.label}: ${d.date}\n`
+          }
+        }
+      }
+      prefix += '[End Document Context]\n\n'
+      this._documentContextSent = true
+      return prefix + content
+    },
+
+    // =========================================================================
+    // File upload
+    // =========================================================================
+
+    triggerFileInput() {
+      this.$refs.fileInput?.click()
+    },
+
+    handleFileSelect(event) {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      if (file.type !== 'application/pdf') {
+        this.uploadError = gettext('Please select a PDF file')
+        event.target.value = ''
+        return
+      }
+
+      if (file.size > 10 * 1024 * 1024) {
+        this.uploadError = gettext('File size must be less than 10MB')
+        event.target.value = ''
+        return
+      }
+
+      this.selectedFile = file
+      this.uploadError = null
+      this.uploadPdf()
+    },
+
+    async uploadPdf() {
+      if (!this.selectedFile || this.isUploading) return
+
+      this.isUploading = true
+      this.uploadStatus = 'uploading'
+      this.uploadError = null
+      const fileName = this.selectedFile.name
+
+      try {
+        const formData = new FormData()
+        formData.append('file', this.selectedFile)
+        formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+
+        // Upload completes quickly; analysis takes longer
+        const analyzeTimer = setTimeout(() => {
+          this.uploadStatus = 'analyzing'
+        }, 1000)
+
+        const response = await fetch('/api/chat/upload/', {
+          method: 'POST',
+          body: formData,
+        })
+
+        clearTimeout(analyzeTimer)
+        const data = await response.json()
+        if (!response.ok)
+          throw new Error(data.error || gettext('Upload failed'))
+
+        this.extractedText = data.text_preview
+        this.extractedData = data.extracted_data
+        this._documentContextSent = false
+
+        this.selectedFile = null
+        if (this.$refs.fileInput) this.$refs.fileInput.value = ''
+
+        // Add timeline event
+        const summary =
+          data.extracted_data?.summary ||
+          interpolate(gettext('%s page document'), [data.page_count])
+        this.addTimelineEvent(
+          'upload',
+          interpolate(gettext('Uploaded: %s'), [fileName]),
+          summary,
+          { filename: fileName, page_count: data.page_count }
+        )
+
+        // Build and display response message
+        if (data.extracted_data) {
+          this.pushMessage(
+            'assistant',
+            this._buildExtractionMessage(data.extracted_data, data.page_count)
+          )
+          this.showConfirmation = true
+        } else if (data.extraction_error) {
+          const pages = ngettext('1 page', '%s pages', data.page_count)
+          const pageStr = interpolate(pages, [data.page_count])
+          this.pushMessage(
+            'assistant',
+            interpolate(
+              gettext(
+                "I've received your document (%(pages)s), but I had trouble analyzing it: %(error)s\n\nYou can still ask me questions about your situation."
+              ),
+              { pages: pageStr, error: data.extraction_error },
+              true
+            )
+          )
+        } else {
+          const pages = ngettext('1 page', '%s pages', data.page_count)
+          const pageStr = interpolate(pages, [data.page_count])
+          this.pushMessage(
+            'assistant',
+            interpolate(
+              gettext(
+                "I've received your document (%(pages)s). How can I help you with it?"
+              ),
+              { pages: pageStr },
+              true
+            )
+          )
+        }
+      } catch (error) {
+        console.error('Upload error:', error)
+        this.uploadError = error.message
+        this.pushMessage(
+          'assistant',
+          interpolate(gettext("Sorry, I couldn't process your document: %s"), [
+            error.message,
+          ])
+        )
+      } finally {
+        this.isUploading = false
+        this.uploadStatus = ''
+      }
+    },
+
+    clearUploadError() {
+      this.uploadError = null
+    },
+
+    _buildExtractionMessage(ed, pageCount) {
+      const pages = ngettext('1 page', '%s pages', pageCount)
+      const pageStr = interpolate(pages, [pageCount])
+      let msg =
+        interpolate(
+          gettext("I've analyzed your document (%(pages)s)."),
+          { pages: pageStr },
+          true
+        ) + '\n\n'
+
+      if (ed.case_type)
+        msg += `**${gettext('Case Type')}:** ${ed.case_type}\n\n`
+      if (ed.summary) msg += `**${gettext('Summary')}:** ${ed.summary}\n\n`
+
+      if (ed.court_info?.county || ed.court_info?.court_name) {
+        msg += `**${gettext('Court')}:** ${ed.court_info.court_name || ''}`
+        if (ed.court_info.county) msg += ` (${ed.court_info.county})`
+        if (ed.court_info.case_number)
+          msg += `\n**${gettext('Case Number')}:** ${ed.court_info.case_number}`
+        msg += '\n\n'
+      }
+
+      if (ed.parties?.user_name || ed.parties?.opposing_party) {
+        if (ed.parties.opposing_party)
+          msg += `**${gettext('Filed by')}:** ${ed.parties.opposing_party}\n`
+        if (ed.parties.user_name)
+          msg += `**${gettext('Against')}:** ${ed.parties.user_name}\n`
+        msg += '\n'
+      }
+
+      if (ed.key_dates?.length > 0) {
+        const deadlines = ed.key_dates.filter((d) => d.is_deadline)
+        const otherDates = ed.key_dates.filter((d) => !d.is_deadline)
+
+        if (deadlines.length > 0) {
+          msg += `**${gettext('Important Deadlines')}:**\n`
+          for (const d of deadlines) msg += `- ${d.label}: **${d.date}**\n`
+          msg += '\n'
+        }
+
+        if (otherDates.length > 0) {
+          msg += `**${gettext('Other Dates')}:**\n`
+          for (const d of otherDates) msg += `- ${d.label}: ${d.date}\n`
+          msg += '\n'
+        }
+      }
+
+      msg += gettext('Does this information look correct?')
+      return msg
+    },
+
+    // =========================================================================
+    // Resolution: toggle, resolve, archive
+    // =========================================================================
+
+    async toggleActionItem(e) {
+      const itemId = e.target.dataset.itemId || e.currentTarget.dataset.itemId
+      if (!itemId) return
+
+      // Optimistic toggle
+      const items = this.actionPlan?.action_items
+      if (!items) return
+      const item = items.find((i) => i.id === itemId)
+      if (!item) return
+      item.completed = !item.completed
+
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch(
+          '/api/chat/case/action-item/' + itemId + '/toggle/',
+          { method: 'POST', body: formData }
+        )
+        if (!response.ok) {
+          // Revert on failure
+          item.completed = !item.completed
+        }
+      } catch {
+        item.completed = !item.completed
+      }
+    },
+
+    async toggleDeadlineReminder(e) {
+      const deadlineId =
+        e.target.dataset.deadlineId || e.currentTarget.dataset.deadlineId
+      if (!deadlineId) return
+
+      // Optimistic toggle
+      const dates = this.caseInfo?.key_dates
+      if (!dates) return
+      const deadline = dates.find((d) => d.id === deadlineId)
+      if (!deadline) return
+      deadline.reminder_requested = !deadline.reminder_requested
+
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch(
+          '/api/chat/case/deadline/' + deadlineId + '/remind/',
+          { method: 'POST', body: formData }
+        )
+        if (!response.ok) {
+          deadline.reminder_requested = !deadline.reminder_requested
+        }
+      } catch {
+        deadline.reminder_requested = !deadline.reminder_requested
+      }
+    },
+
+    async resolveCase() {
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch('/api/chat/case/resolve/', {
+          method: 'POST',
+          body: formData,
+        })
+        if (response.ok) {
+          const data = await response.json()
+          if (data.resolved) {
+            this.caseStatus = 'resolved'
+            this.addTimelineEvent(
+              'resolution',
+              gettext('Case marked as resolved'),
+              ''
+            )
+          }
+        }
+      } catch (err) {
+        console.error('Failed to resolve case:', err)
+      }
+    },
+
+    // =========================================================================
+    // Case management
+    // =========================================================================
+
+    async confirmExtraction() {
+      if (!this.extractedData) return
+
+      if (this.caseInfo) {
+        this.mergeCaseInfo(this.extractedData)
+      } else {
+        this.caseInfo = this.extractedData
+      }
+      this.caseStatus = 'active'
+      this.showConfirmation = false
+
+      // Persist to server
+      const formData = new FormData()
+      formData.append('data', JSON.stringify(this.caseInfo))
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        await fetch('/api/chat/case/save/', { method: 'POST', body: formData })
+      } catch (e) {
+        console.error('Failed to save case info:', e)
+      }
+
+      this.pushMessage(
+        'assistant',
+        gettext(
+          "Great! I've saved your case information. You can see it in the sidebar. What would you like help with?"
+        )
+      )
+    },
+
+    mergeCaseInfo(newData) {
+      if (!newData) return
+
+      const changes = []
+
+      if (newData.case_type && newData.case_type !== this.caseInfo.case_type) {
+        changes.push(`Case type: ${newData.case_type}`)
+        this.caseInfo.case_type = newData.case_type
+      }
+
+      if (newData.court_info) {
+        if (!this.caseInfo.court_info) this.caseInfo.court_info = {}
+        for (const [key, value] of Object.entries(newData.court_info)) {
+          if (value && value !== this.caseInfo.court_info[key]) {
+            changes.push(`Court ${key}: ${value}`)
+            this.caseInfo.court_info[key] = value
+          }
+        }
+      }
+
+      if (newData.parties) {
+        if (!this.caseInfo.parties) this.caseInfo.parties = {}
+        for (const [key, value] of Object.entries(newData.parties)) {
+          if (value && value !== this.caseInfo.parties[key]) {
+            changes.push(`Party ${key}: ${value}`)
+            this.caseInfo.parties[key] = value
+          }
+        }
+      }
+
+      if (newData.key_dates?.length > 0) {
+        if (!this.caseInfo.key_dates) this.caseInfo.key_dates = []
+        for (const newDate of newData.key_dates) {
+          const exists = this.caseInfo.key_dates.some(
+            (d) => d.label === newDate.label && d.date === newDate.date
+          )
+          if (!exists) {
+            changes.push(`New date: ${newDate.label} - ${newDate.date}`)
+            this.caseInfo.key_dates.push(newDate)
+          }
+        }
+      }
+
+      if (newData.summary) this.caseInfo.summary = newData.summary
+
+      if (changes.length > 0) {
+        this.addTimelineEvent(
+          'change',
+          gettext('Case info updated'),
+          changes.join('; ')
+        )
+      }
+    },
+
+    mergeActionPlan(patch) {
+      if (!patch) return
+
+      if (!this.actionPlan) {
+        this.actionPlan = {
+          action_items: [],
+          spotted_issues: [],
+          resources: [],
+        }
+      }
+
+      const changes = []
+
+      for (const key of ['action_items', 'spotted_issues', 'resources']) {
+        if (patch[key]) {
+          if (!this.actionPlan[key]) this.actionPlan[key] = []
+          for (const newItem of patch[key]) {
+            const exists = this.actionPlan[key].some(
+              (item) => item.title === newItem.title
+            )
+            if (!exists) {
+              changes.push(newItem.title)
+              this.actionPlan[key].push(newItem)
+            }
+          }
+        }
+      }
+
+      if (changes.length > 0) {
+        this.addTimelineEvent(
+          'change',
+          gettext('Action plan updated'),
+          changes.join('; ')
+        )
+      }
+    },
+
+    requestClarification() {
+      this.showConfirmation = false
+      this.pushMessage(
+        'assistant',
+        gettext(
+          "No problem! What information needs to be corrected? You can tell me what's wrong and I'll update it, or you can upload a different document."
+        )
+      )
+    },
+
+    async clearCaseInfo() {
+      // Archive server-side (non-destructive). Only reset local state after
+      // the server confirms; otherwise a network blip or 5xx would silently
+      // wipe the user's case context with no recovery path.
+      // Guard against rapid double-click — without it, a failing fetch
+      // resolving after a succeeding one would re-set the error banner over
+      // an already-cleared state.
+      if (this._isClearingCase) return
+      this._isClearingCase = true
+
+      const formData = new FormData()
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+
+      let serverConfirmed = false
+      try {
+        const response = await fetch('/api/chat/case/clear/', {
+          method: 'POST',
+          body: formData,
+        })
+        serverConfirmed = response.ok
+      } catch (e) {
+        console.error('Failed to archive case info:', e)
+      }
+
+      if (!serverConfirmed) {
+        this.caseInfoError = gettext(
+          "Couldn't clear your case — please try again."
+        )
+        this._isClearingCase = false
+        return
+      }
+
+      // Server confirmed archive — reset local state.
+      this.caseInfoError = null
+      this.caseInfo = null
+      this.caseStatus = ''
+      this.actionPlan = null
+      this.extractedData = null
+      this.caseTimeline = []
+      this._documentContextSent = false
+      this._isClearingCase = false
+    },
+
+    // =========================================================================
+    // Summarization
+    // =========================================================================
+
+    async generateChatSummary() {
+      if (this.messages.length < 2) return null
+
+      try {
+        const formData = new FormData()
+        formData.append('messages', JSON.stringify(this.messages))
+        formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+
+        const response = await fetch('/api/chat/summarize/', {
+          method: 'POST',
+          body: formData,
+        })
+
+        if (!response.ok) return null
+        const data = await response.json()
+        return data.summary || null
+      } catch (e) {
+        console.error('Failed to generate summary:', e)
+        return null
+      }
+    },
+
+    // =========================================================================
+    // Timeline
+    // =========================================================================
+
+    _timelineTypeLabel(type) {
+      if (type === 'upload') return gettext('Upload')
+      if (type === 'summary') return gettext('Summary')
+      if (type === 'resolution') return gettext('Resolution')
+      return gettext('Update')
+    },
+
+    _formatTime(isoString) {
+      return new Date(isoString).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    },
+
+    async addTimelineEvent(type, title, content, metadata = {}) {
+      const timestamp = new Date().toISOString()
+      // Optimistic push to in-memory state
+      const event = {
+        id: Date.now(),
+        type,
+        timestamp,
+        title,
+        content,
+        metadata,
+        isUpload: type === 'upload',
+        isSummary: type === 'summary',
+        isChange: type === 'change',
+        isResolution: type === 'resolution',
+        typeLabel: this._timelineTypeLabel(type),
+        formattedTime: this._formatTime(timestamp),
+      }
+      this.caseTimeline.push(event)
+
+      // Persist to server
+      const formData = new FormData()
+      formData.append('event_type', type)
+      formData.append('title', title)
+      formData.append('content', content)
+      formData.append('metadata', JSON.stringify(metadata))
+      formData.append('csrfmiddlewaretoken', chatUtils.getCsrfToken())
+      try {
+        const response = await fetch('/api/chat/case/timeline/', {
+          method: 'POST',
+          body: formData,
+        })
+        if (response.ok) {
+          const data = await response.json()
+          event.id = data.id
+        }
+      } catch (e) {
+        console.error('Failed to save timeline event:', e)
+      }
+    },
+
+    // =========================================================================
+    // Override: clearChat with summarization
+    // =========================================================================
+
+    async clearChat() {
+      if (this._isClearingChat) return
+      this._isClearingChat = true
+
+      try {
+        if (this.messages.length >= 2) {
+          const summary = await this.generateChatSummary()
+          if (summary && !summary.toLowerCase().includes('no user questions')) {
+            this.addTimelineEvent('summary', '', summary)
+          }
+        }
+
+        this.messages = []
+        this.sessionId = ''
+        this.extractedData = null
+        this._documentContextSent = false
+      } finally {
+        this._isClearingChat = false
+      }
+    },
+  }
+}
+
+// =============================================================================
+// Alpine Registration
+// =============================================================================
+
+document.addEventListener('alpine:init', () => {
+  Alpine.data('chat', () => createChat())
+  Alpine.data('homePage', () => createHomePage())
+})
