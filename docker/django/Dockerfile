@@ -45,7 +45,7 @@ RUN TAILWIND_VERSION=${TAILWIND_VERSION} \
 COPY litigant_portal litigant_portal
 
 RUN /tmp/tailwindcss \
-    -i /app/litigant_portal/app/static/css/main.css \
+    -i /app/litigant_portal/app/styles/main.css \
     -o /app/litigant_portal/app/static/css/main.built.css \
     --minify
 

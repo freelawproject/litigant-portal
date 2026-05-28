@@ -22,7 +22,7 @@ run_compilemessages() {
 run_dev_server() {
     echo "Starting Tailwind watcher and development server..."
     /tmp/tailwindcss \
-        -i /app/litigant_portal/app/static/css/main.css \
+        -i /app/litigant_portal/app/styles/main.css \
         -o /app/litigant_portal/app/static/css/main.built.css \
         --watch=always & manage runserver 0.0.0.0:8000
 }
@@ -58,7 +58,7 @@ case "$1" in
 
     test)
         /tmp/tailwindcss \
-            -i /app/litigant_portal/app/static/css/main.css \
+            -i /app/litigant_portal/app/styles/main.css \
             -o /app/litigant_portal/app/static/css/main.built.css \
             --minify
         run_collectstatic
