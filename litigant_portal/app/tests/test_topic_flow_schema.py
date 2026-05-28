@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from litigant_portal.app.topic_flow.schema import Corpus
 
-FIXTURE = Path(__file__).resolve().parents[3] / "content" / "_test_fixture.yml"
+FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
 
 
 def _fixture():

@@ -11,7 +11,7 @@ from litigant_portal.app.topic_flow.loader import (
     CorpusValidationError,
 )
 
-FIXTURE = Path(__file__).resolve().parents[3] / "content" / "_test_fixture.yml"
+FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
 
 # A minimal schema-valid corpus: one fact_gather question, no deadlines or
 # outputs. Tests deep-copy and mutate this to introduce specific problems.

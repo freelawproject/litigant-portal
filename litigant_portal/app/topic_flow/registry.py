@@ -22,7 +22,7 @@ from litigant_portal.app.topic_flow.schema import Corpus
 
 logger = logging.getLogger(__name__)
 
-CONTENT_DIR = Path(__file__).resolve().parents[3] / "content"
+CONTENT_DIR = Path(__file__).resolve().parents[2] / "content"
 
 
 def iter_corpus_paths(content_dir: Path) -> list[Path]:

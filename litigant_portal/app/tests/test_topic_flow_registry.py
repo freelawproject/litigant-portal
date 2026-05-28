@@ -5,7 +5,7 @@ from pathlib import Path
 from litigant_portal.app.topic_flow import checks
 from litigant_portal.app.topic_flow.registry import CorpusRegistry
 
-FIXTURE = Path(__file__).resolve().parents[3] / "content" / "_test_fixture.yml"
+FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
 VALID = FIXTURE.read_text(encoding="utf-8")
 # Schema-invalid: empty sections list.
 BAD = "metadata: {court: c, topic: t, role: r, title: T}\nsections: []\n"
