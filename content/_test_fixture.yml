@@ -1,0 +1,80 @@
+# Test fixture for the Topic Flow CorpusLoader.
+#
+# The leading underscore excludes this file from the registry (registry.py
+# skips `_`-prefixed files), so it never renders as a real Topic Flow. It
+# exercises every part of the v1 schema: all three section kinds, all four
+# output types, and both id-reference cross-checks (a deadline offset_from a
+# fact_gather question; ics/vcf outputs referencing corpus-level deadlines and
+# contacts).
+
+metadata:
+  court: test-court
+  topic: test_topic
+  role: petitioner
+  title: 'Test Corpus — Topic Flow schema fixture'
+
+contacts:
+  - id: clerk
+    name: 'Test County Clerk of Court'
+    phone: '701-555-0100'
+    email: 'clerk@example.gov'
+    url: 'https://example.gov/clerk'
+    address: '100 Courthouse Square, Test City'
+    hours: 'Mon–Fri 8am–4pm'
+    note: 'Call before filing to confirm background-check timing.'
+
+deadlines:
+  - id: publication_wait
+    label: '30-day publication wait'
+    offset_days: 30
+    offset_from: publication_date
+    description: 'The judge can review the petition 30 days after the notice is published.'
+
+sections:
+  - kind: info
+    id: overview
+    heading: 'What this covers'
+    body: |
+      A standalone adult name-change petition. Read each section, then use the
+      tools at the bottom to put your deadlines and the clerk's contact on your
+      phone.
+
+  - kind: fact_gather
+    id: key_dates
+    heading: 'Your dates and name'
+    questions:
+      - id: publication_date
+        label: 'Date your notice was published'
+        type: date
+        required: true
+        help_text: 'On the affidavit of publication from the newspaper.'
+      - id: full_legal_name
+        label: 'Your current legal name'
+        type: text
+
+  - kind: output
+    output_type: ics
+    id: deadlines_calendar
+    heading: 'Add deadlines to your calendar'
+    deadline_ids:
+      - publication_wait
+
+  - kind: output
+    output_type: vcf
+    id: save_clerk
+    heading: "Save the clerk's contact"
+    contact_ids:
+      - clerk
+
+  - kind: output
+    output_type: packet
+    id: filing_packet
+    heading: 'Your filing packet'
+    forms:
+      - 'Petition for Name Change'
+      - 'Confidential Information Form'
+
+  - kind: output
+    output_type: summary
+    id: recap
+    heading: 'Summary of what you entered'
