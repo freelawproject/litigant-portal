@@ -8,8 +8,12 @@ from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.agents import agent_registry
-
-from litigant_portal.app.models import ActionItemModel, CaseInfo, Deadline, TimelineEvent
+from litigant_portal.app.models import (
+    ActionItemModel,
+    CaseInfo,
+    Deadline,
+    TimelineEvent,
+)
 from litigant_portal.app.services.chat_service import ChatService
 from litigant_portal.app.services.pdf_service import pdf_service
 from litigant_portal.app.services.search_service import search_service

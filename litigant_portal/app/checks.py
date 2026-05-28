@@ -14,12 +14,10 @@ Currently checks:
 """
 
 import json
-from pathlib import Path
 
 import jsonschema
-from django.core.checks import Error, Tags, register
-
 from django.conf import settings
+from django.core.checks import Error, Tags, register
 
 _COURTS_DIR = settings.BASE_DIR / "prompts" / "courts"
 _SCHEMA_PATH = _COURTS_DIR / "_schema.json"

@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.i18n import JavaScriptCatalog
 
-from litigant_portal.app.views import pages, endpoints
+from litigant_portal.app.views import endpoints, pages
 
 app_patterns = [
     # Main pages
@@ -36,7 +36,9 @@ api_patterns = [
     # Case info endpoints
     path("case/", endpoints.case_get, name="case_get"),
     path("case/save/", endpoints.case_save, name="case_save"),
-    path("case/timeline/", endpoints.case_timeline_add, name="case_timeline_add"),
+    path(
+        "case/timeline/", endpoints.case_timeline_add, name="case_timeline_add"
+    ),
     path("case/clear/", endpoints.case_clear, name="case_clear"),
     path("case/resolve/", endpoints.case_resolve, name="case_resolve"),
     path(
@@ -54,11 +56,17 @@ api_patterns = [
 urlpatterns = [
     # App Routes
     *i18n_patterns(
-        path("", include((app_patterns, "litigant_portal.app"), namespace="pages")),
+        path(
+            "",
+            include((app_patterns, "litigant_portal.app"), namespace="pages"),
+        ),
         prefix_default_language=False,
     ),
     # API Routes
-    path("api/chat/", include((api_patterns, "litigant_portal.app"), namespace="endpoints")),
+    path(
+        "api/chat/",
+        include((api_patterns, "litigant_portal.app"), namespace="endpoints"),
+    ),
     # Allauth Routes
     path("accounts/", include("allauth.urls")),
     # Django Admin

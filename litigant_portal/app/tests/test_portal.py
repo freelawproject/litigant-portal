@@ -9,7 +9,6 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.management import call_command
 from django.test import Client, RequestFactory, SimpleTestCase, TestCase
-
 from portal.context_processors import toast_messages
 
 User = get_user_model()

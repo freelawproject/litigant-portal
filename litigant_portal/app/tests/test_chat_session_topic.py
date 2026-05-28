@@ -131,8 +131,9 @@ class ChatSessionTopicServiceTests(TestCase):
         from TOPICS and asserts that passing it through ChatService yields
         a prompt with the eviction and DuPage anchors present.
         """
-        from chat.services.chat_service import ChatService
         from portal.views import TOPICS
+
+        from chat.services.chat_service import ChatService
 
         eviction_slugs = [
             slug
@@ -164,8 +165,9 @@ class ChatSessionTopicServiceTests(TestCase):
         the composed prompt contains the adult-name-change and North Dakota
         anchors. Regression guard for #326.
         """
-        from chat.services.chat_service import ChatService
         from portal.views import TOPICS
+
+        from chat.services.chat_service import ChatService
 
         name_change_slugs = [
             slug
