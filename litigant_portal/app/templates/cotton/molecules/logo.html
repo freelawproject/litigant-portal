@@ -1,0 +1,11 @@
+{% load static %}
+
+<c-vars size="default" />
+<a href="{% url 'pages:home' %}"
+   class="logo {% if size == 'sm' %}logo-sm{% elif size == 'lg' %}logo-lg{% endif %} {{ class }}"
+   aria-label="Litigant Portal - Home"
+   {{ attrs }}>
+  {% if show_image %}
+    <img src="{% static 'images/logo.svg' %}" alt="" class="logo-image">
+  {% endif %}
+</a>

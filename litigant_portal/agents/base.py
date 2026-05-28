@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 if TYPE_CHECKING:
-    from chat.models import ChatSession
+    from litigant_portal.app.models import ChatSession
 
 logger = logging.getLogger(__name__)
 
@@ -18,23 +18,9 @@ Field = PydanticField
 
 
 def llm_completion(**kwargs):
-    """Wrapper around litellm.completion() that injects provider API keys.
-
-    Reads API keys from Django settings (which support the _FILE secret
-    pattern) instead of relying on os.environ. This keeps secrets out of
-    the process environment.
-    """
+    """Wrapper around litellm.completion() that injects default args."""
     import litellm
 
-    # To add a new provider, you must implement the secrets file pattern in docker-compose.yml
-    model = kwargs.get("model", "")
-    if model.startswith("openai/") or model.startswith("openai."):
-        kwargs.setdefault("api_key", settings.OPENAI_API_KEY)
-    else:
-        raise NotImplementedError(
-            f"Provider for model '{model}' is not configured. "
-            f"Only OpenAI models are currently supported."
-        )
     kwargs.setdefault("drop_params", True)
     return litellm.completion(**kwargs)
 
@@ -310,7 +296,7 @@ class Agent:
 
     def add_message(self, message: Message):
         """Add a message to the agent's message history."""
-        from chat.models import Message as MessageModel
+        from litigant_portal.app.models import Message as MessageModel
 
         self.messages.append(message)
         if self.session:
@@ -526,8 +512,8 @@ class Agent:
 
         If no session ID is provided, a new session is created.
         """
-        from chat.models import ChatSession
-        from chat.models import Message as MessageModel
+        from litigant_portal.app.models import ChatSession
+        from litigant_portal.app.models import Message as MessageModel
 
         if not request.session.session_key:
             request.session.create()
@@ -577,8 +563,8 @@ class Agent:
                 kwargs.setdefault("topic", session.topic)
             if session.jurisdiction:
                 kwargs.setdefault("jurisdiction", session.jurisdiction)
-            # Derive current phase from session state (see chat.prompts.phase_for_session)
-            from chat.prompts import phase_for_session
+            # Derive current phase from session state (see litigant_portal.prompts.phase_for_session)
+            from litigant_portal.prompts import phase_for_session
 
             kwargs.setdefault("phase", phase_for_session(session))
             agent = cls(session=session, messages=messages, **kwargs)

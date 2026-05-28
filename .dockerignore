@@ -6,6 +6,7 @@
 !uv.lock
 !README.md
 !LICENSE
+!tox.ini
 
 # Application code
 !litigant_portal/
