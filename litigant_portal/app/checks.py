@@ -19,10 +19,12 @@ from pathlib import Path
 import jsonschema
 from django.core.checks import Error, Tags, register
 
-_COURTS_DIR = Path(__file__).resolve().parent / "prompts" / "courts"
+from django.conf import settings
+
+_COURTS_DIR = settings.BASE_DIR / "prompts" / "courts"
 _SCHEMA_PATH = _COURTS_DIR / "_schema.json"
 
-_TOPICS_DIR = Path(__file__).resolve().parent / "prompts" / "topics"
+_TOPICS_DIR = settings.BASE_DIR / "prompts" / "topics"
 _TOPIC_SCHEMA_PATH = _TOPICS_DIR / "_schema.json"
 
 
