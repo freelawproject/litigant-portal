@@ -2,7 +2,7 @@ import logging
 
 from django.db.models import Q, QuerySet
 
-from chat.models import Document
+from litigant_portal.app.models import Document
 
 logger = logging.getLogger(__name__)
 
