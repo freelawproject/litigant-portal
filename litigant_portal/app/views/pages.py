@@ -188,7 +188,7 @@ def topic_detail(request, slug):
 
 def chat_page(request):
     """Chat page - AI-powered legal assistance chat interface."""
-    from chat.prompts import get_court_name, is_known_court
+    from litigant_portal.prompts import get_court_name, is_known_court
 
     slug = request.GET.get("topic", "").strip()
     topic = TOPICS.get(slug) if slug else None
@@ -223,7 +223,7 @@ def deep_link(request, court, topic):
     topic returns 404. On success, 302 to /chat/?topic=X&court=Y so the
     existing chat page handles the heavy lifting.
     """
-    from chat.prompts import is_known_court, is_known_topic
+    from litigant_portal.prompts import is_known_court, is_known_topic
 
     if not is_known_topic(topic):
         raise Http404(f"Topic '{topic}' not registered")
