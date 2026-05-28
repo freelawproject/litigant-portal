@@ -10,9 +10,9 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 
-from chat.models import ChatSession, Document, Message
 from litigant_portal.agents import agent_registry
 from litigant_portal.agents.base import Agent
+from litigant_portal.app.models import ChatSession, Document, Message
 
 User = get_user_model()
 

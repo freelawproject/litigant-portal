@@ -2,7 +2,7 @@
 
 from django.test import TestCase
 
-from chat.prompts import (
+from litigant_portal.prompts import (
     _VALID_PHASES,
     BASE_PROMPT,
     build_system_prompt,

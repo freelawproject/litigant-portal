@@ -3,7 +3,7 @@
 import pytest
 from django.test import Client, TestCase
 
-from chat.models import ActionItemModel, CaseInfo, Deadline
+from litigant_portal.app.models import ActionItemModel, CaseInfo, Deadline
 
 pytestmark = pytest.mark.postgres
 

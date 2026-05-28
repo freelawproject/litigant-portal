@@ -10,8 +10,8 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 
-from chat.models import Document
-from chat.services.search_service import KeywordSearchService
+from litigant_portal.app.models import Document
+from litigant_portal.app.services.search_service import KeywordSearchService
 
 User = get_user_model()
 
@@ -95,7 +95,7 @@ class PDFServiceValidationTests(SimpleTestCase):
     """Tests for PDF upload validation logic."""
 
     def setUp(self):
-        from chat.services.pdf_service import PDFService
+        from litigant_portal.app.services.pdf_service import PDFService
 
         self.service = PDFService()
 

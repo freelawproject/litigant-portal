@@ -9,9 +9,9 @@ from unittest import mock
 import jsonschema
 from django.test import TestCase
 
-from chat import checks as chat_checks
-from chat.checks import check_topic_json_schema
-from chat.prompts import _PROMPTS_DIR, get_topic_name, iter_topics
+from litigant_portal.app import checks as chat_checks
+from litigant_portal.app.checks import check_topic_json_schema
+from litigant_portal.prompts import _PROMPTS_DIR, get_topic_name, iter_topics
 
 TOPICS_DIR = _PROMPTS_DIR / "topics"
 SCHEMA_PATH = TOPICS_DIR / "_schema.json"

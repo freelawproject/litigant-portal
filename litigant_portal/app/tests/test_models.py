@@ -8,7 +8,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from chat.models import (
+from litigant_portal.app.models import (
     ActionItemModel,
     CaseInfo,
     ChatSession,

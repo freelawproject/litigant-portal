@@ -8,7 +8,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
-from chat.models import ChatSession
+from litigant_portal.app.models import ChatSession
 
 User = get_user_model()
 
@@ -71,7 +71,7 @@ class ChatSessionTopicServiceTests(TestCase):
 
     def test_new_session_persists_topic(self):
         """ChatService should save topic on the session when creating."""
-        from chat.services.chat_service import ChatService
+        from litigant_portal.app.services.chat_service import ChatService
 
         request = self._make_request()
         chat = ChatService(request, topic="eviction")
@@ -83,7 +83,7 @@ class ChatSessionTopicServiceTests(TestCase):
 
     def test_new_session_persists_jurisdiction(self):
         """ChatService should save jurisdiction on the session when creating."""
-        from chat.services.chat_service import ChatService
+        from litigant_portal.app.services.chat_service import ChatService
 
         request = self._make_request()
         chat = ChatService(request, topic="eviction")
@@ -95,7 +95,7 @@ class ChatSessionTopicServiceTests(TestCase):
 
     def test_resumed_session_uses_stored_topic(self):
         """Resuming a session should use the stored topic, not require it again."""
-        from chat.services.chat_service import ChatService
+        from litigant_portal.app.services.chat_service import ChatService
 
         request = self._make_request()
         # Create initial session with topic
@@ -110,7 +110,7 @@ class ChatSessionTopicServiceTests(TestCase):
 
     def test_no_topic_creates_generic_session(self):
         """Session without topic should have empty topic/jurisdiction."""
-        from chat.services.chat_service import ChatService
+        from litigant_portal.app.services.chat_service import ChatService
 
         request = self._make_request()
         chat = ChatService(request)
@@ -131,9 +131,8 @@ class ChatSessionTopicServiceTests(TestCase):
         from TOPICS and asserts that passing it through ChatService yields
         a prompt with the eviction and DuPage anchors present.
         """
-        from portal.views import TOPICS
-
-        from chat.services.chat_service import ChatService
+        from litigant_portal.app.services.chat_service import ChatService
+        from litigant_portal.app.views import TOPICS
 
         eviction_slugs = [
             slug
@@ -165,9 +164,8 @@ class ChatSessionTopicServiceTests(TestCase):
         the composed prompt contains the adult-name-change and North Dakota
         anchors. Regression guard for #326.
         """
-        from portal.views import TOPICS
-
-        from chat.services.chat_service import ChatService
+        from litigant_portal.app.services.chat_service import ChatService
+        from litigant_portal.app.views import TOPICS
 
         name_change_slugs = [
             slug
@@ -193,7 +191,7 @@ class ChatSessionTopicServiceTests(TestCase):
 
     def test_explicit_court_kwarg_composes_court_layer(self):
         """ChatService accepts an explicit court kwarg (#327 deep-link path)."""
-        from chat.services.chat_service import ChatService
+        from litigant_portal.app.services.chat_service import ChatService
 
         request = self._make_request()
         chat = ChatService(
@@ -213,7 +211,7 @@ class ChatSessionTopicServiceTests(TestCase):
 
     def test_explicit_court_wins_over_topic_default(self):
         """court kwarg overrides _DEFAULT_JURISDICTION_FOR_TOPIC mapping."""
-        from chat.services.chat_service import ChatService
+        from litigant_portal.app.services.chat_service import ChatService
 
         request = self._make_request()
         # eviction's default jurisdiction is "il" (→ dupage-il court); pass

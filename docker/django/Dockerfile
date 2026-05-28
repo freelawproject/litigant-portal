@@ -24,7 +24,7 @@ WORKDIR /app
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY pyproject.toml uv.lock README.md LICENSE .
+COPY pyproject.toml uv.lock README.md LICENSE tox.ini .
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --extra test --frozen --no-install-project --no-dev
@@ -53,7 +53,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --no-deps --python /opt/venv/bin/python -e .
 
 RUN useradd --create-home --shell /bin/bash appuser \
-    && chown -R appuser:appuser /app/litigant_portal
+    && chown -R appuser:appuser /app
 USER appuser
 
 ENTRYPOINT ["docker/django/entrypoint.sh"]

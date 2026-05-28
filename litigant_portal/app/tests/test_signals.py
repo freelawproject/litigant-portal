@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 
-from chat.models import CaseInfo, ChatSession
+from litigant_portal.app.models import CaseInfo, ChatSession
 
 User = get_user_model()
 

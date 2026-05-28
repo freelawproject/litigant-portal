@@ -9,7 +9,8 @@ from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.management import call_command
 from django.test import Client, RequestFactory, SimpleTestCase, TestCase
-from portal.context_processors import toast_messages
+
+from litigant_portal.app.context_processors import toast_messages
 
 User = get_user_model()
 
@@ -236,28 +237,28 @@ class UserProfileModelTests(TestCase):
 
     def test_str_with_name(self):
         """__str__ should show name and email when name is set."""
-        from portal.models import UserProfile
+        from litigant_portal.app.models import UserProfile
 
         profile = UserProfile.objects.create(user=self.user, name="Jane Doe")
         self.assertEqual(str(profile), "Jane Doe (test@example.com)")
 
     def test_str_without_name(self):
         """__str__ should show 'Unnamed' when name is empty."""
-        from portal.models import UserProfile
+        from litigant_portal.app.models import UserProfile
 
         profile = UserProfile.objects.create(user=self.user)
         self.assertEqual(str(profile), "Unnamed (test@example.com)")
 
     def test_full_address_empty_when_no_address(self):
         """full_address should return empty string when no address_line1."""
-        from portal.models import UserProfile
+        from litigant_portal.app.models import UserProfile
 
         profile = UserProfile.objects.create(user=self.user, city="Boston")
         self.assertEqual(profile.full_address, "")
 
     def test_full_address_single_line(self):
         """full_address should return just street when no city/state."""
-        from portal.models import UserProfile
+        from litigant_portal.app.models import UserProfile
 
         profile = UserProfile.objects.create(
             user=self.user, address_line1="123 Main St"
@@ -266,7 +267,7 @@ class UserProfileModelTests(TestCase):
 
     def test_full_address_with_unit(self):
         """full_address should include address_line2 when present."""
-        from portal.models import UserProfile
+        from litigant_portal.app.models import UserProfile
 
         profile = UserProfile.objects.create(
             user=self.user,
@@ -277,7 +278,7 @@ class UserProfileModelTests(TestCase):
 
     def test_full_address_complete(self):
         """full_address should format complete address correctly."""
-        from portal.models import UserProfile
+        from litigant_portal.app.models import UserProfile
 
         profile = UserProfile.objects.create(
             user=self.user,
@@ -319,7 +320,7 @@ class ProfileViewTests(TestCase):
 
     def test_profile_creates_profile_if_missing(self):
         """Viewing profile should create one if user doesn't have one."""
-        from portal.models import UserProfile
+        from litigant_portal.app.models import UserProfile
 
         self.client.login(username="testuser", password="testpass123")
         self.assertFalse(UserProfile.objects.filter(user=self.user).exists())
@@ -336,7 +337,7 @@ class ProfileViewTests(TestCase):
 
     def test_profile_edit_saves_data(self):
         """Profile edit should save form data."""
-        from portal.models import UserProfile
+        from litigant_portal.app.models import UserProfile
 
         self.client.login(username="testuser", password="testpass123")
         response = self.client.post(
@@ -428,7 +429,7 @@ class TopicDetailTests(TestCase):
 
     def test_all_topics_render_with_correct_context(self):
         """Each topic slug should return 200 with its title from TOPICS."""
-        from portal.views import TOPICS
+        from litigant_portal.app.views import TOPICS
 
         for slug, topic in TOPICS.items():
             with self.subTest(slug=slug):
@@ -531,7 +532,7 @@ class DeepLinkTests(TestCase):
         chat/prompts/courts/ must be reachable via /t/{court}/{topic}/, and
         must use canonical hyphenated slugs (no underscores). Catches a future
         court being added under a non-canonical slug."""
-        from chat.prompts import _PROMPTS_DIR
+        from litigant_portal.prompts import _PROMPTS_DIR
 
         courts = sorted(
             p.name

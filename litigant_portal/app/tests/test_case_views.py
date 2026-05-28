@@ -11,7 +11,12 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
-from chat.models import ActionItemModel, CaseInfo, Deadline, TimelineEvent
+from litigant_portal.app.models import (
+    ActionItemModel,
+    CaseInfo,
+    Deadline,
+    TimelineEvent,
+)
 
 User = get_user_model()
 
