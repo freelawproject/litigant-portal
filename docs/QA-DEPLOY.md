@@ -55,25 +55,18 @@ cd /opt/litigant-portal
 
 ## Configure Environment
 
-```bash
+````bash
 cd /opt/litigant-portal
 
-# Non-secret config
+# Config
 cat > .env << 'EOF'
-DOMAIN=qa.litigantportal.com
+SECRET_KEY=choose-a-strong-secret-key
+DOMAIN=https://qa.litigantportal.com
 ALLOWED_HOSTS=qa.litigantportal.com
 CHAT_ENABLED=true
 CHAT_MODEL=openai/gpt-4o-mini
+POSTGRES_PASSWORD=choose-a-strong-db-password
 EOF
-
-# Secrets (never committed)
-mkdir -p secrets
-chmod 700 secrets
-python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
-echo "choose-a-strong-db-password" > secrets/db_password.txt
-echo "sk-your-openai-api-key" > secrets/openai_api_key.txt
-chmod 600 secrets/*.txt
-```
 
 ## First Deploy
 
@@ -83,7 +76,7 @@ docker compose pull django-prod
 
 # Start the full prod stack
 docker compose --profile prod up -d
-```
+````
 
 Caddy will auto-provision a Let's Encrypt certificate once DNS resolves.
 

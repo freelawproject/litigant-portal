@@ -9,16 +9,12 @@ cp .env.example .env      # Add your OPENAI_API_KEY
 make docker-dev           # Start dev environment
 ```
 
-Visit: http://portal.localhost
+Visit: http://localhost
 
 ### Docker Production
 
 ```bash
-# Create secret key
-mkdir -p secrets
-python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())" > secrets/django_secret_key.txt
-echo "your-db-password" > secrets/db_password.txt
-echo "sk-your-openai-api-key" > secrets/openai_api_key.txt
+cp .env.example .env      # Set OPENAI_API_KEY, SECRET_KEY, ALLOWED_HOSTS, DOMAIN, POSTGRES_PASSWORD
 make docker-prod
 ```
 
