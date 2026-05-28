@@ -63,6 +63,7 @@ cat > .env << 'EOF'
 SECRET_KEY=choose-a-strong-secret-key
 DOMAIN=https://qa.litigantportal.com
 ALLOWED_HOSTS=qa.litigantportal.com
+DEPLOYMENT_ENV=qa
 CHAT_ENABLED=true
 CHAT_MODEL=openai/gpt-4o-mini
 POSTGRES_PASSWORD=choose-a-strong-db-password

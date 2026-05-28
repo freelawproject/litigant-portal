@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from pathlib import Path
 
 from django.core.management.utils import get_random_secret_key
@@ -6,6 +7,14 @@ from django.core.management.utils import get_random_secret_key
 BASE_DIR = Path(__file__).resolve().parent
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
+
+# Deployment environment label. Distinguishes QA from prod (both run DEBUG=false).
+# Used by template context processor to gate non-prod-only UI (build-time chip).
+DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "dev")
+
+# Captured at module import — approximates container/process start time. Shown
+# in the dev/QA header so testers can disambiguate deploys by the minute.
+APP_BUILD_TIME = datetime.now().strftime("%Y/%m/%d %H:%M")
 
 SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
 
@@ -62,6 +71,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 # "portal.context_processors.toast_messages",
+                "litigant_portal.app.context_processors.app_meta",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",

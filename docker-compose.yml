@@ -62,6 +62,7 @@ services:
     command: web-dev
     environment:
       - DEBUG=true
+      - DEPLOYMENT_ENV=dev
       - SECRET_KEY=dev
       - POSTGRES_HOST=postgres-dev
       - POSTGRES_PASSWORD=postgres
@@ -90,6 +91,7 @@ services:
     command: web-prod
     environment:
       - DEBUG=false
+      - DEPLOYMENT_ENV=${DEPLOYMENT_ENV:-prod}
       - SECRET_KEY=${SECRET_KEY}
       - POSTGRES_HOST=postgres-prod
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
