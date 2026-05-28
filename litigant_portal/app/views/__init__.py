@@ -1,3 +1,2 @@
-from .chat import index
-
-__all__ = ["index"]
+from .api import *  # noqa: F403
+from .app import *  # noqa: F403

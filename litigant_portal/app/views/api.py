@@ -9,10 +9,10 @@ from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.agents import agent_registry
 
-from .models import ActionItemModel, CaseInfo, Deadline, TimelineEvent
-from .services.chat_service import ChatService
-from .services.pdf_service import pdf_service
-from .services.search_service import search_service
+from litigant_portal.app.models import ActionItemModel, CaseInfo, Deadline, TimelineEvent
+from litigant_portal.app.services.chat_service import ChatService
+from litigant_portal.app.services.pdf_service import pdf_service
+from litigant_portal.app.services.search_service import search_service
 
 
 def _ownership_filter(request: HttpRequest) -> dict:
