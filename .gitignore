@@ -46,7 +46,7 @@ static/assets/
 # Tailwind CLI binary
 tailwindcss
 
-# Tailwind CLI output (source is litigant_portal/app/styles/main.css)
+# Tailwind CLI output (source is litigant_portal/app/src/main.css)
 litigant_portal/app/static/css/main.built.css
 
 # Django collectstatic output
