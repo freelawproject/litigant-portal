@@ -55,7 +55,7 @@ cd /opt/litigant-portal
 
 ## Configure Environment
 
-```bash
+````bash
 cd /opt/litigant-portal
 
 # Config
@@ -76,7 +76,7 @@ docker compose pull django-prod
 
 # Start the full prod stack
 docker compose --profile prod up -d
-```
+````
 
 Caddy will auto-provision a Let's Encrypt certificate once DNS resolves.
 
