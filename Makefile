@@ -12,13 +12,13 @@ install: ## Install Python dependencies (includes Tailwind CSS)
 	.venv/bin/pip install -e ".[dev]"
 
 css: ## Build Tailwind CSS (one-time)
-	tailwindcss -i litigant_portal/app/static/css/main.css -o litigant_portal/app/static/css/main.built.css
+	tailwindcss -i litigant_portal/app/styles/main.css -o litigant_portal/app/static/css/main.built.css
 
 css-watch: ## Watch Tailwind CSS for changes
-	tailwindcss -i src/css/main.css -o static/css/main.built.css --watch
+	tailwindcss -i litigant_portal/app/styles/main.css -o static/css/main.built.css --watch
 
 css-prod: ## Build production CSS (minified)
-	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
+	tailwindcss -i litigant_portal/app/styles/main.css -o static/css/main.built.css --minify
 
 migrate: ## Run Django migrations
 	source .venv/bin/activate && python manage.py migrate
