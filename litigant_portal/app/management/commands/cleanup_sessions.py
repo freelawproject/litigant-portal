@@ -12,7 +12,7 @@ from datetime import timedelta
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from chat.models import ChatSession
+from litigant_portal.app.models import ChatSession
 
 
 class Command(BaseCommand):
