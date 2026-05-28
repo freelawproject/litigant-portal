@@ -21,12 +21,12 @@ Building a complete eviction flow from discovery to resolution for court partner
 
 Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker everywhere.
 
-| Environment | Chat Provider | Config Source                              |
-| ----------- | ------------- | ------------------------------------------ |
-| Local dev   | OpenAI        | docker-compose.yml + `.env`                |
-| CI/CD       | None (mocked) | tox.ini - tests mock all providers         |
-| QA/Staging  | OpenAI        | docker-compose prod profile                |
-| Production  | OpenAI        | docker-compose.yml + `.env`                |
+| Environment | Chat Provider | Config Source                      |
+| ----------- | ------------- | ---------------------------------- |
+| Local dev   | OpenAI        | docker-compose.yml + `.env`        |
+| CI/CD       | None (mocked) | tox.ini - tests mock all providers |
+| QA/Staging  | OpenAI        | docker-compose prod profile        |
+| Production  | OpenAI        | docker-compose.yml + `.env`        |
 
 **QA environment:** `https://qa.litigantportal.com` — auto-deploys on merge to `qa` via GitHub Actions CD workflow. See `docs/QA-DEPLOY.md` for server setup. Uses the same docker-compose prod profile on a DigitalOcean VPS.
 
@@ -536,13 +536,13 @@ docker compose --profile prod up --build -d
 
 Set in `.env` at the project root:
 
-| Variable            | Description                             | Example              |
-| ------------------- | --------------------------------------- | -------------------- |
-| `SECRET_KEY`        | Django secret key                       | `...`                |
-| `DOMAIN`            | Public domain (Caddy uses for HTTPS)    | `https://example.com`|
-| `ALLOWED_HOSTS`     | Django allowed hosts (matches `DOMAIN`) | `https://example.com`|
-| `OPENAI_API_KEY`    | OpenAI API key for AI chat              | `sk-...`             |
-| `POSTGRES_PASSWORD` | PostgreSQL password                     | `...`                |
+| Variable            | Description                             | Example               |
+| ------------------- | --------------------------------------- | --------------------- |
+| `SECRET_KEY`        | Django secret key                       | `...`                 |
+| `DOMAIN`            | Public domain (Caddy uses for HTTPS)    | `https://example.com` |
+| `ALLOWED_HOSTS`     | Django allowed hosts (matches `DOMAIN`) | `https://example.com` |
+| `OPENAI_API_KEY`    | OpenAI API key for AI chat              | `sk-...`              |
+| `POSTGRES_PASSWORD` | PostgreSQL password                     | `...`                 |
 
 ### Common Commands
 
