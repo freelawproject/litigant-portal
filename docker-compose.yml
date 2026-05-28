@@ -17,6 +17,7 @@ services:
     image: pgvector/pgvector:pg17
     profiles: ['dev']
     environment:
+      - DEBUG=true
       - POSTGRES_DB=litigant_portal
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
