@@ -273,6 +273,24 @@ gh issue create --template task.yml
 gh issue create --template qa-round.yml
 ```
 
+**Prefilled forms (`make file-issue`).** `gh issue create` can't post to our YAML issue _forms_ non-interactively — it only fills the legacy free-text body, so structured fields and auto-labels are lost. Until `gh` supports forms, `make file-issue` turns a self-describing content blob into a prefilled issue-form URL (opens a browser, or prints the URL when open is unavailable, e.g. in a sandbox). The blob declares its own `type:` and `title:`, then one section per template field id (`[what]`, `[why]`, `[dod]` for a task; `[problem]`, `[proposal]` for an enhancement — match the ids in `.github/ISSUE_TEMPLATE/`):
+
+```bash
+make file-issue <<'EOF'
+type: task
+title: Short, specific title
+
+[what]
+What needs to change.
+
+[why]
+Motivation.
+EOF
+# or: make file-issue FILE=issue.md
+```
+
+Field ids are validated against the chosen template — a section that doesn't match (wrong field or wrong template) warns and would render blank. The label is applied by the template; set assignee/priority/size in the browser. See `scripts/file_issue.py` for the full format and accepted type aliases.
+
 ## Architecture
 
 ### Front-End Principles
