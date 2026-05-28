@@ -23,10 +23,10 @@ Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker e
 
 | Environment | Chat Provider | Config Source                              |
 | ----------- | ------------- | ------------------------------------------ |
-| Local dev   | OpenAI        | docker-compose.yml + `.env` (secrets only) |
+| Local dev   | OpenAI        | docker-compose.yml + `.env`                |
 | CI/CD       | None (mocked) | tox.ini - tests mock all providers         |
-| QA/Staging  | OpenAI        | docker-compose prod profile + secrets/     |
-| Production  | OpenAI        | docker-compose.yml + `.env` + secrets/     |
+| QA/Staging  | OpenAI        | docker-compose prod profile                |
+| Production  | OpenAI        | docker-compose.yml + `.env`                |
 
 **QA environment:** `https://qa.litigantportal.com` — auto-deploys on merge to `qa` via GitHub Actions CD workflow. See `docs/QA-DEPLOY.md` for server setup. Uses the same docker-compose prod profile on a DigitalOcean VPS.
 
@@ -528,13 +528,6 @@ cd /opt/litigant-portal
 cp .env.example .env
 # Edit .env and set: DOMAIN, ALLOWED_HOSTS, OPENAI_API_KEY
 
-# Create secrets
-mkdir -p secrets
-python3 -c 'import secrets; print(secrets.token_urlsafe(50))' > secrets/django_secret_key.txt
-echo "your-db-password" > secrets/db_password.txt
-echo "sk-your-openai-api-key" > secrets/openai_api_key.txt
-chmod 600 secrets/*.txt
-
 # Start production stack
 docker compose --profile prod up --build -d
 ```
@@ -543,15 +536,13 @@ docker compose --profile prod up --build -d
 
 Set in `.env` at the project root:
 
-| Variable         | Description                             | Example              |
-| ---------------- | --------------------------------------- | -------------------- |
-| `DOMAIN`         | Public domain (Caddy uses for HTTPS)    | `portal.example.com` |
-| `ALLOWED_HOSTS`  | Django allowed hosts (matches `DOMAIN`) | `portal.example.com` |
-| `OPENAI_API_KEY` | OpenAI API key for AI chat              | `sk-...`             |
-
-All secrets support the `_FILE` convention (`<VAR>_FILE` points to a file, falls back to `<VAR>` env var). Production uses Docker secrets in `secrets/` (never committed). See `docs/SECURITY.md` for details.
-
-Non-secret env vars (`CHAT_MODEL`, `GUNICORN_WORKERS`, etc.) can be set in `.env` or overridden in `docker-compose.yml`.
+| Variable            | Description                             | Example              |
+| ------------------- | --------------------------------------- | -------------------- |
+| `SECRET_KEY`        | Django secret key                       | `...`                |
+| `DOMAIN`            | Public domain (Caddy uses for HTTPS)    | `https://example.com`|
+| `ALLOWED_HOSTS`     | Django allowed hosts (matches `DOMAIN`) | `https://example.com`|
+| `OPENAI_API_KEY`    | OpenAI API key for AI chat              | `sk-...`             |
+| `POSTGRES_PASSWORD` | PostgreSQL password                     | `...`                |
 
 ### Common Commands
 
@@ -564,4 +555,4 @@ docker compose --profile prod up --build -d    # Rebuild and restart
 
 ### Database
 
-PostgreSQL (pgvector) on Docker volumes named with the PG major version (e.g., `postgres_data_dev_pg17`). When upgrading Postgres (e.g., pg17 → pg18), update both the image tag and volume name in `docker-compose.yml` so Docker creates a fresh volume instead of failing on incompatible data files. Separate services per profile (`postgres-dev`, `postgres-prod`); prod uses Docker secrets for the password via `POSTGRES_PASSWORD_FILE`.
+PostgreSQL (pgvector) on Docker volumes named with the PG major version (e.g., `postgres_data_dev_pg17`). When upgrading Postgres (e.g., pg17 → pg18), update both the image tag and volume name in `docker-compose.yml` so Docker creates a fresh volume instead of failing on incompatible data files. Separate services per profile (`postgres-dev`, `postgres-prod`);

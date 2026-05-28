@@ -157,19 +157,16 @@ docker compose --profile dev up
 - Mounts source code for hot reload
 - Tailwind CSS watch mode
 - PostgreSQL (pgvector) via Docker Compose service
-- Auto-generates `SECRET_KEY`
 
 ### Production
 
 ```bash
-# Create secret key (see secrets/README.md)
 docker compose --profile prod up
 # or: make docker-prod
 ```
 
 - Gunicorn WSGI server
 - PostgreSQL (pgvector) with persistent volume
-- Docker secrets for Django secret key
 - Pre-built CSS (minified)
 - Non-root container user
 
