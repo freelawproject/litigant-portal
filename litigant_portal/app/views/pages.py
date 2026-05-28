@@ -231,7 +231,7 @@ def deep_link(request, court, topic):
         raise Http404(f"Court '{court}' not registered")
 
     query = urlencode({"topic": topic.lower(), "court": court.lower()})
-    return redirect(f"{reverse('app:chat')}?{query}")
+    return redirect(f"{reverse('pages:chat')}?{query}")
 
 
 def test_agent(request, agent_name):
@@ -279,7 +279,7 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
     model = UserProfile
     form_class = UserProfileForm
     template_name = "pages/profile/edit.html"
-    success_url = reverse_lazy("app:profile")
+    success_url = reverse_lazy("pages:profile")
 
     def get_object(self):
         profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
