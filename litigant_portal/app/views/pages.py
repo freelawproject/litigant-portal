@@ -9,9 +9,8 @@ from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView, UpdateView
 
 from litigant_portal.agents import agent_registry
-
-from ..forms import UserProfileForm
-from ..models import UserProfile
+from litigant_portal.app.forms import UserProfileForm
+from litigant_portal.app.models import UserProfile
 
 TOPICS = {
     "eviction": {
