@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from chat.prompts import build_system_prompt
+from litigant_portal.prompts import build_system_prompt
 
 from .base import Agent, Field, Tool, ToolOutput
 
@@ -168,7 +168,7 @@ class UpdateCaseFacts(Tool):
     )
 
     def __call__(self, agent: "Agent") -> ToolOutput:
-        from chat.models import CaseInfo, Deadline
+        from litigant_portal.app.models import CaseInfo, Deadline
 
         # Build a patch dict in CaseInfo data format (same shape as extracted docs)
         patch: dict = {}
@@ -300,7 +300,7 @@ class UpdateActionPlan(Tool):
     )
 
     def __call__(self, agent: "Agent") -> ToolOutput:
-        from chat.models import ActionItemModel, CaseInfo
+        from litigant_portal.app.models import ActionItemModel, CaseInfo
 
         patch: dict = {}
 
@@ -376,7 +376,7 @@ class LitigantAssistantAgent(Agent):
     """Main agent for the litigant portal assistant.
 
     System prompt is composed from Base + Phase + Topic + Court layers via
-    chat.prompts.build_system_prompt(). See docs/prompts-as-infra.md for the
+    litigant_portal.prompts.build_system_prompt(). See docs/prompts-as-infra.md for the
     architectural principle.
 
     Phase, topic, and court can be passed as kwargs to from_session_id() or
