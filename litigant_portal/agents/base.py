@@ -18,23 +18,8 @@ Field = PydanticField
 
 
 def llm_completion(**kwargs):
-    """Wrapper around litellm.completion() that injects provider API keys.
-
-    Reads API keys from Django settings (which support the _FILE secret
-    pattern) instead of relying on os.environ. This keeps secrets out of
-    the process environment.
-    """
+    """Wrapper around litellm.completion() that injects default args."""
     import litellm
-
-    # To add a new provider, you must implement the secrets file pattern in docker-compose.yml
-    model = kwargs.get("model", "")
-    if model.startswith("openai/") or model.startswith("openai."):
-        kwargs.setdefault("api_key", settings.OPENAI_API_KEY)
-    else:
-        raise NotImplementedError(
-            f"Provider for model '{model}' is not configured. "
-            f"Only OpenAI models are currently supported."
-        )
     kwargs.setdefault("drop_params", True)
     return litellm.completion(**kwargs)
 
