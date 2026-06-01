@@ -10,6 +10,17 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 - WCAG AA accessibility as requirement
 - Mobile-first (users on older phones)
 - Human-centered AI (augments, not replaces)
+- Open contracts (producer-agnostic, validated at the boundary)
+
+---
+
+## Open Contracts (Interface-Driven Design)
+
+Litigant Portal is open source, and a court partner can stand up their own hosted instance. So we design around **explicit, validated data contracts** — schemas, file formats, API shapes — not around a particular producer or UI. Any compliant producer works identically: hand-authored files, a partner's own CMS, an AI-authoring tool, or direct API calls. LP depends only on the contract; validation at the boundary enforces it, and how the data was produced stays entirely on the producer's side of that line.
+
+**Example — A2J Document Assembly Tool (DAT).** The DAT expects three inputs: a base PDF, a key/value answer set, and an overlay `.json` mapping each answer to coordinates on the PDF (where each value renders to "fill it in"). Those files can come from the A2J Viewer's guided-interview flow _or_ be POSTed straight to the API endpoint with Postman — either path returns an assembled PDF. The tool depends on the contract (the three file formats), never on how they were produced.
+
+**In LP today.** The Topic Flow corpus is exactly this: `schema.py` (`extra="forbid"`) + the loader's id cross-reference checks + the `checks.py` startup guard _are_ the partner-facing contract. A conformant corpus flows through one validated path regardless of what authored it; a non-conformant one fails loudly at the boundary.
 
 ---
 
