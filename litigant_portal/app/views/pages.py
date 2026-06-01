@@ -11,6 +11,8 @@ from django.views.generic import DetailView, UpdateView
 from litigant_portal.agents import agent_registry
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
+from litigant_portal.app.topic_flow.artifacts import contact_to_vcard
+from litigant_portal.app.topic_flow.registry import registry
 
 TOPICS = {
     "eviction": {
@@ -231,6 +233,30 @@ def deep_link(request, court, topic):
 
     query = urlencode({"topic": topic.lower(), "court": court.lower()})
     return redirect(f"{reverse('pages:chat')}?{query}")
+
+
+def contact_vcard(request, court, topic, role, contact_id):
+    """Download a corpus Contact as a .vcf the phone imports as a contact card.
+
+    Orchestration only: resolve the corpus and contact, 404 on either miss,
+    and hand the bytes off to ``contact_to_vcard``. ``text/vcard`` +
+    attachment disposition is what routes the file to the device's Contacts
+    app on download.
+    """
+    corpus = registry.get(court, topic, role)
+    if corpus is None:
+        raise Http404(f"No topic flow for {court}/{topic}/{role}")
+    contact = next((c for c in corpus.contacts if c.id == contact_id), None)
+    if contact is None:
+        raise Http404(f"Contact '{contact_id}' not found")
+
+    response = HttpResponse(
+        contact_to_vcard(contact), content_type="text/vcard"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="{contact_id}.vcf"'
+    )
+    return response
 
 
 def test_agent(request, agent_name):
