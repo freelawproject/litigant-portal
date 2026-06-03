@@ -140,7 +140,9 @@ def test_payload_is_namespaced_under_single_key_and_json_serializable():
     # One top-level key; the flow lives under a flat composite *string* key.
     assert list(payload) == [FLOW_KEY]
     assert payload[FLOW_KEY] == {"pubdate": "2026-05-01"}
-    json.dumps(payload)  # must survive the session's JSON serialization
+    # The session serializes to JSON between requests; assert the payload
+    # survives a full round-trip unchanged, not merely that it doesn't raise.
+    assert json.loads(json.dumps(payload)) == payload
 
 
 def test_values_stored_raw_not_coerced():
