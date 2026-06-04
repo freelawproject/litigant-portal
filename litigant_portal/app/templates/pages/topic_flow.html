@@ -28,8 +28,10 @@
 
   {% for section in rendered_sections %}
   <section id="{{ section.anchor_id }}" class="mb-8 scroll-mt-4">
-    <h2 class="text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
-    {# Section body (fields, summary, packet) renders here in Item 8 via the per-kind flow_section_*.html templates. #}
+    {% if section.heading %}
+    <h2 class="mb-3 text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
+    {% endif %}
+    {% include section.template with ctx=section.context %}
   </section>
   {% endfor %}
 </div>

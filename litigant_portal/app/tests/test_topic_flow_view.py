@@ -60,7 +60,13 @@ def _corpus():
                         label="Date your notice was published",
                         type="date",
                         required=True,
-                    )
+                    ),
+                    Question(
+                        id="filing_county",
+                        label="County where you'll file",
+                        type="choice",
+                        choices=["Cass", "Burleigh"],
+                    ),
                 ],
             ),
             PacketOutput(
@@ -139,3 +145,50 @@ def test_page_emits_an_anchor_target_per_section(client, monkeypatch):
 def test_unknown_flow_returns_404(client, monkeypatch):
     monkeypatch.setattr(pages.registry, "get", lambda *a: None)
     assert client.get(URL).status_code == 404
+
+
+# --- Section body rendering (Item 8, needs DB) ------------------------------
+# #483 emitted only the heading + anchor shell. These assert the per-kind body
+# templates now render through `{% include section.template with ctx=... %}` —
+# the functional payload (corpus content, form field names), not cosmetic markup.
+
+
+@pytest.mark.django_db
+def test_info_section_renders_its_body(client, monkeypatch):
+    # Proves the include wiring resolves and the info partial gets its context —
+    # the body the corpus supplied reaches the page, not just the heading.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert "Read this first." in html
+
+
+@pytest.mark.django_db
+def test_fact_gather_renders_post_form_with_a_field_per_question(
+    client, monkeypatch
+):
+    # The form must POST and carry a `name` per question — the contract the
+    # Item 5 POST handler reads. Without these names, answers can't persist.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert 'method="post"' in html
+    assert "csrfmiddlewaretoken" in html
+    assert 'name="publication_date"' in html
+    assert 'name="filing_county"' in html
+
+
+@pytest.mark.django_db
+def test_fact_gather_choice_question_renders_its_options(client, monkeypatch):
+    # A choice question must render its options, else the user can't answer it.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert "<option" in html
+    assert "Cass" in html
+    assert "Burleigh" in html
+
+
+@pytest.mark.django_db
+def test_packet_section_lists_each_form(client, monkeypatch):
+    # The packet partial must render every form name the corpus declares.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert "Petition for Name Change" in html

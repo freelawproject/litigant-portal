@@ -1,0 +1,36 @@
+{% load i18n %}
+
+{# fact_gather section body: a server-rendered form, one field per question. #}
+{# Values are prefilled server-side (ctx.questions[].value) — no x-model. The #}
+{# POST handler + deadline recompute land in Item 5; this renders the form. #}
+{% trans "Select…" as choice_placeholder %}
+<form method="post" class="space-y-4">
+  {% csrf_token %}
+  {% for q in ctx.questions %}
+  {% if q.type == "choice" %}
+  <c-molecules.form-field-select
+    label="{{ q.label }}"
+    name="{{ q.id }}"
+    id="{{ q.id }}"
+    help_text="{{ q.help_text|default:'' }}"
+    :required="q.required"
+  >
+    <option value="">{{ choice_placeholder }}</option>
+    {% for choice in q.choices %}
+    <option value="{{ choice }}" {% if choice == q.value %}selected{% endif %}>{{ choice }}</option>
+    {% endfor %}
+  </c-molecules.form-field-select>
+  {% else %}
+  <c-molecules.form-field
+    label="{{ q.label }}"
+    type="{{ q.type }}"
+    name="{{ q.id }}"
+    id="{{ q.id }}"
+    value="{{ q.value }}"
+    help_text="{{ q.help_text|default:'' }}"
+    :required="q.required"
+  />
+  {% endif %}
+  {% endfor %}
+  <c-atoms.button type="submit" variant="primary">{% trans "Save answers" %}</c-atoms.button>
+</form>
