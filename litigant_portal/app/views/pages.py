@@ -11,6 +11,8 @@ from django.views.generic import DetailView, UpdateView
 from litigant_portal.agents import agent_registry
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
+from litigant_portal.app.topic_flow.registry import registry
+from litigant_portal.app.topic_flow.renderer import render_section
 
 TOPICS = {
     "eviction": {
@@ -231,6 +233,28 @@ def deep_link(request, court, topic):
 
     query = urlencode({"topic": topic.lower(), "court": court.lower()})
     return redirect(f"{reverse('pages:chat')}?{query}")
+
+
+def topic_flow(request, court, topic, role):
+    """Topic Flow entry: /t/{court}/{topic}/{role}/ → rendered corpus sections.
+
+    Resolves the corpus from the registry (404 on miss) and renders each
+    section to a RenderedSection via SectionRenderer. The view stays thin —
+    all dispatch lives in renderer.py; the template only loops and displays.
+    Answers are empty here; fact_gather prefill + POST arrive with AnswerStore
+    wiring, and per-kind section bodies with the section templates.
+    """
+    corpus = registry.get(court, topic, role)
+    if corpus is None:
+        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+    rendered_sections = [
+        render_section(section, corpus, {}) for section in corpus.sections
+    ]
+    return render(
+        request,
+        "pages/topic_flow.html",
+        {"corpus": corpus, "rendered_sections": rendered_sections},
+    )
 
 
 def test_agent(request, agent_name):

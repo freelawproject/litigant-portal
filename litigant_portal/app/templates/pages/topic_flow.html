@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {{ corpus.metadata.title }} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block content %}
+<div class="border-b border-greyscale-100 bg-primary-50 px-4 py-4">
+  <p class="text-sm text-greyscale-500">
+    {{ corpus.metadata.court }} · {{ corpus.metadata.topic }} · {{ corpus.metadata.role }}
+  </p>
+  <h1 class="mt-1 text-xl font-bold text-greyscale-900">{{ corpus.metadata.title }}</h1>
+</div>
+
+<div class="mx-auto max-w-3xl px-4 py-8">
+  {% trans "On this page" as toc_label %}
+  <nav aria-label="{{ toc_label }}" class="mb-8">
+    <ul class="space-y-1">
+      {% for section in rendered_sections %}
+      <li>
+        <c-atoms.link href="#{{ section.anchor_id }}">{{ section.heading }}</c-atoms.link>
+      </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  {% for section in rendered_sections %}
+  <section id="{{ section.anchor_id }}" class="mb-8 scroll-mt-4">
+    <h2 class="text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
+    {# Section body (fields, summary, packet) renders here in Item 8 via the per-kind flow_section_*.html templates. #}
+  </section>
+  {% endfor %}
+</div>
+{% endblock content %}
