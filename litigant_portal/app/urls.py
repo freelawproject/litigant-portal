@@ -13,6 +13,11 @@ app_patterns = [
     path("accessibility/", pages.accessibility, name="accessibility"),
     path("topics/<slug:slug>/", pages.topic_detail, name="topic_detail"),
     path("t/<slug:court>/<slug:topic>/", pages.deep_link, name="deep_link"),
+    path(
+        "t/<slug:court>/<slug:topic>/<slug:role>/",
+        pages.topic_flow,
+        name="topic_flow",
+    ),
     path("chat/", pages.chat_page, name="chat"),
     path("chat/action-plan/", endpoints.action_plan, name="action_plan"),
     path("health/", pages.health, name="health"),
