@@ -11,6 +11,8 @@ tests drive the test client through template rendering, which touches the
 auth/session machinery, so they need a database — run via Docker ``make test``.
 """
 
+import re
+
 import pytest
 from django.urls import resolve, reverse
 
@@ -192,3 +194,30 @@ def test_packet_section_lists_each_form(client, monkeypatch):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
     assert "Petition for Name Change" in html
+
+
+def _field_tag(html, name):
+    """The <input>/<select> element whose name == ``name``, whitespace flattened.
+
+    The atoms render one attribute per line, so flatten before matching so a
+    multi-line tag reads as one string.
+    """
+    flat = re.sub(r"\s+", " ", html)
+    match = re.search(
+        rf'<(?:input|select)\b[^>]*name="{re.escape(name)}"[^>]*>', flat
+    )
+    return match.group(0) if match else ""
+
+
+@pytest.mark.django_db
+def test_fact_gather_marks_required_questions_and_leaves_optional_unmarked(
+    client, monkeypatch
+):
+    # The HTML `required` attribute must track the corpus `required` flag:
+    # publication_date is required=True, filing_county defaults required=False.
+    # If an optional field renders required, the browser blocks the litigant on
+    # a question the author meant to be skippable — the bug this guards.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert re.search(r"\brequired\b", _field_tag(html, "publication_date"))
+    assert not re.search(r"\brequired\b", _field_tag(html, "filing_county"))
