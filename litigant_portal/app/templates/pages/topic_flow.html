@@ -19,9 +19,11 @@
   <nav aria-label="{{ toc_label }}" class="mb-8">
     <ul class="space-y-1">
       {% for section in rendered_sections %}
+      {% if section.heading %}
       <li>
         <c-atoms.link href="#{{ section.anchor_id }}">{{ section.heading }}</c-atoms.link>
       </li>
+      {% endif %}
       {% endfor %}
     </ul>
   </nav>
