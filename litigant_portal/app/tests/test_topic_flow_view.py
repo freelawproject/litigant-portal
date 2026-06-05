@@ -11,6 +11,8 @@ tests drive the test client through template rendering, which touches the
 auth/session machinery, so they need a database — run via Docker ``make test``.
 """
 
+import re
+
 import pytest
 from django.urls import resolve, reverse
 
@@ -60,7 +62,13 @@ def _corpus():
                         label="Date your notice was published",
                         type="date",
                         required=True,
-                    )
+                    ),
+                    Question(
+                        id="filing_county",
+                        label="County where you'll file",
+                        type="choice",
+                        choices=["Cass", "Burleigh"],
+                    ),
                 ],
             ),
             PacketOutput(
@@ -139,3 +147,109 @@ def test_page_emits_an_anchor_target_per_section(client, monkeypatch):
 def test_unknown_flow_returns_404(client, monkeypatch):
     monkeypatch.setattr(pages.registry, "get", lambda *a: None)
     assert client.get(URL).status_code == 404
+
+
+# --- Section body rendering (Item 8, needs DB) ------------------------------
+# #483 emitted only the heading + anchor shell. These assert the per-kind body
+# templates now render through `{% include section.template with ctx=... %}` —
+# the functional payload (corpus content, form field names), not cosmetic markup.
+
+
+@pytest.mark.django_db
+def test_info_section_renders_its_body(client, monkeypatch):
+    # Proves the include wiring resolves and the info partial gets its context —
+    # the body the corpus supplied reaches the page, not just the heading.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert "Read this first." in html
+
+
+@pytest.mark.django_db
+def test_fact_gather_renders_post_form_with_a_field_per_question(
+    client, monkeypatch
+):
+    # The form must POST and carry a `name` per question — the contract the
+    # Item 5 POST handler reads. Without these names, answers can't persist.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert 'method="post"' in html
+    assert "csrfmiddlewaretoken" in html
+    assert 'name="publication_date"' in html
+    assert 'name="filing_county"' in html
+
+
+@pytest.mark.django_db
+def test_fact_gather_choice_question_renders_its_options(client, monkeypatch):
+    # A choice question must render its options, else the user can't answer it.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert "<option" in html
+    assert "Cass" in html
+    assert "Burleigh" in html
+
+
+@pytest.mark.django_db
+def test_packet_section_lists_each_form(client, monkeypatch):
+    # The packet partial must render every form name the corpus declares.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert "Petition for Name Change" in html
+
+
+def _field_tag(html, name):
+    """The <input>/<select> element whose name == ``name``, whitespace flattened.
+
+    The atoms render one attribute per line, so flatten before matching so a
+    multi-line tag reads as one string.
+    """
+    flat = re.sub(r"\s+", " ", html)
+    match = re.search(
+        rf'<(?:input|select)\b[^>]*name="{re.escape(name)}"[^>]*>', flat
+    )
+    return match.group(0) if match else ""
+
+
+@pytest.mark.django_db
+def test_fact_gather_marks_required_questions_and_leaves_optional_unmarked(
+    client, monkeypatch
+):
+    # The HTML `required` attribute must track the corpus `required` flag:
+    # publication_date is required=True, filing_county defaults required=False.
+    # If an optional field renders required, the browser blocks the litigant on
+    # a question the author meant to be skippable — the bug this guards.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert re.search(r"\brequired\b", _field_tag(html, "publication_date"))
+    assert not re.search(r"\brequired\b", _field_tag(html, "filing_county"))
+
+
+@pytest.mark.django_db
+def test_headingless_fact_gather_skipped_in_toc_but_body_still_renders(
+    client, monkeypatch
+):
+    # fact_gather is the one section whose heading is optional. A headingless
+    # one must not emit an empty (nameless) TOC link — guard the TOC entry, not
+    # the anchor/section, so its body still renders.
+    corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            InfoSection(
+                kind="info",
+                id="overview",
+                heading="What this covers",
+                body="Read this first.",
+            ),
+            FactGatherSection(
+                kind="fact_gather",
+                id="key_dates",
+                questions=[
+                    Question(id="publication_date", label="When", type="date")
+                ],
+            ),
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    html = client.get(URL).content.decode()
+    assert 'href="#overview"' in html  # heading section -> TOC link
+    assert 'href="#key_dates"' not in html  # headingless -> no empty link
+    assert 'name="publication_date"' in html  # body still renders

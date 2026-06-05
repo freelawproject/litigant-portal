@@ -1,0 +1,19 @@
+{% load i18n %}
+
+{# Summary section body: the answers gathered so far, in corpus order. Empty #}
+{# until fact_gather answers are wired in (Item 5), so it leads with an empty #}
+{# state — static layout, dynamic content. #}
+{% if ctx.items %}
+<dl class="space-y-3">
+  {% for item in ctx.items %}
+  <div>
+    <dt class="text-sm font-medium text-greyscale-500">{{ item.label }}</dt>
+    <dd class="text-greyscale-900">{{ item.value }}</dd>
+  </div>
+  {% endfor %}
+</dl>
+{% else %}
+<p class="text-sm text-greyscale-500">
+  {% trans "You haven't entered anything yet." %}
+</p>
+{% endif %}
