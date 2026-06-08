@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Access to justice portal for self-represented litigants. Django 5.2 with server-rendered components (Django Cotton), Tailwind CSS v4, and Alpine.js for reactivity.
+Access to justice portal for self-represented litigants. Django 6.0 with server-rendered components (Django Cotton), Tailwind CSS v4, and Alpine.js for reactivity.
 
 ## Current Focus: Beta Demo — Housing Eviction Flow
 
