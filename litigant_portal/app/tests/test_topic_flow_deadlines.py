@@ -23,7 +23,9 @@ def _deadline(offset_days=30, offset_from="publication_date"):
 
 def test_adds_offset_days_to_the_gathered_date():
     # The core contract: gathered date + offset_days = the computed deadline.
-    result = compute_deadline(_deadline(30), {"publication_date": "2026-01-01"})
+    result = compute_deadline(
+        _deadline(30), {"publication_date": "2026-01-01"}
+    )
     assert result == date(2026, 1, 31)
 
 
@@ -34,7 +36,9 @@ def test_zero_offset_returns_the_gathered_date_itself():
 
 def test_negative_offset_returns_an_earlier_date():
     # offset_days can point backward (e.g. "respond N days *before* the hearing").
-    result = compute_deadline(_deadline(-10), {"publication_date": "2026-01-01"})
+    result = compute_deadline(
+        _deadline(-10), {"publication_date": "2026-01-01"}
+    )
     assert result == date(2025, 12, 22)
 
 
@@ -50,4 +54,7 @@ def test_empty_string_answer_returns_none():
 
 def test_unparseable_date_returns_none_without_raising():
     # Defensive: never let a malformed value 500 the page.
-    assert compute_deadline(_deadline(), {"publication_date": "not-a-date"}) is None
+    assert (
+        compute_deadline(_deadline(), {"publication_date": "not-a-date"})
+        is None
+    )
