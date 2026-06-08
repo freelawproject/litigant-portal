@@ -1,6 +1,5 @@
 import uuid
 
-from django.conf import settings
 from django.db import models
 from django_pydantic_field import SchemaField
 
@@ -11,15 +10,11 @@ class ChatSession(models.Model):
     """A chat conversation session."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
+    identity = models.ForeignKey(
+        "UserIdentity",
+        on_delete=models.CASCADE,
         related_name="chat_sessions",
     )
-    # For anonymous users, track by session key
-    session_key = models.CharField(max_length=40, blank=True, db_index=True)
     topic = models.CharField(max_length=50, blank=True)
     jurisdiction = models.CharField(max_length=10, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -27,14 +22,10 @@ class ChatSession(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
-        indexes = [
-            models.Index(fields=["user", "-created_at"]),
-            models.Index(fields=["session_key", "-created_at"]),
-        ]
 
     def __str__(self):
-        if self.user:
-            return f"Chat {self.id} - {self.user}"
+        if self.identity.user_id:
+            return f"Chat {self.id} - {self.identity.user}"
         return f"Chat {self.id} - Anonymous"
 
 
@@ -82,23 +73,19 @@ class Message(models.Model):
 class CaseInfo(models.Model):
     """Server-side storage for extracted case information.
 
-    Replaces browser localStorage for PII (names, case numbers, court
-    details). Same dual-ownership pattern as ChatSession: authenticated
-    users get user FK, anonymous users get session_key. Optional
-    chat_session FK tracks which conversation produced the data.
+    Linked to a UserIdentity (which may represent an authenticated user or
+    an anonymous session). When the user logs in, only the UserIdentity row
+    changes — this record and all its children follow automatically.
 
-    User FK uses CASCADE — PII is deleted when the user is deleted.
+    Cascade delete on identity: PII is removed when the identity is deleted.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
+    identity = models.ForeignKey(
+        "UserIdentity",
         on_delete=models.CASCADE,
         related_name="case_infos",
     )
-    session_key = models.CharField(max_length=40, blank=True, db_index=True)
     chat_session = models.ForeignKey(
         ChatSession,
         null=True,
@@ -131,15 +118,11 @@ class CaseInfo(models.Model):
 
     class Meta:
         ordering = ["-updated_at"]
-        indexes = [
-            models.Index(fields=["user", "-created_at"]),
-            models.Index(fields=["session_key", "-created_at"]),
-        ]
 
     def __str__(self):
         case_type = self.data.get("case_type", "Unknown")
-        if self.user:
-            return f"Case {self.id} - {case_type} ({self.user})"
+        if self.identity.user_id:
+            return f"Case {self.id} - {case_type} ({self.identity.user})"
         return f"Case {self.id} - {case_type} (Anonymous)"
 
 
