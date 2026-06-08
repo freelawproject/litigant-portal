@@ -31,23 +31,6 @@ class UserIdentity(models.Model):
         key = self.session_key[:8] if self.session_key else "..."
         return f"Identity(anon:{key})"
 
-    @classmethod
-    def for_request(cls, request) -> "UserIdentity":
-        """Get or create the identity for the current request."""
-        if request.user.is_authenticated:
-            identity, _ = cls.objects.get_or_create(
-                user=request.user,
-                defaults={"session_key": ""},
-            )
-            return identity
-        if not request.session.session_key:
-            request.session.create()
-        identity, _ = cls.objects.get_or_create(
-            user=None,
-            session_key=request.session.session_key,
-        )
-        return identity
-
 
 class UserProfile(models.Model):
     """
