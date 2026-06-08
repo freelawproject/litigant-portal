@@ -11,8 +11,12 @@ from django.views.generic import DetailView, UpdateView
 from litigant_portal.agents import agent_registry
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
+from litigant_portal.app.topic_flow.answer_store import AnswerStore
 from litigant_portal.app.topic_flow.registry import registry
-from litigant_portal.app.topic_flow.renderer import render_section
+from litigant_portal.app.topic_flow.renderer import (
+    question_ids,
+    render_section,
+)
 
 TOPICS = {
     "eviction": {
@@ -238,17 +242,33 @@ def deep_link(request, court, topic):
 def topic_flow(request, court, topic, role):
     """Topic Flow entry: /t/{court}/{topic}/{role}/ → rendered corpus sections.
 
-    Resolves the corpus from the registry (404 on miss) and renders each
-    section to a RenderedSection via SectionRenderer. The view stays thin —
-    all dispatch lives in renderer.py; the template only loops and displays.
-    Answers are empty here; fact_gather prefill + POST arrive with AnswerStore
-    wiring, and per-kind section bodies with the section templates.
+    Resolves the corpus from the registry (404 on miss). GET renders each
+    section via SectionRenderer with the guest's stored answers (so fact_gather
+    fields prefill). POST persists the submitted answers to the session-backed
+    AnswerStore and redirects (PRG) so a reload re-GETs rather than re-submits —
+    the whole flow works with JS off. The view stays thin: section dispatch
+    lives in renderer.py, deadline math in deadlines.py.
     """
     corpus = registry.get(court, topic, role)
     if corpus is None:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+
+    store = AnswerStore(request.session, court, topic, role)
+
+    if request.method == "POST":
+        submitted = {
+            qid: request.POST[qid]
+            for qid in question_ids(corpus)
+            if qid in request.POST
+        }
+        store.update(submitted)
+        return redirect(
+            "pages:topic_flow", court=court, topic=topic, role=role
+        )
+
+    answers = store.all()
     rendered_sections = [
-        render_section(section, corpus, {}) for section in corpus.sections
+        render_section(section, corpus, answers) for section in corpus.sections
     ]
     return render(
         request,

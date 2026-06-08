@@ -93,6 +93,21 @@ def _render_fact_gather(section, corpus, answers):
     )
 
 
+def question_ids(corpus):
+    """All fact_gather question ids, in corpus order.
+
+    The set of POST keys the entry view accepts — everything else (csrf token,
+    stray keys) is ignored. Kept here so the section-union ``isinstance``
+    dispatch stays confined to the renderer, not the view.
+    """
+    return [
+        question.id
+        for section in corpus.sections
+        if isinstance(section, FactGatherSection)
+        for question in section.questions
+    ]
+
+
 def _answered_in_corpus_order(corpus, answers):
     """Yield ``{label, value}`` for answered questions, in corpus order."""
     for section in corpus.sections:
