@@ -3,7 +3,12 @@
 import pytest
 from django.test import Client, TestCase
 
-from litigant_portal.app.models import ActionItemModel, CaseInfo, Deadline
+from litigant_portal.app.models import (
+    ActionItemModel,
+    CaseInfo,
+    Deadline,
+    UserIdentity,
+)
 
 pytestmark = pytest.mark.postgres
 
@@ -33,8 +38,9 @@ class ActionPlanViewTests(TestCase):
         session.save()
         self.client.cookies["sessionid"] = session.session_key
 
+        identity = UserIdentity.objects.create(session_key=session.session_key)
         case = CaseInfo.objects.create(
-            session_key=session.session_key, data=SAMPLE_CASE_DATA
+            identity=identity, data=SAMPLE_CASE_DATA
         )
         Deadline.objects.create(
             case=case, label="Answer deadline", date="2026-03-15"

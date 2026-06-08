@@ -24,6 +24,7 @@ from litigant_portal.app.models import (
     CaseInfo,
     ChatSession,
     Deadline,
+    UserIdentity,
 )
 
 User = get_user_model()
@@ -165,9 +166,15 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
         self.user = User.objects.create_user(
             username="jane", password="testpass"
         )
-        self.user_session = ChatSession.objects.create(user=self.user)
-        self.anon_session = ChatSession.objects.create(
+        self.user_identity = UserIdentity.objects.create(user=self.user)
+        self.anon_identity = UserIdentity.objects.create(
             session_key="anon-key-abc"
+        )
+        self.user_session = ChatSession.objects.create(
+            identity=self.user_identity
+        )
+        self.anon_session = ChatSession.objects.create(
+            identity=self.anon_identity
         )
 
     def _call(self, tool, session):
@@ -175,18 +182,25 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
 
     def test_creates_case_info_for_authenticated_user(self):
         """First call creates a CaseInfo owned by the user."""
-        self.assertEqual(CaseInfo.objects.filter(user=self.user).count(), 0)
+        self.assertEqual(
+            CaseInfo.objects.filter(identity__user=self.user).count(), 0
+        )
 
         self._call(UpdateCaseFacts(case_type="Eviction"), self.user_session)
 
-        self.assertEqual(CaseInfo.objects.filter(user=self.user).count(), 1)
-        case = CaseInfo.objects.get(user=self.user)
+        self.assertEqual(
+            CaseInfo.objects.filter(identity__user=self.user).count(), 1
+        )
+        case = CaseInfo.objects.get(identity__user=self.user)
         self.assertEqual(case.data["case_type"], "Eviction")
 
     def test_creates_case_info_for_anonymous_session(self):
         """First call creates a CaseInfo keyed by session_key for anon users."""
         self.assertEqual(
-            CaseInfo.objects.filter(session_key="anon-key-abc").count(), 0
+            CaseInfo.objects.filter(
+                identity__session_key="anon-key-abc"
+            ).count(),
+            0,
         )
 
         self._call(
@@ -194,24 +208,29 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
         )
 
         self.assertEqual(
-            CaseInfo.objects.filter(session_key="anon-key-abc").count(), 1
+            CaseInfo.objects.filter(
+                identity__session_key="anon-key-abc"
+            ).count(),
+            1,
         )
-        case = CaseInfo.objects.get(session_key="anon-key-abc")
+        case = CaseInfo.objects.get(identity__session_key="anon-key-abc")
         self.assertEqual(case.data["case_type"], "Small Claims")
 
     def test_updates_existing_case_type(self):
         """Subsequent call updates the case_type in the existing CaseInfo."""
-        CaseInfo.objects.create(user=self.user, data={"case_type": "Unknown"})
+        CaseInfo.objects.create(
+            identity=self.user_identity, data={"case_type": "Unknown"}
+        )
 
         self._call(UpdateCaseFacts(case_type="Eviction"), self.user_session)
 
-        case = CaseInfo.objects.get(user=self.user)
+        case = CaseInfo.objects.get(identity__user=self.user)
         self.assertEqual(case.data["case_type"], "Eviction")
 
     def test_merges_court_info_preserves_existing_fields(self):
         """Merging partial court_info updates given fields without clearing others."""
         CaseInfo.objects.create(
-            user=self.user,
+            identity=self.user_identity,
             data={
                 "court_info": {
                     "court_name": "Circuit Court",
@@ -222,7 +241,7 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
 
         self._call(UpdateCaseFacts(court_county="DuPage"), self.user_session)
 
-        case = CaseInfo.objects.get(user=self.user)
+        case = CaseInfo.objects.get(identity__user=self.user)
         self.assertEqual(case.data["court_info"]["county"], "DuPage")
         # Existing field must not be overwritten
         self.assertEqual(
@@ -233,7 +252,7 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
     def test_merges_parties_preserves_existing_fields(self):
         """Merging partial parties updates given fields without clearing others."""
         CaseInfo.objects.create(
-            user=self.user,
+            identity=self.user_identity,
             data={
                 "parties": {
                     "opposing_party": "Acme Corp",
@@ -246,7 +265,7 @@ class UpdateCaseFactsDbPersistenceTests(TestCase):
             UpdateCaseFacts(opposing_address="100 Oak Ave"), self.user_session
         )
 
-        case = CaseInfo.objects.get(user=self.user)
+        case = CaseInfo.objects.get(identity__user=self.user)
         self.assertEqual(
             case.data["parties"]["opposing_address"], "100 Oak Ave"
         )
@@ -267,8 +286,9 @@ class UpdateCaseFactsDateDeduplicationTests(TestCase):
         self.user = User.objects.create_user(
             username="jane", password="testpass"
         )
-        self.session = ChatSession.objects.create(user=self.user)
-        self.case = CaseInfo.objects.create(user=self.user, data={})
+        self.identity = UserIdentity.objects.create(user=self.user)
+        self.session = ChatSession.objects.create(identity=self.identity)
+        self.case = CaseInfo.objects.create(identity=self.identity, data={})
         Deadline.objects.create(
             case=self.case,
             label="Hearing",
@@ -411,9 +431,15 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
         self.user = User.objects.create_user(
             username="jane", password="testpass"
         )
-        self.user_session = ChatSession.objects.create(user=self.user)
-        self.anon_session = ChatSession.objects.create(
+        self.user_identity = UserIdentity.objects.create(user=self.user)
+        self.anon_identity = UserIdentity.objects.create(
             session_key="anon-key-xyz"
+        )
+        self.user_session = ChatSession.objects.create(
+            identity=self.user_identity
+        )
+        self.anon_session = ChatSession.objects.create(
+            identity=self.anon_identity
         )
 
     def _call(self, tool, session):
@@ -428,7 +454,7 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
             self.user_session,
         )
 
-        case = CaseInfo.objects.get(user=self.user)
+        case = CaseInfo.objects.get(identity__user=self.user)
         self.assertEqual(case.action_items.count(), 1)
         self.assertEqual(case.action_items.first().title, "File an Appearance")
 
@@ -441,7 +467,7 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
             self.anon_session,
         )
 
-        case = CaseInfo.objects.get(session_key="anon-key-xyz")
+        case = CaseInfo.objects.get(identity__session_key="anon-key-xyz")
         self.assertEqual(case.action_items.count(), 1)
 
     def test_spotted_issues_stored_in_json(self):
@@ -453,7 +479,7 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
             self.user_session,
         )
 
-        case = CaseInfo.objects.get(user=self.user)
+        case = CaseInfo.objects.get(identity__user=self.user)
         self.assertEqual(len(case.data["spotted_issues"]), 1)
         self.assertEqual(
             case.data["spotted_issues"][0]["title"], "Habitability defense"
@@ -468,7 +494,7 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
             self.user_session,
         )
 
-        case = CaseInfo.objects.get(user=self.user)
+        case = CaseInfo.objects.get(identity__user=self.user)
         self.assertEqual(len(case.data["resources"]), 1)
 
     def test_action_items_not_in_json(self):
@@ -477,7 +503,7 @@ class UpdateActionPlanDbPersistenceTests(TestCase):
             UpdateActionPlan(new_action_items=[ActionItem(title="Test")]),
             self.user_session,
         )
-        case = CaseInfo.objects.get(user=self.user)
+        case = CaseInfo.objects.get(identity__user=self.user)
         self.assertNotIn("action_items", case.data)
 
     def test_no_session_skips_db_write(self):
@@ -498,8 +524,9 @@ class UpdateActionPlanDeduplicationTests(TestCase):
         self.user = User.objects.create_user(
             username="jane", password="testpass"
         )
-        self.session = ChatSession.objects.create(user=self.user)
-        self.case = CaseInfo.objects.create(user=self.user, data={})
+        self.identity = UserIdentity.objects.create(user=self.user)
+        self.session = ChatSession.objects.create(identity=self.identity)
+        self.case = CaseInfo.objects.create(identity=self.identity, data={})
         ActionItemModel.objects.create(
             case=self.case,
             title="File an Appearance",

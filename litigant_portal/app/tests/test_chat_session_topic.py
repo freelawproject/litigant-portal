@@ -8,7 +8,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
-from litigant_portal.app.models import ChatSession
+from litigant_portal.app.models import ChatSession, UserIdentity
 
 User = get_user_model()
 
@@ -17,25 +17,32 @@ User = get_user_model()
 class ChatSessionTopicFieldTests(TestCase):
     """Tests for topic and jurisdiction fields on ChatSession."""
 
+    def setUp(self):
+        self.identity = UserIdentity.objects.create()
+
     def test_topic_defaults_to_empty(self):
-        session = ChatSession.objects.create()
+        session = ChatSession.objects.create(identity=self.identity)
 
         self.assertEqual(session.topic, "")
 
     def test_jurisdiction_defaults_to_empty(self):
-        session = ChatSession.objects.create()
+        session = ChatSession.objects.create(identity=self.identity)
 
         self.assertEqual(session.jurisdiction, "")
 
     def test_topic_persists(self):
-        session = ChatSession.objects.create(topic="housing")
+        session = ChatSession.objects.create(
+            identity=self.identity, topic="housing"
+        )
 
         session.refresh_from_db()
 
         self.assertEqual(session.topic, "housing")
 
     def test_jurisdiction_persists(self):
-        session = ChatSession.objects.create(jurisdiction="il")
+        session = ChatSession.objects.create(
+            identity=self.identity, jurisdiction="il"
+        )
 
         session.refresh_from_db()
 
@@ -43,7 +50,7 @@ class ChatSessionTopicFieldTests(TestCase):
 
     def test_both_fields_persist_together(self):
         session = ChatSession.objects.create(
-            topic="housing", jurisdiction="il"
+            identity=self.identity, topic="housing", jurisdiction="il"
         )
 
         session.refresh_from_db()
