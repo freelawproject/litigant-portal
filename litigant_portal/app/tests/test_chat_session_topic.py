@@ -8,6 +8,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
+from litigant_portal.app.middleware import IdentityMiddleware
 from litigant_portal.app.models import ChatSession, UserIdentity
 
 User = get_user_model()
@@ -74,6 +75,7 @@ class ChatSessionTopicServiceTests(TestCase):
         request.user = self.user
         request.session = self.client.session
         request.session.create()
+        IdentityMiddleware(lambda r: None)(request)
         return request
 
     def test_new_session_persists_topic(self):

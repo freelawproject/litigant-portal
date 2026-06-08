@@ -5,12 +5,11 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypedDict
 from uuid import UUID
 
 from django.conf import settings
-from django.http import HttpRequest
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 if TYPE_CHECKING:
-    from litigant_portal.app.models import ChatSession
+    from litigant_portal.app.models import ChatSession, UserIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -504,7 +503,7 @@ class Agent:
     @classmethod
     def from_session_id(
         cls,
-        request: HttpRequest,
+        identity: "UserIdentity",
         session_id: str | UUID | None = None,
         **kwargs: Any,
     ) -> "Agent":
@@ -512,10 +511,8 @@ class Agent:
 
         If no session ID is provided, a new session is created.
         """
-        from litigant_portal.app.models import ChatSession, UserIdentity
+        from litigant_portal.app.models import ChatSession
         from litigant_portal.app.models import Message as MessageModel
-
-        identity = UserIdentity.for_request(request)
 
         if not session_id:
             topic = kwargs.pop("topic", "")

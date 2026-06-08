@@ -52,7 +52,7 @@ class ChatService:
         # Phase is derived from session state inside from_session_id for
         # existing sessions; new sessions default to "triage" there.
         self.agent = agent_class.from_session_id(
-            request, session_id, **agent_kwargs
+            request.identity, session_id, **agent_kwargs
         )
 
     def stream(self, user_message: str) -> StreamingHttpResponse:
