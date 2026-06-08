@@ -19,19 +19,6 @@ from litigant_portal.app.services.pdf_service import pdf_service
 from litigant_portal.app.services.search_service import search_service
 
 
-def _ownership_filter(request: HttpRequest) -> dict:
-    """Return query filter for the current user's data.
-
-    Authenticated users match by user FK, anonymous users by session_key.
-    Same dual-ownership pattern as ChatSession.
-    """
-    if request.user.is_authenticated:
-        return {"user": request.user}
-    if not request.session.session_key:
-        request.session.create()
-    return {"session_key": request.session.session_key}
-
-
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def stream(request: HttpRequest):
@@ -240,8 +227,9 @@ def summarize_conversation(request: HttpRequest) -> JsonResponse:
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def case_get(request: HttpRequest) -> JsonResponse:
     """Return case info + timeline for the current user/session."""
-    ownership = _ownership_filter(request)
-    case = CaseInfo.objects.filter(status="active", **ownership).first()
+    case = CaseInfo.objects.filter(
+        status="active", identity=request.identity
+    ).first()
 
     if not case:
         return JsonResponse({"case_info": None, "timeline": []})
@@ -287,11 +275,10 @@ def case_save(request: HttpRequest) -> JsonResponse:
     key_dates = data.pop("key_dates", [])
     action_items = data.pop("action_items", [])
 
-    ownership = _ownership_filter(request)
     case, created = CaseInfo.objects.update_or_create(
         status="active",
         defaults={"data": data},
-        **ownership,
+        identity=request.identity,
     )
 
     # Upsert key_dates into Deadline model
@@ -344,8 +331,7 @@ def case_timeline_add(request: HttpRequest) -> JsonResponse:
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON in metadata"}, status=400)
 
-    ownership = _ownership_filter(request)
-    case, _ = CaseInfo.objects.get_or_create(**ownership)
+    case, _ = CaseInfo.objects.get_or_create(identity=request.identity)
 
     event = TimelineEvent.objects.create(
         case=case,
@@ -362,8 +348,7 @@ def case_timeline_add(request: HttpRequest) -> JsonResponse:
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def action_plan(request: HttpRequest):
     """Render a print-friendly action plan document from CaseInfo data."""
-    ownership = _ownership_filter(request)
-    case = CaseInfo.objects.filter(**ownership).first()
+    case = CaseInfo.objects.filter(identity=request.identity).first()
     data = case.data if case else {}
 
     key_dates = [d.to_dict() for d in case.deadlines.all()] if case else []
@@ -392,10 +377,9 @@ def action_plan(request: HttpRequest):
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 def case_clear(request: HttpRequest) -> JsonResponse:
     """Archive active case info. Clear chat session from Django session."""
-    ownership = _ownership_filter(request)
-    archived = CaseInfo.objects.filter(status="active", **ownership).update(
-        status="archived"
-    )
+    archived = CaseInfo.objects.filter(
+        status="active", identity=request.identity
+    ).update(status="archived")
     request.session.pop("chat_session_id", None)
 
     return JsonResponse({"archived": archived > 0})
@@ -405,8 +389,9 @@ def case_clear(request: HttpRequest) -> JsonResponse:
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 def case_resolve(request: HttpRequest) -> JsonResponse:
     """Mark the active case as resolved and create a resolution timeline event."""
-    ownership = _ownership_filter(request)
-    case = CaseInfo.objects.filter(status="active", **ownership).first()
+    case = CaseInfo.objects.filter(
+        status="active", identity=request.identity
+    ).first()
 
     if not case:
         return JsonResponse({"resolved": False})
@@ -427,11 +412,10 @@ def case_resolve(request: HttpRequest) -> JsonResponse:
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 def action_item_toggle(request: HttpRequest, item_id: str) -> JsonResponse:
     """Toggle an action item's completed state."""
-    ownership = _ownership_filter(request)
     item = ActionItemModel.objects.filter(
         id=item_id,
         case__status="active",
-        **{"case__" + k: v for k, v in ownership.items()},
+        case__identity=request.identity,
     ).first()
 
     if not item:
@@ -449,11 +433,10 @@ def deadline_reminder_toggle(
     request: HttpRequest, deadline_id: str
 ) -> JsonResponse:
     """Toggle a deadline's reminder_requested state."""
-    ownership = _ownership_filter(request)
     deadline = Deadline.objects.filter(
         id=deadline_id,
         case__status="active",
-        **{"case__" + k: v for k, v in ownership.items()},
+        case__identity=request.identity,
     ).first()
 
     if not deadline:

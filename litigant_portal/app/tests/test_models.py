@@ -15,9 +15,14 @@ from litigant_portal.app.models import (
     Deadline,
     Message,
     TimelineEvent,
+    UserIdentity,
 )
 
 User = get_user_model()
+
+
+def _anon_identity(**kwargs):
+    return UserIdentity.objects.create(**kwargs)
 
 
 @pytest.mark.postgres
@@ -29,7 +34,8 @@ class ChatSessionStrTests(TestCase):
         user = User.objects.create_user(
             username="testuser", password="testpass"
         )
-        session = ChatSession.objects.create(user=user)
+        identity = UserIdentity.objects.create(user=user)
+        session = ChatSession.objects.create(identity=identity)
 
         result = str(session)
 
@@ -38,7 +44,8 @@ class ChatSessionStrTests(TestCase):
 
     def test_str_shows_anonymous_when_no_user(self):
         """__str__ should show 'Anonymous' for sessions without user."""
-        session = ChatSession.objects.create(session_key="abc123")
+        identity = UserIdentity.objects.create(session_key="abc123")
+        session = ChatSession.objects.create(identity=identity)
 
         result = str(session)
 
@@ -51,7 +58,8 @@ class MessageStrTests(TestCase):
     """Tests for Message.__str__ truncation logic at 50-char boundary."""
 
     def setUp(self):
-        self.session = ChatSession.objects.create()
+        identity = _anon_identity()
+        self.session = ChatSession.objects.create(identity=identity)
 
     def test_str_no_truncation_at_50_chars(self):
         """Content exactly 50 chars should NOT be truncated."""
@@ -99,8 +107,9 @@ class CaseInfoStrTests(TestCase):
 
     def test_str_shows_case_type_and_username(self):
         user = User.objects.create_user(username="jane", password="testpass")
+        identity = UserIdentity.objects.create(user=user)
         case = CaseInfo.objects.create(
-            user=user, data={"case_type": "Eviction"}
+            identity=identity, data={"case_type": "Eviction"}
         )
 
         result = str(case)
@@ -109,8 +118,9 @@ class CaseInfoStrTests(TestCase):
         self.assertIn("jane", result)
 
     def test_str_shows_anonymous_when_no_user(self):
+        identity = UserIdentity.objects.create(session_key="abc123")
         case = CaseInfo.objects.create(
-            session_key="abc123", data={"case_type": "Eviction"}
+            identity=identity, data={"case_type": "Eviction"}
         )
 
         result = str(case)
@@ -119,7 +129,8 @@ class CaseInfoStrTests(TestCase):
         self.assertIn("Anonymous", result)
 
     def test_str_shows_unknown_when_no_case_type(self):
-        case = CaseInfo.objects.create(data={})
+        identity = _anon_identity()
+        case = CaseInfo.objects.create(identity=identity, data={})
 
         result = str(case)
 
@@ -131,7 +142,8 @@ class TimelineEventStrTests(TestCase):
     """Tests for TimelineEvent.__str__ display logic."""
 
     def setUp(self):
-        self.case = CaseInfo.objects.create(data={})
+        identity = _anon_identity()
+        self.case = CaseInfo.objects.create(identity=identity, data={})
 
     def test_str_uses_title_when_set(self):
         event = TimelineEvent.objects.create(
@@ -187,21 +199,28 @@ class TimelineEventStrTests(TestCase):
 class CaseInfoStatusTests(TestCase):
     """Tests for CaseInfo.status field."""
 
+    def setUp(self):
+        self.identity = _anon_identity()
+
     def test_default_status_is_active(self):
         """New CaseInfo should default to 'active' status."""
-        case = CaseInfo.objects.create(data={})
+        case = CaseInfo.objects.create(identity=self.identity, data={})
 
         self.assertEqual(case.status, "active")
 
     def test_status_accepts_resolved(self):
-        case = CaseInfo.objects.create(data={}, status="resolved")
+        case = CaseInfo.objects.create(
+            identity=self.identity, data={}, status="resolved"
+        )
 
         case.refresh_from_db()
 
         self.assertEqual(case.status, "resolved")
 
     def test_status_accepts_archived(self):
-        case = CaseInfo.objects.create(data={}, status="archived")
+        case = CaseInfo.objects.create(
+            identity=self.identity, data={}, status="archived"
+        )
 
         case.refresh_from_db()
 
@@ -213,7 +232,8 @@ class DeadlineToDictTests(TestCase):
     """Tests for Deadline.to_dict() serialization."""
 
     def setUp(self):
-        self.case = CaseInfo.objects.create(data={})
+        identity = _anon_identity()
+        self.case = CaseInfo.objects.create(identity=identity, data={})
 
     def test_to_dict_includes_id_as_string(self):
         """to_dict() must include id as a string (not UUID object)."""
@@ -262,7 +282,8 @@ class ActionItemToDictTests(TestCase):
     """Tests for ActionItemModel.to_dict() serialization."""
 
     def setUp(self):
-        self.case = CaseInfo.objects.create(data={})
+        identity = _anon_identity()
+        self.case = CaseInfo.objects.create(identity=identity, data={})
 
     def test_to_dict_includes_id_as_string(self):
         """to_dict() must include id as a string (not UUID object)."""
@@ -303,6 +324,7 @@ class ActionItemToDictTests(TestCase):
         self.assertEqual(normal.to_dict()["priority"], "normal")
 
 
+@pytest.mark.postgres
 class ActionItemOrderingTests(TestCase):
     """Tests for ActionItemModel default ordering (#329 sidebar pin).
 
@@ -311,7 +333,8 @@ class ActionItemOrderingTests(TestCase):
     """
 
     def setUp(self):
-        self.case = CaseInfo.objects.create(data={})
+        identity = _anon_identity()
+        self.case = CaseInfo.objects.create(identity=identity, data={})
 
     def test_urgent_items_come_before_normal(self):
         ActionItemModel.objects.create(

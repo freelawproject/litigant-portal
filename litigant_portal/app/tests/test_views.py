@@ -12,7 +12,12 @@ from django.test import Client, TestCase, override_settings
 
 from litigant_portal.agents import agent_registry
 from litigant_portal.agents.base import Agent
-from litigant_portal.app.models import ChatSession, Document, Message
+from litigant_portal.app.models import (
+    ChatSession,
+    Document,
+    Message,
+    UserIdentity,
+)
 
 User = get_user_model()
 
@@ -165,7 +170,7 @@ class StreamAuthTests(TestCase):
         list(response.streaming_content)
 
         session = ChatSession.objects.first()
-        self.assertEqual(session.user, self.user)
+        self.assertEqual(session.identity.user, self.user)
 
 
 @pytest.mark.postgres
@@ -187,10 +192,11 @@ class StreamOwnershipTests(TestCase):
 
     def test_403_for_wrong_session_key(self):
         """Anonymous user cannot access another's session."""
-        # Create session with different session key
-        other_session = ChatSession.objects.create(
+        # Create session belonging to a different anonymous identity
+        other_identity = UserIdentity.objects.create(
             session_key="other-session-key"
         )
+        other_session = ChatSession.objects.create(identity=other_identity)
 
         response = self.client.post(
             "/api/chat/stream/",
@@ -204,7 +210,8 @@ class StreamOwnershipTests(TestCase):
         other_user = User.objects.create_user(
             username="other", password="pass"
         )
-        other_session = ChatSession.objects.create(user=other_user)
+        other_identity = UserIdentity.objects.create(user=other_user)
+        other_session = ChatSession.objects.create(identity=other_identity)
 
         User.objects.create_user(username="testuser", password="testpass")
         self.client.login(username="testuser", password="testpass")

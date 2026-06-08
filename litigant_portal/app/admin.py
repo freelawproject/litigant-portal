@@ -7,6 +7,7 @@ from .models import (
     Deadline,
     Document,
     Message,
+    UserIdentity,
     UserProfile,
 )
 
@@ -15,6 +16,14 @@ from .models import (
 class UserProfileAdmin(admin.ModelAdmin):
     list_display = ["user", "name", "state", "county", "created_at"]
     search_fields = ["user__email", "name", "county"]
+
+
+@admin.register(UserIdentity)
+class UserIdentityAdmin(admin.ModelAdmin):
+    list_display = ["id", "user", "session_key", "created_at"]
+    list_filter = ["created_at"]
+    search_fields = ["user__email", "session_key"]
+    readonly_fields = ["id", "created_at"]
 
 
 class MessageInline(admin.TabularInline):
@@ -45,9 +54,9 @@ class MessageInline(admin.TabularInline):
 
 @admin.register(ChatSession)
 class ChatSessionAdmin(admin.ModelAdmin):
-    list_display = ["id", "user", "session_key", "created_at", "updated_at"]
+    list_display = ["id", "identity", "created_at", "updated_at"]
     list_filter = ["created_at"]
-    search_fields = ["id", "user__email", "session_key"]
+    search_fields = ["id", "identity__user__email", "identity__session_key"]
     readonly_fields = ["id", "created_at", "updated_at"]
     inlines = [MessageInline]
 
@@ -98,9 +107,9 @@ class ActionItemInline(admin.TabularInline):
 
 @admin.register(CaseInfo)
 class CaseInfoAdmin(admin.ModelAdmin):
-    list_display = ["id", "user", "session_key", "created_at"]
+    list_display = ["id", "identity", "created_at"]
     list_filter = ["created_at"]
-    search_fields = ["id", "user__email", "session_key"]
+    search_fields = ["id", "identity__user__email", "identity__session_key"]
     readonly_fields = ["id", "created_at", "updated_at"]
     inlines = [DeadlineInline, ActionItemInline]
 

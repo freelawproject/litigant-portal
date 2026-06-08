@@ -5,12 +5,11 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypedDict
 from uuid import UUID
 
 from django.conf import settings
-from django.http import HttpRequest
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 if TYPE_CHECKING:
-    from litigant_portal.app.models import ChatSession
+    from litigant_portal.app.models import ChatSession, UserIdentity
 
 logger = logging.getLogger(__name__)
 
@@ -504,7 +503,7 @@ class Agent:
     @classmethod
     def from_session_id(
         cls,
-        request: HttpRequest,
+        identity: "UserIdentity",
         session_id: str | UUID | None = None,
         **kwargs: Any,
     ) -> "Agent":
@@ -515,19 +514,13 @@ class Agent:
         from litigant_portal.app.models import ChatSession
         from litigant_portal.app.models import Message as MessageModel
 
-        if not request.session.session_key:
-            request.session.create()
-        user = request.user if request.user.is_authenticated else None
-        session_key = request.session.session_key if not user else ""
-
         if not session_id:
             topic = kwargs.pop("topic", "")
             jurisdiction = kwargs.pop("jurisdiction", "")
             court = kwargs.pop("court", None)
             phase = kwargs.pop("phase", None)
             session = ChatSession.objects.create(
-                user=user,
-                session_key=session_key,
+                identity=identity,
                 topic=topic,
                 jurisdiction=jurisdiction,
             )
@@ -548,13 +541,8 @@ class Agent:
                 session = ChatSession.objects.get(id=session_id)
             except ChatSession.DoesNotExist:
                 raise ValueError(f"Session {session_id} not found")
-            # Verify ownership: check user for auth sessions, session_key for anonymous
-            if session.user:
-                if session.user != user:
-                    raise PermissionError("Unauthorized access to session")
-            else:
-                if session.session_key != session_key:
-                    raise PermissionError("Unauthorized access to session")
+            if session.identity_id != identity.pk:
+                raise PermissionError("Unauthorized access to session")
             messages = [
                 m.data for m in session.messages.order_by("created_at")
             ]

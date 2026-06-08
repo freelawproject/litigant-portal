@@ -227,13 +227,8 @@ class UpdateCaseFacts(Tool):
         # Persist: merge patch into existing CaseInfo for this session's owner
         if agent.session:
             session = agent.session
-            ownership = (
-                {"user": session.user}
-                if session.user
-                else {"session_key": session.session_key}
-            )
             case, _ = CaseInfo.objects.get_or_create(
-                status="active", **ownership
+                status="active", identity=session.identity
             )
             data = dict(case.data) if case.data else {}
 
@@ -325,13 +320,8 @@ class UpdateActionPlan(Tool):
         # Persist
         if agent.session:
             session = agent.session
-            ownership = (
-                {"user": session.user}
-                if session.user
-                else {"session_key": session.session_key}
-            )
             case, _ = CaseInfo.objects.get_or_create(
-                status="active", **ownership
+                status="active", identity=session.identity
             )
             data = dict(case.data) if case.data else {}
 
