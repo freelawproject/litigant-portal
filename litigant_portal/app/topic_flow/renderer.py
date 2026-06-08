@@ -93,31 +93,32 @@ def _render_fact_gather(section, corpus, answers):
     )
 
 
+def _fact_gather_questions(corpus):
+    """Yield every fact_gather Question, in corpus order.
+
+    The single walk over the section union; ``question_ids`` and the summary
+    builder both consume it, so the ``isinstance`` dispatch lives in one place,
+    confined to the renderer rather than leaking into the view.
+    """
+    for section in corpus.sections:
+        if isinstance(section, FactGatherSection):
+            yield from section.questions
+
+
 def question_ids(corpus):
     """All fact_gather question ids, in corpus order.
 
     The set of POST keys the entry view accepts — everything else (csrf token,
-    stray keys) is ignored. Kept here so the section-union ``isinstance``
-    dispatch stays confined to the renderer, not the view.
+    stray keys) is ignored.
     """
-    return [
-        question.id
-        for section in corpus.sections
-        if isinstance(section, FactGatherSection)
-        for question in section.questions
-    ]
+    return [question.id for question in _fact_gather_questions(corpus)]
 
 
 def _answered_in_corpus_order(corpus, answers):
     """Yield ``{label, value}`` for answered questions, in corpus order."""
-    for section in corpus.sections:
-        if isinstance(section, FactGatherSection):
-            for question in section.questions:
-                if question.id in answers:
-                    yield {
-                        "label": question.label,
-                        "value": answers[question.id],
-                    }
+    for question in _fact_gather_questions(corpus):
+        if question.id in answers:
+            yield {"label": question.label, "value": answers[question.id]}
 
 
 @renderer("summary")
