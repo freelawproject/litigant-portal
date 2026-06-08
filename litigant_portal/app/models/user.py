@@ -3,6 +3,52 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
+class UserIdentity(models.Model):
+    """Single identity row for either an authenticated user or an anonymous session.
+
+    Downstream models (ChatSession, CaseInfo) link here via FK so that at
+    login, updating this one row migrates all associated data automatically —
+    no per-model FK updates needed.
+    """
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="identity",
+    )
+    session_key = models.CharField(max_length=40, blank=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "User Identity"
+        verbose_name_plural = "User Identities"
+
+    def __str__(self):
+        if self.user_id:
+            return f"Identity({self.user})"
+        key = self.session_key[:8] if self.session_key else "..."
+        return f"Identity(anon:{key})"
+
+    @classmethod
+    def for_request(cls, request) -> "UserIdentity":
+        """Get or create the identity for the current request."""
+        if request.user.is_authenticated:
+            identity, _ = cls.objects.get_or_create(
+                user=request.user,
+                defaults={"session_key": ""},
+            )
+            return identity
+        if not request.session.session_key:
+            request.session.create()
+        identity, _ = cls.objects.get_or_create(
+            user=None,
+            session_key=request.session.session_key,
+        )
+        return identity
+
+
 class UserProfile(models.Model):
     """
     Extended profile data for authenticated users.
