@@ -72,8 +72,17 @@ jobs:
           username: ${{ secrets.QA_USER }}
           key: ${{ secrets.QA_SSH_KEY }}
           script: |
+            set -e
             cd /opt/litigant-portal
-            docker compose pull django-prod
+            # Sync the deploy tree to the just-merged main BEFORE bringing the
+            # stack up. Pulling the image alone never updated docker-compose.yml
+            # / Caddy / env on the box, so a change that adds a new service
+            # (e.g. redis-prod) silently never started it and /api/health/
+            # returned 503 (#501). reset --hard keeps the box an exact mirror of
+            # main — the deploy box holds no local edits.
+            git fetch origin
+            git reset --hard origin/main
+            docker compose --profile prod pull
             docker compose --profile prod up -d --no-build
 
       - name: Verify deploy
