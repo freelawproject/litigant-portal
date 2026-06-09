@@ -24,11 +24,3 @@ def check_redis() -> bool:
     except Exception:
         logger.exception("Health check failed: Redis unavailable")
         return False
-
-
-def get_service_health() -> dict[str, bool]:
-    """Probe every backing service, returning a name -> healthy mapping."""
-    return {
-        "database": check_database(),
-        "redis": check_redis(),
-    }
