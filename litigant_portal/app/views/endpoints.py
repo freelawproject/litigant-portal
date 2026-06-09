@@ -15,8 +15,26 @@ from litigant_portal.app.models import (
     TimelineEvent,
 )
 from litigant_portal.app.services.chat_service import ChatService
+from litigant_portal.app.services.health import check_database, check_redis
 from litigant_portal.app.services.pdf_service import pdf_service
 from litigant_portal.app.services.search_service import search_service
+
+
+@require_GET
+def health(request: HttpRequest) -> JsonResponse:
+    """Health check for services."""
+    services = {
+        "database": check_database(),
+        "redis": check_redis(),
+    }
+    healthy = all(services.values())
+    return JsonResponse(
+        {
+            "status": healthy,
+            "services": services,
+        },
+        status=200 if healthy else 503,
+    )
 
 
 @require_POST

@@ -54,6 +54,7 @@ dependencies = [
     "requests>=2.33.0",
     # PostgreSQL driver
     "psycopg[binary]>=3.2",
+    "redis>=5.0",
     # Rate limiting
     "django-ratelimit>=4.1",
     # PDF text extraction

@@ -52,6 +52,32 @@ services:
       - postgres_data_prod_pg17:/var/lib/postgresql/data
 
   # ---------------------------------------------------------------------------
+  # Redis — Development
+  # ---------------------------------------------------------------------------
+  redis-dev:
+    image: redis:7-alpine
+    profiles: ['dev']
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Redis — Production
+  # ---------------------------------------------------------------------------
+  redis-prod:
+    image: redis:7-alpine
+    profiles: ['prod']
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
   # Development Django Server
   # ---------------------------------------------------------------------------
   django-dev:
@@ -66,6 +92,7 @@ services:
       - SECRET_KEY=dev
       - POSTGRES_HOST=postgres-dev
       - POSTGRES_PASSWORD=postgres
+      - REDIS_URL=redis://redis-dev:6379/0
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
@@ -77,6 +104,8 @@ services:
     tty: true
     depends_on:
       postgres-dev:
+        condition: service_healthy
+      redis-dev:
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
@@ -95,6 +124,7 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - POSTGRES_HOST=postgres-prod
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_URL=redis://redis-prod:6379/0
       - ALLOWED_HOSTS=localhost,${ALLOWED_HOSTS:-localhost}
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
@@ -103,13 +133,15 @@ services:
       - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8000/health/']
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health/']
       interval: 5s
       timeout: 3s
       start_period: 30s
       retries: 3
     depends_on:
       postgres-prod:
+        condition: service_healthy
+      redis-prod:
         condition: service_healthy
 
   # ---------------------------------------------------------------------------
