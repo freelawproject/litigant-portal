@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404, HttpResponse
+from django.http import Http404
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.http import urlencode
@@ -165,11 +165,6 @@ TOPICS = {
         "context_sections": [],
     },
 }
-
-
-def health(request):
-    """Lightweight health check for container orchestration."""
-    return HttpResponse("ok")
 
 
 def home(request):

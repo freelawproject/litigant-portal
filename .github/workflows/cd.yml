@@ -77,12 +77,12 @@ jobs:
             docker compose --profile prod up -d --no-build
 
       - name: Verify deploy
-        # Poll /health/ until 200 or timeout. Fails the workflow if the new
+        # Poll /api/health/ until 200 or timeout. Fails the workflow if the new
         # image crash-loops or the container never serves — otherwise GitHub
         # Actions reports the deploy as successful even when the site is down.
         run: |
           for i in {1..30}; do
-            if curl -fsS https://qa.litigantportal.com/health/ > /dev/null; then
+            if curl -fsS https://qa.litigantportal.com/api/health/ > /dev/null; then
               echo "deploy healthy"
               exit 0
             fi

@@ -20,7 +20,6 @@ app_patterns = [
     ),
     path("chat/", pages.chat_page, name="chat"),
     path("chat/action-plan/", endpoints.action_plan, name="action_plan"),
-    path("health/", pages.health, name="health"),
     path("style-guide/", pages.style_guide, name="style_guide"),
     # Agent testing
     path("test/<str:agent_name>/", pages.test_agent, name="test_agent"),
@@ -68,6 +67,7 @@ urlpatterns = [
         prefix_default_language=False,
     ),
     # API Routes
+    path("api/health/", endpoints.health, name="health"),
     path(
         "api/chat/",
         include((api_patterns, "litigant_portal.app"), namespace="endpoints"),
