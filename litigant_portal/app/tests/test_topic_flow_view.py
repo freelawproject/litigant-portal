@@ -19,7 +19,9 @@ from django.urls import resolve, reverse
 from litigant_portal.app.topic_flow.renderer import RenderedSection
 from litigant_portal.app.topic_flow.schema import (
     Corpus,
+    Deadline,
     FactGatherSection,
+    IcsOutput,
     InfoSection,
     Metadata,
     PacketOutput,
@@ -310,3 +312,74 @@ def test_post_stores_only_known_question_ids(client, monkeypatch):
     flow = client.session["topic_flow"][f"{COURT}/{TOPIC}/{ROLE}"]
     assert flow.get("publication_date") == "2026-02-01"
     assert "not_a_question" not in flow
+
+
+# --- ics deadline rendering (#494, needs DB) --------------------------------
+# The ics output renders a personalized deadline computed from the stored
+# answer — fact_gather → AnswerStore → compute_deadline → on-page date, JS off.
+
+
+def _corpus_with_deadline():
+    return Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        deadlines=[
+            Deadline(
+                id="publication_wait",
+                label="30-day publication wait",
+                offset_days=30,
+                offset_from="publication_date",
+            )
+        ],
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="key_dates",
+                heading="Your dates",
+                questions=[
+                    Question(
+                        id="publication_date",
+                        label="Date your notice was published",
+                        type="date",
+                        required=True,
+                    )
+                ],
+            ),
+            IcsOutput(
+                kind="output",
+                output_type="ics",
+                id="deadlines_calendar",
+                heading="Add deadlines to your calendar",
+                deadline_ids=["publication_wait"],
+            ),
+        ],
+    )
+
+
+@pytest.mark.django_db
+def test_ics_section_renders_personalized_deadline(client, monkeypatch):
+    # The payoff: a stored answer drives compute_deadline and the concrete date
+    # appears on the page, server-rendered. 30 days after 2026-02-01 = 2026-03-03.
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_deadline()
+    )
+    session = client.session
+    session["topic_flow"] = {
+        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
+    }
+    session.save()
+    html = client.get(URL).content.decode()
+    assert 'datetime="2026-03-03"' in html  # machine-readable <time>
+    assert "March 3, 2026" in html  # human-readable date
+
+
+@pytest.mark.django_db
+def test_ics_section_pending_without_answer_still_renders(client, monkeypatch):
+    # Graceful missing-answer state: page still renders, deadline label shows,
+    # but no computed date is emitted (nothing to compute yet).
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_deadline()
+    )
+    html = client.get(URL).content.decode()
+    assert "30-day publication wait" in html
+    assert "March 3, 2026" not in html
+    assert 'datetime="2026-03-03"' not in html
