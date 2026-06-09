@@ -1,0 +1,25 @@
+{% load i18n %}
+
+{# ics output body: deadlines computed from fact_gather answers, server-rendered #}
+{# and JS-off (#494). Each deadline shows its concrete date once the source date #}
+{# is entered, else a "fill the date first" hint. The add-to-calendar (.ics) #}
+{# download button lands with #441. #}
+<ul class="space-y-4">
+  {% for deadline in ctx.deadlines %}
+  <li>
+    <div class="font-medium text-greyscale-900">{{ deadline.label }}</div>
+    {% if deadline.date_display %}
+    <p class="text-greyscale-900">
+      <time datetime="{{ deadline.date_iso }}">{{ deadline.date_display }}</time>
+    </p>
+    {% else %}
+    <p class="text-sm text-greyscale-500">
+      {% trans "Enter your dates above to see this deadline." %}
+    </p>
+    {% endif %}
+    {% if deadline.description %}
+    <p class="text-sm text-greyscale-500">{{ deadline.description }}</p>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>

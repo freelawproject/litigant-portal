@@ -3,8 +3,9 @@
 The renderer is a fat, pure function of ``(section, corpus, answers)`` → a
 ``RenderedSection`` carrying a template path + flat, dumb context. It takes a
 plain ``answers`` dict (not an AnswerStore), so these tests need no session or
-DB. Handlers for ``ics`` / ``vcf`` are intentionally unregistered here — they
-land with their download-view items — so rendering one fails fast.
+DB. The ``ics`` handler renders its deadline list here (#494); ``vcf`` is still
+intentionally unregistered — it lands with its download-view item (#441) — so
+rendering one fails fast.
 """
 
 import pytest
@@ -15,6 +16,7 @@ from litigant_portal.app.topic_flow.renderer import (
 )
 from litigant_portal.app.topic_flow.schema import (
     Corpus,
+    Deadline,
     FactGatherSection,
     IcsOutput,
     InfoSection,
@@ -22,12 +24,14 @@ from litigant_portal.app.topic_flow.schema import (
     PacketOutput,
     Question,
     SummaryOutput,
+    VcfOutput,
 )
 
 
-def _corpus(*sections):
+def _corpus(*sections, deadlines=None):
     return Corpus(
         metadata=Metadata(court="c", topic="t", role="r", title="T"),
+        deadlines=deadlines or [],
         sections=list(sections),
     )
 
@@ -182,16 +186,99 @@ def test_each_kind_dispatches_to_a_distinct_template():
     assert all(t for t in templates)  # all non-empty
 
 
-# --- fail-fast on unregistered (ics/vcf land with their view items) ---------
+# --- ics (deadline rendering, #494) -----------------------------------------
+# The ics output renders each referenced deadline computed from the user's
+# answers (compute_deadline's first caller). The .ics download button lands
+# with #441; this is the visible, JS-off date list.
+
+_PUB_Q = Question(id="publication_date", label="Publication date", type="date")
+_PUB_DEADLINE = Deadline(
+    id="publication_wait",
+    label="30-day publication wait",
+    offset_days=30,
+    offset_from="publication_date",
+    description="The judge can review 30 days after publication.",
+)
 
 
-def test_unregistered_output_type_raises():
+def _ics_corpus(
+    deadline_ids=("publication_wait",), deadlines=(_PUB_DEADLINE,)
+):
     ics = IcsOutput(
         kind="output",
         output_type="ics",
         id="cal",
-        heading="Deadlines",
-        deadline_ids=["respond"],
+        heading="Add deadlines to your calendar",
+        deadline_ids=list(deadline_ids),
     )
-    with pytest.raises(ValueError, match="ics"):
-        render_section(ics, _corpus(ics), {})
+    corpus = _corpus(_fg([_PUB_Q], id="dates"), ics, deadlines=list(deadlines))
+    return corpus, ics
+
+
+def test_ics_renders_computed_deadline_from_answer():
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    (d,) = rendered.context["deadlines"]
+    assert d["label"] == "30-day publication wait"
+    # 30 days after 2026-02-01 = 2026-03-03 (Feb 2026 has 28 days).
+    assert d["date_iso"] == "2026-03-03"
+    assert "March 3, 2026" in d["date_display"]
+
+
+def test_ics_deadline_pending_when_answer_missing():
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {})
+    (d,) = rendered.context["deadlines"]
+    assert d["date_iso"] is None
+    assert d["date_display"] is None
+    assert d["label"] == "30-day publication wait"  # label still shown
+
+
+def test_ics_deadline_pending_when_answer_malformed():
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {"publication_date": "not-a-date"})
+    (d,) = rendered.context["deadlines"]
+    assert d["date_iso"] is None
+
+
+def test_ics_carries_deadline_description():
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {})
+    (d,) = rendered.context["deadlines"]
+    assert (
+        d["description"] == "The judge can review 30 days after publication."
+    )
+
+
+def test_ics_lists_deadlines_in_deadline_ids_order():
+    # Order follows the section's deadline_ids, not corpus.deadlines order.
+    second = Deadline(
+        id="second",
+        label="Second",
+        offset_days=5,
+        offset_from="publication_date",
+    )
+    corpus, ics = _ics_corpus(
+        deadline_ids=("second", "publication_wait"),
+        deadlines=(_PUB_DEADLINE, second),
+    )
+    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    assert [d["label"] for d in rendered.context["deadlines"]] == [
+        "Second",
+        "30-day publication wait",
+    ]
+
+
+# --- fail-fast on unregistered (vcf lands with its download view, #441) ------
+
+
+def test_unregistered_output_type_raises():
+    vcf = VcfOutput(
+        kind="output",
+        output_type="vcf",
+        id="contact",
+        heading="Save the clerk's contact",
+        contact_ids=["clerk"],
+    )
+    with pytest.raises(ValueError, match="vcf"):
+        render_section(vcf, _corpus(vcf), {})
