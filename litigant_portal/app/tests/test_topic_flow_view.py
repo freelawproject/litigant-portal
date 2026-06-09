@@ -253,3 +253,60 @@ def test_headingless_fact_gather_skipped_in_toc_but_body_still_renders(
     assert 'href="#overview"' in html  # heading section -> TOC link
     assert 'href="#key_dates"' not in html  # headingless -> no empty link
     assert 'name="publication_date"' in html  # body still renders
+
+
+# --- fact_gather POST + prefill (Item 5, needs DB) --------------------------
+# The form rendered by #486 now persists. POST writes answers to the
+# session-backed AnswerStore and redirects (PRG); the redirected GET prefills
+# the form. Functional contract — answers survive a reload — not markup.
+
+
+@pytest.mark.django_db
+def test_post_persists_answers_and_redirects_prg(client, monkeypatch):
+    # Post-Redirect-Get: the POST must 302 back to the flow URL, never render
+    # 200 in place. Otherwise a browser reload re-submits the form.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(
+        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+    )
+    assert response.status_code == 302
+    assert response["Location"] == URL
+
+
+@pytest.mark.django_db
+def test_posted_answers_prefill_on_the_redirected_get(client, monkeypatch):
+    # The whole point: what you submitted comes back filled in. Text echoes its
+    # value; the choice marks its option selected.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(
+        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+    )
+    html = client.get(URL).content.decode()
+    flat = re.sub(r"\s+", " ", html)
+    assert 'value="2026-02-01"' in _field_tag(html, "publication_date")
+    assert re.search(r'<option value="Cass"[^>]*selected', flat)
+
+
+@pytest.mark.django_db
+def test_get_prefills_form_from_existing_session_answers(client, monkeypatch):
+    # Answers already in the session (e.g. a returning guest) prefill on a plain
+    # GET — the AnswerStore is the source, not just the immediately-prior POST.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    session = client.session
+    session["topic_flow"] = {
+        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-03-15"}
+    }
+    session.save()
+    html = client.get(URL).content.decode()
+    assert 'value="2026-03-15"' in _field_tag(html, "publication_date")
+
+
+@pytest.mark.django_db
+def test_post_stores_only_known_question_ids(client, monkeypatch):
+    # The handler accepts only the corpus's question ids — csrf tokens and any
+    # stray/injected POST keys must not land in the answer store.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(URL, {"publication_date": "2026-02-01", "not_a_question": "x"})
+    flow = client.session["topic_flow"][f"{COURT}/{TOPIC}/{ROLE}"]
+    assert flow.get("publication_date") == "2026-02-01"
+    assert "not_a_question" not in flow
