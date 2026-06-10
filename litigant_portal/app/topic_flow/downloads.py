@@ -97,6 +97,9 @@ def _build_ics(section, corpus, answers):
         )
     return DownloadArtifact(
         filename=f"{section.id}.ics",
-        content_type="text/calendar",
+        # Declare UTF-8 explicitly: deadline labels/descriptions are author-
+        # supplied and may carry non-ASCII. RFC 5545 defaults text/calendar to
+        # UTF-8, but stating it beats relying on the client to honor the default.
+        content_type="text/calendar; charset=utf-8",
         body=deadlines_to_ics(events),
     )

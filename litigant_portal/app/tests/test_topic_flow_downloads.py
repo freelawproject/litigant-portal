@@ -108,7 +108,7 @@ def test_none_for_an_unknown_id():
 def test_sets_calendar_content_type_and_filename():
     corpus = _corpus()
     artifact = build_download(_ics_section(corpus), corpus, ANSWERS)
-    assert artifact.content_type == "text/calendar"
+    assert artifact.content_type == "text/calendar; charset=utf-8"
     assert artifact.filename == "deadlines_calendar.ics"
 
 
