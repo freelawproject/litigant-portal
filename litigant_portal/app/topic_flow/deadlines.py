@@ -29,3 +29,31 @@ def compute_deadline(deadline, answers):
     except ValueError:
         return None
     return gathered + timedelta(days=deadline.offset_days)
+
+
+def resolve_ics_deadlines(section, corpus, answers):
+    """Resolve an ``ics`` output section's ``deadline_ids`` to computed events.
+
+    Returns one dict per referenced deadline, in the section's declared order:
+    ``{id, label, description, date}`` where ``date`` is the ``compute_deadline``
+    result — a ``date``, or ``None`` when the source answer isn't filled in yet.
+
+    The single place an ics section's deadlines are resolved and computed,
+    shared by the renderer's ``ics`` handler (which formats them for the page)
+    and the ``.ics`` download view (which turns the computed ones into calendar
+    events) — so the downloaded calendar can't drift from what the page shows.
+    The loader guarantees every id resolves, so the lookup never misses.
+    """
+    by_id = {deadline.id: deadline for deadline in corpus.deadlines}
+    resolved = []
+    for deadline_id in section.deadline_ids:
+        deadline = by_id[deadline_id]
+        resolved.append(
+            {
+                "id": deadline.id,
+                "label": deadline.label,
+                "description": deadline.description,
+                "date": compute_deadline(deadline, answers),
+            }
+        )
+    return resolved

@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.http import urlencode
@@ -12,6 +12,10 @@ from litigant_portal.agents import agent_registry
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
 from litigant_portal.app.topic_flow.answer_store import AnswerStore
+from litigant_portal.app.topic_flow.downloads import (
+    build_download,
+    find_downloadable,
+)
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
     question_ids,
@@ -270,6 +274,33 @@ def topic_flow(request, court, topic, role):
         "pages/topic_flow.html",
         {"corpus": corpus, "rendered_sections": rendered_sections},
     )
+
+
+def topic_flow_download(request, court, topic, role, output_id):
+    """Download a Topic Flow output section as a file (e.g. an ``.ics``).
+
+    The generic counterpart to ``topic_flow``: resolve the corpus and the
+    downloadable output section (404 on either miss — an unknown id or a
+    non-downloadable section), then dispatch on ``output_type`` to assemble the
+    file from the guest's stored answers. The view stays thin — file bytes come
+    from the download handlers in downloads.py, computed from the same
+    AnswerStore the page renders, so the download matches what's on screen.
+    """
+    corpus = registry.get(court, topic, role)
+    if corpus is None:
+        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+
+    section = find_downloadable(corpus, output_id)
+    if section is None:
+        raise Http404(f"No downloadable output {output_id!r}")
+
+    store = AnswerStore(request.session, court, topic, role)
+    artifact = build_download(section, corpus, store.all())
+    response = HttpResponse(artifact.body, content_type=artifact.content_type)
+    response["Content-Disposition"] = (
+        f'attachment; filename="{artifact.filename}"'
+    )
+    return response
 
 
 def test_agent(request, agent_name):
