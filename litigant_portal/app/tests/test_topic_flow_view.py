@@ -383,3 +383,118 @@ def test_ics_section_pending_without_answer_still_renders(client, monkeypatch):
     assert "30-day publication wait" in html
     assert "March 3, 2026" not in html
     assert 'datetime="2026-03-03"' not in html
+
+
+# --- ics download (#504, needs DB) ------------------------------------------
+# The output-download route: GET .../download/<output_id>/ streams the section
+# as a file, dispatching on output_type. The .ics is built from the same stored
+# answers the page renders, so the calendar matches what's on screen.
+
+DOWNLOAD_URL = f"/t/{COURT}/{TOPIC}/{ROLE}/download/deadlines_calendar/"
+
+
+def test_download_url_resolves_to_the_download_view():
+    assert resolve(DOWNLOAD_URL).view_name == "pages:topic_flow_download"
+
+
+def test_download_url_reverses_with_the_output_id():
+    assert (
+        reverse(
+            "pages:topic_flow_download",
+            kwargs={
+                "court": COURT,
+                "topic": TOPIC,
+                "role": ROLE,
+                "output_id": "deadlines_calendar",
+            },
+        )
+        == DOWNLOAD_URL
+    )
+
+
+@pytest.mark.django_db
+def test_download_streams_ics_attachment_with_the_computed_deadline(
+    client, monkeypatch
+):
+    # The payoff: the stored answer drives the same compute_deadline path, and
+    # the downloaded calendar carries the concrete date as an all-day event.
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_deadline()
+    )
+    session = client.session
+    session["topic_flow"] = {
+        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
+    }
+    session.save()
+    response = client.get(DOWNLOAD_URL)
+    assert response.status_code == 200
+    assert "text/calendar" in response["Content-Type"]
+    assert (
+        'attachment; filename="deadlines_calendar.ics"'
+        in response["Content-Disposition"]
+    )
+    body = response.content.decode()
+    assert "BEGIN:VCALENDAR" in body
+    assert "20260303" in body  # all-day DATE form of 2026-03-03
+
+
+@pytest.mark.django_db
+def test_download_without_answers_is_an_empty_but_valid_calendar(
+    client, monkeypatch
+):
+    # No stored answer → 200 with a valid, event-free calendar (not a 500/404).
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_deadline()
+    )
+    response = client.get(DOWNLOAD_URL)
+    assert response.status_code == 200
+    body = response.content.decode()
+    assert "BEGIN:VCALENDAR" in body
+    assert "BEGIN:VEVENT" not in body
+
+
+@pytest.mark.django_db
+def test_download_unknown_flow_returns_404(client, monkeypatch):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: None)
+    assert client.get(DOWNLOAD_URL).status_code == 404
+
+
+@pytest.mark.django_db
+def test_download_non_downloadable_output_returns_404(client, monkeypatch):
+    # key_dates is a fact_gather, not a downloadable output — gated to 404.
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_deadline()
+    )
+    url = f"/t/{COURT}/{TOPIC}/{ROLE}/download/key_dates/"
+    assert client.get(url).status_code == 404
+
+
+@pytest.mark.django_db
+def test_ics_section_links_to_the_download_once_a_date_is_entered(
+    client, monkeypatch
+):
+    # The page must surface a reachable link to the download URL — without it
+    # the litigant can't get the calendar file. Functional target, not markup.
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_deadline()
+    )
+    session = client.session
+    session["topic_flow"] = {
+        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
+    }
+    session.save()
+    html = client.get(URL).content.decode()
+    assert f'href="{DOWNLOAD_URL}"' in html
+
+
+@pytest.mark.django_db
+def test_ics_section_hides_download_link_until_a_date_is_entered(
+    client, monkeypatch
+):
+    # No computable date → no link (an empty calendar is no use). Guards the
+    # has_dates gate end-to-end, the mirror of the link-present case above.
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_deadline()
+    )
+    html = client.get(URL).content.decode()
+    assert f'href="{DOWNLOAD_URL}"' not in html

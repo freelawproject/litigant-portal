@@ -47,6 +47,8 @@ dependencies = [
     "pydantic>=2.0",
     # Topic Flow corpus loading (litigant_portal/app/topic_flow)
     "pyyaml>=6.0",
+    # Topic Flow file artifacts — .ics calendar export (and .vcf, #473)
+    "vobject>=0.9.6.1",
     # Security minimums (transitive deps — Dependabot #13-#25)
     "aiohttp>=3.13.4",
     "cryptography>=46.0.6",

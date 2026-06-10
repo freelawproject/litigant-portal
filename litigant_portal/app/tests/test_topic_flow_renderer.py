@@ -188,8 +188,8 @@ def test_each_kind_dispatches_to_a_distinct_template():
 
 # --- ics (deadline rendering, #494) -----------------------------------------
 # The ics output renders each referenced deadline computed from the user's
-# answers (compute_deadline's first caller). The .ics download button lands
-# with #441; this is the visible, JS-off date list.
+# answers, via resolve_ics_deadlines (shared with the .ics download, #504).
+# These cover the visible, JS-off date list + the download-link context.
 
 _PUB_Q = Question(id="publication_date", label="Publication date", type="date")
 _PUB_DEADLINE = Deadline(
@@ -267,6 +267,33 @@ def test_ics_lists_deadlines_in_deadline_ids_order():
         "Second",
         "30-day publication wait",
     ]
+
+
+def test_ics_has_dates_true_when_a_deadline_is_computed():
+    # Gates the download link: a calendar with at least one dated event.
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    assert rendered.context["has_dates"] is True
+
+
+def test_ics_has_dates_false_when_nothing_is_computed():
+    # No answer → no datable event → no download link shown.
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {})
+    assert rendered.context["has_dates"] is False
+
+
+def test_ics_context_carries_download_url_parts():
+    # The template builds {% url 'pages:topic_flow_download' ... %} from these,
+    # so the renderer stays Django-free (no reverse() call).
+    corpus, ics = _ics_corpus()
+    ctx = render_section(ics, corpus, {}).context
+    assert ctx["output_id"] == ics.id
+    assert (ctx["court"], ctx["topic"], ctx["role"]) == (
+        corpus.metadata.court,
+        corpus.metadata.topic,
+        corpus.metadata.role,
+    )
 
 
 # --- fail-fast on unregistered (vcf lands with its download view, #441) ------
