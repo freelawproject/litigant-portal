@@ -13,15 +13,15 @@ session/request machinery.
 
 Corpus validity is guaranteed upstream at load, so the renderer never
 re-validates data; an unhandled section type is a *code* gap (a union member
-with no registered handler) and fails fast. The ``ics`` handler formats the
-deadlines from ``resolve_ics_deadlines`` (deadlines.py) for the page; the
-``.ics`` download view (downloads.py) consumes the *same* resolver, so the
-downloaded calendar can't drift from what's rendered. The ``vcf`` handler is
-still intentionally unregistered (it lands with #473), so rendering one raises.
+with no registered handler) and fails fast. The ``ics`` and ``vcf`` handlers
+format their data from a shared resolver (``resolve_ics_deadlines`` /
+``resolve_vcf_contacts``) that their download handlers (downloads.py) also
+consume, so what's downloaded can't drift from what's rendered on the page.
 """
 
 from dataclasses import dataclass
 
+from litigant_portal.app.topic_flow.contacts import resolve_vcf_contacts
 from litigant_portal.app.topic_flow.deadlines import resolve_ics_deadlines
 from litigant_portal.app.topic_flow.schema import FactGatherSection
 
@@ -189,6 +189,29 @@ def _render_ics(section, corpus, answers):
         context={
             "deadlines": deadlines,
             "has_dates": any(d["date_iso"] for d in deadlines),
+            "court": meta.court,
+            "topic": meta.topic,
+            "role": meta.role,
+            "output_id": section.id,
+        },
+    )
+
+
+@renderer("vcf")
+def _render_vcf(section, corpus, answers):
+    contacts = resolve_vcf_contacts(section, corpus)
+    meta = corpus.metadata
+    # Same shape as _render_ics: the flat contact dicts are template-ready, and
+    # the URL parts let the template own {% url %} resolution (renderer stays
+    # Django-free). No gate like ics's has_dates — contacts are static corpus
+    # data that always resolve (contact_ids is non-empty), so the download link
+    # always shows.
+    return RenderedSection(
+        anchor_id=section.id,
+        heading=section.heading,
+        template=f"{_TEMPLATE_DIR}/flow_section_vcf.html",
+        context={
+            "contacts": contacts,
             "court": meta.court,
             "topic": meta.topic,
             "role": meta.role,

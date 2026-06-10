@@ -18,6 +18,7 @@ from django.urls import resolve, reverse
 
 from litigant_portal.app.topic_flow.renderer import RenderedSection
 from litigant_portal.app.topic_flow.schema import (
+    Contact,
     Corpus,
     Deadline,
     FactGatherSection,
@@ -27,6 +28,7 @@ from litigant_portal.app.topic_flow.schema import (
     PacketOutput,
     Question,
     SummaryOutput,
+    VcfOutput,
 )
 from litigant_portal.app.views import pages
 
@@ -498,3 +500,62 @@ def test_ics_section_hides_download_link_until_a_date_is_entered(
     )
     html = client.get(URL).content.decode()
     assert f'href="{DOWNLOAD_URL}"' not in html
+
+
+# --- vcf download (#473, needs DB) ------------------------------------------
+# The same generic download route, dispatching on output_type to the vCard
+# builder. Contacts are static corpus data, so the .vcf needs no stored answers
+# — it downloads the same card set the page shows.
+
+VCF_DOWNLOAD_URL = f"/t/{COURT}/{TOPIC}/{ROLE}/download/contacts_card/"
+
+
+def _corpus_with_contact():
+    return Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        contacts=[
+            Contact(id="clerk", name="Clerk of Court", phone="555-1234")
+        ],
+        sections=[
+            VcfOutput(
+                kind="output",
+                output_type="vcf",
+                id="contacts_card",
+                heading="Save these contacts",
+                contact_ids=["clerk"],
+            ),
+        ],
+    )
+
+
+@pytest.mark.django_db
+def test_vcf_download_streams_vcard_attachment_with_the_contact(
+    client, monkeypatch
+):
+    # The payoff: the generic route dispatches a vcf section to the vCard
+    # builder and streams it as a .vcf attachment carrying the contact.
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_contact()
+    )
+    response = client.get(VCF_DOWNLOAD_URL)
+    assert response.status_code == 200
+    assert "text/vcard" in response["Content-Type"]
+    assert (
+        'attachment; filename="contacts_card.vcf"'
+        in response["Content-Disposition"]
+    )
+    body = response.content.decode()
+    assert "BEGIN:VCARD" in body
+    assert "Clerk of Court" in body
+
+
+@pytest.mark.django_db
+def test_vcf_section_links_to_the_download(client, monkeypatch):
+    # The page must surface a reachable link to the .vcf — without it the
+    # litigant can't save the contacts. Functional target, not markup. No
+    # gate (unlike ics): contacts are always present, so the link always shows.
+    monkeypatch.setattr(
+        pages.registry, "get", lambda *a: _corpus_with_contact()
+    )
+    html = client.get(URL).content.decode()
+    assert f'href="{VCF_DOWNLOAD_URL}"' in html

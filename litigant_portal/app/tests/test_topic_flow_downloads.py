@@ -20,6 +20,7 @@ from litigant_portal.app.topic_flow.downloads import (
     find_downloadable,
 )
 from litigant_portal.app.topic_flow.schema import (
+    Contact,
     Corpus,
     Deadline,
     FactGatherSection,
@@ -27,6 +28,7 @@ from litigant_portal.app.topic_flow.schema import (
     Metadata,
     Question,
     SummaryOutput,
+    VcfOutput,
 )
 
 # An answered publication_date; 30 days on = 2026-03-03.
@@ -50,6 +52,15 @@ def _corpus():
                 description="Judge may review after this.",
             )
         ],
+        contacts=[
+            Contact(
+                id="clerk",
+                name="Clerk of Court",
+                phone="555-1234",
+                hours="9-4 M-F",
+                note="Window 3",
+            )
+        ],
         sections=[
             FactGatherSection(
                 kind="fact_gather",
@@ -64,6 +75,13 @@ def _corpus():
                 id="deadlines_calendar",
                 heading="Add deadlines to your calendar",
                 deadline_ids=["publication_wait"],
+            ),
+            VcfOutput(
+                kind="output",
+                output_type="vcf",
+                id="contacts_card",
+                heading="Save these contacts",
+                contact_ids=["clerk"],
             ),
             SummaryOutput(
                 kind="output",
@@ -138,4 +156,54 @@ def test_uid_is_stable_across_downloads():
     assert (
         vobject.readOne(first.body).vevent.uid.value
         == vobject.readOne(again.body).vevent.uid.value
+    )
+
+
+# --- build_download (vcf) ---------------------------------------------------
+# A vcf section dispatches to the vCard builder, independent of answers (contacts
+# are static corpus data). Body is parsed back with vobject to assert the contact
+# became a real card via the same resolve_vcf_contacts the page renders with.
+
+
+def _vcf_section(corpus):
+    return find_downloadable(corpus, "contacts_card")
+
+
+def test_resolves_the_vcf_output_section():
+    section = find_downloadable(_corpus(), "contacts_card")
+    assert section is not None
+    assert section.output_type == "vcf"
+
+
+def test_sets_vcard_content_type_and_filename():
+    corpus = _corpus()
+    artifact = build_download(_vcf_section(corpus), corpus, {})
+    assert artifact.content_type == "text/vcard; charset=utf-8"
+    assert artifact.filename == "contacts_card.vcf"
+
+
+def test_vcf_body_carries_the_contact_as_a_card():
+    corpus = _corpus()
+    artifact = build_download(_vcf_section(corpus), corpus, {})
+    card = vobject.readOne(artifact.body)
+    assert card.fn.value == "Clerk of Court"
+    assert card.tel.value == "555-1234"
+
+
+def test_vcf_folds_hours_into_the_note_so_import_keeps_it():
+    # vCard has no hours field; without folding, "call 9-4" is lost on import.
+    corpus = _corpus()
+    artifact = build_download(_vcf_section(corpus), corpus, {})
+    note = vobject.readOne(artifact.body).note.value
+    assert "Window 3" in note
+    assert "Hours: 9-4 M-F" in note
+
+
+def test_vcf_uid_is_stable_across_downloads():
+    corpus = _corpus()
+    first = build_download(_vcf_section(corpus), corpus, {})
+    again = build_download(_vcf_section(corpus), corpus, {})
+    assert (
+        vobject.readOne(first.body).uid.value
+        == vobject.readOne(again.body).uid.value
     )
