@@ -3,9 +3,9 @@
 The renderer is a fat, pure function of ``(section, corpus, answers)`` → a
 ``RenderedSection`` carrying a template path + flat, dumb context. It takes a
 plain ``answers`` dict (not an AnswerStore), so these tests need no session or
-DB. The ``ics`` handler renders its deadline list here (#494); ``vcf`` is still
-intentionally unregistered — it lands with its download-view item (#441) — so
-rendering one fails fast.
+DB. The ``ics`` handler renders its deadline list here (#494); the ``vcf``
+handler renders its contact list (#473). An output_type with no registered
+handler is a code gap and fails fast.
 """
 
 from types import SimpleNamespace
