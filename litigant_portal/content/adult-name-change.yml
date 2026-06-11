@@ -1,0 +1,91 @@
+# Demo corpus — Adult Name Change (North Dakota).
+#
+# Court-neutral stand-in seeded to make the Topic Flow engine clickable
+# end-to-end for stakeholder review (#509). Not the legal-reviewed ND content
+# (that is tracked separately in #495) — copy here is generic and illustrative.
+# No leading underscore, so the registry indexes it and it renders at
+# /t/north-dakota/adult-name-change/petitioner/.
+
+metadata:
+  court: north-dakota
+  topic: adult-name-change
+  role: petitioner
+  title: 'Adult Name Change — North Dakota'
+
+contacts:
+  - id: clerk
+    name: 'District Court Clerk'
+    phone: '701-555-0100'
+    email: 'clerk@example.gov'
+    url: 'https://www.ndcourts.gov'
+    address: '100 Courthouse Square, Bismarck, ND'
+    hours: 'Mon–Fri 8am–4pm'
+    note: 'Call before filing to confirm fees and how many copies to bring.'
+  - id: legal_aid
+    name: 'Legal Services of North Dakota'
+    phone: '800-555-0111'
+    url: 'https://www.example.org'
+    note: 'Free help for those who qualify by income.'
+
+deadlines:
+  - id: publication_wait
+    label: 'Publication period ends'
+    offset_days: 30
+    offset_from: publication_date
+    description: 'The court can act on your petition once the 30-day published notice period closes.'
+  - id: hearing_ready
+    label: 'Earliest you can request a hearing'
+    offset_days: 35
+    offset_from: publication_date
+    description: 'Allow a few days after the notice period closes before asking the clerk to set a hearing.'
+
+sections:
+  - kind: info
+    id: overview
+    heading: 'Changing your name in North Dakota'
+    body: |
+      An adult name change is a standalone court petition. Read each step, enter
+      your publication date below, then use the tools at the bottom to put your
+      deadlines and the clerk's contact straight onto your phone.
+
+  - kind: fact_gather
+    id: key_dates
+    heading: 'Your details'
+    questions:
+      - id: full_legal_name
+        label: 'Your current legal name'
+        type: text
+      - id: publication_date
+        label: 'Date your notice was published'
+        type: date
+        required: true
+        help_text: 'Found on the affidavit of publication from the newspaper.'
+
+  - kind: output
+    output_type: ics
+    id: deadlines_calendar
+    heading: 'Add your deadlines to your calendar'
+    deadline_ids:
+      - publication_wait
+      - hearing_ready
+
+  - kind: output
+    output_type: vcf
+    id: save_contacts
+    heading: 'Save these contacts'
+    contact_ids:
+      - clerk
+      - legal_aid
+
+  - kind: output
+    output_type: packet
+    id: filing_packet
+    heading: 'Your filing packet'
+    forms:
+      - 'Petition for Name Change'
+      - 'Confidential Information Form'
+
+  - kind: output
+    output_type: summary
+    id: recap
+    heading: 'Summary of what you entered'
