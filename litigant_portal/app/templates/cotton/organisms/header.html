@@ -34,9 +34,13 @@
               <c-atoms.icon name="arrow-path" class="w-5 h-5 text-greyscale-500" />
               {% trans "Reset Demo" %}
             </button>
-            <a href="{% url 'pages:topic_flow' court='north-dakota' topic='adult-name-change' role='petitioner' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
+            <a href="{% url 'pages:topic_flow' court='north-dakota' topic='adult-name-change' role='standard' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
               <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Demo: Adult Name Change" %}
+              {% trans "Demo: Name Change — Standard" %}
+            </a>
+            <a href="{% url 'pages:topic_flow' court='north-dakota' topic='adult-name-change' role='waiver' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
+              <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
+              {% trans "Demo: Name Change — Waiver" %}
             </a>
             <a href="{% url 'pages:style_guide' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
               <c-atoms.icon name="swatch" class="w-5 h-5 text-greyscale-500" />

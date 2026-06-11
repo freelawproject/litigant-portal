@@ -1,29 +1,31 @@
-# Demo corpus — Adult Name Change (North Dakota), standard track.
+# Demo corpus — Adult Name Change (North Dakota), WAIVER track.
 #
-# Content is drawn from public ND sources already assembled in this repo: the
-# ND court prompt (litigant_portal/prompts/courts/north-dakota/prompt.md), the
-# adult-name-change topic prompt, and docs/nd-name-change-planning-log.md —
-# which were sourced from ndcourts.gov/legal-self-help/name-change-adult.
+# The waiver track applies when changing the first and/or middle name only,
+# leaving the last name unchanged: 4 forms (no Notice of Petition), and the
+# judge MAY waive newspaper publication and the 30-day wait. The court links to
+# this flow directly for first/middle-only changes; last-name changes use the
+# standard track — adult-name-change-standard.yml.
 #
-# This models the STANDARD track (any change involving the last name:
-# publication + 30-day wait). The engine renders sections statically, so the
-# waiver track (first/middle only) is described in-line rather than branched.
-# Real but unverified contact details (clerk phone, legal-aid phone, form PDF
-# links) are intentionally omitted pending a primary-source pass — see #495.
-# Not yet legal-reviewed; #509 seeds it to make the flow clickable.
+# Because publication and the wait can be waived, this flow has no fixed date
+# deadline (hence no calendar export) — it shows how a shorter track renders.
+#
+# Content drawn from public ND sources already in the repo (the ND court/topic
+# prompts + name-change planning log, sourced from ndcourts.gov). Unverified
+# contact specifics (phone numbers, form-PDF links) are omitted pending a
+# primary-source pass (#495). Not yet legal-reviewed; #509 seeds it.
 
 metadata:
   court: north-dakota
   topic: adult-name-change
-  role: petitioner
-  title: 'Adult Name Change — North Dakota'
+  role: waiver
+  title: 'Adult Name Change — North Dakota (Waiver Track)'
 
 contacts:
   - id: clerk
     name: 'Burleigh County Clerk of District Court'
     url: 'https://www.ndcourts.gov'
     address: '514 East Thayer Avenue, Bismarck, ND'
-    note: 'Call before filing to ask whether the judge requires the criminal-history background check before or after you file — timing varies by judge. This is the one call to make first.'
+    note: 'Call before filing to ask whether the judge requires the criminal-history background check before or after you file — timing varies by judge, and the waiver track does not remove this. This is the one call to make first.'
   - id: self_help
     name: 'North Dakota Legal Self Help Center'
     url: 'https://www.ndcourts.gov/legal-self-help'
@@ -32,29 +34,25 @@ contacts:
     name: 'Legal Services of North Dakota'
     note: 'Free legal help for North Dakotans who qualify by income — useful if your name change touches a divorce or other family-law matter.'
 
-deadlines:
-  - id: publication_wait
-    label: '30-day publication waiting period ends'
-    offset_days: 30
-    offset_from: publication_date
-    description: 'Under North Dakota law the judge may not consider your petition until 30 days after the notice is published. After this date, check with the clerk about judge review.'
-
 sections:
   - kind: info
     id: overview
-    heading: 'Changing your name in North Dakota'
+    heading: 'Changing your first or middle name in North Dakota'
     body: |
       This walks you through a standalone adult name-change petition in North
-      Dakota district court. A common mix-up: if you wanted your name restored in
-      a divorce, that has to be requested inside the divorce case — it is not
-      handled here. If your divorce is final and didn't change your name, a
-      standalone petition (this flow) is the way.
+      Dakota district court, on the waiver track — for changing your first
+      and/or middle name only, leaving your last name unchanged.
 
-      North Dakota has two paths. This page covers the standard track — any
-      change that includes your last name, which requires publishing a notice
-      and a 30-day wait. If you are changing only your first and/or middle name,
-      a judge may waive publication and the wait; ask the clerk about the waiver
-      track.
+      On this track a judge may waive the newspaper publication requirement, and
+      if publication is waived there is no 30-day waiting period. The waiver is
+      the judge's decision on the facts you present — it is not guaranteed, so
+      plan for the possibility that publication is still required.
+
+      If you are changing your last name (or any combination that includes it),
+      use the standard-track page instead.
+
+      One common mix-up: if you wanted your name changed as part of a divorce,
+      that has to be requested inside the divorce case — it is not handled here.
 
       Official guidance and forms: ndcourts.gov/legal-self-help/name-change-adult
 
@@ -79,34 +77,34 @@ sections:
       - id: requested_name
         label: 'The name you are requesting'
         type: text
-      - id: what_changing
-        label: 'What are you changing?'
-        type: choice
-        choices:
-          - 'First name only'
-          - 'Middle name only'
-          - 'First and middle name'
-          - 'Last name (or any change including the last name)'
-        help_text: 'Changing the last name puts you on the standard track (publication + 30-day wait). First/middle only may qualify for the waiver track.'
+        help_text: 'On this track, your last name stays the same.'
       - id: filing_county
         label: 'County where you will file'
         type: text
         help_text: 'You file in the district court for the county where you live.'
-      - id: publication_date
-        label: 'Date your notice was published'
-        type: date
-        help_text: 'Leave blank until your notice runs in the newspaper — then enter it here and your deadline updates. Found on the affidavit of publication from the paper.'
 
   - kind: output
     output_type: packet
     id: filing_packet
-    heading: 'Your filing packet (standard track)'
+    heading: 'Your filing packet'
     forms:
-      - 'Notice of Petition for Name Change'
       - 'Petition for Name Change'
       - 'Declaration in Support of Petition'
       - 'Confidential Information Form'
       - 'Proposed Order for Name Change'
+
+  - kind: info
+    id: publication_waiver
+    heading: 'About the publication waiver'
+    body: |
+      Because you are not changing your last name, you can ask the judge to
+      waive the requirement to publish a notice in the newspaper. If the judge
+      grants the waiver, there is no 30-day waiting period and your petition can
+      be considered sooner.
+
+      The judge decides this on your particular facts, so it is not automatic.
+      Ask the clerk how your county handles the waiver request, and be ready in
+      case publication is still required.
 
   - kind: info
     id: form_gotchas
@@ -129,13 +127,6 @@ sections:
       North Dakota does not presumptively require a hearing for a name change,
       but the judge may decide one is needed. If a hearing is scheduled, the
       Clerk of District Court will send notice with the date, time, and location.
-
-  - kind: output
-    output_type: ics
-    id: deadlines_calendar
-    heading: 'Add your deadline to your calendar'
-    deadline_ids:
-      - publication_wait
 
   - kind: output
     output_type: vcf
