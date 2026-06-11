@@ -20,6 +20,7 @@ from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
     question_ids,
     render_section,
+    submitted_section_anchor,
 )
 
 TOPICS = {
@@ -261,9 +262,17 @@ def topic_flow(request, court, topic, role):
             if qid in request.POST
         }
         store.update(submitted)
-        return redirect(
-            "pages:topic_flow", court=court, topic=topic, role=role
+        # PRG back to the section just saved (#anchor) so the litigant keeps
+        # their place and sees the recomputed deadlines, instead of the browser
+        # jumping to the top of the page on the redirected GET.
+        url = reverse(
+            "pages:topic_flow",
+            kwargs={"court": court, "topic": topic, "role": role},
         )
+        anchor = submitted_section_anchor(corpus, submitted)
+        if anchor:
+            url = f"{url}#{anchor}"
+        return redirect(url)
 
     answers = store.all()
     rendered_sections = [

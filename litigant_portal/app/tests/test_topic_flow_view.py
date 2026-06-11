@@ -274,7 +274,19 @@ def test_post_persists_answers_and_redirects_prg(client, monkeypatch):
         URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
     )
     assert response.status_code == 302
-    assert response["Location"] == URL
+    assert response["Location"].startswith(URL)
+
+
+@pytest.mark.django_db
+def test_post_redirects_to_the_saved_section_anchor(client, monkeypatch):
+    # Scroll restore (#510): the PRG lands on the fact_gather section's anchor,
+    # so saving returns the litigant to the form they were filling — and the
+    # deadlines that recompute just below it — not the top of the page.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(
+        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+    )
+    assert response["Location"] == f"{URL}#key_dates"
 
 
 @pytest.mark.django_db

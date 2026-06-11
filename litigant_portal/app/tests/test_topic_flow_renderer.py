@@ -15,6 +15,7 @@ import pytest
 from litigant_portal.app.topic_flow.renderer import (
     RenderedSection,
     render_section,
+    submitted_section_anchor,
 )
 from litigant_portal.app.topic_flow.schema import (
     Contact,
@@ -371,3 +372,28 @@ def test_vcf_uses_the_vcf_template():
     corpus, vcf = _vcf_corpus()
     rendered = render_section(vcf, corpus, {})
     assert rendered.template.endswith("flow_section_vcf.html")
+
+
+# --- submitted_section_anchor (PRG scroll restore, #510) --------------------
+# The entry view redirects a saved form back to its section anchor so the
+# litigant keeps their place. The anchor is matched by submitted question-id
+# overlap, so the right section wins even with multiple fact_gather forms.
+
+
+def test_anchor_is_the_section_owning_the_submitted_ids():
+    section = _fg([Question(id="pubdate", label="Date")], id="key_dates")
+    assert submitted_section_anchor(_corpus(section), {"pubdate"}) == "key_dates"
+
+
+def test_anchor_picks_the_form_that_was_submitted_not_just_the_first():
+    dates = _fg([Question(id="pubdate", label="Date")], id="dates")
+    contact = _fg([Question(id="phone", label="Phone")], id="contact_info")
+    corpus = _corpus(dates, contact)
+    # Only the second form's field was posted → its anchor, not "dates".
+    assert submitted_section_anchor(corpus, {"phone"}) == "contact_info"
+
+
+def test_anchor_is_none_when_nothing_overlaps():
+    section = _fg([Question(id="pubdate", label="Date")], id="key_dates")
+    assert submitted_section_anchor(_corpus(section), {"unknown"}) is None
+    assert submitted_section_anchor(_corpus(section), set()) is None
