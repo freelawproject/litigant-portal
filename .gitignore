@@ -45,9 +45,12 @@ tailwindcss
 # Tailwind CLI output (source is litigant_portal/app/src/main.css)
 litigant_portal/app/static/css/main.built.css
 
-# Django collectstatic output (STATIC_ROOT → litigant_portal/app/staticfiles)
+# Django collectstatic output
 litigant_portal/app/staticfiles
 /staticfiles/
+
+# Filesystem storage
+litigant_portal/app/media/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
