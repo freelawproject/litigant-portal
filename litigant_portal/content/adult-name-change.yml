@@ -1,10 +1,16 @@
-# Demo corpus — Adult Name Change (North Dakota).
+# Demo corpus — Adult Name Change (North Dakota), standard track.
 #
-# Court-neutral stand-in seeded to make the Topic Flow engine clickable
-# end-to-end for stakeholder review (#509). Not the legal-reviewed ND content
-# (that is tracked separately in #495) — copy here is generic and illustrative.
-# No leading underscore, so the registry indexes it and it renders at
-# /t/north-dakota/adult-name-change/petitioner/.
+# Content is drawn from public ND sources already assembled in this repo: the
+# ND court prompt (litigant_portal/prompts/courts/north-dakota/prompt.md), the
+# adult-name-change topic prompt, and docs/nd-name-change-planning-log.md —
+# which were sourced from ndcourts.gov/legal-self-help/name-change-adult.
+#
+# This models the STANDARD track (any change involving the last name:
+# publication + 30-day wait). The engine renders sections statically, so the
+# waiver track (first/middle only) is described in-line rather than branched.
+# Real but unverified contact details (clerk phone, legal-aid phone, form PDF
+# links) are intentionally omitted pending a primary-source pass — see #495.
+# Not yet legal-reviewed; #509 seeds it to make the flow clickable.
 
 metadata:
   court: north-dakota
@@ -14,60 +20,122 @@ metadata:
 
 contacts:
   - id: clerk
-    name: 'District Court Clerk'
-    phone: '701-555-0100'
-    email: 'clerk@example.gov'
+    name: 'Burleigh County Clerk of District Court'
     url: 'https://www.ndcourts.gov'
-    address: '100 Courthouse Square, Bismarck, ND'
-    hours: 'Mon–Fri 8am–4pm'
-    note: 'Call before filing to confirm fees and how many copies to bring.'
+    address: '514 East Thayer Avenue, Bismarck, ND'
+    note: 'Call before filing to ask whether the judge requires the criminal-history background check before or after you file — timing varies by judge. This is the one call to make first.'
+  - id: self_help
+    name: 'North Dakota Legal Self Help Center'
+    url: 'https://www.ndcourts.gov/legal-self-help'
+    note: 'Court-provided guidance and the official name-change forms for self-represented filers.'
   - id: legal_aid
     name: 'Legal Services of North Dakota'
-    phone: '800-555-0111'
-    url: 'https://www.example.org'
-    note: 'Free help for those who qualify by income.'
+    note: 'Free legal help for North Dakotans who qualify by income — useful if your name change touches a divorce or other family-law matter.'
 
 deadlines:
   - id: publication_wait
-    label: 'Publication period ends'
+    label: '30-day publication waiting period ends'
     offset_days: 30
     offset_from: publication_date
-    description: 'The court can act on your petition once the 30-day published notice period closes.'
-  - id: hearing_ready
-    label: 'Earliest you can request a hearing'
-    offset_days: 35
-    offset_from: publication_date
-    description: 'Allow a few days after the notice period closes before asking the clerk to set a hearing.'
+    description: 'Under North Dakota law the judge may not consider your petition until 30 days after the notice is published. After this date, check with the clerk about judge review.'
 
 sections:
   - kind: info
     id: overview
     heading: 'Changing your name in North Dakota'
     body: |
-      An adult name change is a standalone court petition. Read each step, enter
-      your publication date below, then use the tools at the bottom to put your
-      deadlines and the clerk's contact straight onto your phone.
+      This walks you through a standalone adult name-change petition in North
+      Dakota district court. A common mix-up: if you wanted your name restored in
+      a divorce, that has to be requested inside the divorce case — it is not
+      handled here. If your divorce is final and didn't change your name, a
+      standalone petition (this flow) is the way.
+
+      North Dakota has two paths. This page covers the standard track — any
+      change that includes your last name, which requires publishing a notice
+      and a 30-day wait. If you are changing only your first and/or middle name,
+      a judge may waive publication and the wait; ask the clerk about the waiver
+      track.
+
+      Official guidance and forms: ndcourts.gov/legal-self-help/name-change-adult
+
+  - kind: info
+    id: eligibility
+    heading: 'Who can file'
+    body: |
+      To petition for a name change in North Dakota you must be a U.S. citizen
+      or a U.S. permanent resident. You attest to this on the Petition.
+
+      A name change cannot be used to defraud anyone or to evade a legal
+      obligation (for example, debts or a criminal record). These are conditions
+      you confirm on the forms — not something you have to explain to anyone here.
 
   - kind: fact_gather
-    id: key_dates
+    id: your_details
     heading: 'Your details'
     questions:
-      - id: full_legal_name
+      - id: current_legal_name
         label: 'Your current legal name'
         type: text
+      - id: requested_name
+        label: 'The name you are requesting'
+        type: text
+      - id: what_changing
+        label: 'What are you changing?'
+        type: choice
+        choices:
+          - 'First name only'
+          - 'Middle name only'
+          - 'First and middle name'
+          - 'Last name (or any change including the last name)'
+        help_text: 'Changing the last name puts you on the standard track (publication + 30-day wait). First/middle only may qualify for the waiver track.'
+      - id: filing_county
+        label: 'County where you will file'
+        type: text
+        help_text: 'You file in the district court for the county where you live.'
       - id: publication_date
         label: 'Date your notice was published'
         type: date
-        required: true
-        help_text: 'Found on the affidavit of publication from the newspaper.'
+        help_text: 'Leave blank until your notice runs in the newspaper — then enter it here and your deadline updates. Found on the affidavit of publication from the paper.'
+
+  - kind: output
+    output_type: packet
+    id: filing_packet
+    heading: 'Your filing packet (standard track)'
+    forms:
+      - 'Notice of Petition for Name Change'
+      - 'Petition for Name Change'
+      - 'Declaration in Support of Petition'
+      - 'Confidential Information Form'
+      - 'Proposed Order for Name Change'
+
+  - kind: info
+    id: form_gotchas
+    heading: 'Before you sign'
+    body: |
+      A few North Dakota specifics that trip people up:
+
+      Leave the case number blank — the clerk assigns it when you file.
+
+      Do not sign the proposed Order. Only the judge signs that one.
+
+      The Confidential Information Form is sealed and stays out of the public
+      file. Keep copies — it must be attached to every certified copy of your
+      Order, or North Dakota Vital Records will reject your updates later.
+
+  - kind: info
+    id: hearing
+    heading: 'Will there be a hearing?'
+    body: |
+      North Dakota does not presumptively require a hearing for a name change,
+      but the judge may decide one is needed. If a hearing is scheduled, the
+      Clerk of District Court will send notice with the date, time, and location.
 
   - kind: output
     output_type: ics
     id: deadlines_calendar
-    heading: 'Add your deadlines to your calendar'
+    heading: 'Add your deadline to your calendar'
     deadline_ids:
       - publication_wait
-      - hearing_ready
 
   - kind: output
     output_type: vcf
@@ -75,15 +143,20 @@ sections:
     heading: 'Save these contacts'
     contact_ids:
       - clerk
+      - self_help
       - legal_aid
 
-  - kind: output
-    output_type: packet
-    id: filing_packet
-    heading: 'Your filing packet'
-    forms:
-      - 'Petition for Name Change'
-      - 'Confidential Information Form'
+  - kind: info
+    id: after_order
+    heading: 'After the judge signs your Order'
+    body: |
+      Ask the clerk for at least three certified copies of your Order — each one
+      needs the Confidential Information Form attached.
+
+      Then update your records in this order, because each step verifies against
+      the one before it: Social Security Administration first, then the North
+      Dakota DMV, then your passport, then financial accounts, your employer and
+      health insurance, your home title, and voter registration.
 
   - kind: output
     output_type: summary
