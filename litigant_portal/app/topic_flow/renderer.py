@@ -118,6 +118,24 @@ def question_ids(corpus):
     return [question.id for question in _fact_gather_questions(corpus)]
 
 
+def submitted_section_anchor(corpus, submitted_ids):
+    """Anchor id of the fact_gather section a set of submitted answers came from.
+
+    The entry view redirects (PRG) back to this anchor so saving answers returns
+    the litigant to the form they were filling — and to the deadlines that
+    recompute just below it — rather than the top of the page. Matched on
+    question-id overlap, so it stays correct with multiple fact_gather sections;
+    returns ``None`` when nothing matches, leaving the redirect bare (page top).
+    """
+    submitted = set(submitted_ids)
+    for section in corpus.sections:
+        if isinstance(section, FactGatherSection) and any(
+            question.id in submitted for question in section.questions
+        ):
+            return section.id
+    return None
+
+
 def _answered_in_corpus_order(corpus, answers):
     """Yield ``{label, value}`` for answered questions, in corpus order."""
     for question in _fact_gather_questions(corpus):

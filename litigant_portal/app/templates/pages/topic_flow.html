@@ -6,6 +6,13 @@
   {{ corpus.metadata.title }} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
+{# In a flow, the header menu becomes this flow's table of contents (+ Exit), #}
+{# so wayfinding lives in the consistent header slot instead of a jump-link #}
+{# wall above the content. #}
+{% block header %}
+  <c-organisms.header :toc="toc" />
+{% endblock header %}
+
 {% block content %}
 <div class="border-b border-greyscale-100 bg-primary-50 px-4 py-4">
   <p class="text-sm text-greyscale-500">
@@ -15,19 +22,6 @@
 </div>
 
 <div class="mx-auto max-w-3xl px-4 py-8">
-  {% trans "On this page" as toc_label %}
-  <nav aria-label="{{ toc_label }}" class="mb-8">
-    <ul class="space-y-1">
-      {% for section in rendered_sections %}
-      {% if section.heading %}
-      <li>
-        <c-atoms.link href="#{{ section.anchor_id }}">{{ section.heading }}</c-atoms.link>
-      </li>
-      {% endif %}
-      {% endfor %}
-    </ul>
-  </nav>
-
   {% for section in rendered_sections %}
   <section id="{{ section.anchor_id }}" class="mb-8 scroll-mt-4">
     {% if section.heading %}
