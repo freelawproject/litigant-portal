@@ -382,7 +382,9 @@ def test_vcf_uses_the_vcf_template():
 
 def test_anchor_is_the_section_owning_the_submitted_ids():
     section = _fg([Question(id="pubdate", label="Date")], id="key_dates")
-    assert submitted_section_anchor(_corpus(section), {"pubdate"}) == "key_dates"
+    assert (
+        submitted_section_anchor(_corpus(section), {"pubdate"}) == "key_dates"
+    )
 
 
 def test_anchor_picks_the_form_that_was_submitted_not_just_the_first():
