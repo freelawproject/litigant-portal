@@ -10,19 +10,3 @@ def test_cache(settings):
         }
     }
     settings.RATELIMIT_ENABLE = False
-
-
-@pytest.fixture(autouse=True)
-def test_storage(settings):
-    """Use in-memory storage for tests."""
-    settings.STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.InMemoryStorage",
-        },
-        "public": {
-            "BACKEND": "django.core.files.storage.InMemoryStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-        },
-    }

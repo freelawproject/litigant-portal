@@ -54,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -155,68 +156,16 @@ STATIC_ROOT = BASE_DIR / "app" / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "app" / "static",
 ]
-MEDIA_URL = os.environ.get("MEDIA_URL", "/media/")
-MEDIA_ROOT = BASE_DIR / "app" / "media"
 
-# Storage — local filesystem in dev/test, S3 in prod/QA.
-S3_CONNECTION = {
-    "access_key": os.environ.get("AWS_ACCESS_KEY_ID", ""),
-    "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-    "region_name": os.environ.get("AWS_S3_REGION_NAME", "us-east-1"),
-    "endpoint_url": os.environ.get("AWS_S3_ENDPOINT_URL") or None,
-    "url_protocol": os.environ.get("AWS_S3_URL_PROTOCOL", "https:"),
-}
-AWS_STORAGE_PRIVATE_BUCKET_NAME = os.environ.get(
-    "AWS_STORAGE_PRIVATE_BUCKET_NAME", "litigant-portal-private"
-)
-AWS_STORAGE_PUBLIC_BUCKET_NAME = os.environ.get(
-    "AWS_STORAGE_PUBLIC_BUCKET_NAME", "litigant-portal-public"
-)
-AWS_S3_PUBLIC_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN") or None
-
-if DEBUG:
-    STORAGES = {
-        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-        "public": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
-        },
-    }
-else:
+# Use ManifestStaticFilesStorage in production for cache busting
+# In development (DEBUG=True), Django uses the default storage
+if not DEBUG:
     STORAGES = {
         "default": {
-            "BACKEND": "storages.backends.s3.S3Storage",
-            "OPTIONS": {
-                **S3_CONNECTION,
-                "bucket_name": AWS_STORAGE_PRIVATE_BUCKET_NAME,
-                "default_acl": "private",
-                "querystring_auth": True,
-                "file_overwrite": False,
-                "location": "media",
-            },
-        },
-        "public": {
-            "BACKEND": "storages.backends.s3.S3Storage",
-            "OPTIONS": {
-                **S3_CONNECTION,
-                "bucket_name": AWS_STORAGE_PUBLIC_BUCKET_NAME,
-                "custom_domain": AWS_S3_PUBLIC_CUSTOM_DOMAIN,
-                "default_acl": "public-read",
-                "querystring_auth": False,
-                "file_overwrite": False,
-                "location": "media",
-            },
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
         },
         "staticfiles": {
-            "BACKEND": "storages.backends.s3.S3ManifestStaticStorage",
-            "OPTIONS": {
-                **S3_CONNECTION,
-                "bucket_name": AWS_STORAGE_PUBLIC_BUCKET_NAME,
-                "custom_domain": AWS_S3_PUBLIC_CUSTOM_DOMAIN,
-                "default_acl": "public-read",
-                "querystring_auth": False,
-                "location": "static",
-            },
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 
@@ -250,23 +199,16 @@ if DEBUG:
 
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/
-if AWS_S3_PUBLIC_CUSTOM_DOMAIN:
-    asset_host = AWS_S3_PUBLIC_CUSTOM_DOMAIN.split("/", 1)[0]
-    ASSET_ORIGINS = (f"{S3_CONNECTION['url_protocol']}//{asset_host}",)
-else:
-    ASSET_ORIGINS = ()
-
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", *ASSET_ORIGINS)
-CSP_STYLE_SRC = ("'self'", *ASSET_ORIGINS)
+CSP_SCRIPT_SRC = ("'self'",)  # Alpine.js served locally
+CSP_STYLE_SRC = ("'self'",)
 CSP_IMG_SRC = (
     "'self'",
     "data:",
     "blob:",
-    *ASSET_ORIGINS,
 )  # data: for inline, blob: for camera
-CSP_FONT_SRC = ("'self'", "data:", *ASSET_ORIGINS)
-CSP_CONNECT_SRC = ("'self'", *ASSET_ORIGINS)
+CSP_FONT_SRC = ("'self'", "data:")
+CSP_CONNECT_SRC = ("'self'",)
 # Alpine.js CSP build — no unsafe-eval needed
 
 # Default primary key field type

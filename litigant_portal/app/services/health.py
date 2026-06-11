@@ -1,7 +1,6 @@
 import logging
 
 from django.core.cache import cache
-from django.core.files.storage import storages
 from django.db import connection
 
 logger = logging.getLogger(__name__)
@@ -24,14 +23,4 @@ def check_redis() -> bool:
         return cache.get("healthcheck") == "ok"
     except Exception:
         logger.exception("Health check failed: Redis unavailable")
-        return False
-
-
-def check_storage(alias: str) -> bool:
-    """Return True if the named storage backend is reachable."""
-    try:
-        storages[alias].exists("healthcheck")
-        return True
-    except Exception:
-        logger.exception("Health check failed: %r storage unavailable", alias)
         return False
