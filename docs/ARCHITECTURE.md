@@ -24,6 +24,20 @@ Litigant Portal is open source, and a court partner can stand up their own hoste
 
 ---
 
+## Topic Flow: Linear Structure, Forks at the Entry Point
+
+Applies to the **non-AI Topic Flow engine** (AI chat flows are a separate model, out of scope here).
+
+The engine renders one fixed, ordered corpus per `(court, topic, role)` as a single scrollable page. It has **no conditional/branching logic** — `fact_gather` answers drive deadline math and display (e.g. the summary) only, never which sections show. So a legal process with multiple procedural paths is modeled as **separate corpora selected by distinct URLs**, and the path-selection decision is pushed up to the linking surface — a court links straight to the right track from its own website. Each track corpus cross-links to the others in prose for mis-clicks.
+
+**Example.** North Dakota adult name change splits into `…/adult-name-change/standard/` (any change including the last name: 5 forms, publication, 30-day wait, `.ics` deadline) and `…/adult-name-change/waiver/` (first/middle only: 4 forms, no publication or wait, no deadline). Eviction will split tenant vs. landlord the same way.
+
+**"Linear" describes section order, not the user's path.** It is not a forward-only wizard: the whole flow is one page and users move back and forth — re-reading an info section, correcting an answer they already gave. Answers persist (PRG + the session `AnswerStore`), so revisiting is lossless. In-page wayfinding (a table of contents, section anchors, returning to the section you saved from) is therefore a first-class concern, not decoration.
+
+**Why.** Keeps the engine simple and static, keeps corpora authorable as plain content by non-engineers (including legal reviewers), and treats routing as a human/court concern rather than engine logic.
+
+---
+
 ## Tech Stack Decisions
 
 | Decision           | Choice                        | Rationale                                 |
