@@ -1,0 +1,47 @@
+{% load i18n %}
+
+{# vcf output body: corpus contacts (clerk, legal aid, etc.), server-rendered #}
+{# and JS-off (#473). Each contact shows its available details; the add-to- #}
+{# contacts (.vcf) download link bundles them all into one vCard file. Contacts #}
+{# are static corpus data, so the link always shows (no fill-in-first gate). #}
+<ul class="space-y-4">
+  {% for contact in ctx.contacts %}
+  <li>
+    <div class="font-medium text-greyscale-900">{{ contact.name }}</div>
+    {% if contact.phone %}
+    <p class="text-sm text-greyscale-700">
+      <c-atoms.link href="tel:{{ contact.phone }}">{{ contact.phone }}</c-atoms.link>
+    </p>
+    {% endif %}
+    {% if contact.email %}
+    <p class="text-sm text-greyscale-700">
+      <c-atoms.link href="mailto:{{ contact.email }}">{{ contact.email }}</c-atoms.link>
+    </p>
+    {% endif %}
+    {% if contact.url %}
+    <p class="text-sm text-greyscale-700">
+      <c-atoms.link href="{{ contact.url }}" target="_blank">{{ contact.url }}</c-atoms.link>
+    </p>
+    {% endif %}
+    {% if contact.address %}
+    <p class="text-sm text-greyscale-700">{{ contact.address }}</p>
+    {% endif %}
+    {% if contact.hours %}
+    <p class="text-sm text-greyscale-500">{% trans "Hours" %}: {{ contact.hours }}</p>
+    {% endif %}
+    {% if contact.note %}
+    <p class="text-sm text-greyscale-500">{{ contact.note }}</p>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+<div class="mt-4">
+  <c-atoms.button
+    href="{% url 'pages:topic_flow_download' court=ctx.court topic=ctx.topic role=ctx.role output_id=ctx.output_id %}"
+    variant="outline"
+  >
+    <c-atoms.icon name="identification" class="w-4 h-4" />
+    {% trans "Add to contacts" %}
+  </c-atoms.button>
+</div>

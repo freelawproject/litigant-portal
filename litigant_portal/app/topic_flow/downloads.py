@@ -17,7 +17,11 @@ to assemble the file*.
 
 from dataclasses import dataclass
 
-from litigant_portal.app.topic_flow.artifacts import deadlines_to_ics
+from litigant_portal.app.topic_flow.artifacts import (
+    contacts_to_vcf,
+    deadlines_to_ics,
+)
+from litigant_portal.app.topic_flow.contacts import resolve_vcf_contacts
 from litigant_portal.app.topic_flow.deadlines import resolve_ics_deadlines
 
 
@@ -102,4 +106,57 @@ def _build_ics(section, corpus, answers):
         # UTF-8, but stating it beats relying on the client to honor the default.
         content_type="text/calendar; charset=utf-8",
         body=deadlines_to_ics(events),
+    )
+
+
+def _contact_note(resolved):
+    """Combine a contact's free-text note and hours into the vCard NOTE.
+
+    vCard has no native "hours" field, so opening hours would be lost on import
+    — for our audience ("call the clerk between 9–4") that's the useful part.
+    Fold it into NOTE under the existing note so it survives. Returns ``None``
+    when neither is present (no NOTE line emitted).
+    """
+    parts = []
+    if resolved["note"]:
+        parts.append(resolved["note"])
+    if resolved["hours"]:
+        parts.append(f"Hours: {resolved['hours']}")
+    return "\n".join(parts) or None
+
+
+@download_handler("vcf")
+def _build_vcf(section, corpus, answers):
+    """A ``vcf`` output section's contacts → a ``.vcf`` vCard file.
+
+    Contacts are static corpus data (no user input), so ``answers`` is unused —
+    the section always downloads the same card set. The per-contact ``UID`` is
+    stable across re-downloads (keyed by the flow + section + contact ids) so a
+    phone updates the saved contact instead of duplicating it.
+    """
+    meta = corpus.metadata
+    cards = []
+    for resolved in resolve_vcf_contacts(section, corpus):
+        uid = (
+            f"{meta.court}-{meta.topic}-{meta.role}-"
+            f"{section.id}-{resolved['id']}@litigantportal.com"
+        )
+        cards.append(
+            {
+                "uid": uid,
+                "name": resolved["name"],
+                "phone": resolved["phone"],
+                "email": resolved["email"],
+                "url": resolved["url"],
+                "address": resolved["address"],
+                "note": _contact_note(resolved),
+            }
+        )
+    return DownloadArtifact(
+        filename=f"{section.id}.vcf",
+        # Declare UTF-8 explicitly (see _build_ics): contact names/notes are
+        # author-supplied and may carry non-ASCII. RFC 6350 mandates UTF-8 for
+        # vCard, so stating it keeps strict importers happy.
+        content_type="text/vcard; charset=utf-8",
+        body=contacts_to_vcf(cards),
     )

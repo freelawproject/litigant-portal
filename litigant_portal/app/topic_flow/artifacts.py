@@ -1,15 +1,16 @@
 """Generate downloadable file artifacts from Topic Flow corpus data.
 
-Currently: an iCalendar (``.ics``) from a list of computed deadline events — a
-pure projection with no corpus, no answers, no host page, mirroring the pure
-style of ``deadlines.py``/``renderer.py``. The view layer resolves the corpus,
-reads the session AnswerStore, and computes the dates; this module only turns
-the resulting events into bytes, so the field mapping is unit-testable without
-Django and ``vobject`` owns RFC 5545 escaping and line folding.
+Two generators, both pure projections — a list of already-resolved dicts in,
+file bytes out, no corpus / answers / host page, mirroring the pure style of
+``deadlines.py``/``renderer.py``:
 
-The future ``.vcf`` generator (a Contact → vCard, #473) lands here too — same
-"data shape in, file bytes out" contract — which is why the module is named for
-artifacts in general, not just calendars.
+- ``deadlines_to_ics`` — computed deadline events → an iCalendar (``.ics``).
+- ``contacts_to_vcf`` — resolved contacts → vCards (``.vcf``).
+
+The view layer resolves the corpus, reads the session AnswerStore, and computes
+the data; this module only turns the resulting dicts into bytes, so the field
+mapping is unit-testable without Django and ``vobject`` owns the RFC escaping
+and line folding (RFC 5545 for iCalendar, RFC 6350 for vCard).
 """
 
 from datetime import datetime
@@ -20,6 +21,7 @@ import vobject
 # vobject only serializes a tzinfo it can map to a TZID — Python's stdlib
 # ``timezone.utc`` raises "Unable to guess TZID", so reuse vobject's singleton.
 from vobject.icalendar import utc
+from vobject.vcard import Address
 
 # Identifies the product that produced the file (RFC 5545 PRODID). Overrides
 # vobject's generic default so calendar apps attribute the import to us.
@@ -52,3 +54,40 @@ def deadlines_to_ics(events) -> str:
         if event.get("description"):
             vevent.add("description").value = event["description"]
     return cal.serialize()
+
+
+def contacts_to_vcf(cards) -> str:
+    """Serialize resolved ``cards`` to a vCard (``.vcf``) string.
+
+    Each card is a dict ``{uid, name, phone, email, url, address, note}`` —
+    already resolved by the caller. ``name`` sets both ``FN`` (the display name)
+    and ``ORG``: our contacts are usually offices (clerk, legal aid), so a phone
+    imports them as an organization card rather than mangling an office name
+    into a person's given/family ``N``. Every other field is optional —
+    ``None``/empty emits no line. ``uid`` is supplied by the caller (stable per
+    contact) so re-downloading updates the card rather than duplicating it.
+
+    Multiple cards concatenate into one file (a valid ``.vcf`` holds many
+    vCards); an empty ``cards`` list yields an empty string.
+    """
+    out = []
+    for card in cards:
+        vcard = vobject.vCard()
+        vcard.add("uid").value = card["uid"]
+        vcard.add("fn").value = card["name"]
+        # ORG is a structured (list) value; a single-element list is one org.
+        vcard.add("org").value = [card["name"]]
+        if card.get("phone"):
+            vcard.add("tel").value = card["phone"]
+        if card.get("email"):
+            vcard.add("email").value = card["email"]
+        if card.get("url"):
+            vcard.add("url").value = card["url"]
+        if card.get("address"):
+            # A free-form one-line address rides in the ADR street component;
+            # vobject escapes any commas/semicolons within it.
+            vcard.add("adr").value = Address(street=card["address"])
+        if card.get("note"):
+            vcard.add("note").value = card["note"]
+        out.append(vcard.serialize())
+    return "".join(out)

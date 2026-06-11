@@ -3,10 +3,12 @@
 The renderer is a fat, pure function of ``(section, corpus, answers)`` → a
 ``RenderedSection`` carrying a template path + flat, dumb context. It takes a
 plain ``answers`` dict (not an AnswerStore), so these tests need no session or
-DB. The ``ics`` handler renders its deadline list here (#494); ``vcf`` is still
-intentionally unregistered — it lands with its download-view item (#441) — so
-rendering one fails fast.
+DB. The ``ics`` handler renders its deadline list here (#494); the ``vcf``
+handler renders its contact list (#473). An output_type with no registered
+handler is a code gap and fails fast.
 """
+
+from types import SimpleNamespace
 
 import pytest
 
@@ -15,6 +17,7 @@ from litigant_portal.app.topic_flow.renderer import (
     render_section,
 )
 from litigant_portal.app.topic_flow.schema import (
+    Contact,
     Corpus,
     Deadline,
     FactGatherSection,
@@ -28,10 +31,11 @@ from litigant_portal.app.topic_flow.schema import (
 )
 
 
-def _corpus(*sections, deadlines=None):
+def _corpus(*sections, deadlines=None, contacts=None):
     return Corpus(
         metadata=Metadata(court="c", topic="t", role="r", title="T"),
         deadlines=deadlines or [],
+        contacts=contacts or [],
         sections=list(sections),
     )
 
@@ -300,12 +304,70 @@ def test_ics_context_carries_download_url_parts():
 
 
 def test_unregistered_output_type_raises():
+    # Every real output_type is now registered, so the fail-fast invariant is
+    # tested with a stand-in carrying an output_type no handler knows. A new
+    # union member shipped without a renderer must blow up, not render blank.
+    bogus = SimpleNamespace(kind="output", output_type="zip", id="x")
+    # corpus is irrelevant — dispatch raises on the unknown key before using it.
+    with pytest.raises(ValueError, match="zip"):
+        render_section(bogus, None, {})
+
+
+# --- vcf (contact rendering, #473) ------------------------------------------
+# The vcf output renders each referenced contact via resolve_vcf_contacts
+# (shared with the .vcf download, #473). Contacts are static — no answers, no
+# pending state — so the download link always shows.
+
+_CLERK = Contact(
+    id="clerk",
+    name="Clerk of Court",
+    phone="555-1234",
+    note="Window 3",
+)
+
+
+def _vcf_corpus(contact_ids=("clerk",), contacts=(_CLERK,)):
     vcf = VcfOutput(
         kind="output",
         output_type="vcf",
-        id="contact",
-        heading="Save the clerk's contact",
-        contact_ids=["clerk"],
+        id="contacts",
+        heading="Save these contacts",
+        contact_ids=list(contact_ids),
     )
-    with pytest.raises(ValueError, match="vcf"):
-        render_section(vcf, _corpus(vcf), {})
+    corpus = _corpus(vcf, contacts=list(contacts))
+    return corpus, vcf
+
+
+def test_vcf_renders_referenced_contact():
+    corpus, vcf = _vcf_corpus()
+    (c,) = render_section(vcf, corpus, {}).context["contacts"]
+    assert c["name"] == "Clerk of Court"
+    assert c["phone"] == "555-1234"
+    assert c["note"] == "Window 3"
+
+
+def test_vcf_lists_contacts_in_contact_ids_order():
+    aid = Contact(id="aid", name="Legal Aid")
+    corpus, vcf = _vcf_corpus(
+        contact_ids=("aid", "clerk"), contacts=(_CLERK, aid)
+    )
+    contacts = render_section(vcf, corpus, {}).context["contacts"]
+    assert [c["name"] for c in contacts] == ["Legal Aid", "Clerk of Court"]
+
+
+def test_vcf_context_carries_download_url_parts():
+    # The template builds {% url 'pages:topic_flow_download' ... %} from these.
+    corpus, vcf = _vcf_corpus()
+    ctx = render_section(vcf, corpus, {}).context
+    assert ctx["output_id"] == vcf.id
+    assert (ctx["court"], ctx["topic"], ctx["role"]) == (
+        corpus.metadata.court,
+        corpus.metadata.topic,
+        corpus.metadata.role,
+    )
+
+
+def test_vcf_uses_the_vcf_template():
+    corpus, vcf = _vcf_corpus()
+    rendered = render_section(vcf, corpus, {})
+    assert rendered.template.endswith("flow_section_vcf.html")

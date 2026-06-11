@@ -15,7 +15,10 @@ from datetime import date, datetime
 
 import vobject
 
-from litigant_portal.app.topic_flow.artifacts import deadlines_to_ics
+from litigant_portal.app.topic_flow.artifacts import (
+    contacts_to_vcf,
+    deadlines_to_ics,
+)
 
 
 def _event(
@@ -88,3 +91,98 @@ def test_empty_event_list_is_still_a_valid_calendar():
     cal = vobject.readOne(deadlines_to_ics([]))
     assert cal.name == "VCALENDAR"
     assert "vevent" not in cal.contents
+
+
+# --- contacts_to_vcf --------------------------------------------------------
+# Same pure-projection contract as deadlines_to_ics: resolved contact dicts in,
+# vCard bytes out. Tests round-trip through vobject (parse the output back) to
+# pin the semantic contract, not vobject's exact line formatting.
+
+
+def _card(
+    uid="clerk@litigantportal",
+    name="Clerk of Court",
+    phone=None,
+    email=None,
+    url=None,
+    address=None,
+    note=None,
+):
+    return {
+        "uid": uid,
+        "name": name,
+        "phone": phone,
+        "email": email,
+        "url": url,
+        "address": address,
+        "note": note,
+    }
+
+
+def test_wraps_contacts_in_a_parseable_vcard():
+    card = vobject.readOne(contacts_to_vcf([_card()]))
+    assert card.name == "VCARD"
+    # VERSION is mandatory; a vCard without it won't import.
+    assert card.version.value == "3.0"
+
+
+def test_name_sets_both_fn_and_org():
+    # Our contacts are offices, so the name is the organization AND the display
+    # name — not a person's structured N. Both must carry it.
+    card = vobject.readOne(contacts_to_vcf([_card(name="Legal Aid Society")]))
+    assert card.fn.value == "Legal Aid Society"
+    assert card.org.value == ["Legal Aid Society"]
+
+
+def test_uid_round_trips():
+    card = vobject.readOne(
+        contacts_to_vcf([_card(uid="clerk@litigantportal")])
+    )
+    assert card.uid.value == "clerk@litigantportal"
+
+
+def test_optional_fields_present_when_given():
+    card = vobject.readOne(
+        contacts_to_vcf(
+            [
+                _card(
+                    phone="555-1234",
+                    email="clerk@court.gov",
+                    url="https://court.gov",
+                    note="Window 3",
+                )
+            ]
+        )
+    )
+    assert card.tel.value == "555-1234"
+    assert card.email.value == "clerk@court.gov"
+    assert card.url.value == "https://court.gov"
+    assert card.note.value == "Window 3"
+
+
+def test_optional_fields_omitted_when_absent():
+    # Absent field → no line, never an empty TEL:/EMAIL:.
+    card = vobject.readOne(contacts_to_vcf([_card()]))
+    assert "tel" not in card.contents
+    assert "email" not in card.contents
+    assert "note" not in card.contents
+
+
+def test_each_contact_becomes_its_own_vcard():
+    out = contacts_to_vcf([_card(uid="a", name="A"), _card(uid="b", name="B")])
+    cards = list(vobject.readComponents(out))
+    assert {c.uid.value for c in cards} == {"a", "b"}
+
+
+def test_vcf_special_characters_survive_a_round_trip():
+    # RFC 6350 reserves comma / semicolon / backslash in TEXT values; round-
+    # tripping intact proves vobject's escaping is applied.
+    tricky = "Legal Aid; Society, Inc.\\ here"
+    card = vobject.readOne(contacts_to_vcf([_card(name=tricky)]))
+    assert card.fn.value == tricky
+
+
+def test_empty_contact_list_is_an_empty_string():
+    # No contacts → no cards. (Schema guarantees a vcf section has ≥1, so this
+    # is the generator's own floor, not a reachable section state.)
+    assert contacts_to_vcf([]) == ""
