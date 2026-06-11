@@ -658,6 +658,18 @@
     @apply hover:border-primary-300 hover:shadow-sm transition-all;
   }
 
+  /* Topic Flow in-header table-of-contents (<details> disclosure).
+     Hide the native disclosure triangle so the summary reads as a plain
+     hamburger button; flex display handles Chrome/Firefox, the webkit rule
+     covers older iOS Safari. */
+  .topic-flow-toc > summary {
+    @apply list-none;
+  }
+
+  .topic-flow-toc > summary::-webkit-details-marker {
+    display: none;
+  }
+
   /* ==========================================================================
      PRINT STYLES — action plan document view
      ========================================================================== */

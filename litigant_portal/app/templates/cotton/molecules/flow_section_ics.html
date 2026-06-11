@@ -1,0 +1,37 @@
+{% load i18n %}
+
+{# ics output body: deadlines computed from fact_gather answers, server-rendered #}
+{# and JS-off (#494). Each deadline shows its concrete date once the source date #}
+{# is entered, else a "fill the date first" hint. The add-to-calendar (.ics) #}
+{# download link (#504) appears once at least one deadline has a computed date. #}
+<ul class="space-y-4">
+  {% for deadline in ctx.deadlines %}
+  <li>
+    <div class="font-medium text-greyscale-900">{{ deadline.label }}</div>
+    {% if deadline.date_display %}
+    <p class="text-greyscale-900">
+      <time datetime="{{ deadline.date_iso }}">{{ deadline.date_display }}</time>
+    </p>
+    {% else %}
+    <p class="text-sm text-greyscale-500">
+      {% trans "Enter your dates above to see this deadline." %}
+    </p>
+    {% endif %}
+    {% if deadline.description %}
+    <p class="text-sm text-greyscale-500">{{ deadline.description }}</p>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+{% if ctx.has_dates %}
+<div class="mt-4">
+  <c-atoms.button
+    href="{% url 'pages:topic_flow_download' court=ctx.court topic=ctx.topic role=ctx.role output_id=ctx.output_id %}"
+    variant="outline"
+  >
+    <c-atoms.icon name="calendar" class="w-4 h-4" />
+    {% trans "Add to calendar" %}
+  </c-atoms.button>
+</div>
+{% endif %}

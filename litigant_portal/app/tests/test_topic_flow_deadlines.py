@@ -10,8 +10,12 @@ normal state, not an error.
 """
 
 from datetime import date
+from types import SimpleNamespace
 
-from litigant_portal.app.topic_flow.deadlines import compute_deadline
+from litigant_portal.app.topic_flow.deadlines import (
+    compute_deadline,
+    resolve_ics_deadlines,
+)
 from litigant_portal.app.topic_flow.schema import Deadline
 
 
@@ -58,3 +62,70 @@ def test_unparseable_date_returns_none_without_raising():
         compute_deadline(_deadline(), {"publication_date": "not-a-date"})
         is None
     )
+
+
+# --- resolve_ics_deadlines --------------------------------------------------
+# The shared resolver an ics section's renderer AND its .ics download view both
+# call, so the page and the downloaded calendar compute from one source. It
+# duck-types on ``section.deadline_ids`` and ``corpus.deadlines``; the stand-ins
+# below carry just those attributes (real Deadline objects drive the math).
+
+
+def _named_deadline(id, label, offset_days=30, description=None):
+    return Deadline(
+        id=id,
+        label=label,
+        offset_days=offset_days,
+        offset_from="publication_date",
+        description=description,
+    )
+
+
+def _section(*deadline_ids):
+    return SimpleNamespace(deadline_ids=list(deadline_ids))
+
+
+def _corpus(*deadlines):
+    return SimpleNamespace(deadlines=list(deadlines))
+
+
+def test_resolve_computes_each_referenced_deadlines_date():
+    deadline = _named_deadline("pub_wait", "Publication wait", 30)
+    (resolved,) = resolve_ics_deadlines(
+        _section("pub_wait"),
+        _corpus(deadline),
+        {"publication_date": "2026-02-01"},
+    )
+    assert resolved["id"] == "pub_wait"
+    assert resolved["label"] == "Publication wait"
+    # 30 days after 2026-02-01 = 2026-03-03 — the raw date the .ics consumes.
+    assert resolved["date"] == date(2026, 3, 3)
+
+
+def test_resolve_date_is_none_when_answer_missing():
+    # The view filters on this: a None-date deadline isn't a calendar event yet.
+    (resolved,) = resolve_ics_deadlines(
+        _section("pub_wait"), _corpus(_named_deadline("pub_wait", "Wait")), {}
+    )
+    assert resolved["date"] is None
+
+
+def test_resolve_follows_section_order_not_corpus_order():
+    # Order tracks the section's deadline_ids, not corpus.deadlines order —
+    # the iteration source is the contract, so guard the wrong-collection bug.
+    first = _named_deadline("a", "A", 5)
+    second = _named_deadline("b", "B", 10)
+    resolved = resolve_ics_deadlines(
+        _section("b", "a"), _corpus(first, second), {}
+    )
+    assert [r["id"] for r in resolved] == ["b", "a"]
+
+
+def test_resolve_carries_description():
+    deadline = _named_deadline(
+        "pub_wait", "Wait", description="Judge reviews."
+    )
+    (resolved,) = resolve_ics_deadlines(
+        _section("pub_wait"), _corpus(deadline), {}
+    )
+    assert resolved["description"] == "Judge reviews."

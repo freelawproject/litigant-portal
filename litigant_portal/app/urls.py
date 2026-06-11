@@ -18,6 +18,11 @@ app_patterns = [
         pages.topic_flow,
         name="topic_flow",
     ),
+    path(
+        "t/<slug:court>/<slug:topic>/<slug:role>/download/<slug:output_id>/",
+        pages.topic_flow_download,
+        name="topic_flow_download",
+    ),
     path("chat/", pages.chat_page, name="chat"),
     path("chat/action-plan/", endpoints.action_plan, name="action_plan"),
     path("style-guide/", pages.style_guide, name="style_guide"),

@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.http import urlencode
@@ -12,10 +12,15 @@ from litigant_portal.agents import agent_registry
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
 from litigant_portal.app.topic_flow.answer_store import AnswerStore
+from litigant_portal.app.topic_flow.downloads import (
+    build_download,
+    find_downloadable,
+)
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
     question_ids,
     render_section,
+    submitted_section_anchor,
 )
 
 TOPICS = {
@@ -257,19 +262,65 @@ def topic_flow(request, court, topic, role):
             if qid in request.POST
         }
         store.update(submitted)
-        return redirect(
-            "pages:topic_flow", court=court, topic=topic, role=role
+        # PRG back to the section just saved (#anchor) so the litigant keeps
+        # their place and sees the recomputed deadlines, instead of the browser
+        # jumping to the top of the page on the redirected GET.
+        url = reverse(
+            "pages:topic_flow",
+            kwargs={"court": court, "topic": topic, "role": role},
         )
+        anchor = submitted_section_anchor(corpus, submitted)
+        if anchor:
+            url = f"{url}#{anchor}"
+        return redirect(url)
 
     answers = store.all()
     rendered_sections = [
         render_section(section, corpus, answers) for section in corpus.sections
     ]
+    # Table of contents for the in-header wayfinding menu — one entry per
+    # headed section, so a litigant can jump back to re-read or revise.
+    toc = [
+        {"anchor": section.anchor_id, "heading": section.heading}
+        for section in rendered_sections
+        if section.heading
+    ]
     return render(
         request,
         "pages/topic_flow.html",
-        {"corpus": corpus, "rendered_sections": rendered_sections},
+        {
+            "corpus": corpus,
+            "rendered_sections": rendered_sections,
+            "toc": toc,
+        },
     )
+
+
+def topic_flow_download(request, court, topic, role, output_id):
+    """Download a Topic Flow output section as a file (e.g. an ``.ics``).
+
+    The generic counterpart to ``topic_flow``: resolve the corpus and the
+    downloadable output section (404 on either miss — an unknown id or a
+    non-downloadable section), then dispatch on ``output_type`` to assemble the
+    file from the guest's stored answers. The view stays thin — file bytes come
+    from the download handlers in downloads.py, computed from the same
+    AnswerStore the page renders, so the download matches what's on screen.
+    """
+    corpus = registry.get(court, topic, role)
+    if corpus is None:
+        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+
+    section = find_downloadable(corpus, output_id)
+    if section is None:
+        raise Http404(f"No downloadable output {output_id!r}")
+
+    store = AnswerStore(request.session, court, topic, role)
+    artifact = build_download(section, corpus, store.all())
+    response = HttpResponse(artifact.body, content_type=artifact.content_type)
+    response["Content-Disposition"] = (
+        f'attachment; filename="{artifact.filename}"'
+    )
+    return response
 
 
 def test_agent(request, agent_name):

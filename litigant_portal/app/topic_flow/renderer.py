@@ -13,12 +13,16 @@ session/request machinery.
 
 Corpus validity is guaranteed upstream at load, so the renderer never
 re-validates data; an unhandled section type is a *code* gap (a union member
-with no registered handler) and fails fast. Handlers for ``ics`` and ``vcf``
-register with their download-view items; until then, rendering one raises.
+with no registered handler) and fails fast. The ``ics`` and ``vcf`` handlers
+format their data from a shared resolver (``resolve_ics_deadlines`` /
+``resolve_vcf_contacts``) that their download handlers (downloads.py) also
+consume, so what's downloaded can't drift from what's rendered on the page.
 """
 
 from dataclasses import dataclass
 
+from litigant_portal.app.topic_flow.contacts import resolve_vcf_contacts
+from litigant_portal.app.topic_flow.deadlines import resolve_ics_deadlines
 from litigant_portal.app.topic_flow.schema import FactGatherSection
 
 
@@ -114,6 +118,24 @@ def question_ids(corpus):
     return [question.id for question in _fact_gather_questions(corpus)]
 
 
+def submitted_section_anchor(corpus, submitted_ids):
+    """Anchor id of the fact_gather section a set of submitted answers came from.
+
+    The entry view redirects (PRG) back to this anchor so saving answers returns
+    the litigant to the form they were filling — and to the deadlines that
+    recompute just below it — rather than the top of the page. Matched on
+    question-id overlap, so it stays correct with multiple fact_gather sections;
+    returns ``None`` when nothing matches, leaving the redirect bare (page top).
+    """
+    submitted = set(submitted_ids)
+    for section in corpus.sections:
+        if isinstance(section, FactGatherSection) and any(
+            question.id in submitted for question in section.questions
+        ):
+            return section.id
+    return None
+
+
 def _answered_in_corpus_order(corpus, answers):
     """Yield ``{label, value}`` for answered questions, in corpus order."""
     for question in _fact_gather_questions(corpus):
@@ -138,4 +160,79 @@ def _render_packet(section, corpus, answers):
         heading=section.heading,
         template=f"{_TEMPLATE_DIR}/flow_section_packet.html",
         context={"forms": list(section.forms)},
+    )
+
+
+def _format_deadline_date(value):
+    """Human-readable deadline date, e.g. "Tuesday, March 3, 2026".
+
+    ``%-d`` drops the leading zero (POSIX; the app runs on Linux/macOS).
+    """
+    return value.strftime("%A, %B %-d, %Y")
+
+
+def _deadline_display(resolved):
+    """Add page-display date strings to a resolved deadline.
+
+    ``date_display``/``date_iso`` are ``None`` when the computed ``date`` is
+    ``None`` (source answer absent or unparseable) — the "fill the date first"
+    state — so the template shows the label without a date rather than erroring.
+    ``date_iso`` feeds the ``<time>`` element; the ``.ics`` export consumes the
+    same ``resolve_ics_deadlines`` output one layer up, so the two can't drift.
+    """
+    computed = resolved["date"]
+    return {
+        "label": resolved["label"],
+        "description": resolved["description"],
+        "date_display": _format_deadline_date(computed) if computed else None,
+        "date_iso": computed.isoformat() if computed else None,
+    }
+
+
+@renderer("ics")
+def _render_ics(section, corpus, answers):
+    deadlines = [
+        _deadline_display(resolved)
+        for resolved in resolve_ics_deadlines(section, corpus, answers)
+    ]
+    meta = corpus.metadata
+    # URL parts (not a built URL) so the template owns {% url %} resolution and
+    # the renderer stays Django-free. ``has_dates`` gates the download link:
+    # an empty calendar is no use, so the button only shows once at least one
+    # deadline has a computed date.
+    return RenderedSection(
+        anchor_id=section.id,
+        heading=section.heading,
+        template=f"{_TEMPLATE_DIR}/flow_section_ics.html",
+        context={
+            "deadlines": deadlines,
+            "has_dates": any(d["date_iso"] for d in deadlines),
+            "court": meta.court,
+            "topic": meta.topic,
+            "role": meta.role,
+            "output_id": section.id,
+        },
+    )
+
+
+@renderer("vcf")
+def _render_vcf(section, corpus, answers):
+    contacts = resolve_vcf_contacts(section, corpus)
+    meta = corpus.metadata
+    # Same shape as _render_ics: the flat contact dicts are template-ready, and
+    # the URL parts let the template own {% url %} resolution (renderer stays
+    # Django-free). No gate like ics's has_dates — contacts are static corpus
+    # data that always resolve (contact_ids is non-empty), so the download link
+    # always shows.
+    return RenderedSection(
+        anchor_id=section.id,
+        heading=section.heading,
+        template=f"{_TEMPLATE_DIR}/flow_section_vcf.html",
+        context={
+            "contacts": contacts,
+            "court": meta.court,
+            "topic": meta.topic,
+            "role": meta.role,
+            "output_id": section.id,
+        },
     )

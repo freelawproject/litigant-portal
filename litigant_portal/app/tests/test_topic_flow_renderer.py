@@ -3,18 +3,24 @@
 The renderer is a fat, pure function of ``(section, corpus, answers)`` → a
 ``RenderedSection`` carrying a template path + flat, dumb context. It takes a
 plain ``answers`` dict (not an AnswerStore), so these tests need no session or
-DB. Handlers for ``ics`` / ``vcf`` are intentionally unregistered here — they
-land with their download-view items — so rendering one fails fast.
+DB. The ``ics`` handler renders its deadline list here (#494); the ``vcf``
+handler renders its contact list (#473). An output_type with no registered
+handler is a code gap and fails fast.
 """
+
+from types import SimpleNamespace
 
 import pytest
 
 from litigant_portal.app.topic_flow.renderer import (
     RenderedSection,
     render_section,
+    submitted_section_anchor,
 )
 from litigant_portal.app.topic_flow.schema import (
+    Contact,
     Corpus,
+    Deadline,
     FactGatherSection,
     IcsOutput,
     InfoSection,
@@ -22,12 +28,15 @@ from litigant_portal.app.topic_flow.schema import (
     PacketOutput,
     Question,
     SummaryOutput,
+    VcfOutput,
 )
 
 
-def _corpus(*sections):
+def _corpus(*sections, deadlines=None, contacts=None):
     return Corpus(
         metadata=Metadata(court="c", topic="t", role="r", title="T"),
+        deadlines=deadlines or [],
+        contacts=contacts or [],
         sections=list(sections),
     )
 
@@ -182,16 +191,211 @@ def test_each_kind_dispatches_to_a_distinct_template():
     assert all(t for t in templates)  # all non-empty
 
 
-# --- fail-fast on unregistered (ics/vcf land with their view items) ---------
+# --- ics (deadline rendering, #494) -----------------------------------------
+# The ics output renders each referenced deadline computed from the user's
+# answers, via resolve_ics_deadlines (shared with the .ics download, #504).
+# These cover the visible, JS-off date list + the download-link context.
+
+_PUB_Q = Question(id="publication_date", label="Publication date", type="date")
+_PUB_DEADLINE = Deadline(
+    id="publication_wait",
+    label="30-day publication wait",
+    offset_days=30,
+    offset_from="publication_date",
+    description="The judge can review 30 days after publication.",
+)
 
 
-def test_unregistered_output_type_raises():
+def _ics_corpus(
+    deadline_ids=("publication_wait",), deadlines=(_PUB_DEADLINE,)
+):
     ics = IcsOutput(
         kind="output",
         output_type="ics",
         id="cal",
-        heading="Deadlines",
-        deadline_ids=["respond"],
+        heading="Add deadlines to your calendar",
+        deadline_ids=list(deadline_ids),
     )
-    with pytest.raises(ValueError, match="ics"):
-        render_section(ics, _corpus(ics), {})
+    corpus = _corpus(_fg([_PUB_Q], id="dates"), ics, deadlines=list(deadlines))
+    return corpus, ics
+
+
+def test_ics_renders_computed_deadline_from_answer():
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    (d,) = rendered.context["deadlines"]
+    assert d["label"] == "30-day publication wait"
+    # 30 days after 2026-02-01 = 2026-03-03 (Feb 2026 has 28 days).
+    assert d["date_iso"] == "2026-03-03"
+    assert "March 3, 2026" in d["date_display"]
+
+
+def test_ics_deadline_pending_when_answer_missing():
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {})
+    (d,) = rendered.context["deadlines"]
+    assert d["date_iso"] is None
+    assert d["date_display"] is None
+    assert d["label"] == "30-day publication wait"  # label still shown
+
+
+def test_ics_deadline_pending_when_answer_malformed():
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {"publication_date": "not-a-date"})
+    (d,) = rendered.context["deadlines"]
+    assert d["date_iso"] is None
+
+
+def test_ics_carries_deadline_description():
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {})
+    (d,) = rendered.context["deadlines"]
+    assert (
+        d["description"] == "The judge can review 30 days after publication."
+    )
+
+
+def test_ics_lists_deadlines_in_deadline_ids_order():
+    # Order follows the section's deadline_ids, not corpus.deadlines order.
+    second = Deadline(
+        id="second",
+        label="Second",
+        offset_days=5,
+        offset_from="publication_date",
+    )
+    corpus, ics = _ics_corpus(
+        deadline_ids=("second", "publication_wait"),
+        deadlines=(_PUB_DEADLINE, second),
+    )
+    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    assert [d["label"] for d in rendered.context["deadlines"]] == [
+        "Second",
+        "30-day publication wait",
+    ]
+
+
+def test_ics_has_dates_true_when_a_deadline_is_computed():
+    # Gates the download link: a calendar with at least one dated event.
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    assert rendered.context["has_dates"] is True
+
+
+def test_ics_has_dates_false_when_nothing_is_computed():
+    # No answer → no datable event → no download link shown.
+    corpus, ics = _ics_corpus()
+    rendered = render_section(ics, corpus, {})
+    assert rendered.context["has_dates"] is False
+
+
+def test_ics_context_carries_download_url_parts():
+    # The template builds {% url 'pages:topic_flow_download' ... %} from these,
+    # so the renderer stays Django-free (no reverse() call).
+    corpus, ics = _ics_corpus()
+    ctx = render_section(ics, corpus, {}).context
+    assert ctx["output_id"] == ics.id
+    assert (ctx["court"], ctx["topic"], ctx["role"]) == (
+        corpus.metadata.court,
+        corpus.metadata.topic,
+        corpus.metadata.role,
+    )
+
+
+# --- fail-fast on unregistered (vcf lands with its download view, #441) ------
+
+
+def test_unregistered_output_type_raises():
+    # Every real output_type is now registered, so the fail-fast invariant is
+    # tested with a stand-in carrying an output_type no handler knows. A new
+    # union member shipped without a renderer must blow up, not render blank.
+    bogus = SimpleNamespace(kind="output", output_type="zip", id="x")
+    # corpus is irrelevant — dispatch raises on the unknown key before using it.
+    with pytest.raises(ValueError, match="zip"):
+        render_section(bogus, None, {})
+
+
+# --- vcf (contact rendering, #473) ------------------------------------------
+# The vcf output renders each referenced contact via resolve_vcf_contacts
+# (shared with the .vcf download, #473). Contacts are static — no answers, no
+# pending state — so the download link always shows.
+
+_CLERK = Contact(
+    id="clerk",
+    name="Clerk of Court",
+    phone="555-1234",
+    note="Window 3",
+)
+
+
+def _vcf_corpus(contact_ids=("clerk",), contacts=(_CLERK,)):
+    vcf = VcfOutput(
+        kind="output",
+        output_type="vcf",
+        id="contacts",
+        heading="Save these contacts",
+        contact_ids=list(contact_ids),
+    )
+    corpus = _corpus(vcf, contacts=list(contacts))
+    return corpus, vcf
+
+
+def test_vcf_renders_referenced_contact():
+    corpus, vcf = _vcf_corpus()
+    (c,) = render_section(vcf, corpus, {}).context["contacts"]
+    assert c["name"] == "Clerk of Court"
+    assert c["phone"] == "555-1234"
+    assert c["note"] == "Window 3"
+
+
+def test_vcf_lists_contacts_in_contact_ids_order():
+    aid = Contact(id="aid", name="Legal Aid")
+    corpus, vcf = _vcf_corpus(
+        contact_ids=("aid", "clerk"), contacts=(_CLERK, aid)
+    )
+    contacts = render_section(vcf, corpus, {}).context["contacts"]
+    assert [c["name"] for c in contacts] == ["Legal Aid", "Clerk of Court"]
+
+
+def test_vcf_context_carries_download_url_parts():
+    # The template builds {% url 'pages:topic_flow_download' ... %} from these.
+    corpus, vcf = _vcf_corpus()
+    ctx = render_section(vcf, corpus, {}).context
+    assert ctx["output_id"] == vcf.id
+    assert (ctx["court"], ctx["topic"], ctx["role"]) == (
+        corpus.metadata.court,
+        corpus.metadata.topic,
+        corpus.metadata.role,
+    )
+
+
+def test_vcf_uses_the_vcf_template():
+    corpus, vcf = _vcf_corpus()
+    rendered = render_section(vcf, corpus, {})
+    assert rendered.template.endswith("flow_section_vcf.html")
+
+
+# --- submitted_section_anchor (PRG scroll restore, #510) --------------------
+# The entry view redirects a saved form back to its section anchor so the
+# litigant keeps their place. The anchor is matched by submitted question-id
+# overlap, so the right section wins even with multiple fact_gather forms.
+
+
+def test_anchor_is_the_section_owning_the_submitted_ids():
+    section = _fg([Question(id="pubdate", label="Date")], id="key_dates")
+    assert (
+        submitted_section_anchor(_corpus(section), {"pubdate"}) == "key_dates"
+    )
+
+
+def test_anchor_picks_the_form_that_was_submitted_not_just_the_first():
+    dates = _fg([Question(id="pubdate", label="Date")], id="dates")
+    contact = _fg([Question(id="phone", label="Phone")], id="contact_info")
+    corpus = _corpus(dates, contact)
+    # Only the second form's field was posted → its anchor, not "dates".
+    assert submitted_section_anchor(corpus, {"phone"}) == "contact_info"
+
+
+def test_anchor_is_none_when_nothing_overlaps():
+    section = _fg([Question(id="pubdate", label="Date")], id="key_dates")
+    assert submitted_section_anchor(_corpus(section), {"unknown"}) is None
+    assert submitted_section_anchor(_corpus(section), set()) is None
