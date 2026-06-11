@@ -278,10 +278,21 @@ def topic_flow(request, court, topic, role):
     rendered_sections = [
         render_section(section, corpus, answers) for section in corpus.sections
     ]
+    # Table of contents for the in-header wayfinding menu — one entry per
+    # headed section, so a litigant can jump back to re-read or revise.
+    toc = [
+        {"anchor": section.anchor_id, "heading": section.heading}
+        for section in rendered_sections
+        if section.heading
+    ]
     return render(
         request,
         "pages/topic_flow.html",
-        {"corpus": corpus, "rendered_sections": rendered_sections},
+        {
+            "corpus": corpus,
+            "rendered_sections": rendered_sections,
+            "toc": toc,
+        },
     )
 
 

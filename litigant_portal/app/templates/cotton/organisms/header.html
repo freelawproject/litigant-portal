@@ -1,6 +1,6 @@
 {% load static i18n %}
 
-<c-vars sticky="" />
+<c-vars sticky="" toc="" />
 <header class="mobile-header flex-shrink-0 {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
         {{ attrs }}>
   <div class="mobile-header-inner">
@@ -11,7 +11,37 @@
     </a>
     <div class="flex items-center gap-1 sm:gap-2">
       <c-molecules.user-menu class="hidden sm:flex" />
-      {% if deployment_env != "prod" %}
+      {% if toc %}
+        {% trans "On this page" as toc_label %}
+        {% trans "Exit this guide" as exit_label %}
+        {# In-flow wayfinding: a native <details> disclosure so the TOC works #}
+        {# with JS off and exposes its open/closed state to assistive tech #}
+        {# without any aria wiring (WCAG 4.1.2). Replaces the dev-tools menu #}
+        {# while inside a flow — one control, in the consistent header slot. #}
+        <details class="topic-flow-toc relative">
+          <summary
+            class="flex items-center justify-center p-2 rounded-lg cursor-pointer hover:bg-greyscale-100 list-none"
+            aria-label="{{ toc_label }}"
+          >
+            <c-atoms.icon name="bars-3" class="w-6 h-6" />
+          </summary>
+          <nav
+            aria-label="{{ toc_label }}"
+            class="absolute right-0 mt-2 w-64 max-w-[90vw] bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
+          >
+            <p class="px-4 py-2 text-xs font-semibold text-greyscale-400">{{ toc_label }}</p>
+            {% for item in toc %}
+            <a href="#{{ item.anchor }}" class="block px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100">{{ item.heading }}</a>
+            {% endfor %}
+            <div class="border-t border-greyscale-200 mt-1">
+              <a href="{% url 'pages:home' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100">
+                <c-atoms.icon name="home" class="w-5 h-5 text-greyscale-500" />
+                {{ exit_label }}
+              </a>
+            </div>
+          </nav>
+        </details>
+      {% elif deployment_env != "prod" %}
         {% trans "Dev tools" as dev_tools_label %}
         <div x-data="devMenu" class="relative">
           <c-atoms.button type="button" variant="ghost" aria_label="{{ dev_tools_label }}" class="!p-2" x-on:click="toggle" x-bind:aria-expanded="open" aria-haspopup="true">
