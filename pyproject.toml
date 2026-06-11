@@ -40,6 +40,7 @@ dependencies = [
     "django-csp>=3.8",
     "django-pydantic-field>=0.5.1",
     "gunicorn>=23.0",
+    "whitenoise[brotli]>=6.0",
     "heroicons>=2.0",
     # AI Chat
     "litellm>=1.50",
@@ -56,7 +57,6 @@ dependencies = [
     # PostgreSQL driver
     "psycopg[binary]>=3.2",
     "redis>=5.0",
-    "django-storages[s3]>=1.14",
     # Rate limiting
     "django-ratelimit>=4.1",
     # PDF text extraction
