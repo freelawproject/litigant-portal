@@ -82,6 +82,17 @@ jobs:
             # main — the deploy box holds no local edits.
             git fetch origin
             git reset --hard origin/main
+            # Reclaim disk BEFORE pulling. Each deploy pulls a fresh image and
+            # the superseded ones accumulate unbounded — the box hit 99% full /
+            # "no space left on device" mid-pull and QA went down (#521). The
+            # running stack's image is referenced by its container, so it's
+            # kept; only orphaned images are removed. Prune images only (not
+            # `system prune`): image accumulation is the whole problem, and
+            # `image prune` leaves stopped containers, networks, and build cache
+            # alone — smallest blast radius on a box compose fully manages.
+            # There's no build cache to reclaim here anyway (deploys pull, never
+            # build). Images carry no --volumes flag, so postgres data is safe.
+            docker image prune -af
             docker compose --profile prod pull
             docker compose --profile prod up -d --no-build
 
