@@ -1,6 +1,7 @@
 .PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
        file-issue messages compilemessages docker-build docker-dev docker-prod docker-rebuild \
-	   docker-down docker-logs docker-shell docker-migrate docker-clean
+	   docker-down docker-logs docker-shell docker-migrate docker-clean \
+	   docassemble-up docassemble-down
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -106,3 +107,9 @@ docker-migrate: ## Run migrations in Docker
 
 docker-clean: ## Remove containers, volumes, and images
 	docker compose --profile dev --profile prod down -v --rmi local
+
+docassemble-up: ## Start the local-dev docassemble bench (http://localhost:8100)
+	docker compose -f docker-compose.docassemble.yml up -d
+
+docassemble-down: ## Stop the local-dev docassemble bench
+	docker compose -f docker-compose.docassemble.yml down
