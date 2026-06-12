@@ -8,12 +8,14 @@ handler renders its contact list (#473). An output_type with no registered
 handler is a code gap and fails fast.
 """
 
+from datetime import date
 from types import SimpleNamespace
 
 import pytest
 
 from litigant_portal.app.topic_flow.renderer import (
     RenderedSection,
+    _format_deadline_date,
     render_section,
     submitted_section_anchor,
 )
@@ -228,6 +230,23 @@ def test_ics_renders_computed_deadline_from_answer():
     # 30 days after 2026-02-01 = 2026-03-03 (Feb 2026 has 28 days).
     assert d["date_iso"] == "2026-03-03"
     assert "March 3, 2026" in d["date_display"]
+
+
+def test_format_deadline_date_single_digit_day_has_no_leading_zero():
+    # The display drops the leading zero on the day ("March 3", not "March 03")
+    # and must do so without strftime's %-d — a glibc/BSD extension that raises
+    # ValueError on platforms whose C library lacks it (Windows), which would
+    # crash deadline rendering for a partner self-hosting there (#526). Pinning
+    # the exact string guards both the no-leading-zero contract and a regression
+    # back to %d.
+    assert _format_deadline_date(date(2026, 3, 3)) == "Tuesday, March 3, 2026"
+
+
+def test_format_deadline_date_double_digit_day():
+    assert (
+        _format_deadline_date(date(2026, 12, 25))
+        == "Friday, December 25, 2026"
+    )
 
 
 def test_ics_deadline_pending_when_answer_missing():
