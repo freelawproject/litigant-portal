@@ -73,16 +73,17 @@ Each surface area gets its own distinct hue so multi-label issues are scannable.
 
 ### Workflow / state
 
-| Label              | Color     | Notes                                        |
-| ------------------ | --------- | -------------------------------------------- |
-| `duplicate`        | `#cfd3d7` | GH default — triage convenience              |
-| `good first issue` | `#7057ff` | GH default                                   |
-| `help wanted`      | `#008672` | GH default                                   |
-| `pinned`           | `#006b75` | Exempt from stale bot                        |
-| `question`         | `#d876e3` | GH default — further information requested   |
-| `research`         | `#06B6D4` | Investigation / learning, not code           |
-| `stale`            | `#ededed` | No activity for 90+ days                     |
-| `tech debt`        | `#D4C5F9` | Deferred cleanup, consolidation, refactoring |
+| Label              | Color     | Notes                                                        |
+| ------------------ | --------- | ------------------------------------------------------------ |
+| `duplicate`        | `#cfd3d7` | GH default — triage convenience                              |
+| `good first issue` | `#7057ff` | GH default                                                   |
+| `help wanted`      | `#008672` | GH default                                                   |
+| `pinned`           | `#006b75` | Exempt from stale bot                                        |
+| `question`         | `#d876e3` | GH default — further information requested                   |
+| `research`         | `#06B6D4` | Investigation / learning, not code                           |
+| `stale`            | `#ededed` | No activity for 90+ days                                     |
+| `tech debt`        | `#D4C5F9` | Deferred cleanup, consolidation, refactoring                 |
+| `user-story`       | `#0FB3A1` | Persona user story — living reference, exempt from stale bot |
 
 ## Conventions
 
@@ -103,3 +104,4 @@ Each surface area gets its own distinct hue so multi-label issues are scannable.
 - 2026-05-20 — initial issue templates set up (bug-report, feature, task) + chooser config + qa-round URL fix. PRs #433 (qa) and #435 (main).
 - 2026-05-21 — templates tightened per QA feedback: `feature` renamed to `enhancement`; priority and size dropdowns removed from all templates; title prefixes dropped; `qa-round` converted from markdown to issue form; root `SECURITY.md` added for VDP routing. PR #436 (qa) + direct cherry-pick to main.
 - 2026-05-21 — label audit: 32 → 28 labels. Resolved color collisions (`security`, `research`, `a11y`); sizes unified to soft grey; deleted unused `blocked`, `invalid`, `wontfix`, `Chat Flow`. Created `task` label; renamed `QA` → `qa` (lowercase).
+- 2026-06-15 — added `user-story` label (`#0FB3A1`) and added it to the stale bot's exempt list, so persona stories under #22 don't auto-close. Applied to #26, #190, #191, #192, #311, #312.
