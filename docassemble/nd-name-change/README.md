@@ -50,6 +50,9 @@ Standard track — published: 2026-05-01, The Bismarck Tribune, Burleigh County
 Waiver track   — reason:    victim of domestic violence
 ```
 
+For answer sets tied to real user stories, see [`test-personas.md`](test-personas.md)
+(e.g. Sandra, post-divorce restoration — #311).
+
 ## Field mapping
 
 The interviews map answers to the Petition's real AcroForm field names (extracted
