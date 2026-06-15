@@ -1,0 +1,44 @@
+# Local-dev ONLY: a standalone docassemble instance for authoring and testing
+# the Topic Flow → docassemble document-assembly interviews.
+#
+# NOT production, and deliberately NOT wired into LP's dev/prod profiles —
+# docassemble is a ~20 GB all-in-one container (Postgres/Redis/RabbitMQ/Celery/
+# nginx under supervisor), so it's opt-in for anyone working on the handoff.
+# Real hosting waits for the infra-team move; this is just the local test bench.
+#
+# Config grounded in docassemble's docker docs (docassemble.org/docs/docker.html):
+#   - single jhpyle/docassemble container; nginx is internal on :80
+#   - LP's Caddy owns :80 locally, so map to :8100
+#   - DAHOSTNAME MUST include the non-standard port (localhost:8100)
+#   - websockets work locally with no extra port/env (only needed behind a proxy)
+#   - 600s stop grace for a DB-safe shutdown
+#
+# Bring up:   docker compose -f docker-compose.docassemble.yml up -d
+#             (first run pulls ~20 GB / takes a while)
+# Open:       http://localhost:8100
+# Default login: admin@admin.com / password  — change it immediately on first login
+# Tear down:  docker compose -f docker-compose.docassemble.yml down
+#             (named volumes below persist Playground work across down/up)
+
+services:
+  docassemble:
+    image: jhpyle/docassemble
+    container_name: docassemble-dev
+    ports:
+      - '8100:80'
+    environment:
+      DAHOSTNAME: 'localhost:8100'
+      USEHTTPS: 'false'
+      TIMEZONE: 'America/New_York'
+    stop_grace_period: 600s
+    restart: unless-stopped
+    volumes:
+      # Persist Playground projects + docassemble's auto-DB-backup across
+      # restarts so interview work survives `down`. docassemble restores from
+      # the backup dir on start. Verify persistence holds on the first down/up.
+      - docassemble_backup:/usr/share/docassemble/backup
+      - docassemble_files:/usr/share/docassemble/files
+
+volumes:
+  docassemble_backup:
+  docassemble_files:
