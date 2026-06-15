@@ -17,6 +17,7 @@ repos:
       - id: check-toml
       - id: check-xml
       - id: check-yaml
+        args: [--allow-multiple-documents] # docassemble interviews are multi-doc YAML
       - id: debug-statements
       - id: detect-private-key
       - id: fix-byte-order-marker

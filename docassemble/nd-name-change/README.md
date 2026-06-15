@@ -9,11 +9,11 @@ README together), not split by file type.
 
 ## Contents
 
-| File | What it is |
-| --- | --- |
-| `petition.pdf` | ND Petition for Name Change (NC Pet/Rev. May 2024) — the fillable template |
-| `petition-standard.yml` | Interview for the standard **publish** track |
-| `petition-waiver.yml` | Interview for the **publication-waived** track |
+| File                    | What it is                                                                 |
+| ----------------------- | -------------------------------------------------------------------------- |
+| `petition.pdf`          | ND Petition for Name Change (NC Pet/Rev. May 2024) — the fillable template |
+| `petition-standard.yml` | Interview for the standard **publish** track                               |
+| `petition-waiver.yml`   | Interview for the **publication-waived** track                             |
 
 Both interviews fill the **same** `petition.pdf`; they differ only at the
 Petition's §11 (publish vs. waive + reason) and §12 (objections). The tracks fork

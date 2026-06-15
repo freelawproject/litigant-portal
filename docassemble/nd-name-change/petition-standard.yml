@@ -82,54 +82,54 @@ attachment:
   pdf template file: petition.pdf
   fields:
     # Caption
-    - "Text1": ${ residence_county }
-    - "Case No": ""
-    - "Petitioners current first middle if any and last legal name": ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    - 'Text1': ${ residence_county }
+    - 'Case No': ''
+    - 'Petitioners current first middle if any and last legal name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
     # 2. Current legal name
-    - "First name": ${ current_first }
-    - "Middle names if any": ${ current_middle }
-    - "Last name": ${ current_last }
+    - 'First name': ${ current_first }
+    - 'Middle names if any': ${ current_middle }
+    - 'Last name': ${ current_last }
     # 3. Residence. The form's parenthetical labels TRAIL the blank they
     # describe, so the auto-generated field names are shifted one slot:
     # the blanks actually run address -> city -> county -> zip.
-    - "Petitioner currently resides at": ${ residence_street }
-    - "address": ${ residence_city }
-    - "city": ${ residence_county }
-    - "North Dakota": ${ residence_zip }
+    - 'Petitioner currently resides at': ${ residence_street }
+    - 'address': ${ residence_city }
+    - 'city': ${ residence_county }
+    - 'North Dakota': ${ residence_zip }
     # 4. Residency
-    - "Petitioner has been a resident of": ${ residence_county }
-    - "since": ${ residence_since }
+    - 'Petitioner has been a resident of': ${ residence_county }
+    - 'since': ${ residence_since }
     # 5. Citizenship (choose one)
-    - "Check Box2": ${ citizenship == "citizen" }
-    - "Check Box3": ${ citizenship == "resident_alien" }
+    - 'Check Box2': ${ citizenship == "citizen" }
+    - 'Check Box3': ${ citizenship == "resident_alien" }
     # 7. Requested name
-    - "First name_2": ${ requested_first }
-    - "Middle names if any_2": ${ requested_middle }
-    - "Last name_2": ${ requested_last }
+    - 'First name_2': ${ requested_first }
+    - 'Middle names if any_2': ${ requested_middle }
+    - 'Last name_2': ${ requested_last }
     # 9. Criminal history (choose one)
-    - "Check Box1": ${ criminal_history == "none" }
-    - "Check Box4": ${ criminal_history == "convicted" }
+    - 'Check Box1': ${ criminal_history == "none" }
+    - 'Check Box4': ${ criminal_history == "convicted" }
     # 11. Notice — standard track: published
-    - "Check Box5": True
-    - "A Notice of Petition for Name Change was published on": ${ publication_date }
-    - "month date year in the": ${ publication_newspaper }
-    - "newspaper the official newspaper in": ${ publication_county }
+    - 'Check Box5': True
+    - 'A Notice of Petition for Name Change was published on': ${ publication_date }
+    - 'month date year in the': ${ publication_newspaper }
+    - 'newspaper the official newspaper in': ${ publication_county }
     # 11. Waiver track (unused on standard path)
-    - "Check Box6": False
-    - "Check Box7": False
-    - "Check Box8": False
+    - 'Check Box6': False
+    - 'Check Box7': False
+    - 'Check Box8': False
     # 12. Objections — standard track: none
-    - "Check Box9": True
-    - "Check Box10": False
-    - "Check Box11": False
+    - 'Check Box9': True
+    - 'Check Box10': False
+    - 'Check Box11': False
     # Page 4 — change "from" (current) / "to" (requested)
-    - "First name_3": ${ current_first }
-    - "Middle names if any_3": ${ current_middle }
-    - "Last name_3": ${ current_last }
-    - "First name_4": ${ requested_first }
-    - "Middle names if any_4": ${ requested_middle }
-    - "Last name_4": ${ requested_last }
+    - 'First name_3': ${ current_first }
+    - 'Middle names if any_3': ${ current_middle }
+    - 'Last name_3': ${ current_last }
+    - 'First name_4': ${ requested_first }
+    - 'Middle names if any_4': ${ requested_middle }
+    - 'Last name_4': ${ requested_last }
     # Page 4 — signature block
-    - "type or print your name": ${ current_first } ${ current_last }
-    - "type or print your address city state zip code": ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
-    - "type or print your telephone number and email address": ""
+    - 'type or print your name': ${ current_first } ${ current_last }
+    - 'type or print your address city state zip code': ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
+    - 'type or print your telephone number and email address': ''
