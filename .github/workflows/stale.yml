@@ -39,8 +39,8 @@ jobs:
             like to continue this work.
 
           # Never mark these as stale
-          exempt-issue-labels: 'pinned,security,good first issue,blocked,user-story'
-          exempt-pr-labels: 'pinned,security,blocked'
+          exempt-issue-labels: 'pinned,security,good first issue,user story'
+          exempt-pr-labels: 'pinned,security'
 
           # Don't touch assigned issues (someone owns it)
           exempt-all-assignees: true
