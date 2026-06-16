@@ -130,6 +130,6 @@ attachment:
     - 'Middle names if any_4': ${ requested_middle }
     - 'Last name_4': ${ requested_last }
     # Page 4 — signature block
-    - 'type or print your name': ${ current_first } ${ current_last }
+    - 'type or print your name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
     - 'type or print your address city state zip code': ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
     - 'type or print your telephone number and email address': ''
