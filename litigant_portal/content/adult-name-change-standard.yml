@@ -73,12 +73,30 @@ sections:
     id: your_details
     heading: 'Your details'
     questions:
-      - id: current_legal_name
-        label: 'Your current legal name'
+      - id: current_first
+        label: 'Your current first name'
         type: text
-      - id: requested_name
-        label: 'The name you are requesting'
+        required: true
+      - id: current_middle
+        label: 'Your current middle name(s)'
         type: text
+        help_text: 'Leave blank if you have none.'
+      - id: current_last
+        label: 'Your current last name'
+        type: text
+        required: true
+      - id: requested_first
+        label: 'Requested first name'
+        type: text
+        required: true
+      - id: requested_middle
+        label: 'Requested middle name(s)'
+        type: text
+        help_text: 'Leave blank if you have none.'
+      - id: requested_last
+        label: 'Requested last name'
+        type: text
+        required: true
       - id: filing_county
         label: 'County where you will file'
         type: text
