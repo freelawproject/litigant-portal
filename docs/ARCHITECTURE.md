@@ -24,7 +24,7 @@ Litigant Portal is open source, and a court partner can stand up their own hoste
 
 ### Topic Flow → docassemble handoff contract
 
-The `packet` output hands off to a [docassemble](https://docassemble.org) interview that fills the actual court forms. Two systems, two jobs, one contract — and a deliberate split of *which* facts each side owns:
+The `packet` output hands off to a [docassemble](https://docassemble.org) interview that fills the actual court forms. Two systems, two jobs, one contract — and a deliberate split of _which_ facts each side owns:
 
 - **Topic Flow owns** the light fact set it already needs for deadlines and the summary recap, named to match the interview's variables 1:1 so a future prefill is lossless (no ambiguous name-splitting). These `fact_gather` question ids are the contract:
   `current_first` · `current_middle` · `current_last` · `requested_first` · `requested_middle` (· `requested_last`, standard track only — the waiver track leaves the last name unchanged) · `filing_county` · `publication_date`.

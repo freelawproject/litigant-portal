@@ -159,7 +159,10 @@ def _render_packet(section, corpus, answers):
         anchor_id=section.id,
         heading=section.heading,
         template=f"{_TEMPLATE_DIR}/flow_section_packet.html",
-        context={"forms": list(section.forms)},
+        context={
+            "forms": list(section.forms),
+            "interview_url": section.interview_url,
+        },
     )
 
 
