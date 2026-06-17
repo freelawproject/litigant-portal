@@ -1,0 +1,84 @@
+/* Litigant Portal branding for docassemble interviews (demo parity).
+ *
+ * Maps LP's design-system tokens (litigant_portal/app/src/main.css @theme) onto
+ * docassemble's Bootstrap 5 so the interview reads as part of LP — NOT a port of
+ * the atomic-design system, just palette + type + component parity, which is
+ * cheap to do via Bootstrap's CSS variables.
+ *
+ * Apply on the bench: upload this file to the interview's Playground Static
+ * folder; the interviews reference it via `features: css: lp-branding.css`.
+ *
+ * Font note: Inter is named first but the box has no local Inter and we don't
+ * load webfonts from a CDN (org no-CDN/CSP rule), so it falls back to the system
+ * sans — already cleaner than docassemble's default. Shipping Inter woff2 for
+ * true parity is deferred.
+ */
+
+:root {
+  /* LP primary (warm red) + greyscale, straight from the @theme tokens. */
+  --bs-primary: #b5362d; /* primary-600 */
+  --bs-primary-rgb: 181, 54, 45;
+  --bs-link-color: #b5362d;
+  --bs-link-hover-color: #9b2e27; /* primary-700 */
+  --bs-link-color-rgb: 181, 54, 45;
+  --bs-body-bg: #fdfcfb; /* greyscale-25 */
+  --bs-body-color: #1c1814; /* greyscale-900 */
+  --bs-border-color: #e8e4de; /* greyscale-200 */
+  --bs-font-sans-serif:
+    'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+body,
+#dabody {
+  background-color: #fdfcfb;
+  color: #1c1814;
+  font-family: var(--bs-font-sans-serif);
+}
+
+/* Primary buttons — the interview's Continue/Download actions. */
+.btn-primary {
+  --bs-btn-bg: #b5362d;
+  --bs-btn-border-color: #b5362d;
+  --bs-btn-hover-bg: #9b2e27;
+  --bs-btn-hover-border-color: #9b2e27;
+  --bs-btn-active-bg: #832720; /* primary-800 */
+  --bs-btn-active-border-color: #832720;
+  --bs-btn-disabled-bg: #e19684; /* primary-300 */
+  --bs-btn-disabled-border-color: #e19684;
+}
+
+.btn-outline-primary {
+  --bs-btn-color: #b5362d;
+  --bs-btn-border-color: #b5362d;
+  --bs-btn-hover-bg: #b5362d;
+  --bs-btn-hover-border-color: #b5362d;
+}
+
+a {
+  color: #b5362d;
+}
+a:hover {
+  color: #9b2e27;
+}
+
+/* Top navbar — LP's near-black, so the brand reads as ours, not docassemble's. */
+.navbar,
+nav.navbar {
+  background-color: #1c1814 !important; /* greyscale-900 */
+}
+.navbar .navbar-brand,
+.navbar .nav-link {
+  color: #fdfcfb;
+}
+
+/* Progress bar + focus rings pick up the primary. */
+.progress-bar {
+  background-color: #b5362d;
+}
+.form-control:focus,
+.form-select:focus,
+.btn:focus,
+.btn:focus-visible {
+  border-color: #e19684; /* primary-300 */
+  box-shadow: 0 0 0 0.25rem rgba(181, 54, 45, 0.25);
+}

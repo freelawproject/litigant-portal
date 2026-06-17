@@ -12,6 +12,11 @@ metadata:
   authors:
     - Litigant Portal
 ---
+# Litigant Portal look-and-feel for the demo — see petition-standard.yml. Upload
+# lp-branding.css to the Playground Static folder (see README). (#549)
+features:
+  css: lp-branding.css
+---
 mandatory: True
 question: |
   Your current legal name
@@ -79,6 +84,9 @@ attachment:
   name: Petition for Name Change
   filename: nd_petition_for_name_change_waiver
   pdf template file: petition.pdf
+  # Download-only — see petition-standard.yml. Email deferred to v2 (#441); no
+  # SMS. Suppress the default email option rather than show a dead button. (#549)
+  allow emailing: False
   fields:
     # Caption
     - 'Text1': ${ residence_county }

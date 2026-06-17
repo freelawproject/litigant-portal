@@ -53,6 +53,33 @@ Waiver track   — reason:    victim of domestic violence
 For answer sets tied to real user stories, see [`test-personas.md`](test-personas.md)
 (e.g. Sandra, post-divorce restoration — #311).
 
+## Branding & demo polish (#549)
+
+For court-partner demos the interview is styled to read as Litigant Portal and
+dead/stock affordances are removed. Versioned here:
+
+- `lp-branding.css` — LP palette + type mapped onto docassemble's Bootstrap
+  (parity, not a design-system port).
+- `lp-logo.svg` — LP logo for the navbar.
+
+Apply on the bench (Playground):
+
+1. Upload `lp-branding.css` and `lp-logo.svg` to the project's **Static** folder.
+   Both interviews already reference the CSS via `features: css: lp-branding.css`.
+2. End screen is **download-only** — `allow emailing: False` is set in both
+   interviews (email delivery isn't wired and is deferred to v2, #441; no SMS).
+3. Server → **Configuration** for the global brand + clean anonymous entry
+   (verify exact key names on the bench — docassemble's config docs weren't
+   reachable when this was drafted):
+   - `brandname: Litigant Portal`
+   - `show login: False` — no login wall for an anonymous litigant
+   - `default interview:` the published interview, so root isn't the demo list
+   - restrict/hide the sample "demo" interviews for anonymous visitors
+
+Still deferred (bigger lifts, not branding-CSS): publishing the interviews as a
+package for a clean anonymous URL (vs Playground), shipping the Inter woff2 for
+exact type parity, and a deeper atomic-design match.
+
 ## Field mapping
 
 The interviews map answers to the Petition's real AcroForm field names (extracted
