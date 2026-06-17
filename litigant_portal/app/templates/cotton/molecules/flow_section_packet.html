@@ -1,6 +1,29 @@
-{# Packet section body: the forms the corpus says this flow needs. #}
+{% load i18n %}
+
+{# Packet section body: the forms the corpus says this flow needs. When the #}
+{# corpus sets interview_url, a warm link-out to a docassemble interview that #}
+{# fills these forms (v1: link-out + manual return, no prefill — #543). Unset #}
+{# => plain form list, so existing corpora are unaffected. #}
 <ul class="list-disc space-y-1 pl-5 text-greyscale-700">
   {% for form in ctx.forms %}
   <li>{{ form }}</li>
   {% endfor %}
 </ul>
+
+{% if ctx.interview_url %}
+<div class="mt-4 space-y-3">
+  <c-atoms.button
+    href="{{ ctx.interview_url }}"
+    variant="primary"
+    target="_blank"
+    rel="noopener"
+  >
+    <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+    {% trans "Fill out your forms" %}
+    <span class="sr-only">{% trans "(opens in a new tab)" %}</span>
+  </c-atoms.button>
+  <p class="text-sm text-greyscale-700">
+    {% trans "Save your completed packet somewhere easy to find. You'll need to print and sign these forms and bring them with you to court (or mail them in, depending on your court's process)." %}
+  </p>
+</div>
+{% endif %}

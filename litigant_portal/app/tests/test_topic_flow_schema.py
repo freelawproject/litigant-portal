@@ -10,7 +10,7 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from litigant_portal.app.topic_flow.schema import Corpus
+from litigant_portal.app.topic_flow.schema import Corpus, PacketOutput
 
 FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
 
@@ -91,3 +91,24 @@ def test_optional_lists_and_question_defaults():
     question = corpus.sections[0].questions[0]
     assert question.type == "text"
     assert question.required is False
+
+
+def test_packet_interview_url_optional_and_accepted():
+    """interview_url defaults to None — the link-out is graceful when an author
+    omits it, so existing packet corpora are unaffected — and is carried through
+    when provided (the #543 docassemble handoff seam)."""
+    base = {
+        "kind": "output",
+        "output_type": "packet",
+        "id": "p",
+        "heading": "Your packet",
+        "forms": ["Petition for Name Change"],
+    }
+    assert PacketOutput.model_validate(base).interview_url is None
+    url = "https://da.example/interview?i=docassemble.playground"
+    assert (
+        PacketOutput.model_validate(
+            {**base, "interview_url": url}
+        ).interview_url
+        == url
+    )

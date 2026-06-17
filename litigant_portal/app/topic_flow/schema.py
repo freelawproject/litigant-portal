@@ -107,6 +107,10 @@ class PacketOutput(_Base):
     id: Slug
     heading: str = Field(min_length=1)
     forms: list[str] = Field(min_length=1)
+    # Optional warm handoff to a docassemble interview that fills these forms.
+    # Unset (None) => the packet renders as a plain form list, so existing
+    # corpora are unaffected. v1 is link-out + manual return, no prefill (#543).
+    interview_url: str | None = None
 
 
 class SummaryOutput(_Base):

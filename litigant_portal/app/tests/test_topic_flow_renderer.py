@@ -172,6 +172,36 @@ def test_packet_renders_form_list():
     assert rendered.context["forms"] == ["Petition for Name Change", "Order"]
 
 
+def test_packet_without_interview_url_exposes_none():
+    """No interview_url → context carries None, so the template shows no
+    handoff button. Existing packet corpora are unaffected."""
+    section = PacketOutput(
+        kind="output",
+        output_type="packet",
+        id="forms",
+        heading="Your packet",
+        forms=["Petition for Name Change"],
+    )
+    rendered = render_section(section, _corpus(section), {})
+    assert rendered.context["interview_url"] is None
+
+
+def test_packet_with_interview_url_exposes_it_for_the_button():
+    """interview_url reaches the template context verbatim — that's what drives
+    the 'Fill out your forms' link-out (#543)."""
+    url = "https://da.example/interview?i=docassemble.playground"
+    section = PacketOutput(
+        kind="output",
+        output_type="packet",
+        id="forms",
+        heading="Your packet",
+        forms=["Petition for Name Change"],
+        interview_url=url,
+    )
+    rendered = render_section(section, _corpus(section), {})
+    assert rendered.context["interview_url"] == url
+
+
 # --- dispatch ---------------------------------------------------------------
 
 
