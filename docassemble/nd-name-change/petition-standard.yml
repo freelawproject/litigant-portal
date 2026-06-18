@@ -82,14 +82,16 @@ fields:
 mandatory: True
 event: download_petition
 question: Your Petition is ready
+# Download-only: email delivery isn't wired (no SMTP on the instance) and is
+# deferred to v2 (#441), so suppress docassemble's default email option rather
+# than show a dead button. No SMS option exists. `allow emailing` is a
+# QUESTION-level directive (sibling of `attachment:`) — docassemble ignores it
+# inside the attachment block. (#549)
+allow emailing: False
 attachment:
   name: Petition for Name Change
   filename: nd_petition_for_name_change
   pdf template file: petition.pdf
-  # Download-only: email delivery isn't wired (no SMTP on the instance) and is
-  # deferred to v2 (#441), so suppress docassemble's default email option rather
-  # than show a dead button. No SMS option exists. (#549)
-  allow emailing: False
   fields:
     # Caption
     - 'Text1': ${ residence_county }
