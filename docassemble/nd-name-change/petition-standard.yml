@@ -185,21 +185,26 @@ attachment:
   pdf template file: confidential-info.pdf
   fields:
     - 'In District Court County Of': ${ residence_county }
-    - 'State Of North Dakota': 'North Dakota'
+    # Bench-confirmed: the field auto-named 'State Of North Dakota' is positionally
+    # the Case No blank (the state itself is preprinted) — leave it empty; the
+    # clerk assigns the case number.
+    - 'State Of North Dakota': ''
     - 'In The Matter Of The Petition For Name Change Of': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
     - 'First name': ${ current_first }
     - 'Middle names if any': ${ current_middle }
     - 'Last name': ${ current_last }
-    # VERIFY: which sealed identifier the form asks for (DOB assumed here);
-    # Redacted is the public version of the same. Confirm against the labels.
+    # Bench-confirmed: DOB lands on "Full Information", birth year on "Redacted".
     - 'Full Information': ${ date_of_birth }
     - 'Redacted Information': ${ date_of_birth.year }
-    # VERIFY: signature/date line above the printed name.
-    - 'Text1': ''
-    - 'Petitioners Typed or Printed Name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
-    - 'Address': ${ residence_street }
-    - 'City State Zip Code': ${ residence_city }, ND ${ residence_zip }
-    - 'Telephone Number': ${ phone_number }
+    # Signature block: field names trail their blanks by one row (same gotcha as
+    # Petition §3 — bench fill showed every value one row too low), so each value
+    # goes one field name UP from its visual label. The "-> (...)" notes the blank
+    # each field actually fills.
+    - 'Text1': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) } # -> (Typed or Printed Name)
+    - 'Petitioners Typed or Printed Name': ${ residence_street } # -> (Address)
+    - 'Address': ${ residence_city }, ND ${ residence_zip } # -> (City, State, Zip Code)
+    - 'City State Zip Code': ${ phone_number } # -> (Telephone Number)
+    - 'Telephone Number': '' # -> (Email Address); no email collected
 ---
 # === Proposed Order for Name Change =====================================
 # VERIFY (whole form): four name-sets (base / _2 / _3 / _4). _3 is the caption
@@ -220,20 +225,27 @@ attachment:
     - '1': ''
     - 'The Petitioners birth year is': ${ date_of_birth.year }
     - 'Petitioners Current First Middle If Any And Last Legal Name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
-    # Caption name (_3) — current legal name.
-    - 'First name_3': ${ current_first }
-    - 'Middle names if any_3': ${ current_middle }
-    - 'Last name_3': ${ current_last }
-    # Body name-sets — from/to ordering pending bench fill (VERIFY).
-    - 'First name_4': ${ current_first }
-    - 'Middle names if any_4': ${ current_middle }
-    - 'Last name_4': ${ current_last }
-    - 'First name': ${ requested_first }
-    - 'Middle names if any': ${ requested_middle }
-    - 'Last name': ${ requested_last }
+    # Name-sets mapped by bench-confirmed page position (#560):
+    #   §2 "current name"  = base 'First name'   (page 1)
+    #   §3 "requested name" = 'First name_2'      (page 1)
+    #   §6 "current name"  = 'First name_3'       (page 2)
+    #   §6 "changed to"    = 'First name_4'       (page 2)
+    # §2 current
+    - 'First name': ${ current_first }
+    - 'Middle names if any': ${ current_middle }
+    - 'Last name': ${ current_last }
+    # §3 requested
     - 'First name_2': ${ requested_first }
     - 'Middle names if any_2': ${ requested_middle }
     - 'Last name_2': ${ requested_last }
+    # §6 current
+    - 'First name_3': ${ current_first }
+    - 'Middle names if any_3': ${ current_middle }
+    - 'Last name_3': ${ current_last }
+    # §6 changed-to (new) = requested
+    - 'First name_4': ${ requested_first }
+    - 'Middle names if any_4': ${ requested_middle }
+    - 'Last name_4': ${ requested_last }
 ---
 # === Declaration in Support of Petition (next, #560) ====================
 # TODO(#560): the 93-field heavy one — mirrors the Petition (birth year, place
