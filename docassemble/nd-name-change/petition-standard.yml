@@ -102,8 +102,12 @@ mandatory: True
 event: download_packet
 question: Your filing packet is ready
 subquestion: |
-  Download each form below, then print, sign, and bring them to the clerk (or
-  mail them in, depending on your court's process).
+  **[Download your complete packet](${ pdf_concatenate(petition_doc, notice_doc, confidential_doc, order_doc, filename="nd-name-change-packet.pdf").url_for(attachment=True) })** —
+  every form in one file. Best on a phone: one download, ready to print or take
+  to the clerk.
+
+  Or download each form individually below, then print, sign, and bring them to
+  the clerk (or mail them in, depending on your court's process).
 # Download-only: email delivery isn't wired (no SMTP) and is deferred to v2
 # (#441); no SMS. `allow emailing` is a question-level directive. (#549)
 allow emailing: False
