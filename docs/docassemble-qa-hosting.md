@@ -39,9 +39,11 @@ Caddy already serves TLS for it — there's no extra ACME/DNS challenge.
   the 4 GB tier (#534). At 2 GB it OOMs.
 - **No new DNS.** Uses the existing host record (`qa.litigantportal.com` already
   resolves to the droplet).
-- **`DA_DOMAIN`** in the QA `.env` = the existing LP host, e.g.
-  `DA_DOMAIN=qa.litigantportal.com` (docassemble needs its own hostname for URL
-  building; same value as the Caddy site).
+- **`DA_HOSTNAME`** in the QA `.env` = the existing LP host as a **bare hostname**,
+  e.g. `DA_HOSTNAME=qa.litigantportal.com`. docassemble needs its own hostname for
+  URL building. ⚠️ Unlike `DOMAIN` (which is `https://qa.litigantportal.com`),
+  `DA_HOSTNAME` has **no scheme** — a `https://` prefix makes docassemble build
+  `https://https://…` URLs and breaks secure cookies.
 
 ## Deploy
 
@@ -92,10 +94,13 @@ once it settles.
   `reverse_proxy docassemble:80` is upgrading the socket. **Test this first.**
 - **Assets/links 404 under `/interview/`** → `POSTURLROOT` not applied; recreate
   the container so `initialize.sh` regenerates nginx with the prefix.
-- **Bare `/interview` (no trailing slash) misses** → `handle /interview/*` matches
-  the trailing-slash form; add a redirect if needed.
-- **Caddy won't start** → `DA_DOMAIN` unset while the override is active. Set it in
-  `.env`. (Base-only/prod deploys don't mount `conf.d`, so they're unaffected.)
+- **Bare `/interview` (no trailing slash)** → redirected to `/interview/` with a
+  308 (in `conf.d/docassemble.caddy`), so hand-typed/trailing-slash-stripped URLs
+  still land.
+- **docassemble fails to initialize / builds wrong URLs** → `DA_HOSTNAME` unset (or
+  scheme-prefixed) while the override is active. Compose substitutes an empty
+  string with a warning — Caddy still starts (it uses `DOMAIN`, not `DA_HOSTNAME`),
+  but docassemble runs with no hostname. Set a bare host in `.env`.
 
 ## Prod safety
 

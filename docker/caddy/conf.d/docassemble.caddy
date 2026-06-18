@@ -8,6 +8,10 @@
 # passes the prefix straight through. reverse_proxy transparently upgrades the
 # interview's WebSocket. Caddy terminates TLS; docassemble runs with
 # BEHINDHTTPSLOADBALANCER=true so it still builds https URLs + secure cookies.
+# Bare /interview (no trailing slash) wouldn't match /interview/* and would fall
+# through to the LP app as a 404; 308 preserves method/body for any POST.
+redir /interview /interview/ 308
+
 handle /interview/* {
 	reverse_proxy docassemble:80
 }

@@ -10,8 +10,9 @@
 # routes /interview/* to docassemble under the existing LP hostname. Base-compose
 # -only deploys (prod) see none of this.
 #
-# Prereqs: DA_DOMAIN in .env = the existing LP host (e.g. qa.litigantportal.com) —
-# NO new DNS record, the interview lives at <host>/interview/. QA at >=4GB RAM
+# Prereqs: DA_HOSTNAME in .env = the existing LP host as a BARE hostname, e.g.
+# `qa.litigantportal.com` — NO scheme (unlike DOMAIN, which is `https://...`),
+# and no new DNS record; the interview lives at <host>/interview/. QA at >=4GB RAM
 # (docassemble idles ~2GB). NOT the local authoring bench — that's still
 # docker-compose.docassemble.yml (localhost:8100). See docs/docassemble-qa-hosting.md.
 
@@ -22,14 +23,15 @@ services:
     profiles: ['prod']
     restart: unless-stopped
     environment:
-      # Served under the LP hostname at /interview/ — DA_DOMAIN is the existing
-      # LP host (e.g. qa.litigantportal.com), NOT a new subdomain, so no extra
-      # DNS. POSTURLROOT mounts docassemble at the /interview/ prefix (it
-      # regenerates its nginx for it). TLS is terminated by Caddy; docassemble
-      # serves plain HTTP and trusts the proxy (BEHINDHTTPSLOADBALANCER) so it
-      # builds https URLs + secure cookies. Env names verified against
-      # jhpyle/docassemble Docker/initialize.sh.
-      DAHOSTNAME: ${DA_DOMAIN}
+      # Served under the LP hostname at /interview/. DA_HOSTNAME is the existing
+      # LP host as a BARE hostname (e.g. qa.litigantportal.com) — NOT a subdomain,
+      # and NOT scheme-prefixed like DOMAIN; docassemble's DAHOSTNAME must be a
+      # bare host or it builds https://https://… URLs. POSTURLROOT mounts
+      # docassemble at the /interview/ prefix (it regenerates its nginx for it).
+      # TLS is terminated by Caddy; docassemble serves plain HTTP and trusts the
+      # proxy (BEHINDHTTPSLOADBALANCER) so it still builds https URLs + secure
+      # cookies. Env names verified against jhpyle/docassemble Docker/initialize.sh.
+      DAHOSTNAME: ${DA_HOSTNAME}
       POSTURLROOT: '/interview/'
       USEHTTPS: 'false'
       BEHINDHTTPSLOADBALANCER: 'true'
