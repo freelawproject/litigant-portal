@@ -105,6 +105,12 @@ sections:
       - 'Declaration in Support of Petition'
       - 'Confidential Information Form'
       - 'Proposed Order for Name Change'
+    # Warm link-out to the docassemble interview that fills these forms (#547,
+    # #531). Waiver (publication-waived) track — a separate interview from the
+    # standard track. Hosted under the /interview/ prefix on QA, so the launch
+    # path is /interview/interview?i=... (prefix + docassemble's `interview`
+    # route). Confirm the waiver Share link the same way the standard one was.
+    interview_url: 'https://qa.litigantportal.com/interview/interview?i=docassemble.playground1:petition-waiver.yml'
 
   - kind: info
     id: publication_waiver

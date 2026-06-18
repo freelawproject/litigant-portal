@@ -116,6 +116,12 @@ sections:
       - 'Declaration in Support of Petition'
       - 'Confidential Information Form'
       - 'Proposed Order for Name Change'
+    # Warm link-out to the docassemble interview that fills these forms (#547,
+    # #531). Standard (publish) track. docassemble is hosted under the /interview/
+    # prefix on QA, so the launch path is /interview/interview?i=... (the prefix
+    # plus docassemble's own `interview` route) — confirmed against the live
+    # Share link.
+    interview_url: 'https://qa.litigantportal.com/interview/interview?i=docassemble.playground1:petition-standard.yml'
 
   - kind: info
     id: form_gotchas
