@@ -89,7 +89,7 @@ docker-prod: ## Start production environment (Caddy + Gunicorn)
 docker-prod-build: ## Build and start production environment
 	docker compose --profile prod up --build
 
-docker-rebuild: ## Rebuild and restart prod (for QA deploys)
+docker-rebuild: ## Rebuild prod from source (local). QA/partner deploys use `make update`
 	docker compose --profile prod down
 	docker compose --profile prod up -d --build
 

@@ -520,7 +520,7 @@ curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o 
 
 QA runs at `https://qa.litigantportal.com` on a DigitalOcean VPS. Auto-deploys on merge to `main` via the `cd.yml` GitHub Actions workflow (build → push to GHCR → SSH deploy). Uses the docker-compose prod profile. See `docs/QA-DEPLOY.md` for full setup runbook and gotchas.
 
-Manual deploy on the QA server: `make docker-rebuild`
+Manual deploy on the QA server: `make update` (pulls code + images, recreates, health-checks — and brings up the docassemble override so the `/interview/` route survives; a base-only compose `up` drops it, #558). `make docker-rebuild` is a local from-source rebuild, not the QA deploy path.
 
 ### Production (Self-Hosted)
 
