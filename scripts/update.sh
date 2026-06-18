@@ -49,7 +49,9 @@ for arg in "$@"; do
 		--docassemble) MODE="docassemble" ;;
 		--no-code) PULL_CODE=false ;;
 		-h | --help)
-			sed -n '2,40p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+			# Print the leading comment block (after the shebang) as usage —
+			# stops at the first non-comment line, so it can't leak script body.
+			awk 'NR==1 {next} /^#/ {sub(/^# ?/, ""); print; next} {exit}' "${BASH_SOURCE[0]}"
 			exit 0
 			;;
 		*)
@@ -62,7 +64,11 @@ done
 # ── what to act on ───────────────────────────────────────────────────────────
 DA_OVERRIDE="docker-compose.docassemble.qa.yml"
 
-da_running() { docker ps --format '{{.Names}}' | grep -qx 'docassemble-qa'; }
+# "Does this box host docassemble?" — its container exists in ANY state. Uses
+# `docker ps -a` (not just running), so `--all` still updates a docassemble
+# that's currently down (crash, OOM, prior stop) — the recovery case the script
+# exists for. A box that never ran it has no such container, so it's skipped.
+da_present() { docker ps -a --format '{{.Names}}' | grep -qx 'docassemble-qa'; }
 
 WANT_DJANGO=false
 WANT_DA=false
@@ -71,7 +77,7 @@ case "$MODE" in
 	docassemble) WANT_DA=true ;;
 	all)
 		WANT_DJANGO=true
-		if da_running; then WANT_DA=true; fi
+		if da_present; then WANT_DA=true; fi
 		;;
 esac
 
