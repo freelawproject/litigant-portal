@@ -11,6 +11,12 @@ metadata:
   authors:
     - Litigant Portal
 ---
+# Litigant Portal look-and-feel for the demo. lp-branding.css maps LP's palette
+# and type onto docassemble's Bootstrap; upload it to the Playground Static
+# folder (see README). Branding parity, not a design-system port. (#549)
+features:
+  css: lp-branding.css
+---
 # Re-uses the Topic Flow corpus data points (current/requested name, county)
 # plus the Petition-only extras (residency-since, citizenship, criminal history,
 # publication). Variable names are interview-local; only the attachment field
@@ -76,6 +82,12 @@ fields:
 mandatory: True
 event: download_petition
 question: Your Petition is ready
+# Download-only: email delivery isn't wired (no SMTP on the instance) and is
+# deferred to v2 (#441), so suppress docassemble's default email option rather
+# than show a dead button. No SMS option exists. `allow emailing` is a
+# QUESTION-level directive (sibling of `attachment:`) — docassemble ignores it
+# inside the attachment block. (#549)
+allow emailing: False
 attachment:
   name: Petition for Name Change
   filename: nd_petition_for_name_change

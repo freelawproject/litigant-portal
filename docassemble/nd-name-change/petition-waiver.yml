@@ -12,6 +12,11 @@ metadata:
   authors:
     - Litigant Portal
 ---
+# Litigant Portal look-and-feel for the demo — see petition-standard.yml. Upload
+# lp-branding.css to the Playground Static folder (see README). (#549)
+features:
+  css: lp-branding.css
+---
 mandatory: True
 question: |
   Your current legal name
@@ -75,6 +80,10 @@ fields:
 mandatory: True
 event: download_petition
 question: Your Petition is ready
+# Download-only — see petition-standard.yml. `allow emailing` is a QUESTION-level
+# directive (sibling of `attachment:`); docassemble ignores it nested inside the
+# attachment block. Email deferred to v2 (#441); no SMS. (#549)
+allow emailing: False
 attachment:
   name: Petition for Name Change
   filename: nd_petition_for_name_change_waiver
