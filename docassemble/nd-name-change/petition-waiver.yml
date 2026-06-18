@@ -217,7 +217,7 @@ attachment:
 code: |
   packet_pdf = pdf_concatenate(
       petition_doc, confidential_doc, order_doc,
-      filename="nd-name-change-packet.pdf")
+      filename="nd-name-change-packet-waiver.pdf")
 ---
 mandatory: True
 event: download_packet

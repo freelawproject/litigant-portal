@@ -106,7 +106,7 @@ nav.navbar {
  * its calendar indicator was invisible (white on white). brightness(0) forces
  * a solid dark glyph regardless of the browser default, so it's always visible
  * on the light input background. */
-input[type="date"]::-webkit-calendar-picker-indicator {
+input[type='date']::-webkit-calendar-picker-indicator {
   filter: brightness(0);
   opacity: 0.65;
   cursor: pointer;

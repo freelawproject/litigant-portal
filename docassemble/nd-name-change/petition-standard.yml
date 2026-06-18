@@ -102,7 +102,7 @@ fields:
 # === Petition for Name Change ===========================================
 attachment:
   name: Petition for Name Change
-  filename: nd_petition_for_name_change
+  filename: nd_petition_for_name_change_standard
   variable name: petition_doc
   pdf template file: petition.pdf
   fields:
@@ -261,7 +261,7 @@ attachment:
 code: |
   packet_pdf = pdf_concatenate(
       petition_doc, notice_doc, confidential_doc, order_doc,
-      filename="nd-name-change-packet.pdf")
+      filename="nd-name-change-packet-standard.pdf")
 ---
 mandatory: True
 event: download_packet
