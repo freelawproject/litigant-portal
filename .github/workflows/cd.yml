@@ -93,8 +93,18 @@ jobs:
             # There's no build cache to reclaim here anyway (deploys pull, never
             # build). Images carry no --volumes flag, so postgres data is safe.
             docker image prune -af
+            # Pull base images only (app / caddy / postgres). The docassemble
+            # override is applied at `up` below, not here, on purpose: docassemble
+            # is the ~20 GB jhpyle/docassemble all-in-one, and its running
+            # container references the local image, so `up` reuses it — no need to
+            # re-pull it on every deploy.
             docker compose --profile prod pull
-            docker compose --profile prod up -d --no-build
+            # Bring the stack up WITH the docassemble override so caddy-prod keeps
+            # the conf.d mount that routes /interview/* to docassemble (#558). A
+            # base-only `up` recreated caddy without the mount and silently dropped
+            # the /interview/ route on every deploy — 404-ing the Topic Flow
+            # handoff button until restored by hand.
+            docker compose -f docker-compose.yml -f docker-compose.docassemble.qa.yml --profile prod up -d --no-build
 
       - name: Verify deploy
         # Poll /api/health/ until 200 or timeout. Fails the workflow if the new
