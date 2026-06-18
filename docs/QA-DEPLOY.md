@@ -127,14 +127,17 @@ docker compose --profile prod exec django-prod python manage.py shell
 # Restart
 docker compose --profile prod restart
 
-# Manual pull + deploy (same as what CI does)
+# Manual pull + deploy (same as CI). Use `make update`: it pulls code + images,
+# recreates WITH the docassemble override, and health-checks. A base-only compose
+# `up` recreates Caddy without the conf.d mount and 404s /interview/* (#558).
 cd /opt/litigant-portal
-docker compose pull django-prod
-docker compose --profile prod up -d --no-build
+make update
 
-# Rollback to a specific SHA
+# Rollback to a specific SHA: pin the image, then recreate override-aware — NOT a
+# base-only `up`, which drops the /interview/ route (#558).
 docker pull ghcr.io/freelawproject/litigant-portal:sha-abc1234
-docker compose --profile prod up -d --no-build
+docker tag ghcr.io/freelawproject/litigant-portal:sha-abc1234 ghcr.io/freelawproject/litigant-portal:latest
+docker compose -f docker-compose.yml -f docker-compose.docassemble.qa.yml --profile prod up -d --no-build
 ```
 
 ## How Deploys Work
@@ -144,6 +147,6 @@ docker compose --profile prod up -d --no-build
    - Builds Docker image
    - Pushes to GHCR with `latest` + SHA tags
    - SSHs to QA VPS
-   - Runs `docker compose pull django-prod && docker compose --profile prod up -d --no-build`
+   - Pulls base prod images, then brings the stack up **with the docassemble override** (`-f docker-compose.yml -f docker-compose.docassemble.qa.yml --profile prod up -d`) so the `/interview/` route is preserved (#558)
 3. The `web-prod` entrypoint runs `migrate` + `collectstatic` + starts Gunicorn
 4. Caddy proxies traffic with HTTPS
