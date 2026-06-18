@@ -1,0 +1,13 @@
+# docassemble interview, routed UNDER the LP hostname at /interview/* (#550) —
+# not a subdomain, so a court partner needs only their existing one CNAME for the
+# whole portal (see ARCHITECTURE.md → Open Contracts / low-friction partners).
+#
+# Imported into the main {$DOMAIN} site block by the docassemble override only,
+# so prod is untouched. docassemble is told its URL root is /interview/ via
+# POSTURLROOT (it regenerates its internal nginx for the prefix), and Caddy
+# passes the prefix straight through. reverse_proxy transparently upgrades the
+# interview's WebSocket. Caddy terminates TLS; docassemble runs with
+# BEHINDHTTPSLOADBALANCER=true so it still builds https URLs + secure cookies.
+handle /interview/* {
+	reverse_proxy docassemble:80
+}
