@@ -1,5 +1,18 @@
 {$DOMAIN} {
-	reverse_proxy django-prod:8000
+	# Add-on services route UNDER this one hostname (e.g. the docassemble
+	# interview at /interview/*) rather than on their own subdomains — so a court
+	# partner needs just one CNAME for their whole portal, and it's portable +
+	# self-hostable. See ARCHITECTURE.md → Open Contracts. The conf.d dir is
+	# mounted into caddy only by the docassemble override, so prod loads nothing
+	# here; an empty glob is a no-op. Imported first so its path matchers win
+	# over the catch-all below.
+	import /etc/caddy/conf.d/*.caddy
+
+	# Everything else is the Litigant Portal app.
+	handle {
+		reverse_proxy django-prod:8000
+	}
+
 	log {
 		output stdout
 	}

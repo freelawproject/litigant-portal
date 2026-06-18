@@ -11,6 +11,7 @@ Democratize access to justice by empowering self-represented litigants with AI-a
 - Mobile-first (users on older phones)
 - Human-centered AI (augments, not replaces)
 - Open contracts (producer-agnostic, validated at the boundary)
+- Low-friction for partners — the deploying court is a client too, and needs "easy mode" as much as the litigant does. Minimize what a partner must operate: one hostname (one CNAME), services routed by path not subdomain, portable across partners and self-hostable. A `.gov` DNS change is a ticket and a wait; design so they rarely need one.
 
 ---
 
@@ -21,6 +22,12 @@ Litigant Portal is open source, and a court partner can stand up their own hoste
 **Example — A2J Document Assembly Tool (DAT).** The DAT expects three inputs: a base PDF, a key/value answer set, and an overlay `.json` mapping each answer to coordinates on the PDF (where each value renders to "fill it in"). Those files can come from the A2J Viewer's guided-interview flow _or_ be POSTed straight to the API endpoint with Postman — either path returns an assembled PDF. The tool depends on the contract (the three file formats), never on how they were produced.
 
 **In LP today.** The Topic Flow corpus is exactly this: `schema.py` (`extra="forbid"`) + the loader's id cross-reference checks + the `checks.py` startup guard _are_ the partner-facing contract. A conformant corpus flows through one validated path regardless of what authored it; a non-conformant one fails loudly at the boundary.
+
+### One hostname, path-routed services
+
+A court partner gives us **one CNAME** (`portal.theircourt.gov`) and _everything_ runs under it — the LP app at `/`, add-on services by path. We do **not** put add-ons on their own subdomains, because each subdomain is another DNS record a court's IT has to create and maintain, and partner DNS friction is real (a `.gov` change is a ticket, not a self-serve edit). Path-routing keeps a partner's deployment to a single record, makes it portable across partners, and means an open-source self-hoster does nothing extra.
+
+Concretely: the docassemble document-assembly handoff is served at `<host>/interview/` (not `interview.<host>`), reverse-proxied by Caddy to the docassemble container, with docassemble told its URL root via `POSTURLROOT` (#550). We pay the sub-path complexity once, at our layer; every partner and self-hoster gets the simple deployment. New add-on services should follow the same rule — claim a path, never require a new hostname.
 
 ### Topic Flow → docassemble handoff contract
 
