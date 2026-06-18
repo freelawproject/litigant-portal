@@ -74,19 +74,30 @@ fields:
       - I am a victim of domestic violence: domestic_violence
     none of the above: False
 ---
-# The filled packet — waiver track. Same field keys as the standard interview;
-# §11 selects waive (Box6) + reason (Box7/Box8) and leaves the publication text
-# blank, and §12 selects "requesting waiver" (Box11).
 mandatory: True
-event: download_petition
-question: Your Petition is ready
-# Download-only — see petition-standard.yml. `allow emailing` is a QUESTION-level
-# directive (sibling of `attachment:`); docassemble ignores it nested inside the
-# attachment block. Email deferred to v2 (#441); no SMS. (#549)
-allow emailing: False
+question: |
+  A few more details for the rest of your packet
+subquestion: |
+  These appear on the Order and Confidential Information form.
+fields:
+  - Date of birth: date_of_birth
+    datatype: date
+  - Your phone number: phone_number
+    required: False
+---
+# The full filing packet — WAIVER track (no Notice of Petition; that form is
+# standard-track only). Each form is its own standalone attachment block with
+# `variable name:`, defined separately from the screen that links them (same
+# loop-avoidance as the standard track). A code block merges them; the final
+# screen links the packet + each form. The Confidential and Order mappings are
+# identical to the standard track (bench-verified, #560) — only the Petition
+# differs, at §11/§12 (waive instead of publish).
+
+# === Petition for Name Change (waiver track) ============================
 attachment:
   name: Petition for Name Change
   filename: nd_petition_for_name_change_waiver
+  variable name: petition_doc
   pdf template file: petition.pdf
   fields:
     # Caption
@@ -97,9 +108,7 @@ attachment:
     - 'First name': ${ current_first }
     - 'Middle names if any': ${ current_middle }
     - 'Last name': ${ current_last }
-    # 3. Residence. The form's parenthetical labels TRAIL the blank they
-    # describe, so the auto-generated field names are shifted one slot:
-    # the blanks actually run address -> city -> county -> zip.
+    # 3. Residence (trailing-label shift: blanks run address -> city -> county -> zip)
     - 'Petitioner currently resides at': ${ residence_street }
     - 'address': ${ residence_city }
     - 'city': ${ residence_county }
@@ -117,7 +126,7 @@ attachment:
     # 9. Criminal history (choose one)
     - 'Check Box1': ${ criminal_history == "none" }
     - 'Check Box4': ${ criminal_history == "convicted" }
-    # 11. Notice — WAIVER track: publication NOT published, blanks left empty
+    # 11. Notice — WAIVER track: not published, blanks left empty
     - 'Check Box5': False
     - 'A Notice of Petition for Name Change was published on': ''
     - 'month date year in the': ''
@@ -126,7 +135,7 @@ attachment:
     - 'Check Box6': True
     - 'Check Box7': ${ waiver_reasons["first_or_middle"] }
     - 'Check Box8': ${ waiver_reasons["domestic_violence"] }
-    # 12. Objections — WAIVER track: requesting waiver, notice not published
+    # 12. Objections — WAIVER track: requesting waiver
     - 'Check Box9': False
     - 'Check Box10': False
     - 'Check Box11': True
@@ -141,3 +150,86 @@ attachment:
     - 'type or print your name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
     - 'type or print your address city state zip code': ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
     - 'type or print your telephone number and email address': ''
+---
+# === Confidential Information Form (identical to standard, bench-verified) ===
+attachment:
+  name: Confidential Information Form
+  filename: nd_confidential_information
+  variable name: confidential_doc
+  pdf template file: confidential-info.pdf
+  fields:
+    - 'In District Court County Of': ${ residence_county }
+    # 'State Of North Dakota' field is positionally the Case No blank — leave empty.
+    - 'State Of North Dakota': ''
+    - 'In The Matter Of The Petition For Name Change Of': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    - 'First name': ${ current_first }
+    - 'Middle names if any': ${ current_middle }
+    - 'Last name': ${ current_last }
+    - 'Full Information': ${ date_of_birth }
+    - 'Redacted Information': ${ date_of_birth.year }
+    # Signature block trails by one row (Petition §3 gotcha) — values shifted one
+    # field name up; "-> (...)" is the blank each field actually fills.
+    - 'Text1': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) } # -> (Typed or Printed Name)
+    - 'Petitioners Typed or Printed Name': ${ residence_street } # -> (Address)
+    - 'Address': ${ residence_city }, ND ${ residence_zip } # -> (City, State, Zip Code)
+    - 'City State Zip Code': ${ phone_number } # -> (Telephone Number)
+    - 'Telephone Number': '' # -> (Email Address)
+---
+# === Proposed Order for Name Change (identical to standard, bench-verified) ===
+attachment:
+  name: Proposed Order for Name Change
+  filename: nd_proposed_order
+  variable name: order_doc
+  pdf template file: order.pdf
+  fields:
+    - 'In District Court': ${ residence_county }
+    - 'Case No': ''
+    - 'County of': ${ residence_county }
+    - '1': ''
+    - 'The Petitioners birth year is': ${ date_of_birth.year }
+    - 'Petitioners Current First Middle If Any And Last Legal Name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    # §2 current
+    - 'First name': ${ current_first }
+    - 'Middle names if any': ${ current_middle }
+    - 'Last name': ${ current_last }
+    # §3 requested
+    - 'First name_2': ${ requested_first }
+    - 'Middle names if any_2': ${ requested_middle }
+    - 'Last name_2': ${ requested_last }
+    # §6 current
+    - 'First name_3': ${ current_first }
+    - 'Middle names if any_3': ${ current_middle }
+    - 'Last name_3': ${ current_last }
+    # §6 changed-to (new) = requested
+    - 'First name_4': ${ requested_first }
+    - 'Middle names if any_4': ${ requested_middle }
+    - 'Last name_4': ${ requested_last }
+---
+# === Declaration in Support of Petition (next, #560) ====================
+# TODO(#560): the 93-field heavy one. Build + bench-verify, then add here as a 4th
+# standalone attachment with `variable name: declaration_doc` and fold it into the
+# merge + the link list below. Waiver packet = Petition + Declaration +
+# Confidential + Order (no Notice).
+---
+# Merge into one mobile-friendly PDF (waiver track). pdf_concatenate takes the
+# attachment DAFileCollection vars directly; in its own block so the docs resolve
+# before the screen below renders (avoids the assembly loop).
+code: |
+  packet_pdf = pdf_concatenate(
+      petition_doc, confidential_doc, order_doc,
+      filename="nd-name-change-packet-waiver.pdf")
+---
+mandatory: True
+event: download_packet
+question: Your filing packet is ready
+subquestion: |
+  **[Download your complete packet](${ packet_pdf.url_for(attachment=True) })** —
+  every form in one file. Best on a phone: one download, ready to print or take
+  to the clerk.
+
+  Or download each form individually, then print, sign, and bring them to the
+  clerk (or mail them in, depending on your court's process):
+
+  - [Petition for Name Change](${ petition_doc.pdf.url_for(attachment=True) })
+  - [Confidential Information Form](${ confidential_doc.pdf.url_for(attachment=True) })
+  - [Proposed Order for Name Change](${ order_doc.pdf.url_for(attachment=True) })

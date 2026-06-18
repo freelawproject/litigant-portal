@@ -77,20 +77,33 @@ fields:
   - County of publication: publication_county
     default: ${ residence_county }
 ---
-# The filled packet. Maps interview answers to the Petition's AcroForm fields.
-# Checkboxes take a boolean; "choose one" groups set each box from the radio value.
 mandatory: True
-event: download_petition
-question: Your Petition is ready
-# Download-only: email delivery isn't wired (no SMTP on the instance) and is
-# deferred to v2 (#441), so suppress docassemble's default email option rather
-# than show a dead button. No SMS option exists. `allow emailing` is a
-# QUESTION-level directive (sibling of `attachment:`) — docassemble ignores it
-# inside the attachment block. (#549)
-allow emailing: False
+question: |
+  A few more details for the rest of your packet
+subquestion: |
+  These appear on the Order, Declaration, and Confidential Information form —
+  not just the Petition.
+fields:
+  - Date of birth: date_of_birth
+    datatype: date
+  - Your phone number: phone_number
+    required: False
+---
+# The full filing packet — fill once, every form. Each form is its OWN standalone
+# attachment block: docassemble allows an attachment block outside a question
+# when it carries `variable name:` (which defines the document, assembled on
+# demand). The documents are defined SEPARATELY from the final screen that links
+# them — a combined-PDF link on the same question that defines the attachments
+# makes docassemble loop ("petition_doc already looked for"), because the screen
+# seeks a variable it is itself mid-assembling. So: standalone blocks define each
+# doc, a code block merges them, the final screen only links. Fields map answers
+# to AcroForm names (#560); VERIFY tags still need a bench fill.
+
+# === Petition for Name Change ===========================================
 attachment:
   name: Petition for Name Change
-  filename: nd_petition_for_name_change
+  filename: nd_petition_for_name_change_standard
+  variable name: petition_doc
   pdf template file: petition.pdf
   fields:
     # Caption
@@ -145,3 +158,123 @@ attachment:
     - 'type or print your name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
     - 'type or print your address city state zip code': ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
     - 'type or print your telephone number and email address': ''
+---
+# === Notice of Petition for Name Change =================================
+attachment:
+  name: Notice of Petition for Name Change
+  filename: nd_notice_of_petition
+  variable name: notice_doc
+  pdf template file: notice.pdf
+  fields:
+    # VERIFY: header field — county vs judicial-district number.
+    - 'In District Court': ${ residence_county }
+    - 'In The Matter Of The Petition For Name Change Of': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    - 'an Order changing the Petitioners name of': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    - 'to': ${ " ".join(p for p in [requested_first, requested_middle, requested_last] if p) }
+    # VERIFY: sits above the printed-name/address signature block — likely a
+    # date or signature line; left blank for the litigant to sign by hand.
+    - 'Text1': ''
+    - 'Printed Name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    - 'Address': ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
+---
+# === Confidential Information Form ======================================
+attachment:
+  name: Confidential Information Form
+  filename: nd_confidential_information
+  variable name: confidential_doc
+  pdf template file: confidential-info.pdf
+  fields:
+    - 'In District Court County Of': ${ residence_county }
+    # Bench-confirmed: the field auto-named 'State Of North Dakota' is positionally
+    # the Case No blank (the state itself is preprinted) — leave it empty; the
+    # clerk assigns the case number.
+    - 'State Of North Dakota': ''
+    - 'In The Matter Of The Petition For Name Change Of': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    - 'First name': ${ current_first }
+    - 'Middle names if any': ${ current_middle }
+    - 'Last name': ${ current_last }
+    # Bench-confirmed: DOB lands on "Full Information", birth year on "Redacted".
+    - 'Full Information': ${ date_of_birth }
+    - 'Redacted Information': ${ date_of_birth.year }
+    # Signature block: field names trail their blanks by one row (same gotcha as
+    # Petition §3 — bench fill showed every value one row too low), so each value
+    # goes one field name UP from its visual label. The "-> (...)" notes the blank
+    # each field actually fills.
+    - 'Text1': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) } # -> (Typed or Printed Name)
+    - 'Petitioners Typed or Printed Name': ${ residence_street } # -> (Address)
+    - 'Address': ${ residence_city }, ND ${ residence_zip } # -> (City, State, Zip Code)
+    - 'City State Zip Code': ${ phone_number } # -> (Telephone Number)
+    - 'Telephone Number': '' # -> (Email Address); no email collected
+---
+# === Proposed Order for Name Change =====================================
+# VERIFY (whole form): four name-sets (base / _2 / _3 / _4). _3 is the caption
+# (current legal name) with confidence; the body from/to ordering below is a
+# best guess pending a bench fill — the filled PDF shows which set lands on
+# "from" vs "to". The judge signs the Order, so no signature mapping.
+attachment:
+  name: Proposed Order for Name Change
+  filename: nd_proposed_order
+  variable name: order_doc
+  pdf template file: order.pdf
+  fields:
+    # VERIFY: header field — county vs judicial-district number.
+    - 'In District Court': ${ residence_county }
+    - 'Case No': ''
+    - 'County of': ${ residence_county }
+    # VERIFY: stray single-char field on the residence/"County of" line.
+    - '1': ''
+    - 'The Petitioners birth year is': ${ date_of_birth.year }
+    - 'Petitioners Current First Middle If Any And Last Legal Name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    # Name-sets mapped by bench-confirmed page position (#560):
+    #   §2 "current name"  = base 'First name'   (page 1)
+    #   §3 "requested name" = 'First name_2'      (page 1)
+    #   §6 "current name"  = 'First name_3'       (page 2)
+    #   §6 "changed to"    = 'First name_4'       (page 2)
+    # §2 current
+    - 'First name': ${ current_first }
+    - 'Middle names if any': ${ current_middle }
+    - 'Last name': ${ current_last }
+    # §3 requested
+    - 'First name_2': ${ requested_first }
+    - 'Middle names if any_2': ${ requested_middle }
+    - 'Last name_2': ${ requested_last }
+    # §6 current
+    - 'First name_3': ${ current_first }
+    - 'Middle names if any_3': ${ current_middle }
+    - 'Last name_3': ${ current_last }
+    # §6 changed-to (new) = requested
+    - 'First name_4': ${ requested_first }
+    - 'Middle names if any_4': ${ requested_middle }
+    - 'Last name_4': ${ requested_last }
+---
+# === Declaration in Support of Petition (next, #560) ====================
+# TODO(#560): the 93-field heavy one — mirrors the Petition (birth year, place
+# of birth, residency duration, 6-row criminal-history table, publication,
+# objections, signature). Build + bench-verify next. When added: a 5th standalone
+# attachment with `variable name: declaration_doc`, then add it to the merge and
+# the link list below.
+---
+# Merge into one mobile-friendly PDF. pdf_concatenate (verified in docassemble's
+# util.py) accepts the attachment DAFileCollection variables directly and returns
+# a DAFile. It lives in its own block so the docs resolve before the screen
+# below renders — NOT on that screen, which would loop.
+code: |
+  packet_pdf = pdf_concatenate(
+      petition_doc, notice_doc, confidential_doc, order_doc,
+      filename="nd-name-change-packet-standard.pdf")
+---
+mandatory: True
+event: download_packet
+question: Your filing packet is ready
+subquestion: |
+  **[Download your complete packet](${ packet_pdf.url_for(attachment=True) })** —
+  every form in one file. Best on a phone: one download, ready to print or take
+  to the clerk.
+
+  Or download each form individually, then print, sign, and bring them to the
+  clerk (or mail them in, depending on your court's process):
+
+  - [Petition for Name Change](${ petition_doc.pdf.url_for(attachment=True) })
+  - [Notice of Petition for Name Change](${ notice_doc.pdf.url_for(attachment=True) })
+  - [Confidential Information Form](${ confidential_doc.pdf.url_for(attachment=True) })
+  - [Proposed Order for Name Change](${ order_doc.pdf.url_for(attachment=True) })

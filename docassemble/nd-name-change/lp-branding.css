@@ -61,10 +61,17 @@ a:hover {
   color: #9b2e27;
 }
 
-/* Top navbar — LP's near-black, so the brand reads as ours, not docassemble's. */
+/* Top navbar — LP's near-black, so the brand reads as ours, not docassemble's.
+ * Pinned so the section-jump menu stays reachable below the fold instead of
+ * scrolling away (#549). sticky keeps it in flow (no content overlap); if a
+ * docassemble layout wrapper defeats sticky, fall back to position: fixed +
+ * body padding-top. */
 .navbar,
 nav.navbar {
   background-color: #1c1814 !important; /* greyscale-900 */
+  position: sticky;
+  top: 0;
+  z-index: 1030; /* Bootstrap's fixed-navbar layer, above form content */
 }
 .navbar .navbar-brand,
 .navbar .nav-link {
@@ -81,4 +88,26 @@ nav.navbar {
 .btn:focus-visible {
   border-color: #e19684; /* primary-300 */
   box-shadow: 0 0 0 0.25rem rgba(181, 54, 45, 0.25);
+}
+
+/* Attachment download tabs (#549). docassemble renders each document's
+ * Download/Preview/Markdown as Bootstrap nav-tabs
+ * (.da-attachment-tablist .nav-link); on our palette the active tab's label
+ * came out near-white on white. Force legible text — active tab in LP red so
+ * it reads as selected. Source: standardformatter.py da-attachment-tablist. */
+.da-attachment-tablist .nav-link {
+  color: #1c1814; /* greyscale-900 */
+}
+.da-attachment-tablist .nav-link.active {
+  color: #b5362d; /* primary-600 */
+}
+
+/* Native date picker icon (#549). datatype: date renders <input type="date">;
+ * its calendar indicator was invisible (white on white). brightness(0) forces
+ * a solid dark glyph regardless of the browser default, so it's always visible
+ * on the light input background. */
+input[type='date']::-webkit-calendar-picker-indicator {
+  filter: brightness(0);
+  opacity: 0.65;
+  cursor: pointer;
 }
