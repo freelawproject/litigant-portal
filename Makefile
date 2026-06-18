@@ -1,7 +1,7 @@
 .PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
        file-issue messages compilemessages docker-build docker-dev docker-prod docker-rebuild \
 	   docker-down docker-logs docker-shell docker-migrate docker-clean \
-	   docassemble-up docassemble-down
+	   docassemble-up docassemble-down update health
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -113,3 +113,9 @@ docassemble-up: ## Start the local-dev docassemble bench (http://localhost:8100)
 
 docassemble-down: ## Stop the local-dev docassemble bench
 	docker compose -f docker-compose.docassemble.yml down
+
+update: ## Update a hosted box: pull code+images, recreate, health (ARGS=... e.g. --docassemble)
+	./scripts/update.sh $(ARGS)
+
+health: ## Health/validation summary for a hosted box (no changes)
+	./scripts/update.sh health $(ARGS)
