@@ -51,7 +51,7 @@ dependencies = [
     "vobject>=0.9.6.1",
     # Security minimums (transitive deps — Dependabot #13-#25)
     "aiohttp>=3.13.4",
-    "cryptography>=46.0.6",
+    "cryptography>=48.0.1",
     "pygments>=2.20.0",
     "requests>=2.33.0",
     # PostgreSQL driver
