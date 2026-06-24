@@ -86,8 +86,11 @@ fields:
     hint: e.g. Fargo, North Dakota
   - Years you have lived in North Dakota: residency_years
     datatype: integer
+    min: 0
   - Additional months: residency_months
     datatype: integer
+    min: 0
+    max: 11
     default: 0
   - Your phone number: phone_number
     required: False

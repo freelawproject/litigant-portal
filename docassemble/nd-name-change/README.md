@@ -33,18 +33,17 @@ Prereq: the bench is up. See [`docs/docassemble-local-dev.md`](../../docs/docass
 - Start the bench: `make docassemble-up`
 - Open `http://localhost:8100` and log in (fresh box default: `admin@example.com` / `password`)
 - Top-right menu → **Playground**
-- Upload the template: in the Playground, open the **Templates** folder → upload `petition.pdf`
-  (the `pdf template file: petition.pdf` line resolves against this folder)
+- Upload the templates: in the Playground, open the **Templates** folder → upload
+  `petition.pdf`, `declaration.pdf`, `notice.pdf`, `confidential-info.pdf`, and `order.pdf`
+  (each attachment block's `pdf template file:` line resolves against this folder)
 - Upload the interview: in the **Sources** folder (the interview file list at the top of the
   editor) → upload `petition-standard.yml`, then select it so it loads in the editor
 - Run it: click **Save and Run**
-- Upload the **other form templates** too (`declaration.pdf`, `notice.pdf`,
-  `confidential-info.pdf`, `order.pdf`) into the **Templates** folder — the
-  packet's attachment blocks resolve each `pdf template file:` against it
 - Walk the screens with the sample data below, then **download the combined
   packet** (and spot-check each form) at the end
 - Verify on each PDF: every text field populated, and the right checkboxes ticked
-  (§2 citizenship, §9 criminal history, §11 publication/waiver, §12 objections)
+  (citizenship — Petition §5, Declaration §2 — plus §9 criminal history, §11
+  publication/waiver, §12 objections)
 - Repeat with `petition-waiver.yml` to exercise the waiver track
 
 Sample data:
