@@ -31,6 +31,12 @@ the publication waiver.
   - Published on: `2026-06-01` \*
   - Newspaper: `The Bismarck Tribune`
   - County: `Burleigh` (defaults from residence)
+- **Screen 6 — A few more details** (Order, Declaration, Confidential)
+  - Date of birth: `1979-04-22` \*
+  - Place of birth: `Minot, North Dakota` \*
+  - Years in North Dakota: `18` \* (resident since June 2008)
+  - Additional months: `0` \*
+  - Phone: `701-555-0142` \*
 
 Expected page-4 block: "from Sandra Marie Larson / to Sandra Marie Eriksen."
 Because Sandra has a middle name, this run also confirms the caption renders with
