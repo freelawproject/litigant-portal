@@ -107,7 +107,7 @@ fields:
 # makes docassemble loop ("petition_doc already looked for"), because the screen
 # seeks a variable it is itself mid-assembling. So: standalone blocks define each
 # doc, a code block merges them, the final screen only links. Fields map answers
-# to AcroForm names (#560); VERIFY tags still need a bench fill.
+# to AcroForm names (#560); bench-confirmed by a full-packet fill.
 
 # === Petition for Name Change ===========================================
 attachment:
@@ -176,13 +176,13 @@ attachment:
   variable name: notice_doc
   pdf template file: notice.pdf
   fields:
-    # VERIFY: header field — county vs judicial-district number.
+    # Bench-confirmed: header holds the county name.
     - 'In District Court': ${ residence_county }
     - 'In The Matter Of The Petition For Name Change Of': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
     - 'an Order changing the Petitioners name of': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
     - 'to': ${ " ".join(p for p in [requested_first, requested_middle, requested_last] if p) }
-    # VERIFY: sits above the printed-name/address signature block — likely a
-    # date or signature line; left blank for the litigant to sign by hand.
+    # Bench-confirmed: signing/date line above the printed-name/address block —
+    # left blank for the litigant to sign by hand.
     - 'Text1': ''
     - 'Printed Name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
     - 'Address': ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
@@ -217,21 +217,19 @@ attachment:
     - 'Telephone Number': '' # -> (Email Address); no email collected
 ---
 # === Proposed Order for Name Change =====================================
-# VERIFY (whole form): four name-sets (base / _2 / _3 / _4). _3 is the caption
-# (current legal name) with confidence; the body from/to ordering below is a
-# best guess pending a bench fill — the filled PDF shows which set lands on
-# "from" vs "to". The judge signs the Order, so no signature mapping.
+# Four name-sets (base / _2 / _3 / _4), bench-confirmed by page position (see the
+# per-field notes below). The judge signs the Order, so no signature mapping.
 attachment:
   name: Proposed Order for Name Change
   filename: nd_proposed_order
   variable name: order_doc
   pdf template file: order.pdf
   fields:
-    # VERIFY: header field — county vs judicial-district number.
+    # Bench-confirmed: header holds the county name.
     - 'In District Court': ${ residence_county }
     - 'Case No': ''
     - 'County of': ${ residence_county }
-    # VERIFY: stray single-char field on the residence/"County of" line.
+    # Bench-confirmed: stray single-char field on the "County of" line — blank.
     - '1': ''
     - 'The Petitioners birth year is': ${ date_of_birth.year }
     - 'Petitioners Current First Middle If Any And Last Legal Name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
@@ -262,8 +260,8 @@ attachment:
 # AcroForm names, mapped against page/position (parsed page-by-page, top-to-
 # bottom — same method as the Petition). Auto-generated names are not name-
 # obvious, so each section notes what the field actually fills. Checkbox "on"
-# state is "Yes" (parity with the other forms in this packet). The VERIFY tags
-# below still need a bench fill-and-check pass (#560 DoD).
+# state is "Yes" (parity with the other forms in this packet). Bench-confirmed by
+# a full-packet fill (#560 DoD).
 attachment:
   name: Declaration in Support of Petition
   filename: nd_declaration_in_support
@@ -319,14 +317,17 @@ attachment:
     - 'Check Box12': True
     - 'Check Box13': False
     - 'Check Box14': False
-    # 13. Signature block — printed name + address; the litigant signs and dates
-    #     by hand. 'Address' spans the single ruled line (address, city, ZIP).
-    - 'Printed Name of Petitioner': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
-    - 'Address': ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
-    # VERIFY: 'Text15' sits in the §13 signing line ("Signed on ___ (date) in ___
-    # (city)...") — left blank for the litigant to complete at signing.
-    # VERIFY: additional-sheets toggles ('Check Box5'/'Check Box6', ¶8/¶9) default
-    # off; confirm which is which on the bench (both stay off for the demo).
+    # 13. Signature block. Bench fill (#560) showed the field names trail their
+    #     visual labels by one row (same gotcha as Petition §3 / the Confidential
+    #     form): 'Text15' sits on the (Printed Name) line, 'Printed Name of
+    #     Petitioner' on the (Address / City, State, Zip) line, 'Address' on the
+    #     (Telephone / Email) line. The (Signature) line and the "Signed on ___"
+    #     date/city blanks have no fields — the litigant signs and dates by hand.
+    - 'Text15': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) } # -> (Printed Name of Petitioner)
+    - 'Printed Name of Petitioner': ${ residence_street }, ${ residence_city }, ND ${ residence_zip } # -> (Address / City, State, Zip)
+    - 'Address': ${ phone_number } # -> (Telephone Number / Email); no email collected
+    # Bench-confirmed: additional-sheets toggles ('Check Box5'/'Check Box6', ¶8/¶9)
+    # stay off for the demo.
 ---
 # Merge into one mobile-friendly PDF. pdf_concatenate (verified in docassemble's
 # util.py) accepts the attachment DAFileCollection variables directly and returns

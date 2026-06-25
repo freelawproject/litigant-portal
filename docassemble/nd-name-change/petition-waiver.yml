@@ -218,7 +218,7 @@ attachment:
 # === Declaration in Support of Petition (waiver track) ==================
 # Identical to the standard Declaration except §11 (waive instead of publish)
 # and §12 (requesting waiver). Field mapping is position-verified the same way
-# (#560); VERIFY tags still need a bench fill-and-check pass.
+# (#560); the shared Declaration fields were bench-confirmed on the standard track.
 attachment:
   name: Declaration in Support of Petition
   filename: nd_declaration_in_support_waiver
@@ -270,11 +270,14 @@ attachment:
     - 'Check Box12': False
     - 'Check Box13': False
     - 'Check Box14': True
-    # 13. Signature block — printed name + address; litigant signs/dates by hand.
-    - 'Printed Name of Petitioner': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
-    - 'Address': ${ residence_street }, ${ residence_city }, ND ${ residence_zip }
-    # VERIFY: 'Text15' (§13 signing line) left blank for hand-completion;
-    # additional-sheets 'Check Box5'/'Check Box6' (¶8/¶9) default off.
+    # 13. Signature block — same one-row label shift as the standard track (shared
+    #     declaration.pdf): 'Text15' = (Printed Name) line, 'Printed Name of
+    #     Petitioner' = (Address / City, State, Zip) line, 'Address' = (Telephone /
+    #     Email) line. The signature + "Signed on ___" blanks are handwritten.
+    - 'Text15': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) } # -> (Printed Name of Petitioner)
+    - 'Printed Name of Petitioner': ${ residence_street }, ${ residence_city }, ND ${ residence_zip } # -> (Address / City, State, Zip)
+    - 'Address': ${ phone_number } # -> (Telephone Number / Email); no email collected
+    # additional-sheets 'Check Box5'/'Check Box6' (¶8/¶9) stay off (Off on the bench).
 ---
 # Merge into one mobile-friendly PDF (waiver track). pdf_concatenate takes the
 # attachment DAFileCollection vars directly; in its own block so the docs resolve

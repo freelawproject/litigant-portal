@@ -108,8 +108,8 @@ resolved by parsing each page top-to-bottom and matching fields to the visible
 labels. The 93-field **Declaration** is the heaviest: its sections were mapped by
 position (e.g. §2 citizenship is `Check Box1`/`Check Box2` left-to-right; §11
 publication date lands on the field auto-named `Notice choose the same checkbox
-as Paragraph 11...`). A few signature-line and "additional sheets" fields carry
-`VERIFY` comments in the interview pending a bench fill-and-check.
+as Paragraph 11...`). The signature-line and "additional sheets" fields that
+static parsing couldn't settle were confirmed by a full-packet bench fill (#560).
 
 ## Related
 
