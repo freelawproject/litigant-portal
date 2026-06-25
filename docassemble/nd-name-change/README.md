@@ -111,6 +111,36 @@ publication date lands on the field auto-named `Notice choose the same checkbox
 as Paragraph 11...`). The signature-line and "additional sheets" fields that
 static parsing couldn't settle were confirmed by a full-packet bench fill (#560).
 
+## Verifying a fill
+
+The packet is filled by **pikepdf inside the docassemble container** — that is the
+only PDF dependency the project has. The tools below are **local analysis aids**
+for checking a bench fill by hand; nothing in the repo or CI requires them.
+
+Dump every AcroForm field name and value from a filled (or blank) form with
+[qpdf](https://github.com/qpdf/qpdf) (actively maintained, Apache-2.0):
+
+```bash
+qpdf --json --json-key=acroform nd_declaration_in_support.pdf \
+  | jq -r '.acroform.fields[] | "\(.fullname) = \(.value)"'
+```
+
+To see _where_ a value lands on the page, render with [poppler](https://poppler.freedesktop.org/):
+
+```bash
+pdftotext -layout -f 5 -l 5 nd_declaration_in_support.pdf -   # page 5 as text
+pdftoppm -png -f 5 -l 5 nd_declaration_in_support.pdf page    # page 5 as image
+```
+
+**Standing gotcha — the one-row field-name shift.** These ND forms auto-name each
+fillable field after the label that _follows_ the blank, so a field's name sits
+one row above where it actually prints. It has now bitten three forms — the
+Petition §3 address block, the Confidential Information signature block, and the
+Declaration §13 signature block — each needing values shifted up one field name
+(e.g. on the Declaration the printed name goes in `Text15`, not `Printed Name of
+Petitioner`). Assume any new ND form has it, and dump the fields after a bench
+fill to confirm before trusting the mapping.
+
 ## Related
 
 - Handoff epic: #531 (under document-assembly #123)
