@@ -22,10 +22,9 @@ metadata:
 
 contacts:
   - id: clerk
-    name: 'Burleigh County Clerk of District Court'
-    url: 'https://www.ndcourts.gov'
-    address: '514 East Thayer Avenue, Bismarck, ND'
-    note: 'Call before filing to ask whether the judge requires the criminal-history background check before or after you file — timing varies by judge, and the waiver track does not remove this. This is the one call to make first.'
+    name: 'Clerk of District Court (your county)'
+    url: 'https://www.ndcourts.gov/court-locations'
+    note: "You file in the district court for the county where you have lived the past 6 months. Use the court locator to find your county's clerk, then call before filing to ask whether the judge requires the criminal-history background check before or after you file — timing varies by judge, and the waiver track does not remove this. This is the one call to make first."
   - id: self_help
     name: 'North Dakota Legal Self Help Center'
     url: 'https://www.ndcourts.gov/legal-self-help'
@@ -94,7 +93,7 @@ sections:
       - id: filing_county
         label: 'County where you will file'
         type: text
-        help_text: 'You file in the district court for the county where you live.'
+        help_text: "You file in the district court for the county where you live. Not sure which county? It is on your driver's license, lease, or a utility bill — or look up your address with the court locator at ndcourts.gov/court-locations."
 
   - kind: output
     output_type: packet
