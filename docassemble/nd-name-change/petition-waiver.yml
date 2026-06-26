@@ -78,10 +78,20 @@ mandatory: True
 question: |
   A few more details for the rest of your packet
 subquestion: |
-  These appear on the Order and Confidential Information form.
+  These appear on the Order, Declaration, and Confidential Information form.
 fields:
   - Date of birth: date_of_birth
     datatype: date
+  - Place of birth: place_of_birth
+    hint: e.g. Fargo, North Dakota
+  - Years you have lived in North Dakota: residency_years
+    datatype: integer
+    min: 0
+  - Additional months: residency_months
+    datatype: integer
+    min: 0
+    max: 11
+    default: 0
   - Your phone number: phone_number
     required: False
 ---
@@ -205,18 +215,77 @@ attachment:
     - 'Middle names if any_4': ${ requested_middle }
     - 'Last name_4': ${ requested_last }
 ---
-# === Declaration in Support of Petition (next, #560) ====================
-# TODO(#560): the 93-field heavy one. Build + bench-verify, then add here as a 4th
-# standalone attachment with `variable name: declaration_doc` and fold it into the
-# merge + the link list below. Waiver packet = Petition + Declaration +
-# Confidential + Order (no Notice).
+# === Declaration in Support of Petition (waiver track) ==================
+# Identical to the standard Declaration except §11 (waive instead of publish)
+# and §12 (requesting waiver). Field mapping is position-verified the same way
+# (#560); the shared Declaration fields were bench-confirmed on the standard track.
+attachment:
+  name: Declaration in Support of Petition
+  filename: nd_declaration_in_support_waiver
+  variable name: declaration_doc
+  pdf template file: declaration.pdf
+  fields:
+    # Caption
+    - 'In District Court': ${ residence_county }
+    - 'Case No': ''
+    - 'Petitioners current first middle if any and last legal name': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    # Preamble "I, ____ (current legal name)"
+    - 'I': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) }
+    # 1. Current legal name
+    - 'First name': ${ current_first }
+    - 'Middle names if any': ${ current_middle }
+    - 'Last name': ${ current_last }
+    # 2. Citizenship (Check Box1 = citizen, Check Box2 = resident alien)
+    - 'Check Box1': ${ citizenship == "citizen" }
+    - 'Check Box2': ${ citizenship == "resident_alien" }
+    # 3. "resident of North Dakota for ___ years and ___ months"
+    - 'I have been a resident of North Dakota for': ${ residency_years }
+    - 'years and': ${ residency_months }
+    # 4. "resident of ___ County ... since ___ (month and year)"
+    - 'I have been a resident of': ${ residence_county }
+    - 'month and year more than six months immediately before the': ${ residence_since }
+    # 5. Place of birth
+    - 'My place of birth is': ${ place_of_birth }
+    # 6. Year of birth
+    - 'My year of birth is': ${ date_of_birth.year }
+    # 7. Requested name
+    - 'First name_2': ${ requested_first }
+    - 'Middle names if any_2': ${ requested_middle }
+    - 'Last name_2': ${ requested_last }
+    # 8. Reasons — litigant-handwritten narrative, left unmapped (parity w/ Petition).
+    # 9. Criminal history (Check Box3 = never, Check Box4 = convicted)
+    - 'Check Box3': ${ criminal_history == "none" }
+    - 'Check Box4': ${ criminal_history == "convicted" }
+    # 9. Conviction table: blank for the demo persona (never convicted).
+    # 11. Notice — WAIVER track: not published, blanks empty
+    - 'Check Box7': False
+    - 'Notice choose the same checkbox as Paragraph 11 of your Petition': ''
+    - 'newspaper the official': ''
+    - 'newspaper in': ''
+    # 11. Waiver of publication + reason(s)
+    - 'Check Box8': True
+    - 'Check Box9': ${ waiver_reasons["first_or_middle"] }
+    - 'Check Box10': ${ waiver_reasons["domestic_violence"] }
+    # 12. Objections — WAIVER track: requesting waiver (Check Box14)
+    - 'Check Box12': False
+    - 'Check Box13': False
+    - 'Check Box14': True
+    # 13. Signature block — same one-row label shift as the standard track (shared
+    #     declaration.pdf): 'Text15' = (Printed Name) line, 'Printed Name of
+    #     Petitioner' = (Address / City, State, Zip) line, 'Address' = (Telephone /
+    #     Email) line. The signature + "Signed on ___" blanks are handwritten.
+    - 'Text15': ${ " ".join(p for p in [current_first, current_middle, current_last] if p) } # -> (Printed Name of Petitioner)
+    - 'Printed Name of Petitioner': ${ residence_street }, ${ residence_city }, ND ${ residence_zip } # -> (Address / City, State, Zip)
+    - 'Address': ${ phone_number } # -> (Telephone Number / Email); no email collected
+    # additional-sheets 'Check Box5'/'Check Box6' (¶8/¶9) stay off (Off on the bench).
 ---
 # Merge into one mobile-friendly PDF (waiver track). pdf_concatenate takes the
 # attachment DAFileCollection vars directly; in its own block so the docs resolve
-# before the screen below renders (avoids the assembly loop).
+# before the screen below renders (avoids the assembly loop). Filing order:
+# Petition, its Declaration, Confidential, Order (no Notice on the waiver track).
 code: |
   packet_pdf = pdf_concatenate(
-      petition_doc, confidential_doc, order_doc,
+      petition_doc, declaration_doc, confidential_doc, order_doc,
       filename="nd-name-change-packet-waiver.pdf")
 ---
 mandatory: True
@@ -231,5 +300,6 @@ subquestion: |
   clerk (or mail them in, depending on your court's process):
 
   - [Petition for Name Change](${ petition_doc.pdf.url_for(attachment=True) })
+  - [Declaration in Support of Petition](${ declaration_doc.pdf.url_for(attachment=True) })
   - [Confidential Information Form](${ confidential_doc.pdf.url_for(attachment=True) })
   - [Proposed Order for Name Change](${ order_doc.pdf.url_for(attachment=True) })

@@ -9,16 +9,22 @@ README together), not split by file type.
 
 ## Contents
 
-| File                    | What it is                                                                 |
-| ----------------------- | -------------------------------------------------------------------------- |
-| `petition.pdf`          | ND Petition for Name Change (NC Pet/Rev. May 2024) — the fillable template |
-| `petition-standard.yml` | Interview for the standard **publish** track                               |
-| `petition-waiver.yml`   | Interview for the **publication-waived** track                             |
+| File                    | What it is                                                                |
+| ----------------------- | ------------------------------------------------------------------------- |
+| `petition.pdf`          | ND Petition for Name Change (NC Pet/Rev. May 2024) — fillable template    |
+| `declaration.pdf`       | Declaration in Support of Petition (NC Dec/Rev. May 2024) — 93-field form |
+| `notice.pdf`            | Notice of Petition for Name Change (standard track only)                  |
+| `confidential-info.pdf` | Confidential Information Form                                             |
+| `order.pdf`             | Proposed Order for Name Change                                            |
+| `petition-standard.yml` | Interview for the standard **publish** track                              |
+| `petition-waiver.yml`   | Interview for the **publication-waived** track                            |
 
-Both interviews fill the **same** `petition.pdf`; they differ only at the
-Petition's §11 (publish vs. waive + reason) and §12 (objections). The tracks fork
-at entry, matching the Topic Flow corpus's standard/waiver split — no in-interview
-branching.
+Each interview gathers the shared facts once and emits the **full filing packet**
+as one combined PDF plus the individual forms — the standard track assembles 5
+forms (Petition, Declaration, Notice, Confidential, Order), the waiver track 4
+(no Notice). The two tracks differ only at §11 (publish vs. waive + reason) and
+§12 (objections); they fork at entry, matching the Topic Flow corpus's
+standard/waiver split — no in-interview branching.
 
 ## Test it locally
 
@@ -27,14 +33,17 @@ Prereq: the bench is up. See [`docs/docassemble-local-dev.md`](../../docs/docass
 - Start the bench: `make docassemble-up`
 - Open `http://localhost:8100` and log in (fresh box default: `admin@example.com` / `password`)
 - Top-right menu → **Playground**
-- Upload the template: in the Playground, open the **Templates** folder → upload `petition.pdf`
-  (the `pdf template file: petition.pdf` line resolves against this folder)
+- Upload the templates: in the Playground, open the **Templates** folder → upload
+  `petition.pdf`, `declaration.pdf`, `notice.pdf`, `confidential-info.pdf`, and `order.pdf`
+  (each attachment block's `pdf template file:` line resolves against this folder)
 - Upload the interview: in the **Sources** folder (the interview file list at the top of the
   editor) → upload `petition-standard.yml`, then select it so it loads in the editor
 - Run it: click **Save and Run**
-- Walk the 5 screens with the sample data below, then **download the filled Petition** at the end
-- Verify on the PDF: every text field populated, and the right checkboxes ticked
-  (§5 citizenship, §9 criminal history, §11 publication, §12 objections)
+- Walk the screens with the sample data below, then **download the combined
+  packet** (and spot-check each form) at the end
+- Verify on each PDF: every text field populated, and the right checkboxes ticked
+  (citizenship — Petition §5, Declaration §2 — plus §9 criminal history, §11
+  publication/waiver, §12 objections)
 - Repeat with `petition-waiver.yml` to exercise the waiver track
 
 Sample data:
@@ -44,6 +53,9 @@ Current name:     Jane Marie Doe
 Requested name:   Jane Marie Smith
 Residence:        123 Main St, Bismarck, Burleigh County, ND 58501
 Resident since:   January 2025
+Place of birth:   Fargo, North Dakota
+ND residency:     1 year, 5 months
+Date of birth:    1990-03-12
 Citizenship:      U.S. citizen
 Criminal history: never convicted
 Standard track — published: 2026-05-01, The Bismarck Tribune, Burleigh County
@@ -90,6 +102,44 @@ re-verify whenever the court revises the form. Concrete gotcha: in §3 the
 parenthetical labels trail the blank they describe, so the field names are
 shifted one slot — `Petitioner currently resides at`/`address`/`city`/`North
 Dakota` actually hold address/city/county/zip.
+
+Every form in the packet is mapped the same way — auto-generated AcroForm names
+resolved by parsing each page top-to-bottom and matching fields to the visible
+labels. The 93-field **Declaration** is the heaviest: its sections were mapped by
+position (e.g. §2 citizenship is `Check Box1`/`Check Box2` left-to-right; §11
+publication date lands on the field auto-named `Notice choose the same checkbox
+as Paragraph 11...`). The signature-line and "additional sheets" fields that
+static parsing couldn't settle were confirmed by a full-packet bench fill (#560).
+
+## Verifying a fill
+
+The packet is filled by **pikepdf inside the docassemble container** — that is the
+only PDF dependency the project has. The tools below are **local analysis aids**
+for checking a bench fill by hand; nothing in the repo or CI requires them.
+
+Dump every AcroForm field name and value from a filled (or blank) form with
+[qpdf](https://github.com/qpdf/qpdf) (actively maintained, Apache-2.0):
+
+```bash
+qpdf --json --json-key=acroform nd_declaration_in_support.pdf \
+  | jq -r '.acroform.fields[] | "\(.fullname) = \(.value)"'
+```
+
+To see _where_ a value lands on the page, render with [poppler](https://poppler.freedesktop.org/):
+
+```bash
+pdftotext -layout -f 5 -l 5 nd_declaration_in_support.pdf -   # page 5 as text
+pdftoppm -png -f 5 -l 5 nd_declaration_in_support.pdf page    # page 5 as image
+```
+
+**Standing gotcha — the one-row field-name shift.** These ND forms auto-name each
+fillable field after the label that _follows_ the blank, so a field's name sits
+one row above where it actually prints. It has now bitten three forms — the
+Petition §3 address block, the Confidential Information signature block, and the
+Declaration §13 signature block — each needing values shifted up one field name
+(e.g. on the Declaration the printed name goes in `Text15`, not `Printed Name of
+Petitioner`). Assume any new ND form has it, and dump the fields after a bench
+fill to confirm before trusting the mapping.
 
 ## Related
 
