@@ -1,7 +1,7 @@
 .PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
        file-issue messages compilemessages docker-build docker-dev docker-prod docker-rebuild \
 	   docker-down docker-logs docker-shell docker-migrate docker-clean \
-	   docassemble-up docassemble-down update health
+	   docassemble-up docassemble-down update health build-image push-image
 
 help: ## Show this help message
 	@echo "Available commands:"
@@ -119,3 +119,20 @@ update: ## Update a hosted box: pull code+images, recreate, health (ARGS=... e.g
 
 health: ## Health/validation summary for a hosted box (no changes)
 	./scripts/update.sh health $(ARGS)
+
+# Image build & push — used by .github/workflows/deploy.yml to publish the
+# portal image for the EKS deploy. Requires VERSION (the short git SHA in CI):
+#   make push-image -e VERSION=$(git rev-parse --short HEAD)
+# Override the registry/namespace with -e REPO=... if needed.
+REPO ?= freelawproject/litigant-portal
+DOCKER_TAG_PROD = $(VERSION)-prod
+
+build-image: ## Build the prod portal image (requires VERSION=...)
+	docker build -t $(REPO):$(DOCKER_TAG_PROD) --file docker/django/Dockerfile .
+
+push-image: build-image ## Build then push the prod portal image (amd64 only)
+	@if [ "$$(uname -m)" != "x86_64" ]; then \
+		echo "Refusing to push: only amd64 builds may be pushed (the server/EKS runs amd64; an arm64 image would crash-loop there)."; \
+		exit 1; \
+	fi
+	docker push $(REPO):$(DOCKER_TAG_PROD)
