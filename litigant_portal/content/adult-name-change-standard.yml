@@ -99,7 +99,7 @@ sections:
       - id: filing_county
         label: 'County where you will file'
         type: text
-        help_text: "You file in the district court for the county where you live. Not sure which county? It is on your driver's license, lease, or a utility bill — or look up your address with the court locator at ndcourts.gov/court-locations."
+        help_text: "You file in the district court for the county where you have lived the past 6 months. Not sure which county? It is on your driver's license, lease, or a utility bill — or look up your address with the court locator at ndcourts.gov/court-locations."
       - id: publication_date
         label: 'Date your notice was published'
         type: date
