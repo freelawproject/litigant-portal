@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.i18n import JavaScriptCatalog
 
-from litigant_portal.app.views import endpoints, pages
+from litigant_portal.app.views import chat_v2, endpoints, pages
 
 app_patterns = [
     # Main pages
@@ -24,6 +24,7 @@ app_patterns = [
         name="topic_flow_download",
     ),
     path("chat/", pages.chat_page, name="chat"),
+    path("chat-v2/", pages.chat_v2_view, name="chat_v2"),
     path("chat/action-plan/", endpoints.action_plan, name="action_plan"),
     path("style-guide/", pages.style_guide, name="style_guide"),
     # Agent testing
@@ -49,6 +50,19 @@ api_patterns = [
         "case/timeline/", endpoints.case_timeline_add, name="case_timeline_add"
     ),
     path("case/clear/", endpoints.case_clear, name="case_clear"),
+    # Chat v2
+    path("threads/", chat_v2.thread_list, name="thread_list"),
+    path(
+        "threads/<uuid:thread_id>/",
+        chat_v2.message_list,
+        name="message_list",
+    ),
+    path(
+        "threads/<uuid:thread_id>/delete/",
+        chat_v2.thread_delete,
+        name="thread_delete",
+    ),
+    path("chat-stream/", chat_v2.chat_stream, name="chat_stream"),
     path("case/resolve/", endpoints.case_resolve, name="case_resolve"),
     path(
         "case/action-item/<uuid:item_id>/toggle/",

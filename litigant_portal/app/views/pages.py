@@ -221,6 +221,11 @@ def chat_page(request):
     )
 
 
+def chat_v2_view(request):
+    """New chat page"""
+    return render(request, "chat_v2/index.html")
+
+
 def deep_link(request, court, topic):
     """Deep-link entry: /t/{court}/{topic}/ → chat with both pre-set.
 
