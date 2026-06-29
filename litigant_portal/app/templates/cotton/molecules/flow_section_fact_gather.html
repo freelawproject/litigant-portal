@@ -14,6 +14,7 @@
     id="{{ q.id }}"
     help_text="{{ q.help_text|default:'' }}"
     :required="q.required"
+    :errors="q.errors"
   >
     <option value="">{{ choice_placeholder }}</option>
     {% for choice in q.choices %}
@@ -29,6 +30,7 @@
     value="{{ q.value }}"
     help_text="{{ q.help_text|default:'' }}"
     :required="q.required"
+    :errors="q.errors"
   />
   {% endif %}
   {% endfor %}
