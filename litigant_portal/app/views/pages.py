@@ -263,18 +263,26 @@ def topic_flow(request, court, topic, role):
             if qid in request.POST
         }
         errors = validate_answers(corpus, submitted)
-        # Persist only what passes — a blank required field or an out-of-list
-        # choice never lands in the store. Valid siblings still save, so a
-        # fix-and-resubmit doesn't discard good input alongside the bad.
-        valid = {qid: v for qid, v in submitted.items() if qid not in errors}
+        # Persist only what passes, canonicalized (stripped) to match what
+        # validate_answers checked — otherwise a padded-but-valid answer
+        # ("Cass  ") stores raw and fails the strict option-selected match on
+        # re-render, and a padded date breaks date.fromisoformat in the
+        # deadline compute. A blank required field or an out-of-list choice
+        # never lands in the store; valid siblings still save.
+        valid = {
+            qid: submitted[qid].strip()
+            for qid in submitted
+            if qid not in errors
+        }
         if valid:
             store.update(valid)
         if errors:
-            # Soft-gate: re-render in place (no PRG) with the submitted values
-            # overlaid and inline errors, so the litigant can fix and resubmit.
-            # Other sections still render — not a forward-only wizard.
-            answers = {**store.all(), **submitted}
-            return _render_topic_flow(request, corpus, answers, errors)
+            # Soft-gate: re-render in place (no PRG) with inline errors so the
+            # litigant can fix and resubmit. Render from the stored answers
+            # (not the raw submission), so a rejected value can't leak into the
+            # summary while the form flags it. Other sections still render —
+            # not a forward-only wizard.
+            return _render_topic_flow(request, corpus, store.all(), errors)
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.

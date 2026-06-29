@@ -409,6 +409,31 @@ def test_post_all_valid_still_redirects_prg(client, monkeypatch):
     assert _flow_answers(client).get("filing_county") == "Cass"
 
 
+@pytest.mark.django_db
+def test_error_rerender_does_not_leak_rejected_value(client, monkeypatch):
+    # The soft-gate re-renders from the stored answers, not the raw submission,
+    # so a rejected choice ("Stark") appears nowhere — the fact_gather form
+    # flags it, but the summary section can't echo it as a saved answer. Guards
+    # against the page contradicting itself (form says "fix", summary says "ok").
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.post(
+        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+    ).content.decode()
+    assert "Stark" not in html
+
+
+@pytest.mark.django_db
+def test_post_persists_stripped_value(client, monkeypatch):
+    # validate_answers checks the stripped value, so storage must strip too —
+    # else a padded choice validates but fails the strict option-selected match
+    # on re-render, and a padded date breaks date.fromisoformat downstream.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(
+        URL, {"publication_date": "2026-02-01", "filing_county": "Cass  "}
+    )
+    assert _flow_answers(client).get("filing_county") == "Cass"
+
+
 # --- ics deadline rendering (#494, needs DB) --------------------------------
 # The ics output renders a personalized deadline computed from the stored
 # answer — fact_gather → AnswerStore → compute_deadline → on-page date, JS off.
