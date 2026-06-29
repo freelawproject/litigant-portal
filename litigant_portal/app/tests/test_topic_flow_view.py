@@ -328,6 +328,87 @@ def test_post_stores_only_known_question_ids(client, monkeypatch):
     assert "not_a_question" not in flow
 
 
+# --- fact_gather POST validation (#525, needs DB) ---------------------------
+# The handler now validates against the corpus question defs before persisting:
+# empty `required` fields and `choice` answers outside the list are soft-gated
+# with inline errors (re-render, not PRG) and never stored. JS-off-safe.
+
+
+def _flow_answers(client):
+    return client.session.get("topic_flow", {}).get(
+        f"{COURT}/{TOPIC}/{ROLE}", {}
+    )
+
+
+@pytest.mark.django_db
+def test_post_empty_required_rerenders_in_place(client, monkeypatch):
+    # Invalid submit soft-gates: re-render 200 (so the inline error shows),
+    # not a PRG 302. A 302 would bounce the litigant forward past the gap.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(URL, {"publication_date": "", "filing_county": ""})
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_post_empty_required_is_not_persisted(client, monkeypatch):
+    # The blank required answer must not land in the store — otherwise the
+    # litigant could advance toward filing with a missing answer.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(URL, {"publication_date": "", "filing_county": ""})
+    assert "publication_date" not in _flow_answers(client)
+
+
+@pytest.mark.django_db
+def test_post_empty_required_marks_the_field_invalid(client, monkeypatch):
+    # The offending field carries aria-invalid="true" — the JS-off-safe a11y
+    # signal the form-field error pattern renders. Functional, not copy.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.post(
+        URL, {"publication_date": "", "filing_county": ""}
+    ).content.decode()
+    flat = re.sub(r"\s+", " ", html)
+    assert re.search(r'name="publication_date"[^>]*aria-invalid="true"', flat)
+
+
+@pytest.mark.django_db
+def test_post_choice_outside_list_is_rejected_not_stored(client, monkeypatch):
+    # A choice answer outside the declared options is dropped, never persisted
+    # (the silent-accept hole this issue closes).
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(
+        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+    )
+    assert response.status_code == 200
+    assert "filing_county" not in _flow_answers(client)
+
+
+@pytest.mark.django_db
+def test_post_saves_valid_fields_even_when_a_sibling_is_invalid(
+    client, monkeypatch
+):
+    # Partial-invalid submit: the valid field still persists so the litigant
+    # doesn't lose good input on every fix-and-resubmit; only the bad one is
+    # flagged. (publication_date valid, filing_county out-of-list.)
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(
+        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+    )
+    answers = _flow_answers(client)
+    assert answers.get("publication_date") == "2026-02-01"
+    assert "filing_county" not in answers
+
+
+@pytest.mark.django_db
+def test_post_all_valid_still_redirects_prg(client, monkeypatch):
+    # The happy path is unchanged: a fully valid submit persists and 302s (PRG).
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(
+        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+    )
+    assert response.status_code == 302
+    assert _flow_answers(client).get("filing_county") == "Cass"
+
+
 # --- ics deadline rendering (#494, needs DB) --------------------------------
 # The ics output renders a personalized deadline computed from the stored
 # answer — fact_gather → AnswerStore → compute_deadline → on-page date, JS off.

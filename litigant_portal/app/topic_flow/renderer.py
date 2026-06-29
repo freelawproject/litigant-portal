@@ -56,13 +56,23 @@ def _dispatch_key(section):
     return getattr(section, "output_type", None) or section.kind
 
 
-def render_section(section, corpus, answers):
-    """Render one section to a ``RenderedSection``, or raise if unhandled."""
+def render_section(section, corpus, answers, errors=None):
+    """Render one section to a ``RenderedSection``, or raise if unhandled.
+
+    ``errors`` is the optional ``{question_id: [message]}`` map from a failed
+    fact_gather POST. When present, each matching question dict gets its inline
+    errors so the form re-renders with them — injected here so the individual
+    renderers stay error-agnostic.
+    """
     key = _dispatch_key(section)
     handler = SECTION_RENDERERS.get(key)
     if handler is None:
         raise ValueError(f"No SectionRenderer handler registered for {key!r}")
-    return handler(section, corpus, answers)
+    rendered = handler(section, corpus, answers)
+    if errors and key == "fact_gather":
+        for question in rendered.context["questions"]:
+            question["errors"] = errors.get(question["id"], [])
+    return rendered
 
 
 @renderer("info")
@@ -86,6 +96,7 @@ def _render_fact_gather(section, corpus, answers):
             "choices": q.choices,
             "help_text": q.help_text,
             "value": answers.get(q.id, ""),
+            "errors": [],
         }
         for q in section.questions
     ]

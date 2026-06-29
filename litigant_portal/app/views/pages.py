@@ -22,6 +22,7 @@ from litigant_portal.app.topic_flow.renderer import (
     render_section,
     submitted_section_anchor,
 )
+from litigant_portal.app.topic_flow.validation import validate_answers
 
 TOPICS = {
     "eviction": {
@@ -261,7 +262,19 @@ def topic_flow(request, court, topic, role):
             for qid in question_ids(corpus)
             if qid in request.POST
         }
-        store.update(submitted)
+        errors = validate_answers(corpus, submitted)
+        # Persist only what passes — a blank required field or an out-of-list
+        # choice never lands in the store. Valid siblings still save, so a
+        # fix-and-resubmit doesn't discard good input alongside the bad.
+        valid = {qid: v for qid, v in submitted.items() if qid not in errors}
+        if valid:
+            store.update(valid)
+        if errors:
+            # Soft-gate: re-render in place (no PRG) with the submitted values
+            # overlaid and inline errors, so the litigant can fix and resubmit.
+            # Other sections still render — not a forward-only wizard.
+            answers = {**store.all(), **submitted}
+            return _render_topic_flow(request, corpus, answers, errors)
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.
@@ -274,9 +287,19 @@ def topic_flow(request, court, topic, role):
             url = f"{url}#{anchor}"
         return redirect(url)
 
-    answers = store.all()
+    return _render_topic_flow(request, corpus, store.all())
+
+
+def _render_topic_flow(request, corpus, answers, errors=None):
+    """Render the full Topic Flow page from resolved answers.
+
+    Shared by the GET path and the POST error re-render. ``errors`` (a
+    ``{question_id: [message]}`` map) threads into ``render_section`` so a
+    failed fact_gather submit shows inline errors; ``None`` on a clean render.
+    """
     rendered_sections = [
-        render_section(section, corpus, answers) for section in corpus.sections
+        render_section(section, corpus, answers, errors)
+        for section in corpus.sections
     ]
     # Table of contents for the in-header wayfinding menu — one entry per
     # headed section, so a litigant can jump back to re-read or revise.
