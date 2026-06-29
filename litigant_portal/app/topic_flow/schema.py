@@ -13,7 +13,7 @@ span sibling lists, so they live in ``loader.py`` rather than here.
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 # Shared slug shape for court/topic/role and every id — alphanumeric start,
 # then alphanumeric / underscore / hyphen. Mirrors the chat/prompts slug rule.
@@ -101,12 +101,31 @@ class VcfOutput(_Base):
     contact_ids: list[Slug] = Field(min_length=1)
 
 
+class PacketForm(_Base):
+    """One court form in a packet — a name, optionally linked to its official PDF.
+
+    Authoring shorthand: a bare string is the form name with no link, so
+    ``forms: ['Petition', ...]`` keeps working. An object adds the link:
+    ``- {name: 'Petition', url: 'https://…/petition.pdf'}``.
+    """
+
+    name: str = Field(min_length=1)
+    url: str | None = None
+
+
+def _as_packet_form(value):
+    return {"name": value} if isinstance(value, str) else value
+
+
+PacketFormEntry = Annotated[PacketForm, BeforeValidator(_as_packet_form)]
+
+
 class PacketOutput(_Base):
     kind: Literal["output"]
     output_type: Literal["packet"]
     id: Slug
     heading: str = Field(min_length=1)
-    forms: list[str] = Field(min_length=1)
+    forms: list[PacketFormEntry] = Field(min_length=1)
     # Optional warm handoff to a docassemble interview that fills these forms.
     # Unset (None) => the packet renders as a plain form list, so existing
     # corpora are unaffected. v1 is link-out + manual return, no prefill (#543).

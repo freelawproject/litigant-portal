@@ -100,10 +100,14 @@ sections:
     id: filing_packet
     heading: 'Your filing packet'
     forms:
-      - 'Petition for Name Change'
-      - 'Declaration in Support of Petition'
-      - 'Confidential Information Form'
-      - 'Proposed Order for Name Change'
+      - name: 'Petition for Name Change'
+        url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf'
+      - name: 'Declaration in Support of Petition'
+        url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf'
+      - name: 'Confidential Information Form'
+        url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf'
+      - name: 'Proposed Order for Name Change'
+        url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf'
     # Warm link-out to the docassemble interview that fills these forms (#547,
     # #531). Waiver (publication-waived) track — a separate interview from the
     # standard track. Hosted under the /interview/ prefix on QA, so the launch

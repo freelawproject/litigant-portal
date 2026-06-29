@@ -10,7 +10,11 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-from litigant_portal.app.topic_flow.schema import Corpus, PacketOutput
+from litigant_portal.app.topic_flow.schema import (
+    Corpus,
+    PacketForm,
+    PacketOutput,
+)
 
 FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
 
@@ -112,3 +116,65 @@ def test_packet_interview_url_optional_and_accepted():
         ).interview_url
         == url
     )
+
+
+def test_packet_form_bare_string_coerces_to_unlinked_form():
+    # Authoring shorthand: a plain string is the form name with no link, so
+    # existing string-only corpora keep validating unchanged.
+    packet = PacketOutput.model_validate(
+        {
+            "kind": "output",
+            "output_type": "packet",
+            "id": "p",
+            "heading": "Your packet",
+            "forms": ["Petition for Name Change"],
+        }
+    )
+    assert packet.forms == [
+        PacketForm(name="Petition for Name Change", url=None)
+    ]
+
+
+def test_packet_form_object_carries_its_url():
+    pdf = "https://www.ndcourts.gov/.../Petition-Name-Change-Adult.pdf"
+    packet = PacketOutput.model_validate(
+        {
+            "kind": "output",
+            "output_type": "packet",
+            "id": "p",
+            "heading": "Your packet",
+            "forms": [{"name": "Petition for Name Change", "url": pdf}],
+        }
+    )
+    assert packet.forms[0].url == pdf
+
+
+def test_packet_forms_may_mix_linked_and_unlinked():
+    packet = PacketOutput.model_validate(
+        {
+            "kind": "output",
+            "output_type": "packet",
+            "id": "p",
+            "heading": "Your packet",
+            "forms": [
+                "Notice",
+                {"name": "Petition", "url": "https://ex/p.pdf"},
+            ],
+        }
+    )
+    assert packet.forms[0].url is None
+    assert packet.forms[1].url == "https://ex/p.pdf"
+
+
+def test_packet_form_rejects_unknown_key():
+    # extra="forbid" — a typo'd form key fails loud instead of silently dropping.
+    with pytest.raises(ValidationError):
+        PacketOutput.model_validate(
+            {
+                "kind": "output",
+                "output_type": "packet",
+                "id": "p",
+                "heading": "Your packet",
+                "forms": [{"name": "Petition", "ulr": "https://typo"}],
+            }
+        )

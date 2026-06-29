@@ -169,7 +169,29 @@ def test_packet_renders_form_list():
     )
     rendered = render_section(section, _corpus(section), {})
     assert rendered.heading == "Your packet"
-    assert rendered.context["forms"] == ["Petition for Name Change", "Order"]
+    # Bare-string forms surface as unlinked {name, url: None} entries.
+    assert rendered.context["forms"] == [
+        {"name": "Petition for Name Change", "url": None},
+        {"name": "Order", "url": None},
+    ]
+
+
+def test_packet_form_url_reaches_the_template_context():
+    # A linked form carries its official-PDF url through to the template, which
+    # renders the name as a link to it.
+    pdf = "https://www.ndcourts.gov/.../Petition-Name-Change-Adult.pdf"
+    section = PacketOutput(
+        kind="output",
+        output_type="packet",
+        id="forms",
+        heading="Your packet",
+        forms=[{"name": "Petition for Name Change", "url": pdf}],
+    )
+    rendered = render_section(section, _corpus(section), {})
+    assert rendered.context["forms"][0] == {
+        "name": "Petition for Name Change",
+        "url": pdf,
+    }
 
 
 def test_packet_without_interview_url_exposes_none():
