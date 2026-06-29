@@ -1,0 +1,6 @@
+{# CheckWeather result card. Context: `data` (the tool's render_data). #}
+<div class="inline-flex items-center gap-2 rounded-lg border border-greyscale-200 bg-white px-3 py-2 text-sm">
+  <c-atoms.icon name="cloud" class="w-4 h-4 text-greyscale-400" />
+  <span class="font-medium text-greyscale-800">{{ data.location }}</span>
+  <span class="text-greyscale-500">{{ data.temp_f }}°F</span>
+</div>
