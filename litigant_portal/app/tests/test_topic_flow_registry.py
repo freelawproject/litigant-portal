@@ -53,3 +53,33 @@ def test_check_reports_invalid_corpus(tmp_path, monkeypatch):
     errors = checks.check_corpora(None)
     assert len(errors) == 1
     assert errors[0].id == "topic_flow.E001"
+
+
+def test_check_reports_duplicate_corpus_keys(tmp_path, monkeypatch):
+    # Two files declaring the same (court, topic, role) — the later one
+    # silently overwrites the earlier in the registry, so the check must
+    # fail loud and name both colliding files.
+    first = tmp_path / "first.yml"
+    second = tmp_path / "second.yml"
+    first.write_text(VALID)
+    second.write_text(VALID)
+    monkeypatch.setattr(
+        checks, "iter_corpus_paths", lambda _dir: [first, second]
+    )
+    errors = checks.check_corpora(None)
+    assert len(errors) == 1
+    assert errors[0].id == "topic_flow.E002"
+    assert "first.yml" in errors[0].msg
+    assert "second.yml" in errors[0].msg
+
+
+def test_check_passes_for_distinct_keys(tmp_path, monkeypatch):
+    # Same content but different (court, topic, role) must NOT collide.
+    first = tmp_path / "first.yml"
+    second = tmp_path / "second.yml"
+    first.write_text(VALID)
+    second.write_text(VALID.replace("test-court", "other-court"))
+    monkeypatch.setattr(
+        checks, "iter_corpus_paths", lambda _dir: [first, second]
+    )
+    assert checks.check_corpora(None) == []
