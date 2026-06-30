@@ -33,7 +33,7 @@ class InjectHiddenMessageTests(TestCase):
 
     def test_stores_hidden_message(self):
         message = chat_message_inject_hidden(
-            thread_id=self.thread.id, content="context"
+            thread_id=self.thread.id, content="context", model="gpt-5-mini"
         )
         self.assertTrue(message.hidden)
         self.assertEqual(message.data["role"], "user")
@@ -41,7 +41,9 @@ class InjectHiddenMessageTests(TestCase):
 
     def test_does_not_bump_thread_updated_at(self):
         before = ChatThread.objects.get(pk=self.thread.pk).updated_at
-        chat_message_inject_hidden(thread_id=self.thread.id, content="context")
+        chat_message_inject_hidden(
+            thread_id=self.thread.id, content="context", model="gpt-5-mini"
+        )
         after = ChatThread.objects.get(pk=self.thread.pk).updated_at
         self.assertEqual(after, before)
 
@@ -95,7 +97,9 @@ class HiddenMessageProjectionTests(TestCase):
             data={"role": "user", "content": "visible question"},
         )
         chat_message_inject_hidden(
-            thread_id=self.thread.id, content="HIDDEN CONTEXT"
+            thread_id=self.thread.id,
+            content="HIDDEN CONTEXT",
+            model="gpt-5-mini",
         )
 
     def test_hidden_reaches_llm_history(self):
