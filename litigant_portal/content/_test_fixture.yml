@@ -2,10 +2,10 @@
 #
 # The leading underscore excludes this file from the registry (registry.py
 # skips `_`-prefixed files), so it never renders as a real Topic Flow. It
-# exercises every part of the v1 schema: all three section kinds, all four
-# output types, and both id-reference cross-checks (a deadline offset_from a
-# fact_gather question; ics/vcf outputs referencing corpus-level deadlines and
-# contacts).
+# exercises every part of the v1 schema: all three section kinds, all five
+# output types, and every id-reference cross-check (a deadline offset_from a
+# fact_gather question; ics/vcf/resources outputs referencing corpus-level
+# deadlines, contacts, and resources).
 
 metadata:
   court: test-court
@@ -29,6 +29,12 @@ deadlines:
     offset_days: 30
     offset_from: publication_date
     description: 'The judge can review the petition 30 days after the notice is published.'
+
+resources:
+  - id: self_help_page
+    label: 'Name-change guidance and forms'
+    url: 'https://example.gov/legal-self-help/name-change'
+    note: 'The official process page and form source.'
 
 sections:
   - kind: info
@@ -73,6 +79,13 @@ sections:
     forms:
       - 'Petition for Name Change'
       - 'Confidential Information Form'
+
+  - kind: output
+    output_type: resources
+    id: official_resources
+    heading: 'Official resources'
+    resource_ids:
+      - self_help_page
 
   - kind: output
     output_type: summary

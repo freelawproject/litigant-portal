@@ -46,6 +46,21 @@ class Contact(_Base):
     note: str | None = None
 
 
+class Resource(_Base):
+    """An official/jurisdictional link for a flow (self-help center, statute).
+
+    Unlike ``Contact``, whose ``url`` is one of several optional affordances, a
+    resource *is* a link — ``url`` is required. Courts supply these as data, so
+    the engine renders trustworthy official links without authors hand-coding
+    HTML or smuggling URLs into contact cards / info-body prose.
+    """
+
+    id: Slug
+    label: str = Field(min_length=1)
+    url: str = Field(min_length=1)
+    note: str | None = None
+
+
 class Deadline(_Base):
     """A date computed as ``offset_days`` from a gathered date.
 
@@ -132,6 +147,14 @@ class PacketOutput(_Base):
     interview_url: str | None = None
 
 
+class ResourcesOutput(_Base):
+    kind: Literal["output"]
+    output_type: Literal["resources"]
+    id: Slug
+    heading: str = Field(min_length=1)
+    resource_ids: list[Slug] = Field(min_length=1)
+
+
 class SummaryOutput(_Base):
     kind: Literal["output"]
     output_type: Literal["summary"]
@@ -141,7 +164,7 @@ class SummaryOutput(_Base):
 
 # output sections discriminate on output_type ...
 OutputSection = Annotated[
-    IcsOutput | VcfOutput | PacketOutput | SummaryOutput,
+    IcsOutput | VcfOutput | PacketOutput | ResourcesOutput | SummaryOutput,
     Field(discriminator="output_type"),
 ]
 
@@ -157,4 +180,5 @@ class Corpus(_Base):
     metadata: Metadata
     contacts: list[Contact] = Field(default_factory=list)
     deadlines: list[Deadline] = Field(default_factory=list)
+    resources: list[Resource] = Field(default_factory=list)
     sections: list[Section] = Field(min_length=1)

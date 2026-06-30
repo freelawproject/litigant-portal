@@ -27,6 +27,8 @@ from litigant_portal.app.topic_flow.schema import (
     Metadata,
     PacketOutput,
     Question,
+    Resource,
+    ResourcesOutput,
     SummaryOutput,
     VcfOutput,
 )
@@ -228,6 +230,35 @@ def test_packet_form_with_url_renders_as_link(client, monkeypatch):
         flat,
     )
     assert "Confidential Information Form" in flat
+
+
+@pytest.mark.django_db
+def test_resources_section_renders_links(client, monkeypatch):
+    # A resources output renders each official link as an anchor to its url
+    # (#519) — the cleanup that retires plain-text URLs in info bodies.
+    # Functional target (the link is clickable), not markup.
+    url = "https://www.ndcourts.gov/legal-self-help/name-change-adult"
+    corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        resources=[
+            Resource(id="guidance", label="Name-change guidance", url=url),
+        ],
+        sections=[
+            ResourcesOutput(
+                kind="output",
+                output_type="resources",
+                id="official_resources",
+                heading="Official resources",
+                resource_ids=["guidance"],
+            ),
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert re.search(
+        rf'<a[^>]*href="{re.escape(url)}"[^>]*>[^<]*Name-change guidance',
+        flat,
+    )
 
 
 def _field_tag(html, name):

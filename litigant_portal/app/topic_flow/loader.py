@@ -17,6 +17,7 @@ from litigant_portal.app.topic_flow.schema import (
     Corpus,
     FactGatherSection,
     IcsOutput,
+    ResourcesOutput,
     VcfOutput,
 )
 
@@ -82,6 +83,7 @@ def _cross_reference_problems(corpus: Corpus) -> list[str]:
 
     contact_ids = _collect([c.id for c in corpus.contacts], "contact")
     deadline_ids = _collect([d.id for d in corpus.deadlines], "deadline")
+    resource_ids = _collect([r.id for r in corpus.resources], "resource")
     _collect([s.id for s in corpus.sections], "section")
 
     question_ids = _collect(
@@ -118,5 +120,12 @@ def _cross_reference_problems(corpus: Corpus) -> list[str]:
                     problems.append(
                         f"output {section.id!r} references unknown "
                         f"contact {ref!r}"
+                    )
+        elif isinstance(section, ResourcesOutput):
+            for ref in section.resource_ids:
+                if ref not in resource_ids:
+                    problems.append(
+                        f"output {section.id!r} references unknown "
+                        f"resource {ref!r}"
                     )
     return problems

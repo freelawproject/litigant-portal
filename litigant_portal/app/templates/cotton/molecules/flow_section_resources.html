@@ -1,0 +1,17 @@
+{% load i18n %}
+
+{# resources output body: official/jurisdictional links for the flow (court #}
+{# self-help center, statutes, forms index), supplied by the corpus as data #}
+{# (#519). Server-rendered and JS-off — real <a> links, external-link icon + #}
+{# rel="noopener noreferrer" via the link atom. Replaces smuggling official #}
+{# URLs into contact cards or unclickable info-body text. #}
+<ul class="space-y-3">
+  {% for resource in ctx.resources %}
+  <li>
+    <c-atoms.link href="{{ resource.url }}" target="_blank" external_icon="true">{{ resource.label }}</c-atoms.link>
+    {% if resource.note %}
+    <p class="text-sm text-greyscale-500">{{ resource.note }}</p>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>

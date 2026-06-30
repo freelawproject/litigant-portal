@@ -10,8 +10,10 @@ from litigant_portal.app.topic_flow.loader import (
     CorpusLoader,
     CorpusValidationError,
 )
+from litigant_portal.app.topic_flow.schema import ResourcesOutput
 
-FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
+CONTENT = Path(__file__).resolve().parents[2] / "content"
+FIXTURE = CONTENT / "_test_fixture.yml"
 
 # A minimal schema-valid corpus: one fact_gather question, no deadlines or
 # outputs. Tests deep-copy and mutate this to introduce specific problems.
@@ -42,7 +44,7 @@ def _write_text(tmp_path, text):
 def test_load_valid_fixture():
     corpus = CorpusLoader.load(FIXTURE)
     assert corpus.metadata.topic == "test_topic"
-    assert len(corpus.sections) == 6
+    assert len(corpus.sections) == 7
 
 
 def test_missing_file_raises_with_path(tmp_path):
@@ -127,6 +129,35 @@ def test_duplicate_contact_id_detected(tmp_path):
     assert any("duplicate contact id: 'dup'" in p for p in exc.value.problems)
 
 
+def test_resources_output_unknown_resource(tmp_path):
+    data = copy.deepcopy(VALID)
+    data["sections"].append(
+        {
+            "kind": "output",
+            "output_type": "resources",
+            "id": "o",
+            "heading": "H",
+            "resource_ids": ["ghost"],
+        }
+    )
+    path = _write(tmp_path, data)
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(path)
+    assert any("unknown resource 'ghost'" in p for p in exc.value.problems)
+
+
+def test_duplicate_resource_id_detected(tmp_path):
+    data = copy.deepcopy(VALID)
+    data["resources"] = [
+        {"id": "dup", "label": "A", "url": "https://ex/a"},
+        {"id": "dup", "label": "B", "url": "https://ex/b"},
+    ]
+    path = _write(tmp_path, data)
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(path)
+    assert any("duplicate resource id: 'dup'" in p for p in exc.value.problems)
+
+
 def test_problems_aggregate_into_one_error(tmp_path):
     data = copy.deepcopy(VALID)
     data["deadlines"] = [
@@ -148,3 +179,20 @@ def test_problems_aggregate_into_one_error(tmp_path):
     assert any("ghostq" in p for p in problems)
     assert any("ghostd" in p for p in problems)
     assert len(problems) >= 2
+
+
+# The cross-reference and schema tests above run against tmp_path fixtures; this
+# one loads the real shipped ND corpora so a typo'd resource_id (or any dangling
+# reference) in the live YAML fails CI, not just at runtime. Loading succeeds
+# only if every id-reference resolves, so a clean load is itself the assertion.
+@pytest.mark.parametrize(
+    "name",
+    ["adult-name-change-standard.yml", "adult-name-change-waiver.yml"],
+)
+def test_real_nd_corpus_loads_and_wires_its_resources(name):
+    corpus = CorpusLoader.load(CONTENT / name)
+    outputs = [s for s in corpus.sections if isinstance(s, ResourcesOutput)]
+    assert outputs, f"{name} has no resources output section"
+    declared = {r.id for r in corpus.resources}
+    for out in outputs:
+        assert set(out.resource_ids) <= declared
