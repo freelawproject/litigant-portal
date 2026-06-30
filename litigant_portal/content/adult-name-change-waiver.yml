@@ -27,11 +27,14 @@ contacts:
     note: "You file in the district court for the county where you have lived the past 6 months. Use the court locator to find your county's clerk, then call before filing to ask whether the judge requires the criminal-history background check before or after you file — timing varies by judge, and the waiver track does not remove this. This is the one call to make first."
   - id: self_help
     name: 'North Dakota Legal Self Help Center'
+    phone: '(701) 328-1852'
+    email: 'ndselfhelp@ndcourts.gov'
     url: 'https://www.ndcourts.gov/legal-self-help'
-    note: 'Court-provided guidance and the official name-change forms for self-represented filers.'
+    note: 'A division of the ND Supreme Court Law Library. Provides information about the civil court process for self-represented filers — not legal advice, and not criminal matters.'
   - id: legal_aid
     name: 'Legal Services of North Dakota'
-    note: 'Free legal help for North Dakotans who qualify by income — useful if your name change touches a divorce or other family-law matter.'
+    phone: '(800) 634-5263'
+    note: 'Free civil legal help for North Dakotans who qualify by income — useful if your name change touches a divorce or other family-law matter. This line is for filers under 60; if you are 60 or older, call (866) 621-9886.'
 
 sections:
   - kind: info
