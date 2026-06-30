@@ -33,3 +33,5 @@ class ChatMessage(BaseModel):
         schema=MessageSchema, default={"role": "system", "content": ""}
     )
     hidden = models.BooleanField(default=False)
+    num_tokens = models.PositiveIntegerField(default=0)
+    cost = models.FloatField(default=0.0)
