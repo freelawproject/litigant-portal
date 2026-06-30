@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% load static i18n %}
+
+{% block header %}
+  <header class="mobile-header flex-shrink-0">
+    <div class="flex items-center justify-between px-4 py-2">
+      <a href="{% url 'pages:home' %}" aria-label="{% trans "Home" %}">
+        <img src="{% static 'images/logo_powered.svg' %}"
+             alt="{% trans "Litigant Portal – Powered by Free Law Project" %}"
+             class="h-12">
+      </a>
+      <c-molecules.user-menu />
+    </div>
+  </header>
+{% endblock header %}
+
+{% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
+
+{% block main_class %}min-h-0 flex flex-col{% endblock main_class %}
+
+{% block title %}
+  {% trans "Litigant Portal" %} - {% trans "Chat" %}
+{% endblock title %}
+
+{% block content %}
+  <div x-data="chatApp" class="flex-1 flex flex-row min-h-0">
+    {# Left panel — conversation history #}
+    <aside class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
+      <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
+        <c-atoms.icon name="chat-bubble-left-right" class="w-3.5 h-3.5 text-greyscale-400" />
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Recent Activity" %}</h2>
+      </div>
+      <div class="flex-1 overflow-y-auto min-h-0 p-2 space-y-1">
+        <template x-for="thread in threads" :key="thread.id">
+          <div class="block rounded-lg px-3 py-2 cursor-pointer select-none transition-colors border"
+               x-bind:class="thread.rowClass"
+               x-bind:data-thread-id="thread.id"
+               x-on:click="selectThread">
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-sm font-medium text-greyscale-800 truncate" x-text="thread.id"></p>
+              <time class="text-xs text-greyscale-400 flex-shrink-0"
+                    x-bind:datetime="thread.last_at"
+                    x-text="thread.relativeTime"></time>
+            </div>
+            <p class="text-xs text-greyscale-500 truncate mt-0.5" x-text="thread.snippet"></p>
+          </div>
+        </template>
+        <p x-show="showEmpty"
+           x-cloak
+           class="text-xs text-greyscale-400 px-3 py-2">{% trans "No conversations yet." %}</p>
+      </div>
+    </aside>
+    {# Center panel — conversation #}
+    <section class="flex-1 min-w-0 flex flex-col min-h-0 border-r border-greyscale-200">
+      {# Toolbar — thread title + actions on the left, New chat on the right #}
+      <div class="flex items-center justify-between gap-2 px-4 py-2 border-b border-greyscale-200 flex-shrink-0 min-h-[3.25rem]">
+        {# Thread title + actions menu (only with an active thread loaded) #}
+        <div x-show="threadId" x-cloak class="flex items-center gap-1 min-w-0">
+          <h2 class="text-sm font-medium text-greyscale-800 truncate" x-text="threadId"></h2>
+          <div class="relative flex-shrink-0">
+            <button type="button"
+                    x-on:click="toggleMenu"
+                    x-bind:aria-expanded="menuOpen"
+                    aria-haspopup="true"
+                    aria-label='{% trans "Thread actions" %}'
+                    class="inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 cursor-pointer transition-colors">
+              <c-atoms.icon name="chevron-down" class="w-4 h-4" />
+            </button>
+            {# Dropdown — anchored below the chevron #}
+            <div x-show="menuOpen"
+                 x-cloak
+                 x-on:click.outside="closeMenu"
+                 x-on:keydown.escape.window="closeMenu"
+                 x-transition
+                 class="absolute left-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
+                 role="menu">
+              <button type="button"
+                      role="menuitem"
+                      class="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer">
+                <c-atoms.icon name="share" class="w-4 h-4 text-greyscale-500" />
+                {% trans "Share" %}
+              </button>
+              <div class="my-1 border-t border-greyscale-200"></div>
+              <button type="button"
+                      role="menuitem"
+                      x-on:click="deleteThread"
+                      class="flex items-center gap-2.5 w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer">
+                <c-atoms.icon name="trash" class="w-4 h-4" />
+                {% trans "Delete" %}
+              </button>
+            </div>
+          </div>
+        </div>
+        {# New chat #}
+        <button type="button"
+                x-show="threadId"
+                x-cloak
+                x-on:click="newChat"
+                class="flex-shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 cursor-pointer">
+          <c-atoms.icon name="plus" class="w-4 h-4" />
+          {% trans "New chat" %}
+        </button>
+      </div>
+      {# Messages #}
+      <div x-ref="messagesArea" class="flex-1 overflow-y-auto min-h-0 p-4 space-y-3">
+        <template x-for="message in messages" :key="message.id">
+          <div class="flex flex-col" x-bind:class="message.rowClass">
+            {# Tool part — call/result cards #}
+            <div x-show="message.isTool" x-cloak class="w-full max-w-[80%] space-y-1.5">
+              {# Custom call card (e.g. a spinner), only while in flight #}
+              <div x-show="message.showCallCustom" x-html="message.callHtml"></div>
+              {# Default call card — the tool's input as a JSON box #}
+              <div x-show="message.showCallDefault"
+                   class="rounded-lg border border-greyscale-200 bg-greyscale-50 overflow-hidden">
+                <div class="flex items-center justify-between px-3 py-1.5 border-b border-greyscale-200 bg-white">
+                  <span class="text-xs font-medium text-greyscale-700" x-text="message.name"></span>
+                  <span class="flex items-center gap-2">
+                    <span x-show="message.pending" class="flex gap-1">
+                      <span class="typing-dot"></span>
+                      <span class="typing-dot"></span>
+                      <span class="typing-dot"></span>
+                    </span>
+                    <span class="text-[10px] font-medium uppercase tracking-wide text-greyscale-400">{% trans "args" %}</span>
+                  </span>
+                </div>
+                <pre class="px-3 py-2 text-xs text-greyscale-600 overflow-x-auto whitespace-pre-wrap break-words" x-text="message.argsJson"></pre>
+              </div>
+              {# Custom result card #}
+              <div x-show="message.showResultCustom" x-html="message.resultHtml"></div>
+              {# Default result card — the tool's render data as a JSON box #}
+              <div x-show="message.showResultDefault"
+                   class="rounded-lg border border-greyscale-200 bg-greyscale-50 overflow-hidden">
+                <div class="flex items-center justify-between px-3 py-1.5 border-b border-greyscale-200 bg-white">
+                  <span class="text-xs font-medium text-greyscale-700" x-text="message.name"></span>
+                  <span class="text-[10px] font-medium uppercase tracking-wide text-greyscale-400">{% trans "result" %}</span>
+                </div>
+                <pre class="px-3 py-2 text-xs text-greyscale-600 overflow-x-auto whitespace-pre-wrap break-words" x-text="message.renderDataJson"></pre>
+              </div>
+            </div>
+            {# Text part — user / assistant bubble #}
+            <div x-show="message.notTool"
+                 class="max-w-[80%] rounded-lg px-3 py-2 text-sm break-words"
+                 x-bind:class="message.bubbleClass">
+              <div x-show="message.isAssistant" x-html="message.html"></div>
+              <div x-show="message.isUser" x-text="message.content" class="whitespace-pre-wrap"></div>
+            </div>
+            <div x-show="message.notTool"
+                 class="mt-1 flex items-center gap-2 text-xs leading-none text-greyscale-400 select-none">
+              <button type="button"
+                      x-bind:data-message-id="message.id"
+                      x-on:click="copyMessage"
+                      aria-label="{% trans "Copy message" %}"
+                      title="{% trans "Copy message" %}"
+                      class="inline-flex items-center gap-1 hover:text-greyscale-600 cursor-pointer">
+                <c-atoms.icon name="document-duplicate" class="w-3.5 h-3.5" x-show="message.notCopied" />
+                <span x-show="message.copied"
+                      x-cloak
+                      class="inline-flex items-center gap-1 text-green-600">
+                  <c-atoms.icon name="check" class="w-3.5 h-3.5" />
+                  {% trans "Copied" %}
+                </span>
+              </button>
+            </div>
+          </div>
+        </template>
+        {# Thinking indicator while awaiting the next token / step #}
+        <div x-show="thinkingVisible" x-cloak class="flex items-start">
+          <div class="rounded-lg px-3 py-2 bg-greyscale-100">
+            <div class="flex gap-1 py-1" aria-label='{% trans "Assistant is thinking" %}'>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+              <span class="typing-dot"></span>
+            </div>
+          </div>
+        </div>
+        <div x-show="conversationEmpty"
+             x-cloak
+             class="h-full flex items-center justify-center">
+          <p class="text-sm text-greyscale-400">{% trans "Send a message to start a conversation." %}</p>
+        </div>
+      </div>
+      {# Input #}
+      <div class="border-t border-greyscale-200 p-3 flex-shrink-0">
+        <form x-on:submit.prevent="send">
+          {% csrf_token %}
+          <div class="relative">
+            <textarea x-ref="input"
+                      x-bind:value="input"
+                      x-on:input="updateInput"
+                      x-on:keydown="handleKeydown"
+                      x-bind:disabled="streaming"
+                      rows="2"
+                      placeholder='{% trans "Type your message..." %}'
+                      class="block w-full resize-none rounded-lg border border-greyscale-300 py-2.5 pl-3 pr-12 text-sm leading-relaxed min-h-[4.5rem] max-h-40 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-primary-600 disabled:bg-greyscale-50"></textarea>
+            <button type="submit"
+                    x-bind:disabled="sendDisabled"
+                    aria-label='{% trans "Send" %}'
+                    class="absolute bottom-2 right-2 inline-flex items-center justify-center w-7 h-7 rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:bg-greyscale-200 disabled:text-greyscale-400 cursor-pointer disabled:cursor-default transition-colors duration-200">
+              <c-atoms.icon name="arrow-up" class="w-4 h-4" />
+            </button>
+          </div>
+          <p class="mt-1.5 text-xs text-greyscale-400 select-none">
+            {% trans "Press Enter to send, Shift + Enter for a new line." %}
+          </p>
+        </form>
+      </div>
+    </section>
+    {# Right panel — live agent state #}
+    <aside class="hidden lg:flex w-1/5 flex-shrink-0 flex-col min-h-0">
+      <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
+        <c-atoms.icon name="cpu-chip" class="w-3.5 h-3.5 text-greyscale-400" />
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Agent State" %}</h2>
+      </div>
+      <div class="flex-1 overflow-y-auto min-h-0 p-4">
+        <pre x-show="hasState"
+             x-cloak
+             class="text-xs text-greyscale-600 whitespace-pre-wrap break-words"
+             x-text="stateJson"></pre>
+        <p x-show="noState"
+           x-cloak
+           class="text-xs text-greyscale-400">{% trans "No state yet." %}</p>
+      </div>
+    </aside>
+    {# Delete confirmation modal #}
+    <div x-show="confirmingDelete"
+         x-cloak
+         x-transition.opacity
+         class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {# Blurred backdrop #}
+      <div class="absolute inset-0 bg-greyscale-900/30 backdrop-blur-sm"
+           x-on:click="cancelDelete"></div>
+      {# Dialog — nudged a bit above center #}
+      <div class="relative w-full max-w-sm -translate-y-[8vh] bg-white rounded-xl shadow-xl border border-greyscale-200 p-5"
+           x-on:keydown.escape.window="cancelDelete"
+           role="dialog"
+           aria-modal="true">
+        <h3 class="text-base font-semibold text-greyscale-900">{% trans "Delete conversation?" %}</h3>
+        <p class="mt-1.5 text-sm text-greyscale-600">
+          {% trans "This conversation and its messages will be permanently deleted. This can't be undone." %}
+        </p>
+        <div class="mt-5 flex justify-end gap-2">
+          <button type="button"
+                  x-on:click="cancelDelete"
+                  class="px-3 py-2 rounded-lg text-sm font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+            {% trans "Cancel" %}
+          </button>
+          <button type="button"
+                  x-on:click="confirmDelete"
+                  class="px-3 py-2 rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 cursor-pointer transition-colors">
+            {% trans "Delete" %}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock content %}
+
+{% block footer %}
+{% endblock footer %}

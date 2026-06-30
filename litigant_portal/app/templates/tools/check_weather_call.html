@@ -1,0 +1,10 @@
+{# CheckWeather call card. Context: `args` (the tool's input fields). #}
+{# Shown only while this is the last message (the frontend handles that). #}
+<div class="inline-flex items-center gap-2 rounded-lg border border-greyscale-200 bg-greyscale-50 px-3 py-2 text-sm text-greyscale-600">
+  <span class="flex gap-1" aria-hidden="true">
+    <span class="typing-dot"></span>
+    <span class="typing-dot"></span>
+    <span class="typing-dot"></span>
+  </span>
+  <span>Checking weather in {{ args.location }}…</span>
+</div>
