@@ -10,8 +10,10 @@ from litigant_portal.app.topic_flow.loader import (
     CorpusLoader,
     CorpusValidationError,
 )
+from litigant_portal.app.topic_flow.schema import ResourcesOutput
 
-FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
+CONTENT = Path(__file__).resolve().parents[2] / "content"
+FIXTURE = CONTENT / "_test_fixture.yml"
 
 # A minimal schema-valid corpus: one fact_gather question, no deadlines or
 # outputs. Tests deep-copy and mutate this to introduce specific problems.
@@ -177,3 +179,20 @@ def test_problems_aggregate_into_one_error(tmp_path):
     assert any("ghostq" in p for p in problems)
     assert any("ghostd" in p for p in problems)
     assert len(problems) >= 2
+
+
+# The cross-reference and schema tests above run against tmp_path fixtures; this
+# one loads the real shipped ND corpora so a typo'd resource_id (or any dangling
+# reference) in the live YAML fails CI, not just at runtime. Loading succeeds
+# only if every id-reference resolves, so a clean load is itself the assertion.
+@pytest.mark.parametrize(
+    "name",
+    ["adult-name-change-standard.yml", "adult-name-change-waiver.yml"],
+)
+def test_real_nd_corpus_loads_and_wires_its_resources(name):
+    corpus = CorpusLoader.load(CONTENT / name)
+    outputs = [s for s in corpus.sections if isinstance(s, ResourcesOutput)]
+    assert outputs, f"{name} has no resources output section"
+    declared = {r.id for r in corpus.resources}
+    for out in outputs:
+        assert set(out.resource_ids) <= declared

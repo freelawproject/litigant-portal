@@ -41,10 +41,6 @@ resources:
     label: 'North Dakota name-change guidance and forms'
     url: 'https://www.ndcourts.gov/legal-self-help/name-change-adult'
     note: "The court's official adult name-change page — process overview and the source for every form in your packet."
-  - id: nd_self_help_center
-    label: 'North Dakota Legal Self Help Center'
-    url: 'https://www.ndcourts.gov/legal-self-help'
-    note: 'General help for self-represented filers navigating the civil court process.'
 
 sections:
   - kind: info
@@ -176,7 +172,6 @@ sections:
     heading: 'Official North Dakota resources'
     resource_ids:
       - nd_name_change_guidance
-      - nd_self_help_center
 
   - kind: info
     id: after_order

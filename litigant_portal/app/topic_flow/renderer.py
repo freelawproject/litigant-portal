@@ -171,15 +171,17 @@ def _render_resources(section, corpus, answers):
     # the resolve is inline here rather than in a shared module (contrast
     # ics/vcf, whose resolvers are shared with their download handlers).
     by_id = {resource.id: resource for resource in corpus.resources}
-    resources = [
-        {
-            "id": by_id[ref].id,
-            "label": by_id[ref].label,
-            "url": by_id[ref].url,
-            "note": by_id[ref].note,
-        }
-        for ref in section.resource_ids
-    ]
+    resources = []
+    for ref in section.resource_ids:
+        resource = by_id[ref]
+        resources.append(
+            {
+                "id": resource.id,
+                "label": resource.label,
+                "url": resource.url,
+                "note": resource.note,
+            }
+        )
     return RenderedSection(
         anchor_id=section.id,
         heading=section.heading,
