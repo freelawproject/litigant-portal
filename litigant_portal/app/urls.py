@@ -58,6 +58,11 @@ api_patterns = [
         name="message_list",
     ),
     path(
+        "threads/<uuid:thread_id>/usage/",
+        chat_v2.thread_usage,
+        name="thread_usage",
+    ),
+    path(
         "threads/<uuid:thread_id>/delete/",
         chat_v2.thread_delete,
         name="thread_delete",
