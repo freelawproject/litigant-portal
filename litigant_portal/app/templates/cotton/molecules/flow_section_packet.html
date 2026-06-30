@@ -6,7 +6,13 @@
 {# => plain form list, so existing corpora are unaffected. #}
 <ul class="list-disc space-y-1 pl-5 text-greyscale-700">
   {% for form in ctx.forms %}
-  <li>{{ form }}</li>
+  <li>
+    {% if form.url %}
+    <c-atoms.link href="{{ form.url }}" target="_blank" external_icon="true">{{ form.name }}</c-atoms.link>
+    {% else %}
+    {{ form.name }}
+    {% endif %}
+  </li>
   {% endfor %}
 </ul>
 

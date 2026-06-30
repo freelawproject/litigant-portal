@@ -171,7 +171,9 @@ def _render_packet(section, corpus, answers):
         heading=section.heading,
         template=f"{_TEMPLATE_DIR}/flow_section_packet.html",
         context={
-            "forms": list(section.forms),
+            "forms": [
+                {"name": form.name, "url": form.url} for form in section.forms
+            ],
             "interview_url": section.interview_url,
         },
     )

@@ -200,6 +200,36 @@ def test_packet_section_lists_each_form(client, monkeypatch):
     assert "Petition for Name Change" in html
 
 
+@pytest.mark.django_db
+def test_packet_form_with_url_renders_as_link(client, monkeypatch):
+    # A form that carries a url renders its name as a link to the official PDF
+    # (#495); a name-only form stays plain text. Functional target, not markup.
+    pdf = "https://www.ndcourts.gov/petition.pdf"
+    corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            PacketOutput(
+                kind="output",
+                output_type="packet",
+                id="filing_packet",
+                heading="Your filing packet",
+                forms=[
+                    {"name": "Petition for Name Change", "url": pdf},
+                    "Confidential Information Form",
+                ],
+            ),
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    # Linked form → anchor to its PDF; name-only form → present, unlinked.
+    assert re.search(
+        rf'<a[^>]*href="{re.escape(pdf)}"[^>]*>[^<]*Petition for Name Change',
+        flat,
+    )
+    assert "Confidential Information Form" in flat
+
+
 def _field_tag(html, name):
     """The <input>/<select> element whose name == ``name``, whitespace flattened.
 
