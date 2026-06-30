@@ -14,6 +14,7 @@ from litigant_portal.app.topic_flow.schema import (
     Corpus,
     PacketForm,
     PacketOutput,
+    Resource,
 )
 
 FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
@@ -31,6 +32,7 @@ def test_fixture_routes_to_concrete_section_types():
         "IcsOutput",
         "VcfOutput",
         "PacketOutput",
+        "ResourcesOutput",
         "SummaryOutput",
     ]
 
@@ -178,3 +180,44 @@ def test_packet_form_rejects_unknown_key():
                 "forms": [{"name": "Petition", "ulr": "https://typo"}],
             }
         )
+
+
+def test_resource_requires_a_url():
+    # A resource *is* a link — unlike Contact.url, the url is mandatory, so a
+    # resource that would render as an unclickable label fails loud.
+    with pytest.raises(ValidationError):
+        Resource(id="r", label="Self-help page")
+
+
+def test_resource_carries_label_url_and_optional_note():
+    bare = Resource(id="r", label="Self-help", url="https://ex/help")
+    assert bare.note is None
+    noted = Resource(
+        id="r", label="Self-help", url="https://ex/help", note="Official page."
+    )
+    assert noted.note == "Official page."
+
+
+def test_resource_rejects_unknown_key():
+    # extra="forbid" — a typo'd key fails loud instead of silently dropping.
+    with pytest.raises(ValidationError):
+        Resource.model_validate(
+            {"id": "r", "label": "L", "url": "https://ex", "lable": "typo"}
+        )
+
+
+def test_resources_output_requires_at_least_one_reference():
+    # min_length=1 — an empty resources section is an authoring mistake, not a
+    # silently-empty list.
+    data = _fixture()
+    data["sections"] = [
+        {
+            "kind": "output",
+            "output_type": "resources",
+            "id": "official",
+            "heading": "Official resources",
+            "resource_ids": [],
+        }
+    ]
+    with pytest.raises(ValidationError):
+        Corpus.model_validate(data)

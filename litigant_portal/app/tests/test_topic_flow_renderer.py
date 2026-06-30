@@ -29,16 +29,19 @@ from litigant_portal.app.topic_flow.schema import (
     Metadata,
     PacketOutput,
     Question,
+    Resource,
+    ResourcesOutput,
     SummaryOutput,
     VcfOutput,
 )
 
 
-def _corpus(*sections, deadlines=None, contacts=None):
+def _corpus(*sections, deadlines=None, contacts=None, resources=None):
     return Corpus(
         metadata=Metadata(court="c", topic="t", role="r", title="T"),
         deadlines=deadlines or [],
         contacts=contacts or [],
+        resources=resources or [],
         sections=list(sections),
     )
 
@@ -236,12 +239,26 @@ def test_each_kind_dispatches_to_a_distinct_template():
     packet = PacketOutput(
         kind="output", output_type="packet", id="p", heading="P", forms=["F"]
     )
-    corpus = _corpus(info, fg, summ, packet)
+    resources = ResourcesOutput(
+        kind="output",
+        output_type="resources",
+        id="r",
+        heading="R",
+        resource_ids=["help"],
+    )
+    corpus = _corpus(
+        info,
+        fg,
+        summ,
+        packet,
+        resources,
+        resources=[Resource(id="help", label="Help", url="https://ex/help")],
+    )
     templates = {
         render_section(s, corpus, {}).template
-        for s in (info, fg, summ, packet)
+        for s in (info, fg, summ, packet, resources)
     }
-    assert len(templates) == 4  # four kinds → four distinct templates
+    assert len(templates) == 5  # five kinds → five distinct templates
     assert all(t for t in templates)  # all non-empty
 
 
@@ -443,6 +460,60 @@ def test_vcf_uses_the_vcf_template():
     corpus, vcf = _vcf_corpus()
     rendered = render_section(vcf, corpus, {})
     assert rendered.template.endswith("flow_section_vcf.html")
+
+
+# --- resources (official link rendering, #519) ------------------------------
+# The resources output resolves corpus-level Resource entries by id, in the
+# section's declared order, to flat dicts the template binds as <a> links.
+# Page-only — no download artifact — so the resolve is inline in the renderer.
+
+_GUIDANCE = Resource(
+    id="guidance",
+    label="Name-change guidance",
+    url="https://ex/help/name-change",
+    note="Official process page.",
+)
+
+
+def _resources_corpus(resource_ids=("guidance",), resources=(_GUIDANCE,)):
+    section = ResourcesOutput(
+        kind="output",
+        output_type="resources",
+        id="official",
+        heading="Official resources",
+        resource_ids=list(resource_ids),
+    )
+    corpus = _corpus(section, resources=list(resources))
+    return corpus, section
+
+
+def test_resources_renders_referenced_resource():
+    corpus, section = _resources_corpus()
+    (r,) = render_section(section, corpus, {}).context["resources"]
+    assert r["label"] == "Name-change guidance"
+    assert r["url"] == "https://ex/help/name-change"
+    assert r["note"] == "Official process page."
+
+
+def test_resources_listed_in_resource_ids_order():
+    center = Resource(
+        id="center", label="Self-help center", url="https://ex/c"
+    )
+    corpus, section = _resources_corpus(
+        resource_ids=("center", "guidance"),
+        resources=(_GUIDANCE, center),
+    )
+    resources = render_section(section, corpus, {}).context["resources"]
+    assert [r["label"] for r in resources] == [
+        "Self-help center",
+        "Name-change guidance",
+    ]
+
+
+def test_resources_uses_the_resources_template():
+    corpus, section = _resources_corpus()
+    rendered = render_section(section, corpus, {})
+    assert rendered.template.endswith("flow_section_resources.html")
 
 
 # --- submitted_section_anchor (PRG scroll restore, #510) --------------------

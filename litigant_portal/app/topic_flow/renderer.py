@@ -164,6 +164,30 @@ def _render_summary(section, corpus, answers):
     )
 
 
+@renderer("resources")
+def _render_resources(section, corpus, answers):
+    # Official/jurisdictional links (self-help center, statutes), referenced by
+    # id and resolved in declared order. Page-only — no download artifact — so
+    # the resolve is inline here rather than in a shared module (contrast
+    # ics/vcf, whose resolvers are shared with their download handlers).
+    by_id = {resource.id: resource for resource in corpus.resources}
+    resources = [
+        {
+            "id": by_id[ref].id,
+            "label": by_id[ref].label,
+            "url": by_id[ref].url,
+            "note": by_id[ref].note,
+        }
+        for ref in section.resource_ids
+    ]
+    return RenderedSection(
+        anchor_id=section.id,
+        heading=section.heading,
+        template=f"{_TEMPLATE_DIR}/flow_section_resources.html",
+        context={"resources": resources},
+    )
+
+
 @renderer("packet")
 def _render_packet(section, corpus, answers):
     return RenderedSection(

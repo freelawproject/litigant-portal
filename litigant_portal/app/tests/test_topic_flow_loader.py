@@ -42,7 +42,7 @@ def _write_text(tmp_path, text):
 def test_load_valid_fixture():
     corpus = CorpusLoader.load(FIXTURE)
     assert corpus.metadata.topic == "test_topic"
-    assert len(corpus.sections) == 6
+    assert len(corpus.sections) == 7
 
 
 def test_missing_file_raises_with_path(tmp_path):
@@ -125,6 +125,35 @@ def test_duplicate_contact_id_detected(tmp_path):
     with pytest.raises(CorpusValidationError) as exc:
         CorpusLoader.load(path)
     assert any("duplicate contact id: 'dup'" in p for p in exc.value.problems)
+
+
+def test_resources_output_unknown_resource(tmp_path):
+    data = copy.deepcopy(VALID)
+    data["sections"].append(
+        {
+            "kind": "output",
+            "output_type": "resources",
+            "id": "o",
+            "heading": "H",
+            "resource_ids": ["ghost"],
+        }
+    )
+    path = _write(tmp_path, data)
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(path)
+    assert any("unknown resource 'ghost'" in p for p in exc.value.problems)
+
+
+def test_duplicate_resource_id_detected(tmp_path):
+    data = copy.deepcopy(VALID)
+    data["resources"] = [
+        {"id": "dup", "label": "A", "url": "https://ex/a"},
+        {"id": "dup", "label": "B", "url": "https://ex/b"},
+    ]
+    path = _write(tmp_path, data)
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(path)
+    assert any("duplicate resource id: 'dup'" in p for p in exc.value.problems)
 
 
 def test_problems_aggregate_into_one_error(tmp_path):
