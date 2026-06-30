@@ -375,44 +375,62 @@ engine then derives two views explicitly:
 ## Conversation history: hidden & compaction messages
 
 Two message capabilities extend the history model without changing how agents
-are authored. Both are pure engine behavior driven by per-message flags — agents
-and tools opt in, the engine does the rest.
+are authored. Both are engine behavior driven by per-message flags — agents and
+tools opt in, the engine does the rest.
 
 ### Hidden messages
 
-A **hidden message** exists in the conversation history that the model sees, but
-is **never returned to the frontend**. It's flagged `hidden=True` on the message.
+A **hidden message** lives in the history the model sees but is **never returned
+to the frontend**. It's the `hidden` boolean on `ChatMessage`, and it's the
+practical face of the engine's "one store, two projections" split:
 
-- **LLM view** (`_to_llm_message` / history sent to litellm): hidden messages
-  are **included** — the model reads them like any other turn.
-- **Render view** (`thread_render_items` + the live stream): hidden messages are
-  **excluded** — no card, no bubble, no SSE content for them.
+- **LLM view** — `chat_message_list(thread=…)` returns _all_ messages, hidden
+  included, and `chat_stream` feeds that to litellm. The model reads a hidden
+  message like any other turn.
+- **Render view** — `chat_message_list_visible(thread=…)` is just
+  `chat_message_list(...).filter(hidden=False)`. Both frontend projections use
+  it: `thread_render_items` (thread reload) and the `thread_list` sidebar
+  snippet. A hidden message gets no bubble, no card, and never seeds a snippet.
 
 Use it for context the model should have but the user shouldn't see as a chat
-turn: injected retrieval results, scaffolding/setup instructions, a tool that
-records a note for later reasoning, or developer guidance mid-conversation. A
-tool can emit one by writing a hidden message to the thread; the engine simply
-skips it when projecting for the frontend.
+turn: injected retrieval results, scaffolding/setup instructions, a note a tool
+records for later reasoning, or developer guidance mid-conversation.
 
-### Compaction messages
+**Injecting one** — `chat_message_inject_hidden` (in `services/chat_v2.py`):
+
+```python
+from litigant_portal.app.services.chat_v2 import chat_message_inject_hidden
+
+chat_message_inject_hidden(
+    thread_id=thread_id,
+    content="<retrieved statute text the model should ground on>",
+    role="user",  # default; "assistant" / "system" also valid
+)
+```
+
+It's keyed by `thread_id`, so a tool can call it straight from `__call__`. The
+message is stored with `hidden=True` and deliberately does **not** bump the
+thread's `updated_at` — injecting context never reorders the sidebar or changes
+the snippet.
+
+### Compaction messages _(designed; not yet implemented)_
 
 A **compaction message** is an engine-generated summary that lets a thread grow
-indefinitely while keeping per-request token cost bounded. It's flagged
-`is_compacted=True` and its content is a condensed summary of everything before
-it.
+indefinitely while keeping per-request token cost bounded. It would be flagged
+`is_compacted=True`, with content that condenses everything before it.
 
-- When a thread crosses a **token threshold**, the engine generates a summary of
-  the conversation so far and stores it as a compaction message.
-- On history retrieval **for the model**, the engine reads **only from the most
-  recent compaction message onward** — the summary stands in for all prior
+- When a thread crosses a **token threshold**, the engine would generate a
+  summary of the conversation so far and store it as a compaction message.
+- On history retrieval **for the model**, it would read **only from the most
+  recent compaction message onward** — the summary standing in for all prior
   turns. Older messages stay in the database but cost nothing per request.
-- The **frontend still shows the full history** (with a subtle "summarized
+- The **frontend would still show the full history** (with a subtle "summarized
   earlier" divider), so the user experiences one continuous, effectively
   infinite chat.
 
-Together with hidden messages, this keeps the LLM view lean and intentional
-while the render view stays complete — the same "one store, two projections"
-principle the engine already uses for tool data.
+Like hidden messages, this keeps the LLM view lean and intentional while the
+render view stays complete — the same "one store, two projections" principle the
+engine already uses for tool data and hidden messages.
 
 ---
 

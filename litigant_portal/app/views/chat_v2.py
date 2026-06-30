@@ -6,7 +6,7 @@ from django_ratelimit.decorators import ratelimit
 from litigant_portal.agents_v2 import WeatherAgent
 from litigant_portal.app.models import ChatThread
 from litigant_portal.app.selectors.chat_v2 import (
-    chat_message_list,
+    chat_message_list_visible,
     chat_thread_get,
     chat_thread_list,
 )
@@ -25,7 +25,7 @@ def thread_list(request: HttpRequest) -> JsonResponse:
     """List the current identity's chat threads."""
     threads = []
     for thread in chat_thread_list(identity=request.identity):
-        messages = list(chat_message_list(thread=thread))
+        messages = list(chat_message_list_visible(thread=thread))
         last = messages[-1] if messages else None
         snippet = next(
             (

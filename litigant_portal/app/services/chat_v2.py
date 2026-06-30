@@ -11,6 +11,7 @@ from litigant_portal.agents_v2.base import Agent, ToolOutput
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
 from litigant_portal.app.selectors.chat_v2 import (
     chat_message_list,
+    chat_message_list_visible,
     chat_thread_get,
 )
 
@@ -22,6 +23,17 @@ MAX_STEPS = 30
 def chat_thread_delete(*, identity: UserIdentity, thread_id: str) -> None:
     """Delete a thread (and its messages, via cascade) owned by the identity."""
     chat_thread_get(identity=identity, thread_id=thread_id).delete()
+
+
+def chat_message_inject_hidden(
+    *, thread_id, content: str, role: str = "user"
+) -> ChatMessage:
+    """Append a hidden message to a thread's history."""
+    return ChatMessage.objects.create(
+        thread_id=thread_id,
+        data={"role": role, "content": content},
+        hidden=True,
+    )
 
 
 def _resolve_thread(
@@ -122,7 +134,7 @@ def thread_render_items(
     """Project a thread's stored messages into frontend render items."""
     agent = agent_class()
     tools = agent.tools_by_name
-    messages = [dict(m.data) for m in chat_message_list(thread=thread)]
+    messages = [dict(m.data) for m in chat_message_list_visible(thread=thread)]
     results = {
         m.get("tool_call_id"): m for m in messages if m.get("role") == "tool"
     }

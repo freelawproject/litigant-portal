@@ -14,5 +14,10 @@ def chat_thread_get(*, identity: UserIdentity, thread_id) -> ChatThread:
 
 
 def chat_message_list(*, thread: ChatThread) -> QuerySet[ChatMessage]:
-    """Messages in a thread, oldest first."""
+    """All messages in a thread, oldest first (includes hidden)."""
     return thread.messages.order_by("created_at")
+
+
+def chat_message_list_visible(*, thread: ChatThread) -> QuerySet[ChatMessage]:
+    """Frontend-safe messages: the thread's messages minus hidden ones."""
+    return chat_message_list(thread=thread).filter(hidden=False)
