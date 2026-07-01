@@ -189,12 +189,39 @@ function threadRowClass(threadId, activeId) {
     : 'border-transparent hover:bg-greyscale-100'
 }
 
+function blankMessage() {
+  return {
+    id: 0,
+    content: '',
+    html: '',
+    isUser: false,
+    isAssistant: false,
+    isTool: false,
+    notTool: true,
+    copied: false,
+    notCopied: true,
+    rowClass: '',
+    bubbleClass: '',
+    name: '',
+    pending: false,
+    argsJson: '',
+    callHtml: '',
+    renderDataJson: '',
+    resultHtml: '',
+    showCallCustom: false,
+    showCallDefault: false,
+    showResultCustom: false,
+    showResultDefault: false,
+  }
+}
+
 // Build a message with precomputed style classes + rendered markdown (CSP-safe
 // — the template binds dot-paths only, no expressions).
 let messageSeq = 0
 function makeMessage(role, content) {
   const isUser = role === 'user'
   return {
+    ...blankMessage(),
     id: ++messageSeq,
     role,
     content,
@@ -244,6 +271,7 @@ function computeToolFlags(t) {
 // A tool part from a live `tool_call` event (result fills in later).
 function makeToolFromCall(event) {
   return computeToolFlags({
+    ...blankMessage(),
     id: ++messageSeq,
     toolId: event.id,
     name: event.name,
@@ -261,6 +289,7 @@ function makeToolFromCall(event) {
 // A completed tool part from a reloaded thread's render item.
 function makeToolFromItem(item) {
   return computeToolFlags({
+    ...blankMessage(),
     id: ++messageSeq,
     toolId: item.id,
     name: item.name,
@@ -621,6 +650,45 @@ document.addEventListener('alpine:init', () => {
         const el = this.$refs.messagesArea
         if (el) el.scrollTop = el.scrollHeight
       })
+    },
+  }))
+
+  // Superuser-only token/cost readout for the active thread. Rendered only for
+  // superusers (so non-superusers never instantiate it or hit the endpoint).
+  // Assumes it lives inside a chatApp component — it reads the thread id from
+  // the parent and refreshes when the thread changes or a turn finishes.
+  Alpine.data('chatUsage', () => ({
+    totalTokens: '0',
+    totalCost: '$0.00',
+    app: null,
+
+    init() {
+      this.app = this.$root.closest('[x-data="chatApp"]')._x_dataStack[0]
+      this.$watch('app.threadId', () => this.refresh())
+      this.$watch('app.streaming', (streaming) => {
+        if (!streaming) this.refresh()
+      })
+      this.refresh()
+    },
+
+    async refresh() {
+      const threadId = this.app && this.app.threadId
+      if (!threadId) {
+        this.totalTokens = '0'
+        this.totalCost = '$0.00'
+        return
+      }
+      try {
+        const res = await fetch('/api/chat/threads/' + threadId + '/usage/', {
+          headers: { Accept: 'application/json' },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        this.totalTokens = (data.total_tokens || 0).toLocaleString()
+        this.totalCost = '$' + (data.total_cost || 0).toFixed(4)
+      } catch (e) {
+        console.error('Failed to load chat usage:', e)
+      }
     },
   }))
 })
