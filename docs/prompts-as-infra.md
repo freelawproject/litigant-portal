@@ -14,6 +14,8 @@ One function, four layers:
 build_system_prompt(phase, topic, court) -> str
 ```
 
+> The live signature carries a deprecated fourth kwarg — `build_system_prompt(phase, topic, court, jurisdiction=None)`. `jurisdiction` is a backward-compat alias: a two-letter state code (`il`, `nd`) that maps to a default court via `_JURISDICTION_TO_COURT`, preserved for sessions created before the `court` slug landed (#325). New callers pass `court` directly.
+
 | Layer     | Stable across                    | What it holds                                                                                                                             | Replaced by                     |
 | --------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
 | **Base**  | Everything                       | Universal LP ethos — tone, UPL compliance, inform-first, "what before why," escalation ladder, scope-adjacent framing, privacy commitment | Nothing (always present)        |
@@ -25,7 +27,7 @@ Session state determines the current Phase. Topic and Court come from the deep-l
 
 ## Fixture-to-real upgrade path
 
-Today, Topic and Court layers are Python strings (`chat/prompts/eviction_il.py`, `chat/prompts/adult_name_change_nd.py`). That's the fixture form.
+Today, Topic and Court content lives in structured files — one directory per topic and per court, each with a JSON metadata sidecar and a Markdown prompt body (`litigant_portal/prompts/topics/eviction/`, `litigant_portal/prompts/courts/north-dakota/`). That's the fixture form: hand-authored content behind the composition contract.
 
 As real infrastructure lands, the content source changes, not the contract:
 
@@ -52,56 +54,48 @@ In each case, the front end, the flow orchestration, and the user-facing experie
 - **Not a replacement for `BASE_PROMPT`'s UPL and tone framing.** Base is the layer where those live; this architecture reinforces rather than replaces them.
 - **Not a commitment to a specific retrieval technology.** "RAG" here is shorthand for whatever retrieval/augmentation mechanism we choose when the time comes. The contract is the interface; retrieval internals are implementation.
 
-## Current state vs target state
+## Current state
 
-**Current** — 2-layer, combined topic+jurisdiction:
+The 4-layer composable structure is live — steps 1–4 below landed under [#314](https://github.com/freelawproject/litigant-portal/issues/314). Phase, Topic, and Court are separate layers, and topic/court content is data-driven: each is a directory with a JSON metadata sidecar (validated against a `_schema.json`) and a Markdown prompt body, not a Python module.
 
 ```
-chat/prompts/
-├── __init__.py          build_system_prompt(topic, jurisdiction)
+litigant_portal/prompts/
+├── __init__.py          build_system_prompt(phase, topic, court, jurisdiction=None)
 ├── base.py              BASE_PROMPT (UPL, tone, conversation style, tools)
-├── eviction_il.py       Illinois eviction + DuPage specifics (combined)
-└── adult_name_change_nd.py   ND adult name change (combined)
-```
-
-**Target** — 4-layer, composable:
-
-```
-chat/prompts/
-├── __init__.py          build_system_prompt(phase, topic, court)
-├── base.py              enhanced with planning-log patterns
 ├── phases/
 │   ├── triage.py
 │   ├── prepare.py
 │   └── resolve.py
 ├── topics/
-│   ├── eviction.py
-│   └── adult_name_change.py
+│   ├── _schema.json
+│   ├── eviction/            topic.json + prompt.md
+│   └── adult_name_change/   topic.json + prompt.md
 └── courts/
-    ├── dupage_il.py
-    └── nd.py
+    ├── _schema.json
+    ├── dupage-il/           court.json + prompt.md
+    └── north-dakota/        court.json + prompt.md
 ```
 
-The evolution from current to target is tracked by [#314](https://github.com/freelawproject/litigant-portal/issues/314) and its sub-issues.
+Moving topic and court content out of Python strings and into `*.json` + `prompt.md` files is the seam that lets a court's content change without a code deploy — exactly what the fixture-to-real upgrade path depends on.
 
 ## Evolution path
 
-1. **Enhance Base** — absorb the planning-log patterns (info-not-advice, "what before why," escalation ladder, scope-adjacent framing) into `base.py`. Backward-compatible.
-2. **Add Phase layer** — introduce `phases/triage.py`, `phases/prepare.py`, `phases/resolve.py` with the flow conventions captured during the ND demo planning work.
-3. **Split combined prompts into Topic + Court** — extract `eviction_il.py` into `topics/eviction.py` + `courts/dupage_il.py`, and `adult_name_change_nd.py` into `topics/adult_name_change.py` + `courts/nd.py`.
-4. **Update composition signature** — `build_system_prompt(phase, topic, court)`. Session state maps to current phase.
-5. **Land RAG or agentic tools behind the contract** — as capabilities arrive, they replace content sources layer-by-layer without touching the composition interface.
+Steps 1–4 are complete under #314; step 5 is future work, tracked separately as each capability becomes real.
 
-Steps 1–4 live under #314. Step 5 is future work under separate tracking as each capability becomes real.
+1. **Enhance Base** — absorb the planning-log patterns (info-not-advice, "what before why," escalation ladder, scope-adjacent framing) into `base.py`. _(done)_
+2. **Add Phase layer** — `phases/triage.py`, `phases/prepare.py`, `phases/resolve.py` carry the flow conventions captured during the ND demo planning work. _(done)_
+3. **Split combined prompts into Topic + Court** — the combined `eviction_il` / `adult_name_change_nd` fixtures became `topics/eviction/` + `courts/dupage-il/` and `topics/adult_name_change/` + `courts/north-dakota/`. _(done)_
+4. **Update composition signature** — `build_system_prompt(phase, topic, court)`; session state maps to the current phase. The old `jurisdiction` kwarg is retained as a deprecated alias. _(done)_
+5. **Land RAG or agentic tools behind the contract** — as capabilities arrive, they replace content sources layer-by-layer without touching the composition interface. _(future)_
 
 ## Slug vocabulary
 
 One canonical slug per topic, per court. Every surface — grid, URL, chat session, prompt registry — uses the same string.
 
-- **Topic slugs** are lowercase-underscore identifiers that name the legal matter as-registered in `chat/prompts/topics/*.py`. Examples: `eviction`, `adult_name_change`. When a new topic ships, its module name in `topics/` is the canonical slug everywhere else.
-- **Court slugs** are lowercase-underscore identifiers that name the court module in `chat/prompts/courts/*.py`. Examples: `dupage_il`, `nd`. A two-letter state code (`il`, `nd`) is a deprecated alias that maps to a default court via `_JURISDICTION_TO_COURT` in `chat/prompts/__init__.py`; prefer the explicit court slug in new code.
+- **Topic slugs** are lowercase-underscore identifiers that name the legal matter as-registered in `litigant_portal/prompts/topics/`. Examples: `eviction`, `adult_name_change`. When a new topic ships, its directory name in `topics/` is the canonical slug everywhere else.
+- **Court slugs** are hyphenated, URL-safe identifiers that name the court directory in `litigant_portal/prompts/courts/`. Examples: `dupage-il`, `north-dakota` — the same strings that appear in deep-link routes like `/t/{court}/{topic}/`. A two-letter state code (`il`, `nd`) is a deprecated `jurisdiction` alias that maps to a default court via `_JURISDICTION_TO_COURT` in `litigant_portal/prompts/__init__.py`; prefer the explicit court slug in new code.
 
-No aliases, no translation layers. If the grid's topic key doesn't match a module in `topics/`, the Topic prompt silently drops from composition — historically this happened and went unnoticed for a while. A regression test in `chat/tests/test_chat_session_topic.py::test_grid_eviction_slug_composes_topic_and_court_layers` reads the grid's eviction slug from `TOPICS` and asserts the composed prompt contains the eviction and court anchors; similar guards should exist for each new (topic, court) pair as they land.
+No aliases, no translation layers. If the grid's topic key doesn't match a directory in `topics/`, the Topic prompt silently drops from composition — historically this happened and went unnoticed for a while. A regression test in `litigant_portal/app/tests/test_chat_session_topic.py::test_grid_eviction_slug_composes_topic_and_court_layers` reads the grid's eviction slug from `TOPICS` and asserts the composed prompt contains the eviction and court anchors; similar guards should exist for each new (topic, court) pair as they land.
 
 ## Rationale — why this emerged from two demos
 
@@ -118,6 +112,6 @@ Writing the second demo surfaced the shape. Extracting layers now — before a t
 - [ND Adult Name Change planning log](./nd-name-change-planning-log.md) — the patterns that justify the decomposition
 - [Jane's happy path](./happy-path-jane.md) — first demo narrative
 - [Sandra's happy path](./happy-path-sandra.md) — second demo narrative
-- `chat/prompts/base.py` — current Base prompt
-- `chat/prompts/eviction_il.py` — current combined Topic+Jurisdiction for Jane
-- `chat/prompts/adult_name_change_nd.py` — current combined Topic+Jurisdiction for Sandra
+- `litigant_portal/prompts/base.py` — Base prompt
+- `litigant_portal/prompts/topics/eviction/` + `courts/dupage-il/` — Topic + Court layers for Jane (DuPage eviction)
+- `litigant_portal/prompts/topics/adult_name_change/` + `courts/north-dakota/` — Topic + Court layers for Sandra (ND name change)
