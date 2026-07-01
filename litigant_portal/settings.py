@@ -248,4 +248,6 @@ CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
 DEFAULT_CHAT_AGENT = os.environ.get(
     "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
 )
-CHAT_MODEL = os.environ.get("CHAT_MODEL", "openai/gpt-4o-mini")
+CHAT_MODEL = os.environ.get(
+    "CHAT_MODEL", "bedrock/anthropic.claude-3-sonnet-20240229-v1:0"
+)
