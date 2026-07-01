@@ -233,6 +233,56 @@ def test_packet_form_with_url_renders_as_link(client, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_packet_section_renders_interview_link_when_set(client, monkeypatch):
+    # When the corpus sets interview_url, the packet emits the "Fill out your
+    # forms" handoff as an <a> to that url that opens in a new tab (#543). The
+    # {% if ctx.interview_url %} conditional is our code deciding whether the
+    # litigant sees a working docassemble link-out — behavioral, not markup.
+    interview = "https://da.example.gov/interview?i=name_change"
+    corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            PacketOutput(
+                kind="output",
+                output_type="packet",
+                id="filing_packet",
+                heading="Your filing packet",
+                forms=["Petition for Name Change"],
+                interview_url=interview,
+            ),
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert re.search(
+        rf'<a[^>]*href="{re.escape(interview)}"[^>]*target="_blank"', flat
+    )
+
+
+@pytest.mark.django_db
+def test_packet_section_omits_interview_link_when_unset(client, monkeypatch):
+    # interview_url unset is the default for existing corpora — the else side of
+    # the same conditional: the packet renders a plain form list and the "Fill
+    # out your forms" handoff never appears. Guards against a regression that
+    # would surface a dead/empty-href link-out for corpora that never opted in.
+    corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            PacketOutput(
+                kind="output",
+                output_type="packet",
+                id="filing_packet",
+                heading="Your filing packet",
+                forms=["Petition for Name Change"],
+            ),
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    html = client.get(URL).content.decode()
+    assert "Fill out your forms" not in html
+
+
+@pytest.mark.django_db
 def test_resources_section_renders_links(client, monkeypatch):
     # A resources output renders each official link as an anchor to its url
     # (#519) — the cleanup that retires plain-text URLs in info bodies.
