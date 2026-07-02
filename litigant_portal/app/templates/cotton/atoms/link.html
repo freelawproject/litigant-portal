@@ -1,5 +1,5 @@
 <c-vars variant="default" />
-{% load heroicons %}
+{% load heroicons i18n %}
 {# --- Base --- #}
 {% with base="inline-flex items-center gap-1 cursor-pointer transition-colors duration-200 [text-underline-offset:2px]" %}
 {# --- Variants --- #}
@@ -11,6 +11,9 @@
    {{ attrs }}>{{ slot }}
   {% if external_icon and target == '_blank' %}
     <span class="shrink-0 ml-1 w-3.5 h-3.5" aria-hidden="true">{% heroicon_outline "arrow-top-right-on-square" %}</span>
+  {% endif %}
+  {% if target == '_blank' %}
+    <span class="sr-only">{% trans "(opens in a new tab)" %}</span>
   {% endif %}
 </a>
 {% endwith %}

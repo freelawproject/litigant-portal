@@ -1,4 +1,4 @@
-<c-vars :required="False" />
+<c-vars :required="False" :autofocus="False" />
 <div class="relative inline-block w-full {{ class }}">
   {# --- Base --- #}
   {% with base="w-full text-md font-normal py-3 pl-4 pr-10 rounded-lg bg-white text-greyscale-900 transition-colors duration-200 cursor-pointer appearance-none focus:outline-none focus:ring-2 disabled:bg-greyscale-100 disabled:text-greyscale-500 disabled:cursor-not-allowed border" %}
@@ -8,6 +8,7 @@
           {% if id %}id="{{ id }}"{% endif %}
           {% if disabled %}disabled{% endif %}
           {% if required %}required{% endif %}
+          {% if autofocus %}autofocus{% endif %}
           {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
           {% if aria_describedby %}aria-describedby="{{ aria_describedby }}"{% endif %}
           {% if error %}aria-invalid="true"{% endif %}

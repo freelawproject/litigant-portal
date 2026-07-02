@@ -1,4 +1,4 @@
-<c-vars type="text" :required="False" />
+<c-vars type="text" :required="False" :autofocus="False" />
 {# --- Base --- #}
 {% with base="w-full text-md font-normal py-3 px-4 rounded-lg border bg-white text-greyscale-900 placeholder:text-greyscale-400 transition-colors duration-200 focus:outline-none focus:ring-2 disabled:bg-greyscale-100 disabled:text-greyscale-500 disabled:cursor-not-allowed" %}
 {# --- States --- #}
@@ -11,6 +11,7 @@
        {% if disabled %}disabled{% endif %}
        {% if readonly %}readonly{% endif %}
        {% if required %}required{% endif %}
+       {% if autofocus %}autofocus{% endif %}
        {% if aria_label %}aria-label="{{ aria_label }}"{% endif %}
        {% if aria_describedby %}aria-describedby="{{ aria_describedby }}"{% endif %}
        {% if error %}aria-invalid="true"{% endif %}
