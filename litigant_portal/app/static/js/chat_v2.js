@@ -663,7 +663,7 @@ document.addEventListener('alpine:init', () => {
     app: null,
 
     init() {
-      this.app = this.$root.closest('[x-data="chatApp"]')._x_dataStack[0]
+      this.app = Alpine.$data(this.$root.closest('[x-data="chatApp"]'))
       this.$watch('app.threadId', () => this.refresh())
       this.$watch('app.streaming', (streaming) => {
         if (!streaming) this.refresh()
