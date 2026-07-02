@@ -114,6 +114,33 @@ def test_fact_gather_heading_optional():
     assert rendered.heading == ""
 
 
+def test_fact_gather_no_autofocus_without_errors():
+    section = _fg([Question(id="a", label="A")])
+    rendered = render_section(section, _corpus(section), {})
+    (q,) = rendered.context["questions"]
+    assert q["autofocus"] is False
+
+
+def test_fact_gather_autofocuses_first_errored_question():
+    section = _fg(
+        [
+            Question(id="a", label="A"),
+            Question(id="b", label="B"),
+            Question(id="c", label="C"),
+        ]
+    )
+    rendered = render_section(
+        section,
+        _corpus(section),
+        {},
+        errors={"b": ["Required"], "c": ["Required"]},
+    )
+    focus = {q["id"]: q["autofocus"] for q in rendered.context["questions"]}
+    # Only the first errored field takes focus — not the unerrored one before
+    # it, and not the later errored one.
+    assert focus == {"a": False, "b": True, "c": False}
+
+
 # --- summary ----------------------------------------------------------------
 
 
