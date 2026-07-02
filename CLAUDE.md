@@ -54,12 +54,8 @@ make docker-down            # Stop containers
 
 ```sh
 make test                   # Run the test suite in the Docker container (requires `make docker`)
-make test fast              # Pass extra tox args through make
-make -- test -e fast -- -k "ReadSecretTests"
 make lint                   # Lint and format all code (via pre-commit)
 ```
-
-`make test ...` forwards extra positional args to `tox` inside the container. Args that start with `-` are parsed by `make` itself, so use `make -- test ...` when passing tox or pytest flags.
 
 ## Pre-commit Hooks
 
