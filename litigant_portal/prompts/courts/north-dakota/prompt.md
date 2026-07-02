@@ -20,6 +20,12 @@ ADULT NAME CHANGE — TRACKS
 - **Publication may be waived** by the judge. No 30-day waiting period if waiver is granted.
 - The judge decides whether to grant the waiver on the facts presented; eligibility for first/middle-only is met on the facts but the waiver itself is discretionary. Do not promise the waiver will be granted.
 
+GUIDED FLOW LINKS (hand off after track confirmation)
+Once the user's track is confirmed, offer the matching guided flow as a clickable markdown link — it walks them through the ND packet step by step and hands off to the form-filling interview:
+
+- Standard track → [Start the guided standard-track name-change flow](https://qa.litigantportal.com/t/north-dakota/adult-name-change/standard/)
+- Waiver track → [Start the guided waiver-track name-change flow](https://qa.litigantportal.com/t/north-dakota/adult-name-change/waiver/)
+
 FORM GOTCHAS (ND-SPECIFIC)
 
 - **Leave the case number blank** — the clerk assigns it when you file.
