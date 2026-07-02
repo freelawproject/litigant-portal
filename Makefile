@@ -3,11 +3,11 @@
 	   migrate shell collectstatic superuser messages compilemessages \
 	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
 	   docassemble-up docassemble-down \
-	   file-issue update health build-image push-image
+	   file-issue build-image push-image
 
 # Guard for commands that require the Docker container to be running
 require-docker = docker compose exec -T django true 2>/dev/null || \
-  { echo "Django container isn't running — start it with: docker compose up"; exit 1; }
+  { echo "Django container isn't running — start it with: make docker"; exit 1; }
 
 # Tailwind source + built output (the path base.html resolves via {% static %})
 CSS_SRC = litigant_portal/app/src/main.css
@@ -26,11 +26,11 @@ lint: ## Run pre-commit hooks to lint and format code
 
 test: ## Run tests
 	$(require-docker)
-	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS));
+	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS))
 
 test-v: ## Run tests — verbose output
 	$(require-docker)
-	docker compose exec django docker/django/entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS));
+	docker compose exec django docker/django/entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS))
 
 pre-commit: ## Lint then test — stops if lint fails/fixes anything
 	$(MAKE) lint && $(MAKE) test
@@ -60,7 +60,7 @@ shell: ## Open Django shell
 
 collectstatic: ## Collect static files (builds CSS first)
 	$(require-docker)
-	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT) --minify
+	$(MAKE) css-minify
 	docker compose exec django manage collectstatic --noinput --clear
 
 superuser: ## Create Django superuser
@@ -108,12 +108,6 @@ docassemble-down: ## Stop the local-dev docassemble bench
 
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
 	uv run python scripts/file_issue.py $(FILE)
-
-update: ## Update a hosted box: pull code+images, recreate, health (ARGS=... e.g. --docassemble)
-	./scripts/update.sh $(ARGS)
-
-health: ## Health/validation summary for a hosted box (no changes)
-	./scripts/update.sh health $(ARGS)
 
 # Image build & push — used by .github/workflows/deploy.yml to publish the
 # portal image for the EKS deploy. Requires VERSION (the short git SHA in CI):
