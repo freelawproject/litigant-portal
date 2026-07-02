@@ -19,7 +19,7 @@ Building a complete eviction flow from discovery to resolution for court partner
 
 ## Environment Philosophy
 
-`docker-compose.yml` is **local development only** — Postgres (pgvector), Redis, Django, and Caddy on one machine. Production is deployed outside this repo and consumes nothing from this file (see [Production](#production)).
+`docker-compose.yml` is **local development only** — Postgres (pgvector), Redis, Django, and Caddy on one machine. Production is deployed outside this repo and consumes nothing from this file (see [Production](README.md#production)).
 
 | Environment | Chat Provider | Config Source                        |
 | ----------- | ------------- | ------------------------------------ |
