@@ -1,23 +1,7 @@
-# Litigant Portal Docker Compose
-#
-# Development: docker compose --profile dev up
-#   - Requires .env file with OPENAI_API_KEY (copy from .env.example)
-#   - SECRET_KEY hardcoded to 'dev' for stable sessions
-#   - Access at http://localhost (port 80 via Caddy)
-#
-# Production: docker compose --profile prod up
-#   - Requires .env file with DOMAIN, ALLOWED_HOSTS, OPENAI_API_KEY, POSTGRES_PASSWORD, SECRET_KEY
-#   - Caddy auto-provisions HTTPS via Let's Encrypt
-
 services:
-  # ---------------------------------------------------------------------------
-  # PostgreSQL Database — Development (pgvector)
-  # ---------------------------------------------------------------------------
-  postgres-dev:
+  postgres:
     image: pgvector/pgvector:pg17
-    profiles: ['dev']
     environment:
-      - DEBUG=true
       - POSTGRES_DB=litigant_portal
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
@@ -27,40 +11,10 @@ services:
       timeout: 3s
       retries: 5
     volumes:
-      # Volume name includes PG major version — when upgrading (e.g., pg17 → pg18),
-      # update both the image tag and volume name so Docker creates a fresh volume
-      # instead of failing on incompatible data files.
-      - postgres_data_dev_pg17:/var/lib/postgresql/data
+      - postgres_data_pg17:/var/lib/postgresql/data
 
-  # ---------------------------------------------------------------------------
-  # PostgreSQL Database — Production (pgvector)
-  # ---------------------------------------------------------------------------
-  postgres-prod:
-    image: pgvector/pgvector:pg17
-    profiles: ['prod']
-    # Reboot/crash durability for the always-on QA/prod box. unless-stopped (not
-    # always) so a deliberate `compose down` stays down. Dev services omit this
-    # on purpose — a laptop shouldn't resurrect the full stack on every boot.
-    restart: unless-stopped
-    environment:
-      - POSTGRES_DB=litigant_portal
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    volumes:
-      # See postgres-dev comment — keep volume name in sync with image tag.
-      - postgres_data_prod_pg17:/var/lib/postgresql/data
-
-  # ---------------------------------------------------------------------------
-  # Redis — Development
-  # ---------------------------------------------------------------------------
-  redis-dev:
+  redis:
     image: redis:7-alpine
-    profiles: ['dev']
     command: redis-server --save "" --appendonly no
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
@@ -68,36 +22,18 @@ services:
       timeout: 3s
       retries: 5
 
-  # ---------------------------------------------------------------------------
-  # Redis — Production
-  # ---------------------------------------------------------------------------
-  redis-prod:
-    image: redis:7-alpine
-    profiles: ['prod']
-    restart: unless-stopped
-    command: redis-server --save "" --appendonly no
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  # ---------------------------------------------------------------------------
-  # Development Django Server
-  # ---------------------------------------------------------------------------
-  django-dev:
+  django:
     build:
       context: .
       dockerfile: docker/django/Dockerfile
-    profiles: ['dev']
     command: web-dev
     environment:
       - DEBUG=true
       - DEPLOYMENT_ENV=dev
       - SECRET_KEY=dev
-      - POSTGRES_HOST=postgres-dev
+      - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=postgres
-      - REDIS_URL=redis://redis-dev:6379/0
+      - REDIS_URL=redis://redis:6379/0
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
@@ -108,83 +44,19 @@ services:
     stdin_open: true
     tty: true
     depends_on:
-      postgres-dev:
+      postgres:
         condition: service_healthy
-      redis-dev:
-        condition: service_healthy
-
-  # ---------------------------------------------------------------------------
-  # Production Django Server
-  # ---------------------------------------------------------------------------
-  django-prod:
-    image: ghcr.io/freelawproject/litigant-portal:latest
-    build:
-      context: .
-      dockerfile: docker/django/Dockerfile
-    profiles: ['prod']
-    restart: unless-stopped
-    command: web-prod
-    environment:
-      - DEBUG=false
-      - DEPLOYMENT_ENV=${DEPLOYMENT_ENV:-prod}
-      - SECRET_KEY=${SECRET_KEY}
-      - POSTGRES_HOST=postgres-prod
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - REDIS_URL=redis://redis-prod:6379/0
-      - ALLOWED_HOSTS=localhost,${ALLOWED_HOSTS:-localhost}
-      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
-      - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
-      # AI Chat configuration
-      - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health/']
-      interval: 5s
-      timeout: 3s
-      start_period: 30s
-      retries: 3
-    depends_on:
-      postgres-prod:
-        condition: service_healthy
-      redis-prod:
+      redis:
         condition: service_healthy
 
-  # ---------------------------------------------------------------------------
-  # Caddy Reverse Proxy (Development)
-  # ---------------------------------------------------------------------------
-  caddy-dev:
+  caddy:
     image: caddy:2-alpine
-    profiles: ['dev']
     ports:
       - '80:80'
     volumes:
-      - ./docker/caddy/Caddyfile.dev:/etc/caddy/Caddyfile:ro
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
-      - django-dev
-
-  # ---------------------------------------------------------------------------
-  # Caddy Reverse Proxy (Production)
-  # ---------------------------------------------------------------------------
-  caddy-prod:
-    image: caddy:2-alpine
-    profiles: ['prod']
-    restart: unless-stopped
-    ports:
-      - '80:80'
-      - '443:443'
-    environment:
-      - DOMAIN=${DOMAIN:-}
-    volumes:
-      - ./docker/caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      django-prod:
-        condition: service_healthy
+      - django
 
 volumes:
-  postgres_data_dev_pg17:
-  postgres_data_prod_pg17:
-  caddy_data:
-  caddy_config:
+  postgres_data_pg17:
