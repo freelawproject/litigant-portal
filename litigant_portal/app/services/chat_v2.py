@@ -250,8 +250,7 @@ def chat_stream(
                             completion_tokens = usage.completion_tokens
                         except Exception:
                             logger.exception(
-                                "Chat cost/usage extraction failed "
-                                "(model=%s)",
+                                "Chat cost/usage extraction failed (model=%s)",
                                 model,
                             )
                     if not chunk.choices:
