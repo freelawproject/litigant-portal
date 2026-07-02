@@ -295,6 +295,13 @@ Field ids are validated against the chosen template — a section that doesn't m
 
 When someone references a sprint by its web-team letter/artist name ("the Ed Sheeran sprint", "Sprint F"), translate to the matching LP Iteration on board #75 via [`docs/sprint-map.md`](docs/sprint-map.md), then pull the work from #75 + git. This crosswalk is LP-specific — other JI repos don't necessarily align with the web-team retro, so it lives here, not in org-level instructions.
 
+## Sizing & estimation
+
+How we size issues so velocity maps to reality (the org-level scale + board mechanics live in `~/flp/CLAUDE.md`; these are the LP-specific practice and calibration record):
+
+- [`docs/sizing-guide.md`](docs/sizing-guide.md) — contributor/onboarding: get your estimate in the zone (size the work not the diff, incident work = size the diagnosis, XL = split). Reference anchors from real LP issues.
+- [`docs/sizing-calibration.md`](docs/sizing-calibration.md) — living team record: the estimate → verify-L1 → verify-L2 model, how to run a calibration pass, and a dated log of lessons (first entry: the It2–It4 velocity baseline + It3 reconstruction).
+
 ## Architecture
 
 ### Front-End Principles
