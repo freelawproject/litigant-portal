@@ -1,118 +1,113 @@
-.PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
-       file-issue messages compilemessages docker-build docker-dev docker-prod docker-rebuild \
-	   docker-down docker-logs docker-shell docker-migrate docker-clean \
-	   docassemble-up docassemble-down update health build-image push-image
+.PHONY: help install lint test test-v pre-commit \
+	   css css-watch css-minify clean \
+	   migrate shell collectstatic superuser messages compilemessages \
+	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
+	   docassemble-up docassemble-down \
+	   file-issue update health build-image push-image
+
+# Guard for commands that require the Docker container to be running
+require-docker = docker compose exec -T django true 2>/dev/null || \
+  { echo "Django container isn't running — start it with: docker compose up"; exit 1; }
+
+# Tailwind source + built output (the path base.html resolves via {% static %})
+CSS_SRC = litigant_portal/app/src/main.css
+CSS_OUT = litigant_portal/app/static/css/main.built.css
+
 
 help: ## Show this help message
 	@echo "Available commands:"
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
 
-install: ## Install Python dependencies (includes Tailwind CSS)
-	python -m venv .venv
-	.venv/bin/pip install --upgrade pip
-	.venv/bin/pip install -e ".[dev]"
+install: ## Install Python dependencies with dev extras
+	uv sync --extra dev
 
-css: ## Build Tailwind CSS (one-time)
-	tailwindcss -i litigant_portal/app/src/main.css -o litigant_portal/app/static/css/main.built.css
-
-css-watch: ## Watch Tailwind CSS for changes
-	tailwindcss -i litigant_portal/app/src/main.css -o static/css/main.built.css --watch
-
-css-prod: ## Build production CSS (minified)
-	tailwindcss -i litigant_portal/app/src/main.css -o static/css/main.built.css --minify
-
-migrate: ## Run Django migrations
-	source .venv/bin/activate && python manage.py migrate
-
-test: ## Run tests — dots + warnings + failures + summary
-	@if docker compose --profile dev exec -T django-dev true 2>/dev/null; then \
-	  docker compose --profile dev exec django-dev docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS)); \
-	else \
-	  tox -q -e fast -- -q --tb=short; \
-	fi
-
-test-v: ## Run tests — verbose output (full tox + pytest details)
-	@if docker compose --profile dev exec -T django-dev true 2>/dev/null; then \
-	  docker compose --profile dev exec django-dev docker/django/entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS)); \
-	else \
-	  tox -e fast; \
-	fi
-
-collectstatic: ## Collect static files (builds CSS first)
-	tailwindcss -i src/css/main.css -o static/css/main.built.css --minify
-	SECRET_KEY=test .venv/bin/python manage.py collectstatic --noinput --clear
-
-clean: ## Clean build artifacts
-	rm -f static/css/main.built.css
-
-superuser: ## Create Django superuser
-	source .venv/bin/activate && python manage.py createsuperuser
-
-shell: ## Open Django shell
-	source .venv/bin/activate && python manage.py shell
-
-lint: ## Lint and format all code (via pre-commit)
+lint: ## Run pre-commit hooks to lint and format code
 	pre-commit run --all-files
+
+test: ## Run tests
+	$(require-docker)
+	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS));
+
+test-v: ## Run tests — verbose output
+	$(require-docker)
+	docker compose exec django docker/django/entrypoint.sh test $(filter-out $@,$(MAKECMDGOALS));
 
 pre-commit: ## Lint then test — stops if lint fails/fixes anything
 	$(MAKE) lint && $(MAKE) test
 
-fmt-check: ## Check template formatting (dry run, no writes)
-	npx prettier --plugin prettier-plugin-django-cotton --parser django-html --check "templates/**/*.html"
+css: ## Build Tailwind CSS (one-time)
+	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT)
 
-fmt: ## Format all templates with prettier-plugin-django-cotton
-	npx prettier --plugin prettier-plugin-django-cotton --parser django-html --write "templates/**/*.html"
+css-watch: ## Watch Tailwind CSS for changes
+	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT) --watch
 
-file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
-	@python3 scripts/file_issue.py $(FILE)
+css-minify: ## Build minified CSS
+	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT) --minify
+
+clean: ## Clean build artifacts
+	rm -f $(CSS_OUT)
+	rm -rf litigant_portal/app/staticfiles/
+
+
+# Django management commands
+migrate: ## Run database migrations
+	$(require-docker)
+	docker compose exec django manage migrate
+
+shell: ## Open Django shell
+	$(require-docker)
+	docker compose exec django manage shell
+
+collectstatic: ## Collect static files (builds CSS first)
+	$(require-docker)
+	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT) --minify
+	docker compose exec django manage collectstatic --noinput --clear
+
+superuser: ## Create Django superuser
+	$(require-docker)
+	docker compose exec django manage createsuperuser
 
 messages: ## Extract translation strings (all languages)
-	SECRET_KEY=dev .venv/bin/python manage.py makemessages -a --no-location
-	SECRET_KEY=dev .venv/bin/python manage.py makemessages -d djangojs -a --no-location
+	$(require-docker)
+	docker compose exec django manage makemessages -a --no-location
+	docker compose exec django manage makemessages -d djangojs -a --no-location
 
 compilemessages: ## Compile .po to .mo files
-	SECRET_KEY=dev .venv/bin/python manage.py compilemessages
+	$(require-docker)
+	docker compose exec django manage compilemessages
+
 
 # Docker targets
+docker: ## Start local environment
+	docker compose up
+
 docker-build: ## Build Docker images
 	docker compose build
 
-docker-dev: ## Start dev environment (Caddy + Django + Tailwind watch)
-	docker compose --profile dev up
-
-docker-dev-build: ## Build and start dev environment
-	docker compose --profile dev up --build
-
-docker-prod: ## Start production environment (Caddy + Gunicorn)
-	docker compose --profile prod up
-
-docker-prod-build: ## Build and start production environment
-	docker compose --profile prod up --build
-
-docker-rebuild: ## Rebuild prod from source (local). QA/partner deploys use `make update`
-	docker compose --profile prod down
-	docker compose --profile prod up -d --build
+docker-up-build: ## Build and start local environment
+	docker compose up --build
 
 docker-down: ## Stop all containers
-	docker compose --profile dev --profile prod down
+	docker compose down
 
 docker-logs: ## View container logs
-	docker compose --profile dev logs -f
+	docker compose logs -f
 
-docker-shell: ## Open shell in Django dev container
-	docker compose --profile dev exec django-dev bash
-
-docker-migrate: ## Run migrations in Docker
-	docker compose --profile dev exec django-dev python manage.py migrate
+docker-bash: ## Open a bash shell in the Django container
+	docker compose exec django bash
 
 docker-clean: ## Remove containers, volumes, and images
-	docker compose --profile dev --profile prod down -v --rmi local
+	docker compose down -v --rmi local
 
 docassemble-up: ## Start the local-dev docassemble bench (http://localhost:8100)
 	docker compose -f docker-compose.docassemble.yml up -d
 
 docassemble-down: ## Stop the local-dev docassemble bench
 	docker compose -f docker-compose.docassemble.yml down
+
+
+file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
+	uv run python scripts/file_issue.py $(FILE)
 
 update: ## Update a hosted box: pull code+images, recreate, health (ARGS=... e.g. --docassemble)
 	./scripts/update.sh $(ARGS)
