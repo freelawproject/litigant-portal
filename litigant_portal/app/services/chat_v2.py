@@ -243,10 +243,17 @@ def chat_stream(
                 for chunk in litellm.completion(**call_args):
                     usage = getattr(chunk, "usage", None)
                     if usage:
-                        cost = litellm.completion_cost(
-                            completion_response=chunk, model=model
-                        )
-                        completion_tokens = usage.completion_tokens
+                        try:
+                            cost = litellm.completion_cost(
+                                completion_response=chunk, model=model
+                            )
+                            completion_tokens = usage.completion_tokens
+                        except Exception:
+                            logger.exception(
+                                "Chat cost/usage extraction failed "
+                                "(model=%s)",
+                                model,
+                            )
                     if not chunk.choices:
                         continue
                     delta = chunk.choices[0].delta
