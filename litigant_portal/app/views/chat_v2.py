@@ -9,6 +9,7 @@ from litigant_portal.app.selectors.chat_v2 import (
     chat_message_list_visible,
     chat_thread_get,
     chat_thread_list,
+    chat_thread_usage,
 )
 from litigant_portal.app.services.chat_v2 import (
     chat_stream as chat_stream_service,
@@ -70,6 +71,22 @@ def message_list(request: HttpRequest, thread_id) -> JsonResponse:
     )
 
 
+@require_GET
+@ratelimit(key="ip", rate="60/m", method="GET", block=True)
+def thread_usage(request: HttpRequest, thread_id) -> JsonResponse:
+    """Total tokens and cost for a thread."""
+    if not request.user.is_superuser:
+        return JsonResponse({"error": _("Forbidden")}, status=403)
+    try:
+        thread = chat_thread_get(
+            identity=request.identity, thread_id=thread_id
+        )
+    except ChatThread.DoesNotExist:
+        return JsonResponse({"error": _("Thread not found")}, status=404)
+
+    return JsonResponse(chat_thread_usage(thread=thread))
+
+
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 def thread_delete(request: HttpRequest, thread_id) -> JsonResponse:
@@ -97,6 +114,8 @@ def chat_stream(request: HttpRequest):
             message=message,
             thread_id=thread_id,
             agent_class=WeatherAgent,
+            # Hard-coded for now; will come from the site configuration model.
+            model="gpt-5-mini",
         )
     except ChatThread.DoesNotExist:
         return JsonResponse({"error": _("Thread not found")}, status=404)

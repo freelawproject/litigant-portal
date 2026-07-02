@@ -74,15 +74,16 @@ execution are the engine's job, not the agent's.**
 
 ### 1. The LLM config — `completion_args`
 
-A plain dict of litellm completion kwargs (model, temperature, `max_tokens`,
-`reasoning_effort`, …). This is the only place the model is chosen.
+A plain dict of litellm completion kwargs for tuning the call — `temperature`,
+`max_tokens`, `reasoning_effort`, and so on.
 
 ```python
-completion_args = {"temperature": 0.7, "max_tokens": 1000}
+completion_args = {"max_tokens": 1000}
 ```
 
-The engine spreads these into `litellm.completion(**completion_args, messages=…,
-tools=…, stream=True)`. Anything litellm accepts, you can put here.
+These are spread into `litellm.completion(...)`. **Don't put `model` here** — you'll get an error if you try.
+The model is supplied to the engine by the endpoint (eventually from a site
+config model), not the agent, and setting it in `completion_args` raises.
 
 ### 2. The state — `state_schema`
 
@@ -262,7 +263,7 @@ class WeatherState(AgentState):
 class WeatherAgent(Agent):
     """A demo agent that can check the weather."""
 
-    completion_args = {"model": "gpt-5-mini"}   # INGREDIENT 1: LLM config
+    completion_args = {"max_tokens": 1000}       # INGREDIENT 1: LLM config
     state_schema = WeatherState                  # INGREDIENT 2
     tools = [CheckWeather]                        # INGREDIENT 4 (from .tools)
 
@@ -404,14 +405,15 @@ from litigant_portal.app.services.chat_v2 import chat_message_inject_hidden
 chat_message_inject_hidden(
     thread_id=thread_id,
     content="<retrieved statute text the model should ground on>",
+    model=model,
     role="user",  # default; "assistant" / "system" also valid
 )
 ```
 
-It's keyed by `thread_id`, so a tool can call it straight from `__call__`. The
-message is stored with `hidden=True` and deliberately does **not** bump the
-thread's `updated_at` — injecting context never reorders the sidebar or changes
-the snippet.
+It takes the `model` (to count tokens, like every message) and is keyed by
+`thread_id`. The message is stored with `hidden=True` and deliberately does
+**not** bump the thread's `updated_at` — injecting context never reorders the
+sidebar or changes the snippet.
 
 ### Compaction messages _(designed; not yet implemented)_
 

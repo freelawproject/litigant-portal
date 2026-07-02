@@ -13,7 +13,7 @@ class WeatherState(AgentState):
 class WeatherAgent(Agent):
     """A demo agent that can check the weather."""
 
-    completion_args = {"model": "gpt-5-mini"}
+    completion_args = {"max_tokens": 1000}
     state_schema = WeatherState
     tools = [CheckWeather]
 
