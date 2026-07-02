@@ -28,7 +28,7 @@ Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker e
 | QA/Staging  | OpenAI        | docker-compose prod profile        |
 | Production  | OpenAI        | docker-compose.yml + `.env`        |
 
-**QA environment:** `https://qa.litigantportal.com` — auto-deploys on merge to `main` via GitHub Actions CD workflow. See `docs/QA-DEPLOY.md` for server setup. Uses the same docker-compose prod profile on a DigitalOcean VPS.
+**QA environment:** `https://qa.litigantportal.com` — deployed **manually** via the `Deploy to DigitalOcean (manual)` workflow (`cd.yml`, Actions → Run workflow), not on merge to `main`. Frozen at its last deliberate deploy so churn on `main` can't break QA. See `docs/QA-DEPLOY.md` for server setup. Uses the same docker-compose prod profile on a DigitalOcean VPS.
 
 **Local dev setup:**
 
@@ -295,6 +295,13 @@ Field ids are validated against the chosen template — a section that doesn't m
 
 When someone references a sprint by its web-team letter/artist name ("the Ed Sheeran sprint", "Sprint F"), translate to the matching LP Iteration on board #75 via [`docs/sprint-map.md`](docs/sprint-map.md), then pull the work from #75 + git. This crosswalk is LP-specific — other JI repos don't necessarily align with the web-team retro, so it lives here, not in org-level instructions.
 
+## Sizing & estimation
+
+How we size issues so velocity maps to reality (the org-level scale + board mechanics live in `~/flp/CLAUDE.md`; these are the LP-specific practice and calibration record):
+
+- [`docs/sizing-guide.md`](docs/sizing-guide.md) — contributor/onboarding: get your estimate in the zone (size the work not the diff, incident work = size the diagnosis, XL = split). Reference anchors from real LP issues.
+- [`docs/sizing-calibration.md`](docs/sizing-calibration.md) — living team record: the estimate → verify-L1 → verify-L2 model, how to run a calibration pass, and a dated log of lessons (first entry: the It2–It4 velocity baseline + It3 reconstruction).
+
 ## Architecture
 
 ### Front-End Principles
@@ -518,7 +525,7 @@ curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o 
 
 ### QA/Staging
 
-QA runs at `https://qa.litigantportal.com` on a DigitalOcean VPS. Auto-deploys on merge to `main` via the `cd.yml` GitHub Actions workflow (build → push to GHCR → SSH deploy). Uses the docker-compose prod profile. See `docs/QA-DEPLOY.md` for full setup runbook and gotchas.
+QA runs at `https://qa.litigantportal.com` on a DigitalOcean VPS. Deploys are **manual** — the `Deploy to DigitalOcean (manual)` workflow (`cd.yml`) runs on demand via Actions → Run workflow (build → push to GHCR → SSH deploy), not on merge to `main`. The box is frozen at its last deliberate deploy so churn on `main` can't break QA (#592). A separate workflow, `deploy.yml` ("Build and Push to Docker Hub"), still publishes the AWS-bound image on every merge. Uses the docker-compose prod profile. See `docs/QA-DEPLOY.md` for full setup runbook and gotchas.
 
 Manual deploy on the QA server: `make update` (pulls code + images, recreates, health-checks — and brings up the docassemble override so the `/interview/` route survives; a base-only compose `up` drops it, #558). `make docker-rebuild` is a local from-source rebuild, not the QA deploy path.
 

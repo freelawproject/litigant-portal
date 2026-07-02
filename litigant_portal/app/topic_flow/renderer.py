@@ -70,8 +70,14 @@ def render_section(section, corpus, answers, errors=None):
         raise ValueError(f"No SectionRenderer handler registered for {key!r}")
     rendered = handler(section, corpus, answers)
     if errors and key == "fact_gather":
+        focused = False
         for question in rendered.context["questions"]:
             question["errors"] = errors.get(question["id"], [])
+            # Move focus to the first invalid field so keyboard/SR users land
+            # on the error instead of hunting for it (WCAG 2.4.3 / 3.3.1).
+            if question["errors"] and not focused:
+                question["autofocus"] = True
+                focused = True
     return rendered
 
 
@@ -97,6 +103,7 @@ def _render_fact_gather(section, corpus, answers):
             "help_text": q.help_text,
             "value": answers.get(q.id, ""),
             "errors": [],
+            "autofocus": False,
         }
         for q in section.questions
     ]

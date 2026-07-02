@@ -14,6 +14,7 @@
     id="{{ q.id }}"
     help_text="{{ q.help_text|default:'' }}"
     :required="q.required"
+    :autofocus="q.autofocus"
     :errors="q.errors"
   >
     <option value="">{{ choice_placeholder }}</option>
@@ -30,6 +31,7 @@
     value="{{ q.value }}"
     help_text="{{ q.help_text|default:'' }}"
     :required="q.required"
+    :autofocus="q.autofocus"
     :errors="q.errors"
   />
   {% endif %}

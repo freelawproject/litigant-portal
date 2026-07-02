@@ -1,8 +1,8 @@
-<c-vars :required="False" />
+<c-vars :required="False" :autofocus="False" />
 <div class="{{ class }}">
   <label for="{{ id }}"
          class="block text-sm font-medium text-greyscale-700 mb-1.5">{{ label }}</label>
-  <c-atoms.select name="{{ name }}" id="{{ id }}" :required="required" error="{{ errors|yesno:'true,' }}">{{ slot }}</c-atoms.select>
-  {% if help_text %}<p class="mt-1 text-xs text-greyscale-500">{{ help_text }}</p>{% endif %}
-  {% if errors %}<p class="mt-1 text-sm text-red-600">{{ errors.0 }}</p>{% endif %}
+  <c-atoms.select name="{{ name }}" id="{{ id }}" :required="required" :autofocus="autofocus" error="{{ errors|yesno:'true,' }}" aria_describedby="{% if help_text %}{{ id }}-help{% endif %}{% if help_text and errors %} {% endif %}{% if errors %}{{ id }}-error{% endif %}">{{ slot }}</c-atoms.select>
+  {% if help_text %}<p id="{{ id }}-help" class="mt-1 text-xs text-greyscale-500">{{ help_text }}</p>{% endif %}
+  {% if errors %}<p id="{{ id }}-error" class="mt-1 text-sm text-red-600">{{ errors.0 }}</p>{% endif %}
 </div>

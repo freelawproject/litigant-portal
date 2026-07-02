@@ -20,18 +20,42 @@ logger = logging.getLogger(__name__)
 MAX_STEPS = 30
 
 
+def chat_message_create(
+    *,
+    thread_id,
+    data: dict,
+    model: str,
+    num_tokens: int | None = None,
+    hidden: bool = False,
+    cost: float = 0.0,
+) -> ChatMessage:
+    """Add a message to a thread."""
+    if num_tokens is None:
+        num_tokens = litellm.token_counter(
+            model=model, text=data.get("content", "")
+        )
+    return ChatMessage.objects.create(
+        thread_id=thread_id,
+        data=data,
+        hidden=hidden,
+        num_tokens=num_tokens,
+        cost=cost,
+    )
+
+
 def chat_thread_delete(*, identity: UserIdentity, thread_id: str) -> None:
     """Delete a thread (and its messages, via cascade) owned by the identity."""
     chat_thread_get(identity=identity, thread_id=thread_id).delete()
 
 
 def chat_message_inject_hidden(
-    *, thread_id, content: str, role: str = "user"
+    *, thread_id, content: str, model: str, role: str = "user"
 ) -> ChatMessage:
     """Append a hidden message to a thread's history."""
-    return ChatMessage.objects.create(
+    return chat_message_create(
         thread_id=thread_id,
         data={"role": role, "content": content},
+        model=model,
         hidden=True,
     )
 
@@ -171,14 +195,23 @@ def chat_stream(
     identity: UserIdentity,
     message: str,
     agent_class: type[Agent],
+    model: str,
     thread_id: str | None = None,
 ) -> StreamingHttpResponse:
     """Stream an agent's reply for ``message``, running the tool loop."""
     thread = _resolve_thread(identity=identity, thread_id=thread_id)
     agent = agent_class()
 
-    ChatMessage.objects.create(
-        thread=thread, data={"role": "user", "content": message}
+    if "model" in agent.completion_args:
+        raise ValueError(
+            f"{agent_class.__name__}.completion_args must not set 'model' — "
+            "the model is passed to chat_stream by the caller."
+        )
+
+    chat_message_create(
+        thread_id=thread.id,
+        data={"role": "user", "content": message},
+        model=model,
     )
 
     history: list[dict[str, Any]] = [
@@ -194,16 +227,34 @@ def chat_stream(
             for _ in range(MAX_STEPS):
                 call_args: dict[str, Any] = {
                     **agent.completion_args,
+                    "model": model,
                     "messages": _messages_for_llm(system_prompt, history),
                     "stream": True,
+                    "stream_options": {"include_usage": True},
                 }
                 if agent.tool_schemas:
                     call_args["tools"] = agent.tool_schemas
 
                 content_parts: list[str] = []
                 tool_calls: list[dict[str, Any]] = []
+                cost = 0.0
+                completion_tokens = None
 
                 for chunk in litellm.completion(**call_args):
+                    usage = getattr(chunk, "usage", None)
+                    if usage:
+                        try:
+                            cost = litellm.completion_cost(
+                                completion_response=chunk, model=model
+                            )
+                            completion_tokens = usage.completion_tokens
+                        except Exception:
+                            logger.exception(
+                                "Chat cost/usage extraction failed (model=%s)",
+                                model,
+                            )
+                    if not chunk.choices:
+                        continue
                     delta = chunk.choices[0].delta
 
                     if delta.content:
@@ -241,7 +292,13 @@ def chat_stream(
                 if tool_calls:
                     assistant_msg["tool_calls"] = tool_calls
                 history.append(assistant_msg)
-                ChatMessage.objects.create(thread=thread, data=assistant_msg)
+                chat_message_create(
+                    thread_id=thread.id,
+                    data=assistant_msg,
+                    model=model,
+                    num_tokens=completion_tokens,
+                    cost=cost,
+                )
 
                 if not tool_calls:
                     break
@@ -291,7 +348,11 @@ def chat_stream(
                     if output.render_data is not None:
                         tool_msg["data"] = output.render_data
                     history.append(tool_msg)
-                    ChatMessage.objects.create(thread=thread, data=tool_msg)
+                    chat_message_create(
+                        thread_id=thread.id,
+                        data=tool_msg,
+                        model=model,
+                    )
 
                     yield _sse(
                         {
