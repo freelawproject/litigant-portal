@@ -5,18 +5,32 @@ Access to justice portal for self-represented litigants. Built by [Free Law Proj
 ## Quick Start
 
 ```bash
-cp .env.example .env      # Add your OPENAI_API_KEY
-make docker-dev           # Start dev environment
+cp .env.example .env            # Add your OPENAI_API_KEY
+make docker                     # Start dev environment
 ```
 
 Visit: http://localhost
 
-### Docker Production
+## Production
 
-```bash
-cp .env.example .env      # Set OPENAI_API_KEY, SECRET_KEY, ALLOWED_HOSTS, DOMAIN, POSTGRES_PASSWORD
-make docker-prod
-```
+**Image:** built from `docker/django/Dockerfile`. Run it with the `web-prod` command — it collects static files, applies migrations, and serves gunicorn on port **8000**.
+
+**Runtime dependencies:**
+
+- **PostgreSQL** with the **pgvector** extension.
+- **Redis**
+
+**Required environment** (see `.env.example`):
+
+| Variable                                                                                  | Description                                   |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------- |
+| `SECRET_KEY`                                                                              | Django secret key                             |
+| `DEBUG=false`, `DEPLOYMENT_ENV`                                                           | Prod mode + environment label (`qa` / `prod`) |
+| `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves      |
+| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                           |
+| `REDIS_URL`                                                                               | Redis connection URL                          |
+| `OPENAI_API_KEY` (or other provider key)                                                  | Chat provider credential                      |
+| `CHAT_MODEL`                                                                              | LiteLLM model id                              |
 
 ## Documentation
 
@@ -33,6 +47,7 @@ make docker-prod
 - **Styling:** Tailwind CSS (standalone CLI)
 - **Reactivity:** Alpine.js (standard build)
 - **Database:** PostgreSQL (pgvector)
+- **Caching:** Redis
 
 ## License
 
