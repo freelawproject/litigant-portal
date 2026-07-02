@@ -1,6 +1,6 @@
 # QA Environment Setup
 
-One-time setup for the QA/staging server at `qa.litigantportal.com`. After setup, deploys are automatic — merge to `main` triggers a new Docker image build and deploy via GitHub Actions.
+One-time setup for the QA/staging server at `qa.litigantportal.com`. Deploys to this box are **manual** — the `Deploy to DigitalOcean (manual)` workflow (`cd.yml`) runs on demand via Actions → Run workflow, not on merge to `main`. The box is intentionally frozen at its last deliberate deploy so churn on `main` (e.g. the v1→v2 chat migration) can't take QA down. See #592.
 
 ## Architecture
 

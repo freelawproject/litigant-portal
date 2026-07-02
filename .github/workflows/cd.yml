@@ -1,10 +1,16 @@
-name: CD
+name: Deploy to DigitalOcean (manual)
 
+# The DigitalOcean QA box (qa.litigantportal.com) is a manual-dispatch fallback,
+# not continuous deployment. It used to auto-deploy on every merge to main via a
+# `git reset --hard origin/main` on the box — which meant a broken main would
+# take QA down. During the v1→v2 chat migration main is expected to break, so we
+# froze QA at its last deliberate deploy: it only updates when someone runs this
+# workflow by hand (Actions → Run workflow). Image publishing for AWS continues
+# independently in deploy.yml ("Build and Push to Docker Hub") on every merge.
+# The pull_request trigger stays as the pre-merge docker-build guardrail (#592).
 on:
   pull_request:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -28,14 +34,14 @@ jobs:
           push: false
 
   # ---------------------------------------------------------------------------
-  # main: build, push to GHCR, deploy to QA
+  # manual dispatch: build, push to GHCR, deploy to the DigitalOcean QA box
   # ---------------------------------------------------------------------------
   build-and-deploy:
     name: Build, push, deploy to QA
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    # Serialize deploys so back-to-back merges don't race the SSH step.
-    # cancel-in-progress=false queues subsequent commits in order.
+    if: github.event_name == 'workflow_dispatch'
+    # Serialize deploys so back-to-back manual runs don't race the SSH step.
+    # cancel-in-progress=false queues subsequent runs in order.
     concurrency:
       group: qa-deploy
       cancel-in-progress: false
