@@ -32,10 +32,8 @@ class SitePasswordMiddleware:
             if request.POST["site_password"] == password:
                 request.session[self.SESSION_KEY] = True
                 return redirect(request.get_full_path())
-            return render(
-                request, "site_password.html", {"error": True}, status=401
-            )
-        return render(request, "site_password.html", status=401)
+            return render(request, "site_password.html", {"error": True})
+        return render(request, "site_password.html")
 
 
 class AnonymousSessionKeyMiddleware:
