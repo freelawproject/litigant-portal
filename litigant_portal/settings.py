@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from django.core.management.utils import get_random_secret_key
 
@@ -54,7 +55,6 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "whitenoise.middleware.WhiteNoiseMiddleware",
     "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -156,16 +156,68 @@ STATIC_ROOT = BASE_DIR / "app" / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "app" / "static",
 ]
+MEDIA_URL = os.environ.get("MEDIA_URL", "/media/")
+MEDIA_ROOT = BASE_DIR / "app" / "media"
 
-# Use ManifestStaticFilesStorage in production for cache busting
-# In development (DEBUG=True), Django uses the default storage
-if not DEBUG:
+# Storage — local filesystem in dev/test, S3 in prod/QA.
+S3_CONNECTION = {
+    "access_key": os.environ.get("AWS_ACCESS_KEY_ID", ""),
+    "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+    "region_name": os.environ.get("AWS_S3_REGION_NAME", "us-east-1"),
+    "endpoint_url": os.environ.get("AWS_S3_ENDPOINT_URL") or None,
+    "url_protocol": os.environ.get("AWS_S3_URL_PROTOCOL", "https:"),
+}
+AWS_STORAGE_PRIVATE_BUCKET_NAME = os.environ.get(
+    "AWS_STORAGE_PRIVATE_BUCKET_NAME", "litigant-portal-private"
+)
+AWS_STORAGE_PUBLIC_BUCKET_NAME = os.environ.get(
+    "AWS_STORAGE_PUBLIC_BUCKET_NAME", "litigant-portal-public"
+)
+AWS_S3_PUBLIC_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN") or None
+
+if DEBUG:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "public": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"
+        },
+    }
+else:
     STORAGES = {
         "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                **S3_CONNECTION,
+                "bucket_name": AWS_STORAGE_PRIVATE_BUCKET_NAME,
+                "default_acl": "private",
+                "querystring_auth": True,
+                "file_overwrite": False,
+                "location": "media",
+            },
+        },
+        "public": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+            "OPTIONS": {
+                **S3_CONNECTION,
+                "bucket_name": AWS_STORAGE_PUBLIC_BUCKET_NAME,
+                "custom_domain": AWS_S3_PUBLIC_CUSTOM_DOMAIN,
+                "default_acl": "public-read",
+                "querystring_auth": False,
+                "file_overwrite": False,
+                "location": "media",
+            },
         },
         "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            "BACKEND": "storages.backends.s3.S3ManifestStaticStorage",
+            "OPTIONS": {
+                **S3_CONNECTION,
+                "bucket_name": AWS_STORAGE_PUBLIC_BUCKET_NAME,
+                "custom_domain": AWS_S3_PUBLIC_CUSTOM_DOMAIN,
+                "default_acl": "public-read",
+                "querystring_auth": False,
+                "location": "static",
+            },
         },
     }
 
@@ -199,16 +251,53 @@ if DEBUG:
 
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/
+
+
+def s3_origins(bucket_name: str) -> tuple[str, ...]:
+    """CSP origins for URLs served directly from an S3 bucket."""
+    if S3_CONNECTION["endpoint_url"]:
+        # Cover both path-style and virtual-host-style addressing.
+        endpoint = urlsplit(S3_CONNECTION["endpoint_url"])
+        return (
+            f"{endpoint.scheme}://{endpoint.netloc}",
+            f"{endpoint.scheme}://{bucket_name}.{endpoint.netloc}",
+        )
+    # Cover both the regional and legacy global AWS S3 endpoints.
+    return (
+        f"https://{bucket_name}"
+        f".s3.{S3_CONNECTION['region_name']}.amazonaws.com",
+        f"https://{bucket_name}.s3.amazonaws.com",
+    )
+
+
+# Allow assets from wherever the public S3 storage serves them: the CDN
+# custom domain if configured, otherwise the S3 endpoint directly.
+if AWS_S3_PUBLIC_CUSTOM_DOMAIN:
+    asset_host = AWS_S3_PUBLIC_CUSTOM_DOMAIN.split("/", 1)[0]
+    ASSET_ORIGINS = (f"{S3_CONNECTION['url_protocol']}//{asset_host}",)
+elif not DEBUG:
+    ASSET_ORIGINS = s3_origins(AWS_STORAGE_PUBLIC_BUCKET_NAME)
+else:
+    ASSET_ORIGINS = ()
+
+# Signed private-media URLs always point at the S3 endpoint (no CDN).
+if DEBUG:
+    PRIVATE_MEDIA_ORIGINS = ()
+else:
+    PRIVATE_MEDIA_ORIGINS = s3_origins(AWS_STORAGE_PRIVATE_BUCKET_NAME)
+
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'",)  # Alpine.js served locally
-CSP_STYLE_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'", *ASSET_ORIGINS)
+CSP_STYLE_SRC = ("'self'", *ASSET_ORIGINS)
 CSP_IMG_SRC = (
     "'self'",
     "data:",
     "blob:",
+    *ASSET_ORIGINS,
+    *PRIVATE_MEDIA_ORIGINS,
 )  # data: for inline, blob: for camera
-CSP_FONT_SRC = ("'self'", "data:")
-CSP_CONNECT_SRC = ("'self'",)
+CSP_FONT_SRC = ("'self'", "data:", *ASSET_ORIGINS)
+CSP_CONNECT_SRC = ("'self'", *ASSET_ORIGINS, *PRIVATE_MEDIA_ORIGINS)
 # Alpine.js CSP build — no unsafe-eval needed
 
 # Default primary key field type
