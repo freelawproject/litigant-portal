@@ -2,6 +2,7 @@ import logging
 import os
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from django.core.management.utils import get_random_secret_key
 
@@ -250,11 +251,40 @@ if DEBUG:
 
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/
+
+
+def s3_origins(bucket_name: str) -> tuple[str, ...]:
+    """CSP origins for URLs served directly from an S3 bucket."""
+    if S3_CONNECTION["endpoint_url"]:
+        # Cover both path-style and virtual-host-style addressing.
+        endpoint = urlsplit(S3_CONNECTION["endpoint_url"])
+        return (
+            f"{endpoint.scheme}://{endpoint.netloc}",
+            f"{endpoint.scheme}://{bucket_name}.{endpoint.netloc}",
+        )
+    # Cover both the regional and legacy global AWS S3 endpoints.
+    return (
+        f"https://{bucket_name}"
+        f".s3.{S3_CONNECTION['region_name']}.amazonaws.com",
+        f"https://{bucket_name}.s3.amazonaws.com",
+    )
+
+
+# Allow assets from wherever the public S3 storage serves them: the CDN
+# custom domain if configured, otherwise the S3 endpoint directly.
 if AWS_S3_PUBLIC_CUSTOM_DOMAIN:
     asset_host = AWS_S3_PUBLIC_CUSTOM_DOMAIN.split("/", 1)[0]
     ASSET_ORIGINS = (f"{S3_CONNECTION['url_protocol']}//{asset_host}",)
+elif not DEBUG:
+    ASSET_ORIGINS = s3_origins(AWS_STORAGE_PUBLIC_BUCKET_NAME)
 else:
     ASSET_ORIGINS = ()
+
+# Signed private-media URLs always point at the S3 endpoint (no CDN).
+if DEBUG:
+    PRIVATE_MEDIA_ORIGINS = ()
+else:
+    PRIVATE_MEDIA_ORIGINS = s3_origins(AWS_STORAGE_PRIVATE_BUCKET_NAME)
 
 CSP_DEFAULT_SRC = ("'self'",)
 CSP_SCRIPT_SRC = ("'self'", *ASSET_ORIGINS)
@@ -264,9 +294,10 @@ CSP_IMG_SRC = (
     "data:",
     "blob:",
     *ASSET_ORIGINS,
+    *PRIVATE_MEDIA_ORIGINS,
 )  # data: for inline, blob: for camera
 CSP_FONT_SRC = ("'self'", "data:", *ASSET_ORIGINS)
-CSP_CONNECT_SRC = ("'self'", *ASSET_ORIGINS)
+CSP_CONNECT_SRC = ("'self'", *ASSET_ORIGINS, *PRIVATE_MEDIA_ORIGINS)
 # Alpine.js CSP build — no unsafe-eval needed
 
 # Default primary key field type
