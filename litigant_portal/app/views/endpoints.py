@@ -15,7 +15,11 @@ from litigant_portal.app.models import (
     TimelineEvent,
 )
 from litigant_portal.app.services.chat_service import ChatService
-from litigant_portal.app.services.health import check_database, check_redis
+from litigant_portal.app.services.health import (
+    check_database,
+    check_redis,
+    check_storage,
+)
 from litigant_portal.app.services.pdf_service import pdf_service
 from litigant_portal.app.services.search_service import search_service
 
@@ -26,6 +30,8 @@ def health(request: HttpRequest) -> JsonResponse:
     services = {
         "database": check_database(),
         "redis": check_redis(),
+        "storage_private": check_storage("default"),
+        "storage_public": check_storage("public"),
     }
     healthy = all(services.values())
     return JsonResponse(

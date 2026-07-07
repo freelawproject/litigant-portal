@@ -1,7 +1,41 @@
+from django.conf import settings
+from django.shortcuts import redirect, render
 from django.utils.functional import SimpleLazyObject
 
 from litigant_portal.app.models import UserIdentity
 from litigant_portal.app.services.identity import identity_ensure
+
+
+class SitePasswordMiddleware:
+    """Temporary password gate on pages (not /api/), active only when
+    SITE_PASSWORD is set — it keeps visitors from mistaking the dev site
+    for a live service. To remove: delete this class, its MIDDLEWARE entry,
+    the SITE_PASSWORD setting, and templates/site_password.html."""
+
+    SESSION_KEY = "site_password_ok"
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        password = settings.SITE_PASSWORD
+        exempt = tuple(
+            p for p in (settings.STATIC_URL, settings.MEDIA_URL, "/api/") if p
+        )
+        if (
+            not password
+            or request.session.get(self.SESSION_KEY)
+            or request.path.startswith(exempt)
+        ):
+            return self.get_response(request)
+        if request.method == "POST" and "site_password" in request.POST:
+            if request.POST["site_password"] == password:
+                request.session[self.SESSION_KEY] = True
+                return redirect(request.get_full_path())
+            return render(
+                request, "site_password.html", {"error": True}, status=401
+            )
+        return render(request, "site_password.html", status=401)
 
 
 class AnonymousSessionKeyMiddleware:

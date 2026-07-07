@@ -3,8 +3,6 @@ name: Build and Push to Docker Hub
 # v1: build the portal image and publish it to Docker Hub on every merge to main.
 # The EKS deploy job is intentionally NOT wired up yet — that comes in a
 # follow-up once AWS auth is ready.
-# Runs alongside cd.yml (which builds to GHCR and deploys QA); the two are
-# independent, so they use separate concurrency groups.
 
 on:
   push:

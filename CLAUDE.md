@@ -19,22 +19,18 @@ Building a complete eviction flow from discovery to resolution for court partner
 
 ## Environment Philosophy
 
-Keep configuration **simple and consistent** across dev, CI/CD, and QA. Docker everywhere.
+`docker-compose.yml` is **local development only** — Postgres (pgvector), Redis, Django, and Caddy on one machine. Production is deployed outside this repo and consumes nothing from this file (see [Production](README.md#production)).
 
-| Environment | Chat Provider | Config Source                      |
-| ----------- | ------------- | ---------------------------------- |
-| Local dev   | OpenAI        | docker-compose.yml + `.env`        |
-| CI/CD       | None (mocked) | tox.ini - tests mock all providers |
-| QA/Staging  | OpenAI        | docker-compose prod profile        |
-| Production  | OpenAI        | docker-compose.yml + `.env`        |
-
-**QA environment:** `https://qa.litigantportal.com` — deployed **manually** via the `Deploy to DigitalOcean (manual)` workflow (`cd.yml`, Actions → Run workflow), not on merge to `main`. Frozen at its last deliberate deploy so churn on `main` can't break QA. See `docs/QA-DEPLOY.md` for server setup. Uses the same docker-compose prod profile on a DigitalOcean VPS.
+| Environment | Chat Provider | Config Source                        |
+| ----------- | ------------- | ------------------------------------ |
+| Local dev   | OpenAI        | `docker-compose.yml` + `.env`        |
+| CI          | None (mocked) | `tox.ini` — tests mock all providers |
 
 **Local dev setup:**
 
 ```bash
 cp .env.example .env        # Add your OPENAI_API_KEY
-make docker-dev             # Start dev environment
+make docker                 # Start dev environment
 ```
 
 Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `openai/gpt-4o-mini`).
@@ -47,38 +43,18 @@ Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `opena
 
 ```sh
 cp .env.example .env        # Add your OPENAI_API_KEY
-make docker-dev             # Start dev environment
-make docker-shell           # Shell into container
+make docker                 # Start dev environment
+make docker-bash           # Shell into container
 make docker-down            # Stop containers
 ```
 
-**Dev URL:** `http://localhost` (or `http://portal.localhost`). Caddy runs on port 80 — **not** `:8000`. The `:8000` you'll see in `docker-compose.yml:101` is the container-internal gunicorn port, behind Caddy.
+**Dev URL:** `http://localhost` (or `http://portal.localhost`). Caddy runs on port 80 — **not** `:8000`. The `:8000` is the container-internal gunicorn/runserver port that Caddy proxies to (see `docker/caddy/Caddyfile`).
 
 ### Testing & Linting
 
 ```sh
-make test                   # Auto-detects Docker: full suite if running, fast suite otherwise
-make test fast              # Pass extra tox args through make
-make -- test -e fast -- -k "ReadSecretTests"
+make test                   # Run the test suite in the Docker container (requires `make docker`)
 make lint                   # Lint and format all code (via pre-commit)
-```
-
-`make test ...` forwards extra positional args to `tox` when running in Docker. Args that start with `-` are parsed by `make` itself, so use `make -- test ...` when passing tox or pytest flags.
-
-### Direct Python commands (use .venv/bin/python)
-
-For Django management commands outside Docker:
-
-```sh
-SECRET_KEY=dev .venv/bin/python manage.py check
-SECRET_KEY=dev .venv/bin/python manage.py makemigrations
-SECRET_KEY=dev .venv/bin/python manage.py migrate
-SECRET_KEY=dev .venv/bin/python manage.py shell
-
-# Run non-postgres tests locally (no Docker needed)
-tox -e fast
-# Run a specific test class
-tox -e fast -- -k "ReadSecretTests"
 ```
 
 ## Pre-commit Hooks
@@ -334,10 +310,10 @@ Every page follows the same frame: **site header → sub-header (contextual) →
 
 ### Component System (Django Cotton + Atomic Design)
 
-Components live in `templates/cotton/` using Atomic Design hierarchy:
+Components live in `litigant_portal/app/templates/cotton/` using Atomic Design hierarchy:
 
 ```
-templates/cotton/
+litigant_portal/app/templates/cotton/
 ├── atoms/      # Basic elements: alert, auto_dismiss, button, chat_bubble, checkbox, icon, input, link, nav_link, search_input, select, typing_indicator
 ├── molecules/  # Combinations: action_item, deadline_card, form_errors, form_field, form_field_select, logo, search_bar, search_result, sidebar_section, toast_container, topic_card, user_menu
 └── organisms/  # Complex sections: footer, header, hero, topic_grid
@@ -349,10 +325,10 @@ Style guide available at `/style-guide/` during development.
 
 **NEVER** create custom CSS classes or raw HTML that duplicates what an existing atom/molecule already does. **ALWAYS** check existing components before writing any UI element:
 
-1. Check `templates/cotton/` for an existing component at the right atomic level
+1. Check `litigant_portal/app/templates/cotton/` for an existing component at the right atomic level
 2. Check component props — variants, sizes, `href`, `full_width`, `class` passthrough — before assuming a component can't do what you need
 3. If a component is _almost_ right, **extend it** with a new prop rather than bypassing it with custom CSS
-4. Check Tailwind theme tokens in `src/css/main.css` before inventing new values
+4. Check Tailwind theme tokens in `litigant_portal/app/src/main.css` before inventing new values
 
 Only create a new component when no combination of existing ones works. Only add new theme tokens when the design system genuinely needs them.
 
@@ -360,7 +336,7 @@ Only create a new component when no combination of existing ones works. Only add
 
 - **Top-down:** Are templates composing existing atoms/molecules/organisms? No hand-rolled HTML that duplicates a component.
 - **Bottom-up:** Are there repeated patterns across templates that should be _extracted_ into new components? If 3+ templates share the same HTML structure (same tags, classes, layout), that's a missing molecule or organism.
-- **Style guide:** Does `templates/pages/style_guide.html` need updating? New components, new props, or changed behavior should be reflected there.
+- **Style guide:** Does `litigant_portal/app/templates/pages/style_guide.html` need updating? New components, new props, or changed behavior should be reflected there.
 
 ### State Flow
 
@@ -375,9 +351,9 @@ Django renders initial state, Alpine.js handles client-side reactivity. All comp
 
 ### Tailwind v4 CSS
 
-CSS-based configuration in `src/css/main.css` with `@theme { }` blocks. No `tailwind.config.js` needed.
+CSS-based configuration in `litigant_portal/app/src/main.css` with `@theme { }` blocks. No `tailwind.config.js` needed.
 
-Build: `tailwindcss -i src/css/main.css -o static/css/main.built.css`
+Build: `tailwindcss -i litigant_portal/app/src/main.css -o litigant_portal/app/static/css/main.built.css` (or `make css`)
 
 ## Critical Constraints
 
@@ -403,10 +379,10 @@ Using Alpine.js **CSP build** (`@alpinejs/csp` v3.14.9). Local files, no CDN. Th
 
 **Files:**
 
-- `static/js/alpine.min.js` - Minified (production)
-- `static/js/alpine.js` - Non-minified (debug mode, auto-selected when `DEBUG=True`)
-- `static/js/components.js` - Named `Alpine.data()` components (userMenu, activityTimeline, etc.)
-- `static/js/chat.js` - Chat and home page components with pre-computed properties
+- `litigant_portal/app/static/js/alpine.min.js` - Minified (production)
+- `litigant_portal/app/static/js/alpine.js` - Non-minified (debug mode, auto-selected when `DEBUG=True`)
+- `litigant_portal/app/static/js/components.js` - Named `Alpine.data()` components (userMenu, activityTimeline, etc.)
+- `litigant_portal/app/static/js/chat.js` - Chat and home page components with pre-computed properties
 
 **`x-html` usage:** Still used for chat messages. Safe because `renderMarkdown()` escapes HTML before applying markdown transforms, and content is pre-computed in JS (`msg.renderedContent`).
 
@@ -447,59 +423,32 @@ The portal includes an AI-powered chat for legal assistance with streaming respo
 
 No WebSockets, no Django Channels - just SSE over standard HTTP.
 
-### Chat Architecture
-
-```
-chat/
-├── providers/
-│   ├── base.py      # Abstract BaseLLMProvider class
-│   ├── ollama.py    # Ollama local LLM (OpenAI-compatible API)
-│   └── factory.py   # Provider factory with caching
-├── services/
-│   ├── chat_service.py   # Main chat orchestration + SSE streaming
-│   └── search_service.py # Keyword search fallback (icontains)
-├── models.py        # ChatSession, Message, Document
-└── views.py         # API endpoints (send, stream, search)
-```
-
 ### LLM Provider
 
 Using **LiteLLM** with OpenAI for dev and QA. Model configured via `CHAT_MODEL` env var (default: `openai/gpt-4o-mini`). To switch providers, change the env var (e.g. `groq/llama-3.3-70b-versatile`).
 
-### Chat Endpoints
-
-- `POST /chat/send/` - Submit user message, returns session_id
-- `GET /chat/stream/<session_id>/` - SSE streaming AI response
-- `GET /chat/search/` - Keyword search fallback
-
 ## Key Files
 
-| File                               | Purpose                                 |
-| ---------------------------------- | --------------------------------------- |
-| `config/settings.py`               | Django + Cotton + CSP + Chat config     |
-| `src/css/main.css`                 | Tailwind v4 source + theme tokens       |
-| `static/js/alpine.js`              | Alpine.js CSP build (debug)             |
-| `static/js/alpine.min.js`          | Alpine.js CSP build (production)        |
-| `static/js/components.js`          | Named Alpine.data() components          |
-| `static/js/chat.js`                | Chat and home page Alpine components    |
-| `templates/cotton/`                | Component library (Atomic Design)       |
-| `templates/pages/style_guide.html` | Style guide page                        |
-| `chat/`                            | AI chat app with providers and services |
-| `portal/views.py`                  | Main views                              |
+| File                                                   | Purpose                              |
+| ------------------------------------------------------ | ------------------------------------ |
+| `litigant_portal/settings.py`                          | Django + Cotton + CSP + Chat config  |
+| `litigant_portal/app/src/main.css`                     | Tailwind v4 source + theme tokens    |
+| `litigant_portal/app/static/js/alpine.js`              | Alpine.js CSP build (debug)          |
+| `litigant_portal/app/static/js/alpine.min.js`          | Alpine.js CSP build (production)     |
+| `litigant_portal/app/static/js/components.js`          | Named Alpine.data() components       |
+| `litigant_portal/app/static/js/chat.js`                | Chat and home page Alpine components |
+| `litigant_portal/app/templates/cotton/`                | Component library (Atomic Design)    |
+| `litigant_portal/app/templates/pages/style_guide.html` | Style guide page                     |
+| `litigant_portal/app/views/`                           | Main views                           |
 
 ## Database
 
-PostgreSQL (pgvector) everywhere (local dev, Docker, production).
-
-- **Docker (dev & prod):** `pgvector/pgvector:pg17` service in `docker-compose.yml`
-- **Local dev (no Docker):** `docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres pgvector/pgvector:pg17`
-- **pgvector** is included so vector similarity search is available for future semantic/RAG features
+PostgreSQL with the **pgvector** extension. Locally it's the `pgvector/pgvector:pg17` service in `docker-compose.yml`; pgvector is included so vector similarity search is available for future semantic/RAG features.
 
 ### Reset Data (Demo Mode)
 
 ```bash
-docker compose --profile dev exec postgres psql -U postgres -d litigant_portal -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
-SECRET_KEY=dev .venv/bin/python manage.py migrate
+docker compose down -v && docker compose up
 ```
 
 ## Versioning
@@ -508,80 +457,15 @@ SECRET_KEY=dev .venv/bin/python manage.py migrate
 
 All frontend assets are local files, not CDN. Update these in sync when upgrading:
 
-| Tool         | Version            | Location                                         |
-| ------------ | ------------------ | ------------------------------------------------ |
-| Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                     |
-| Alpine.js    | 3.14.9 (CSP build) | `static/js/alpine.js`, `static/js/alpine.min.js` |
-| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose.yml, .env)  |
+| Tool         | Version            | Location                                                                                 |
+| ------------ | ------------------ | ---------------------------------------------------------------------------------------- |
+| Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                                                             |
+| Alpine.js    | 3.14.9 (CSP build) | `litigant_portal/app/static/js/alpine.js`, `litigant_portal/app/static/js/alpine.min.js` |
+| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose.yml, .env)                                          |
 
 **Updating Alpine.js (CSP build):**
 
 ```bash
-curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.js" -o static/js/alpine.js
-curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o static/js/alpine.min.js
+curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.js" -o litigant_portal/app/static/js/alpine.js
+curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o litigant_portal/app/static/js/alpine.min.js
 ```
-
-## Deployment
-
-### QA/Staging
-
-QA runs at `https://qa.litigantportal.com` on a DigitalOcean VPS. Deploys are **manual** — the `Deploy to DigitalOcean (manual)` workflow (`cd.yml`) runs on demand via Actions → Run workflow (build → push to GHCR → SSH deploy), not on merge to `main`. The box is frozen at its last deliberate deploy so churn on `main` can't break QA (#592). A separate workflow, `deploy.yml` ("Build and Push to Docker Hub"), still publishes the AWS-bound image on every merge. Uses the docker-compose prod profile. See `docs/QA-DEPLOY.md` for full setup runbook and gotchas.
-
-Manual deploy on the QA server: `make update` (pulls code + images, recreates, health-checks — and brings up the docassemble override so the `/interview/` route survives; a base-only compose `up` drops it, #558). `make docker-rebuild` is a local from-source rebuild, not the QA deploy path.
-
-### Production (Self-Hosted)
-
-Production runs on a self-hosted server with Docker Compose and Caddy for automatic HTTPS.
-
-### Server Requirements
-
-A server (VPS/droplet) with firewall allowing only:
-
-- **80** (HTTP — Caddy redirects to HTTPS)
-- **443** (HTTPS — Caddy auto-provisions via Let's Encrypt)
-- **22** (SSH)
-
-### Initial Setup
-
-```bash
-ssh user@your-server
-
-# Clone repo
-git clone https://github.com/freelawproject/litigant-portal.git /opt/litigant-portal
-cd /opt/litigant-portal
-
-# Install Docker (idempotent, supports apt/dnf/apk)
-./scripts/init-server.sh
-
-# Configure environment
-cp .env.example .env
-# Edit .env and set: DOMAIN, ALLOWED_HOSTS, OPENAI_API_KEY
-
-# Start production stack
-docker compose --profile prod up --build -d
-```
-
-### Environment Variables
-
-Set in `.env` at the project root:
-
-| Variable            | Description                             | Example               |
-| ------------------- | --------------------------------------- | --------------------- |
-| `SECRET_KEY`        | Django secret key                       | `...`                 |
-| `DOMAIN`            | Public domain (Caddy uses for HTTPS)    | `https://example.com` |
-| `ALLOWED_HOSTS`     | Django allowed hosts (matches `DOMAIN`) | `https://example.com` |
-| `OPENAI_API_KEY`    | OpenAI API key for AI chat              | `sk-...`              |
-| `POSTGRES_PASSWORD` | PostgreSQL password                     | `...`                 |
-
-### Common Commands
-
-```bash
-docker compose --profile prod logs -f          # View logs
-docker compose --profile prod exec django-prod python manage.py shell  # Django shell
-docker compose --profile prod down             # Stop stack
-docker compose --profile prod up --build -d    # Rebuild and restart
-```
-
-### Database
-
-PostgreSQL (pgvector) on Docker volumes named with the PG major version (e.g., `postgres_data_dev_pg17`). When upgrading Postgres (e.g., pg17 → pg18), update both the image tag and volume name in `docker-compose.yml` so Docker creates a fresh volume instead of failing on incompatible data files. Separate services per profile (`postgres-dev`, `postgres-prod`);
