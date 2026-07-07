@@ -195,7 +195,6 @@ else:
             "OPTIONS": {
                 **S3_CONNECTION,
                 "bucket_name": AWS_STORAGE_PRIVATE_BUCKET_NAME,
-                "default_acl": "private",
                 "querystring_auth": True,
                 "file_overwrite": False,
                 "location": "media",
@@ -207,7 +206,6 @@ else:
                 **S3_CONNECTION,
                 "bucket_name": AWS_STORAGE_PUBLIC_BUCKET_NAME,
                 "custom_domain": AWS_S3_PUBLIC_CUSTOM_DOMAIN,
-                "default_acl": "public-read",
                 "querystring_auth": False,
                 "file_overwrite": False,
                 "location": "media",
@@ -219,7 +217,6 @@ else:
                 **S3_CONNECTION,
                 "bucket_name": AWS_STORAGE_PUBLIC_BUCKET_NAME,
                 "custom_domain": AWS_S3_PUBLIC_CUSTOM_DOMAIN,
-                "default_acl": "public-read",
                 "querystring_auth": False,
                 "location": "static",
             },
