@@ -19,20 +19,19 @@ class SitePasswordMiddleware:
 
     def __call__(self, request):
         password = settings.SITE_PASSWORD
+        exempt = tuple(
+            p for p in (settings.STATIC_URL, settings.MEDIA_URL, "/api/") if p
+        )
         if (
             not password
             or request.session.get(self.SESSION_KEY)
-            or request.path.startswith(
-                (settings.STATIC_URL, settings.MEDIA_URL, "/api/")
-            )
+            or request.path.startswith(exempt)
         ):
             return self.get_response(request)
-        # This runs before CsrfViewMiddleware's view check, so the POST needs
-        # no CSRF token.
         if request.method == "POST" and "site_password" in request.POST:
             if request.POST["site_password"] == password:
                 request.session[self.SESSION_KEY] = True
-                return redirect(request.path)
+                return redirect(request.get_full_path())
             return render(
                 request, "site_password.html", {"error": True}, status=401
             )
