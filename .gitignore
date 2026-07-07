@@ -177,3 +177,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Court-partner corpus source docs — local archive only (see corpus-sources/README.md)
+/corpus-sources/*
+!/corpus-sources/README.md
