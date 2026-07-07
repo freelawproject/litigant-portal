@@ -29,6 +29,10 @@ APP_BUILD_TIME = datetime.now().strftime("%Y/%m/%d %H:%M")
 
 SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
 
+# Temporary site-wide password gate; empty disables it. See
+# SitePasswordMiddleware.
+SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
+
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
@@ -57,6 +61,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "csp.middleware.CSPMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "litigant_portal.app.middleware.SitePasswordMiddleware",
     "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -338,5 +343,5 @@ DEFAULT_CHAT_AGENT = os.environ.get(
     "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
 )
 CHAT_MODEL = os.environ.get(
-    "CHAT_MODEL", "bedrock/anthropic.claude-3-sonnet-20240229-v1:0"
+    "CHAT_MODEL", "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
 )
