@@ -25,6 +25,7 @@ app_patterns = [
     ),
     path("chat/", pages.chat_page, name="chat"),
     path("chat-v2/", pages.chat_v2_view, name="chat_v2"),
+    path("set-court/", pages.set_court, name="set_court"),
     path("chat/action-plan/", endpoints.action_plan, name="action_plan"),
     path("style-guide/", pages.style_guide, name="style_guide"),
     # Agent testing

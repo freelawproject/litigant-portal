@@ -194,6 +194,10 @@ def topic_detail(request, slug):
 
 def chat_page(request):
     """Chat page - AI-powered legal assistance chat interface."""
+    from litigant_portal.app.court_context import (
+        get_active_court,
+        set_active_court,
+    )
     from litigant_portal.prompts import get_court_name, is_known_court
 
     slug = request.GET.get("topic", "").strip()
@@ -205,9 +209,17 @@ def chat_page(request):
             lines.append(f"{section['heading']}: {section['body']}")
         topic_context = "\n".join(lines)
 
-    court_slug = request.GET.get("court", "").strip().lower()
-    if court_slug and not is_known_court(court_slug):
-        court_slug = ""
+    # Active court comes from the session (demo switcher, #632). An explicit,
+    # valid ?court= (deep-link path) overrides and persists it, so the chosen
+    # court sticks across navigation instead of living only in the URL.
+    court_slug = get_active_court(request)
+    param_court = request.GET.get("court", "").strip().lower()
+    if (
+        param_court
+        and is_known_court(param_court)
+        and param_court != court_slug
+    ):
+        court_slug = set_active_court(request, param_court)
 
     return render(
         request,
@@ -220,6 +232,33 @@ def chat_page(request):
             "court_name": get_court_name(court_slug),
         },
     )
+
+
+def set_court(request):
+    """Demo court switcher: set the session's active court, then redirect back.
+
+    Dev/QA only (#632) — hidden and inert in production, where the court comes
+    from a per-court config object rather than a user switcher. POST only; a
+    blank / unknown court clears the selection (the generic, no-court option).
+    """
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    from litigant_portal.app.court_context import (
+        set_active_court,
+        switcher_enabled,
+    )
+
+    if not switcher_enabled() or request.method != "POST":
+        raise Http404()
+
+    set_active_court(request, request.POST.get("court", ""))
+
+    nxt = request.POST.get("next", "")
+    if url_has_allowed_host_and_scheme(
+        nxt, allowed_hosts={request.get_host()}
+    ):
+        return redirect(nxt)
+    return redirect("pages:home")
 
 
 def chat_v2_view(request):

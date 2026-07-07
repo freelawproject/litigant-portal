@@ -603,17 +603,25 @@ class ChatPageCourtTests(TestCase):
         self.assertEqual(response.context["court_name"], "")
 
     def test_court_name_rendered_in_subheader(self):
-        """Template renders the court-branding eyebrow when court_name is set."""
+        """Template renders the court-branding eyebrow when court_name is set.
+
+        Asserts the eyebrow element itself (``court-branding``), not the raw
+        court name — the name also appears as an option in the dev court
+        switcher, so a bare string match would pass vacuously.
+        """
         response = self.client.get(
             "/chat/?topic=adult_name_change&court=north-dakota"
         )
-        self.assertContains(response, "North Dakota Courts")
+        self.assertContains(response, "court-branding")
 
     def test_court_name_absent_when_no_court(self):
-        """Template does not render the eyebrow when no court is set."""
+        """Template does not render the eyebrow when no court is set.
+
+        Targets the ``court-branding`` eyebrow rather than the court name,
+        which the dev court switcher lists as a dropdown option regardless.
+        """
         response = self.client.get("/chat/?topic=eviction")
-        self.assertNotContains(response, "North Dakota Courts")
-        self.assertNotContains(response, "DuPage County Circuit Court")
+        self.assertNotContains(response, "court-branding")
 
 
 # =============================================================================

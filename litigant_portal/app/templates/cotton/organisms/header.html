@@ -60,6 +60,24 @@
                class="absolute right-0 mt-2 w-max bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
                role="menu"
                aria-orientation="vertical">
+            {% if court_switcher_enabled and available_courts %}
+              {# Demo court switcher (#632) — dev/QA only; sets the session's #}
+              {# active court. Native form so it works without the menu's JS. #}
+              <form method="post" action="{% url 'pages:set_court' %}" class="border-b border-greyscale-200 px-4 py-3" role="none">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+                <label for="court-switcher" class="block text-xs font-semibold text-greyscale-400 mb-1">{% trans "Active court" %}</label>
+                <div class="flex items-center gap-2">
+                  <select id="court-switcher" name="court" class="flex-1 text-sm border border-greyscale-300 rounded-md px-2 py-1 bg-white">
+                    <option value="">{% trans "Generic (no court)" %}</option>
+                    {% for c in available_courts %}
+                      <option value="{{ c.slug }}" {% if c.slug == active_court %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <button type="submit" class="text-sm font-medium text-primary-600 hover:text-primary-700 px-2 py-1">{% trans "Switch" %}</button>
+                </div>
+              </form>
+            {% endif %}
             <button type="button" x-on:click="resetDemo" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
               <c-atoms.icon name="arrow-path" class="w-5 h-5 text-greyscale-500" />
               {% trans "Reset Demo" %}
