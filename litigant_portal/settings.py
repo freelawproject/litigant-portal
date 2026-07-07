@@ -168,15 +168,15 @@ MEDIA_ROOT = BASE_DIR / "app" / "media"
 S3_CONNECTION = {
     "access_key": os.environ.get("AWS_ACCESS_KEY_ID", ""),
     "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-    "region_name": os.environ.get("AWS_S3_REGION_NAME", "us-east-1"),
+    "region_name": os.environ.get("AWS_S3_REGION_NAME", "us-west-2"),
     "endpoint_url": os.environ.get("AWS_S3_ENDPOINT_URL") or None,
     "url_protocol": os.environ.get("AWS_S3_URL_PROTOCOL", "https:"),
 }
 AWS_STORAGE_PRIVATE_BUCKET_NAME = os.environ.get(
-    "AWS_STORAGE_PRIVATE_BUCKET_NAME", "litigant-portal-private"
+    "AWS_STORAGE_PRIVATE_BUCKET_NAME", "litigantportal-private-storage"
 )
 AWS_STORAGE_PUBLIC_BUCKET_NAME = os.environ.get(
-    "AWS_STORAGE_PUBLIC_BUCKET_NAME", "litigant-portal-public"
+    "AWS_STORAGE_PUBLIC_BUCKET_NAME", "litigantportal-storage"
 )
 AWS_S3_PUBLIC_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN") or None
 
@@ -195,7 +195,6 @@ else:
             "OPTIONS": {
                 **S3_CONNECTION,
                 "bucket_name": AWS_STORAGE_PRIVATE_BUCKET_NAME,
-                "default_acl": "private",
                 "querystring_auth": True,
                 "file_overwrite": False,
                 "location": "media",
@@ -207,7 +206,6 @@ else:
                 **S3_CONNECTION,
                 "bucket_name": AWS_STORAGE_PUBLIC_BUCKET_NAME,
                 "custom_domain": AWS_S3_PUBLIC_CUSTOM_DOMAIN,
-                "default_acl": "public-read",
                 "querystring_auth": False,
                 "file_overwrite": False,
                 "location": "media",
@@ -219,7 +217,6 @@ else:
                 **S3_CONNECTION,
                 "bucket_name": AWS_STORAGE_PUBLIC_BUCKET_NAME,
                 "custom_domain": AWS_S3_PUBLIC_CUSTOM_DOMAIN,
-                "default_acl": "public-read",
                 "querystring_auth": False,
                 "location": "static",
             },
