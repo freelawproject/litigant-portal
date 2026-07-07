@@ -37,15 +37,12 @@ services:
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
       # AI Chat configuration
       - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_MODEL=openai/gpt-4o-mini
+      - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SITE_PASSWORD=${SITE_PASSWORD}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_S3_REGION_NAME=${AWS_S3_REGION_NAME:-us-east-1}
-      - AWS_S3_ENDPOINT_URL=${AWS_S3_ENDPOINT_URL:-}
-      - AWS_S3_CUSTOM_DOMAIN=${AWS_S3_CUSTOM_DOMAIN:-}
-      - AWS_STORAGE_PUBLIC_BUCKET_NAME=${AWS_STORAGE_PUBLIC_BUCKET_NAME}
-      - AWS_STORAGE_PRIVATE_BUCKET_NAME=${AWS_STORAGE_PRIVATE_BUCKET_NAME}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
     volumes:
       - ./litigant_portal:/app/litigant_portal
     stdin_open: true
