@@ -5,10 +5,11 @@
 # The court links to this flow directly for last-name changes; the waiver
 # track (first/middle only) is a separate flow — adult-name-change-waiver.yml.
 #
-# Content drawn from public ND sources already in the repo (the ND court/topic
-# prompts + name-change planning log, sourced from ndcourts.gov). Unverified
-# contact specifics (phone numbers, form-PDF links) are omitted pending a
-# primary-source pass (#495). Not yet legal-reviewed; #509 seeds it.
+# Content verified against the official ND Legal Self Help Center source docs
+# (Instructions for a Name Change (Adult), Residency, Publication, Criminal
+# History) — see #614. Contact phone/email confirmed; form-PDF links not yet
+# re-verified. Publication-waiver scope (#615) and objection/declaration
+# details (#616) still pending legal review.
 
 metadata:
   court: north-dakota
@@ -30,7 +31,17 @@ contacts:
   - id: legal_aid
     name: 'Legal Services of North Dakota'
     phone: '(800) 634-5263'
-    note: 'Free civil legal help for North Dakotans who qualify by income — useful if your name change touches a divorce or other family-law matter. This line is for filers under 60; if you are 60 or older, call (866) 621-9886.'
+    url: 'https://lsnd.org'
+    note: 'Free civil legal help for North Dakotans who qualify by income — useful if your name change touches a divorce or other family-law matter. They can also screen you for the Volunteer Lawyers low-cost program.'
+  - id: dakota_plains
+    name: 'Dakota Plains Legal Services'
+    url: 'https://www.dpls.org'
+    note: 'Free legal assistance for low-income individuals, older Americans, veterans, and nine tribal nations across North and South Dakota.'
+  - id: state_bar_referral
+    name: 'State Bar Association of North Dakota — Lawyer Referral'
+    phone: '(866) 450-9579'
+    url: 'https://www.sband.org'
+    note: 'Matches you with a lawyer for paid legal services. Ask about limited (unbundled) representation — hiring a lawyer for just part of your case, like reviewing your paperwork, while you handle the rest.'
 
 deadlines:
   - id: publication_wait
@@ -44,6 +55,18 @@ resources:
     label: 'North Dakota name-change guidance and forms'
     url: 'https://www.ndcourts.gov/legal-self-help/name-change-adult'
     note: "The court's official adult name-change page — process overview and the source for every form in your packet."
+  - id: fee_waiver
+    label: 'Filing-fee waiver forms'
+    url: 'https://www.ndcourts.gov/legal-self-help/fee-waiver'
+    note: 'If you cannot afford the $160 filing fee, file these forms at the same time as your name-change documents to ask the judge to waive it.'
+  - id: criminal_history_check
+    label: 'Criminal history record check (edo.cjis.gov)'
+    url: 'https://www.edo.cjis.gov'
+    note: 'If the judge requires a background check, request it here. You pay the cost, and it can take weeks — ask the clerk early.'
+  - id: nd_free_legal_answers
+    label: 'North Dakota Free Legal Answers'
+    url: 'https://nd.freelegalanswers.org'
+    note: 'Ask a civil legal question online for free; volunteer lawyers answer if you qualify by income. Not for criminal questions.'
 
 sections:
   - kind: info
@@ -74,6 +97,37 @@ sections:
       A name change cannot be used to defraud anyone or to evade a legal
       obligation (for example, debts or a criminal record). These are conditions
       you confirm on the forms — not something you have to explain to anyone here.
+
+  - kind: info
+    id: costs
+    heading: 'What it costs'
+    body: |
+      The filing fee is $160. If you cannot afford it, you can file fee-waiver
+      forms at the same time asking the judge to waive the fee — the fee-waiver
+      link is in your resources below.
+
+      Two other costs can come up later: if the judge requires a criminal-history
+      background check, you pay for it; and certified copies of your final Order
+      cost $10 for the first copy and $5 for each additional copy requested at
+      the same time.
+
+  - kind: info
+    id: criminal_history
+    heading: 'The criminal-history check'
+    body: |
+      Before granting a name change, the judge has to determine whether you have
+      a criminal record. Some judges require every adult filer to get a statewide
+      or national criminal-history background check; others decide after reviewing
+      your petition. Call the clerk before you file to ask which applies in your
+      county — the check can take weeks, so it is worth starting early.
+
+      If the judge requires one, you request it at edo.cjis.gov and pay the cost
+      yourself.
+
+      If you have a felony conviction, North Dakota law assumes a name-change
+      request is made in bad faith. A judge may still grant it, but you would need
+      to show by clear and convincing evidence that your request is made in good
+      faith and not to defraud, mislead, injure anyone, or compromise public safety.
 
   - kind: fact_gather
     id: your_details
@@ -171,6 +225,8 @@ sections:
       - clerk
       - self_help
       - legal_aid
+      - dakota_plains
+      - state_bar_referral
 
   - kind: output
     output_type: resources
@@ -178,6 +234,9 @@ sections:
     heading: 'Official North Dakota resources'
     resource_ids:
       - nd_name_change_guidance
+      - fee_waiver
+      - criminal_history_check
+      - nd_free_legal_answers
 
   - kind: info
     id: after_order
