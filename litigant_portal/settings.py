@@ -178,7 +178,10 @@ AWS_STORAGE_PRIVATE_BUCKET_NAME = os.environ.get(
 AWS_STORAGE_PUBLIC_BUCKET_NAME = os.environ.get(
     "AWS_STORAGE_PUBLIC_BUCKET_NAME", "litigantportal-storage"
 )
-AWS_S3_PUBLIC_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN") or None
+# Temporarily disable public domain until DNS is configured
+AWS_S3_PUBLIC_CUSTOM_DOMAIN = (
+    None  # os.environ.get("AWS_S3_CUSTOM_DOMAIN") or None
+)
 
 if DEBUG:
     STORAGES = {
