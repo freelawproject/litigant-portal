@@ -1,0 +1,261 @@
+{% load i18n %}
+
+{# Case briefcase content — error alert, empty state, and full case display. #}
+{# Binds to homePage Alpine state; rendered in the desktop case-sidebar AND the mobile drawer. #}
+{% trans "Deadlines" as deadlines_heading %}
+{% trans "Other Dates" as other_dates_heading %}
+{% trans "Your Rights & Defenses" as rights_heading %}
+{% trans "Possible Next Steps" as next_steps_heading %}
+{% trans "Resources" as resources_heading %}
+{# Clear-failed error — surfaced when archive request fails so case isn't silently wiped. #}
+{# c-atoms.alert hardcodes role="alert"; no extra aria-live wrapper needed. #}
+<div x-show="caseInfoError" x-cloak>
+  <c-atoms.alert variant="danger" class="text-sm">
+    <span x-text="caseInfoError"></span>
+  </c-atoms.alert>
+</div>
+{# Empty state #}
+<div x-show="noCaseInfo" class="text-center py-8 px-4">
+  <div class="w-10 h-10 rounded-lg bg-primary-50 flex items-center justify-center mx-auto mb-3">
+    <c-atoms.icon name="folder-open" class="w-5 h-5 text-primary-300" />
+  </div>
+  <p class="text-sm font-medium text-greyscale-600 mb-2">{% trans "Your case details" %}</p>
+  <p class="text-xs text-greyscale-400">
+    {% trans "Answer a few questions below and I'll fill this in as we go." %}
+  </p>
+</div>
+{# Case info display #}
+<div x-show="caseInfo" x-cloak x-bind:class="sidebarFlash" class="p-4 space-y-4">
+  {# Case type header #}
+  <div class="border-b border-greyscale-200 pb-3">
+    <div class="flex items-center justify-between gap-2">
+      <h3 class="text-sm font-semibold text-greyscale-900" x-text="caseTitle"></h3>
+      <span
+        x-show="isCaseResolved"
+        x-cloak
+        class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700"
+      >
+        <c-atoms.icon name="check-circle" class="w-3 h-3" />
+        {% trans "Resolved" %}
+      </span>
+    </div>
+    <p class="text-xs text-greyscale-500 mt-1"
+       x-show="hasCaseNumber"
+       x-text="caseNumber"></p>
+  </div>
+  {# Court info #}
+  <div x-show="showCourtSection" class="space-y-1">
+    <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Court" %}</h4>
+    <p class="text-sm text-greyscale-700" x-text="courtName"></p>
+    <p x-show="courtCounty"
+       class="text-xs text-greyscale-500"
+       x-text="courtCounty"></p>
+    <p x-show="courtAddress"
+       class="text-xs text-greyscale-600"
+       x-text="courtAddress"></p>
+    <p x-show="courtPhone" class="text-xs text-greyscale-600">
+      <a x-bind:href="courtPhoneHref"
+         class="text-primary-600 hover:underline"
+         x-text="courtPhone"></a>
+    </p>
+    <p x-show="courtEmail" class="text-xs text-greyscale-600">
+      <a x-bind:href="courtEmailHref"
+         class="text-primary-600 hover:underline"
+         x-text="courtEmail"></a>
+    </p>
+  </div>
+  {# Opposing Party #}
+  <div x-show="opposingParty" class="space-y-1">
+    <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Opposing Party" %}</h4>
+    <p class="text-sm text-greyscale-700" x-text="opposingParty"></p>
+    <p x-show="opposingAddress"
+       class="text-xs text-greyscale-600"
+       x-text="opposingAddress"></p>
+    <p x-show="opposingPhone" class="text-xs text-greyscale-600">
+      <a x-bind:href="opposingPhoneHref"
+         class="text-primary-600 hover:underline"
+         x-text="opposingPhone"></a>
+    </p>
+    <p x-show="opposingEmail" class="text-xs text-greyscale-600">
+      <a x-bind:href="opposingEmailHref"
+         class="text-primary-600 hover:underline"
+         x-text="opposingEmail"></a>
+    </p>
+    <p x-show="opposingWebsite" class="text-xs text-greyscale-600">
+      <a x-bind:href="opposingWebsite"
+         target="_blank"
+         rel="noopener"
+         class="text-primary-600 hover:underline"
+         x-text="opposingWebsite"></a>
+    </p>
+  </div>
+  {# Attorney (if represented) #}
+  <div x-show="attorneyName" class="space-y-1">
+    <h4 class="text-xs font-medium text-greyscale-500 uppercase tracking-wide">{% trans "Their Attorney" %}</h4>
+    <p class="text-sm text-greyscale-700" x-text="attorneyName"></p>
+    <p x-show="attorneyPhone" class="text-xs text-greyscale-600">
+      <a x-bind:href="attorneyPhoneHref"
+         class="text-primary-600 hover:underline"
+         x-text="attorneyPhone"></a>
+    </p>
+    <p x-show="attorneyEmail" class="text-xs text-greyscale-600">
+      <a x-bind:href="attorneyEmailHref"
+         class="text-primary-600 hover:underline"
+         x-text="attorneyEmail"></a>
+    </p>
+  </div>
+  {# Key deadlines #}
+  <template x-if="hasDeadlines">
+    <c-molecules.sidebar-section title="{{ deadlines_heading }}">
+      <template x-for="deadline in deadlines" :key="deadline.id">
+        <c-molecules.deadline-card variant="urgent">
+          <div class="flex items-start justify-between gap-1">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-red-700" x-text="deadline.date"></p>
+              <p class="text-xs text-red-600 truncate" x-text="deadline.label"></p>
+            </div>
+            <button
+              type="button"
+              x-bind:data-deadline-id="deadline.id"
+              x-on:click="toggleDeadlineReminder"
+              x-bind:title="deadline.reminderTitle"
+              class="flex-shrink-0 p-0.5 rounded hover:bg-red-100"
+            >
+              <template x-if="deadline.hasReminder">
+                <c-atoms.icon name="bell-alert" style="solid" class="w-3.5 h-3.5 text-red-600" />
+              </template>
+              <template x-if="deadline.noReminder">
+                <c-atoms.icon name="bell" class="w-3.5 h-3.5 text-red-400" />
+              </template>
+            </button>
+          </div>
+        </c-molecules.deadline-card>
+      </template>
+    </c-molecules.sidebar-section>
+  </template>
+  {# Other dates #}
+  <template x-if="hasOtherDates">
+    <c-molecules.sidebar-section title="{{ other_dates_heading }}">
+      <template x-for="date in otherDates" :key="date.label">
+        <c-molecules.deadline-card>
+          <p class="text-sm text-greyscale-700" x-text="date.date"></p>
+          <p class="text-xs text-greyscale-500 truncate" x-text="date.label"></p>
+        </c-molecules.deadline-card>
+      </template>
+    </c-molecules.sidebar-section>
+  </template>
+  {# Action plan — spotted issues #}
+  <template x-if="hasSpottedIssues">
+    <c-molecules.sidebar-section title="{{ rights_heading }}">
+      <template x-for="issue in spottedIssues" :key="issue.title">
+        <div class="flex items-start gap-2 p-2 bg-blue-50 border border-blue-100 rounded-lg">
+          <c-atoms.icon name="shield-check" class="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-blue-800" x-text="issue.title"></p>
+            <p x-show="issue.description"
+               class="text-xs text-blue-600 mt-0.5"
+               x-text="issue.description"></p>
+            <p x-show="issue.statute"
+               class="text-xs text-blue-400 mt-0.5"
+               x-text="issue.statute"></p>
+          </div>
+        </div>
+      </template>
+    </c-molecules.sidebar-section>
+  </template>
+  {# Action plan — action items #}
+  <template x-if="hasActionItems">
+    <c-molecules.sidebar-section title="{{ next_steps_heading }}">
+      <template x-for="item in actionItems" :key="item.id">
+        <c-molecules.action-item
+          x-bind:class="item.bgClass"
+          x-bind:data-item-id="item.id"
+          x-on:click="toggleActionItem"
+          role="checkbox"
+          tabindex="0"
+          x-bind:aria-checked="item.isCompleted"
+          class="cursor-pointer"
+        >
+          <template x-if="item.isCompleted">
+            <c-atoms.icon name="check-circle" style="solid" class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+          </template>
+          <template x-if="item.isUrgentOpen">
+            <span class="flex-shrink-0 mt-0.5">
+              <c-atoms.icon name="exclamation-triangle" style="solid" class="w-4 h-4 text-red-500" />
+              <span class="sr-only">{% trans "Urgent" %}</span>
+            </span>
+          </template>
+          <template x-if="item.isNormalOpen">
+            <div class="w-4 h-4 rounded-full border-2 flex-shrink-0 mt-0.5"
+                 x-bind:class="item.borderClass"></div>
+          </template>
+          <div class="min-w-0">
+            <p class="text-sm font-medium"
+               x-bind:class="item.titleClass"
+               x-text="item.title"></p>
+            <p x-show="item.description"
+               class="text-xs mt-0.5"
+               x-bind:class="item.descClass"
+               x-text="item.description"></p>
+            <p x-show="item.deadline"
+               class="text-xs mt-0.5"
+               x-bind:class="item.dateClass">
+              <c-atoms.icon name="clock" class="w-3 h-3 inline -mt-0.5 mr-0.5" />
+              <span x-text="item.deadline"></span>
+            </p>
+          </div>
+        </c-molecules.action-item>
+      </template>
+    </c-molecules.sidebar-section>
+  </template>
+  {# Action plan — resources #}
+  <template x-if="hasResources">
+    <c-molecules.sidebar-section title="{{ resources_heading }}">
+      <template x-for="resource in resources" :key="resource.title">
+        <div class="flex items-start gap-2 p-2 bg-green-50 border border-green-100 rounded-lg">
+          <c-atoms.icon name="link" class="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+          <div class="min-w-0">
+            <p class="text-sm font-medium text-green-800" x-text="resource.title"></p>
+            <p x-show="resource.description"
+               class="text-xs text-green-600 mt-0.5"
+               x-text="resource.description"></p>
+          </div>
+        </div>
+      </template>
+    </c-molecules.sidebar-section>
+  </template>
+  {# Sidebar footer — resolve, print, new case #}
+  <div class="pt-3 border-t border-greyscale-200 space-y-2">
+    {# Resolve button — active cases with action plan #}
+    <template x-if="showResolveButton">
+      <c-atoms.button
+        type="button"
+        variant="primary"
+        full_width
+        x-on:click="resolveCase"
+      >
+        <c-atoms.icon name="check-circle" class="w-4 h-4" />
+        {% trans "Mark resolved" %}
+      </c-atoms.button>
+    </template>
+    {# New case button — after resolution #}
+    <template x-if="isCaseResolved">
+      <c-atoms.button
+        type="button"
+        variant="outline"
+        full_width
+        x-on:click="clearCaseInfo"
+      >
+        <c-atoms.icon name="plus" class="w-4 h-4" />
+        {% trans "New case" %}
+      </c-atoms.button>
+    </template>
+    <a href="{% url 'pages:action_plan' %}"
+       target="_blank"
+       rel="noopener"
+       class="flex items-center gap-2 text-xs font-medium text-primary-600 hover:text-primary-700 hover:underline">
+      <c-atoms.icon name="printer" class="w-4 h-4" />
+      {% trans "Printable summary" %}
+    </a>
+  </div>
+</div>

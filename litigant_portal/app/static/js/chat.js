@@ -449,6 +449,9 @@ function createHomePage() {
     // --- Timeline state ---
     caseTimeline: [],
 
+    // --- Mobile case drawer state ---
+    casePanelOpen: false,
+
     // --- Sidebar flash state ---
     _sidebarFlash: false,
 
@@ -630,6 +633,42 @@ function createHomePage() {
     },
     get noTimeline() {
       return this.caseTimeline.length === 0
+    },
+    get timelineCount() {
+      return this.caseTimeline.length
+    },
+
+    // --- Mobile case drawer (dialog a11y: focus in, trap, escape, focus out) ---
+    openCasePanel() {
+      this.casePanelOpen = true
+      document.body.classList.add('overflow-hidden')
+      this.$nextTick(() => {
+        if (this.$refs.casePanelClose) this.$refs.casePanelClose.focus()
+      })
+    },
+    closeCasePanel() {
+      if (!this.casePanelOpen) return
+      this.casePanelOpen = false
+      document.body.classList.remove('overflow-hidden')
+      if (this.$refs.casePanelTrigger) this.$refs.casePanelTrigger.focus()
+    },
+    casePanelKeydown(event) {
+      if (event.key !== 'Tab' || !this.$refs.casePanel) return
+      const focusables = Array.from(
+        this.$refs.casePanel.querySelectorAll(
+          'button:not([disabled]), a[href], summary, input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => el.offsetParent !== null)
+      if (!focusables.length) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     },
 
     // Case status
