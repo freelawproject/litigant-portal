@@ -20,7 +20,9 @@
        data-agent-name="{{ agent_name|default:'' }}"
        data-topic-slug="{{ topic_slug|default:'' }}"
        data-court-slug="{{ court_slug|default:'' }}"
-       class="flex-1 flex flex-row min-h-0">
+       x-on:touchstart.passive="chatTouchStart"
+       x-on:touchend.passive="chatTouchEnd"
+       class="relative flex-1 flex flex-row min-h-0">
     {# Hidden file input for PDF upload #}
     <input type="file"
            x-ref="fileInput"
@@ -276,10 +278,11 @@
         <c-organisms.activity-timeline />
       </c-organisms.activity-panel>
     </div>
-    {# Mobile drawer — same case + activity state as the desktop columns, overlay below lg #}
+    {# Mobile drawer — same case + activity state as the desktop columns. Overlays the content #}
+    {# area only (root is relative), so the site nav stays visible and interactive: non-modal. #}
     <div x-show="casePanelOpen"
          x-cloak
-         class="lg:hidden fixed inset-0 z-50"
+         class="lg:hidden absolute inset-0 z-30 overflow-hidden"
          x-on:keydown.escape.window="closeCasePanel">
       {# Backdrop — click closes #}
       <div class="absolute inset-0 bg-greyscale-900/50"
@@ -289,11 +292,8 @@
       {% trans "Close case details" as drawer_close_label %}
       <div id="case-drawer"
            role="dialog"
-           aria-modal="true"
            aria-label="{{ drawer_label }}"
-           x-ref="casePanel"
-           x-on:keydown="casePanelKeydown"
-           class="absolute inset-y-0 right-0 w-5/6 max-w-sm bg-white shadow-xl flex flex-col">
+           class="drawer-panel absolute inset-y-0 right-0 w-5/6 max-w-sm bg-white shadow-xl flex flex-col">
         {# Drawer header — mirrors the case-sidebar shell header + close #}
         <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-greyscale-200">
           <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Your Case" %}</h2>
