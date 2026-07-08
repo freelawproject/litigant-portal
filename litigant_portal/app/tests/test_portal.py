@@ -82,6 +82,29 @@ class ChatPageTests(TestCase):
         self.assertContains(response, "isUrgentOpen")
         self.assertContains(response, "exclamation-triangle")
 
+    def test_chat_page_flow_tracks_for_topic_with_corpus(self):
+        """Topic with a real corpus gets its track links in context (#633).
+
+        Omni-court: the topic resolves the court, so adult_name_change
+        surfaces the ND standard + waiver tracks and the page renders
+        env-relative flow URLs.
+        """
+        response = self.client.get("/chat/?topic=adult_name_change")
+        tracks = response.context["flow_tracks"]
+        self.assertEqual([t["role"] for t in tracks], ["standard", "waiver"])
+        self.assertContains(
+            response, "/t/north-dakota/adult-name-change/standard/"
+        )
+
+    def test_chat_page_no_topic_has_no_flow_tracks(self):
+        response = self.client.get("/chat/")
+        self.assertEqual(response.context["flow_tracks"], [])
+
+    def test_chat_page_topic_without_corpus_has_no_flow_tracks(self):
+        """A topic with no authored corpus renders chat-only, no links."""
+        response = self.client.get("/chat/?topic=eviction")
+        self.assertEqual(response.context["flow_tracks"], [])
+
 
 # =============================================================================
 # Auth Template Tests

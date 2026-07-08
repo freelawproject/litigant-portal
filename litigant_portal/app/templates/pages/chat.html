@@ -65,6 +65,7 @@
     {# Left column — sidebar, ~20% #}
     <div class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 overflow-y-auto">
       <c-organisms.case-sidebar class="h-full">
+        <c-molecules.flow-links :tracks="flow_tracks" />
         <c-organisms.case-sidebar-content />
       </c-organisms.case-sidebar>
     </div>
@@ -296,8 +297,9 @@
             <c-atoms.icon name="x-mark" class="w-5 h-5" />
           </c-atoms.button>
         </div>
-        {# Scrollable body — case content + collapsed activity section #}
+        {# Scrollable body — flow links + case content + collapsed activity section #}
         <div class="flex-1 overflow-y-auto p-4 space-y-6">
+          <c-molecules.flow-links :tracks="flow_tracks" />
           <c-organisms.case-sidebar-content />
           <details class="group border-t border-greyscale-200 pt-3">
             <summary class="flex items-center gap-2 cursor-pointer text-xs font-semibold uppercase tracking-wider text-greyscale-400">

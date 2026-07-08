@@ -218,6 +218,8 @@ def chat_page(request):
             "topic_context": topic_context,
             "court_slug": court_slug,
             "court_name": get_court_name(court_slug),
+            # Omni-court: the topic resolves its court's guided-flow tracks.
+            "flow_tracks": registry.tracks_for(slug) if topic else [],
         },
     )
 
