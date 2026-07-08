@@ -60,9 +60,11 @@
                class="absolute right-0 mt-2 w-max bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
                role="menu"
                aria-orientation="vertical">
+            {# User-language label: it erases chat + case and reloads. When a prod #}
+            {# site menu lands (#120), this item rides into it for real users. #}
             <button type="button" x-on:click="resetDemo" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
               <c-atoms.icon name="arrow-path" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Reset Demo" %}
+              {% trans "Start over" %}
             </button>
             <a href="{% url 'pages:topic_flow' court='north-dakota' topic='adult-name-change' role='standard' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
               <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
