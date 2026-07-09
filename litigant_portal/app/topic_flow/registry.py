@@ -66,6 +66,28 @@ class CorpusRegistry:
         self.load()
         return list(self._index)
 
+    def tracks_for(self, topic: str) -> list[dict]:
+        """Track links for a chat topic — omni-court: the topic resolves the court.
+
+        Bridges chat topic slugs (``adult_name_change``) to corpus topic slugs
+        (``adult-name-change``) by normalizing both sides to dashes. Returns one
+        entry per ``(court, role)`` with the fields templates need to render a
+        flow link; empty list when no corpus matches the topic.
+        """
+        self.load()
+        wanted = topic.strip().lower().replace("_", "-")
+        return [
+            {
+                "court": court,
+                "topic": corpus_topic,
+                "role": role,
+                "label": role.replace("-", " ").replace("_", " ").title(),
+                "title": corpus.metadata.title,
+            }
+            for (court, corpus_topic, role), corpus in self._index.items()
+            if corpus_topic.replace("_", "-") == wanted
+        ]
+
 
 # Module-level default over the repo's content/ directory.
 registry = CorpusRegistry()

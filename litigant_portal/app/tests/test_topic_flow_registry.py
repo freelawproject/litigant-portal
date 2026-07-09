@@ -83,3 +83,47 @@ def test_check_passes_for_distinct_keys(tmp_path, monkeypatch):
         checks, "iter_corpus_paths", lambda _dir: [first, second]
     )
     assert checks.check_corpora(None) == []
+
+
+# --- tracks_for: omni-court topic → track links (chat handoff, #633) ---
+
+
+def test_tracks_for_bridges_chat_underscore_slug(tmp_path):
+    # Chat topics use underscores (adult_name_change); corpora may use either.
+    (tmp_path / "real.yml").write_text(VALID)
+    registry = CorpusRegistry(content_dir=tmp_path)
+    tracks = registry.tracks_for("test_topic")
+    assert [(t["court"], t["topic"], t["role"]) for t in tracks] == [
+        FIXTURE_KEY
+    ]
+
+
+def test_tracks_for_normalizes_both_sides(tmp_path):
+    # Dashed chat slug must match an underscored corpus topic too.
+    (tmp_path / "real.yml").write_text(VALID)
+    registry = CorpusRegistry(content_dir=tmp_path)
+    assert registry.tracks_for("test-topic") != []
+
+
+def test_tracks_for_unknown_topic_returns_empty(tmp_path):
+    (tmp_path / "real.yml").write_text(VALID)
+    registry = CorpusRegistry(content_dir=tmp_path)
+    assert registry.tracks_for("eviction") == []
+
+
+def test_tracks_for_carries_label_and_title(tmp_path):
+    (tmp_path / "real.yml").write_text(VALID)
+    registry = CorpusRegistry(content_dir=tmp_path)
+    track = registry.tracks_for("test_topic")[0]
+    assert track["label"] == "Petitioner"
+    assert track["title"] == registry.get(*FIXTURE_KEY).metadata.title
+
+
+def test_tracks_for_returns_all_tracks_in_file_order(tmp_path):
+    (tmp_path / "a.yml").write_text(VALID)
+    (tmp_path / "b.yml").write_text(
+        VALID.replace("role: petitioner", "role: respondent")
+    )
+    registry = CorpusRegistry(content_dir=tmp_path)
+    roles = [t["role"] for t in registry.tracks_for("test_topic")]
+    assert roles == ["petitioner", "respondent"]
