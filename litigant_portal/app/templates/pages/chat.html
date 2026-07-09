@@ -65,16 +65,6 @@
     {# Left column — sidebar, ~20% #}
     <div class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 overflow-y-auto">
       <c-organisms.case-sidebar class="h-full">
-        <c-slot name="header_actions">
-          <c-atoms.button type="button"
-                          variant="ghost"
-                          class="!p-0 text-xs text-greyscale-400 hover:text-greyscale-600"
-                          x-show="isCaseActive"
-                          x-cloak
-                          x-on:click="clearCaseInfo">
-            {% trans "Clear" %}
-          </c-atoms.button>
-        </c-slot>
         <c-organisms.case-sidebar-content />
       </c-organisms.case-sidebar>
     </div>
@@ -297,24 +287,14 @@
         {# Drawer header — mirrors the case-sidebar shell header + close #}
         <div class="flex items-center justify-between px-4 pt-4 pb-3 border-b border-greyscale-200">
           <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Your Case" %}</h2>
-          <div class="flex items-center gap-2">
-            <c-atoms.button type="button"
-                            variant="ghost"
-                            class="!p-0 text-xs text-greyscale-400 hover:text-greyscale-600"
-                            x-show="isCaseActive"
-                            x-cloak
-                            x-on:click="clearCaseInfo">
-              {% trans "Clear" %}
-            </c-atoms.button>
-            <c-atoms.button type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria_label="{{ drawer_close_label }}"
-                            x-ref="casePanelClose"
-                            x-on:click="closeCasePanel">
-              <c-atoms.icon name="x-mark" class="w-5 h-5" />
-            </c-atoms.button>
-          </div>
+          <c-atoms.button type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria_label="{{ drawer_close_label }}"
+                          x-ref="casePanelClose"
+                          x-on:click="closeCasePanel">
+            <c-atoms.icon name="x-mark" class="w-5 h-5" />
+          </c-atoms.button>
         </div>
         {# Scrollable body — case content + collapsed activity section #}
         <div class="flex-1 overflow-y-auto p-4 space-y-6">
