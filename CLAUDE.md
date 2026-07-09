@@ -221,6 +221,14 @@ Prettier adds `/>` to void HTML elements and self-closing components alike. Foll
 
 **9. Long `class` values.** Tailwind classes stay on one line inside the `class` attribute even when long — don't break a class string across lines. If the element also has many other attributes, the `class` attribute gets its own line in the multi-line format (rule 2), but the value itself stays unbroken.
 
+## Content style (user-facing copy)
+
+Rules for authoring user-facing content — corpus YAML (`litigant_portal/content/`), UI strings, and prompt layers that shape chat output:
+
+- **No em-dashes.** Use a period, comma, colon, or parentheses instead. Em-dash-heavy prose reads as AI-generated and undermines user trust (legal review, #620). Dev-facing text (code comments, docs, commit messages) is exempt.
+- **Corpus info bodies: one line per paragraph.** The renderer pipes `body` through Django's `linebreaks`, so every newline becomes a `<br>` — hard-wrapped prose breaks mid-sentence on the page. Separate paragraphs with blank lines; never wrap a paragraph across source lines.
+- **Dash-prefixed lines** (`- item`) render as visual line-broken lists (not semantic `<ul>`) until #518 adds rich text to info bodies. Links in body prose are not supported yet (#518) — route them through the corpus `resources`/`contacts` sections instead.
+
 ## Issue creation
 
 See [`docs/issue-conventions.md`](docs/issue-conventions.md) for the full label color scheme and template rationale.
