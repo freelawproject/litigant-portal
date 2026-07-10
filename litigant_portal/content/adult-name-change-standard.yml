@@ -21,7 +21,7 @@ metadata:
   court: north-dakota
   topic: adult-name-change
   role: standard
-  title: 'Adult Name Change — North Dakota (Publication Required)'
+  title: 'Adult Name Change in North Dakota (Publication Required)'
 
 contacts:
   - id: clerk
@@ -44,7 +44,7 @@ contacts:
     url: 'https://www.dpls.org'
     note: 'Free legal assistance for low-income individuals, older Americans, veterans, and nine tribal nations across North and South Dakota.'
   - id: state_bar_referral
-    name: 'State Bar Association of North Dakota — Lawyer Referral'
+    name: 'State Bar Association of North Dakota (Lawyer Referral)'
     phone: '(866) 450-9579'
     url: 'https://www.sband.org'
     note: 'Matches you with a lawyer for paid legal services. Ask about limited (unbundled) representation: hiring a lawyer for just part of your case, like reviewing your paperwork, while you handle the rest.'
@@ -190,7 +190,7 @@ sections:
     id: form_gotchas
     heading: 'Before you sign'
     body: |
-      A few things in North Dakota's process are easy to miss, and each one has a real consequence if it is:
+      A few things in North Dakota's process are easy to miss, and each one has a real consequence if it is missed:
 
       - The case number stays blank. The clerk assigns it when you file.
       - Only the judge signs the Proposed Order.
