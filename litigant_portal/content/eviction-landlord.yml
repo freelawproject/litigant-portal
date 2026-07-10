@@ -29,6 +29,10 @@ contacts:
     name: "FCMC Service Bailiff's Office"
     phone: '(614) 645-7780'
     note: 'Arranges the set out after a judgment. The clerk sends your paperwork here; call to schedule.'
+  - id: cba_referral
+    name: 'Columbus Bar Association Lawyer Referral Service'
+    phone: '(614) 221-0754'
+    note: 'The court points filers here to locate an attorney. Required if the property is owned by a corporation, LLC, or trust.'
 
 deadlines:
   - id: earliest_filing
@@ -56,7 +60,9 @@ sections:
 
       Ohio law requires the court process. Changing the locks, shutting off utilities, or removing a tenant's belongings without a court order is illegal, and a tenant can recover money from you for it. Following the process precisely also protects your case: a defective notice or a misstep on timing is a common way eviction cases fail.
 
-      Nothing on this page is legal advice. It explains the process; an attorney can help you decide whether eviction is the right step for your situation.
+      One rule to check before anything else: only the deeded property owner can sign and file an Eviction Complaint without an attorney. If the property is owned by a corporation, LLC, or trust, an attorney must handle every stage of the case, and using a power of attorney to represent someone else in court is not permitted.
+
+      Nothing on this page is legal advice. It explains the process; an attorney can help you decide whether eviction is the right step for your situation. The Columbus Bar Association Lawyer Referral Service in the contacts below can help you find one.
 
   - kind: info
     id: notice_requirements
@@ -83,9 +89,11 @@ sections:
     id: filing_and_costs
     heading: 'Filing your case and what it costs'
     body: |
-      File your Eviction Complaint with the Clerk of the Franklin County Municipal Court at 375 South High Street. The clerk's eviction FAQ, linked in the resources at the end of this page, includes the complaint forms and filing guidance.
+      File your Eviction Complaint with the Clerk of the Franklin County Municipal Court, Civil Division, 3rd floor, 375 South High Street. The court does not supply the complaint form itself; you can get one from a legal supply store, law library, or online, and it is your responsibility that it meets Ohio law.
 
-      Filing costs $128 for a single cause of action, which asks only for possession of the property. Filing costs $165 for two causes of action, which adds a money claim for back rent, unpaid utilities, or damage beyond ordinary wear and tear.
+      Bring the original complaint plus a copy of the Notice to Leave you served. If your claim is based on a written lease, a copy of the lease must be attached to the complaint (Local Rule 9(G)). Bring two additional copies of the complaint and all attachments for each tenant you are evicting, and make sure names are spelled correctly and every address is complete down to the unit number and zip code. Service problems are a common way cases get delayed.
+
+      Filing costs roughly $125 for a single cause of action, which asks only for possession, and roughly $160 for two causes of action, which adds a money claim for back rent, unpaid utilities, or damage beyond ordinary wear and tear. The court's published amounts vary slightly between documents, so confirm the current fee with the clerk before you go.
 
       The fee covers ordinary mail service plus one additional service method, bailiff service or certified mail, for up to three defendants or addresses. Additional defendants add charges under the court's fee schedule.
 
@@ -123,6 +131,7 @@ sections:
     contact_ids:
       - court_clerk
       - service_bailiff
+      - cba_referral
 
   - kind: output
     output_type: resources

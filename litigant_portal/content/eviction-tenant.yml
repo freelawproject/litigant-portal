@@ -67,6 +67,10 @@ resources:
     label: 'Franklin County Municipal Court Clerk eviction FAQ'
     url: 'https://www.fcmcclerk.com/faq/civil/evictions'
     note: "The clerk's answers about filing, service, hearing scheduling, and set outs, plus the public case search."
+  - id: fcmc_civil_forms
+    label: 'Franklin County Municipal Court civil forms'
+    url: 'https://www.fcmcclerk.com/forms/civil'
+    note: 'Court forms, including the fee waiver affidavit, a blank response form, and the application to ask that an eviction record be removed from online access.'
 
 sections:
   - kind: info
@@ -136,6 +140,8 @@ sections:
 
       If the case includes a money claim and you believe your landlord owes you money too, for example an unreturned security deposit or repairs you paid for, you can file an Answer and Counterclaim together within the same 28 days, and the court can hear all of it at once.
 
+      Filing an Answer costs nothing. A counterclaim can carry a filing fee, and if you cannot afford it, the court has a fee waiver affidavit you can file instead. After you file, the court usually schedules a pretrial hearing for the money claim, and it may set mediation before a final hearing.
+
   - kind: info
     id: at_the_hearing
     heading: 'At your hearing'
@@ -193,6 +199,7 @@ sections:
       - orc_1923
       - lasco_guides
       - fcmc_faq
+      - fcmc_civil_forms
 
   - kind: output
     output_type: summary
