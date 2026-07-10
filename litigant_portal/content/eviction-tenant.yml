@@ -1,0 +1,64 @@
+# Eviction corpus — Franklin County Municipal Court (Columbus, OH), TENANT
+# role. First corpus on the eviction vertical (#606/#607); replaces the fake
+# Jane/DuPage demo (#611 retires those pages once this reaches parity).
+#
+# SCAFFOLD STATUS: structure only. Every body below is a bracketed draft
+# marker naming the source needed. DO NOT merge until content is verified
+# against court/statute source docs (archived under
+# corpus-sources/franklin-county-oh/eviction/ per #617) and reviewed per the
+# #607 DoD. Sources to verify against:
+#   - Ohio Revised Code Chapter 1923 (forcible entry and detainer): notice
+#     requirements (1923.04), timelines, hearing rules
+#   - Franklin County Municipal Court self-help / eviction pages (fcmcclerk.com)
+#   - Legal Aid Society of Columbus tenant guides (defenses, court process)
+#
+# fact_gather and deadlines are deliberately absent until sources confirm
+# which date drives which deadline (#621: collect only what a page uses).
+# Candidate: hearing_date or notice_date once ORC 1923 timing is verified.
+#
+# Known gap, deliberate: the flow URL /t/franklin-county-oh/eviction/tenant/
+# resolves from this corpus alone, but the chat deep-link
+# /t/franklin-county-oh/eviction/ 404s until courts/franklin-county-oh/
+# prompt.md exists (chat-side court content; needs the same sources, #373).
+#
+# Authoring style (per #620/#646): no em-dashes in user-facing copy; body
+# paragraphs are ONE line each (the renderer turns every newline into <br>);
+# never label resources or forms "official".
+
+metadata:
+  court: franklin-county-oh
+  topic: eviction
+  role: tenant
+  title: 'Responding to an Eviction in Franklin County, Ohio (Tenant)'
+
+# contacts: pending verification (clerk of Franklin County Municipal Court,
+# Legal Aid Society of Columbus, tenant help lines). Names/phones/URLs must
+# come from source docs, not memory.
+
+# resources: pending verification (ORC Chapter 1923 on codes.ohio.gov, court
+# self-help pages, rental assistance). Same rule: source docs only.
+
+sections:
+  - kind: info
+    id: overview
+    heading: 'Responding to an eviction in Franklin County'
+    body: |
+      [Draft pending court sources: what this tool covers for a tenant facing eviction in Franklin County Municipal Court, who it applies to, and what it will walk you through.]
+
+  - kind: info
+    id: process_timeline
+    heading: 'How the eviction process works'
+    body: |
+      [Draft pending ORC 1923 + court sources: notice, filing, hearing, and what happens at each step, with verified timing.]
+
+  - kind: info
+    id: defenses
+    heading: 'Defenses you may have'
+    body: |
+      [Draft pending Legal Aid Society of Columbus + ORC sources: common tenant defenses (improper notice, habitability, retaliation, payment disputes) framed as information, not advice.]
+
+  - kind: info
+    id: at_the_hearing
+    heading: 'What to expect at your hearing'
+    body: |
+      [Draft pending court sources: where the court is, what happens at the hearing, what to bring, and what the outcomes can be.]
