@@ -1,10 +1,9 @@
-# Demo corpus — Adult Name Change (North Dakota), WAIVER track.
-#
-# The waiver track applies when changing the first and/or middle name only,
-# leaving the last name unchanged: 4 forms (no Notice of Petition), and the
-# judge MAY waive newspaper publication and the 30-day wait. The court links to
-# this flow directly for first/middle-only changes; last-name changes use the
-# standard track — adult-name-change-standard.yml.
+# Demo corpus — Adult Name Change (North Dakota), WAIVER track ("publication
+# waiver"). Applies when changing the first and/or middle name only, leaving
+# the last name unchanged: 4 forms (no Notice of Petition), and the judge MAY
+# waive newspaper publication and the 30-day wait. The court links to this flow
+# directly for first/middle-only changes; last-name changes use the
+# publication-required track — adult-name-change-standard.yml.
 #
 # Because publication and the wait can be waived, this flow has no fixed date
 # deadline (hence no calendar export) — it shows how a shorter track renders.
@@ -12,46 +11,55 @@
 # Content verified against the official ND Legal Self Help Center source docs
 # (Instructions for a Name Change (Adult), Residency, Publication, Criminal
 # History) — see #614. Contact phone/email confirmed; form-PDF links not yet
-# re-verified. Publication-waiver scope (#615) and objection/declaration
-# details (#616) still pending legal review.
+# re-verified. Publication-waiver scope (#615) and Declaration form-set
+# details (#616) still pending legal review; this track's top-of-page copy
+# gets its #620-style redraft after #615 settles the track's shape.
+#
+# Authoring style (per #620): no em-dashes in user-facing copy; body
+# paragraphs are ONE line each (the renderer turns every newline into <br>,
+# so hard-wrapped prose breaks mid-sentence).
 
 metadata:
   court: north-dakota
   topic: adult-name-change
   role: waiver
-  title: 'Adult Name Change — North Dakota (Waiver Track)'
+  title: 'Adult Name Change in North Dakota (Publication Waiver)'
 
 contacts:
   - id: clerk
     name: 'Clerk of District Court (your county)'
     url: 'https://www.ndcourts.gov/court-locations'
-    note: "You file in the district court for the county where you have lived the past 6 months. Use the court locator to find your county's clerk, then call before filing to ask whether the judge requires the criminal-history background check before or after you file — timing varies by judge, and the waiver track does not remove this. This is the one call to make first."
+    note: "You file in the district court for the county where you have lived the past 6 months. Use the court locator to find your county's clerk, then call before filing to ask whether the judge requires the criminal history background check before or after you file. Timing varies by judge, and the waiver track does not remove this. This is the one call to make first."
   - id: self_help
     name: 'North Dakota Legal Self Help Center'
     phone: '(701) 328-1852'
     email: 'ndselfhelp@ndcourts.gov'
     url: 'https://www.ndcourts.gov/legal-self-help'
-    note: 'A division of the ND Supreme Court Law Library. Provides information about the civil court process for self-represented filers — not legal advice, and not criminal matters.'
+    note: 'A division of the ND Supreme Court Law Library. Provides information about the civil court process for self-represented filers. They cannot give legal advice or help with criminal matters.'
   - id: legal_aid
     name: 'Legal Services of North Dakota'
     phone: '(800) 634-5263'
     url: 'https://lsnd.org'
-    note: 'Free civil legal help for North Dakotans who qualify by income — useful if your name change touches a divorce or other family-law matter. They can also screen you for the Volunteer Lawyers low-cost program.'
+    note: 'Free civil legal help for North Dakotans who qualify by income. Useful if your name change touches a divorce or other family-law matter. They can also screen you for the Volunteer Lawyers low-cost program.'
   - id: dakota_plains
     name: 'Dakota Plains Legal Services'
     url: 'https://www.dpls.org'
     note: 'Free legal assistance for low-income individuals, older Americans, veterans, and nine tribal nations across North and South Dakota.'
   - id: state_bar_referral
-    name: 'State Bar Association of North Dakota — Lawyer Referral'
+    name: 'State Bar Association of North Dakota (Lawyer Referral)'
     phone: '(866) 450-9579'
     url: 'https://www.sband.org'
-    note: 'Matches you with a lawyer for paid legal services. Ask about limited (unbundled) representation — hiring a lawyer for just part of your case, like reviewing your paperwork, while you handle the rest.'
+    note: 'Matches you with a lawyer for paid legal services. Ask about limited (unbundled) representation: hiring a lawyer for just part of your case, like reviewing your paperwork, while you handle the rest.'
 
 resources:
   - id: nd_name_change_guidance
     label: 'North Dakota name-change guidance and forms'
     url: 'https://www.ndcourts.gov/legal-self-help/name-change-adult'
-    note: "The court's official adult name-change page — process overview and the source for every form in your packet."
+    note: "The court's official adult name-change page: process overview and the source for every form in your packet."
+  - id: nd_century_code
+    label: 'North Dakota Century Code Chapter 32-28'
+    url: 'https://ndlegis.gov/cencode/t32c28.html'
+    note: 'The state law this name-change process follows.'
   - id: fee_waiver
     label: 'Filing-fee waiver forms'
     url: 'https://www.ndcourts.gov/legal-self-help/fee-waiver'
@@ -59,7 +67,7 @@ resources:
   - id: criminal_history_check
     label: 'Criminal history record check (edo.cjis.gov)'
     url: 'https://www.edo.cjis.gov'
-    note: 'If the judge requires a background check, request it here. You pay the cost, and it can take weeks — ask the clerk early.'
+    note: 'If the judge requires a background check, request it here. You pay the cost, and it can take weeks, so ask the clerk early.'
   - id: nd_free_legal_answers
     label: 'North Dakota Free Legal Answers'
     url: 'https://nd.freelegalanswers.org'
@@ -70,63 +78,39 @@ sections:
     id: overview
     heading: 'Changing your first or middle name in North Dakota'
     body: |
-      This walks you through a standalone adult name-change petition in North
-      Dakota district court, on the waiver track — for changing your first
-      and/or middle name only, leaving your last name unchanged.
+      This walks you through a standalone adult name-change petition in North Dakota district court, on the waiver track: changing your first and/or middle name only, leaving your last name unchanged.
 
-      On this track a judge may waive the newspaper publication requirement, and
-      if publication is waived there is no 30-day waiting period. The waiver is
-      the judge's decision on the facts you present — it is not guaranteed, so
-      plan for the possibility that publication is still required.
+      On this track a judge may waive the newspaper publication requirement, and if publication is waived there is no 30-day waiting period. The waiver is the judge's decision on the facts you present. It is not guaranteed, so plan for the possibility that publication is still required.
 
-      If you are changing your last name (or any combination that includes it),
-      use the standard-track page instead.
+      If you are changing your last name (or any combination that includes it), use the publication-required version of this tool instead.
 
-      One common mix-up: if you wanted your name changed as part of a divorce,
-      that has to be requested inside the divorce case — it is not handled here.
+      One common mix-up: if you wanted your name changed as part of a divorce, that has to be requested inside the divorce case. It is not handled here.
 
   - kind: info
     id: eligibility
     heading: 'Who can file'
     body: |
-      To petition for a name change in North Dakota you must be a U.S. citizen
-      or a U.S. permanent resident. You attest to this on the Petition.
+      To petition for a name change in North Dakota you must be a U.S. citizen or a U.S. permanent resident. You attest to this on the Petition.
 
-      A name change cannot be used to defraud anyone or to evade a legal
-      obligation (for example, debts or a criminal record). These are conditions
-      you confirm on the forms — not something you have to explain to anyone here.
+      A name change cannot be used to defraud anyone or to evade a legal obligation (for example, debts or a criminal record). These are conditions you confirm on the forms, not something you have to explain to anyone here.
 
   - kind: info
     id: costs
     heading: 'What it costs'
     body: |
-      The filing fee is $160. If you cannot afford it, you can file fee-waiver
-      forms at the same time asking the judge to waive the fee — the fee-waiver
-      link is in your resources below.
+      The filing fee is $160. If you cannot afford it, you can file fee-waiver forms at the same time asking the judge to waive the fee. The fee-waiver link is in the official resources at the end of this page.
 
-      Two other costs can come up later: if the judge requires a criminal-history
-      background check, you pay for it; and certified copies of your final Order
-      cost $10 for the first copy and $5 for each additional copy requested at
-      the same time.
+      Two other costs can come up later: if the judge requires a criminal history background check, you pay for it; and certified copies of your final Order cost $10 for the first copy and $5 for each additional copy requested at the same time.
 
   - kind: info
     id: criminal_history
-    heading: 'The criminal-history check'
+    heading: 'Criminal history background check'
     body: |
-      Asking to waive publication does not remove the criminal-history step.
-      Before granting a name change, the judge has to determine whether you have
-      a criminal record. Some judges require every adult filer to get a statewide
-      or national criminal-history background check; others decide after reviewing
-      your petition. Call the clerk before you file to ask which applies in your
-      county — the check can take weeks, so it is worth starting early.
+      Asking to waive publication does not remove the criminal history step. Before granting a name change, the judge has to determine whether you have a criminal record. Some judges require every adult filer to get a statewide or national criminal history background check; others decide after reviewing your petition. Call the clerk before you file to ask which applies in your county. The check can take weeks, so it is worth starting early.
 
-      If the judge requires one, you request it at edo.cjis.gov and pay the cost
-      yourself.
+      If the judge requires one, you request it at edo.cjis.gov and pay the cost yourself.
 
-      If you have a felony conviction, North Dakota law assumes a name-change
-      request is made in bad faith. A judge may still grant it, but you would need
-      to show by clear and convincing evidence that your request is made in good
-      faith and not to defraud, mislead, injure anyone, or compromise public safety.
+      If you have a felony conviction, North Dakota law assumes a name-change request is made in bad faith. A judge may still grant it, but you would need to show by clear and convincing evidence that your request is made in good faith and not to defraud, mislead, injure anyone, or compromise public safety.
 
   - kind: fact_gather
     id: your_details
@@ -151,11 +135,11 @@ sections:
       - id: requested_middle
         label: 'Requested middle name(s)'
         type: text
-        help_text: 'Your last name stays the same on this track — only first and middle change.'
+        help_text: 'Your last name stays the same on this track. Only first and middle change.'
       - id: filing_county
         label: 'County where you will file'
         type: text
-        help_text: "You file in the district court for the county where you have lived the past 6 months. Not sure which county? It is on your driver's license, lease, or a utility bill — or look up your address with the court locator at ndcourts.gov/court-locations."
+        help_text: "You file in the district court for the county where you have lived the past 6 months. Not sure which county? It is on your driver's license, lease, or a utility bill, or look up your address with the court locator at ndcourts.gov/court-locations."
 
   - kind: output
     output_type: packet
@@ -181,36 +165,25 @@ sections:
     id: publication_waiver
     heading: 'About the publication waiver'
     body: |
-      Because you are not changing your last name, you can ask the judge to
-      waive the requirement to publish a notice in the newspaper. If the judge
-      grants the waiver, there is no 30-day waiting period and your petition can
-      be considered sooner.
+      Because you are not changing your last name, you can ask the judge to waive the requirement to publish a notice in the newspaper. If the judge grants the waiver, there is no 30-day waiting period and your petition can be considered sooner.
 
-      The judge decides this on your particular facts, so it is not automatic.
-      Ask the clerk how your county handles the waiver request, and be ready in
-      case publication is still required.
+      The judge decides this on your particular facts, so it is not automatic. Ask the clerk how your county handles the waiver request, and be ready in case publication is still required.
 
   - kind: info
     id: form_gotchas
     heading: 'Before you sign'
     body: |
-      A few North Dakota specifics that trip people up:
+      A few things in North Dakota's process are easy to miss, and each one has a real consequence if it is missed:
 
-      Leave the case number blank — the clerk assigns it when you file.
-
-      Do not sign the proposed Order. Only the judge signs that one.
-
-      The Confidential Information Form is sealed and stays out of the public
-      file. Keep copies — it must be attached to every certified copy of your
-      Order, or North Dakota Vital Records will reject your updates later.
+      - The case number stays blank. The clerk assigns it when you file.
+      - Only the judge signs the Proposed Order.
+      - The Confidential Information Form is sealed and stays out of the public file. A copy must be attached to every certified copy of your Order, or North Dakota Vital Records will reject your updates later. Keep copies.
 
   - kind: info
     id: hearing
     heading: 'Will there be a hearing?'
     body: |
-      North Dakota does not presumptively require a hearing for a name change,
-      but the judge may decide one is needed. If a hearing is scheduled, the
-      Clerk of District Court will send notice with the date, time, and location.
+      North Dakota does not presumptively require a hearing for a name change, but the judge may decide one is needed. If a hearing is scheduled, the Clerk of District Court will send notice with the date, time, and location.
 
   - kind: output
     output_type: vcf
@@ -229,6 +202,7 @@ sections:
     heading: 'Official North Dakota resources'
     resource_ids:
       - nd_name_change_guidance
+      - nd_century_code
       - fee_waiver
       - criminal_history_check
       - nd_free_legal_answers
@@ -237,13 +211,9 @@ sections:
     id: after_order
     heading: 'After the judge signs your Order'
     body: |
-      Ask the clerk for at least three certified copies of your Order — each one
-      needs the Confidential Information Form attached.
+      Ask the clerk for at least three certified copies of your Order. Certified copies cost $10 for the first and $5 for each additional copy requested at the same time, and each one needs the Confidential Information Form attached.
 
-      Then update your records in this order, because each step verifies against
-      the one before it: Social Security Administration first, then the North
-      Dakota DMV, then your passport, then financial accounts, your employer and
-      health insurance, your home title, and voter registration.
+      Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
   - kind: output
     output_type: summary
