@@ -128,37 +128,13 @@ sections:
       File in the district court for the county where you have lived for the past 6 months. Your driver's license, lease, or a utility bill usually shows this. The court locator link in the contacts at the end of this page can also help.
 
   - kind: fact_gather
-    id: your_details
-    heading: 'Your details'
+    # Pruned to the one fact the page actually uses (#621): publication_date
+    # drives the 30-day deadline and its calendar export. The name/county
+    # fields only echoed back in the summary, so they come back when
+    # docassemble prefill (#531) can reuse them downstream.
+    id: publication_details
+    heading: 'Your publication date'
     questions:
-      - id: current_first
-        label: 'Your current first name'
-        type: text
-        required: true
-      - id: current_middle
-        label: 'Your current middle name(s)'
-        type: text
-        help_text: 'Leave blank if you have none.'
-      - id: current_last
-        label: 'Your current last name'
-        type: text
-        required: true
-      - id: requested_first
-        label: 'Requested first name'
-        type: text
-        required: true
-      - id: requested_middle
-        label: 'Requested middle name(s)'
-        type: text
-        help_text: 'Leave blank if you have none.'
-      - id: requested_last
-        label: 'Requested last name'
-        type: text
-        required: true
-      - id: filing_county
-        label: 'County where you will file'
-        type: text
-        help_text: "You file in the district court for the county where you have lived the past 6 months. Not sure which county? It is on your driver's license, lease, or a utility bill, or look up your address with the court locator at ndcourts.gov/court-locations."
       - id: publication_date
         label: 'Date your notice was published'
         type: date

@@ -112,34 +112,9 @@ sections:
 
       If you have a felony conviction, North Dakota law assumes a name-change request is made in bad faith. A judge may still grant it, but you would need to show by clear and convincing evidence that your request is made in good faith and not to defraud, mislead, injure anyone, or compromise public safety.
 
-  - kind: fact_gather
-    id: your_details
-    heading: 'Your details'
-    questions:
-      - id: current_first
-        label: 'Your current first name'
-        type: text
-        required: true
-      - id: current_middle
-        label: 'Your current middle name(s)'
-        type: text
-        help_text: 'Leave blank if you have none.'
-      - id: current_last
-        label: 'Your current last name'
-        type: text
-        required: true
-      - id: requested_first
-        label: 'Requested first name'
-        type: text
-        required: true
-      - id: requested_middle
-        label: 'Requested middle name(s)'
-        type: text
-        help_text: 'Your last name stays the same on this track. Only first and middle change.'
-      - id: filing_county
-        label: 'County where you will file'
-        type: text
-        help_text: "You file in the district court for the county where you have lived the past 6 months. Not sure which county? It is on your driver's license, lease, or a utility bill, or look up your address with the court locator at ndcourts.gov/court-locations."
+  # No fact_gather on this track (#621): the waiver flow computes no deadline,
+  # so the page uses no answers. The name/county fields only echoed back in
+  # the summary; they return when docassemble prefill (#531) can reuse them.
 
   - kind: output
     output_type: packet
@@ -214,8 +189,3 @@ sections:
       Ask the clerk for at least three certified copies of your Order. Certified copies cost $10 for the first and $5 for each additional copy requested at the same time, and each one needs the Confidential Information Form attached.
 
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
-
-  - kind: output
-    output_type: summary
-    id: recap
-    heading: 'Summary of what you entered'
