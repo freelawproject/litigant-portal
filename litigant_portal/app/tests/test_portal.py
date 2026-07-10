@@ -102,8 +102,21 @@ class ChatPageTests(TestCase):
 
     def test_chat_page_topic_without_corpus_has_no_flow_tracks(self):
         """A topic with no authored corpus renders chat-only, no links."""
-        response = self.client.get("/chat/?topic=eviction")
+        response = self.client.get("/chat/?topic=family")
         self.assertEqual(response.context["flow_tracks"], [])
+
+    def test_chat_page_flow_tracks_for_second_court_topic(self):
+        """Eviction resolves the Franklin County corpora (#607).
+
+        The registry serves multiple courts side by side: eviction surfaces
+        the tenant + landlord tracks without touching the ND entries.
+        """
+        response = self.client.get("/chat/?topic=eviction")
+        tracks = response.context["flow_tracks"]
+        self.assertEqual(
+            sorted(t["role"] for t in tracks), ["landlord", "tenant"]
+        )
+        self.assertContains(response, "/t/franklin-county-oh/eviction/tenant/")
 
 
 # =============================================================================
