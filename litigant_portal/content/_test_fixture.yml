@@ -34,7 +34,7 @@ resources:
   - id: self_help_page
     label: 'Name-change guidance and forms'
     url: 'https://example.gov/legal-self-help/name-change'
-    note: 'The official process page and form source.'
+    note: 'The process page and form source.'
 
 sections:
   - kind: info
@@ -83,7 +83,7 @@ sections:
   - kind: output
     output_type: resources
     id: official_resources
-    heading: 'Official resources'
+    heading: 'Resources'
     resource_ids:
       - self_help_page
 
