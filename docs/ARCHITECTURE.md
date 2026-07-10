@@ -33,11 +33,11 @@ Concretely: the docassemble document-assembly handoff is served at `<host>/inter
 
 The `packet` output hands off to a [docassemble](https://docassemble.org) interview that fills the actual court forms. Two systems, two jobs, one contract — and a deliberate split of _which_ facts each side owns:
 
-- **Topic Flow owns** the light fact set it already needs for deadlines and the summary recap, named to match the interview's variables 1:1 so a future prefill is lossless (no ambiguous name-splitting). These `fact_gather` question ids are the contract:
+- **Topic Flow owns** a light fact set, named to match the interview's variables 1:1 so a future prefill is lossless (no ambiguous name-splitting). Today it collects only what a page actually uses — `publication_date` on the standard track, which drives the 30-day deadline (#621); the other ids return when prefill (#531) gives them a consumer. These `fact_gather` question ids are the contract:
   `current_first` · `current_middle` · `current_last` · `requested_first` · `requested_middle` (· `requested_last`, standard track only — the waiver track leaves the last name unchanged) · `filing_county` · `publication_date`.
 - **The interview owns** the full document fact set Topic Flow never collects: residence street/city/zip, residency-since, citizenship, criminal history, publication newspaper, and any track-specific fields. Asking these in the AI-free flow would duplicate the interview and bloat a deliberately light surface.
 
-Names are collected as structured first / middle / last (not a single free-text field) precisely because the forms and the interview are structured that way — splitting a combined name string back apart is lossy and ambiguous.
+The contract keeps names as structured first / middle / last (not a single free-text field) precisely because the forms and the interview are structured that way — splitting a combined name string back apart is lossy and ambiguous.
 
 **v1 is link-out + manual return, no prefill** (#543): the flow links out to the interview, the litigant completes and downloads their packet there, then returns to LP for filing steps. The prefill seam — POSTing this answer set to start a prefilled session, keeping PII out of the URL — is the deferred v2 (#531), and an AI-free session-state "Briefcase" (#177) is the natural carrier for it. The contract above is what makes that future drop-in: same ids, no rework.
 
