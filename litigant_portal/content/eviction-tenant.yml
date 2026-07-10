@@ -10,11 +10,15 @@
 #   - Ohio Revised Code Chapter 1923 (forcible entry and detainer): notice
 #     requirements (1923.04), timelines, hearing rules
 #   - Franklin County Municipal Court self-help / eviction pages (fcmcclerk.com)
-#   - Legal Aid Society of Columbus tenant guides (defenses, court process)
+#   - Legal Aid of Southeast and Central Ohio (LASCO) tenant guides
+# Sources are now archived; see corpus-sources/franklin-county-oh/eviction/
+# source-notes.md for the verified fact inventory. Sibling corpus:
+# eviction-landlord.yml (role fork at entry, no in-engine branching).
 #
-# fact_gather and deadlines are deliberately absent until sources confirm
-# which date drives which deadline (#621: collect only what a page uses).
-# Candidate: hearing_date or notice_date once ORC 1923 timing is verified.
+# fact_gather and deadlines are deliberately absent until drafting lands
+# (#621: collect only what a page uses). Leading candidate per source-notes:
+# date court papers received + 28 days = Answer/Counterclaim deadline
+# (1923.061(B) via the LASCO packet).
 #
 # Known gap, deliberate: the flow URL /t/franklin-county-oh/eviction/tenant/
 # resolves from this corpus alone, but the chat deep-link

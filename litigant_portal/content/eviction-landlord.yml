@@ -1,0 +1,63 @@
+# Eviction corpus — Franklin County Municipal Court (Columbus, OH), LANDLORD
+# role. Sibling of eviction-tenant.yml (#606/#607): the tenant/landlord fork
+# happens at the entry point (two corpora, two URLs), never inside the engine.
+#
+# SCAFFOLD STATUS: structure only. Every body below is a bracketed draft
+# marker naming the source needed. DO NOT merge until content is verified
+# against the sources archived in corpus-sources/franklin-county-oh/eviction/
+# (see source-notes.md) and reviewed per the #607 DoD. Landlord-side facts
+# already on file: notice duties + mandatory notice language (ORC 1923.04),
+# summons/service mechanics (1923.06), filing fees $128 single cause / $165
+# two causes, bailiff vs certified-mail service, set-out via service
+# bailiff's office (FCMC clerk FAQ, captured 2026-07-10).
+#
+# fact_gather and deadlines absent until drafting confirms what a landlord
+# page actually uses (#621 rule). Candidate: notice-served date + 3 days =
+# earliest filing date (1923.04(A)).
+#
+# Authoring style (per #620/#646): no em-dashes in user-facing copy; body
+# paragraphs are ONE line each; never label resources or forms "official".
+
+metadata:
+  court: franklin-county-oh
+  topic: eviction
+  role: landlord
+  title: 'Filing an Eviction in Franklin County, Ohio (Landlord)'
+
+# contacts: pending verification (FCMC clerk civil division, service
+# bailiff's office (614) 645-7780, FCMC Self Help Center once its details
+# are confirmed).
+
+# resources: pending verification (ORC Chapter 1923, FCMC Eviction Process
+# guide/complaint forms, court fee schedule).
+
+sections:
+  - kind: info
+    id: overview
+    heading: 'Evicting a tenant in Franklin County'
+    body: |
+      [Draft pending sources: what this tool covers for a landlord filing in Franklin County Municipal Court, the legal-process-only rule (no lockouts, utility shutoffs, or set-outs without a court order), and what it walks you through.]
+
+  - kind: info
+    id: notice_requirements
+    heading: 'The notice you must give first'
+    body: |
+      [Draft from ORC 1923.04: written Notice to Leave, 3+ days before filing, service methods, and the exact conspicuous language the notice must contain.]
+
+  - kind: info
+    id: filing_and_costs
+    heading: 'Filing your case and what it costs'
+    body: |
+      [Draft from FCMC FAQ: $128 single cause / $165 two causes, what the fee covers, first vs second cause of action, where and how to file.]
+
+  - kind: info
+    id: service_and_hearing
+    heading: 'Service and your hearing date'
+    body: |
+      [Draft from ORC 1923.06 + FCMC FAQ: how the court serves the tenant, bailiff vs certified mail, hearings usually 14 to 21 days from filing.]
+
+  - kind: info
+    id: after_judgment
+    heading: 'After the judgment'
+    body: |
+      [Draft from ORC 1923.13/.14 + FCMC FAQ: writ of restitution, arranging the set-out through the service bailiff's office, 10-day execution window.]
