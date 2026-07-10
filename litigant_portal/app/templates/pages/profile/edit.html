@@ -21,7 +21,7 @@
         <div class="space-y-4">
           {% trans "Full Legal Name" as name_label %}
           {% trans "Your full legal name" as name_placeholder %}
-          {% trans "Used for official documents and forms" as name_help %}
+          {% trans "Used for court documents and forms" as name_help %}
           <c-molecules.form-field label="{{ name_label }}" type="text" name="name" id="id_name" placeholder="{{ name_placeholder }}" autocomplete="name" value="{{ form.name.value|default:'' }}" :errors="form.name.errors" help_text="{{ name_help }}" />
           {% trans "Phone Number" as phone_label %}
           {% trans "(555) 123-4567" as phone_placeholder %}

@@ -228,6 +228,7 @@ Rules for authoring user-facing content — corpus YAML (`litigant_portal/conten
 - **No em-dashes.** Use a period, comma, colon, or parentheses instead. Em-dash-heavy prose reads as AI-generated and undermines user trust (legal review, #620). Dev-facing text (code comments, docs, commit messages) is exempt.
 - **Corpus info bodies: one line per paragraph.** The renderer pipes `body` through Django's `linebreaks`, so every newline becomes a `<br>` — hard-wrapped prose breaks mid-sentence on the page. Separate paragraphs with blank lines; never wrap a paragraph across source lines.
 - **Dash-prefixed lines** (`- item`) render as visual line-broken lists (not semantic `<ul>`) until #518 adds rich text to info bodies. Links in body prose are not supported yet (#518) — route them through the corpus `resources`/`contacts` sections instead.
+- **Never label resources or forms "official."** Courts reserve "official" for institutionally designated things — ND's own site uses it only for official county newspapers, the official record of the Court, and to disclaim that Self Help Center forms "aren't official court forms" (#646). Attribute instead of anointing: say whose page or form it is ("the North Dakota Legal Self Help Center's name-change page").
 
 ## Issue creation
 

@@ -55,7 +55,7 @@ resources:
   - id: nd_name_change_guidance
     label: 'North Dakota name-change guidance and forms'
     url: 'https://www.ndcourts.gov/legal-self-help/name-change-adult'
-    note: "The court's official adult name-change page: process overview and the source for every form in your packet."
+    note: "The North Dakota Legal Self Help Center's adult name-change page: process overview and the source for every form in your packet."
   - id: nd_century_code
     label: 'North Dakota Century Code Chapter 32-28'
     url: 'https://ndlegis.gov/cencode/t32c28.html'
@@ -98,7 +98,7 @@ sections:
     id: costs
     heading: 'What it costs'
     body: |
-      The filing fee is $160. If you cannot afford it, you can file fee-waiver forms at the same time asking the judge to waive the fee. The fee-waiver link is in the official resources at the end of this page.
+      The filing fee is $160. If you cannot afford it, you can file fee-waiver forms at the same time asking the judge to waive the fee. The fee-waiver link is in the resources at the end of this page.
 
       Two other costs can come up later: if the judge requires a criminal history background check, you pay for it; and certified copies of your final Order cost $10 for the first copy and $5 for each additional copy requested at the same time.
 
@@ -174,7 +174,7 @@ sections:
   - kind: output
     output_type: resources
     id: official_resources
-    heading: 'Official North Dakota resources'
+    heading: 'North Dakota resources'
     resource_ids:
       - nd_name_change_guidance
       - nd_century_code
