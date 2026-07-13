@@ -12,6 +12,15 @@
 		reverse_proxy docassemble:80
 	}
 
+	# Static assets. Django doesn't serve these under DEBUG=false (no whitenoise,
+	# no S3 on this box), so Caddy serves the collectstatic output from the shared
+	# qa_static volume. handle_path strips /static/ so the file path resolves
+	# under the root.
+	handle_path /static/* {
+		root * /srv/static
+		file_server
+	}
+
 	# Everything else is the Litigant Portal app.
 	handle {
 		reverse_proxy django:8000
