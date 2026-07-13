@@ -13,9 +13,9 @@
 	}
 
 	# Static assets. Django doesn't serve these under DEBUG=false (no whitenoise,
-	# no S3 on this box), so Caddy serves the collectstatic output from the shared
-	# qa_static volume. handle_path strips /static/ so the file path resolves
-	# under the root.
+	# no S3 on this box), so Caddy serves the collectstatic output from the box
+	# bind mount at /opt/litigant-portal/qa-static. handle_path strips /static/ so
+	# the file path resolves under the root.
 	handle_path /static/* {
 		root * /srv/static
 		file_server

@@ -44,7 +44,7 @@ uid before the first deploy:
 
 ```bash
 # 1. Find appuser's uid in the image (expected: 1000)
-docker run --rm --entrypoint id freelawproject/litigant-portal:qa
+docker run --rm --entrypoint id freelawproject/litigant-portal:qa -u
 
 # 2. Create the dir and chown it to that uid (substitute if not 1000)
 mkdir -p /opt/litigant-portal/qa-static
