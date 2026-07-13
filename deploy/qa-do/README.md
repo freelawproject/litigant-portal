@@ -31,6 +31,30 @@ and rolls it out on the box over SSH, then health-checks `/api/health/`.
   It is **not** shared with AWS — the box's `POSTGRES_PASSWORD` is its own
   generated secret, independent of the EKS `litigant-env` secret. QA holds only
   seed/demo data; reset with `docker compose -f deploy/qa-do/docker-compose.qa.yml down -v`.
+- **Static files:** bind-mounted from `/opt/litigant-portal/qa-static` on the
+  box. Django (`web-prod` entrypoint) runs `collectstatic` into it; Caddy serves
+  it read-only at `/static/`. A Docker named volume can't be used here — it inits
+  root-owned and the container runs as non-root `appuser`, so `collectstatic`
+  would fail. See one-time setup below.
+
+## One-time box setup (static directory)
+
+The static bind-mount dir must exist and be owned by the container's `appuser`
+uid before the first deploy:
+
+```bash
+# 1. Find appuser's uid in the image (expected: 1000)
+docker run --rm --entrypoint id freelawproject/litigant-portal:qa
+
+# 2. Create the dir and chown it to that uid (substitute if not 1000)
+mkdir -p /opt/litigant-portal/qa-static
+sudo chown -R 1000:1000 /opt/litigant-portal/qa-static
+```
+
+`collectstatic --clear` refreshes the _contents_ each deploy but leaves the
+dir's ownership intact, so this chown is one-time. (The old root-owned
+`litigant-portal_qa_static` named volume from earlier attempts can be removed:
+`docker volume rm litigant-portal_qa_static`.)
 
 ## Removal at AWS cutover
 
