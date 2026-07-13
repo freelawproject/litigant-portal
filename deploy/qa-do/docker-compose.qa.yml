@@ -65,8 +65,8 @@ services:
     environment:
       - DEBUG=false
       # Self-contained: no S3 on this box. Storage falls back to the local
-      # filesystem; static is collected to the shared qa_static volume and
-      # served by Caddy (see Caddyfile.qa). Django doesn't serve static under
+      # filesystem; static is collected to a box bind-mount (see volumes below)
+      # and served by Caddy (see Caddyfile.qa). Django doesn't serve static under
       # DEBUG=false and there's no whitenoise, so Caddy owns /static/.
       - USE_S3=false
       - DEPLOYMENT_ENV=qa
@@ -89,8 +89,12 @@ services:
       retries: 3
     volumes:
       # collectstatic (run by the web-prod entrypoint) writes here; Caddy mounts
-      # the same volume read-only and serves it at /static/.
-      - qa_static:/app/litigant_portal/app/staticfiles
+      # the same directory read-only and serves it at /static/. This is a bind
+      # mount to a box-owned dir (NOT a Docker named volume): named volumes init
+      # root-owned and the container runs as non-root appuser, so collectstatic
+      # can't write. The box dir must be chowned to the appuser uid — see
+      # deploy/qa-do/README.md for the one-time setup.
+      - /opt/litigant-portal/qa-static:/app/litigant_portal/app/staticfiles
     depends_on:
       postgres:
         condition: service_healthy
@@ -124,7 +128,7 @@ services:
       - DOMAIN=${DOMAIN}
     volumes:
       - ./Caddyfile.qa:/etc/caddy/Caddyfile:ro
-      - qa_static:/srv/static:ro
+      - /opt/litigant-portal/qa-static:/srv/static:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -135,8 +139,5 @@ volumes:
   # Fresh, docker-managed volume for the standalone DO QA database. Not external
   # (nothing to attach — postgres was never live here). Survives deploys.
   qa_postgres_data:
-  # Collected static, shared django (writer) → caddy (reader). Refreshed each
-  # deploy by collectstatic --clear.
-  qa_static:
   caddy_data:
   caddy_config:
