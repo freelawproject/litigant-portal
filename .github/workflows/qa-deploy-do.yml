@@ -1,0 +1,111 @@
+name: Deploy to DigitalOcean QA (manual)
+
+# TEMPORARY manual deploy for the DigitalOcean QA box (qa.litigantportal.com),
+# which is LP's only live env until the AWS `qa-litigant` env is wired up (#587).
+# Manual-only (workflow_dispatch): pick a ref, build its image, push to Docker
+# Hub, and roll it out on the box over SSH. No auto-deploy on merge — image
+# publishing for AWS still lives in deploy.yml and is unaffected.
+#
+# REMOVAL AT CUTOVER: delete this file + the `deploy/qa-do/` dir. Nothing else
+# references either. See deploy/qa-do/README.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_ref:
+        description: 'Branch or tag to build and deploy (image + box config both come from this ref)'
+        required: true
+        default: 'main'
+
+permissions:
+  contents: read
+
+# Serialize deploys so back-to-back dispatches don't race the SSH step.
+concurrency:
+  group: qa-do-deploy
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build, push, deploy to DO QA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ inputs.deploy_ref }}
+
+      - name: Short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # Push a moving `:qa` tag (what the box compose pulls) plus an immutable
+      # `<sha>-prod` tag for provenance / manual rollback.
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: docker/django/Dockerfile
+          push: true
+          tags: |
+            freelawproject/litigant-portal:qa
+            freelawproject/litigant-portal:${{ steps.sha.outputs.short }}-prod
+
+      - name: Deploy to QA box
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
+        with:
+          host: ${{ secrets.QA_HOST }}
+          username: ${{ secrets.QA_USER }}
+          key: ${{ secrets.QA_SSH_KEY }}
+          envs: DEPLOY_REF
+          script: |
+            set -euo pipefail
+            cd /opt/litigant-portal
+            COMPOSE="docker compose -f deploy/qa-do/docker-compose.qa.yml --env-file /opt/litigant-portal/.env"
+
+            # Rollback breadcrumb: record the image the box is running NOW before
+            # we replace it. QA is the only live env, so if the new image
+            # misbehaves you can repull this digest by hand.
+            echo "Currently-running django image (for rollback):"
+            $COMPOSE images django || true
+
+            # Sync the box tree to the deployed ref so the compose + Caddyfile on
+            # the box match the image. Pulling the image alone never updates
+            # compose/Caddy (#501); reset --hard keeps the box an exact mirror
+            # (the deploy box holds no local edits).
+            git fetch origin
+            git reset --hard "origin/${DEPLOY_REF}"
+
+            # Reclaim disk BEFORE pulling. Superseded images accumulate unbounded
+            # and once filled the box to 99% mid-pull, taking QA down (#521). The
+            # running stack's images are referenced by their containers so they're
+            # kept; only orphaned images go. No --volumes, so Postgres data is safe.
+            docker image prune -af
+
+            # Pull the freshly-built :qa image (and any updated base images), then
+            # recreate. --no-build: the box never builds, it only runs published
+            # images. --remove-orphans cleans up any service renamed/removed since.
+            $COMPOSE pull
+            $COMPOSE up -d --no-build --remove-orphans
+        env:
+          DEPLOY_REF: ${{ inputs.deploy_ref }}
+
+      - name: Verify deploy
+        # Poll /api/health/ until 200 or timeout, so a crash-looping image fails
+        # the workflow loudly instead of Actions reporting a green deploy over a
+        # dead site.
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS https://qa.litigantportal.com/api/health/ > /dev/null; then
+              echo "deploy healthy"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "deploy failed health check"
+          exit 1

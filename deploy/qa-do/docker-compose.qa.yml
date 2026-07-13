@@ -1,0 +1,129 @@
+# Litigant Portal — DigitalOcean QA stack (TEMPORARY)
+#
+# Self-contained prod-style stack for the DigitalOcean QA box
+# (qa.litigantportal.com). It exists ONLY until the AWS `qa-litigant` env is
+# wired up (#587) — at cutover, delete this whole `deploy/qa-do/` dir and the
+# `.github/workflows/qa-deploy-do.yml` workflow and nothing else needs unwinding.
+#
+# Why a separate file: the root `docker-compose.yml` is local-dev only (#460
+# dropped the prod profile when LP moved to CL/EKS infra). Rather than
+# reintroduce prod services there, the DO QA path is fully isolated here.
+#
+# Driven by the manual deploy workflow, which on the box runs:
+#   docker compose -f deploy/qa-do/docker-compose.qa.yml \
+#     --env-file /opt/litigant-portal/.env up -d --no-build
+#
+# The box .env must provide: SECRET_KEY, POSTGRES_PASSWORD, OPENAI_API_KEY,
+# DOMAIN (scheme-prefixed, e.g. https://qa.litigantportal.com), DA_HOSTNAME
+# (BARE host, e.g. qa.litigantportal.com), ALLOWED_HOSTS, SITE_PASSWORD,
+# CHAT_MODEL. (Box checks #1/#2 confirmed present — Mitch, 2026-07-13.)
+
+# Pin the project name so it's stable regardless of which dir compose runs from.
+# It MUST match the box's currently-running stack, or `up` spins up a parallel
+# stack and collides on ports 80/443 (taking the only live env down). Confirm on
+# the box: `docker compose ls`.
+name: litigant-portal # FILL IN — confirm matches the running stack
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=litigant_portal
+      - POSTGRES_USER=postgres
+      # DO-DEDICATED SECRET: this box's .env must set its OWN generated
+      # POSTGRES_PASSWORD, independent of the AWS `litigant-env` k8s secret. The
+      # DO QA DB is a standalone one-off; it shares no credentials with AWS.
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      # Fresh DO-local volume — there is no live QA DB to preserve (postgres was
+      # never stood up on this box). Docker creates it on first `up` and keeps it
+      # across deploys (deploys prune images, never volumes). QA holds only
+      # seed/demo data; the web-prod entrypoint runs `migrate` on boot, so a fresh
+      # DB self-populates. To wipe QA back to zero: `docker compose ... down -v`.
+      - qa_postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  django:
+    image: freelawproject/litigant-portal:qa
+    restart: unless-stopped
+    command: web-prod
+    environment:
+      - DEBUG=false
+      - DEPLOYMENT_ENV=qa
+      - SECRET_KEY=${SECRET_KEY}
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_HOSTS=localhost,${ALLOWED_HOSTS}
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
+      - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
+      - SITE_PASSWORD=${SITE_PASSWORD}
+      - CHAT_ENABLED=${CHAT_ENABLED:-true}
+      - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health/']
+      interval: 5s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # docassemble document-assembly interview, served under the LP hostname at
+  # /interview/* (Caddy routes it; see Caddyfile.qa). Internal only — no public
+  # port, TLS terminated by Caddy. ~20 GB image; box needs >=4 GB RAM.
+  docassemble:
+    image: jhpyle/docassemble
+    container_name: docassemble-qa
+    restart: unless-stopped
+    environment:
+      # DA_HOSTNAME is the BARE LP host (e.g. qa.litigantportal.com) — no scheme,
+      # or docassemble builds https://https://… URLs. Caddy terminates TLS;
+      # docassemble serves plain HTTP and trusts the proxy.
+      DAHOSTNAME: ${DA_HOSTNAME}
+      POSTURLROOT: '/interview/'
+      USEHTTPS: 'false'
+      BEHINDHTTPSLOADBALANCER: 'true'
+      TIMEZONE: 'America/New_York'
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile.qa:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      django:
+        condition: service_healthy
+
+volumes:
+  # Fresh, docker-managed volume for the standalone DO QA database. Not external
+  # (nothing to attach — postgres was never live here). Survives deploys.
+  qa_postgres_data:
+  caddy_data:
+  caddy_config:
