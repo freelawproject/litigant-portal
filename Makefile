@@ -50,6 +50,10 @@ clean: ## Clean build artifacts
 
 
 # Django management commands
+makemigrations: ## Create database migrations
+	$(require-docker)
+	docker compose exec django manage makemigrations
+
 migrate: ## Run database migrations
 	$(require-docker)
 	docker compose exec django manage migrate
