@@ -22,6 +22,10 @@ class ToolOutput(BaseModel):
     # When True, the agent regenerates its system prompt before the next
     # step (instead of only when a new user message is submitted).
     refresh_system_prompt: bool = False
+    # LLM spend the tool incurred itself (e.g. a sub-model call); the
+    # engine books it on the tool response message so thread usage
+    # reflects the true total.
+    cost: float = 0.0
 
 
 class Tool(BaseModel):
