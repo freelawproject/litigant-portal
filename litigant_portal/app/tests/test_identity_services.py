@@ -9,7 +9,13 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from litigant_portal.app.models import CaseInfo, ChatSession, UserIdentity
+from litigant_portal.app.models import (
+    CaseInfo,
+    ChatSession,
+    ChatThread,
+    UserIdentity,
+    UserUpload,
+)
 from litigant_portal.app.services.identity import (
     identity_ensure,
     identity_merge,
@@ -50,6 +56,23 @@ class IdentityMergeTests(TestCase):
         chat.refresh_from_db()
         self.assertEqual(chat.identity, self.target)
         self.assertFalse(UserIdentity.objects.filter(pk=self.anon.pk).exists())
+
+    def test_migrates_chat_threads_and_uploads(self):
+        thread = ChatThread.objects.create(identity=self.anon)
+        upload = UserUpload.objects.create(
+            identity=self.anon,
+            file="uploads/x/notes.txt",
+            name="notes.txt",
+            content_type="text/plain",
+            size=5,
+        )
+        identity_merge(source_identity=self.anon, target_identity=self.target)
+        thread.refresh_from_db()
+        upload.refresh_from_db()
+        self.assertEqual(thread.identity, self.target)
+        self.assertEqual(upload.identity, self.target)
+        # The stored path is identity-free, so the merge never touches it.
+        self.assertEqual(upload.file.name, "uploads/x/notes.txt")
 
     def test_migrates_anonymous_case_and_its_children(self):
         case = CaseInfo.objects.create(

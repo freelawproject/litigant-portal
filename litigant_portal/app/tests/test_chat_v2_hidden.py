@@ -87,11 +87,13 @@ class HiddenMessageProjectionTests(TestCase):
     def setUp(self):
         self.client = Client()
         # First request establishes a session + identity for the client.
-        self.client.get("/api/chat/threads/")
+        self.client.get("/api/agents/assistant/threads/")
         self.identity = UserIdentity.objects.get(
             session_key=self.client.session.session_key
         )
-        self.thread = ChatThread.objects.create(identity=self.identity)
+        self.thread = ChatThread.objects.create(
+            identity=self.identity, thread_type="user_chat"
+        )
         ChatMessage.objects.create(
             thread=self.thread,
             data={"role": "user", "content": "visible question"},
@@ -104,7 +106,12 @@ class HiddenMessageProjectionTests(TestCase):
 
     def test_hidden_reaches_llm_history(self):
         history = [dict(m.data) for m in chat_message_list(thread=self.thread)]
-        contents = [m["content"] for m in _messages_for_llm("sys", history)]
+        contents = [
+            m["content"]
+            for m in _messages_for_llm(
+                "sys", history, model="gpt-5-mini", attachment_cache={}
+            )
+        ]
         self.assertIn("HIDDEN CONTEXT", contents)
 
     def test_hidden_excluded_from_render_items(self):
@@ -116,7 +123,9 @@ class HiddenMessageProjectionTests(TestCase):
         self.assertNotIn("HIDDEN CONTEXT", contents)
 
     def test_hidden_excluded_from_sidebar_snippet(self):
-        data = json.loads(self.client.get("/api/chat/threads/").content)
+        data = json.loads(
+            self.client.get("/api/agents/assistant/threads/").content
+        )
         snippet = next(
             t["snippet"]
             for t in data["threads"]
