@@ -34,12 +34,12 @@ Code: [`services/assistant.py`](../litigant_portal/app/services/assistant.py)
 
 `is_small` classifies each attachment by its filetype's own criteria:
 
-| Check              | Limit                            |
-| ------------------ | -------------------------------- |
-| Any file           | ≤ 4 MB (`INLINE_MAX_BYTES`)      |
-| PDF                | ≤ 20 pages (`INLINE_MAX_PAGES`)  |
+| Check              | Limit                                 |
+| ------------------ | ------------------------------------- |
+| Any file           | ≤ 4 MB (`INLINE_MAX_BYTES`)           |
+| PDF                | ≤ 20 pages (`INLINE_MAX_PAGES`)       |
 | Text / docx / xlsx | ≤ 40k chars (`INLINE_MAX_TEXT_CHARS`) |
-| Image              | byte cap only                    |
+| Image              | byte cap only                         |
 
 Small files attach inline; large files ride as a stub pointing at the
 `query_document` tool. Content is never silently truncated — a file is either
@@ -62,7 +62,7 @@ total bytes, 120k chars of extracted text.
 
 ## 4. Large files: the reader subagent
 
-The `QueryDocument` tool (`upload_id` + `request`) hands the *whole document*
+The `QueryDocument` tool (`upload_id` + `request`) hands the _whole document_
 to a reader model in one call:
 
 - Loads the upload (identity-checked via the thread), then gates on

@@ -20,6 +20,7 @@ THREAD_TYPE = "user_chat"
 
 # General chat endpoints
 
+
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def stream(request: HttpRequest):
@@ -63,6 +64,7 @@ def thread_delete(request: HttpRequest, thread_id) -> JsonResponse:
 
 
 # Assistant-specific endpoints
+
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
