@@ -11,7 +11,6 @@ from litigant_portal.agents_v2.base import Agent, ToolOutput
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
 from litigant_portal.app.selectors.chat_v2 import (
     chat_message_list,
-    chat_message_list_visible,
     chat_thread_get,
 )
 from litigant_portal.app.services.assistant import attachment_render_list
@@ -38,6 +37,7 @@ def chat_message_create(
     model: str,
     num_tokens: int | None = None,
     hidden: bool = False,
+    meta: bool = False,
     cost: float = 0.0,
 ) -> ChatMessage:
     """Add a message to a thread."""
@@ -49,6 +49,7 @@ def chat_message_create(
         thread_id=thread_id,
         data=data,
         hidden=hidden,
+        meta=meta,
         num_tokens=num_tokens,
         cost=cost,
     )
@@ -75,11 +76,33 @@ def chat_message_inject_hidden(
     )
 
 
+def chat_message_inject_meta(
+    *,
+    thread_id,
+    kind: str,
+    model: str,
+    num_tokens: int = 0,
+    cost: float = 0.0,
+) -> ChatMessage:
+    """Append an accounting-only meta message to a thread — invisible to the
+    LLM and the frontend, counted by chat_thread_usage."""
+    return chat_message_create(
+        thread_id=thread_id,
+        data={"role": "meta", "kind": kind},
+        model=model,
+        num_tokens=num_tokens,
+        meta=True,
+        cost=cost,
+    )
+
+
 def chat_thread_generate_description(*, thread: ChatThread) -> str:
     """Generate and store a short description of a thread's conversation."""
     conversation = "\n".join(
         f"{m.data.get('role')}: {m.data.get('content')}"
-        for m in chat_message_list_visible(thread=thread)
+        for m in chat_message_list(
+            thread=thread, exclude_hidden=True, exclude_meta=True
+        )
         if m.data.get("role") in ("user", "assistant")
         and m.data.get("content")
     )
@@ -89,6 +112,19 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
             {"role": "system", "content": DESCRIPTION_PROMPT},
             {"role": "user", "content": conversation[:4000]},
         ],
+    )
+    try:
+        cost = litellm.completion_cost(completion_response=response)
+    except Exception:
+        cost = 0.0
+    usage = getattr(response, "usage", None)
+    # Book the call's tokens/cost so chat_thread_usage reflects it.
+    chat_message_inject_meta(
+        thread_id=thread.id,
+        kind="thread_description",
+        model=CHAT_MODEL,
+        num_tokens=usage.total_tokens if usage else 0,
+        cost=cost,
     )
     description = (response.choices[0].message.content or "").strip()[:255]
     if description:
@@ -212,7 +248,12 @@ def thread_render_items(
     """Project a thread's stored messages into frontend render items."""
     agent = agent_class()
     tools = agent.tools_by_name
-    messages = [dict(m.data) for m in chat_message_list_visible(thread=thread)]
+    messages = [
+        dict(m.data)
+        for m in chat_message_list(
+            thread=thread, exclude_hidden=True, exclude_meta=True
+        )
+    ]
     results = {
         m.get("tool_call_id"): m for m in messages if m.get("role") == "tool"
     }
@@ -284,7 +325,8 @@ def chat_stream(
     )
 
     history: list[dict[str, Any]] = [
-        dict(m.data) for m in chat_message_list(thread=thread)
+        dict(m.data)
+        for m in chat_message_list(thread=thread, exclude_meta=True)
     ]
 
     def event_stream() -> Iterator[str]:

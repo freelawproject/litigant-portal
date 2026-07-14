@@ -8,7 +8,7 @@ def chat_thread_list(
 ) -> QuerySet[ChatThread]:
     """An identity's threads for a given thread type."""
     visible = ChatMessage.objects.filter(
-        thread=OuterRef("pk"), hidden=False
+        thread=OuterRef("pk"), hidden=False, meta=False
     ).order_by("-created_at")
     snippet_source = visible.filter(
         data__role__in=["user", "assistant"]
@@ -32,18 +32,26 @@ def chat_thread_get(
     )
 
 
-def chat_message_list(*, thread: ChatThread) -> QuerySet[ChatMessage]:
-    """All messages in a thread, oldest first (includes hidden)."""
-    return thread.messages.order_by("created_at")
-
-
-def chat_message_list_visible(*, thread: ChatThread) -> QuerySet[ChatMessage]:
-    """Frontend-safe messages: the thread's messages minus hidden ones."""
-    return chat_message_list(thread=thread).filter(hidden=False)
+def chat_message_list(
+    *,
+    thread: ChatThread,
+    exclude_hidden: bool = False,
+    exclude_meta: bool = False,
+) -> QuerySet[ChatMessage]:
+    """A thread's messages, oldest first. The unfiltered default is the
+    accounting view (usage sums everything); exclude_meta gives the LLM
+    history; exclude_hidden + exclude_meta gives the frontend render view."""
+    messages = thread.messages.order_by("created_at")
+    if exclude_hidden:
+        messages = messages.filter(hidden=False)
+    if exclude_meta:
+        messages = messages.filter(meta=False)
+    return messages
 
 
 def chat_thread_usage(*, thread: ChatThread) -> dict:
-    """Total tokens and cost across all of a thread's messages (incl. hidden)."""
+    """Total tokens and cost across all of a thread's messages (incl.
+    hidden and meta)."""
     totals = chat_message_list(thread=thread).aggregate(
         total_tokens=Sum("num_tokens"), total_cost=Sum("cost")
     )

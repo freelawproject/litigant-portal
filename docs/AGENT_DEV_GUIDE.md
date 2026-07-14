@@ -406,25 +406,52 @@ engine then derives two views explicitly:
 
 ---
 
-## Conversation history: hidden & compaction messages
+## Conversation history: hidden, meta & compaction messages
 
-Two message capabilities extend the history model without changing how agents
-are authored. Both are engine behavior driven by per-message flags — agents and
+Message capabilities that extend the history model without changing how agents
+are authored. All are engine behavior driven by per-message flags — agents and
 tools opt in, the engine does the rest.
+
+Messages are stored once; the `chat_message_list` selector carves out each
+projection with two flags (`exclude_hidden`, `exclude_meta`):
+
+| Projection             | Call                                       | Used for                                    |
+| ---------------------- | ------------------------------------------ | ------------------------------------------- |
+| Accounting (everything)| `chat_message_list(thread=…)`              | `chat_thread_usage` token/cost totals       |
+| LLM history            | `…(exclude_meta=True)`                     | what `chat_stream` feeds to litellm         |
+| Render view            | `…(exclude_hidden=True, exclude_meta=True)`| `thread_render_items`, sidebar snippets     |
 
 ### Hidden messages
 
 A **hidden message** lives in the history the model sees but is **never returned
-to the frontend**. It's the `hidden` boolean on `ChatMessage`, and it's the
-practical face of the engine's "one store, two projections" split:
+to the frontend**. It's the `hidden` boolean on `ChatMessage`: the model reads
+it like any other turn, but it gets no bubble, no card, and never seeds a
+sidebar snippet.
 
-- **LLM view** — `chat_message_list(thread=…)` returns _all_ messages, hidden
-  included, and `chat_stream` feeds that to litellm. The model reads a hidden
-  message like any other turn.
-- **Render view** — `chat_message_list_visible(thread=…)` is just
-  `chat_message_list(...).filter(hidden=False)`. Both frontend projections use
-  it: `thread_render_items` (thread reload) and the `thread_list` sidebar
-  snippet. A hidden message gets no bubble, no card, and never seeds a snippet.
+### Meta messages
+
+A **meta message** (`meta` boolean, `role: "meta"` data) is an accounting-only
+record — it reaches neither the model nor the frontend, but its `num_tokens`
+and `cost` count in `chat_thread_usage`. The engine uses one to book the cost
+of the thread-title completion (`kind: "thread_description"`).
+
+**Injecting one** — `chat_message_inject_meta` (in `services/chat_v2.py`),
+mirroring `chat_message_inject_hidden`. Use it for any side completion whose
+spend should show up in usage:
+
+```python
+from litigant_portal.app.services.chat_v2 import chat_message_inject_meta
+
+chat_message_inject_meta(
+    thread_id=thread_id,
+    kind="my_side_completion",
+    model=model,
+    num_tokens=response.usage.total_tokens,
+    cost=litellm.completion_cost(completion_response=response),
+)
+```
+
+Like hidden injection, it never bumps the thread's `updated_at`.
 
 Use it for context the model should have but the user shouldn't see as a chat
 turn: injected retrieval results, scaffolding/setup instructions, a note a tool
