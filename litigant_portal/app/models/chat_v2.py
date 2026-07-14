@@ -17,7 +17,7 @@ class ChatThread(BaseModel):
         on_delete=models.CASCADE,
         related_name="chat_threads",
     )
-    thread_type = models.CharField(max_length=50, db_index=True)
+    thread_type = models.CharField(max_length=50, db_index=True, default="user_chat")
     state = models.JSONField(default=dict, blank=True)
     description = models.CharField(max_length=255, blank=True, default="")
 
