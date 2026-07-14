@@ -17,7 +17,11 @@ class ChatThread(BaseModel):
         on_delete=models.CASCADE,
         related_name="chat_threads",
     )
+    thread_type = models.CharField(
+        max_length=50, db_index=True, default="user_chat"
+    )
     state = models.JSONField(default=dict, blank=True)
+    description = models.CharField(max_length=255, blank=True, default="")
 
 
 class ChatMessage(BaseModel):
@@ -33,5 +37,6 @@ class ChatMessage(BaseModel):
         schema=MessageSchema, default={"role": "system", "content": ""}
     )
     hidden = models.BooleanField(default=False)
+    meta = models.BooleanField(default=False)
     num_tokens = models.PositiveIntegerField(default=0)
     cost = models.FloatField(default=0.0)

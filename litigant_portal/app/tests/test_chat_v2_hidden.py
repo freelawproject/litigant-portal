@@ -12,13 +12,11 @@ from django.test import Client, TestCase
 
 from litigant_portal.agents_v2 import WeatherAgent
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
-from litigant_portal.app.selectors.chat_v2 import (
-    chat_message_list,
-    chat_message_list_visible,
-)
+from litigant_portal.app.selectors.chat_v2 import chat_message_list
 from litigant_portal.app.services.chat_v2 import (
     _messages_for_llm,
     chat_message_inject_hidden,
+    chat_message_inject_meta,
     thread_render_items,
 )
 
@@ -49,8 +47,40 @@ class InjectHiddenMessageTests(TestCase):
 
 
 @pytest.mark.postgres
+class InjectMetaMessageTests(TestCase):
+    """chat_message_inject_meta stores an accounting-only meta message."""
+
+    def setUp(self):
+        self.identity = UserIdentity.objects.create(session_key="meta")
+        self.thread = ChatThread.objects.create(identity=self.identity)
+
+    def test_stores_meta_message(self):
+        message = chat_message_inject_meta(
+            thread_id=self.thread.id,
+            kind="thread_description",
+            model="gpt-5-mini",
+            num_tokens=42,
+            cost=0.001,
+        )
+        self.assertTrue(message.meta)
+        self.assertEqual(message.data["role"], "meta")
+        self.assertEqual(message.data["kind"], "thread_description")
+        self.assertEqual(message.num_tokens, 42)
+        self.assertEqual(message.cost, 0.001)
+
+    def test_does_not_bump_thread_updated_at(self):
+        before = ChatThread.objects.get(pk=self.thread.pk).updated_at
+        chat_message_inject_meta(
+            thread_id=self.thread.id, kind="test", model="gpt-5-mini"
+        )
+        after = ChatThread.objects.get(pk=self.thread.pk).updated_at
+        self.assertEqual(after, before)
+
+
+@pytest.mark.postgres
 class ChatMessageListVisibilityTests(TestCase):
-    """chat_message_list includes hidden; chat_message_list_visible excludes it."""
+    """chat_message_list's flags carve out the three projections: everything
+    (usage), minus meta (LLM history), minus hidden and meta (render)."""
 
     def setUp(self):
         self.identity = UserIdentity.objects.create(session_key="visibility")
@@ -64,20 +94,34 @@ class ChatMessageListVisibilityTests(TestCase):
             data={"role": "user", "content": "secret"},
             hidden=True,
         )
-
-    def test_full_list_includes_hidden(self):
-        ids = set(
-            chat_message_list(thread=self.thread).values_list("id", flat=True)
+        self.meta = ChatMessage.objects.create(
+            thread=self.thread,
+            data={"role": "meta", "kind": "thread_description"},
+            meta=True,
         )
-        self.assertEqual(ids, {self.visible.id, self.hidden.id})
 
-    def test_visible_list_excludes_hidden(self):
-        ids = set(
-            chat_message_list_visible(thread=self.thread).values_list(
+    def ids(self, **flags):
+        return set(
+            chat_message_list(thread=self.thread, **flags).values_list(
                 "id", flat=True
             )
         )
-        self.assertEqual(ids, {self.visible.id})
+
+    def test_full_list_includes_everything(self):
+        self.assertEqual(
+            self.ids(), {self.visible.id, self.hidden.id, self.meta.id}
+        )
+
+    def test_llm_history_excludes_meta_only(self):
+        self.assertEqual(
+            self.ids(exclude_meta=True), {self.visible.id, self.hidden.id}
+        )
+
+    def test_render_view_excludes_hidden_and_meta(self):
+        self.assertEqual(
+            self.ids(exclude_hidden=True, exclude_meta=True),
+            {self.visible.id},
+        )
 
 
 @pytest.mark.postgres
@@ -87,11 +131,13 @@ class HiddenMessageProjectionTests(TestCase):
     def setUp(self):
         self.client = Client()
         # First request establishes a session + identity for the client.
-        self.client.get("/api/chat/threads/")
+        self.client.get("/api/agents/assistant/threads/")
         self.identity = UserIdentity.objects.get(
             session_key=self.client.session.session_key
         )
-        self.thread = ChatThread.objects.create(identity=self.identity)
+        self.thread = ChatThread.objects.create(
+            identity=self.identity, thread_type="user_chat"
+        )
         ChatMessage.objects.create(
             thread=self.thread,
             data={"role": "user", "content": "visible question"},
@@ -104,7 +150,12 @@ class HiddenMessageProjectionTests(TestCase):
 
     def test_hidden_reaches_llm_history(self):
         history = [dict(m.data) for m in chat_message_list(thread=self.thread)]
-        contents = [m["content"] for m in _messages_for_llm("sys", history)]
+        contents = [
+            m["content"]
+            for m in _messages_for_llm(
+                "sys", history, model="gpt-5-mini", attachment_cache={}
+            )
+        ]
         self.assertIn("HIDDEN CONTEXT", contents)
 
     def test_hidden_excluded_from_render_items(self):
@@ -116,7 +167,9 @@ class HiddenMessageProjectionTests(TestCase):
         self.assertNotIn("HIDDEN CONTEXT", contents)
 
     def test_hidden_excluded_from_sidebar_snippet(self):
-        data = json.loads(self.client.get("/api/chat/threads/").content)
+        data = json.loads(
+            self.client.get("/api/agents/assistant/threads/").content
+        )
         snippet = next(
             t["snippet"]
             for t in data["threads"]

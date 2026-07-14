@@ -1,9 +1,17 @@
+import re
+
+from django.conf import settings
 from django.conf.urls.i18n import i18n_patterns
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.views.i18n import JavaScriptCatalog
+from django.views.static import serve
 
-from litigant_portal.app.views import chat_v2, endpoints, pages
+from litigant_portal.app.views import (
+    assistant,
+    endpoints,
+    pages,
+)
 
 app_patterns = [
     # Main pages
@@ -50,24 +58,6 @@ api_patterns = [
         "case/timeline/", endpoints.case_timeline_add, name="case_timeline_add"
     ),
     path("case/clear/", endpoints.case_clear, name="case_clear"),
-    # Chat v2
-    path("threads/", chat_v2.thread_list, name="thread_list"),
-    path(
-        "threads/<uuid:thread_id>/",
-        chat_v2.message_list,
-        name="message_list",
-    ),
-    path(
-        "threads/<uuid:thread_id>/usage/",
-        chat_v2.thread_usage,
-        name="thread_usage",
-    ),
-    path(
-        "threads/<uuid:thread_id>/delete/",
-        chat_v2.thread_delete,
-        name="thread_delete",
-    ),
-    path("chat-stream/", chat_v2.chat_stream, name="chat_stream"),
     path("case/resolve/", endpoints.case_resolve, name="case_resolve"),
     path(
         "case/action-item/<uuid:item_id>/toggle/",
@@ -78,6 +68,33 @@ api_patterns = [
         "case/deadline/<uuid:deadline_id>/remind/",
         endpoints.deadline_reminder_toggle,
         name="deadline_reminder_toggle",
+    ),
+]
+
+assistant_patterns = [
+    path("stream/", assistant.stream, name="stream"),
+    path("threads/", assistant.thread_list, name="thread_list"),
+    path(
+        "threads/<uuid:thread_id>/",
+        assistant.message_list,
+        name="message_list",
+    ),
+    path(
+        "threads/<uuid:thread_id>/usage/",
+        assistant.thread_usage,
+        name="thread_usage",
+    ),
+    path(
+        "threads/<uuid:thread_id>/delete/",
+        assistant.thread_delete,
+        name="thread_delete",
+    ),
+    path("uploads/", assistant.upload_list, name="upload_list"),
+    path("uploads/create/", assistant.upload_create, name="upload_create"),
+    path(
+        "uploads/<uuid:upload_id>/delete/",
+        assistant.upload_delete,
+        name="upload_delete",
     ),
 ]
 
@@ -96,6 +113,13 @@ urlpatterns = [
         "api/chat/",
         include((api_patterns, "litigant_portal.app"), namespace="endpoints"),
     ),
+    path(
+        "api/agents/assistant/",
+        include(
+            (assistant_patterns, "litigant_portal.app"),
+            namespace="assistant",
+        ),
+    ),
     # Allauth Routes
     path("accounts/", include("allauth.urls")),
     # Django Admin
@@ -104,3 +128,13 @@ urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
     path("jsi18n/", JavaScriptCatalog.as_view(), name="javascript-catalog"),
 ]
+
+# Serve uploaded media when USE_S3 is false.
+if not settings.USE_S3:
+    urlpatterns += [
+        re_path(
+            rf"^{re.escape(settings.MEDIA_URL.lstrip('/'))}(?P<path>.*)$",
+            serve,
+            {"document_root": settings.MEDIA_ROOT},
+        ),
+    ]
