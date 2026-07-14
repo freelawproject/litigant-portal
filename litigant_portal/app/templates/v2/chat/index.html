@@ -373,20 +373,22 @@
         </div>
         {# Dropzone #}
         <div class="px-6">
-          <div x-on:click="browseFiles"
-               x-bind:class="dropzoneClass"
-               class="rounded-xl border-2 border-dashed px-6 py-7 text-center cursor-pointer transition-all duration-200 select-none">
+          <button type="button"
+                  x-ref="dropzone"
+                  x-on:click="browseFiles"
+                  x-bind:class="dropzoneClass"
+                  class="w-full rounded-xl border-2 border-dashed px-6 py-7 text-center cursor-pointer transition-all duration-200 select-none">
             <span class="mx-auto flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-sm border border-greyscale-200 text-primary-600 mb-3 pointer-events-none">
               <c-atoms.icon name="cloud-arrow-up" class="w-6 h-6" />
             </span>
-            <p class="text-sm font-medium text-greyscale-800 pointer-events-none">{% trans "Drag & drop files here" %}</p>
-            <p class="mt-0.5 text-xs text-greyscale-500 pointer-events-none">
+            <span class="block text-sm font-medium text-greyscale-800 pointer-events-none">{% trans "Drag & drop files here" %}</span>
+            <span class="block mt-0.5 text-xs text-greyscale-500 pointer-events-none">
               {% trans "or" %} <span class="font-medium text-primary-600">{% trans "browse from your computer" %}</span>
-            </p>
-            <p class="mt-2 text-[11px] text-greyscale-400 pointer-events-none">
+            </span>
+            <span class="block mt-2 text-[11px] text-greyscale-400 pointer-events-none">
               {% trans "PDF, Word, Excel, images & text — up to 20 MB each" %}
-            </p>
-          </div>
+            </span>
+          </button>
           <p x-show="hasUploadError"
              x-cloak
              class="mt-2 text-xs text-red-600"

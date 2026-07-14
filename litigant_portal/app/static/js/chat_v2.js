@@ -882,6 +882,10 @@ document.addEventListener('alpine:init', () => {
     async openAttach() {
       this.attachOpen = true
       this.setUploadError('')
+      // Dialog focus management: move focus into the modal on open and
+      // return it to the trigger on close.
+      this.attachTrigger = document.activeElement
+      this.$nextTick(() => this.$refs.dropzone?.focus())
       await this.loadUploads()
     },
 
@@ -890,6 +894,10 @@ document.addEventListener('alpine:init', () => {
       this.dragDepth = 0
       this.dropzoneClass = DROPZONE_IDLE
       this.disarmUploadDelete()
+      if (this.attachTrigger) {
+        this.attachTrigger.focus()
+        this.attachTrigger = null
+      }
     },
 
     // Fetch the identity's uploads; anything already attached shows selected.
