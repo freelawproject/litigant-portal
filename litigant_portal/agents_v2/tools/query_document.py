@@ -42,8 +42,7 @@ class QueryDocument(Tool):
         if upload is None:
             return ToolOutput(
                 result=(
-                    f"Error: no attached file with "
-                    f"upload_id={self.upload_id}."
+                    f"Error: no attached file with upload_id={self.upload_id}."
                 )
             )
 
