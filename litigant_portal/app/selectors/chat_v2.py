@@ -1,16 +1,35 @@
-from django.db.models import QuerySet, Sum
+from django.db.models import OuterRef, QuerySet, Subquery, Sum
 
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
 
 
-def chat_thread_list(*, identity: UserIdentity) -> QuerySet[ChatThread]:
-    """Chat threads for an identity, most recently updated first."""
-    return ChatThread.objects.filter(identity=identity).order_by("-updated_at")
+def chat_thread_list(
+    *, identity: UserIdentity, thread_type: str
+) -> QuerySet[ChatThread]:
+    """An identity's threads for a given thread type."""
+    visible = ChatMessage.objects.filter(
+        thread=OuterRef("pk"), hidden=False
+    ).order_by("-created_at")
+    snippet_source = visible.filter(
+        data__role__in=["user", "assistant"]
+    ).exclude(data__content="")
+    return (
+        ChatThread.objects.filter(identity=identity, thread_type=thread_type)
+        .annotate(
+            last_message_at=Subquery(visible.values("created_at")[:1]),
+            snippet=Subquery(snippet_source.values("data__content")[:1]),
+        )
+        .order_by("-updated_at")
+    )
 
 
-def chat_thread_get(*, identity: UserIdentity, thread_id) -> ChatThread:
-    """A single thread owned by the identity (raises ChatThread.DoesNotExist)."""
-    return ChatThread.objects.get(id=thread_id, identity=identity)
+def chat_thread_get(
+    *, identity: UserIdentity, thread_id, thread_type: str
+) -> ChatThread:
+    """A single thread scoped by identity and thread type."""
+    return ChatThread.objects.get(
+        id=thread_id, identity=identity, thread_type=thread_type
+    )
 
 
 def chat_message_list(*, thread: ChatThread) -> QuerySet[ChatMessage]:
