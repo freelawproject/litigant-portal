@@ -14,10 +14,21 @@ from litigant_portal.app.selectors.chat_v2 import (
     chat_message_list_visible,
     chat_thread_get,
 )
+from litigant_portal.app.services.assistant import attachment_render_list
+from litigant_portal.app.services.attachments import (
+    attachments_for_llm,
+)
+from litigant_portal.settings import CHAT_MODEL
 
 logger = logging.getLogger(__name__)
 
 MAX_STEPS = 30
+
+DESCRIPTION_PROMPT = (
+    "Write a very short title (at most 6 words) for the following "
+    "conversation. Return only the title — no quotes, no trailing "
+    "punctuation."
+)
 
 
 def chat_message_create(
@@ -43,9 +54,13 @@ def chat_message_create(
     )
 
 
-def chat_thread_delete(*, identity: UserIdentity, thread_id: str) -> None:
+def chat_thread_delete(
+    *, identity: UserIdentity, thread_id: str, thread_type: str
+) -> None:
     """Delete a thread (and its messages, via cascade) owned by the identity."""
-    chat_thread_get(identity=identity, thread_id=thread_id).delete()
+    chat_thread_get(
+        identity=identity, thread_id=thread_id, thread_type=thread_type
+    ).delete()
 
 
 def chat_message_inject_hidden(
@@ -60,13 +75,39 @@ def chat_message_inject_hidden(
     )
 
 
+def chat_thread_generate_description(*, thread: ChatThread) -> str:
+    """Generate and store a short description of a thread's conversation."""
+    conversation = "\n".join(
+        f"{m.data.get('role')}: {m.data.get('content')}"
+        for m in chat_message_list_visible(thread=thread)
+        if m.data.get("role") in ("user", "assistant")
+        and m.data.get("content")
+    )
+    response = litellm.completion(
+        model=CHAT_MODEL,
+        messages=[
+            {"role": "system", "content": DESCRIPTION_PROMPT},
+            {"role": "user", "content": conversation[:4000]},
+        ],
+    )
+    description = (response.choices[0].message.content or "").strip()[:255]
+    if description:
+        thread.description = description
+        thread.save(update_fields=["description", "updated_at"])
+    return description
+
+
 def _resolve_thread(
-    *, identity: UserIdentity, thread_id: str | None
+    *, identity: UserIdentity, thread_id: str | None, thread_type: str
 ) -> ChatThread:
     """Return the identity's thread, creating a fresh one when no id is given."""
     if thread_id:
-        return ChatThread.objects.get(id=thread_id, identity=identity)
-    return ChatThread.objects.create(identity=identity)
+        return chat_thread_get(
+            identity=identity, thread_id=thread_id, thread_type=thread_type
+        )
+    return ChatThread.objects.create(
+        identity=identity, thread_type=thread_type
+    )
 
 
 def _sse(payload: dict[str, Any]) -> str:
@@ -96,13 +137,26 @@ def _to_llm_message(msg: dict[str, Any]) -> dict[str, Any]:
 
 
 def _messages_for_llm(
-    system_prompt: str, history: list[dict[str, Any]]
+    system_prompt: str,
+    history: list[dict[str, Any]],
+    *,
+    model: str,
+    attachment_cache: dict,
 ) -> list[dict[str, Any]]:
-    """Prepend the (never-stored) system prompt and project to litellm shape."""
-    return [
-        {"role": "system", "content": system_prompt},
-        *(_to_llm_message(m) for m in history),
+    """Prepend the (never-stored) system prompt and project to litellm shape,
+    and inject attachment content parts or stubs."""
+    hydrated = attachments_for_llm(
+        history=history, model=model, cache=attachment_cache
+    )
+    messages: list[dict[str, Any]] = [
+        {"role": "system", "content": system_prompt}
     ]
+    for i, msg in enumerate(history):
+        llm_msg = _to_llm_message(msg)
+        if i in hydrated:
+            llm_msg["content"] = hydrated[i]
+        messages.append(llm_msg)
+    return messages
 
 
 def _render_tool(template: str | bool | None, context: dict) -> dict[str, Any]:
@@ -167,7 +221,15 @@ def thread_render_items(
     for msg in messages:
         role = msg.get("role")
         if role == "user":
-            items.append({"kind": "user", "content": msg.get("content", "")})
+            item: dict[str, Any] = {
+                "kind": "user",
+                "content": msg.get("content", ""),
+            }
+            if msg.get("attachments"):
+                item["attachments"] = attachment_render_list(
+                    msg["attachments"]
+                )
+            items.append(item)
         elif role == "assistant":
             content = msg.get("content", "")
             if content:
@@ -195,11 +257,15 @@ def chat_stream(
     identity: UserIdentity,
     message: str,
     agent_class: type[Agent],
+    thread_type: str,
     model: str,
     thread_id: str | None = None,
+    attachment_ids: list[str] | None = None,
 ) -> StreamingHttpResponse:
     """Stream an agent's reply for ``message``, running the tool loop."""
-    thread = _resolve_thread(identity=identity, thread_id=thread_id)
+    thread = _resolve_thread(
+        identity=identity, thread_id=thread_id, thread_type=thread_type
+    )
     agent = agent_class()
 
     if "model" in agent.completion_args:
@@ -208,9 +274,12 @@ def chat_stream(
             "the model is passed to chat_stream by the caller."
         )
 
+    user_data: dict[str, Any] = {"role": "user", "content": message}
+    if attachment_ids:
+        user_data["attachments"] = [str(i) for i in attachment_ids]
     chat_message_create(
         thread_id=thread.id,
-        data={"role": "user", "content": message},
+        data=user_data,
         model=model,
     )
 
@@ -221,6 +290,8 @@ def chat_stream(
     def event_stream() -> Iterator[str]:
         yield _sse({"type": "thread", "thread_id": str(thread.id)})
 
+        attachment_cache: dict = {}
+
         try:
             system_prompt = agent.generate_system_prompt(thread_id=thread.id)
 
@@ -228,7 +299,12 @@ def chat_stream(
                 call_args: dict[str, Any] = {
                     **agent.completion_args,
                     "model": model,
-                    "messages": _messages_for_llm(system_prompt, history),
+                    "messages": _messages_for_llm(
+                        system_prompt,
+                        history,
+                        model=model,
+                        attachment_cache=attachment_cache,
+                    ),
                     "stream": True,
                     "stream_options": {"include_usage": True},
                 }
@@ -352,6 +428,7 @@ def chat_stream(
                         thread_id=thread.id,
                         data=tool_msg,
                         model=model,
+                        cost=output.cost,
                     )
 
                     yield _sse(
@@ -378,6 +455,21 @@ def chat_stream(
                     system_prompt = agent.generate_system_prompt(
                         thread_id=thread.id
                     )
+
+            if not thread.description:
+                try:
+                    description = chat_thread_generate_description(
+                        thread=thread
+                    )
+                    if description:
+                        yield _sse(
+                            {
+                                "type": "description",
+                                "description": description,
+                            }
+                        )
+                except Exception:
+                    logger.exception("chat_v2 description generation failed")
 
             thread.save(update_fields=["updated_at"])
             yield _sse({"type": "done"})
