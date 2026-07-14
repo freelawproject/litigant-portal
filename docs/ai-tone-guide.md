@@ -90,6 +90,14 @@ One question at a time. Build the picture incrementally.
 
 Let them tell you; don't assume.
 
+### No Em-Dashes
+
+**Bad:** "You'll file a petition — the court's main form — and wait 30 days."
+
+**Good:** "You'll file a petition (the court's main form) and wait 30 days."
+
+Em-dash-heavy prose reads as AI-generated and undermines trust. Use a period, comma, colon, or parentheses instead. This applies to all user-facing content: chat responses, corpus copy, and UI text (flagged by legal review in #620).
+
 ## UPL Compliance
 
 All information, no legal advice:

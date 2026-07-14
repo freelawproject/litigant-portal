@@ -1,0 +1,147 @@
+# Eviction corpus — Franklin County Municipal Court (Columbus, OH), LANDLORD
+# role. Sibling of eviction-tenant.yml (#606/#607): the tenant/landlord fork
+# happens at the entry point (two corpora, two URLs), never inside the engine.
+#
+# CONTENT STATUS: drafted 2026-07-10 from the archived sources in
+# corpus-sources/franklin-county-oh/eviction/ (see source-notes.md; every
+# claim traces to ORC Chapter 1923 or the FCMC clerk FAQ). Pending legal
+# review per the #607 DoD. FCMC Self Help Center contact details still
+# unverified (not yet listed). Complaint forms live behind the clerk's
+# eviction FAQ; a packet section may come with #610.
+#
+# Authoring style (per #620/#646): no em-dashes in user-facing copy; body
+# paragraphs are ONE line each (the renderer turns every newline into <br>);
+# never label resources or forms "official".
+
+metadata:
+  court: franklin-county-oh
+  topic: eviction
+  role: landlord
+  title: 'Filing an Eviction in Franklin County, Ohio (Landlord)'
+
+contacts:
+  - id: court_clerk
+    name: 'Franklin County Municipal Court Clerk'
+    phone: '(614) 645-8186'
+    url: 'https://www.fcmcclerk.com'
+    note: '375 South High Street, Columbus. Filing questions, the fee schedule, and the public case search.'
+  - id: service_bailiff
+    name: "FCMC Service Bailiff's Office"
+    phone: '(614) 645-7780'
+    note: 'Arranges the set out after a judgment. The clerk sends your paperwork here; call to schedule.'
+  - id: cba_referral
+    name: 'Columbus Bar Association Lawyer Referral Service'
+    phone: '(614) 221-0754'
+    note: 'The court points filers here to locate an attorney. Required if the property is owned by a corporation, LLC, or trust.'
+
+deadlines:
+  - id: earliest_filing
+    label: 'Earliest day to file your eviction case'
+    offset_days: 3
+    offset_from: notice_served_date
+    description: 'Ohio law requires the Notice to Leave at least three days before you begin the eviction action. If you are unsure how the days count in your situation, ask the clerk before filing.'
+
+resources:
+  - id: orc_1923
+    label: 'Ohio Revised Code Chapter 1923 (eviction law)'
+    url: 'https://codes.ohio.gov/ohio-revised-code/chapter-1923'
+    note: 'The state law eviction cases follow: notice, summons, hearing, and writ rules.'
+  - id: fcmc_faq
+    label: 'Franklin County Municipal Court Clerk eviction FAQ'
+    url: 'https://www.fcmcclerk.com/faq/civil/evictions'
+    note: "The clerk's answers about filing an eviction, fees, service options, and set outs, including the complaint forms and filing guidance."
+
+sections:
+  - kind: info
+    id: overview
+    heading: 'Evicting a tenant in Franklin County'
+    body: |
+      This tool explains how to lawfully end a tenancy and regain possession of your property through Franklin County Municipal Court, from the required notice through the set out.
+
+      Ohio law requires the court process. Changing the locks, shutting off utilities, or removing a tenant's belongings without a court order is illegal, and a tenant can recover money from you for it. Following the process precisely also protects your case: a defective notice or a misstep on timing is a common way eviction cases fail.
+
+      One rule to check before anything else: only the deeded property owner can sign and file an Eviction Complaint without an attorney. If the property is owned by a corporation, LLC, or trust, an attorney must handle every stage of the case, and using a power of attorney to represent someone else in court is not permitted.
+
+      Nothing on this page is legal advice. It explains the process; an attorney can help you decide whether eviction is the right step for your situation. The Columbus Bar Association Lawyer Referral Service in the contacts below can help you find one.
+
+  - kind: info
+    id: notice_requirements
+    heading: 'The notice you must give first'
+    body: |
+      Before filing, you must give the tenant a written Notice to Leave at least three days before beginning the court action. Deliver it in person, leave it at the property, or send it by certified mail with return receipt requested. A verbal notice does not count.
+
+      The notice must contain the following words in a conspicuous place: "You are being asked to leave the premises. If you do not leave, an eviction action may be initiated against you. If you are in doubt regarding your legal rights and obligations as a tenant, it is recommended that you seek legal assistance."
+
+      Be careful about accepting rent after serving the notice. Accepting payment afterward is one of the facts a court looks at, and it can undermine the case you are about to file.
+
+      Enter the date you served the notice below and your earliest filing date is calculated for you, with a calendar download further down.
+
+  - kind: fact_gather
+    id: notice_details
+    heading: 'Your notice date'
+    questions:
+      - id: notice_served_date
+        label: 'Date you served the Notice to Leave'
+        type: date
+        help_text: 'The day you handed the notice to your tenant, left it at the property, or sent it by certified mail.'
+
+  - kind: info
+    id: filing_and_costs
+    heading: 'Filing your case and what it costs'
+    body: |
+      File your Eviction Complaint with the Clerk of the Franklin County Municipal Court, Civil Division, 3rd floor, 375 South High Street. The court does not supply the complaint form itself; you can get one from a legal supply store, law library, or online, and it is your responsibility that it meets Ohio law.
+
+      Bring the original complaint plus a copy of the Notice to Leave you served. If your claim is based on a written lease, a copy of the lease must be attached to the complaint (Local Rule 9(G)). Bring two additional copies of the complaint and all attachments for each tenant you are evicting, and make sure names are spelled correctly and every address is complete down to the unit number and zip code. Service problems are a common way cases get delayed.
+
+      Filing costs roughly $125 for a single cause of action, which asks only for possession, and roughly $160 for two causes of action, which adds a money claim for back rent, unpaid utilities, or damage beyond ordinary wear and tear. The court's published amounts vary slightly between documents, so confirm the current fee with the clerk before you go.
+
+      The fee covers ordinary mail service plus one additional service method, bailiff service or certified mail, for up to three defendants or addresses. Additional defendants add charges under the court's fee schedule.
+
+  - kind: info
+    id: service_and_hearing
+    heading: 'Service and your hearing'
+    body: |
+      After you file, the clerk mails the summons and complaint to the tenant and completes the service method you chose. The tenant must be served at least seven days before the hearing, and hearings are usually scheduled 14 to 21 days from the filing date.
+
+      At the hearing you will need to show that the tenancy ended or the lease was broken, that you gave the required notice, that you did not accept rent after the notice, and that the tenant still occupies the property. Bring your lease, a copy of the notice with how and when it was served, your rent ledger, and any other records.
+
+      If you included a money claim, the tenant has 28 days from service to file an Answer. If they answer, the money claim is heard separately from the eviction unless a counterclaim brings everything into one hearing. If they do not answer in time, you can ask the court for a default judgment on the amount.
+
+  - kind: info
+    id: after_judgment
+    heading: 'After the judgment'
+    body: |
+      If the court grants restitution, you can ask for a Writ of Restitution. That is the order allowing a bailiff to remove the tenant and their belongings, commonly called a set out.
+
+      After you file for the writ, the clerk sends the paperwork to the service bailiff's office, and you call them to arrange the set out. The writ must be executed within 10 days of issuing.
+
+      If the tenant appeals and obtains a stay with any required bond, the set out pauses until the court orders otherwise. The tenant may also offer to agree on a move-out date, which can save you the cost of the writ.
+
+  - kind: output
+    output_type: ics
+    id: deadlines_calendar
+    heading: 'Add your filing date to your calendar'
+    deadline_ids:
+      - earliest_filing
+
+  - kind: output
+    output_type: vcf
+    id: save_contacts
+    heading: 'Save these contacts'
+    contact_ids:
+      - court_clerk
+      - service_bailiff
+      - cba_referral
+
+  - kind: output
+    output_type: resources
+    id: resources_links
+    heading: 'Franklin County and Ohio resources'
+    resource_ids:
+      - orc_1923
+      - fcmc_faq
+
+  - kind: output
+    output_type: summary
+    id: recap
+    heading: 'Summary of what you entered'

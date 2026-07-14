@@ -1,0 +1,24 @@
+{% load i18n %}
+
+<c-vars tracks="" />
+{# Guided-flow track links — persistent, server-rendered chat→Topic Flow handoff (#633). #}
+{# Renders nothing when the topic has no authored corpus. #}
+{% if tracks %}
+  {% trans "Guided steps" as flow_links_title %}
+  <c-molecules.sidebar-section title="{{ flow_links_title }}" icon="map">
+    {% for track in tracks %}
+      <p>
+        <c-atoms.link
+          href="{% url 'pages:topic_flow' track.court track.topic track.role %}"
+          class="text-sm"
+          title="{{ track.title }}"
+        >
+          {{ track.label }}
+        </c-atoms.link>
+      </p>
+    {% endfor %}
+    <p class="text-xs text-greyscale-400">
+      {% trans "Step-by-step guidance for your situation — no chat needed." %}
+    </p>
+  </c-molecules.sidebar-section>
+{% endif %}

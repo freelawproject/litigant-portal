@@ -1,0 +1,207 @@
+# Eviction corpus — Franklin County Municipal Court (Columbus, OH), TENANT
+# role. First corpus on the eviction vertical (#606/#607); replaces the fake
+# Jane/DuPage demo (#611 retires those pages once this reaches parity).
+# Sibling corpus: eviction-landlord.yml (role fork at entry, no in-engine
+# branching).
+#
+# CONTENT STATUS: drafted 2026-07-10 from the archived sources in
+# corpus-sources/franklin-county-oh/eviction/ (see source-notes.md for the
+# fact inventory; every claim below traces to ORC Chapter 1923, the FCMC
+# clerk FAQ, or a LASCO tenant guide). Pending legal review per the #607 DoD.
+# FCMC Self Help Center contact details still unverified (not yet listed).
+# Response-packet forms are #610 (no packet section here yet).
+#
+# Known gap, deliberate: the flow URL /t/franklin-county-oh/eviction/tenant/
+# resolves from this corpus alone, but the chat deep-link
+# /t/franklin-county-oh/eviction/ 404s until courts/franklin-county-oh/
+# prompt.md exists (chat-side court content; needs the same sources, #373).
+#
+# Authoring style (per #620/#646): no em-dashes in user-facing copy; body
+# paragraphs are ONE line each (the renderer turns every newline into <br>);
+# never label resources or forms "official".
+
+metadata:
+  court: franklin-county-oh
+  topic: eviction
+  role: tenant
+  title: 'Responding to an Eviction in Franklin County, Ohio (Tenant)'
+
+contacts:
+  - id: lasco
+    name: 'Legal Aid of Southeast and Central Ohio (LASCO)'
+    phone: '1-888-246-4420'
+    url: 'https://www.lasco.org'
+    note: 'Free legal help with noncriminal issues for people with low incomes, seniors, and veterans in 36 Ohio counties, including Franklin County. Their guidance at every step of an eviction is the same: call an attorney early. Apply by phone or through their website.'
+  - id: court_clerk
+    name: 'Franklin County Municipal Court Clerk'
+    phone: '(614) 645-8186'
+    url: 'https://www.fcmcclerk.com'
+    note: '375 South High Street, Columbus. Call with your case number to confirm your hearing date or to ask for the date you were served, which starts your 28-day window to answer a money claim.'
+  - id: urban_league
+    name: 'Columbus Urban League'
+    phone: '(614) 257-6300'
+    note: "The court's FAQ points tenants here for information about tenant rights."
+
+deadlines:
+  - id: answer_due
+    label: 'Answer to a money claim is due'
+    offset_days: 28
+    offset_from: papers_received_date
+    description: 'If the complaint includes a claim for money (a second cause of action), your written Answer must be filed within 28 days of the day you received the court papers. If the last day falls on a weekend or holiday, you have until the next business day.'
+  - id: hearing_day
+    label: 'Your eviction hearing'
+    offset_days: 0
+    offset_from: hearing_date
+    description: 'The date, time, and location are on your summons. Arrive early and check in with the bailiff. If you do not appear, the case is decided without you.'
+
+resources:
+  - id: orc_1923
+    label: 'Ohio Revised Code Chapter 1923 (eviction law)'
+    url: 'https://codes.ohio.gov/ohio-revised-code/chapter-1923'
+    note: 'The state law eviction cases follow: notice, summons, defenses, and the rules for removal.'
+  - id: lasco_guides
+    label: 'LASCO tenant guides on eviction'
+    url: 'https://www.lasco.org/housing'
+    note: 'Plain-language guides from Legal Aid of Southeast and Central Ohio: the five steps of eviction, notices to leave, illegal lockouts, answering a money claim, and getting a case dismissed after moving out.'
+  - id: fcmc_faq
+    label: 'Franklin County Municipal Court Clerk eviction FAQ'
+    url: 'https://www.fcmcclerk.com/faq/civil/evictions'
+    note: "The clerk's answers about filing, service, hearing scheduling, and set outs, plus the public case search."
+  - id: fcmc_civil_forms
+    label: 'Franklin County Municipal Court civil forms'
+    url: 'https://www.fcmcclerk.com/forms/civil'
+    note: 'Court forms, including the fee waiver affidavit, a blank response form, and the application to ask that an eviction record be removed from online access.'
+
+sections:
+  - kind: info
+    id: overview
+    heading: 'Responding to an eviction in Franklin County'
+    body: |
+      This tool explains how an eviction case works in Franklin County Municipal Court and what you can do at each step, whether you just received a notice from your landlord or already have a court date.
+
+      Only a court can order you to leave your home. It is illegal for a landlord to change your locks, shut off your utilities, or put your belongings outside to force you out. If any of that is happening, call local law enforcement and a legal aid attorney right away, and keep receipts for anything it costs you. You may be able to recover that money.
+
+      Nothing on this page is legal advice. It explains the process and the options people in this situation have, and free legal help is listed in the contacts at the end of this page.
+
+  - kind: info
+    id: notice_to_leave
+    heading: 'If you received a Notice to Leave'
+    body: |
+      A Notice to Leave (sometimes called a Notice to Vacate or a Three-Day Notice) is the written notice your landlord must normally give before filing an eviction case. Ohio law requires it to be in writing and signed, and delivered in person, left at your home (usually on the front door), or sent by certified mail.
+
+      Receiving a notice does not mean you must move by the date on it. It is not a court order, and only a court can make you leave. It means your landlord can file an eviction case if you stay past the notice deadline, which must be at least three days after the notice.
+
+      If you want to stay, the days before the notice deadline are the best time to act. You can offer the rent owed or try to work out an agreement with your landlord, and any agreement should be put in writing. After a landlord has paid to file in court, they may want their filing costs covered too.
+
+      If a law enforcement officer tells you to move out without a court order, call a legal aid attorney immediately.
+
+  - kind: info
+    id: court_papers
+    heading: 'If you received court papers'
+    body: |
+      If you stay past the notice deadline, your landlord can file an Eviction Complaint. The court then sends you a copy of the complaint and a paper titled Summons in Forcible Entry and Detainer that says when and where your hearing is. The papers can be mailed, handed to you or an adult in your household, or posted on your front door, and service must happen at least seven days before the hearing. In Franklin County, hearings are usually scheduled 14 to 21 days after filing.
+
+      Most eviction complaints have two parts. The first cause of action asks for possession of your home; that is the eviction itself. The second cause of action, if the landlord included one, asks for money such as back rent, unpaid utilities, or damage. Read the complaint to see exactly what your landlord is asking for.
+
+      The money claim runs on its own clock. If you dispute what the landlord says you owe, you must file a written Answer within 28 days of receiving the court papers, even though the eviction hearing usually happens first. If you do not answer in time, the landlord can ask for a default judgment and the court can order the full amount without hearing your side.
+
+      Enter your dates below and the deadlines on this page update, with a calendar download further down.
+
+  - kind: fact_gather
+    id: court_dates
+    heading: 'Your court dates'
+    questions:
+      - id: papers_received_date
+        label: 'Date you received the court papers'
+        type: date
+        help_text: 'The day the summons and complaint were handed to you, mailed to you, or posted on your door. This starts the 28-day window to answer a money claim. Not sure? Call the clerk with your case number and ask for the date you were served.'
+      - id: hearing_date
+        label: 'Your hearing date'
+        type: date
+        help_text: 'Printed on the Summons in Forcible Entry and Detainer. Enter it to add it to your calendar below.'
+
+  - kind: info
+    id: defenses
+    heading: 'Defenses you may have'
+    body: |
+      At the hearing, the judge decides whether the eviction is legally justified, and Ohio law lets you raise any defense at trial. Facts like these can matter:
+
+      - Your landlord never gave you the Notice to Leave, or it was missing the required content.
+      - You have rent receipts showing you paid.
+      - Your landlord accepted rent after serving the notice.
+      - Your landlord regularly accepted late rent, then refused it without warning this time.
+      - You offered the rent on time and it was refused.
+      - You deposited your rent with the court clerk because of bad conditions.
+      - Your rent was late because of someone else's mistake, like a paycheck mailed to the wrong address.
+
+      Ohio law also says no one may be evicted in retaliation for exercising their lawful rights.
+
+      Two cautions. Bad housing conditions alone are usually not a defense for unpaid rent. And it is hard to stop an eviction for nonpayment even with a good reason for not paying. Talking to a legal aid attorney before your hearing is the reliable way to find out whether your facts amount to a defense.
+
+      If the case includes a money claim and you believe your landlord owes you money too, for example an unreturned security deposit or repairs you paid for, you can file an Answer and Counterclaim together within the same 28 days, and the court can hear all of it at once.
+
+      Filing an Answer costs nothing. A counterclaim can carry a filing fee, and if you cannot afford it, the court has a fee waiver affidavit you can file instead. After you file, the court usually schedules a pretrial hearing for the money claim, and it may set mediation before a final hearing.
+
+  - kind: info
+    id: at_the_hearing
+    heading: 'At your hearing'
+    body: |
+      Always go to your hearing, even if you plan to move out. If you do not appear and you were properly served, the case is decided without you. Arrive early and check in with the bailiff.
+
+      Your landlord speaks first and will try to show that the lease ended or was broken, that you were given the notice, that no rent was accepted afterward, and that you still live in the home. Then it is your turn. You can testify, bring witnesses, and show evidence such as your lease, rent receipts, and messages between you and your landlord.
+
+      The judge usually decides at the hearing. If you win, the eviction is dismissed and you stay. If you lose, you can ask the judge how much time you have to move, and the landlord receives a written decision called a Judgment Entry.
+
+  - kind: info
+    id: moved_out
+    heading: 'If you already moved out'
+    body: |
+      If you move out before the hearing, you can ask the judge to dismiss the eviction claim as moot. That keeps a judgment for possession off your record, which matters for future rental applications.
+
+      Return your keys to the landlord and try to get a receipt. Returning the keys is what legally returns the home. If the landlord will not give a receipt, bring the keys to the hearing and hand them over in front of the judge.
+
+      At the hearing, tell the judge the date you moved out, that you returned the keys, and that you do not claim anything left behind, then ask that the claim for possession be dismissed as moot.
+
+      A money claim in the same case does not go away when the eviction is dismissed. The 28-day Answer deadline still applies.
+
+  - kind: info
+    id: set_out
+    heading: 'If the judge orders you to move'
+    body: |
+      If the judge rules for your landlord, the landlord can ask the court for a Writ of Restitution. That is the order allowing a bailiff to remove you and your belongings, often called a set out.
+
+      Once the writ issues, the set out must happen within 10 days, and it can be as soon as the day after the landlord requests it. Do not count on another warning.
+
+      You may be able to agree with your landlord on a move-out date instead. That saves the landlord the cost of the writ and gives you certainty about your timing. Put any agreement in writing.
+
+  - kind: output
+    output_type: ics
+    id: deadlines_calendar
+    heading: 'Add your dates to your calendar'
+    deadline_ids:
+      - answer_due
+      - hearing_day
+
+  - kind: output
+    output_type: vcf
+    id: save_contacts
+    heading: 'Save these contacts'
+    contact_ids:
+      - lasco
+      - court_clerk
+      - urban_league
+
+  - kind: output
+    output_type: resources
+    id: resources_links
+    heading: 'Franklin County and Ohio resources'
+    resource_ids:
+      - orc_1923
+      - lasco_guides
+      - fcmc_faq
+      - fcmc_civil_forms
+
+  - kind: output
+    output_type: summary
+    id: recap
+    heading: 'Summary of what you entered'

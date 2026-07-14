@@ -164,9 +164,13 @@ STATICFILES_DIRS = [
 MEDIA_URL = os.environ.get("MEDIA_URL", "/media/")
 MEDIA_ROOT = BASE_DIR / "app" / "media"
 
-# Storage — S3 unless USE_S3=false, default to filesystem in dev/test.
-USE_S3 = os.environ.get("USE_S3", str(not DEBUG)).lower() == "true"
-
+# Storage — local filesystem in dev/test, S3 in prod/QA. Gated by USE_S3 rather
+# than DEBUG directly, so a non-debug deploy can still run on local storage when
+# it has no S3 creds (the self-contained DigitalOcean QA box). Default preserves
+# the prior behavior: S3 whenever DEBUG is off, filesystem otherwise.
+USE_S3 = (
+    os.environ.get("USE_S3", "false" if DEBUG else "true").lower() == "true"
+)
 S3_CONNECTION = {
     "access_key": os.environ.get("AWS_ACCESS_KEY_ID", ""),
     "secret_key": os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
