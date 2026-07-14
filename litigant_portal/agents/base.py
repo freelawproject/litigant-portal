@@ -89,8 +89,15 @@ class ToolMessage(TypedDict, total=False):
     data: dict[str, Any]
 
 
+class MetaMessage(TypedDict, total=False):
+    """An accounting-only record."""
+
+    role: Literal["meta"]
+    kind: str
+
+
 Message = Annotated[
-    SystemMessage | UserMessage | AssistantMessage | ToolMessage,
+    SystemMessage | UserMessage | AssistantMessage | ToolMessage | MetaMessage,
     Field(discriminator="role"),
 ]
 

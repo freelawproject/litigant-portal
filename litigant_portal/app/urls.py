@@ -1,9 +1,11 @@
+import re
+
 from django.conf import settings
 from django.conf.urls.i18n import i18n_patterns
-from django.conf.urls.static import static
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from django.views.i18n import JavaScriptCatalog
+from django.views.static import serve
 
 from litigant_portal.app.views import (
     assistant,
@@ -127,8 +129,12 @@ urlpatterns = [
     path("jsi18n/", JavaScriptCatalog.as_view(), name="javascript-catalog"),
 ]
 
-# Serve uploaded media locally in dev.
-if settings.DEBUG:
-    urlpatterns += static(
-        settings.MEDIA_URL, document_root=settings.MEDIA_ROOT
-    )
+# Serve uploaded media when USE_S3 is false.
+if not settings.USE_S3:
+    urlpatterns += [
+        re_path(
+            rf"^{re.escape(settings.MEDIA_URL.lstrip('/'))}(?P<path>.*)$",
+            serve,
+            {"document_root": settings.MEDIA_ROOT},
+        ),
+    ]
