@@ -415,11 +415,11 @@ tools opt in, the engine does the rest.
 Messages are stored once; the `chat_message_list` selector carves out each
 projection with two flags (`exclude_hidden`, `exclude_meta`):
 
-| Projection             | Call                                       | Used for                                    |
-| ---------------------- | ------------------------------------------ | ------------------------------------------- |
-| Accounting (everything)| `chat_message_list(thread=…)`              | `chat_thread_usage` token/cost totals       |
-| LLM history            | `…(exclude_meta=True)`                     | what `chat_stream` feeds to litellm         |
-| Render view            | `…(exclude_hidden=True, exclude_meta=True)`| `thread_render_items`, sidebar snippets     |
+| Projection              | Call                                        | Used for                                |
+| ----------------------- | ------------------------------------------- | --------------------------------------- |
+| Accounting (everything) | `chat_message_list(thread=…)`               | `chat_thread_usage` token/cost totals   |
+| LLM history             | `…(exclude_meta=True)`                      | what `chat_stream` feeds to litellm     |
+| Render view             | `…(exclude_hidden=True, exclude_meta=True)` | `thread_render_items`, sidebar snippets |
 
 ### Hidden messages
 
