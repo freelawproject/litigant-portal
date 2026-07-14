@@ -449,6 +449,9 @@ function createHomePage() {
     // --- Timeline state ---
     caseTimeline: [],
 
+    // --- Mobile case drawer state ---
+    casePanelOpen: false,
+
     // --- Sidebar flash state ---
     _sidebarFlash: false,
 
@@ -630,6 +633,50 @@ function createHomePage() {
     },
     get noTimeline() {
       return this.caseTimeline.length === 0
+    },
+    get timelineCount() {
+      return this.caseTimeline.length
+    },
+
+    // --- Mobile case drawer (non-modal: nav stays interactive above it) ---
+    openCasePanel() {
+      if (this.casePanelOpen) return
+      this.casePanelOpen = true
+      this.$nextTick(() => {
+        if (this.$refs.casePanelClose) this.$refs.casePanelClose.focus()
+      })
+    },
+    closeCasePanel() {
+      if (!this.casePanelOpen) return
+      this.casePanelOpen = false
+      if (this.$refs.casePanelTrigger) this.$refs.casePanelTrigger.focus()
+    },
+
+    // Drawer swipe gestures: left-swipe opens, right-swipe closes. Single-touch,
+    // horizontal-dominant with a distance threshold — never hijacks vertical scrolling.
+    _swipeStartX: null,
+    _swipeStartY: null,
+    chatTouchStart(event) {
+      if (event.touches.length !== 1) {
+        this._swipeStartX = null
+        return
+      }
+      this._swipeStartX = event.touches[0].clientX
+      this._swipeStartY = event.touches[0].clientY
+    },
+    chatTouchEnd(event) {
+      if (this._swipeStartX === null) return
+      const dx = event.changedTouches[0].clientX - this._swipeStartX
+      const dy = event.changedTouches[0].clientY - this._swipeStartY
+      this._swipeStartX = null
+      // The drawer only exists below lg (1024px)
+      if (window.innerWidth >= 1024) return
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 2) return
+      if (this.casePanelOpen && dx > 0) {
+        this.closeCasePanel()
+      } else if (!this.casePanelOpen && dx < 0) {
+        this.openCasePanel()
+      }
     },
 
     // Case status

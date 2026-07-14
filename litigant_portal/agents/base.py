@@ -1,7 +1,15 @@
 import json
 import logging
 from collections.abc import Iterator
-from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Literal, TypedDict
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    ClassVar,
+    Literal,
+    NotRequired,
+    TypedDict,
+)
 from uuid import UUID
 
 from django.conf import settings
@@ -56,6 +64,7 @@ class UserMessage(TypedDict):
 
     role: Literal["user"]
     content: str
+    attachments: NotRequired[list[str]]
 
 
 class AssistantMessage(TypedDict, total=False):
@@ -80,8 +89,15 @@ class ToolMessage(TypedDict, total=False):
     data: dict[str, Any]
 
 
+class MetaMessage(TypedDict, total=False):
+    """An accounting-only record."""
+
+    role: Literal["meta"]
+    kind: str
+
+
 Message = Annotated[
-    SystemMessage | UserMessage | AssistantMessage | ToolMessage,
+    SystemMessage | UserMessage | AssistantMessage | ToolMessage | MetaMessage,
     Field(discriminator="role"),
 ]
 

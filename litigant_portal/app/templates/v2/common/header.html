@@ -1,0 +1,13 @@
+{% load static i18n %}
+
+{# Shared site nav for v2 pages — logo on the left, user menu on the right. #}
+<header class="mobile-header flex-shrink-0">
+  <div class="flex items-center justify-between px-4 py-2">
+    <a href="{% url 'pages:home' %}" aria-label="{% trans "Home" %}">
+      <img src="{% static 'images/logo_powered.svg' %}"
+           alt="{% trans "Litigant Portal – Powered by Free Law Project" %}"
+           class="h-12">
+    </a>
+    <c-molecules.user-menu />
+  </div>
+</header>

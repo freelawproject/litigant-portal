@@ -615,6 +615,26 @@
     animation: sidebar-flash 1.5s ease-out;
   }
 
+  /* Mobile case drawer — slides in from the right */
+  @keyframes drawer-slide-in {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  .drawer-panel {
+    animation: drawer-slide-in 0.2s ease-out;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .drawer-panel {
+      animation: none;
+    }
+  }
+
   /* Activity panel */
   .activity-panel {
     @apply flex flex-col h-full;

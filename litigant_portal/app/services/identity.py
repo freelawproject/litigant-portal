@@ -27,6 +27,8 @@ def identity_merge(
     migrates regardless. Runs in a single transaction.
     """
     chats = source_identity.chat_sessions.update(identity=target_identity)
+    threads = source_identity.chat_threads.update(identity=target_identity)
+    uploads = source_identity.uploads.update(identity=target_identity)
 
     dropped = 0
     if target_identity.case_infos.filter(status="active").exists():
@@ -39,9 +41,12 @@ def identity_merge(
 
     logger.info(
         "Merged anonymous identity into user %s: %d chat session(s), "
-        "%d case(s) migrated, %d duplicate active case(s) dropped",
+        "%d thread(s), %d upload(s), %d case(s) migrated, "
+        "%d duplicate active case(s) dropped",
         target_identity.user_id,
         chats,
+        threads,
+        uploads,
         cases,
         dropped,
     )

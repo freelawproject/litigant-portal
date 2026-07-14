@@ -1,0 +1,32 @@
+# Caddy config for the DigitalOcean QA box (TEMPORARY — see docker-compose.qa.yml).
+#
+# One hostname serves both the LP app and the docassemble interview, so a court
+# partner needs just one CNAME for the whole portal (see ARCHITECTURE.md → Open
+# Contracts). Caddy auto-provisions HTTPS via Let's Encrypt for {$DOMAIN}.
+
+{$DOMAIN} {
+	# Document-assembly interviews. `handle` (not `handle_path`) keeps the
+	# /interview/ prefix, which docassemble expects because POSTURLROOT mounts it
+	# there. Matched before the catch-all so it wins.
+	handle /interview/* {
+		reverse_proxy docassemble:80
+	}
+
+	# Static assets. Django doesn't serve these under DEBUG=false (no whitenoise,
+	# no S3 on this box), so Caddy serves the collectstatic output from the box
+	# bind mount at /opt/litigant-portal/qa-static. handle_path strips /static/ so
+	# the file path resolves under the root.
+	handle_path /static/* {
+		root * /srv/static
+		file_server
+	}
+
+	# Everything else is the Litigant Portal app.
+	handle {
+		reverse_proxy django:8000
+	}
+
+	log {
+		output stdout
+	}
+}

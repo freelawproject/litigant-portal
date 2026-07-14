@@ -218,13 +218,28 @@ def chat_page(request):
             "topic_context": topic_context,
             "court_slug": court_slug,
             "court_name": get_court_name(court_slug),
+            # Omni-court: the topic resolves its court's guided-flow tracks.
+            "flow_tracks": registry.tracks_for(slug) if topic else [],
         },
     )
 
 
 def chat_v2_view(request):
     """New chat page"""
-    return render(request, "chat_v2/index.html")
+    import os
+
+    from litigant_portal.settings import CHAT_ENABLED, CHAT_MODEL
+
+    # Temporary debug info surfaced in the right-hand panel.
+    debug_env = {
+        "AWS_BEARER_TOKEN_BEDROCK": bool(
+            os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
+        ),
+        "OPENAI_API_KEY": bool(os.environ.get("OPENAI_API_KEY")),
+        "CHAT_MODEL": CHAT_MODEL,
+        "CHAT_ENABLED": CHAT_ENABLED,
+    }
+    return render(request, "v2/chat/index.html", {"debug_env": debug_env})
 
 
 def deep_link(request, court, topic):

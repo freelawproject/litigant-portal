@@ -61,6 +61,11 @@ dependencies = [
     "django-ratelimit>=4.1",
     # PDF text extraction
     "pdfplumber>=0.11",
+    "pypdf>=5.0",
+    "mammoth>=1.8",
+    "openpyxl>=3.1",
+    # Token counting for attachment-size gates
+    "tiktoken>=0.8",
     # JSON Schema validation (court.json + future partner config)
     "jsonschema>=4.20",
 ]

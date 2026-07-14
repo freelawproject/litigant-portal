@@ -25,7 +25,9 @@ frontend templates those tools render with). You build new behavior by
 Engine code: [`services/chat_v2.py`](../litigant_portal/app/services/chat_v2.py) ·
 Abstraction: [`agents_v2/base.py`](../litigant_portal/agents_v2/base.py) ·
 Demo agent: [`agents_v2/weather.py`](../litigant_portal/agents_v2/weather.py) ·
-Tools: [`agents_v2/tools/`](../litigant_portal/agents_v2/tools/)
+Tools: [`agents_v2/tools/`](../litigant_portal/agents_v2/tools/) ·
+Generic views: [`views/chat_v2.py`](../litigant_portal/app/views/chat_v2.py) ·
+Example surface: [`views/assistant.py`](../litigant_portal/app/views/assistant.py)
 
 ---
 
@@ -319,26 +321,57 @@ The **result** card. Context: `data` (the tool's `render_data`).
 </div>
 ```
 
-### Registering & wiring it up
+### Registering & wiring it up: thread types and view surfaces
 
-Export the agent from the package and hand it to the engine. The
-`chat_stream` view picks the agent class; everything downstream is generic.
+Export the agent from `agents_v2/__init__.py`, then give it a **surface**: a
+thin view module that binds the generic chat views to this agent.
+
+Two pieces make this work:
+
+- **`thread_type`** — a string column on `ChatThread` (indexed, e.g.
+  `"user_chat"`). Every thread query in the engine — list, get, stream,
+  delete — is scoped by it, so each surface sees only its own threads.
+- **Generic views** — [`views/chat_v2.py`](../litigant_portal/app/views/chat_v2.py)
+  provides `stream`, `thread_list`, `message_list`, `thread_usage`, and
+  `thread_delete` as abstract views. Each takes the surface's bindings as
+  keyword args: `agent_class`, `thread_type`, and (for `stream`) `model`.
+
+A surface module fills in those blanks and adds the HTTP concerns (method
+decorators, rate limits) plus any surface-specific endpoints.
+[`views/assistant.py`](../litigant_portal/app/views/assistant.py) is the live
+example — it binds `LitigantAssistant` and adds the upload endpoints:
 
 ```python
-# litigant_portal/agents_v2/__init__.py
-from .tools import CheckWeather
-from .weather import WeatherAgent, WeatherState
+# litigant_portal/app/views/assistant.py
+THREAD_TYPE = "user_chat"
 
-# litigant_portal/app/views/chat_v2.py  (the only line that names an agent)
-return chat_stream_service(
-    identity=request.identity, message=message,
-    thread_id=thread_id, agent_class=WeatherAgent,
+@require_POST
+@ratelimit(key="ip", rate="20/m", method="POST", block=True)
+def stream(request: HttpRequest):
+    return chat_v2.stream(
+        request,
+        agent_class=LitigantAssistant,
+        thread_type=THREAD_TYPE,
+        model=CHAT_MODEL,
+    )
+
+@require_GET
+@ratelimit(key="ip", rate="60/m", method="GET", block=True)
+def thread_list(request: HttpRequest) -> JsonResponse:
+    return chat_v2.thread_list(request, thread_type=THREAD_TYPE)
+```
+
+Mount the surface under its own URL namespace in `urls.py`:
+
+```python
+path(
+    "api/agents/assistant/",
+    include((assistant_patterns, "litigant_portal.app"), namespace="assistant"),
 )
 ```
 
-> Today the view hard-codes `WeatherAgent`. Binding an agent to a thread (so
-> different threads can run different agents) is the natural next step — when it
-> lands, the view and `message_list` will read the agent class from the thread.
+So a new agent surface is one view module of thin wrappers plus one URL
+include — no engine or generic-view edits.
 
 ---
 
@@ -373,25 +406,52 @@ engine then derives two views explicitly:
 
 ---
 
-## Conversation history: hidden & compaction messages
+## Conversation history: hidden, meta & compaction messages
 
-Two message capabilities extend the history model without changing how agents
-are authored. Both are engine behavior driven by per-message flags — agents and
+Message capabilities that extend the history model without changing how agents
+are authored. All are engine behavior driven by per-message flags — agents and
 tools opt in, the engine does the rest.
+
+Messages are stored once; the `chat_message_list` selector carves out each
+projection with two flags (`exclude_hidden`, `exclude_meta`):
+
+| Projection              | Call                                        | Used for                                |
+| ----------------------- | ------------------------------------------- | --------------------------------------- |
+| Accounting (everything) | `chat_message_list(thread=…)`               | `chat_thread_usage` token/cost totals   |
+| LLM history             | `…(exclude_meta=True)`                      | what `chat_stream` feeds to litellm     |
+| Render view             | `…(exclude_hidden=True, exclude_meta=True)` | `thread_render_items`, sidebar snippets |
 
 ### Hidden messages
 
 A **hidden message** lives in the history the model sees but is **never returned
-to the frontend**. It's the `hidden` boolean on `ChatMessage`, and it's the
-practical face of the engine's "one store, two projections" split:
+to the frontend**. It's the `hidden` boolean on `ChatMessage`: the model reads
+it like any other turn, but it gets no bubble, no card, and never seeds a
+sidebar snippet.
 
-- **LLM view** — `chat_message_list(thread=…)` returns _all_ messages, hidden
-  included, and `chat_stream` feeds that to litellm. The model reads a hidden
-  message like any other turn.
-- **Render view** — `chat_message_list_visible(thread=…)` is just
-  `chat_message_list(...).filter(hidden=False)`. Both frontend projections use
-  it: `thread_render_items` (thread reload) and the `thread_list` sidebar
-  snippet. A hidden message gets no bubble, no card, and never seeds a snippet.
+### Meta messages
+
+A **meta message** (`meta` boolean, `role: "meta"` data) is an accounting-only
+record — it reaches neither the model nor the frontend, but its `num_tokens`
+and `cost` count in `chat_thread_usage`. The engine uses one to book the cost
+of the thread-title completion (`kind: "thread_description"`).
+
+**Injecting one** — `chat_message_inject_meta` (in `services/chat_v2.py`),
+mirroring `chat_message_inject_hidden`. Use it for any side completion whose
+spend should show up in usage:
+
+```python
+from litigant_portal.app.services.chat_v2 import chat_message_inject_meta
+
+chat_message_inject_meta(
+    thread_id=thread_id,
+    kind="my_side_completion",
+    model=model,
+    num_tokens=response.usage.total_tokens,
+    cost=litellm.completion_cost(completion_response=response),
+)
+```
+
+Like hidden injection, it never bumps the thread's `updated_at`.
 
 Use it for context the model should have but the user shouldn't see as a chat
 turn: injected retrieval results, scaffolding/setup instructions, a note a tool
@@ -448,7 +508,10 @@ refresh_system_prompt)`; mutate state through the thread.
 5. (Optional) Add `templates/tools/*.html` for custom call/result cards — or
    leave the default JSON box.
 6. Subclass `Agent`, set `completion_args`, `state_schema`, and `tools` (imported
-   from `.tools`); export it and hand it to the engine.
+   from `.tools`); export it from `agents_v2/__init__.py`.
+7. Give it a surface: a view module that binds the generic `views/chat_v2.py`
+   views with your `agent_class`, a unique `thread_type`, and a model (see
+   `views/assistant.py`), mounted under `api/agents/<name>/` in `urls.py`.
 
 No engine edits. No frontend edits (unless you _want_ custom cards). That's the
 point.
