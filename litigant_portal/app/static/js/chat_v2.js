@@ -200,6 +200,8 @@ function blankMessage() {
     notTool: true,
     copied: false,
     notCopied: true,
+    attachments: [],
+    hasAtts: false,
     rowClass: '',
     bubbleClass: '',
     name: '',
@@ -218,8 +220,9 @@ function blankMessage() {
 // Build a message with precomputed style classes + rendered markdown (CSP-safe
 // — the template binds dot-paths only, no expressions).
 let messageSeq = 0
-function makeMessage(role, content) {
+function makeMessage(role, content, attachments) {
   const isUser = role === 'user'
+  const atts = attachments || []
   return {
     ...blankMessage(),
     id: ++messageSeq,
@@ -234,10 +237,25 @@ function makeMessage(role, content) {
     notCopied: true,
     isTool: false,
     notTool: true,
+    attachments: atts,
+    hasAtts: atts.length > 0,
     rowClass: isUser ? 'items-end' : 'items-start',
     bubbleClass: isUser
       ? 'bg-primary-600 text-white'
       : 'bg-greyscale-100 text-greyscale-900',
+  }
+}
+
+// Chip data for an attachment shown on a sent user message.
+function messageAttachment(att) {
+  return {
+    id: att.id,
+    name: att.name,
+    isImage: !!att.is_image,
+    notImage: !att.is_image,
+    url: att.url || '',
+    sizeLabel: formatSize(att.size),
+    tileClass: fileStyle(att.content_type || '').tileClass,
   }
 }
 
@@ -307,15 +325,120 @@ function makeToolFromItem(item) {
 // Build a render item (from the reload endpoint) into a message/tool part.
 function buildItem(item) {
   if (item.kind === 'tool') return makeToolFromItem(item)
-  return makeMessage(item.kind, item.content)
+  return makeMessage(
+    item.kind,
+    item.content,
+    (item.attachments || []).map(messageAttachment)
+  )
 }
 
 const MAX_INPUT_HEIGHT = 160
 
+// Title shown for threads that don't have a generated description yet.
+const NEW_CHAT_TITLE = 'New chat'
+
+// --- Attachments -------------------------------------------------------------
+
+// Mirrors the backend's allowed types (services/assistant.py) so obviously bad
+// files are rejected before a round trip. The server remains the authority.
+const UPLOAD_EXTENSIONS = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.txt',
+  '.md',
+  '.csv',
+  '.rtf',
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+]
+const MAX_UPLOAD_SIZE = 20 * 1024 * 1024 // 20 MB
+
+const DROPZONE_IDLE =
+  'border-greyscale-300 bg-greyscale-25 hover:border-primary-400 hover:bg-primary-25'
+const DROPZONE_ACTIVE = 'border-primary-500 bg-primary-50'
+
+function formatSize(bytes) {
+  if (typeof bytes !== 'number' || isNaN(bytes)) return ''
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1048576) return Math.round(bytes / 1024) + ' KB'
+  return (bytes / 1048576).toFixed(1) + ' MB'
+}
+
+// Badge text + tinted tile classes for non-image files, keyed by content type.
+const FILE_STYLES = [
+  [/pdf/, 'PDF', 'bg-red-50 text-red-600'],
+  [/msword|wordprocessing/, 'DOC', 'bg-blue-50 text-blue-600'],
+  [/ms-excel|spreadsheet/, 'XLS', 'bg-green-50 text-green-700'],
+  [/ms-powerpoint|presentation/, 'PPT', 'bg-orange-50 text-orange-600'],
+  [/csv/, 'CSV', 'bg-green-50 text-green-700'],
+  [/markdown/, 'MD', 'bg-greyscale-100 text-greyscale-600'],
+  [/rtf/, 'RTF', 'bg-greyscale-100 text-greyscale-600'],
+  [/text/, 'TXT', 'bg-greyscale-100 text-greyscale-600'],
+]
+
+function fileStyle(contentType) {
+  for (const [pattern, badge, tileClass] of FILE_STYLES) {
+    if (pattern.test(contentType)) return { badge, tileClass }
+  }
+  return { badge: 'FILE', tileClass: 'bg-greyscale-100 text-greyscale-600' }
+}
+
+function uploadCardClass(selected) {
+  return selected
+    ? 'border-primary-500 ring-2 ring-primary-500/50 shadow-sm'
+    : 'border-greyscale-200 hover:border-greyscale-300 hover:shadow-md'
+}
+
+// The per-card delete control: a small X at rest that expands into a
+// red "Confirm delete" pill; clicking anywhere else collapses it.
+function uploadDeleteClass(armed) {
+  return (
+    'absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center ' +
+    'h-5 rounded-full border shadow cursor-pointer transition-all duration-150 ' +
+    (armed
+      ? 'px-2 bg-red-600 border-red-600 text-white'
+      : 'w-5 bg-white/90 border-greyscale-200 text-greyscale-400 hover:text-red-600 hover:border-red-300')
+  )
+}
+
+const DELETE_TITLE = 'Delete file'
+const DELETE_ARMED_TITLE = 'Permanently delete this file'
+
+// Precompute everything the CSP-safe template needs to render an upload card.
+function decorateUpload(upload, selected) {
+  return {
+    ...upload,
+    ...fileStyle(upload.content_type),
+    isImage: upload.is_image,
+    notImage: !upload.is_image,
+    sizeLabel: formatSize(upload.size),
+    metaLabel: formatSize(upload.size) + ' · ' + timeSince(upload.created_at),
+    selected,
+    cardClass: uploadCardClass(selected),
+    deleteArmed: false,
+    deleteIdle: true,
+    deleteClass: uploadDeleteClass(false),
+    deleteTitle: DELETE_TITLE,
+  }
+}
+
 document.addEventListener('alpine:init', () => {
   // A single component managing every part of the chat: the history sidebar
-  // and the center conversation (messages, input, streaming).
+  // and the center conversation (messages, input, streaming). The stream URL
+  // is agent-specific, so the template passes it in via data-stream-url
+  // (the CSP build can't evaluate x-data arguments).
   Alpine.data('chatApp', () => ({
+    // Mount point of the agent's API (e.g. "/api/agents/assistant/") — the
+    // component itself is agent-agnostic.
+    base: '',
     // History sidebar
     threads: [],
     showEmpty: false,
@@ -324,20 +447,45 @@ document.addEventListener('alpine:init', () => {
     conversationEmpty: true,
     input: '',
     threadId: null,
+    threadTitle: '',
     streaming: false,
     sendDisabled: true,
     menuOpen: false,
     confirmingDelete: false,
     thinkingVisible: false,
-    // Index of the assistant text part currently receiving content, if any.
-    openAssistantIndex: null,
+    // The in-flight stream context, if any. It owns the message array it
+    // writes into, so switching threads mid-stream just detaches the view
+    // while the stream keeps filling its own buffer in the background.
+    activeStream: null,
+    // Sidebar status per thread id: 'streaming' | 'unseen' (finished in
+    // the background and not yet viewed).
+    threadStatus: {},
     // Agent state for the active thread (pulled on load + as messages stream).
     stateData: {},
     stateJson: '',
     hasState: false,
     noState: true,
+    // Attach-files modal + attachments riding on the next message.
+    attachOpen: false,
+    uploads: [],
+    hasUploads: false,
+    uploadsEmpty: false,
+    pendingUploads: [],
+    hasPending: false,
+    pendingSeq: 0,
+    uploadError: '',
+    hasUploadError: false,
+    dragDepth: 0,
+    dropzoneClass: DROPZONE_IDLE,
+    attachments: [],
+    hasAttachments: false,
+    uploadCountLabel: '',
+    selectedLabel: '',
+    attachLabel: 'Attach',
+    attachDisabled: true,
 
     init() {
+      this.base = this.$root.dataset.agentBase
       this.loadThreads()
     },
 
@@ -345,15 +493,20 @@ document.addEventListener('alpine:init', () => {
 
     async loadThreads() {
       try {
-        const res = await fetch('/api/chat/threads/', {
+        const res = await fetch(this.base + 'threads/', {
           headers: { Accept: 'application/json' },
         })
         const data = await res.json()
         this.threads = (data.threads || []).map((thread) => ({
           ...thread,
+          title: thread.description || NEW_CHAT_TITLE,
           relativeTime: timeSince(thread.last_at),
           rowClass: threadRowClass(thread.id, this.threadId),
+          dotClass: this.threadDotClass(thread.id),
         }))
+        // Pick up a freshly generated description for the active thread.
+        const active = this.threads.find((t) => t.id === this.threadId)
+        if (active) this.threadTitle = active.title
       } catch (e) {
         console.error('Failed to load chat history:', e)
       }
@@ -367,17 +520,43 @@ document.addEventListener('alpine:init', () => {
       })
     },
 
+    // --- Stream/thread status ---
+
+    // Whether the conversation view is showing this stream's thread.
+    attached(stream) {
+      return this.messages === stream.messages
+    },
+
+    threadDotClass(threadId) {
+      const status = this.threadStatus[threadId]
+      if (status === 'streaming') return 'bg-yellow-400 animate-pulse'
+      if (status === 'unseen') return 'bg-green-500'
+      return 'bg-greyscale-300'
+    },
+
+    setThreadStatus(threadId, status) {
+      if (!threadId) return
+      if (status) this.threadStatus[threadId] = status
+      else delete this.threadStatus[threadId]
+      this.threads.forEach((t) => {
+        t.dotClass = this.threadDotClass(t.id)
+      })
+    },
+
     // --- Conversation ---
 
     newChat() {
       this.threadId = null
+      this.threadTitle = ''
+      // A fresh array detaches the view from any in-flight stream, which
+      // keeps writing into its own buffer.
       this.messages = []
       this.conversationEmpty = true
-      this.openAssistantIndex = null
-      this.thinkingVisible = false
       this.setState({})
       this.clearInput()
+      this.clearAttachments()
       this.markActive()
+      this.updateThinking()
     },
 
     toggleMenu() {
@@ -406,7 +585,7 @@ document.addEventListener('alpine:init', () => {
         const body = new FormData()
         body.append('csrfmiddlewaretoken', this.csrfToken())
         const res = await fetch(
-          '/api/chat/threads/' + this.threadId + '/delete/',
+          this.base + 'threads/' + this.threadId + '/delete/',
           { method: 'POST', body }
         )
         if (!res.ok) throw new Error('Request failed: ' + res.status)
@@ -423,22 +602,45 @@ document.addEventListener('alpine:init', () => {
       this.openThread(e.currentTarget.dataset.threadId)
     },
 
-    // Load a thread's messages into the center conversation.
+    // Load a thread's messages into the center conversation. If a stream
+    // is running for that thread, re-attach to its live buffer instead.
     async openThread(threadId) {
-      if (this.streaming) return
+      // Viewing the thread acknowledges a background-finished stream; an
+      // in-progress stream keeps its yellow dot.
+      if (this.threadStatus[threadId] === 'unseen') {
+        this.setThreadStatus(threadId, null)
+      }
+
+      const live = this.activeStream
+      if (live && live.threadId === threadId) {
+        const row = this.threads.find((t) => t.id === threadId)
+        this.threadId = threadId
+        this.threadTitle = (row && row.title) || NEW_CHAT_TITLE
+        this.messages = live.messages
+        this.conversationEmpty = false
+        this.clearInput()
+        this.clearAttachments()
+        this.markActive()
+        this.updateThinking()
+        this.scrollToBottom()
+        return
+      }
+
       try {
-        const res = await fetch('/api/chat/threads/' + threadId + '/', {
+        const res = await fetch(this.base + 'threads/' + threadId + '/', {
           headers: { Accept: 'application/json' },
         })
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         const data = await res.json()
         this.threadId = data.id
+        this.threadTitle = data.description || NEW_CHAT_TITLE
         this.messages = (data.items || []).map(buildItem)
         this.setState(data.state)
         this.conversationEmpty = this.messages.length === 0
-        this.openAssistantIndex = null
         this.clearInput()
+        this.clearAttachments()
         this.markActive()
+        this.updateThinking()
         this.scrollToBottom()
       } catch (e) {
         console.error('Failed to load thread:', e)
@@ -485,12 +687,24 @@ document.addEventListener('alpine:init', () => {
       this.sendMessage(message, this.threadId)
     },
 
-    // Send a message (optionally continuing a thread) and stream the reply.
+    // Send a message (optionally continuing a thread) and stream the reply
+    // into the stream's own buffer — the view shows it only while attached.
     async sendMessage(message, threadId) {
-      this.messages.push(makeMessage('user', message))
+      // Attachments ride on this message; the composer chips clear.
+      const attachments = this.attachments
+      this.clearAttachments()
+
+      const stream = {
+        threadId: threadId || null,
+        messages: this.messages,
+        // Index of the assistant text part receiving content, if any.
+        openIndex: null,
+      }
+      this.activeStream = stream
+      stream.messages.push(makeMessage('user', message, attachments))
       this.conversationEmpty = false
       this.streaming = true
-      this.openAssistantIndex = null
+      this.setThreadStatus(stream.threadId, 'streaming')
       this.refreshSendState()
       this.updateThinking()
       this.scrollToBottom()
@@ -500,8 +714,9 @@ document.addEventListener('alpine:init', () => {
         body.append('message', message)
         body.append('csrfmiddlewaretoken', this.csrfToken())
         if (threadId) body.append('thread_id', threadId)
+        attachments.forEach((a) => body.append('attachment_ids', a.id))
 
-        const res = await fetch('/api/chat/chat-stream/', {
+        const res = await fetch(this.base + 'stream/', {
           method: 'POST',
           body,
         })
@@ -524,7 +739,7 @@ document.addEventListener('alpine:init', () => {
             const payload = line.slice(6).trim()
             if (!payload) continue
             try {
-              this.handleEvent(JSON.parse(payload))
+              this.handleEvent(stream, JSON.parse(payload))
             } catch (e) {
               // Ignore parse errors for partial chunks.
             }
@@ -532,47 +747,67 @@ document.addEventListener('alpine:init', () => {
         }
       } catch (e) {
         console.error('Chat stream failed:', e)
-        this.appendAssistant('Sorry, something went wrong. Please try again.')
+        this.appendAssistant(
+          stream,
+          'Sorry, something went wrong. Please try again.'
+        )
       } finally {
         this.streaming = false
-        this.openAssistantIndex = null
+        // Viewed streams end quietly; backgrounded ones flag their row
+        // green until the user opens the thread.
+        this.setThreadStatus(
+          stream.threadId,
+          this.attached(stream) ? null : 'unseen'
+        )
+        this.activeStream = null
         this.updateThinking()
         this.refreshSendState()
         this.loadThreads()
       }
     },
 
-    handleEvent(event) {
+    handleEvent(stream, event) {
       if (event.type === 'thread') {
-        this.threadId = event.thread_id
-        this.markActive()
+        stream.threadId = event.thread_id
+        this.setThreadStatus(stream.threadId, 'streaming')
+        if (this.attached(stream)) {
+          this.threadId = event.thread_id
+          // Placeholder until the generated description arrives.
+          if (!this.threadTitle) this.threadTitle = NEW_CHAT_TITLE
+          this.markActive()
+        }
+        // Surface the new thread's row (and its dot) right away.
+        this.loadThreads()
       } else if (event.type === 'content_delta') {
-        this.appendContent(event.content || '')
+        this.appendContent(stream, event.content || '')
       } else if (event.type === 'tool_call') {
         // A new tool starts a fresh text run after it.
-        this.openAssistantIndex = null
-        this.messages.push(makeToolFromCall(event))
+        stream.openIndex = null
+        stream.messages.push(makeToolFromCall(event))
       } else if (event.type === 'tool_response') {
-        this.applyToolResponse(event)
+        this.applyToolResponse(stream, event)
+      } else if (event.type === 'description') {
+        if (this.attached(stream)) this.threadTitle = event.description
       } else if (event.type === 'state') {
-        this.setState(event.state)
+        if (this.attached(stream)) this.setState(event.state)
       } else if (event.type === 'error') {
-        this.appendAssistant(event.error || 'Something went wrong.')
+        this.appendAssistant(stream, event.error || 'Something went wrong.')
       }
-      this.updateThinking()
-      this.scrollToBottom()
+      if (this.attached(stream)) {
+        this.updateThinking()
+        this.scrollToBottom()
+      }
     },
 
     // Append streamed content to the open assistant part (creating it lazily).
-    appendContent(text) {
-      if (this.openAssistantIndex === null) {
-        this.messages.push(makeMessage('assistant', ''))
-        this.openAssistantIndex = this.messages.length - 1
+    appendContent(stream, text) {
+      if (stream.openIndex === null) {
+        stream.messages.push(makeMessage('assistant', ''))
+        stream.openIndex = stream.messages.length - 1
       }
-      const index = this.openAssistantIndex
-      const msg = this.messages[index]
+      const msg = stream.messages[stream.openIndex]
       const content = msg.content + text
-      this.messages[index] = {
+      stream.messages[stream.openIndex] = {
         ...msg,
         content,
         html: renderMarkdown(content),
@@ -580,23 +815,23 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Append a complete assistant message (e.g. an error) and close the run.
-    appendAssistant(content) {
-      this.messages.push(makeMessage('assistant', content))
-      this.openAssistantIndex = null
+    appendAssistant(stream, content) {
+      stream.messages.push(makeMessage('assistant', content))
+      stream.openIndex = null
     },
 
     // Fill a pending tool part with its result once the tool finishes.
-    applyToolResponse(event) {
-      const index = this.messages.findIndex(
+    applyToolResponse(stream, event) {
+      const index = stream.messages.findIndex(
         (m) => m.isTool && m.toolId === event.id
       )
       if (index === -1) return
-      const part = { ...this.messages[index] }
+      const part = { ...stream.messages[index] }
       part.resultMode = event.render_mode
       part.resultHtml = event.render_html || ''
       part.renderDataJson = prettyJson(event.render_data)
       part.status = 'done'
-      this.messages[index] = computeToolFlags(part)
+      stream.messages[index] = computeToolFlags(part)
     },
 
     // Pull in agent state (on load and as the stream reports changes).
@@ -608,9 +843,14 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Show the standalone thinking row while waiting, unless a tool spinner or
-    // streaming text is already the most recent thing on screen.
+    // streaming text is already the most recent thing on screen. Only the
+    // stream attached to the visible thread shows it.
     updateThinking() {
-      if (!this.streaming) {
+      if (
+        !this.streaming ||
+        !this.activeStream ||
+        !this.attached(this.activeStream)
+      ) {
         this.thinkingVisible = false
         return
       }
@@ -638,6 +878,221 @@ document.addEventListener('alpine:init', () => {
         message.copied = false
         message.notCopied = true
       }, 1500)
+    },
+
+    // --- Attachments ---
+
+    async openAttach() {
+      this.attachOpen = true
+      this.setUploadError('')
+      await this.loadUploads()
+    },
+
+    closeAttach() {
+      this.attachOpen = false
+      this.dragDepth = 0
+      this.dropzoneClass = DROPZONE_IDLE
+      this.disarmUploadDelete()
+    },
+
+    // Fetch the identity's uploads; anything already attached shows selected.
+    async loadUploads() {
+      try {
+        const res = await fetch(this.base + 'uploads/', {
+          headers: { Accept: 'application/json' },
+        })
+        if (!res.ok) throw new Error('Request failed: ' + res.status)
+        const data = await res.json()
+        const attached = new Set(this.attachments.map((a) => a.id))
+        this.uploads = (data.uploads || []).map((u) =>
+          decorateUpload(u, attached.has(u.id))
+        )
+      } catch (e) {
+        console.error('Failed to load uploads:', e)
+      }
+      this.refreshAttachState()
+    },
+
+    // Recompute the CSP-safe labels/flags the modal binds to.
+    refreshAttachState() {
+      this.hasUploads = this.uploads.length > 0
+      this.hasPending = this.pendingUploads.length > 0
+      this.uploadsEmpty = !this.hasUploads && !this.hasPending
+      this.uploadCountLabel =
+        this.uploads.length === 1 ? '1 file' : this.uploads.length + ' files'
+      const count = this.uploads.filter((u) => u.selected).length
+      this.selectedLabel =
+        count === 0
+          ? 'No files selected'
+          : count === 1
+            ? '1 file selected'
+            : count + ' files selected'
+      this.attachLabel = count > 1 ? 'Attach ' + count + ' files' : 'Attach'
+      // With nothing selected, Attach still works as "detach all" if there
+      // are chips on the composer; otherwise it's a no-op, so disable it.
+      this.attachDisabled = count === 0 && this.attachments.length === 0
+    },
+
+    setUploadError(message) {
+      this.uploadError = message
+      this.hasUploadError = !!message
+    },
+
+    browseFiles() {
+      this.$refs.fileInput.click()
+    },
+
+    handleFileInput(e) {
+      this.uploadFiles(e.target.files)
+      e.target.value = ''
+    },
+
+    // Drag state uses a depth counter — dragleave fires on every child hop.
+    dragEnter() {
+      this.dragDepth++
+      this.dropzoneClass = DROPZONE_ACTIVE
+    },
+
+    dragOver() {},
+
+    dragLeave() {
+      this.dragDepth = Math.max(0, this.dragDepth - 1)
+      if (this.dragDepth === 0) this.dropzoneClass = DROPZONE_IDLE
+    },
+
+    handleDrop(e) {
+      this.dragDepth = 0
+      this.dropzoneClass = DROPZONE_IDLE
+      if (e.dataTransfer) this.uploadFiles(e.dataTransfer.files)
+    },
+
+    // Upload files concurrently; each success lands in the grid pre-selected.
+    async uploadFiles(fileList) {
+      const files = Array.from(fileList || [])
+      if (!files.length) return
+      this.setUploadError('')
+      const errors = []
+
+      await Promise.all(
+        files.map(async (file) => {
+          const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
+          if (!UPLOAD_EXTENSIONS.includes(ext)) {
+            errors.push(file.name + ': unsupported file type')
+            return
+          }
+          if (file.size > MAX_UPLOAD_SIZE) {
+            errors.push(file.name + ': too large (max 20 MB)')
+            return
+          }
+
+          const pending = {
+            id: 'pending-' + ++this.pendingSeq,
+            name: file.name,
+          }
+          this.pendingUploads.push(pending)
+          this.refreshAttachState()
+
+          try {
+            const body = new FormData()
+            body.append('file', file)
+            body.append('csrfmiddlewaretoken', this.csrfToken())
+            const res = await fetch(this.base + 'uploads/create/', {
+              method: 'POST',
+              body,
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'upload failed')
+            this.uploads.unshift(decorateUpload(data.upload, true))
+          } catch (err) {
+            errors.push(file.name + ': ' + err.message)
+          } finally {
+            this.pendingUploads = this.pendingUploads.filter(
+              (p) => p.id !== pending.id
+            )
+            this.refreshAttachState()
+          }
+        })
+      )
+
+      this.setUploadError(errors.join(' · '))
+    },
+
+    // Toggle a card's selection — the upload id rides on the element.
+    toggleUpload(e) {
+      this.disarmUploadDelete()
+      const id = e.currentTarget.dataset.uploadId
+      const upload = this.uploads.find((u) => u.id === id)
+      if (!upload) return
+      upload.selected = !upload.selected
+      upload.cardClass = uploadCardClass(upload.selected)
+      this.refreshAttachState()
+    },
+
+    // Permanent delete: first click arms the button, second click commits.
+    deleteUpload(e) {
+      const id = e.currentTarget.dataset.uploadId
+      const upload = this.uploads.find((u) => u.id === id)
+      if (!upload) return
+      if (!upload.deleteArmed) {
+        this.disarmUploadDelete()
+        upload.deleteArmed = true
+        upload.deleteIdle = false
+        upload.deleteClass = uploadDeleteClass(true)
+        upload.deleteTitle = DELETE_ARMED_TITLE
+        return
+      }
+      this.confirmUploadDelete(upload)
+    },
+
+    disarmUploadDelete() {
+      this.uploads.forEach((u) => {
+        if (u.deleteArmed) {
+          u.deleteArmed = false
+          u.deleteIdle = true
+          u.deleteClass = uploadDeleteClass(false)
+          u.deleteTitle = DELETE_TITLE
+        }
+      })
+    },
+
+    async confirmUploadDelete(upload) {
+      try {
+        const body = new FormData()
+        body.append('csrfmiddlewaretoken', this.csrfToken())
+        const res = await fetch(
+          this.base + 'uploads/' + upload.id + '/delete/',
+          { method: 'POST', body }
+        )
+        if (!res.ok) throw new Error('Request failed: ' + res.status)
+        this.uploads = this.uploads.filter((u) => u.id !== upload.id)
+        this.attachments = this.attachments.filter((a) => a.id !== upload.id)
+        this.hasAttachments = this.attachments.length > 0
+        this.refreshAttachState()
+      } catch (e) {
+        console.error('Failed to delete upload:', e)
+        this.disarmUploadDelete()
+      }
+    },
+
+    // Commit the selection to the composer as chips on the next message.
+    confirmAttach() {
+      this.attachments = this.uploads
+        .filter((u) => u.selected)
+        .map((u) => ({ ...u }))
+      this.hasAttachments = this.attachments.length > 0
+      this.closeAttach()
+    },
+
+    // Remove a composer chip — the upload id rides on the button.
+    removeAttachment(e) {
+      const id = e.currentTarget.dataset.uploadId
+      this.attachments = this.attachments.filter((a) => a.id !== id)
+      this.hasAttachments = this.attachments.length > 0
+    },
+
+    clearAttachments() {
+      this.attachments = []
+      this.hasAttachments = false
     },
 
     csrfToken() {
@@ -679,9 +1134,10 @@ document.addEventListener('alpine:init', () => {
         return
       }
       try {
-        const res = await fetch('/api/chat/threads/' + threadId + '/usage/', {
-          headers: { Accept: 'application/json' },
-        })
+        const res = await fetch(
+          this.app.base + 'threads/' + threadId + '/usage/',
+          { headers: { Accept: 'application/json' } }
+        )
         if (!res.ok) return
         const data = await res.json()
         this.totalTokens = (data.total_tokens || 0).toLocaleString()
