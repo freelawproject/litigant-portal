@@ -288,12 +288,14 @@
            class="text-xs text-greyscale-400">{% trans "No state yet." %}</p>
       </div>
       {# Temporary debug block — env availability #}
+      {% if request.user.is_superuser %}
       <div class="flex-shrink-0 border-t border-greyscale-200 p-4 text-xs text-greyscale-500 space-y-1">
         <p>AWS_BEARER_TOKEN_BEDROCK: <b>{{ debug_env.AWS_BEARER_TOKEN_BEDROCK }}</b></p>
         <p>OPENAI_API_KEY: <b>{{ debug_env.OPENAI_API_KEY }}</b></p>
         <p>CHAT_MODEL: <b>{{ debug_env.CHAT_MODEL }}</b></p>
         <p>CHAT_ENABLED: <b>{{ debug_env.CHAT_ENABLED }}</b></p>
       </div>
+      {% endif %}
     </aside>
     {# Delete confirmation modal #}
     <div x-show="confirmingDelete"
@@ -339,7 +341,7 @@
              multiple
              x-ref="fileInput"
              x-on:change="handleFileInput"
-             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.rtf,.png,.jpg,.jpeg,.gif,.webp"
+             accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.md,.csv,.rtf,.png,.jpg,.jpeg,.gif,.webp"
              class="hidden" />
       {# Dialog — drops anywhere on the panel count #}
       <div class="relative w-full max-w-2xl -translate-y-[4vh] bg-white rounded-2xl shadow-2xl border border-greyscale-200 overflow-hidden"
@@ -382,7 +384,7 @@
               {% trans "or" %} <span class="font-medium text-primary-600">{% trans "browse from your computer" %}</span>
             </p>
             <p class="mt-2 text-[11px] text-greyscale-400 pointer-events-none">
-              {% trans "PDF, Word, Excel, PowerPoint, images & text — up to 20 MB each" %}
+              {% trans "PDF, Word, Excel, images & text — up to 20 MB each" %}
             </p>
           </div>
           <p x-show="hasUploadError"

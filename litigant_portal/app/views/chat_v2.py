@@ -34,13 +34,15 @@ def stream(
 
     if attachment_ids:
         try:
-            attachment_ids = [str(UUID(i)) for i in attachment_ids]
+            attachment_ids = list(
+                dict.fromkeys(str(UUID(i)) for i in attachment_ids)
+            )
         except ValueError:
             return JsonResponse({"error": _("Invalid attachment")}, status=400)
         owned = UserUpload.objects.filter(
             identity=request.identity, id__in=attachment_ids
         ).count()
-        if owned != len(set(attachment_ids)):
+        if owned != len(attachment_ids):
             return JsonResponse({"error": _("Invalid attachment")}, status=400)
 
     try:

@@ -13,10 +13,10 @@ Code: [`services/assistant.py`](../litigant_portal/app/services/assistant.py)
 
 ## 1. Supported types & upload
 
-- **Allowed types** (`ALLOWED_UPLOAD_TYPES`): pdf, doc/docx, xls/xlsx,
-  ppt/pptx, txt, md, csv, rtf, png, jpg/jpeg, gif, webp. The **file extension
-  is the source of truth** for the stored content type — client-sent MIME
-  types are unreliable. Max size **20 MB**.
+- **Allowed types** (`ALLOWED_UPLOAD_TYPES`): pdf, doc/docx, xls/xlsx, txt,
+  md, csv, rtf, png, jpg/jpeg, gif, webp. The **file extension is the source
+  of truth** for the stored content type — client-sent MIME types are
+  unreliable. Max size **20 MB**.
 - **Endpoints**: `api/agents/assistant/uploads/` (list / create / delete),
   backed by `user_upload_create` / `user_upload_delete`.
 - **Storage**: a `UserUpload` row owned by a `UserIdentity`, with the file at
