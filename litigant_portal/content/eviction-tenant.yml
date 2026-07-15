@@ -32,7 +32,7 @@ contacts:
     name: 'Legal Aid of Southeast and Central Ohio (LASCO)'
     phone: '1-888-246-4420'
     url: 'https://www.lasco.org'
-    note: 'Free legal help with noncriminal issues for people with low incomes, seniors, and veterans in 36 Ohio counties, including Franklin County. Their guidance at every step of an eviction is the same: call an attorney early. Apply by phone or through their website.'
+    note: 'Free legal help with noncriminal issues for people with low incomes, seniors, and veterans in 36 Ohio counties, including Franklin County. Apply by phone or through their website.'
   - id: court_clerk
     name: 'Franklin County Municipal Court Clerk'
     phone: '(614) 645-8186'

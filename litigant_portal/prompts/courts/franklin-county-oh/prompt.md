@@ -41,7 +41,7 @@ COURT AND CONTACTS
 - Franklin County Municipal Court Clerk: (614) 645-8186, 375 South High Street, Columbus; fcmcclerk.com. Call with a case number to confirm a hearing date or the date of service.
 - Franklin County Municipal Court Self Help Center: (614) 645-7381, 375 South High Street, 16th Floor, Columbus. Help for people navigating a case without a lawyer.
 - FCMC Service Bailiff's Office: (614) 645-7780 (schedules set outs).
-- Legal Aid of Southeast and Central Ohio (LASCO): 1-888-246-4420, lasco.org (free help for low-income tenants; their guidance at every step is to call an attorney early).
+- Legal Aid of Southeast and Central Ohio (LASCO): 1-888-246-4420, lasco.org (free legal help for low-income tenants).
 - Columbus Urban League: (614) 257-6300 (tenant-rights information, per the court FAQ).
 - Columbus Bar Association Lawyer Referral Service: (614) 221-0754 (attorney referrals; required for an entity landlord).
 
