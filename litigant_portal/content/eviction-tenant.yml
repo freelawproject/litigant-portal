@@ -8,7 +8,7 @@
 # corpus-sources/franklin-county-oh/eviction/ (see source-notes.md for the
 # fact inventory; every claim below traces to ORC Chapter 1923, the FCMC
 # clerk FAQ, or a LASCO tenant guide). Pending legal review per the #607 DoD.
-# FCMC Self Help Center contact details still unverified (not yet listed).
+# FCMC Self Help Center contact added #611 ((614) 645-7381, 16th Fl.).
 # Response-packet forms are #610 (no packet section here yet).
 #
 # Known gap, deliberate: the flow URL /t/franklin-county-oh/eviction/tenant/
@@ -25,6 +25,7 @@ metadata:
   topic: eviction
   role: tenant
   title: 'Responding to an Eviction in Franklin County, Ohio (Tenant)'
+  order: 1
 
 contacts:
   - id: lasco
@@ -37,6 +38,10 @@ contacts:
     phone: '(614) 645-8186'
     url: 'https://www.fcmcclerk.com'
     note: '375 South High Street, Columbus. Call with your case number to confirm your hearing date or to ask for the date you were served, which starts your 28-day window to answer a money claim.'
+  - id: self_help_center
+    name: 'Franklin County Municipal Court Self Help Center'
+    phone: '(614) 645-7381'
+    note: '375 South High Street, 16th Floor, Columbus. Help with court forms and the process for people who do not have a lawyer.'
   - id: urban_league
     name: 'Columbus Urban League'
     phone: '(614) 257-6300'
@@ -189,6 +194,7 @@ sections:
     contact_ids:
       - lasco
       - court_clerk
+      - self_help_center
       - urban_league
 
   - kind: output

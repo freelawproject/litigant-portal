@@ -76,17 +76,26 @@ class CorpusRegistry:
         """
         self.load()
         wanted = topic.strip().lower().replace("_", "-")
-        return [
-            {
-                "court": court,
-                "topic": corpus_topic,
-                "role": role,
-                "label": role.replace("-", " ").replace("_", " ").title(),
-                "title": corpus.metadata.title,
-            }
+        matches = [
+            (
+                corpus.metadata.order,
+                {
+                    "court": court,
+                    "topic": corpus_topic,
+                    "role": role,
+                    "label": role.replace("-", " ").replace("_", " ").title(),
+                    "title": corpus.metadata.title,
+                },
+            )
             for (court, corpus_topic, role), corpus in self._index.items()
             if corpus_topic.replace("_", "-") == wanted
         ]
+        # Explicit `order:` wins and sorts ahead of unordered tracks; among
+        # unordered tracks Python's stable sort preserves file/alpha order.
+        matches.sort(
+            key=lambda m: (m[0] is None, m[0] if m[0] is not None else 0)
+        )
+        return [track for _, track in matches]
 
 
 # Module-level default over the repo's content/ directory.

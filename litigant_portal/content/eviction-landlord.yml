@@ -18,6 +18,7 @@ metadata:
   topic: eviction
   role: landlord
   title: 'Filing an Eviction in Franklin County, Ohio (Landlord)'
+  order: 2
 
 contacts:
   - id: court_clerk
@@ -25,6 +26,10 @@ contacts:
     phone: '(614) 645-8186'
     url: 'https://www.fcmcclerk.com'
     note: '375 South High Street, Columbus. Filing questions, the fee schedule, and the public case search.'
+  - id: self_help_center
+    name: 'Franklin County Municipal Court Self Help Center'
+    phone: '(614) 645-7381'
+    note: '375 South High Street, 16th Floor, Columbus. Help with court forms and the process for people who do not have a lawyer.'
   - id: service_bailiff
     name: "FCMC Service Bailiff's Office"
     phone: '(614) 645-7780'
@@ -130,6 +135,7 @@ sections:
     heading: 'Save these contacts'
     contact_ids:
       - court_clerk
+      - self_help_center
       - service_bailiff
       - cba_referral
 
