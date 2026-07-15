@@ -4,6 +4,8 @@
 
 A concrete, end-to-end story of Jane's ideal experience in the Litigant Portal (LP). Full AI, everything works, LP handles everything in-system through e-file resolution. This is the base story — all other matrix variations (Hybrid, Basic, Anon, analog resolution) branch from here.
 
+Jane is a self-represented tenant in Franklin County, Ohio; her matter is in Franklin County Municipal Court (Columbus). The legal specifics below trace to the live eviction corpus (Ohio Revised Code Chapter 1923, ORC 5321, the FCMC clerk FAQ, and LASCO tenant guides).
+
 ---
 
 ## The Story
@@ -22,27 +24,27 @@ The portal's home screen shows a single, open chat input and a short tagline: _"
 
 **Jane:** "I got eviction papers from my landlord."
 
-**LP:** "I'm sorry to hear that. Can you tell me — what does the notice say at the top? Something like '5-day notice' or '30-day notice'?"
+**LP:** "I'm sorry to hear that. Can you tell me what the papers are? For example, is it a court summons with a hearing date, or a notice from your landlord telling you to leave?"
 
 _LP asks one question at a time. It doesn't ask for her name, her address, or her case number yet._
 
-**Jane:** "It says 5-day notice to pay or quit."
+**Jane:** "It's from the court. There's a hearing date and it says I owe back rent."
 
-**LP:** "Got it. A 5-day notice means your landlord is claiming you owe unpaid rent, and they're giving you 5 days to pay before they can file for eviction in court. Has a court date been set yet, or is this the first paper you've received?"
+**LP:** "Got it. That's an eviction complaint with a Summons in Forcible Entry and Detainer. It has two parts: the first asks the court for possession of your home, and the second asks for money, the back rent your landlord says you owe. The money part matters for a deadline we'll get to. First, has your hearing date already passed, or is it still ahead?"
 
-**Jane:** "Just this paper so far."
+**Jane:** "It's in about two weeks."
 
 ---
 
 ### Surfacing the Defense
 
-**LP:** "Understood — you're in the early stage, which means there's still time to act. Can you tell me why there's unpaid rent? Sometimes the reason matters a lot legally."
+**LP:** "Good, there's still time to prepare. Can you tell me why there's unpaid rent? Sometimes the reason matters a lot legally."
 
 **Jane:** "I've been deducting repair costs from my rent. There's mold in the bathroom and my landlord won't fix it."
 
-**LP:** "That's important. Illinois has habitability protections — landlords are required to maintain safe and livable conditions. Because you withheld rent due to a repair issue, you may have a habitability defense that could affect how a court views your case."
+**LP:** "That's important, and Ohio has habitability protections under ORC 5321. But there's a catch worth knowing early: in Ohio, holding back or deducting rent on your own is risky, and bad conditions by themselves usually aren't a defense to unpaid rent. The protected route is to deposit your rent with the court clerk instead of the landlord. Bringing your repair requests and photos to the hearing still matters. If you want a read on whether your specific situation adds up to a defense, legal aid can review it, but let's get you set up either way."
 
-_Sidebar: "Habitability defense — research" is added._
+_Sidebar: "Habitability defense — rent escrow + gather repair evidence" is added._
 
 **LP:** "I want to make sure I find everything you might qualify for. Can you tell me how many people are in your household?"
 
@@ -52,13 +54,9 @@ _Sidebar: "Habitability defense — research" is added._
 
 **Jane:** "Me and my 2 kids."
 
-**LP:** "A household of 3. Based on that, you may qualify for the Illinois Rental Payment Program (ILRPP), which can help cover overdue rent. Income also factors in — roughly, is your household income under $60,000 a year?"
+**LP:** "A household of 3. There are emergency rental assistance programs that can help cover overdue rent, and income factors in. Legal Aid of Southeast and Central Ohio (LASCO) can help you find what you qualify for and apply. I'm adding that to your action items so it's tied to your hearing timeline."
 
-**Jane:** "Yeah, around $50,000."
-
-**LP:** "You're likely eligible. I'm adding the ILRPP application to your action items — there's a deadline tied to your court date, so we'll make sure you don't miss it."
-
-_Sidebar: ILRPP application + deadline added._
+_Sidebar: rental assistance + contact LASCO added._
 
 ---
 
@@ -68,7 +66,7 @@ _Sidebar: ILRPP application + deadline added._
 
 **Jane:** "My ex is supposed to pay but he doesn't consistently."
 
-**LP:** "Unpaid child support can be enforced through the state — getting that stabilized could reduce the financial pressure behind situations like this. I'm adding child support enforcement resources to your action items."
+**LP:** "Unpaid child support can be enforced through your county Child Support Enforcement Agency, and getting that stabilized could reduce the financial pressure behind situations like this. I'm adding child support enforcement resources to your action items."
 
 _Sidebar: Child support enforcement resources added._
 
@@ -76,11 +74,11 @@ _Sidebar: Child support enforcement resources added._
 
 ### Identifying the Filing Requirement
 
-**LP:** "Here's something critical for a 5-day notice case in DuPage County: before your court date, you'll need to file a written 'appearance' — a document that tells the court you plan to contest the eviction. Missing this can result in a default judgment against you."
+**LP:** "Here's the deadline I mentioned. Because your complaint includes a claim for money, you can file a written Answer to that claim, and it's due within 28 days of the day you were served, even though your hearing usually comes first. Filing an Answer costs nothing. If you miss it, your landlord can ask for a default judgment for the full amount without hearing your side."
 
-_Sidebar: Appearance filing deadline added._
+_Sidebar: 28-day Answer deadline added._
 
-**LP:** "I can help you prepare that document. Do you want to do that now, or do you have a few more questions first?"
+**LP:** "I can help you prepare that Answer. Do you want to do that now, or do you have a few more questions first?"
 
 **Jane:** "Let's do it now."
 
@@ -92,9 +90,8 @@ _Sidebar: Appearance filing deadline added._
 
 LP pre-fills what it knows:
 
-- County: DuPage
-- Court: 18th Judicial Circuit
-- Case type: Eviction (5-day notice, unpaid rent)
+- Court: Franklin County Municipal Court
+- Case type: Eviction (unpaid rent, with a money claim)
 - Tenant name: _[asks]_
 - Landlord name: _[asks]_
 - Property address: _[asks]_
@@ -111,9 +108,9 @@ LP pre-fills what it knows:
 
 **Jane:** provides name.
 
-_LP assembles the Appearance form. Jane sees a preview on screen._
+_LP assembles the Answer. Jane sees a preview on screen._
 
-**LP:** "Here's your completed Appearance form for the 18th Judicial Circuit. Review it — if anything looks wrong, tell me and we'll fix it."
+**LP:** "Here's your completed Answer for Franklin County Municipal Court. Review it — if anything looks wrong, tell me and we'll fix it."
 
 Jane reviews. Everything looks correct.
 
@@ -121,42 +118,41 @@ Jane reviews. Everything looks correct.
 
 ### Court Plan Assembly
 
-**LP:** "Along with the form, here's your court plan."
+**LP:** "Along with the Answer, here's your court plan."
 
-**Court Plan — Jane Martin, DuPage County Eviction**
+**Court Plan — Jane Martin, Franklin County Eviction**
 
-- **Court location:** 18th Judicial Circuit Court, 505 N. County Farm Rd, Wheaton IL 60187. Parking: County Farm Rd lot, free. Arrive 30 min early for security.
-- **What to bring:** Lease agreement, proof of repair requests (texts, emails), receipts for any payments, photos of the mold, ILRPP application confirmation if you've applied.
+- **Court location:** Franklin County Municipal Court, 375 South High Street, Columbus, OH 43215. The Self Help Center is on the 16th floor. Arrive early and check in with the bailiff.
+- **What to bring:** Lease agreement, proof of repair requests (texts, emails), receipts for any payments, photos of the mold, proof of any rent you deposited with the clerk.
 - **Key dates:**
-  - Appearance filing deadline: [calculated from notice date]
-  - ILRPP application deadline: [tied to court date]
-  - Court date: [if known, or "check your notice"]
+  - Answer to the money claim: due within 28 days of service
+  - Hearing date: [from your summons]
 - **Next steps:**
-  1. File your Appearance (we'll do this now)
-  2. Apply for ILRPP assistance (link + deadline in your action items)
+  1. File your Answer (we'll do this now)
+  2. Apply for emergency rental assistance (link + in your action items)
   3. Contact child support enforcement (resource link added)
-  4. Gather documents listed above before your court date
+  4. Gather the documents listed above before your hearing
 - **Resources:**
-  - DuPage County Legal Aid
-  - Illinois ILRPP program
-  - 18th Judicial Circuit self-help center (location + hours)
-  - Child Support Services (Illinois DCSS)
+  - Legal Aid of Southeast and Central Ohio (LASCO)
+  - Franklin County Municipal Court Self Help Center (16th floor)
+  - Ohio Revised Code Chapter 1923 (eviction law)
+  - County Child Support Enforcement Agency (CSEA)
 
 ---
 
 ### Resolution — E-File
 
-**LP:** "Your Appearance is ready to file. You have a few options:"
+**LP:** "Your Answer is ready to file. You have a few options:"
 
-1. **File it now** — LP submits directly to the 18th Judicial Circuit (requires you to create an account so the court can confirm receipt)
-2. **Download and file in person** — PDF download, bring to the clerk's office
+1. **File it now** — LP submits it to Franklin County Municipal Court (requires you to create an account so the court can confirm receipt)
+2. **Download and file in person** — PDF download, bring to the clerk's office at 375 South High Street
 3. **Email or print** — receive a copy to handle yourself
 
 **Jane:** "File it now."
 
-**LP:** "To e-file, I need to verify your identity. This takes about 2 minutes. Create a free account and we'll submit on your behalf."
+**LP:** "To file, I need to verify your identity. This takes about 2 minutes. Create a free account and we'll submit on your behalf."
 
-Jane creates an account. LP files the Appearance with the 18th Judicial Circuit e-filing system.
+Jane creates an account. LP files the Answer with Franklin County Municipal Court.
 
 **LP:** "Filed. You'll receive a confirmation by email. Your case summary, deadlines, and next steps are saved to your account — you can access them any time."
 
@@ -170,10 +166,10 @@ _Jane is now logged in. The sidebar is persistent. Reminders are set for deadlin
 | -------------------- | ----------------------------------------------------------------- |
 | First load           | Open chat, no friction                                            |
 | Issue identification | One question at a time, natural language                          |
-| Defense surfacing    | Habitability defense identified from context                      |
-| Eligibility          | ILRPP surfaced proactively from household size                    |
+| Defense surfacing    | Habitability angle + Ohio rent-escrow route surfaced from context |
+| Eligibility          | Rental assistance surfaced, routed to LASCO                       |
 | Proactive connection | Child support raised without Jane asking                          |
-| Filing requirement   | Appearance deadline flagged before Jane asks                      |
+| Filing requirement   | 28-day Answer deadline flagged before Jane asks                   |
 | Form prep            | Pre-filled from context, minimal additional input                 |
 | Court plan           | Assembled from case facts — location, dates, checklist, resources |
 | Resolution           | E-file in-portal, account created at the last moment (not a gate) |
@@ -202,7 +198,7 @@ _Jane is now logged in. The sidebar is persistent. Reminders are set for deadlin
 
 ## References
 
-- [Demo Flow (Jane)](./demo-flow-jane.md) — 8-step ITC demo flow (abbreviated version)
+- [Demo Flow (Jane)](./demo-flow-jane.md) — 8-step demo flow (abbreviated version)
 - [User Flows Matrix](./user-flows.md) — 3×2 matrix mapping all variations
 - [AI Tone Guide](./ai-tone-guide.md) — How LP communicates
 - [Expert Feedback](./expert-feedback/2026-01-15-lawyer-eviction.md) — Lawyer review of eviction flow
