@@ -464,10 +464,16 @@ class TopicDetailTests(TestCase):
         self.client = Client()
 
     def test_all_topics_render_with_correct_context(self):
-        """Each topic slug should return 200 with its title from TOPICS."""
+        """Each topic slug should return 200 with its title from TOPICS.
+
+        Eviction is excluded: it has reached engine parity, so /topics/eviction/
+        redirects to chat instead (test_eviction_detail_redirects_to_chat).
+        """
         from litigant_portal.app.views import TOPICS
 
         for slug, topic in TOPICS.items():
+            if slug == "eviction":
+                continue
             with self.subTest(slug=slug):
                 response = self.client.get(f"/topics/{slug}/")
                 self.assertEqual(response.status_code, 200)
@@ -475,9 +481,16 @@ class TopicDetailTests(TestCase):
 
     def test_topic_detail_passes_slug(self):
         """Topic detail page should pass slug in template context."""
-        response = self.client.get("/topics/eviction/")
+        response = self.client.get("/topics/adult_name_change/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["slug"], "eviction")
+        self.assertEqual(response.context["slug"], "adult_name_change")
+
+    def test_eviction_detail_redirects_to_chat(self):
+        """Eviction reached engine parity: its static page is retired and the
+        URL now redirects to the chat entry (#611)."""
+        response = self.client.get("/topics/eviction/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("topic=eviction", response.url)
 
     def test_invalid_slug_returns_404(self):
         """An unknown topic slug should return 404."""
@@ -545,17 +558,20 @@ class DeepLinkTests(TestCase):
         response = self.client.get("/t/north-dakota/not_a_topic/")
         self.assertEqual(response.status_code, 404)
 
-    def test_deep_link_il_eviction(self):
-        """Second registered pair (DuPage/IL + eviction) also works."""
-        response = self.client.get("/t/dupage-il/eviction/")
+    def test_deep_link_oh_eviction(self):
+        """Second registered pair (Franklin County OH + eviction) also works."""
+        response = self.client.get("/t/franklin-county-oh/eviction/")
         self.assertEqual(response.status_code, 302)
         self.assertIn("topic=eviction", response.url)
-        self.assertIn("court=dupage-il", response.url)
+        self.assertIn("court=franklin-county-oh", response.url)
 
     def test_legacy_underscore_court_slug_returns_404(self):
-        """Pre-#338 internal slugs like 'nd' / 'dupage_il' are no longer
-        registered — only the canonical hyphenated slugs work."""
-        for legacy in ("/t/nd/adult_name_change/", "/t/dupage_il/eviction/"):
+        """Pre-#338 internal slugs like 'nd' / 'franklin_county_oh' are no
+        longer registered — only the canonical hyphenated slugs work."""
+        for legacy in (
+            "/t/nd/adult_name_change/",
+            "/t/franklin_county_oh/eviction/",
+        ):
             response = self.client.get(legacy)
             self.assertEqual(
                 response.status_code,
@@ -649,7 +665,7 @@ class ChatPageCourtTests(TestCase):
         """Template does not render the eyebrow when no court is set."""
         response = self.client.get("/chat/?topic=eviction")
         self.assertNotContains(response, "North Dakota Courts")
-        self.assertNotContains(response, "DuPage County Circuit Court")
+        self.assertNotContains(response, "Franklin County Municipal Court")
 
 
 # =============================================================================

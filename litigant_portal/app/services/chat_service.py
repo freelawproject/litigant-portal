@@ -20,7 +20,7 @@ class ChatService:
     # #179 (court-configurable context) lands and the deep-link / topic-card
     # carries jurisdiction through the request.
     _DEFAULT_JURISDICTION_FOR_TOPIC: dict[str, str] = {
-        "eviction": "il",
+        "eviction": "oh",
         "adult_name_change": "nd",
     }
 
