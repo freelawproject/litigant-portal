@@ -52,15 +52,15 @@ class BuildSystemPromptTests(TestCase):
         self.assertNotIn("ADULT NAME CHANGE", result)
 
     def test_court_layer_included(self):
-        result = build_system_prompt(court="dupage-il")
+        result = build_system_prompt(court="franklin-county-oh")
 
-        self.assertIn("DUPAGE COUNTY", result)
+        self.assertIn("FRANKLIN COUNTY", result)
 
     def test_missing_court_omits_layer(self):
         result = build_system_prompt(topic="eviction")
 
         self.assertIn("EVICTION", result)
-        self.assertNotIn("DUPAGE COUNTY", result)
+        self.assertNotIn("FRANKLIN COUNTY", result)
 
     def test_full_four_layer_composition(self):
         result = build_system_prompt(
@@ -74,12 +74,12 @@ class BuildSystemPromptTests(TestCase):
         self.assertIn("ADULT NAME CHANGE", result)
         self.assertIn("NORTH DAKOTA", result)
 
-    def test_jurisdiction_backward_compat_il(self):
-        # Callers that pass jurisdiction="il" should resolve to the dupage-il court.
-        result = build_system_prompt(topic="eviction", jurisdiction="il")
+    def test_jurisdiction_backward_compat_oh(self):
+        # Callers that pass jurisdiction="oh" resolve to the franklin-county-oh court.
+        result = build_system_prompt(topic="eviction", jurisdiction="oh")
 
         self.assertIn("EVICTION", result)
-        self.assertIn("DUPAGE COUNTY", result)
+        self.assertIn("FRANKLIN COUNTY", result)
 
     def test_jurisdiction_backward_compat_nd(self):
         result = build_system_prompt(
@@ -90,15 +90,15 @@ class BuildSystemPromptTests(TestCase):
         self.assertIn("NORTH DAKOTA", result)
 
     def test_explicit_court_wins_over_jurisdiction(self):
-        result = build_system_prompt(court="north-dakota", jurisdiction="il")
+        result = build_system_prompt(court="north-dakota", jurisdiction="oh")
 
         self.assertIn("NORTH DAKOTA", result)
-        self.assertNotIn("DUPAGE COUNTY", result)
+        self.assertNotIn("FRANKLIN COUNTY", result)
 
     def test_unknown_jurisdiction_omits_court(self):
         result = build_system_prompt(jurisdiction="xx")
 
-        self.assertNotIn("DUPAGE COUNTY", result)
+        self.assertNotIn("FRANKLIN COUNTY", result)
         self.assertNotIn("NORTH DAKOTA", result)
 
     def test_phase_ordering_base_first_then_phase(self):
@@ -153,9 +153,10 @@ class CourtNameTests(TestCase):
     def test_known_court_nd(self):
         self.assertEqual(get_court_name("north-dakota"), "North Dakota Courts")
 
-    def test_known_court_dupage_il(self):
+    def test_known_court_franklin(self):
         self.assertEqual(
-            get_court_name("dupage-il"), "DuPage County Circuit Court"
+            get_court_name("franklin-county-oh"),
+            "Franklin County Municipal Court",
         )
 
     def test_empty_court_returns_empty(self):
@@ -194,7 +195,7 @@ class IsKnownCourtTests(TestCase):
 
     def test_known_court_returns_true(self):
         self.assertTrue(is_known_court("north-dakota"))
-        self.assertTrue(is_known_court("dupage-il"))
+        self.assertTrue(is_known_court("franklin-county-oh"))
 
     def test_unknown_court_returns_false(self):
         self.assertFalse(is_known_court("not_a_court"))

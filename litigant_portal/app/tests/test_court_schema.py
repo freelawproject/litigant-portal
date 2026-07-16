@@ -105,7 +105,7 @@ class IterCourtsTests(TestCase):
     def test_returns_known_courts(self):
         courts = dict(iter_courts())
         self.assertIn("north-dakota", courts)
-        self.assertIn("dupage-il", courts)
+        self.assertIn("franklin-county-oh", courts)
 
     def test_metadata_includes_required_fields(self):
         for slug, meta in iter_courts():
