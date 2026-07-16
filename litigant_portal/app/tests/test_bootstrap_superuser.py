@@ -47,17 +47,19 @@ class BootstrapSuperuserTests(TestCase):
         self.assertTrue(address.verified)
         self.assertTrue(address.primary)
 
-    def test_promotes_existing_user_without_touching_password(self):
+    def test_refuses_to_promote_existing_user(self):
         user = User.objects.create_user(
             username=EMAIL, email=EMAIL, password="original-password"
         )
         output = _run(SUPERUSER_EMAIL=EMAIL, SUPERUSER_PASSWORD=PASSWORD)
-        self.assertIn("Promoted existing user", output)
+        self.assertIn("refusing to promote", output)
 
         user.refresh_from_db()
-        self.assertTrue(user.is_staff)
-        self.assertTrue(user.is_superuser)
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
         self.assertTrue(user.check_password("original-password"))
+        # And never mark a pre-registered account's email as verified.
+        self.assertFalse(EmailAddress.objects.filter(user=user).exists())
 
     def test_rerun_is_a_noop(self):
         _run(SUPERUSER_EMAIL=EMAIL, SUPERUSER_PASSWORD=PASSWORD)
@@ -73,5 +75,5 @@ class BootstrapSuperuserTests(TestCase):
         output = _run(
             SUPERUSER_EMAIL=EMAIL.upper(), SUPERUSER_PASSWORD=PASSWORD
         )
-        self.assertIn("Promoted existing user", output)
+        self.assertIn("refusing to promote", output)
         self.assertEqual(User.objects.count(), 1)

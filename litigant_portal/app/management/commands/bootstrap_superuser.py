@@ -31,25 +31,24 @@ class Command(BaseCommand):
                     email=email,
                     password=password,
                 )
+                EmailAddress.objects.get_or_create(
+                    user=user,
+                    email=user.email,
+                    defaults={"verified": True, "primary": True},
+                )
                 self.stdout.write(
                     self.style.SUCCESS(f"Created superuser {email}.")
                 )
-            elif user.is_staff and user.is_superuser:
+            elif user.is_superuser:
                 self.stdout.write(
                     f"Superuser {email} already exists; nothing to do."
                 )
             else:
-                user.is_staff = True
-                user.is_superuser = True
-                user.save(update_fields=["is_staff", "is_superuser"])
                 self.stdout.write(
-                    self.style.SUCCESS(
-                        f"Promoted existing user {email} to superuser."
+                    self.style.WARNING(
+                        f"User {email} already exists but is not a "
+                        "superuser; refusing to promote a pre-existing "
+                        "account. Remove or rename that account, or "
+                        "promote it manually."
                     )
                 )
-
-            EmailAddress.objects.get_or_create(
-                user=user,
-                email=user.email,
-                defaults={"verified": True, "primary": True},
-            )
