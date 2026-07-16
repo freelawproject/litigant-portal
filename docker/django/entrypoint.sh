@@ -9,6 +9,11 @@ run_migrations() {
     manage migrate --noinput
 }
 
+run_bootstrap_superuser() {
+    echo "Bootstrapping superuser ..."
+    manage bootstrap_superuser
+}
+
 run_collectstatic() {
     echo "Collecting static files ..."
     manage collectstatic --noinput --clear
@@ -45,6 +50,7 @@ case "$1" in
         run_compilemessages
         run_collectstatic
         run_migrations
+        run_bootstrap_superuser
         run_dev_server
         ;;
 
@@ -53,6 +59,7 @@ case "$1" in
         run_compilemessages
         run_collectstatic
         run_migrations
+        run_bootstrap_superuser
         run_prod_server
         ;;
 
