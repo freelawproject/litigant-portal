@@ -245,7 +245,15 @@ def chat_v2_view(request):
         "CHAT_MODEL": CHAT_MODEL,
         "CHAT_ENABLED": CHAT_ENABLED,
     }
-    return render(request, "v2/chat/index.html", {"debug_env": debug_env})
+    return render(
+        request,
+        "v2/chat/index.html",
+        {
+            "debug_env": debug_env,
+            # Discovery #670: topic-less surface gets the whole inventory.
+            "flow_tracks": registry.all_tracks(),
+        },
+    )
 
 
 def deep_link(request, court, topic):
