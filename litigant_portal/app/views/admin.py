@@ -1,4 +1,5 @@
 import json
+import os
 from functools import wraps
 
 from django.contrib.auth.decorators import login_required
@@ -13,7 +14,13 @@ from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.app.models import Site, Topic
-from litigant_portal.app.models.choices import JurisdictionLevel, State
+from litigant_portal.app.models.choices import (
+    BedrockModel,
+    JurisdictionLevel,
+    OpenAIModel,
+    State,
+    get_default_model,
+)
 from litigant_portal.app.selectors.admin import (
     site_get,
     site_get_active,
@@ -65,7 +72,24 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     """Admin dashboard shell — developers or active-site members only."""
     if not user_can_access_admin(user=request.user):
         raise PermissionDenied
-    return render(request, "v2/admin/index.html")
+    openai_available = bool(os.environ.get("OPENAI_API_KEY"))
+    bedrock_available = bool(os.environ.get("AWS_BEARER_TOKEN_BEDROCK"))
+    model_choice_groups = []
+    if openai_available:
+        model_choice_groups.append(("OpenAI", OpenAIModel.choices))
+    if bedrock_available or not openai_available:
+        model_choice_groups.append(("AWS Bedrock", BedrockModel.choices))
+    all_model_labels = dict(OpenAIModel.choices) | dict(BedrockModel.choices)
+    return render(
+        request,
+        "v2/admin/index.html",
+        {
+            "openai_available": openai_available,
+            "bedrock_available": bedrock_available,
+            "model_choice_groups": model_choice_groups,
+            "default_model_label": all_model_labels[get_default_model()],
+        },
+    )
 
 
 def _site_payload(site: Site) -> dict:
@@ -78,6 +102,8 @@ def _site_payload(site: Site) -> dict:
         "state": site.state,
         "official_url": site.official_url,
         "official_resources_url": site.official_resources_url,
+        "fast_model": site.fast_model,
+        "assistant_model": site.assistant_model,
     }
 
 
@@ -120,6 +146,13 @@ def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
             except ValidationError:
                 return JsonResponse({"error": _("Invalid URL")}, status=400)
         urls[field] = url
+    valid_models = set(OpenAIModel.values) | set(BedrockModel.values)
+    ai_models = {}
+    for field in ("fast_model", "assistant_model"):
+        model = (request.POST.get(field) or "").strip()
+        if model and model not in valid_models:
+            return JsonResponse({"error": _("Invalid model")}, status=400)
+        ai_models[field] = model
     try:
         site = site_get(site_id=site_id)
     except Site.DoesNotExist:
@@ -133,6 +166,7 @@ def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
                 jurisdiction_level=jurisdiction_level,
                 state=state,
                 **urls,
+                **ai_models,
             )
         )
     )

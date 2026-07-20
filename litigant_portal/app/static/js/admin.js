@@ -62,6 +62,8 @@ document.addEventListener('alpine:init', () => {
     siteState: '',
     siteOfficialUrl: '',
     siteOfficialResourcesUrl: '',
+    siteFastModel: '',
+    siteAssistantModel: '',
     activeSiteName: '',
     siteMenuOpen: false,
     siteSaved: false,
@@ -133,6 +135,8 @@ document.addEventListener('alpine:init', () => {
         this.siteOfficialResourcesUrl = active
           ? active.official_resources_url
           : ''
+        this.siteFastModel = active ? active.fast_model : ''
+        this.siteAssistantModel = active ? active.assistant_model : ''
         this.activeSiteName = active ? active.name : ''
       } catch (e) {
         console.error('Failed to load site settings:', e)
@@ -159,6 +163,8 @@ document.addEventListener('alpine:init', () => {
           'official_resources_url',
           this.siteOfficialResourcesUrl.trim()
         )
+        body.append('fast_model', this.siteFastModel)
+        body.append('assistant_model', this.siteAssistantModel)
         body.append('csrfmiddlewaretoken', this.csrfToken())
         const res = await fetch(
           '/api/admin/sites/' + this.siteId + '/update/',
