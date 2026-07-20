@@ -45,9 +45,12 @@ def site_get_model(*, role: str) -> str:
     return data.get(f"{role}_model") or get_default_model()
 
 
-def site_list() -> QuerySet[Site]:
-    """All site settings rows, oldest first."""
-    return Site.objects.order_by("created_at")
+def site_list(*, for_user: User) -> QuerySet[Site]:
+    """Site rows visible to a user, oldest first."""
+    sites = Site.objects.order_by("created_at")
+    if not for_user.is_staff:
+        sites = sites.filter(memberships__user=for_user)
+    return sites
 
 
 def site_get(*, site_id) -> Site:

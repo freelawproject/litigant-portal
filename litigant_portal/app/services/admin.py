@@ -24,6 +24,18 @@ def user_can_access_admin(*, user) -> bool:
     return SiteMembership.objects.filter(user=user, site__active=True).exists()
 
 
+def user_is_developer(*, user) -> bool:
+    """Whether a user is a developer."""
+    return user.is_authenticated and user.is_staff
+
+
+def user_can_manage_site(*, user, site: Site) -> bool:
+    """Whether a user may read or edit ``site`` itself."""
+    if user.is_staff:
+        return True
+    return SiteMembership.objects.filter(user=user, site=site).exists()
+
+
 def site_membership_toggle(*, user: User, site: Site) -> bool:
     """Flip a user's membership in ``site``; returns the new state."""
     membership = SiteMembership.objects.filter(user=user, site=site).first()
