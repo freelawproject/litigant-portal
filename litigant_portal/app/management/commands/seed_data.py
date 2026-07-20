@@ -18,7 +18,7 @@ SEED_TOPICS = [
         "meta_description": "Learn about the eviction process, tenant rights, and landlord obligations. General legal information for self-represented litigants.",
         "prompts": [
             "I received an eviction notice and need to understand my options",
-            "My landlord isn't making repairs — what are my rights?",
+            "My landlord isn't making repairs. What are my rights?",
             "I'm behind on rent and worried about eviction",
         ],
     },
@@ -49,10 +49,10 @@ SEED_TOPICS = [
     {
         "slug": "adult_name_change",
         "title": "Adult Name Change",
-        "subtitle": "Legally changing your name — standalone petition process",
+        "subtitle": "Legally changing your name: standalone petition process",
         "description": "Petition, publication, and records cascade",
         "icon": "identification",
-        "meta_description": "Learn about legally changing your name as an adult — petition process, publication requirements, and updating your records. General legal information for self-represented litigants.",
+        "meta_description": "Learn about legally changing your name as an adult: petition process, publication requirements, and updating your records. General legal information for self-represented litigants.",
         "prompts": [
             "I want to change my last name back after a divorce",
             "I want to change my first or middle name",
