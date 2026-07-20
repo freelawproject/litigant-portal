@@ -232,20 +232,7 @@ def chat_page(request):
 
 def chat_v2_view(request):
     """New chat page"""
-    import os
-
-    from litigant_portal.settings import CHAT_ENABLED, CHAT_MODEL
-
-    # Temporary debug info surfaced in the right-hand panel.
-    debug_env = {
-        "AWS_BEARER_TOKEN_BEDROCK": bool(
-            os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
-        ),
-        "OPENAI_API_KEY": bool(os.environ.get("OPENAI_API_KEY")),
-        "CHAT_MODEL": CHAT_MODEL,
-        "CHAT_ENABLED": CHAT_ENABLED,
-    }
-    return render(request, "v2/chat/index.html", {"debug_env": debug_env})
+    return render(request, "v2/chat/index.html")
 
 
 def deep_link(request, court, topic):
