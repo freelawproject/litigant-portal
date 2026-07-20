@@ -1,7 +1,6 @@
 import litellm
 
 from litigant_portal.agents_v2.base import Field, Tool, ToolOutput
-from litigant_portal.settings import CHAT_MODEL
 
 READER_SYSTEM_PROMPT = (
     "You are a document analyzer. Answer the request using only the "
@@ -30,6 +29,7 @@ class QueryDocument(Tool):
 
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.app.models import ChatThread, UserUpload
+        from litigant_portal.app.selectors.admin import site_get_model
         from litigant_portal.app.services.attachments import (
             content_part,
             reader_limit_error,
@@ -58,7 +58,8 @@ class QueryDocument(Tool):
                 )
             )
 
-        part = content_part(upload=upload, data=data, model=CHAT_MODEL)
+        model = site_get_model(role="assistant")
+        part = content_part(upload=upload, data=data, model=model)
         if part is None:
             return ToolOutput(
                 result=(
@@ -67,7 +68,7 @@ class QueryDocument(Tool):
                 )
             )
 
-        answer, cost = self.ask(upload.name, part)
+        answer, cost = self.ask(upload.name, part, model)
         return ToolOutput(
             result=answer,
             cost=cost,
@@ -79,10 +80,10 @@ class QueryDocument(Tool):
             },
         )
 
-    def ask(self, name: str, part: dict) -> tuple[str, float]:
+    def ask(self, name: str, part: dict, model: str) -> tuple[str, float]:
         """One reader call; returns the answer and what it cost."""
         response = litellm.completion(
-            model=CHAT_MODEL,
+            model=model,
             messages=[
                 {"role": "system", "content": READER_SYSTEM_PROMPT},
                 {

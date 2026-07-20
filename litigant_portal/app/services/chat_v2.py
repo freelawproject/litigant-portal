@@ -17,7 +17,6 @@ from litigant_portal.app.services.assistant import attachment_render_list
 from litigant_portal.app.services.attachments import (
     attachments_for_llm,
 )
-from litigant_portal.settings import CHAT_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +97,9 @@ def chat_message_inject_meta(
 
 def chat_thread_generate_description(*, thread: ChatThread) -> str:
     """Generate and store a short description of a thread's conversation."""
+    from litigant_portal.app.selectors.admin import site_get_model
+
+    model = site_get_model(role="fast")
     conversation = "\n".join(
         f"{m.data.get('role')}: {m.data.get('content')}"
         for m in chat_message_list(
@@ -107,7 +109,7 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
         and m.data.get("content")
     )
     response = litellm.completion(
-        model=CHAT_MODEL,
+        model=model,
         messages=[
             {"role": "system", "content": DESCRIPTION_PROMPT},
             {"role": "user", "content": conversation[:4000]},
@@ -122,7 +124,7 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
     chat_message_inject_meta(
         thread_id=thread.id,
         kind="thread_description",
-        model=CHAT_MODEL,
+        model=model,
         num_tokens=usage.total_tokens if usage else 0,
         cost=cost,
     )

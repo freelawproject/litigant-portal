@@ -5,6 +5,7 @@ from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.agents_v2 import LitigantAssistant
 from litigant_portal.app.models import UserUpload
+from litigant_portal.app.selectors.admin import site_get_model
 from litigant_portal.app.selectors.assistant import user_upload_list
 from litigant_portal.app.services.assistant import (
     UploadValidationError,
@@ -13,7 +14,6 @@ from litigant_portal.app.services.assistant import (
     user_upload_serialize,
 )
 from litigant_portal.app.views import chat_v2
-from litigant_portal.settings import CHAT_MODEL
 
 THREAD_TYPE = "user_chat"
 
@@ -28,7 +28,7 @@ def stream(request: HttpRequest):
         request,
         agent_class=LitigantAssistant,
         thread_type=THREAD_TYPE,
-        model=CHAT_MODEL,
+        model=site_get_model(role="assistant"),
     )
 
 
