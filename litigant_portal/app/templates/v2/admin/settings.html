@@ -70,23 +70,23 @@
                 x-on:change="updateSiteField"
                 class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
           <option value="">{% trans "—" %}</option>
-          <option value="state">{% trans "State" %}</option>
-          <option value="county">{% trans "County" %}</option>
-          <option value="district">{% trans "District" %}</option>
-          <option value="federal">{% trans "Federal" %}</option>
-          <option value="tribal">{% trans "Tribal" %}</option>
+          {% for value, label in jurisdiction_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
         </select>
       </div>
       <div>
         <label for="site-state" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "State" %}</label>
-        <input id="site-state"
-               type="text"
-               maxlength="2"
-               placeholder="IL"
-               data-field="siteState"
-               x-bind:value="siteState"
-               x-on:input="updateSiteField"
-               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-primary-600">
+        <select id="site-state"
+                data-field="siteState"
+                x-bind:value="siteState"
+                x-on:change="updateSiteField"
+                class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+          <option value="">{% trans "—" %}</option>
+          {% for value, label in state_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
       </div>
     </div>
     <div>

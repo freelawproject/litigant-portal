@@ -24,14 +24,14 @@
                     x-bind:data-topic-id="topic.id"
                     x-on:click="editTopic"
                     aria-label="{% trans 'Edit topic' %}"
-                    class="p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+                    class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
               <c-atoms.icon name="pencil-square" class="w-4 h-4" />
             </button>
             <button type="button"
                     x-bind:data-topic-id="topic.id"
                     x-on:click="askDeleteTopic"
                     aria-label="{% trans 'Delete topic' %}"
-                    class="p-2 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors">
+                    class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors">
               <c-atoms.icon name="trash" class="w-4 h-4" />
             </button>
           </div>
@@ -67,7 +67,7 @@
       <button type="button"
               x-on:click="cancelTopicEdit"
               aria-label="{% trans 'Back to topics' %}"
-              class="p-1.5 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+              class="flex items-center justify-center p-1.5 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
         <c-atoms.icon name="arrow-left" class="w-4 h-4" />
       </button>
       <h3 class="text-base font-semibold text-greyscale-900" x-text="kbEditorTitle"></h3>

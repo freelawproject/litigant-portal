@@ -88,6 +88,8 @@ def dashboard(request: HttpRequest) -> HttpResponse:
             "bedrock_available": bedrock_available,
             "model_choice_groups": model_choice_groups,
             "default_model_label": all_model_labels[get_default_model()],
+            "jurisdiction_choices": JurisdictionLevel.choices,
+            "state_choices": State.choices,
         },
     )
 
