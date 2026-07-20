@@ -20,7 +20,7 @@
           <th class="px-4 py-2.5">{% trans "Name" %}</th>
           <th class="px-4 py-2.5">{% trans "Joined" %}</th>
           <th class="px-4 py-2.5">{% trans "Admin" %}</th>
-          {% if request.user.is_staff %}
+          {% if is_developer %}
             <th class="px-4 py-2.5">{% trans "Developer" %}</th>
           {% endif %}
         </tr>
@@ -43,8 +43,7 @@
                 <span x-show="user.notAdmin">{% trans "Off" %}</span>
               </button>
             </td>
-            {% if request.user.is_staff %}
-              {# Staff flag — visible to developers only #}
+            {% if is_developer %}
               <td class="px-4 py-2.5">
                 <button type="button"
                         x-bind:data-user-id="user.id"

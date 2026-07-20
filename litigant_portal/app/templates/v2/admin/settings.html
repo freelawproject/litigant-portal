@@ -4,7 +4,7 @@
   {# Header row — title on the left, site switcher on the right #}
   <div class="flex items-center justify-between gap-2 mb-4">
     <h3 class="text-base font-semibold text-greyscale-900">{% trans "Settings" %}</h3>
-    {# Site switcher — dev-only once permissions land #}
+    {% if is_developer %}
     <div class="relative">
       <button type="button"
               x-on:click="toggleSiteMenu"
@@ -34,6 +34,7 @@
         </template>
       </div>
     </div>
+    {% endif %}
   </div>
   {# Active site form #}
   <form x-on:submit.prevent="saveSite" class="space-y-4">

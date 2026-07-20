@@ -37,6 +37,7 @@ from litigant_portal.app.services.admin import (
     topic_delete,
     topic_update,
     user_can_access_admin,
+    user_can_manage_site,
     user_developer_toggle,
 )
 
@@ -113,8 +114,10 @@ def _site_payload(site: Site) -> dict:
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 @admin_access_required
 def site_list_view(request: HttpRequest) -> JsonResponse:
-    """All site settings rows for the admin settings tab."""
-    return JsonResponse({"sites": [_site_payload(s) for s in site_list()]})
+    """The caller's visible site rows for the admin settings tab."""
+    return JsonResponse(
+        {"sites": [_site_payload(s) for s in site_list(for_user=request.user)]}
+    )
 
 
 @require_POST
@@ -159,6 +162,8 @@ def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
         site = site_get(site_id=site_id)
     except Site.DoesNotExist:
         return JsonResponse({"error": _("Site not found")}, status=404)
+    if not user_can_manage_site(user=request.user, site=site):
+        return JsonResponse({"error": _("Forbidden")}, status=403)
     return JsonResponse(
         _site_payload(
             site_update(
