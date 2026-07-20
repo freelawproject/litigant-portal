@@ -21,11 +21,15 @@ class Site(BaseModel):
     official_url = models.URLField(blank=True)
     official_resources_url = models.URLField(blank=True)
     fast_model = models.CharField(
-        max_length=128, blank=True, null=True,
+        max_length=128,
+        blank=True,
+        null=True,
         choices=AI_MODEL_CHOICES,
     )
     assistant_model = models.CharField(
-        max_length=128, blank=True, null=True,
+        max_length=128,
+        blank=True,
+        null=True,
         choices=AI_MODEL_CHOICES,
     )
 
