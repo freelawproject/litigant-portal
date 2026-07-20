@@ -1,5 +1,8 @@
 from django.conf import settings
 from django.contrib.messages import get_messages
+from django.utils.functional import SimpleLazyObject
+
+from litigant_portal.app.services.admin import user_can_access_admin
 
 
 def app_meta(request):
@@ -7,6 +10,16 @@ def app_meta(request):
     return {
         "deployment_env": settings.DEPLOYMENT_ENV,
         "app_build_time": settings.APP_BUILD_TIME,
+    }
+
+
+def admin_access(request):
+    """Whether the current user may see the admin panel (lazy — only
+    queried when a template actually references it)."""
+    return {
+        "can_access_admin": SimpleLazyObject(
+            lambda: user_can_access_admin(user=request.user)
+        )
     }
 
 
