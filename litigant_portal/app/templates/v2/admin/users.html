@@ -1,0 +1,87 @@
+{% load i18n %}
+
+<div class="max-w-4xl">
+  <div class="mb-4">
+    <h3 class="text-base font-semibold text-greyscale-900">{% trans "Users" %}</h3>
+    <p class="text-sm text-greyscale-500">{% trans "All registered users." %}</p>
+  </div>
+
+  {# Live email filter — debounced, refetches as you type. #}
+  <input type="search"
+         placeholder="{% trans "Search by email…" %}"
+         x-on:input.debounce.300ms="searchUsers"
+         class="w-full max-w-sm mb-4 rounded-lg border border-greyscale-200 bg-white px-3 py-2 text-sm text-greyscale-900 placeholder-greyscale-400 focus:outline-none focus:border-primary-500" />
+
+  <div class="rounded-lg border border-greyscale-200 bg-white overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-greyscale-200 text-left text-xs font-semibold uppercase tracking-wider text-greyscale-400">
+          <th class="px-4 py-2.5">{% trans "Email" %}</th>
+          <th class="px-4 py-2.5">{% trans "Name" %}</th>
+          <th class="px-4 py-2.5">{% trans "Joined" %}</th>
+          <th class="px-4 py-2.5">{% trans "Admin" %}</th>
+          {% if request.user.is_staff %}
+            <th class="px-4 py-2.5">{% trans "Developer" %}</th>
+          {% endif %}
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="user in users" :key="user.id">
+          <tr class="border-b border-greyscale-100 last:border-b-0">
+            <td class="px-4 py-2.5 text-greyscale-900" x-text="user.email"></td>
+            <td class="px-4 py-2.5 text-greyscale-600" x-text="user.name"></td>
+            <td class="px-4 py-2.5 text-greyscale-500" x-text="user.joined"></td>
+            {# Membership in the active site #}
+            <td class="px-4 py-2.5">
+              <button type="button"
+                      x-bind:data-user-id="user.id"
+                      x-on:click="toggleUserAdmin"
+                      x-bind:class="user.adminToggleClass"
+                      x-bind:disabled="user.adminToggleDisabled"
+                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-default disabled:pointer-events-none">
+                <span x-show="user.is_admin">{% trans "On" %}</span>
+                <span x-show="user.notAdmin">{% trans "Off" %}</span>
+              </button>
+            </td>
+            {% if request.user.is_staff %}
+              {# Staff flag — visible to developers only #}
+              <td class="px-4 py-2.5">
+                <button type="button"
+                        x-bind:data-user-id="user.id"
+                        x-on:click="toggleUserDeveloper"
+                        x-bind:class="user.devToggleClass"
+                        x-bind:disabled="user.devToggleDisabled"
+                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-default disabled:pointer-events-none">
+                  <span x-show="user.is_staff">{% trans "On" %}</span>
+                  <span x-show="user.notStaff">{% trans "Off" %}</span>
+                </button>
+              </td>
+            {% endif %}
+          </tr>
+        </template>
+      </tbody>
+    </table>
+    <p x-show="usersEmpty" x-cloak class="px-4 py-6 text-sm text-greyscale-500 text-center">
+      {% trans "No users found." %}
+    </p>
+  </div>
+
+  <div class="flex items-center justify-between mt-3">
+    <p class="text-xs text-greyscale-500" x-text="usersCountLabel"></p>
+    <div class="flex items-center gap-2">
+      <button type="button"
+              x-on:click="usersPrevPage"
+              x-bind:disabled="usersNoPrev"
+              class="rounded-lg border border-greyscale-200 bg-white px-3 py-1.5 text-xs font-medium text-greyscale-700 cursor-pointer hover:bg-greyscale-100 disabled:opacity-50 disabled:cursor-default disabled:hover:bg-white">
+        {% trans "Previous" %}
+      </button>
+      <span class="text-xs text-greyscale-500" x-text="usersPageLabel"></span>
+      <button type="button"
+              x-on:click="usersNextPage"
+              x-bind:disabled="usersNoNext"
+              class="rounded-lg border border-greyscale-200 bg-white px-3 py-1.5 text-xs font-medium text-greyscale-700 cursor-pointer hover:bg-greyscale-100 disabled:opacity-50 disabled:cursor-default disabled:hover:bg-white">
+        {% trans "Next" %}
+      </button>
+    </div>
+  </div>
+</div>
