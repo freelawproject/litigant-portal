@@ -89,6 +89,7 @@ TEMPLATES = [
                 # "portal.context_processors.toast_messages",
                 "litigant_portal.app.context_processors.app_meta",
                 "litigant_portal.app.context_processors.admin_access",
+                "litigant_portal.app.context_processors.developer_access",
             ],
             "builtins": [
                 "django_cotton.templatetags.cotton",
