@@ -1,9 +1,11 @@
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Max
 from django.utils.text import slugify
 
 from litigant_portal.app.models import Site, SiteMembership, Topic
+from litigant_portal.app.selectors.admin import ACTIVE_SITE_CACHE_KEY
 
 
 def user_can_access_admin(*, user) -> bool:
@@ -45,6 +47,7 @@ def site_activate(*, site: Site) -> Site:
         if not site.active:
             site.active = True
             site.save(update_fields=["active", "updated_at"])
+    cache.delete(ACTIVE_SITE_CACHE_KEY)
     return site
 
 
@@ -57,6 +60,8 @@ def site_update(
     state: str = "",
     official_url: str = "",
     official_resources_url: str = "",
+    fast_model: str = "",
+    assistant_model: str = "",
 ) -> Site:
     """Update a site row's editable fields."""
     site.name = name
@@ -65,6 +70,8 @@ def site_update(
     site.state = state
     site.official_url = official_url
     site.official_resources_url = official_resources_url
+    site.fast_model = fast_model
+    site.assistant_model = assistant_model
     site.save(
         update_fields=[
             "name",
@@ -73,9 +80,12 @@ def site_update(
             "state",
             "official_url",
             "official_resources_url",
+            "fast_model",
+            "assistant_model",
             "updated_at",
         ]
     )
+    cache.delete(ACTIVE_SITE_CACHE_KEY)
     return site
 
 
