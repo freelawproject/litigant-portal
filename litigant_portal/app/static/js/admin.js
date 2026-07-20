@@ -267,7 +267,7 @@ document.addEventListener('alpine:init', () => {
       this.kbTitle = topic.title
       this.kbSubtitle = topic.subtitle
       this.kbDescription = topic.description
-      this.kbIcon = topic.icon
+      this.kbIcon = KB_ICON_PATHS[topic.icon] ? topic.icon : 'home'
       this.kbMetaDescription = topic.meta_description
       this.kbPrompts = topic.prompts.join('\n')
       this.openKbEditor('Edit topic')
@@ -278,7 +278,7 @@ document.addEventListener('alpine:init', () => {
       this.kbTitle = ''
       this.kbSubtitle = ''
       this.kbDescription = ''
-      this.kbIcon = ''
+      this.kbIcon = 'home'
       this.kbMetaDescription = ''
       this.kbPrompts = ''
       this.openKbEditor('New topic')
