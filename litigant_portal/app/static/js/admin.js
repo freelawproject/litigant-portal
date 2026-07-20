@@ -67,6 +67,7 @@ document.addEventListener('alpine:init', () => {
     activeSiteName: '',
     siteMenuOpen: false,
     siteSaved: false,
+    siteError: '',
     // Knowledge base tab
     kbTopics: [],
     kbListVisible: true,
@@ -135,8 +136,8 @@ document.addEventListener('alpine:init', () => {
         this.siteOfficialResourcesUrl = active
           ? active.official_resources_url
           : ''
-        this.siteFastModel = active ? active.fast_model : ''
-        this.siteAssistantModel = active ? active.assistant_model : ''
+        this.siteFastModel = (active && active.fast_model) || ''
+        this.siteAssistantModel = (active && active.assistant_model) || ''
         this.activeSiteName = active ? active.name : ''
       } catch (e) {
         console.error('Failed to load site settings:', e)
@@ -148,6 +149,7 @@ document.addEventListener('alpine:init', () => {
     updateSiteField(e) {
       this[e.currentTarget.dataset.field] = e.currentTarget.value
       this.siteSaved = false
+      this.siteError = ''
     },
 
     async saveSite() {
@@ -170,11 +172,17 @@ document.addEventListener('alpine:init', () => {
           '/api/admin/sites/' + this.siteId + '/update/',
           { method: 'POST', body }
         )
-        if (!res.ok) throw new Error('Request failed: ' + res.status)
+        if (!res.ok) {
+          // Surface the server's validation message next to Save.
+          const data = await res.json().catch(() => ({}))
+          throw new Error(data.error || 'Request failed: ' + res.status)
+        }
         this.siteSaved = true
+        this.siteError = ''
         await this.loadSites()
       } catch (e) {
         console.error('Failed to save site settings:', e)
+        this.siteError = e.message
       }
     },
 

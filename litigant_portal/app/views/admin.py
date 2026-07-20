@@ -104,8 +104,8 @@ def _site_payload(site: Site) -> dict:
         "state": site.state,
         "official_url": site.official_url,
         "official_resources_url": site.official_resources_url,
-        "fast_model": site.fast_model,
-        "assistant_model": site.assistant_model,
+        "fast_model": site.fast_model or "",
+        "assistant_model": site.assistant_model or "",
     }
 
 
