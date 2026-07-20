@@ -48,6 +48,10 @@ class HomePageTests(TestCase):
 
 
 @pytest.mark.postgres
+@pytest.mark.skip(
+    reason="v1 chat page moved to /chat-v1/ (chat === v2, #676); "
+    "port these contracts to v2 per #677"
+)
 class ChatPageTests(TestCase):
     """Tests for the chat page at /chat/."""
 
@@ -504,6 +508,10 @@ class TopicDetailTests(TestCase):
 
 
 @pytest.mark.postgres
+@pytest.mark.skip(
+    reason="v1 chat page moved to /chat-v1/ (chat === v2, #676); "
+    "port these contracts to v2 per #677"
+)
 class ChatPageTopicTests(TestCase):
     """Tests for topic context routing on the chat page."""
 
@@ -617,6 +625,10 @@ class DeepLinkTests(TestCase):
 
 
 @pytest.mark.postgres
+@pytest.mark.skip(
+    reason="v1 chat page moved to /chat-v1/ (chat === v2, #676); "
+    "port these contracts to v2 per #677"
+)
 class ChatPageCourtTests(TestCase):
     """Tests for court parameter handling on /chat/ (#327)."""
 

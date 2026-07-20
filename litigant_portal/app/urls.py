@@ -31,7 +31,11 @@ app_patterns = [
         pages.topic_flow_download,
         name="topic_flow_download",
     ),
-    path("chat/", pages.chat_page, name="chat"),
+    # chat === v2 (#676): the default chat surface. v1 stays reachable at a
+    # URL we know, as reference for the UI/UX merge (#668) and the atomic
+    # conversion; it leaves with the v1 cleanout. chat-v2 kept as an alias.
+    path("chat/", pages.chat_v2_view, name="chat"),
+    path("chat-v1/", pages.chat_page, name="chat_v1"),
     path("chat-v2/", pages.chat_v2_view, name="chat_v2"),
     path("chat/action-plan/", endpoints.action_plan, name="action_plan"),
     path("style-guide/", pages.style_guide, name="style_guide"),
