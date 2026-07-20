@@ -1,7 +1,12 @@
+from django.core.cache import cache
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from litigant_portal.app.models import Site, Topic
+from litigant_portal.app.selectors.admin import (
+    ACTIVE_SITE_CACHE_KEY,
+    ACTIVE_SITE_TOPICS_CACHE_KEY,
+)
 
 SEED_TOPICS = [
     {
@@ -76,6 +81,8 @@ class Command(BaseCommand):
         site = Site.objects.create(name="default", active=True)
         for order, data in enumerate(SEED_TOPICS):
             Topic.objects.create(site=site, order=order, **data)
+        cache.delete(ACTIVE_SITE_CACHE_KEY)
+        cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
         self.stdout.write(
             self.style.SUCCESS(
                 f"Created active site '{site.name}' "

@@ -5,7 +5,10 @@ from django.db.models import Max
 from django.utils.text import slugify
 
 from litigant_portal.app.models import Site, SiteMembership, Topic
-from litigant_portal.app.selectors.admin import ACTIVE_SITE_CACHE_KEY
+from litigant_portal.app.selectors.admin import (
+    ACTIVE_SITE_CACHE_KEY,
+    ACTIVE_SITE_TOPICS_CACHE_KEY,
+)
 
 
 def user_can_access_admin(*, user) -> bool:
@@ -48,6 +51,7 @@ def site_activate(*, site: Site) -> Site:
             site.active = True
             site.save(update_fields=["active", "updated_at"])
     cache.delete(ACTIVE_SITE_CACHE_KEY)
+    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
     return site
 
 
@@ -101,12 +105,14 @@ def _topic_unique_slug(*, site: Site, title: str) -> str:
 def topic_create(*, site: Site, **fields) -> Topic:
     """Create a topic in ``site``."""
     last = site.topics.aggregate(m=Max("order"))["m"]
-    return Topic.objects.create(
+    topic = Topic.objects.create(
         site=site,
         slug=_topic_unique_slug(site=site, title=fields["title"]),
         order=0 if last is None else last + 1,
         **fields,
     )
+    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
+    return topic
 
 
 def topic_update(*, topic: Topic, **fields) -> Topic:
@@ -114,8 +120,10 @@ def topic_update(*, topic: Topic, **fields) -> Topic:
     for name, value in fields.items():
         setattr(topic, name, value)
     topic.save(update_fields=[*fields, "updated_at"])
+    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
     return topic
 
 
 def topic_delete(*, topic: Topic) -> None:
     topic.delete()
+    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
