@@ -1,4 +1,43 @@
+import os
+
 from django.db import models
+
+
+class OpenAIModel(models.TextChoices):
+    """OpenAI models as LiteLLM model strings, smallest first."""
+
+    GPT_5_6_LUNA = "openai/gpt-5.6-luna", "GPT-5.6 Luna"
+    GPT_5_6_TERRA = "openai/gpt-5.6-terra", "GPT-5.6 Terra"
+    GPT_5_6_SOL = "openai/gpt-5.6-sol", "GPT-5.6 Sol"
+
+
+class BedrockModel(models.TextChoices):
+    """Claude models on AWS Bedrock as LiteLLM model strings, smallest
+    first."""
+
+    HAIKU_4_5 = (
+        "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+        "Claude Haiku 4.5",
+    )
+    SONNET_5 = "bedrock/us.anthropic.claude-sonnet-5", "Claude Sonnet 5"
+    OPUS_4_8 = "bedrock/us.anthropic.claude-opus-4-8", "Claude Opus 4.8"
+
+
+AI_MODEL_CHOICES = [
+    ("OpenAI", OpenAIModel.choices),
+    ("AWS Bedrock", BedrockModel.choices),
+]
+
+
+def get_default_model() -> str:
+    """The model used when a site hasn't chosen one: the smallest model
+    from whichever provider is configured, preferring Bedrock. Falls back
+    to the smallest Bedrock model when neither provider is configured."""
+    if os.environ.get("AWS_BEARER_TOKEN_BEDROCK"):
+        return BedrockModel.HAIKU_4_5
+    if os.environ.get("OPENAI_API_KEY"):
+        return OpenAIModel.GPT_5_6_LUNA
+    return BedrockModel.HAIKU_4_5
 
 
 class JurisdictionLevel(models.TextChoices):

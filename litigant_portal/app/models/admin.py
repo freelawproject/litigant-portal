@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import models
 
 from .base import BaseModel
-from .choices import JurisdictionLevel, State
+from .choices import AI_MODEL_CHOICES, JurisdictionLevel, State
 
 
 class Site(BaseModel):
@@ -20,6 +20,14 @@ class Site(BaseModel):
     state = models.CharField(max_length=2, blank=True, choices=State.choices)
     official_url = models.URLField(blank=True)
     official_resources_url = models.URLField(blank=True)
+    fast_model = models.CharField(
+        max_length=128, blank=True, null=True,
+        choices=AI_MODEL_CHOICES,
+    )
+    assistant_model = models.CharField(
+        max_length=128, blank=True, null=True,
+        choices=AI_MODEL_CHOICES,
+    )
 
     class Meta:
         constraints = [
