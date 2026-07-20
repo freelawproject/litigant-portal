@@ -6,9 +6,9 @@ from django.db import models
 class OpenAIModel(models.TextChoices):
     """OpenAI models as LiteLLM model strings, smallest first."""
 
-    GPT_5_6_LUNA = "openai/gpt-5.6-luna", "GPT-5.6 Luna"
-    GPT_5_6_TERRA = "openai/gpt-5.6-terra", "GPT-5.6 Terra"
-    GPT_5_6_SOL = "openai/gpt-5.6-sol", "GPT-5.6 Sol"
+    GPT_5_NANO = "openai/gpt-5-nano", "GPT-5 Nano"
+    GPT_5_4_MINI = "openai/gpt-5.4-mini", "GPT-5.4 Mini"
+    GPT_5_5 = "openai/gpt-5.5", "GPT-5.5"
 
 
 class BedrockModel(models.TextChoices):
@@ -36,7 +36,7 @@ def get_default_model() -> str:
     if os.environ.get("AWS_BEARER_TOKEN_BEDROCK"):
         return BedrockModel.HAIKU_4_5
     if os.environ.get("OPENAI_API_KEY"):
-        return OpenAIModel.GPT_5_6_LUNA
+        return OpenAIModel.GPT_5_NANO
     return BedrockModel.HAIKU_4_5
 
 
