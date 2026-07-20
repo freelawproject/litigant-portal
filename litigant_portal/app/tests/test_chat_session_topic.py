@@ -100,7 +100,7 @@ class ChatSessionTopicServiceTests(TestCase):
         session = chat.agent.session
         session.refresh_from_db()
 
-        self.assertEqual(session.jurisdiction, "il")
+        self.assertEqual(session.jurisdiction, "oh")
 
     def test_resumed_session_uses_stored_topic(self):
         """Resuming a session should use the stored topic, not require it again."""
@@ -115,7 +115,7 @@ class ChatSessionTopicServiceTests(TestCase):
         chat2 = ChatService(request, session_id=session_id)
 
         self.assertEqual(chat2.agent.session.topic, "eviction")
-        self.assertEqual(chat2.agent.session.jurisdiction, "il")
+        self.assertEqual(chat2.agent.session.jurisdiction, "oh")
 
     def test_no_topic_creates_generic_session(self):
         """Session without topic should have empty topic/jurisdiction."""
@@ -138,7 +138,7 @@ class ChatSessionTopicServiceTests(TestCase):
         clicking the topic card silently dropped the Topic + Court layers
         and users got BASE + Phase only. This test reads the grid's slug
         from TOPICS and asserts that passing it through ChatService yields
-        a prompt with the eviction and DuPage anchors present.
+        a prompt with the eviction and Franklin anchors present.
         """
         from litigant_portal.app.services.chat_service import ChatService
         from litigant_portal.app.views import TOPICS
@@ -163,7 +163,7 @@ class ChatSessionTopicServiceTests(TestCase):
         prompt = system_message["content"]
 
         self.assertIn("EVICTION", prompt)
-        self.assertIn("DUPAGE COUNTY", prompt)
+        self.assertIn("FRANKLIN COUNTY", prompt)
 
     def test_grid_name_change_slug_composes_topic_and_court_layers(self):
         """The grid slug for adult name change must compose Topic + Court layers.
@@ -223,11 +223,11 @@ class ChatSessionTopicServiceTests(TestCase):
         from litigant_portal.app.services.chat_service import ChatService
 
         request = self._make_request()
-        # eviction's default jurisdiction is "il" (→ dupage-il court); pass
-        # court=north-dakota to override and prove explicit court wins.
+        # eviction's default jurisdiction is "oh" (→ franklin-county-oh court);
+        # pass court=north-dakota to override and prove explicit court wins.
         chat = ChatService(request, topic="eviction", court="north-dakota")
 
         prompt = chat.agent.messages[0]["content"]
         self.assertIn("EVICTION", prompt)
         self.assertIn("NORTH DAKOTA", prompt)
-        self.assertNotIn("DUPAGE COUNTY", prompt)
+        self.assertNotIn("FRANKLIN COUNTY", prompt)

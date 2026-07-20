@@ -76,17 +76,53 @@ class CorpusRegistry:
         """
         self.load()
         wanted = topic.strip().lower().replace("_", "-")
-        return [
-            {
-                "court": court,
-                "topic": corpus_topic,
-                "role": role,
-                "label": role.replace("-", " ").replace("_", " ").title(),
-                "title": corpus.metadata.title,
-            }
+        matches = [
+            (
+                corpus.metadata.order,
+                {
+                    "court": court,
+                    "topic": corpus_topic,
+                    "role": role,
+                    "label": role.replace("-", " ").replace("_", " ").title(),
+                    "title": corpus.metadata.title,
+                },
+            )
             for (court, corpus_topic, role), corpus in self._index.items()
             if corpus_topic.replace("_", "-") == wanted
         ]
+        # Explicit `order:` wins and sorts ahead of unordered tracks; among
+        # unordered tracks Python's stable sort preserves file/alpha order.
+        matches.sort(
+            key=lambda m: (m[0] is None, m[0] if m[0] is not None else 0)
+        )
+        return [track for _, track in matches]
+
+    def all_tracks(self) -> list[dict]:
+        """Every authored track across all corpora, grouped by topic.
+
+        For surfaces with no topic context (the v2 chat discovery, #670).
+        Labels are the corpus titles, which are self-describing in a mixed
+        list; explicit ``order:`` sorts within a topic like ``tracks_for``.
+        """
+        self.load()
+        entries = [
+            (
+                corpus_topic,
+                corpus.metadata.order,
+                {
+                    "court": court,
+                    "topic": corpus_topic,
+                    "role": role,
+                    "label": corpus.metadata.title,
+                    "title": corpus.metadata.title,
+                },
+            )
+            for (court, corpus_topic, role), corpus in self._index.items()
+        ]
+        entries.sort(
+            key=lambda e: (e[0], e[1] is None, e[1] if e[1] is not None else 0)
+        )
+        return [track for _, _, track in entries]
 
 
 # Module-level default over the repo's content/ directory.

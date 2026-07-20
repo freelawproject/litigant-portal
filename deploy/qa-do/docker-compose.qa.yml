@@ -85,7 +85,10 @@ services:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health/']
       interval: 5s
       timeout: 3s
-      start_period: 30s
+      # Cold boot runs compilemessages + collectstatic --clear + migrate before
+      # gunicorn serves /api/health/ (~50s on this box). 30s tripped the
+      # depends_on health gate mid-boot and false-failed the deploy (#665).
+      start_period: 90s
       retries: 3
     volumes:
       # collectstatic (run by the web-prod entrypoint) writes here; Caddy mounts

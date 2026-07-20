@@ -68,7 +68,7 @@ Pre-commit runs automatically on commit. Key hooks:
 
 Run all hooks manually: `pre-commit run --all-files`
 
-**Note:** djlint runs in **lint-only mode** (no auto-formatter). Its formatter was mangling template tags inside HTML attributes — expanding single-line `{% block %}` tags to multi-line and injecting whitespace into rendered attributes. See "Template Formatting" below for the manual conventions that replace the formatter.
+**Note:** djlint runs in **lint-only mode** (no auto-formatter). Its formatter was mangling template tags inside HTML attributes — the manual conventions that replace it live in the global `django-templates` skill (see Template Formatting below).
 
 ### Before Committing
 
@@ -80,146 +80,9 @@ make pre-commit   # lint → test, short-circuits if lint fails/fixes anything
 
 Equivalent to `make lint && make test`. If lint auto-fixes files, the target stops before tests — re-stage the changes and re-run. The name mirrors the `pre-commit` hook tool intentionally — same concept, different invocation surface.
 
-### Template Formatting (Manual Conventions)
+### Template Formatting
 
-No auto-formatter for `.html` templates — djlint runs lint-only. Follow these Prettier-inspired conventions (Prettier is the source of truth — a Cotton plugin is planned). Cotton components (`<c-atoms.button>`, `<c-organisms.header>`) are valid HTML5 custom elements and follow the same rules as any HTML tag.
-
-**1. Indentation: 2 spaces.** For HTML elements, Cotton components, and template tags alike.
-
-**2. Attribute wrapping: single vs multi-line.**
-
-If all attributes fit on one line within ~120 chars, keep them inline:
-
-```html
-<div class="flex items-center gap-2">
-  <c-atoms.icon name="check" class="w-4 h-4" />
-  <c-atoms.button
-    type="button"
-    variant="primary"
-    x-on:click="save"
-  ></c-atoms.button>
-</div>
-```
-
-If they don't fit, one attribute per line. Closing `>` or `/>` goes on its own line (Prettier default, `bracketSameLine: false`):
-
-```html
-<input
-  type="text"
-  x-bind:value="inputText"
-  x-on:input="updateInput"
-  name="q"
-  placeholder="{% trans 'Ask a question' %}"
-  class="chat-input"
-  aria-label="{% trans 'Ask a question' %}"
-/>
-```
-
-For Cotton components, same rule — first attribute on the tag line, rest aligned:
-
-```html
-<c-molecules.form-field
-  label="Email"
-  type="email"
-  name="email"
-  required
-  value="{{ form.email.value|default:'' }}"
-/>
-```
-
-**3. Template tags inside HTML attributes MUST stay on one line.**
-
-This is the critical rule. Django template tags (`{% block %}`, `{% if %}`, `{{ var }}`) inside an attribute value must remain on the same line as the attribute. Multi-line = literal whitespace in the rendered HTML.
-
-```html
-<!-- GOOD -->
-<body
-  class="{% block body_class %}min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}"
->
-  <main class="flex-1 {% block main_class %}{% endblock main_class %}">
-    <meta
-      name="description"
-      content="{% block meta_description %}{% trans 'Default' %}{% endblock meta_description %}"
-    />
-
-    <!-- BAD: whitespace injected into rendered class attribute -->
-    <body
-      class="{% block body_class %}
-    min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
-    "
-    ></body>
-  </main>
-</body>
-```
-
-These lines will be long. That's OK — attribute values are not breakable.
-
-**4. Block-level template tags get their own lines.**
-
-Outside of attributes, `{% block %}`, `{% if %}`, `{% for %}` etc. get their own lines and indent their children:
-
-```html
-{% block content %}
-<div class="container">
-  <h1>Title</h1>
-</div>
-{% endblock content %} {% if user.is_authenticated %}
-<p>Welcome</p>
-{% else %}
-<p>Please sign in</p>
-{% endif %}
-```
-
-**5. Self-closing tags.**
-
-Prettier adds `/>` to void HTML elements and self-closing components alike. Follow Prettier:
-
-```html
-<!-- Void HTML elements -->
-<meta charset="UTF-8" />
-<input type="text" name="q" />
-<img src="logo.svg" alt="Logo" class="h-12" />
-
-<!-- Cotton self-closing -->
-<c-atoms.icon name="check" class="w-4 h-4" />
-<c-atoms.typing-indicator />
-<c-organisms.header />
-```
-
-**6. Quotes: double quotes** for all HTML attributes. Single quotes only inside attribute values for Django template tags: `value="{{ form.email.value|default:'' }}"`.
-
-**`{% trans %}` in Cotton props:** Never put `{% trans %}` directly in a prop attribute — the single quotes needed to avoid closing the HTML attribute violate djlint T002. Extract to a variable first:
-
-```html
-{% trans "Check your email" as status_heading %}
-<c-molecules.auth-status
-  heading="{{ status_heading }}"
-></c-molecules.auth-status>
-```
-
-**7. Blank lines.** One blank line between logical sections. Never multiple consecutive blank lines. No blank line immediately after an opening tag or before a closing tag:
-
-```html
-<!-- GOOD -->
-<div class="container">
-  <h1>Title</h1>
-  <p>Content</p>
-</div>
-
-<!-- BAD: blank line after opening tag -->
-<div class="container">
-  <h1>Title</h1>
-</div>
-```
-
-**8. Short inline elements stay on one line** when they fit:
-
-```html
-<p class="text-sm text-greyscale-500">{% trans "No activity yet" %}</p>
-<span class="font-semibold">{% trans "Activity" %}</span>
-```
-
-**9. Long `class` values.** Tailwind classes stay on one line inside the `class` attribute even when long — don't break a class string across lines. If the element also has many other attributes, the `class` attribute gets its own line in the multi-line format (rule 2), but the value itself stays unbroken.
+No auto-formatter for `.html` templates — djlint runs lint-only. **Load the global `django-templates` skill before writing or editing any template**; it holds the full Prettier-inspired conventions (attribute wrapping, template-tags-stay-on-one-line, self-closing, quotes, blank lines). A custom Prettier/Cotton plugin is a WIP to replace the manual rules — LP is its home.
 
 ## Content style (user-facing copy)
 
@@ -229,6 +92,7 @@ Rules for authoring user-facing content — corpus YAML (`litigant_portal/conten
 - **Corpus info bodies: one line per paragraph.** The renderer pipes `body` through Django's `linebreaks`, so every newline becomes a `<br>` — hard-wrapped prose breaks mid-sentence on the page. Separate paragraphs with blank lines; never wrap a paragraph across source lines.
 - **Dash-prefixed lines** (`- item`) render as visual line-broken lists (not semantic `<ul>`) until #518 adds rich text to info bodies. Links in body prose are not supported yet (#518) — route them through the corpus `resources`/`contacts` sections instead.
 - **Never label resources or forms "official."** Courts reserve "official" for institutionally designated things — ND's own site uses it only for official county newspapers, the official record of the Court, and to disclaim that Self Help Center forms "aren't official court forms" (#646). Attribute instead of anointing: say whose page or form it is ("the North Dakota Legal Self Help Center's name-change page").
+- **Solve directly; escalate to legal aid sparingly.** LP's job is to answer the litigant's question and resolve their issue directly wherever it can (explain the process, the deadlines, how a step works, what to bring). Route to legal aid only when (a) we genuinely can't help — a case-specific legal _judgment_, the UPL boundary ("will this defense win for me") — or (b) the issue is serious enough to require it (illegal lockout, imminent set-out, safety). Don't tell users to "get a lawyer" or "call an attorney": whether legal aid then brings in an attorney is _their_ call, not ours. Our audience is self-represented on a phone precisely because an attorney isn't within reach, so a reflexive "see a lawyer" tells them the tool can't help them (#611).
 
 ## Issue creation
 
@@ -307,15 +171,7 @@ Every page follows the same frame: **site header → sub-header (contextual) →
 - **Mobile-first and responsive**, but layout stability for WCAG always wins over visual flair. Buttons, links, and navigation stay in predictable locations across all views and states.
 - **Inputs flow with content** — don't pin chat inputs to the viewport bottom. Follow conversation UX: the input lives at the end of the message flow.
 
-**Patterns from the CSP migration:**
-
-- **Pre-compute in JS, bind in templates** — ternaries (`role === 'user' ? 'chat-bubble-user' : 'chat-bubble-assistant'`) become getter properties (`msg.bubbleClass`). Templates only reference the result.
-- **CSS over Alpine for animation** — `@keyframes` + `x-on:animationend` replaces `x-transition` + `setTimeout`. Native `<details>` + `grid-rows-[0fr]/[1fr]` replaces `x-collapse`.
-- **Flat getters for nested data** — optional chaining (`caseInfo?.court_info?.phone`) can't appear in templates. Create flat getters (`get courtPhone()`) that encapsulate the traversal.
-- **`x-effect` → method calls** — side effects on state change (like loading data when a menu opens) go in the method that triggers the change (`openMenu()` loads timeline), not in `x-effect`.
-- **No `!` negation in templates** — `x-show="!isOpen"` fails in CSP build. Create negated getters (`get isClosed()`) instead.
-- **No `x-model`** — CSP build can't evaluate the setter (`expr = __placeholder`). Use `x-bind:value="prop"` + `x-on:input="updateMethod"` instead, where the method reads `e.target.value`.
-- **Spread flattens getters** — `{ ...createChat() }` invokes getters and copies static values. If a composed component needs reactive getters from a base, re-define them after the spread.
+**Patterns from the CSP migration** — promoted to the org level; see `~/flp/CLAUDE.md` Alpine section (pre-compute getters, CSS-over-Alpine animation, flat getters, no `!`/`x-model`, spread-flattens-getters).
 
 ### Component System (Django Cotton + Atomic Design)
 
@@ -332,14 +188,7 @@ litigant_portal/app/templates/cotton/
 
 Style guide available at `/style-guide/` during development.
 
-**NEVER** create custom CSS classes or raw HTML that duplicates what an existing atom/molecule already does. **ALWAYS** check existing components before writing any UI element:
-
-1. Check `litigant_portal/app/templates/cotton/` for an existing component at the right atomic level
-2. Check component props — variants, sizes, `href`, `full_width`, `class` passthrough — before assuming a component can't do what you need
-3. If a component is _almost_ right, **extend it** with a new prop rather than bypassing it with custom CSS
-4. Check Tailwind theme tokens in `litigant_portal/app/src/main.css` before inventing new values
-
-Only create a new component when no combination of existing ones works. Only add new theme tokens when the design system genuinely needs them.
+Component & style discipline follows the org rule (`~/flp/CLAUDE.md`): compose from existing components first, extend with a prop when almost-right, new components/tokens only when nothing combines. LP paths: components in `litigant_portal/app/templates/cotton/`, theme tokens in `litigant_portal/app/src/main.css`. Check props (variants, sizes, `href`, `full_width`, `class` passthrough) before assuming a component can't do it.
 
 **Atomic design check (both directions):** After any template or component change:
 
@@ -368,17 +217,7 @@ Build: `tailwindcss -i litigant_portal/app/src/main.css -o litigant_portal/app/s
 
 ### CSP Compliance (Content Security Policy)
 
-**No inline event handlers.** Use Alpine.js directives instead:
-
-```html
-<!-- BAD: Violates CSP -->
-<button onclick="doSomething()">
-  <!-- GOOD: CSP-compliant -->
-  <button x-on:click="doSomething"></button>
-</button>
-```
-
-Pre-commit hook enforces this (`csp-inline-check`).
+No inline event handlers (org CSP mandate) — use Alpine directives (`x-on:click="doSomething"`, never `onclick=`). Enforced by the `csp-inline-check` pre-commit hook.
 
 ### Alpine.js (CSP Build - Local)
 

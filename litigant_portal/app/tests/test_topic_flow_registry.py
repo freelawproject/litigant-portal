@@ -127,3 +127,53 @@ def test_tracks_for_returns_all_tracks_in_file_order(tmp_path):
     registry = CorpusRegistry(content_dir=tmp_path)
     roles = [t["role"] for t in registry.tracks_for("test_topic")]
     assert roles == ["petitioner", "respondent"]
+
+
+def test_tracks_for_orders_by_order_field(tmp_path):
+    # `order:` lets authors control which track renders first, independent of
+    # filename (e.g. Tenant before Landlord on eviction). Here the
+    # alphabetically-first file (a.yml) carries the *higher* order, so it must
+    # render second — proving order wins over the file/alpha fallback.
+    (tmp_path / "a.yml").write_text(
+        VALID.replace("role: petitioner", "role: landlord\n  order: 2")
+    )
+    (tmp_path / "b.yml").write_text(
+        VALID.replace("role: petitioner", "role: tenant\n  order: 1")
+    )
+    registry = CorpusRegistry(content_dir=tmp_path)
+    roles = [t["role"] for t in registry.tracks_for("test_topic")]
+    assert roles == ["tenant", "landlord"]
+
+
+def test_tracks_for_ordered_tracks_precede_unordered(tmp_path):
+    # Mixed: a corpus with an explicit order sorts ahead of one without, and
+    # the unordered track keeps its natural file position among peers.
+    (tmp_path / "a.yml").write_text(VALID)  # petitioner, no order
+    (tmp_path / "b.yml").write_text(
+        VALID.replace("role: petitioner", "role: respondent\n  order: 1")
+    )
+    registry = CorpusRegistry(content_dir=tmp_path)
+    roles = [t["role"] for t in registry.tracks_for("test_topic")]
+    assert roles == ["respondent", "petitioner"]
+
+
+def test_all_tracks_lists_every_corpus_ordered(tmp_path):
+    (tmp_path / "a.yml").write_text(VALID)
+    # Same topic, second role, explicit order: sorts ahead of unordered.
+    other = VALID.replace(
+        "  role: petitioner", "  role: respondent\n  order: 1"
+    )
+    (tmp_path / "b.yml").write_text(other)
+    registry = CorpusRegistry(content_dir=tmp_path)
+    tracks = registry.all_tracks()
+    assert [t["role"] for t in tracks] == ["respondent", "petitioner"]
+    first = tracks[0]
+    assert first["court"] == "test-court"
+    assert first["topic"] == "test_topic"
+    # Self-describing label in a mixed, topic-less list: the corpus title.
+    assert first["label"] == first["title"]
+
+
+def test_all_tracks_empty_registry(tmp_path):
+    registry = CorpusRegistry(content_dir=tmp_path)
+    assert registry.all_tracks() == []

@@ -187,6 +187,12 @@ def topic_detail(request, slug):
     topic = TOPICS.get(slug)
     if not topic:
         raise Http404(f"Topic '{slug}' not found")
+    # Eviction has reached engine parity (live corpus + guided flow), so its
+    # legacy static info page is retired: this URL now sends people to the
+    # chat entry. Other topics keep their static page until they reach parity
+    # too (see #611).
+    if slug == "eviction":
+        return redirect(f"{reverse('pages:chat')}?topic=eviction")
     return render(
         request, f"pages/topics/{slug}.html", {"topic": topic, "slug": slug}
     )
@@ -239,7 +245,15 @@ def chat_v2_view(request):
         "CHAT_MODEL": CHAT_MODEL,
         "CHAT_ENABLED": CHAT_ENABLED,
     }
-    return render(request, "v2/chat/index.html", {"debug_env": debug_env})
+    return render(
+        request,
+        "v2/chat/index.html",
+        {
+            "debug_env": debug_env,
+            # Discovery #670: topic-less surface gets the whole inventory.
+            "flow_tracks": registry.all_tracks(),
+        },
+    )
 
 
 def deep_link(request, court, topic):

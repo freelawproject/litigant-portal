@@ -31,6 +31,10 @@ class Metadata(_Base):
     topic: Slug
     role: Slug
     title: str = Field(min_length=1)
+    # Optional render order for the chat→flow handoff links (lower first).
+    # Absent → the registry falls back to file/alpha order. Lets authors put
+    # Tenant ahead of Landlord without renaming files.
+    order: int | None = None
 
 
 class Contact(_Base):
