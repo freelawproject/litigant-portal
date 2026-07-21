@@ -16,7 +16,7 @@ from litigant_portal.app.models import UserIdentity
 
 
 class Command(BaseCommand):
-    help = "Clean up old anonymous user identities (and their chat/case data)"
+    help = "Clean up old anonymous user identities (and their chat threads and uploads)"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -57,12 +57,12 @@ class Command(BaseCommand):
                 self.style.SUCCESS(f"Deleted {deleted} objects: {details}")
             )
         else:
-            chat_count = sum(i.chat_sessions.count() for i in old_identities)
-            case_count = sum(i.case_infos.count() for i in old_identities)
+            thread_count = sum(i.chat_threads.count() for i in old_identities)
+            upload_count = sum(i.uploads.count() for i in old_identities)
             self.stdout.write(
                 self.style.WARNING(
                     f"DRY RUN: Would delete {count} anonymous identities "
-                    f"({chat_count} chat sessions, {case_count} cases) "
+                    f"({thread_count} chat threads, {upload_count} uploads) "
                     f"older than {days} days.\n"
                     f"Run with --delete to actually remove them."
                 )
