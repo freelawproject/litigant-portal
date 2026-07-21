@@ -8,7 +8,6 @@ from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView, UpdateView
 
-from litigant_portal.agents import agent_registry
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
 from litigant_portal.app.selectors.admin import site_get_active_topics
@@ -184,56 +183,8 @@ def home(request):
     return render(request, "pages/home.html", {"topics": topics})
 
 
-def topic_detail(request, slug):
-    """Topic detail page - informational content about a legal topic."""
-    topic = TOPICS.get(slug)
-    if not topic:
-        raise Http404(f"Topic '{slug}' not found")
-    # Eviction has reached engine parity (live corpus + guided flow), so its
-    # legacy static info page is retired: this URL now sends people to the
-    # chat entry. Other topics keep their static page until they reach parity
-    # too (see #611).
-    if slug == "eviction":
-        return redirect(f"{reverse('pages:chat')}?topic=eviction")
-    return render(
-        request, f"pages/topics/{slug}.html", {"topic": topic, "slug": slug}
-    )
-
-
-def chat_page(request):
-    """Chat page - AI-powered legal assistance chat interface."""
-    from litigant_portal.prompts import get_court_name, is_known_court
-
-    slug = request.GET.get("topic", "").strip()
-    topic = TOPICS.get(slug) if slug else None
-    topic_context = ""
-    if topic and topic.get("context_sections"):
-        lines = [f"Topic: {topic['title']}"]
-        for section in topic["context_sections"]:
-            lines.append(f"{section['heading']}: {section['body']}")
-        topic_context = "\n".join(lines)
-
-    court_slug = request.GET.get("court", "").strip().lower()
-    if court_slug and not is_known_court(court_slug):
-        court_slug = ""
-
-    return render(
-        request,
-        "pages/chat.html",
-        {
-            "topic": topic,
-            "topic_slug": slug if topic else "",
-            "topic_context": topic_context,
-            "court_slug": court_slug,
-            "court_name": get_court_name(court_slug),
-            # Omni-court: the topic resolves its court's guided-flow tracks.
-            "flow_tracks": registry.tracks_for(slug) if topic else [],
-        },
-    )
-
-
-def chat_v2_view(request):
-    """New chat page"""
+def chat_view(request):
+    """Chat page"""
     return render(request, "v2/chat/index.html")
 
 
@@ -253,6 +204,22 @@ def deep_link(request, court, topic):
 
     query = urlencode({"topic": topic.lower(), "court": court.lower()})
     return redirect(f"{reverse('pages:chat')}?{query}")
+
+
+def topic_detail(request, slug):
+    """Topic detail page - informational content about a legal topic."""
+    topic = TOPICS.get(slug)
+    if not topic:
+        raise Http404(f"Topic '{slug}' not found")
+    # Eviction has reached engine parity (live corpus + guided flow), so its
+    # legacy static info page is retired: this URL now sends people to the
+    # chat entry. Other topics keep their static page until they reach parity
+    # too (see #611).
+    if slug == "eviction":
+        return redirect(f"{reverse('pages:chat')}?topic=eviction")
+    return render(
+        request, f"pages/topics/{slug}.html", {"topic": topic, "slug": slug}
+    )
 
 
 def topic_flow(request, court, topic, role):
@@ -367,13 +334,6 @@ def topic_flow_download(request, court, topic, role, output_id):
         f'attachment; filename="{artifact.filename}"'
     )
     return response
-
-
-def test_agent(request, agent_name):
-    """Test page for a specific agent."""
-    if agent_name not in agent_registry:
-        raise Http404(f"Agent '{agent_name}' not found")
-    return render(request, "pages/chat.html", {"agent_name": agent_name})
 
 
 def about(request):

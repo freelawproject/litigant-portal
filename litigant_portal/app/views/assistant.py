@@ -3,7 +3,7 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
-from litigant_portal.agents_v2 import LitigantAssistant
+from litigant_portal.agents import LitigantAssistant
 from litigant_portal.app.models import UserUpload
 from litigant_portal.app.selectors.admin import site_get_model
 from litigant_portal.app.selectors.assistant import user_upload_list
@@ -13,7 +13,7 @@ from litigant_portal.app.services.assistant import (
     user_upload_delete,
     user_upload_serialize,
 )
-from litigant_portal.app.views import chat_v2
+from litigant_portal.app.views import chat_engine
 
 THREAD_TYPE = "user_chat"
 
@@ -24,7 +24,7 @@ THREAD_TYPE = "user_chat"
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def stream(request: HttpRequest):
-    return chat_v2.stream(
+    return chat_engine.stream(
         request,
         agent_class=LitigantAssistant,
         thread_type=THREAD_TYPE,
@@ -35,13 +35,13 @@ def stream(request: HttpRequest):
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def thread_list(request: HttpRequest) -> JsonResponse:
-    return chat_v2.thread_list(request, thread_type=THREAD_TYPE)
+    return chat_engine.thread_list(request, thread_type=THREAD_TYPE)
 
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def message_list(request: HttpRequest, thread_id) -> JsonResponse:
-    return chat_v2.message_list(
+    return chat_engine.message_list(
         request,
         thread_id,
         agent_class=LitigantAssistant,
@@ -54,13 +54,17 @@ def message_list(request: HttpRequest, thread_id) -> JsonResponse:
 def thread_usage(request: HttpRequest, thread_id) -> JsonResponse:
     if not request.user.is_superuser:
         return JsonResponse({"error": _("Forbidden")}, status=403)
-    return chat_v2.thread_usage(request, thread_id, thread_type=THREAD_TYPE)
+    return chat_engine.thread_usage(
+        request, thread_id, thread_type=THREAD_TYPE
+    )
 
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 def thread_delete(request: HttpRequest, thread_id) -> JsonResponse:
-    return chat_v2.thread_delete(request, thread_id, thread_type=THREAD_TYPE)
+    return chat_engine.thread_delete(
+        request, thread_id, thread_type=THREAD_TYPE
+    )
 
 
 # Assistant-specific endpoints

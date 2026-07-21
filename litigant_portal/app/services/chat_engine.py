@@ -7,9 +7,9 @@ import litellm
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 
-from litigant_portal.agents_v2.base import Agent, ToolOutput
+from litigant_portal.agents.base import Agent, ToolOutput
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
-from litigant_portal.app.selectors.chat_v2 import (
+from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_get,
 )
@@ -291,7 +291,7 @@ def _execute_tool(
             raise ValueError(f"Unknown tool: {name}")
         return tool_class(**args)(thread_id=thread_id)
     except Exception as e:
-        logger.exception("chat_v2 tool %s failed", name)
+        logger.exception("chat_engine tool %s failed", name)
         return ToolOutput(result=f"Error: {e}")
 
 
@@ -513,12 +513,14 @@ def chat_stream(
                             }
                         )
                 except Exception:
-                    logger.exception("chat_v2 description generation failed")
+                    logger.exception(
+                        "chat_engine description generation failed"
+                    )
 
             thread.save(update_fields=["updated_at"])
             yield _sse({"type": "done"})
         except Exception as e:
-            logger.exception("chat_v2 stream failed")
+            logger.exception("chat_engine stream failed")
             yield _sse({"type": "error", "error": str(e)})
             yield _sse({"type": "done"})
 

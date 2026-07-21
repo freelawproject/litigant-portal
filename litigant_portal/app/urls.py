@@ -12,8 +12,10 @@ from litigant_portal.app.views import (
 )
 from litigant_portal.app.views import (
     assistant,
-    endpoints,
     pages,
+)
+from litigant_portal.app.views import (
+    health as health_views,
 )
 
 app_patterns = [
@@ -35,43 +37,12 @@ app_patterns = [
         name="topic_flow_download",
     ),
     path("admin/", admin_views.dashboard, name="admin_dashboard"),
-    path("chat/", pages.chat_page, name="chat"),
-    path("chat-v2/", pages.chat_v2_view, name="chat_v2"),
-    path("chat/action-plan/", endpoints.action_plan, name="action_plan"),
+    path("chat/", pages.chat_view, name="chat"),
     path("style-guide/", pages.style_guide, name="style_guide"),
-    # Agent testing
-    path("test/<str:agent_name>/", pages.test_agent, name="test_agent"),
     # Profile
     path("profile/", pages.ProfileDetailView.as_view(), name="profile"),
     path(
         "profile/edit/", pages.ProfileEditView.as_view(), name="profile_edit"
-    ),
-]
-
-api_patterns = [
-    # API endpoints (used by home page chat)
-    path("stream/", endpoints.stream, name="stream"),
-    path("search/", endpoints.search, name="search"),
-    path("status/", endpoints.status, name="status"),
-    path("upload/", endpoints.upload_document, name="upload"),
-    path("summarize/", endpoints.summarize_conversation, name="summarize"),
-    # Case info endpoints
-    path("case/", endpoints.case_get, name="case_get"),
-    path("case/save/", endpoints.case_save, name="case_save"),
-    path(
-        "case/timeline/", endpoints.case_timeline_add, name="case_timeline_add"
-    ),
-    path("case/clear/", endpoints.case_clear, name="case_clear"),
-    path("case/resolve/", endpoints.case_resolve, name="case_resolve"),
-    path(
-        "case/action-item/<uuid:item_id>/toggle/",
-        endpoints.action_item_toggle,
-        name="action_item_toggle",
-    ),
-    path(
-        "case/deadline/<uuid:deadline_id>/remind/",
-        endpoints.deadline_reminder_toggle,
-        name="deadline_reminder_toggle",
     ),
 ]
 
@@ -152,12 +123,8 @@ urlpatterns = [
         ),
         prefix_default_language=False,
     ),
-    # API Routes
-    path("api/health/", endpoints.health, name="health"),
-    path(
-        "api/chat/",
-        include((api_patterns, "litigant_portal.app"), namespace="endpoints"),
-    ),
+    # Health check
+    path("api/health/", health_views.health, name="health"),
     path(
         "api/agents/assistant/",
         include(

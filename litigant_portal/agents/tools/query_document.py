@@ -1,6 +1,6 @@
 import litellm
 
-from litigant_portal.agents_v2.base import Field, Tool, ToolOutput
+from litigant_portal.agents.base import Field, Tool, ToolOutput
 
 READER_SYSTEM_PROMPT = (
     "You are a document analyzer. Answer the request using only the "
