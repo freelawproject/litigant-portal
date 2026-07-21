@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% load static i18n %}
+
+{% block header %}
+  {% include "v2/common/header.html" %}
+{% endblock header %}
+
+{% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
+
+{% block main_class %}min-h-0 flex flex-col{% endblock main_class %}
+
+{% block title %}
+  {% trans "Litigant Portal" %} - {% trans "Admin" %}
+{% endblock title %}
+
+{% block content %}
+  <div x-data="adminApp" class="flex-1 flex flex-row min-h-0">
+    {# Left panel — tab navigation #}
+    <aside class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
+      <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
+        <c-atoms.icon name="wrench-screwdriver" class="w-3.5 h-3.5 text-greyscale-400" />
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Admin" %}</h2>
+      </div>
+      {# Tab styling is fully static via data-active variants so the #}
+      {# pre-Alpine paint matches — Alpine only toggles the attribute. #}
+      <nav class="flex-1 overflow-y-auto min-h-0 p-2 space-y-1">
+        <button type="button"
+                data-tab="settings"
+                data-active
+                x-on:click="selectTab"
+                x-bind:data-active="tabActive.settings"
+                class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
+          <c-atoms.icon name="cog-6-tooth" class="w-4 h-4" />
+          {% trans "Settings" %}
+        </button>
+        <button type="button"
+                data-tab="users"
+                x-on:click="selectTab"
+                x-bind:data-active="tabActive.users"
+                class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
+          <c-atoms.icon name="users" class="w-4 h-4" />
+          {% trans "Users" %}
+        </button>
+        <button type="button"
+                data-tab="knowledge"
+                x-on:click="selectTab"
+                x-bind:data-active="tabActive.knowledge"
+                class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
+          <c-atoms.icon name="book-open" class="w-4 h-4" />
+          {% trans "Knowledge Base" %}
+        </button>
+        <button type="button"
+                data-tab="simulate"
+                x-on:click="selectTab"
+                x-bind:data-active="tabActive.simulate"
+                class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
+          <c-atoms.icon name="play" class="w-4 h-4" />
+          {% trans "Simulate" %}
+        </button>
+      </nav>
+    </aside>
+    {# Main panel — active tab content #}
+    <section class="flex-1 min-w-0 flex flex-col min-h-0">
+      <div x-show="showSettings" class="flex-1 overflow-y-auto min-h-0 p-4">
+        {% include "v2/admin/settings.html" %}
+      </div>
+      <div x-show="showUsers" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
+        {% include "v2/admin/users.html" %}
+      </div>
+      <div x-show="showKnowledge" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
+        {% include "v2/admin/knowledge_base.html" %}
+      </div>
+      <div x-show="showSimulate" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
+        {% include "v2/admin/simulate.html" %}
+      </div>
+    </section>
+  </div>
+{% endblock content %}
+
+{% block extra_js %}
+  {# Registers adminApp on alpine:init — runs before the deferred Alpine build. #}
+  <script src="{% static 'js/admin.js' %}"></script>
+{% endblock extra_js %}
+
+{% block footer %}
+{% endblock footer %}

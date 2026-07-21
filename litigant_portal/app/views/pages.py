@@ -11,6 +11,7 @@ from django.views.generic import DetailView, UpdateView
 from litigant_portal.agents import agent_registry
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
+from litigant_portal.app.selectors.admin import site_get_active_topics
 from litigant_portal.app.topic_flow.answer_store import AnswerStore
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
@@ -179,7 +180,8 @@ TOPICS = {
 
 def home(request):
     """Home page - dashboard with hero and topic grid."""
-    return render(request, "pages/home.html", {"topics": TOPICS})
+    topics = {t["slug"]: t for t in site_get_active_topics()}
+    return render(request, "pages/home.html", {"topics": topics})
 
 
 def topic_detail(request, slug):
@@ -232,20 +234,7 @@ def chat_page(request):
 
 def chat_v2_view(request):
     """New chat page"""
-    import os
-
-    from litigant_portal.settings import CHAT_ENABLED, CHAT_MODEL
-
-    # Temporary debug info surfaced in the right-hand panel.
-    debug_env = {
-        "AWS_BEARER_TOKEN_BEDROCK": bool(
-            os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
-        ),
-        "OPENAI_API_KEY": bool(os.environ.get("OPENAI_API_KEY")),
-        "CHAT_MODEL": CHAT_MODEL,
-        "CHAT_ENABLED": CHAT_ENABLED,
-    }
-    return render(request, "v2/chat/index.html", {"debug_env": debug_env})
+    return render(request, "v2/chat/index.html")
 
 
 def deep_link(request, court, topic):

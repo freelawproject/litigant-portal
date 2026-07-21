@@ -1,0 +1,158 @@
+{% load i18n %}
+
+<div class="max-w-3xl">
+  {# ------- Topic list ------- #}
+  <div x-show="kbListVisible">
+    <div class="mb-4">
+      <h3 class="text-base font-semibold text-greyscale-900">{% trans "Topics" %}</h3>
+      <p class="text-sm text-greyscale-500">{% trans "The legal topics this site offers — shown on the home page and used to guide chat." %}</p>
+    </div>
+    <div class="space-y-3">
+      <template x-for="topic in kbTopics" :key="topic.id">
+        <div class="rounded-xl border border-greyscale-200 bg-white p-4 flex items-start gap-4">
+          <div class="w-11 h-11 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center flex-shrink-0"
+               aria-hidden="true"
+               x-html="topic.iconSvg"></div>
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-semibold text-greyscale-900 truncate" x-text="topic.title"></p>
+            <p class="text-sm text-greyscale-600" x-text="topic.subtitle"></p>
+            <p class="mt-1 text-xs text-greyscale-400" x-text="topic.countsLabel"></p>
+          </div>
+          {# Actions — swap to an inline confirmation on delete #}
+          <div class="flex items-center gap-1 flex-shrink-0" x-show="topic.notConfirmingDelete">
+            <button type="button"
+                    x-bind:data-topic-id="topic.id"
+                    x-on:click="editTopic"
+                    aria-label="{% trans "Edit topic" %}"
+                    class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+              <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+            </button>
+            <button type="button"
+                    x-bind:data-topic-id="topic.id"
+                    x-on:click="askDeleteTopic"
+                    aria-label="{% trans "Delete topic" %}"
+                    class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors">
+              <c-atoms.icon name="trash" class="w-4 h-4" />
+            </button>
+          </div>
+          <div class="flex items-center gap-2 flex-shrink-0" x-show="topic.confirmingDelete" x-cloak>
+            <span class="text-xs text-greyscale-600">{% trans "Delete this topic?" %}</span>
+            <button type="button"
+                    x-bind:data-topic-id="topic.id"
+                    x-on:click="confirmDeleteTopic"
+                    class="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+              {% trans "Delete" %}
+            </button>
+            <button type="button"
+                    x-on:click="cancelDeleteTopic"
+                    class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+              {% trans "Cancel" %}
+            </button>
+          </div>
+        </div>
+      </template>
+      {# Create card #}
+      <button type="button"
+              x-on:click="newTopic"
+              class="w-full rounded-xl border-2 border-dashed border-greyscale-300 p-6 flex items-center justify-center gap-2 text-sm font-medium text-greyscale-400 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors">
+        <c-atoms.icon name="plus" class="w-5 h-5" />
+        {% trans "New topic" %}
+      </button>
+    </div>
+  </div>
+
+  {# ------- Topic editor ------- #}
+  <div x-show="kbEditorVisible" x-cloak>
+    <div class="flex items-center gap-2 mb-4">
+      <button type="button"
+              x-on:click="cancelTopicEdit"
+              aria-label="{% trans "Back to topics" %}"
+              class="flex items-center justify-center p-1.5 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+        <c-atoms.icon name="arrow-left" class="w-4 h-4" />
+      </button>
+      <h3 class="text-base font-semibold text-greyscale-900" x-text="kbEditorTitle"></h3>
+    </div>
+    <form x-on:submit.prevent="saveTopic" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label for="kb-title" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Title" %}</label>
+        <input id="kb-title"
+               type="text"
+               data-field="kbTitle"
+               x-bind:value="kbTitle"
+               x-on:input="updateKbField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div>
+        <label for="kb-subtitle" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Subtitle" %}</label>
+        <input id="kb-subtitle"
+               type="text"
+               data-field="kbSubtitle"
+               x-bind:value="kbSubtitle"
+               x-on:input="updateKbField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="kb-description" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Card description" %}</label>
+          <input id="kb-description"
+                 type="text"
+                 data-field="kbDescription"
+                 x-bind:value="kbDescription"
+                 x-on:input="updateKbField"
+                 class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+        </div>
+        <div>
+          <label for="kb-icon" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Icon" %}</label>
+          <select id="kb-icon"
+                  required
+                  data-field="kbIcon"
+                  x-bind:value="kbIcon"
+                  x-on:change="updateKbField"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+            <option value="home">{% trans "Home" %}</option>
+            <option value="users">{% trans "People" %}</option>
+            <option value="currency-dollar">{% trans "Dollar" %}</option>
+            <option value="shield-check">{% trans "Shield" %}</option>
+            <option value="identification">{% trans "ID card" %}</option>
+            <option value="truck">{% trans "Vehicle" %}</option>
+            <option value="scale">{% trans "Scales" %}</option>
+            <option value="book-open">{% trans "Book" %}</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label for="kb-meta-description" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Meta description" %}</label>
+        <textarea id="kb-meta-description"
+                  rows="2"
+                  data-field="kbMetaDescription"
+                  x-bind:value="kbMetaDescription"
+                  x-on:input="updateKbField"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+        <p class="mt-1 text-xs text-greyscale-400">{% trans "Used for search engines on the topic page." %}</p>
+      </div>
+      <div>
+        <label for="kb-prompts" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Suggested chat prompts" %}</label>
+        <textarea id="kb-prompts"
+                  rows="3"
+                  data-field="kbPrompts"
+                  x-bind:value="kbPrompts"
+                  x-on:input="updateKbField"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+        <p class="mt-1 text-xs text-greyscale-400">{% trans "One prompt per line." %}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save" %}
+        </button>
+        <button type="button"
+                x-on:click="cancelTopicEdit"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <span x-show="kbError" x-cloak class="text-xs text-red-600" x-text="kbError"></span>
+      </div>
+    </form>
+  </div>
+</div>

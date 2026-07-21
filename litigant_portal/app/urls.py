@@ -8,6 +8,9 @@ from django.views.i18n import JavaScriptCatalog
 from django.views.static import serve
 
 from litigant_portal.app.views import (
+    admin as admin_views,
+)
+from litigant_portal.app.views import (
     assistant,
     endpoints,
     pages,
@@ -31,6 +34,7 @@ app_patterns = [
         pages.topic_flow_download,
         name="topic_flow_download",
     ),
+    path("admin/", admin_views.dashboard, name="admin_dashboard"),
     path("chat/", pages.chat_page, name="chat"),
     path("chat-v2/", pages.chat_v2_view, name="chat_v2"),
     path("chat/action-plan/", endpoints.action_plan, name="action_plan"),
@@ -98,6 +102,47 @@ assistant_patterns = [
     ),
 ]
 
+admin_api_patterns = [
+    path("sites/", admin_views.site_list_view, name="site_list"),
+    path(
+        "sites/<uuid:site_id>/update/",
+        admin_views.site_update_view,
+        name="site_update",
+    ),
+    path(
+        "sites/<uuid:site_id>/activate/",
+        admin_views.site_activate_view,
+        name="site_activate",
+    ),
+    path("topics/", admin_views.topic_list_view, name="topic_list"),
+    path(
+        "topics/create/",
+        admin_views.topic_create_view,
+        name="topic_create",
+    ),
+    path(
+        "topics/<uuid:topic_id>/update/",
+        admin_views.topic_update_view,
+        name="topic_update",
+    ),
+    path(
+        "topics/<uuid:topic_id>/delete/",
+        admin_views.topic_delete_view,
+        name="topic_delete",
+    ),
+    path("users/", admin_views.user_list_view, name="user_list"),
+    path(
+        "users/<int:user_id>/admin/toggle/",
+        admin_views.user_admin_toggle_view,
+        name="user_admin_toggle",
+    ),
+    path(
+        "users/<int:user_id>/developer/toggle/",
+        admin_views.user_developer_toggle_view,
+        name="user_developer_toggle",
+    ),
+]
+
 urlpatterns = [
     # App Routes
     *i18n_patterns(
@@ -118,6 +163,13 @@ urlpatterns = [
         include(
             (assistant_patterns, "litigant_portal.app"),
             namespace="assistant",
+        ),
+    ),
+    path(
+        "api/admin/",
+        include(
+            (admin_api_patterns, "litigant_portal.app"),
+            namespace="admin_api",
         ),
     ),
     # Allauth Routes

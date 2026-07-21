@@ -1,0 +1,185 @@
+{% load i18n %}
+
+<div class="max-w-2xl">
+  {# Header row — title on the left, site switcher on the right #}
+  <div class="flex items-center justify-between gap-2 mb-4">
+    <h3 class="text-base font-semibold text-greyscale-900">{% trans "Settings" %}</h3>
+    {% if is_developer %}
+    <div class="relative">
+      <button type="button"
+              x-on:click="toggleSiteMenu"
+              x-bind:aria-expanded="siteMenuOpen"
+              aria-haspopup="true"
+              class="inline-flex items-center gap-1.5 rounded-lg border border-greyscale-300 bg-white px-3 py-1.5 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+        <c-atoms.icon name="arrows-right-left" class="w-4 h-4 text-greyscale-500" />
+        <span x-text="activeSiteName"></span>
+        <c-atoms.icon name="chevron-down" class="w-4 h-4 text-greyscale-400" />
+      </button>
+      <div x-show="siteMenuOpen"
+           x-cloak
+           x-on:click.outside="closeSiteMenu"
+           x-on:keydown.escape.window="closeSiteMenu"
+           x-transition
+           class="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
+           role="menu">
+        <template x-for="site in sites" :key="site.id">
+          <button type="button"
+                  role="menuitem"
+                  x-bind:data-site-id="site.id"
+                  x-on:click="activateSite"
+                  class="flex items-center justify-between gap-2 w-full px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer">
+            <span class="truncate" x-text="site.name"></span>
+            <c-atoms.icon name="check" class="w-4 h-4 text-primary-600 flex-shrink-0" x-show="site.active" />
+          </button>
+        </template>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {# Active site form #}
+  <form x-on:submit.prevent="saveSite" class="space-y-4">
+    {% csrf_token %}
+    <div>
+      <label for="site-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Name" %}</label>
+      <input id="site-name"
+             type="text"
+             data-field="siteName"
+             x-bind:value="siteName"
+             x-on:input="updateSiteField"
+             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+    </div>
+    {# ------- Court details ------- #}
+    <div class="border-t border-greyscale-200 pt-4">
+      <h4 class="text-sm font-semibold text-greyscale-900">{% trans "Court details" %}</h4>
+      <p class="text-xs text-greyscale-500">{% trans "The court this site serves — shown in headers and used to ground guidance." %}</p>
+    </div>
+    <div>
+      <label for="site-court-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Court name" %}</label>
+      <input id="site-court-name"
+             type="text"
+             data-field="siteCourtName"
+             x-bind:value="siteCourtName"
+             x-on:input="updateSiteField"
+             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label for="site-jurisdiction-level" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Jurisdiction level" %}</label>
+        <select id="site-jurisdiction-level"
+                data-field="siteJurisdictionLevel"
+                x-bind:value="siteJurisdictionLevel"
+                x-on:change="updateSiteField"
+                class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+          <option value="">{% trans "—" %}</option>
+          {% for value, label in jurisdiction_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label for="site-state" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "State" %}</label>
+        <select id="site-state"
+                data-field="siteState"
+                x-bind:value="siteState"
+                x-on:change="updateSiteField"
+                class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+          <option value="">{% trans "—" %}</option>
+          {% for value, label in state_choices %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div>
+      <label for="site-official-url" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Official URL" %}</label>
+      <input id="site-official-url"
+             type="url"
+             placeholder="https://"
+             data-field="siteOfficialUrl"
+             x-bind:value="siteOfficialUrl"
+             x-on:input="updateSiteField"
+             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+    </div>
+    <div>
+      <label for="site-official-resources-url" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Official resources URL" %}</label>
+      <input id="site-official-resources-url"
+             type="url"
+             placeholder="https://"
+             data-field="siteOfficialResourcesUrl"
+             x-bind:value="siteOfficialResourcesUrl"
+             x-on:input="updateSiteField"
+             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+    </div>
+    {# ------- Models ------- #}
+    <div class="border-t border-greyscale-200 pt-4 flex items-start justify-between gap-2">
+      <div>
+        <h4 class="text-sm font-semibold text-greyscale-900">{% trans "Models" %}</h4>
+        <p class="text-xs text-greyscale-500">{% trans "Which AI model each part of the pipeline uses." %}</p>
+      </div>
+      {# Provider badges — only providers whose credentials are configured #}
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        {% if openai_available %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>
+            {% trans "OpenAI available" %}
+          </span>
+        {% endif %}
+        {% if bedrock_available %}
+          <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>
+            {% trans "Bedrock available" %}
+          </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+      <label for="site-fast-model" class="block text-sm font-semibold text-greyscale-900">{% trans "Fast model" %}</label>
+      <p class="text-xs text-greyscale-500 mb-2">{% trans "Used for small background tasks that need minimal intelligence." %}</p>
+      <select id="site-fast-model"
+              data-field="siteFastModel"
+              x-bind:value="siteFastModel"
+              x-on:change="updateSiteField"
+              class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+        <option value="">{% blocktrans %}Default ({{ default_model_label }}){% endblocktrans %}</option>
+        {% for provider, choices in model_choice_groups %}
+          <optgroup label="{{ provider }}">
+            {% for value, label in choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+      <label for="site-assistant-model" class="block text-sm font-semibold text-greyscale-900">{% trans "Assistant model" %}</label>
+      <p class="text-xs text-greyscale-500 mb-2">{% trans "The main model used for the chat assistant." %}</p>
+      <select id="site-assistant-model"
+              data-field="siteAssistantModel"
+              x-bind:value="siteAssistantModel"
+              x-on:change="updateSiteField"
+              class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+        <option value="">{% blocktrans %}Default ({{ default_model_label }}){% endblocktrans %}</option>
+        {% for provider, choices in model_choice_groups %}
+          <optgroup label="{{ provider }}">
+            {% for value, label in choices %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </optgroup>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <button type="submit"
+              class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+        {% trans "Save" %}
+      </button>
+      <span x-show="siteSaved"
+            x-cloak
+            class="inline-flex items-center gap-1 text-xs text-green-600">
+        <c-atoms.icon name="check" class="w-3.5 h-3.5" />
+        {% trans "Saved" %}
+      </span>
+      <span x-show="siteError" x-cloak class="text-xs text-red-600" x-text="siteError"></span>
+    </div>
+  </form>
+</div>

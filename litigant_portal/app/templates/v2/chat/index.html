@@ -287,15 +287,6 @@
            x-cloak
            class="text-xs text-greyscale-400">{% trans "No state yet." %}</p>
       </div>
-      {# Temporary debug block — env availability #}
-      {% if request.user.is_superuser %}
-      <div class="flex-shrink-0 border-t border-greyscale-200 p-4 text-xs text-greyscale-500 space-y-1">
-        <p>AWS_BEARER_TOKEN_BEDROCK: <b>{{ debug_env.AWS_BEARER_TOKEN_BEDROCK }}</b></p>
-        <p>OPENAI_API_KEY: <b>{{ debug_env.OPENAI_API_KEY }}</b></p>
-        <p>CHAT_MODEL: <b>{{ debug_env.CHAT_MODEL }}</b></p>
-        <p>CHAT_ENABLED: <b>{{ debug_env.CHAT_ENABLED }}</b></p>
-      </div>
-      {% endif %}
     </aside>
     {# Delete confirmation modal #}
     <div x-show="confirmingDelete"
