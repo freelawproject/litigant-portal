@@ -18,7 +18,9 @@ class ChatDefaultSurfaceTests(TestCase):
     def test_v1_query_params_are_ignored_not_fatal(self):
         # Deep links still carry ?topic=/?court=; v2 has no topic grounding
         # yet (#670 tests that condition), so they must be harmless.
-        response = self.client.get(reverse("pages:chat"), {"topic": "eviction"})
+        response = self.client.get(
+            reverse("pages:chat"), {"topic": "eviction"}
+        )
         assert response.status_code == 200
         self.assertTemplateUsed(response, "v2/chat/index.html")
 
