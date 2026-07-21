@@ -1,0 +1,12 @@
+{% load i18n %}
+
+{# Briefcase body (live agent state for now) — shared by the inline sidebar and the drawer. #}
+<div class="flex-1 overflow-y-auto min-h-0 p-4">
+  <pre x-show="hasState"
+       x-cloak
+       class="text-xs text-greyscale-600 whitespace-pre-wrap break-words"
+       x-text="stateJson"></pre>
+  <p x-show="noState"
+     x-cloak
+     class="text-xs text-greyscale-400">{% trans "No state yet." %}</p>
+</div>

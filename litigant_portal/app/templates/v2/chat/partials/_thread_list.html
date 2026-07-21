@@ -1,0 +1,29 @@
+{% load i18n %}
+
+{# Scrollable thread list — shared by the inline sidebar and the drawer. #}
+<div class="flex-1 overflow-y-auto min-h-0 p-2 space-y-1">
+  <template x-for="thread in threads" :key="thread.id">
+    <div class="block rounded-lg px-3 py-2 cursor-pointer select-none transition-colors border"
+         x-bind:class="thread.rowClass"
+         x-bind:data-thread-id="thread.id"
+         x-on:click="selectThread">
+      <div class="flex items-center gap-2">
+        {# Status dot — grey idle, pulsing yellow streaming, green unseen #}
+        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0"
+              x-bind:class="thread.dotClass"></span>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-sm font-medium text-greyscale-800 truncate" x-text="thread.title"></p>
+            <time class="text-xs text-greyscale-400 flex-shrink-0"
+                  x-bind:datetime="thread.last_at"
+                  x-text="thread.relativeTime"></time>
+          </div>
+          <p class="text-xs text-greyscale-500 truncate mt-0.5" x-text="thread.snippet"></p>
+        </div>
+      </div>
+    </div>
+  </template>
+  <p x-show="showEmpty"
+     x-cloak
+     class="text-xs text-greyscale-400 px-3 py-2">{% trans "No conversations yet." %}</p>
+</div>
