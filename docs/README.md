@@ -1,181 +1,68 @@
-# Litigant Portal - Development Guide
+# Litigant Portal Docs
 
-## Quick Start
+The repo's mini wiki: reference material you reach for when you need it.
+Day-to-day working guidance lives in [CLAUDE.md](../CLAUDE.md); setup and
+deployment basics live in the root [README](../README.md). The repo itself is
+the source of truth — when a doc and the code disagree, trust the code and fix
+the doc.
 
-```bash
-cp .env.example .env        # Add your GROQ_API_KEY
-make docker-dev             # Start dev environment
-# Visit: http://portal.localhost/style-guide/
-```
+## Architecture & design
 
-**Other Commands:**
+| Doc                                            | Purpose                                                              |
+| ---------------------------------------------- | -------------------------------------------------------------------- |
+| [ARCHITECTURE.md](./ARCHITECTURE.md)           | Vision, open contracts, tech stack, patterns, Docker, AI chat shape  |
+| [REQUIREMENTS.md](./REQUIREMENTS.md)           | Product requirements and UX principles                               |
+| [wcag-strategy.md](./wcag-strategy.md)         | WCAG 2.2 AA compliance strategy                                      |
+| [COMPONENT_LIBRARY.md](./COMPONENT_LIBRARY.md) | Component/style-guide approach, a11y and viewport testing            |
+| [briefcase-architecture.md](./briefcase-architecture.md) | Three-pocket session state model (design, #177)            |
 
-```bash
-make docker-shell           # Shell into container
-make docker-down            # Stop containers
-make test                   # Run tests
-```
+## AI chat & agents
 
-**Requirements:** Docker
+| Doc                                        | Purpose                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------ |
+| [AGENT_DEV_GUIDE.md](./AGENT_DEV_GUIDE.md) | Build agents on the chat engine: state, prompts, tools, surfaces   |
+| [ATTACHMENT_SYSTEM.md](./ATTACHMENT_SYSTEM.md) | How uploads flow into the LLM: inline vs. reader subagent      |
+| [ai-tone-guide.md](./ai-tone-guide.md)     | Tone and philosophy for AI-generated user-facing output            |
+| [prompts-as-infra.md](./prompts-as-infra.md) | The prompt layer as LP's core system contract                    |
 
----
+## Topic Flow & document assembly
 
-## Project Status
+| Doc                                                      | Purpose                                                    |
+| -------------------------------------------------------- | ---------------------------------------------------------- |
+| [topic-flow-engine.md](./topic-flow-engine.md)           | Topic Flow engine: build summary and patterns              |
+| [overview-mapped-legal-flow.md](./overview-mapped-legal-flow.md) | Generic 9-stage legal flow (legal review artifact)  |
+| [docassemble-authoring.md](./docassemble-authoring.md)   | Interview authoring gotchas and patterns                   |
+| [docassemble-local-dev.md](./docassemble-local-dev.md)   | Local docassemble bench for authoring/testing              |
+| [docassemble-qa-hosting.md](./docassemble-qa-hosting.md) | Hosting docassemble on the QA box (path routing)           |
 
-| Phase                                           | Status |
-| ----------------------------------------------- | ------ |
-| Django Foundation                               | Done   |
-| Frontend Pipeline (Tailwind CLI + Alpine local) | Done   |
-| Core Atoms (Button, Input, Link, Select, Icon)  | Done   |
-| Component Library Page                          | Done   |
-| Auth (Login/Signup/Logout)                      | Done   |
-| AI Chat with Groq                               | Done   |
-| A11y Testing                                    | Next   |
+## Product, demo & research
 
----
+| Doc                                                | Purpose                                                       |
+| -------------------------------------------------- | ------------------------------------------------------------- |
+| [user-flows.md](./user-flows.md)                   | 3×2 flow matrix (Full AI / Hybrid / Basic × Anon / Auth)      |
+| [happy-path-jane.md](./happy-path-jane.md)         | Jane's end-to-end eviction narrative (base for variations)    |
+| [demo-flow-jane.md](./demo-flow-jane.md)           | Jane's abbreviated 8-step demo flow                           |
+| [happy-path-sandra.md](./happy-path-sandra.md)     | Sandra's ND name-change narrative                             |
+| [demo-strategy.md](./demo-strategy.md)             | Showing the full flow before AI tools/corpus are ready        |
+| [expert-feedback/](./expert-feedback/)             | Domain-expert review notes on flows and content               |
 
-## URLs (Development)
+## Operations
 
-| URL                                  | Purpose                   |
-| ------------------------------------ | ------------------------- |
-| http://portal.localhost/             | Dashboard (hero + topics) |
-| http://portal.localhost/chat/        | AI chat interface         |
-| http://portal.localhost/style-guide/ | Component library / guide |
-| http://portal.localhost/admin/       | Django admin              |
+| Doc                                    | Purpose                                              |
+| -------------------------------------- | ---------------------------------------------------- |
+| [QA-DEPLOY.md](./QA-DEPLOY.md)         | One-time setup for the QA/staging server             |
+| [updating.md](./updating.md)           | Updating a hosted LP box (self-hosters, partner IT)  |
+| [pinned-assets.md](./pinned-assets.md) | Pinned frontend asset versions + update commands     |
+| [translation.md](./translation.md)     | i18n workflow (`.po` files, translation markers)     |
+| [SECURITY.md](./SECURITY.md)           | Vulnerability disclosure, CSP, production headers    |
 
----
+## Process & planning records
 
-## Project Structure
-
-```
-litigant-portal/
-├── config/                 # Django settings
-├── portal/                 # Main Django app (views, models, forms)
-├── chat/                   # AI chat app (providers, services, agents)
-├── templates/
-│   ├── base.html          # Base layout (responsive)
-│   ├── cotton/            # Django-Cotton components (Atomic Design)
-│   │   ├── atoms/         # Basic elements (button, input, link, etc.)
-│   │   ├── molecules/     # Combinations (logo, search_bar, topic_card)
-│   │   └── organisms/     # Complex sections (header, footer, hero)
-│   └── pages/             # Page templates (home, chat, profile, etc.)
-├── static/
-│   ├── css/
-│   │   ├── main.css       # Tailwind source
-│   │   └── main.built.css # Tailwind output (gitignored)
-│   ├── images/            # Static images (logo.svg)
-│   └── js/
-│       ├── theme.js       # Alpine theme store
-│       └── chat.js        # Alpine chat component
-└── docs/                  # This folder
-```
-
----
-
-## Documentation Index
-
-| Doc                                            | Purpose                             |
-| ---------------------------------------------- | ----------------------------------- |
-| [ARCHITECTURE.md](./ARCHITECTURE.md)           | Tech stack, key decisions, patterns |
-| [REQUIREMENTS.md](./REQUIREMENTS.md)           | Product requirements, UX principles |
-| [COMPONENT_LIBRARY.md](./COMPONENT_LIBRARY.md) | Component library & testing guide   |
-| [CHANGES.md](./CHANGES.md)                     | Changelog                           |
-| [SECURITY.md](./SECURITY.md)                   | Vulnerability disclosure            |
-
----
-
-## Tech Stack
-
-| Layer      | Technology                               |
-| ---------- | ---------------------------------------- |
-| Backend    | Django 5.2 LTS, Python 3.13              |
-| Components | Django Cotton                            |
-| Styling    | Tailwind CSS 4.x (standalone CLI)        |
-| Reactivity | Alpine.js 3.14.9 (local, standard build) |
-| Auth       | django-allauth                           |
-| AI Chat    | Groq (llama-3.3-70b-versatile)           |
-| Security   | django-csp                               |
-| Deployment | Self-hosted (Docker Compose + Caddy)     |
-
-**No Node.js required** - Tailwind via standalone CLI, Alpine.js local files.
-
----
-
-## Component Usage
-
-```html
-<!-- Button -->
-<c-atoms.button variant="primary">Submit</c-atoms.button>
-<c-atoms.button variant="outline">Cancel</c-atoms.button>
-<c-atoms.button variant="danger" disabled>Delete</c-atoms.button>
-
-<!-- Input -->
-<c-atoms.input type="email" placeholder="Email" error />
-
-<!-- Form Field (label + input + errors) -->
-<c-molecules.form-field
-  label="Email"
-  type="email"
-  name="email"
-  id="id_email"
-  required
-/>
-
-<!-- Link -->
-<c-atoms.link href="/dashboard" variant="primary">Dashboard</c-atoms.link>
-<c-atoms.link href="https://example.com" target="_blank" external_icon>
-  External
-</c-atoms.link>
-
-<!-- Select -->
-<c-atoms.select name="state">
-  <option value="">Select...</option>
-</c-atoms.select>
-
-<!-- Icon (Heroicons) -->
-<c-atoms.icon name="check-circle" class="w-6 h-6" />
-<c-atoms.icon
-  name="check-circle"
-  style="solid"
-  class="w-6 h-6 text-green-600"
-/>
-
-<!-- Checkbox -->
-<c-atoms.checkbox name="remember" id="remember" label="Remember me" />
-```
-
----
-
-## Design System
-
-Colors and patterns adapted from CourtListener:
-
-- **Primary:** Coral/red (`primary-600: #B5362D`)
-- **Greyscale:** Warm greys (`greyscale-900: #1C1814`)
-- **Brand:** Purple accents (`brand-600: #7F56D9`)
-
-See `/style-guide/` for live examples and full documentation.
-
----
-
-## Deployment
-
-**GitHub Pages (Static Demo):**
-
-Live site: https://freelawproject.github.io/litigant-portal/
-
-Deploys automatically on push to `main` via GitHub Actions. Uses `django-distill` to pre-render pages as static HTML.
-
-```bash
-# Generate static site locally
-uv run python manage.py collectstatic --noinput
-uv run python manage.py distill-local dist --force
-```
-
----
-
-## Workflow Guidelines
-
-- Propose changes before implementing
-- One task at a time
-- Keep responses concise
+| Doc                                                        | Purpose                                                   |
+| ----------------------------------------------------------- | --------------------------------------------------------- |
+| [issue-conventions.md](./issue-conventions.md)             | Issue templates, labels, and the reasoning behind them    |
+| [sizing-guide.md](./sizing-guide.md)                       | How to size issues (contributor onboarding)               |
+| [sizing-calibration.md](./sizing-calibration.md)           | Living record of sizing calibration passes                |
+| [sprint-map.md](./sprint-map.md)                           | Web-team sprint letters/artists ↔ LP iterations crosswalk |
+| [itc-demo-retro.md](./itc-demo-retro.md)                   | Lessons from the ITC demo (Jan 2026)                      |
+| [nd-name-change-planning-log.md](./nd-name-change-planning-log.md) | Decision log from ND name-change demo planning    |
