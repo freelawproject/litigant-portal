@@ -21,34 +21,19 @@ def identity_merge(
 ) -> None:
     """Fold ``source`` into ``target``, then delete ``source``.
 
-    All chat sessions migrate. For cases, an identity is assumed to hold at
-    most one active case: if ``target`` already has one, ``source``'s active
-    case is dropped as a duplicate. Every other case (resolved/archived)
-    migrates regardless. Runs in a single transaction.
+    All chat threads and uploads migrate. Runs in a single transaction.
     """
-    chats = source_identity.chat_sessions.update(identity=target_identity)
     threads = source_identity.chat_threads.update(identity=target_identity)
     uploads = source_identity.uploads.update(identity=target_identity)
-
-    dropped = 0
-    if target_identity.case_infos.filter(status="active").exists():
-        duplicates = source_identity.case_infos.filter(status="active")
-        dropped = duplicates.count()
-        duplicates.delete()
-    cases = source_identity.case_infos.update(identity=target_identity)
 
     source_identity.delete()
 
     logger.info(
-        "Merged anonymous identity into user %s: %d chat session(s), "
-        "%d thread(s), %d upload(s), %d case(s) migrated, "
-        "%d duplicate active case(s) dropped",
+        "Merged anonymous identity into user %s: "
+        "%d thread(s), %d upload(s) migrated",
         target_identity.user_id,
-        chats,
         threads,
         uploads,
-        cases,
-        dropped,
     )
 
 
