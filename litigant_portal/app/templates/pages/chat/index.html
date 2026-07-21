@@ -3,7 +3,7 @@
 {% load static i18n %}
 
 {% block header %}
-  {% include "v2/common/header.html" %}
+  {% include "cotton/organisms/chat_header.html" %}
 {% endblock header %}
 
 {% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
@@ -23,10 +23,10 @@
     {# Sidebar width tracks the viewport slightly but the center column absorbs most of a squeeze. #}
     <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
       <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
-        <c-atoms.history-icon class="w-3.5 h-3.5 text-greyscale-400" />
+        <c-atoms.icon name="history" class="w-3.5 h-3.5 text-greyscale-400" />
         <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Recent Activity" %}</h2>
       </div>
-      {% include "v2/chat/partials/_thread_list.html" %}
+      {% include "pages/chat/partials/_thread_list.html" %}
     </aside>
     {# Center panel — conversation #}
     <section class="flex-1 min-w-0 flex flex-col min-h-0 lg:border-r border-greyscale-200">
@@ -39,7 +39,7 @@
                   aria-label='{% trans "Recent activity" %}'
                   title="{% trans "Recent activity" %}"
                   class="lg:hidden flex-shrink-0 -ml-1 inline-flex items-center justify-center w-8 h-8 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
-            <c-atoms.history-icon class="w-4.5 h-4.5" />
+            <c-atoms.icon name="history" class="w-4.5 h-4.5" />
           </button>
           {# Thread title + actions menu (only with an active thread loaded) #}
           <div x-show="threadId" x-cloak class="flex items-center gap-1 min-w-0">
@@ -274,7 +274,7 @@
         <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
         <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
       </div>
-      {% include "v2/chat/partials/_agent_state.html" %}
+      {% include "pages/chat/partials/_agent_state.html" %}
     </aside>
     {# History drawer — the collapsed left panel. A slide-over on tablet, full takeover on phones. #}
     <div x-show="historyOpen"
@@ -297,7 +297,7 @@
            class="lg:hidden absolute inset-y-0 left-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-r border-greyscale-200 sm:shadow-2xl">
       <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
         <div class="flex items-center gap-1.5 min-w-0">
-          <c-atoms.history-icon class="w-3.5 h-3.5 text-greyscale-400" />
+          <c-atoms.icon name="history" class="w-3.5 h-3.5 text-greyscale-400" />
           <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Recent Activity" %}</h2>
         </div>
         <div class="flex items-center gap-1 flex-shrink-0">
@@ -316,7 +316,7 @@
           </button>
         </div>
       </div>
-      {% include "v2/chat/partials/_thread_list.html" %}
+      {% include "pages/chat/partials/_thread_list.html" %}
     </aside>
     {# Briefcase drawer — the collapsed right panel. A slide-over on tablet, full takeover on phones. #}
     <div x-show="briefcaseOpen"
@@ -349,7 +349,7 @@
           <c-atoms.icon name="x-mark" class="w-4 h-4" />
         </button>
       </div>
-      {% include "v2/chat/partials/_agent_state.html" %}
+      {% include "pages/chat/partials/_agent_state.html" %}
     </aside>
     {# Delete confirmation modal #}
     <div x-show="confirmingDelete"

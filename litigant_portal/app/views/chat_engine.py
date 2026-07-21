@@ -3,14 +3,14 @@ from uuid import UUID
 from django.http import HttpRequest, JsonResponse
 from django.utils.translation import gettext as _
 
-from litigant_portal.agents_v2.base import Agent
+from litigant_portal.agents.base import Agent
 from litigant_portal.app.models import ChatThread, UserUpload
-from litigant_portal.app.selectors.chat_v2 import (
+from litigant_portal.app.selectors.chat_engine import (
     chat_thread_get,
     chat_thread_list,
     chat_thread_usage,
 )
-from litigant_portal.app.services.chat_v2 import (
+from litigant_portal.app.services.chat_engine import (
     chat_stream,
     chat_thread_delete,
     thread_render_items,

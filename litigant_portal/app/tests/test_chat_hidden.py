@@ -1,4 +1,4 @@
-"""Tests for hidden-message behavior in the chat_v2 engine.
+"""Tests for hidden-message behavior in the chat_engine engine.
 
 These pin the behavioral contract: hidden messages stay in the LLM history but
 are excluded from every frontend projection, and injecting one doesn't disturb
@@ -10,10 +10,10 @@ import json
 import pytest
 from django.test import Client, TestCase
 
-from litigant_portal.agents_v2 import WeatherAgent
+from litigant_portal.agents import WeatherAgent
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
-from litigant_portal.app.selectors.chat_v2 import chat_message_list
-from litigant_portal.app.services.chat_v2 import (
+from litigant_portal.app.selectors.chat_engine import chat_message_list
+from litigant_portal.app.services.chat_engine import (
     _messages_for_llm,
     chat_message_inject_hidden,
     chat_message_inject_meta,

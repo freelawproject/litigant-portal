@@ -1,6 +1,6 @@
 import time
 
-from litigant_portal.agents_v2.base import Field, Tool, ToolOutput
+from litigant_portal.agents.base import Field, Tool, ToolOutput
 
 
 class CheckWeather(Tool):
@@ -14,7 +14,7 @@ class CheckWeather(Tool):
     tool_result_template = "tools/check_weather_result.html"
 
     def __call__(self, *, thread_id) -> ToolOutput:
-        from litigant_portal.agents_v2.weather import WeatherState
+        from litigant_portal.agents.weather import WeatherState
         from litigant_portal.app.models import ChatThread
 
         # Artificial delay so the "checking weather" call card is visible.

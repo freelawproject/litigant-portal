@@ -3,7 +3,7 @@
 {% load static i18n %}
 
 {% block header %}
-  {% include "v2/common/header.html" %}
+  {% include "cotton/organisms/chat_header.html" %}
 {% endblock header %}
 
 {% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
@@ -63,16 +63,16 @@
     {# Main panel — active tab content #}
     <section class="flex-1 min-w-0 flex flex-col min-h-0">
       <div x-show="showSettings" class="flex-1 overflow-y-auto min-h-0 p-4">
-        {% include "v2/admin/settings.html" %}
+        {% include "pages/admin/settings.html" %}
       </div>
       <div x-show="showUsers" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
-        {% include "v2/admin/users.html" %}
+        {% include "pages/admin/users.html" %}
       </div>
       <div x-show="showKnowledge" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
-        {% include "v2/admin/knowledge_base.html" %}
+        {% include "pages/admin/knowledge_base.html" %}
       </div>
       <div x-show="showSimulate" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
-        {% include "v2/admin/simulate.html" %}
+        {% include "pages/admin/simulate.html" %}
       </div>
     </section>
   </div>

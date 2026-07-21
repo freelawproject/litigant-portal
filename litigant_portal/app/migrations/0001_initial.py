@@ -4,7 +4,7 @@ import django.core.serializers.json
 import django.db.models.deletion
 import django_pydantic_field.compat.django
 import django_pydantic_field.fields
-import litigant_portal.agents.base
+import litigant_portal.agents.message_schema
 import typing
 import uuid
 from django.conf import settings
@@ -106,7 +106,7 @@ class Migration(migrations.Migration):
             name='Message',
             fields=[
                 ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('data', django_pydantic_field.fields.PydanticSchemaField(config=None, default={'content': '', 'role': 'system'}, encoder=django.core.serializers.json.DjangoJSONEncoder, schema=django_pydantic_field.compat.django.GenericContainer(typing.Annotated, (litigant_portal.agents.base.SystemMessage | litigant_portal.agents.base.UserMessage | litigant_portal.agents.base.AssistantMessage | litigant_portal.agents.base.ToolMessage, django_pydantic_field.compat.django.FieldInfoContainer(None, (), {'_complete': True, '_final': False, '_qualifiers': set(), 'discriminator': 'role'}))))),
+                ('data', django_pydantic_field.fields.PydanticSchemaField(config=None, default={'content': '', 'role': 'system'}, encoder=django.core.serializers.json.DjangoJSONEncoder, schema=django_pydantic_field.compat.django.GenericContainer(typing.Annotated, (litigant_portal.agents.message_schema.SystemMessage | litigant_portal.agents.message_schema.UserMessage | litigant_portal.agents.message_schema.AssistantMessage | litigant_portal.agents.message_schema.ToolMessage, django_pydantic_field.compat.django.FieldInfoContainer(None, (), {'_complete': True, '_final': False, '_qualifiers': set(), 'discriminator': 'role'}))))),
                 ('created_at', models.DateTimeField(auto_now_add=True)),
                 ('session', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='messages', to='app.chatsession')),
             ],

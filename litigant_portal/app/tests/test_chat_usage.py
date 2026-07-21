@@ -1,4 +1,4 @@
-"""Tests for token counting and cost tracking in the chat_v2 engine.
+"""Tests for token counting and cost tracking in the chat_engine engine.
 
 These pin the bookkeeping contract: chat_message_create trusts caller-supplied
 counts (an assistant turn passes usage.completion_tokens) and otherwise counts
@@ -10,8 +10,8 @@ import pytest
 from django.test import TestCase
 
 from litigant_portal.app.models import ChatThread, UserIdentity
-from litigant_portal.app.selectors.chat_v2 import chat_thread_usage
-from litigant_portal.app.services.chat_v2 import (
+from litigant_portal.app.selectors.chat_engine import chat_thread_usage
+from litigant_portal.app.services.chat_engine import (
     chat_message_create,
     chat_message_inject_hidden,
 )

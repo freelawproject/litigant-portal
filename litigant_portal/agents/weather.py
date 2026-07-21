@@ -1,46 +1,34 @@
-from .base import Agent, Field, Tool, ToolOutput
+from django.utils import timezone
+
+from .base import Agent, AgentState
+from .tools.check_weather import CheckWeather
 
 
-class WeatherTool(Tool):
-    """Get the current weather for a location."""
+class WeatherState(AgentState):
+    """What the weather agent remembers across a thread."""
 
-    location: str = Field(
-        description="City name or location to get weather for"
-    )
-
-    def __call__(self, agent: Agent) -> ToolOutput:
-        """Return mock weather data for the location."""
-        temp_f = 72
-        condition = "sunny"
-
-        return ToolOutput(
-            # This is what the LLM sees
-            response=f"Location: {self.location}, Temp: {temp_f} F, Condition: {condition}.",
-            # This is structured data for the frontend
-            data={
-                "location": self.location,
-                "temp_f": temp_f,
-                "condition": condition,
-            },
-        )
+    recent_locations: list[str] = []
 
 
 class WeatherAgent(Agent):
-    """A demo agent that can check the weather.
+    """A demo agent that can check the weather."""
 
-    This is a test agent to verify the agent framework is working correctly.
-    """
+    completion_args = {"max_tokens": 1000}
+    state_schema = WeatherState
+    tools = [CheckWeather]
 
-    default_tools = [WeatherTool]
-    default_messages = [
-        {
-            "role": "system",
-            "content": (
-                "You are a helpful assistant. If the user asks about the weather, "
-                "use the WeatherTool to get current conditions. Be concise."
-            ),
-        }
-    ]
-    default_completion_args = {
-        "max_tokens": 1024,
-    }
+    def generate_system_prompt(self, *, thread_id) -> str:
+        from litigant_portal.app.models import ChatThread
+
+        thread = ChatThread.objects.get(id=thread_id)
+        state = WeatherState.model_validate(thread.state or {})
+        now = timezone.localtime().strftime("%A, %B %-d, %Y at %-I:%M %p")
+        recent = ", ".join(state.recent_locations) or "none yet"
+        return (
+            "You are a friendly weather assistant.\n"
+            f"The current date and time is {now}.\n"
+            f"Recently checked locations: {recent}.\n"
+            "If the user asks about the weather for a location, use the "
+            "CheckWeather tool. If they ask about a location you've already "
+            "checked recently, you may report it from memory instead."
+        )

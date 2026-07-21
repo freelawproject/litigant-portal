@@ -3,7 +3,7 @@
 import django.core.serializers.json
 import django_pydantic_field.compat.django
 import django_pydantic_field.fields
-import litigant_portal.agents.base
+import litigant_portal.agents.message_schema
 import typing
 from django.db import migrations, models
 
@@ -23,11 +23,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='chatmessage',
             name='data',
-            field=django_pydantic_field.fields.PydanticSchemaField(config=None, default={'content': '', 'role': 'system'}, encoder=django.core.serializers.json.DjangoJSONEncoder, schema=django_pydantic_field.compat.django.GenericContainer(typing.Annotated, (litigant_portal.agents.base.SystemMessage | litigant_portal.agents.base.UserMessage | litigant_portal.agents.base.AssistantMessage | litigant_portal.agents.base.ToolMessage | litigant_portal.agents.base.MetaMessage, django_pydantic_field.compat.django.FieldInfoContainer(None, (), {'_complete': True, '_final': False, '_qualifiers': set(), 'discriminator': 'role'})))),
+            field=django_pydantic_field.fields.PydanticSchemaField(config=None, default={'content': '', 'role': 'system'}, encoder=django.core.serializers.json.DjangoJSONEncoder, schema=django_pydantic_field.compat.django.GenericContainer(typing.Annotated, (litigant_portal.agents.message_schema.SystemMessage | litigant_portal.agents.message_schema.UserMessage | litigant_portal.agents.message_schema.AssistantMessage | litigant_portal.agents.message_schema.ToolMessage | litigant_portal.agents.message_schema.MetaMessage, django_pydantic_field.compat.django.FieldInfoContainer(None, (), {'_complete': True, '_final': False, '_qualifiers': set(), 'discriminator': 'role'})))),
         ),
         migrations.AlterField(
             model_name='message',
             name='data',
-            field=django_pydantic_field.fields.PydanticSchemaField(config=None, default={'content': '', 'role': 'system'}, encoder=django.core.serializers.json.DjangoJSONEncoder, schema=django_pydantic_field.compat.django.GenericContainer(typing.Annotated, (litigant_portal.agents.base.SystemMessage | litigant_portal.agents.base.UserMessage | litigant_portal.agents.base.AssistantMessage | litigant_portal.agents.base.ToolMessage | litigant_portal.agents.base.MetaMessage, django_pydantic_field.compat.django.FieldInfoContainer(None, (), {'_complete': True, '_final': False, '_qualifiers': set(), 'discriminator': 'role'})))),
+            field=django_pydantic_field.fields.PydanticSchemaField(config=None, default={'content': '', 'role': 'system'}, encoder=django.core.serializers.json.DjangoJSONEncoder, schema=django_pydantic_field.compat.django.GenericContainer(typing.Annotated, (litigant_portal.agents.message_schema.SystemMessage | litigant_portal.agents.message_schema.UserMessage | litigant_portal.agents.message_schema.AssistantMessage | litigant_portal.agents.message_schema.ToolMessage | litigant_portal.agents.message_schema.MetaMessage, django_pydantic_field.compat.django.FieldInfoContainer(None, (), {'_complete': True, '_final': False, '_qualifiers': set(), 'discriminator': 'role'})))),
         ),
     ]

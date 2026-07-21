@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 from django_pydantic_field import SchemaField
 
-from litigant_portal.agents.base import Message as MessageSchema
+from litigant_portal.agents_v2.message_schema import MessageSchema
 
 
 class ChatSession(models.Model):

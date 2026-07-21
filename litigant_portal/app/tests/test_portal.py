@@ -55,68 +55,15 @@ class ChatPageTests(TestCase):
         self.client = Client()
 
     def test_chat_page_renders(self):
-        """Chat page should return 200 with chat interface."""
+        """Chat page should return 200 with the chat app mounted."""
         response = self.client.get("/chat/")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "homePage")
+        self.assertContains(response, "chatApp")
 
     def test_chat_page_has_no_footer(self):
         """Chat page should suppress the footer."""
         response = self.client.get("/chat/")
         self.assertNotContains(response, "mobile-footer")
-
-    def test_chat_page_has_stable_subheader(self):
-        """Chat page should have a stable sub-header."""
-        response = self.client.get("/chat/")
-        self.assertContains(response, "chat-subheader")
-
-    def test_chat_page_renders_urgent_blocker_affordance(self):
-        """Chat page template must include the urgent blocker warning icon (#329).
-
-        The icon is Alpine-rendered conditionally on ``item.isUrgentOpen``,
-        so the raw template markup is what we assert here — if this
-        exclamation-triangle block is removed, the urgent pin affordance
-        regresses silently.
-        """
-        response = self.client.get("/chat/")
-        self.assertContains(response, "isUrgentOpen")
-        self.assertContains(response, "exclamation-triangle")
-
-    def test_chat_page_flow_tracks_for_topic_with_corpus(self):
-        """Topic with a real corpus gets its track links in context (#633).
-
-        Omni-court: the topic resolves the court, so adult_name_change
-        surfaces the ND standard + waiver tracks and the page renders
-        env-relative flow URLs.
-        """
-        response = self.client.get("/chat/?topic=adult_name_change")
-        tracks = response.context["flow_tracks"]
-        self.assertEqual([t["role"] for t in tracks], ["standard", "waiver"])
-        self.assertContains(
-            response, "/t/north-dakota/adult-name-change/standard/"
-        )
-
-    def test_chat_page_no_topic_has_no_flow_tracks(self):
-        response = self.client.get("/chat/")
-        self.assertEqual(response.context["flow_tracks"], [])
-
-    def test_chat_page_topic_without_corpus_has_no_flow_tracks(self):
-        """A topic with no authored corpus renders chat-only, no links."""
-        response = self.client.get("/chat/?topic=family")
-        self.assertEqual(response.context["flow_tracks"], [])
-
-    def test_chat_page_flow_tracks_for_second_court_topic(self):
-        """Eviction resolves the Franklin County corpora (#607).
-
-        The registry serves multiple courts side by side: eviction surfaces
-        the tenant + landlord tracks without touching the ND entries.
-        """
-        response = self.client.get("/chat/?topic=eviction")
-        tracks = response.context["flow_tracks"]
-        self.assertEqual(
-            sorted(t["role"] for t in tracks), ["landlord", "tenant"]
-        )
-        self.assertContains(response, "/t/franklin-county-oh/eviction/tenant/")
 
 
 # =============================================================================
@@ -428,110 +375,6 @@ class FooterLinkTests(TestCase):
 
 
 # =============================================================================
-# Agent Test Page Tests
-# =============================================================================
-
-
-@pytest.mark.postgres
-class AgentTestPageTests(TestCase):
-    """Tests for the /test/<agent_name>/ route."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_agent_page_renders_chat(self):
-        """Known agent should render chat interface with agent name."""
-        response = self.client.get("/test/WeatherAgent/")
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "homePage")
-
-    def test_unknown_agent_returns_404(self):
-        """Unknown agent name should return 404."""
-        response = self.client.get("/test/nonexistent/")
-        self.assertEqual(response.status_code, 404)
-
-
-# =============================================================================
-# Topic Detail Page Tests
-# =============================================================================
-
-
-@pytest.mark.postgres
-class TopicDetailTests(TestCase):
-    """Tests for topic detail pages at /topics/<slug>/."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_all_topics_render_with_correct_context(self):
-        """Each topic slug should return 200 with its title from TOPICS.
-
-        Eviction is excluded: it has reached engine parity, so /topics/eviction/
-        redirects to chat instead (test_eviction_detail_redirects_to_chat).
-        """
-        from litigant_portal.app.views import TOPICS
-
-        for slug, topic in TOPICS.items():
-            if slug == "eviction":
-                continue
-            with self.subTest(slug=slug):
-                response = self.client.get(f"/topics/{slug}/")
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.context["topic"], topic)
-
-    def test_topic_detail_passes_slug(self):
-        """Topic detail page should pass slug in template context."""
-        response = self.client.get("/topics/adult_name_change/")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["slug"], "adult_name_change")
-
-    def test_eviction_detail_redirects_to_chat(self):
-        """Eviction reached engine parity: its static page is retired and the
-        URL now redirects to the chat entry (#611)."""
-        response = self.client.get("/topics/eviction/")
-        self.assertEqual(response.status_code, 302)
-        self.assertIn("topic=eviction", response.url)
-
-    def test_invalid_slug_returns_404(self):
-        """An unknown topic slug should return 404."""
-        response = self.client.get("/topics/nonexistent/")
-        self.assertEqual(response.status_code, 404)
-
-
-# =============================================================================
-# Chat Page Topic Routing Tests
-# =============================================================================
-
-
-@pytest.mark.postgres
-class ChatPageTopicTests(TestCase):
-    """Tests for topic context routing on the chat page."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_valid_topic_passes_context(self):
-        """Chat page with valid topic param should pass topic and slug."""
-        response = self.client.get("/chat/?topic=eviction")
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNotNone(response.context["topic"])
-        self.assertEqual(response.context["topic_slug"], "eviction")
-
-    def test_invalid_topic_falls_back(self):
-        """Chat page with invalid topic param should fall back to generic."""
-        response = self.client.get("/chat/?topic=nonexistent")
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.context["topic"])
-        self.assertEqual(response.context["topic_slug"], "")
-
-    def test_no_topic_renders_generic(self):
-        """Chat page without topic param should render generic."""
-        response = self.client.get("/chat/")
-        self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.context["topic"])
-
-
-# =============================================================================
 # Deep-link Entry Tests (#327)
 # =============================================================================
 
@@ -614,58 +457,6 @@ class DeepLinkTests(TestCase):
                 msg=f"Registered court {court!r} should resolve via deep-link",
             )
             self.assertIn(f"court={court}", response.url)
-
-
-@pytest.mark.postgres
-class ChatPageCourtTests(TestCase):
-    """Tests for court parameter handling on /chat/ (#327)."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_valid_court_passes_context(self):
-        response = self.client.get(
-            "/chat/?topic=adult_name_change&court=north-dakota"
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["court_slug"], "north-dakota")
-
-    def test_missing_court_context_is_empty(self):
-        response = self.client.get("/chat/?topic=eviction")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["court_slug"], "")
-
-    def test_unknown_court_context_is_empty(self):
-        """Unknown court on /chat/ silently drops (view is permissive; deep-link is the gatekeeper)."""
-        response = self.client.get("/chat/?topic=eviction&court=made_up")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["court_slug"], "")
-
-    def test_valid_court_passes_display_name(self):
-        """Chat page with valid court should expose its display name in context."""
-        response = self.client.get(
-            "/chat/?topic=adult_name_change&court=north-dakota"
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["court_name"], "North Dakota Courts")
-
-    def test_missing_court_display_name_is_empty(self):
-        response = self.client.get("/chat/?topic=eviction")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["court_name"], "")
-
-    def test_court_name_rendered_in_subheader(self):
-        """Template renders the court-branding eyebrow when court_name is set."""
-        response = self.client.get(
-            "/chat/?topic=adult_name_change&court=north-dakota"
-        )
-        self.assertContains(response, "North Dakota Courts")
-
-    def test_court_name_absent_when_no_court(self):
-        """Template does not render the eyebrow when no court is set."""
-        response = self.client.get("/chat/?topic=eviction")
-        self.assertNotContains(response, "North Dakota Courts")
-        self.assertNotContains(response, "Franklin County Municipal Court")
 
 
 # =============================================================================
