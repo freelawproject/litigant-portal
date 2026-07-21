@@ -59,14 +59,14 @@ The engine renders one fixed, ordered corpus per `(court, topic, role)` as a sin
 
 ## Tech Stack Decisions
 
-| Decision           | Choice                        | Rationale                                 |
-| ------------------ | ----------------------------- | ----------------------------------------- |
-| **Backend**        | Django                        | Team expertise, proven at scale           |
-| **Components**     | Django Cotton                 | Server-rendered, no JS framework needed   |
-| **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed          |
-| **Reactivity**     | Alpine.js (CSP build)         | Lightweight; no `eval` — CSP compliant    |
-| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation       |
-| **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers      |
+| Decision           | Choice                        | Rationale                               |
+| ------------------ | ----------------------------- | --------------------------------------- |
+| **Backend**        | Django                        | Team expertise, proven at scale         |
+| **Components**     | Django Cotton                 | Server-rendered, no JS framework needed |
+| **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed        |
+| **Reactivity**     | Alpine.js (CSP build)         | Lightweight; no `eval` — CSP compliant  |
+| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation     |
+| **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers    |
 
 ---
 
@@ -179,21 +179,21 @@ Django-to-Alpine config passed via `data-*` attributes:
 
 All app paths are under `litigant_portal/`:
 
-| File                              | Purpose                                          |
-| --------------------------------- | ------------------------------------------------ |
-| `settings.py`                     | Django + Cotton + CSP + chat config              |
-| `app/src/main.css`                | Tailwind v4 CSS source + theme tokens            |
-| `app/static/js/theme.js`          | Alpine theme store                               |
-| `app/static/js/components.js`     | Named Alpine.data() components                   |
-| `app/static/js/chat_engine.js`    | Chat engine Alpine components (chatApp, chatUsage) |
-| `app/templates/cotton/*/`         | Component library (atoms, molecules, organisms)  |
-| `app/templates/pages/home.html`   | Dashboard with hero and topic grid               |
-| `app/templates/pages/chat/`       | Chat interface (index + partials)                |
-| `agents/`                         | Agent framework (base, tools, agents)            |
-| `app/services/chat_engine.py`     | Chat engine (streaming, tool loop, persistence)  |
-| `docker/django/Dockerfile`        | Multi-stage build (repo root)                    |
-| `docker-compose.yml`              | Local dev environment (repo root)                |
-| `docker/django/entrypoint.sh`     | Container startup commands (repo root)           |
+| File                            | Purpose                                            |
+| ------------------------------- | -------------------------------------------------- |
+| `settings.py`                   | Django + Cotton + CSP + chat config                |
+| `app/src/main.css`              | Tailwind v4 CSS source + theme tokens              |
+| `app/static/js/theme.js`        | Alpine theme store                                 |
+| `app/static/js/components.js`   | Named Alpine.data() components                     |
+| `app/static/js/chat_engine.js`  | Chat engine Alpine components (chatApp, chatUsage) |
+| `app/templates/cotton/*/`       | Component library (atoms, molecules, organisms)    |
+| `app/templates/pages/home.html` | Dashboard with hero and topic grid                 |
+| `app/templates/pages/chat/`     | Chat interface (index + partials)                  |
+| `agents/`                       | Agent framework (base, tools, agents)              |
+| `app/services/chat_engine.py`   | Chat engine (streaming, tool loop, persistence)    |
+| `docker/django/Dockerfile`      | Multi-stage build (repo root)                      |
+| `docker-compose.yml`            | Local dev environment (repo root)                  |
+| `docker/django/entrypoint.sh`   | Container startup commands (repo root)             |
 
 ---
 

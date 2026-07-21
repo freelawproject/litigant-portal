@@ -21,14 +21,14 @@ Node.js, no JS build step.
 
 ## Where things live
 
-| Thing               | Location                                                     |
-| ------------------- | ------------------------------------------------------------ |
+| Thing                        | Location                                                            |
+| ---------------------------- | ------------------------------------------------------------------- |
 | Components (source of truth) | `litigant_portal/app/templates/cotton/{atoms,molecules,organisms}/` |
-| Style guide page    | http://portal.localhost/style-guide/                          |
-| Style guide template | `litigant_portal/app/templates/pages/style_guide.html`      |
-| Style guide view    | `litigant_portal/app/views/pages.py::style_guide()`          |
-| Theme tokens        | `@theme { }` blocks in `litigant_portal/app/src/main.css`    |
-| Component CSS classes | `@layer components` in `litigant_portal/app/src/main.css`  |
+| Style guide page             | http://portal.localhost/style-guide/                                |
+| Style guide template         | `litigant_portal/app/templates/pages/style_guide.html`              |
+| Style guide view             | `litigant_portal/app/views/pages.py::style_guide()`                 |
+| Theme tokens                 | `@theme { }` blocks in `litigant_portal/app/src/main.css`           |
+| Component CSS classes        | `@layer components` in `litigant_portal/app/src/main.css`           |
 
 Component syntax: `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`.
 The current inventory is the directory listing plus the tree in

@@ -270,18 +270,18 @@ Using **LiteLLM**. The assistant's model resolves from the active Site's admin c
 
 ## Key Files
 
-| File                                                   | Purpose                              |
-| ------------------------------------------------------ | ------------------------------------ |
-| `litigant_portal/settings.py`                          | Django + Cotton + CSP + Chat config  |
-| `litigant_portal/app/src/main.css`                     | Tailwind v4 source + theme tokens    |
-| `litigant_portal/app/static/js/alpine.js`              | Alpine.js CSP build (debug)          |
-| `litigant_portal/app/static/js/alpine.min.js`          | Alpine.js CSP build (production)     |
-| `litigant_portal/app/static/js/components.js`          | Named Alpine.data() components       |
-| `litigant_portal/app/static/js/chat_engine.js`         | Chat engine Alpine components        |
-| `litigant_portal/agents/`                              | Agent framework (base, tools, agents)|
-| `litigant_portal/app/templates/cotton/`                | Component library (Atomic Design)    |
-| `litigant_portal/app/templates/pages/style_guide.html` | Style guide page                     |
-| `litigant_portal/app/views/`                           | Main views                           |
+| File                                                   | Purpose                               |
+| ------------------------------------------------------ | ------------------------------------- |
+| `litigant_portal/settings.py`                          | Django + Cotton + CSP + Chat config   |
+| `litigant_portal/app/src/main.css`                     | Tailwind v4 source + theme tokens     |
+| `litigant_portal/app/static/js/alpine.js`              | Alpine.js CSP build (debug)           |
+| `litigant_portal/app/static/js/alpine.min.js`          | Alpine.js CSP build (production)      |
+| `litigant_portal/app/static/js/components.js`          | Named Alpine.data() components        |
+| `litigant_portal/app/static/js/chat_engine.js`         | Chat engine Alpine components         |
+| `litigant_portal/agents/`                              | Agent framework (base, tools, agents) |
+| `litigant_portal/app/templates/cotton/`                | Component library (Atomic Design)     |
+| `litigant_portal/app/templates/pages/style_guide.html` | Style guide page                      |
+| `litigant_portal/app/views/`                           | Main views                            |
 
 ## Database
 

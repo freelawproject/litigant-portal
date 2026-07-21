@@ -34,12 +34,12 @@ Visit: http://localhost
 
 ## Documentation
 
-| Doc                                     | Description                       |
-| --------------------------------------- | --------------------------------- |
-| [Docs index](docs/README.md)            | Full documentation index (mini wiki) |
-| [Architecture](docs/ARCHITECTURE.md)    | Tech stack, patterns, Docker      |
-| [Agent dev guide](docs/AGENT_DEV_GUIDE.md) | Building agents on the chat engine |
-| [Security](docs/SECURITY.md)            | CSP, secrets, production headers  |
+| Doc                                        | Description                          |
+| ------------------------------------------ | ------------------------------------ |
+| [Docs index](docs/README.md)               | Full documentation index (mini wiki) |
+| [Architecture](docs/ARCHITECTURE.md)       | Tech stack, patterns, Docker         |
+| [Agent dev guide](docs/AGENT_DEV_GUIDE.md) | Building agents on the chat engine   |
+| [Security](docs/SECURITY.md)               | CSP, secrets, production headers     |
 
 ## Tech Stack
 
