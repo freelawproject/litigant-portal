@@ -1,14 +1,11 @@
 import json
-import os
 from functools import wraps
 
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.core.validators import URLValidator
-from django.http import HttpRequest, HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.http import HttpRequest, JsonResponse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
@@ -19,7 +16,6 @@ from litigant_portal.app.models.choices import (
     JurisdictionLevel,
     OpenAIModel,
     State,
-    get_default_model,
 )
 from litigant_portal.app.selectors.admin import (
     site_get,
@@ -66,33 +62,6 @@ def staff_required(view):
         return view(request, *args, **kwargs)
 
     return wrapped
-
-
-@login_required
-def dashboard(request: HttpRequest) -> HttpResponse:
-    """Admin dashboard shell — developers or active-site members only."""
-    if not user_can_access_admin(user=request.user):
-        raise PermissionDenied
-    openai_available = bool(os.environ.get("OPENAI_API_KEY"))
-    bedrock_available = bool(os.environ.get("AWS_BEARER_TOKEN_BEDROCK"))
-    model_choice_groups = []
-    if openai_available:
-        model_choice_groups.append(("OpenAI", OpenAIModel.choices))
-    if bedrock_available or not openai_available:
-        model_choice_groups.append(("AWS Bedrock", BedrockModel.choices))
-    all_model_labels = dict(OpenAIModel.choices) | dict(BedrockModel.choices)
-    return render(
-        request,
-        "v2/admin/index.html",
-        {
-            "openai_available": openai_available,
-            "bedrock_available": bedrock_available,
-            "model_choice_groups": model_choice_groups,
-            "default_model_label": all_model_labels[get_default_model()],
-            "jurisdiction_choices": JurisdictionLevel.choices,
-            "state_choices": State.choices,
-        },
-    )
 
 
 def _site_payload(site: Site) -> dict:

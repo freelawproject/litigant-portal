@@ -1,16 +1,29 @@
+import os
+
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404, HttpResponse
+from django.core.exceptions import PermissionDenied
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.http import urlencode
-from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView, UpdateView
 
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
+from litigant_portal.app.models.choices import (
+    BedrockModel,
+    JurisdictionLevel,
+    OpenAIModel,
+    State,
+    get_default_model,
+)
 from litigant_portal.app.selectors.admin import site_get_active_topics
+from litigant_portal.app.services.admin import (
+    user_can_access_admin,
+)
 from litigant_portal.app.topic_flow.answer_store import AnswerStore
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
@@ -185,7 +198,7 @@ def home(request):
 
 def chat_view(request):
     """Chat page"""
-    return render(request, "v2/chat/index.html")
+    return render(request, "pages/chat/index.html")
 
 
 def deep_link(request, court, topic):
@@ -381,7 +394,32 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
         return profile
 
     def form_valid(self, form):
-        messages.success(
-            self.request, gettext("Profile updated successfully.")
-        )
+        messages.success(self.request, _("Profile updated successfully."))
         return super().form_valid(form)
+
+
+@login_required
+def admin(request: HttpRequest) -> HttpResponse:
+    """Admin dashboard shell — developers or active-site members only."""
+    if not user_can_access_admin(user=request.user):
+        raise PermissionDenied
+    openai_available = bool(os.environ.get("OPENAI_API_KEY"))
+    bedrock_available = bool(os.environ.get("AWS_BEARER_TOKEN_BEDROCK"))
+    model_choice_groups = []
+    if openai_available:
+        model_choice_groups.append(("OpenAI", OpenAIModel.choices))
+    if bedrock_available or not openai_available:
+        model_choice_groups.append(("AWS Bedrock", BedrockModel.choices))
+    all_model_labels = dict(OpenAIModel.choices) | dict(BedrockModel.choices)
+    return render(
+        request,
+        "pages/admin/index.html",
+        {
+            "openai_available": openai_available,
+            "bedrock_available": bedrock_available,
+            "model_choice_groups": model_choice_groups,
+            "default_model_label": all_model_labels[get_default_model()],
+            "jurisdiction_choices": JurisdictionLevel.choices,
+            "state_choices": State.choices,
+        },
+    )

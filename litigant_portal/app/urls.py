@@ -36,7 +36,7 @@ app_patterns = [
         pages.topic_flow_download,
         name="topic_flow_download",
     ),
-    path("admin/", admin_views.dashboard, name="admin_dashboard"),
+    path("admin/", pages.admin, name="admin_dashboard"),
     path("chat/", pages.chat_view, name="chat"),
     path("style-guide/", pages.style_guide, name="style_guide"),
     # Profile

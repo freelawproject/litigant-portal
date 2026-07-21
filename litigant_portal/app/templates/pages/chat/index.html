@@ -3,7 +3,7 @@
 {% load static i18n %}
 
 {% block header %}
-  {% include "v2/common/header.html" %}
+  {% include "cotton/organisms/header.html" %}
 {% endblock header %}
 
 {% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
@@ -26,7 +26,7 @@
         <c-atoms.history-icon class="w-3.5 h-3.5 text-greyscale-400" />
         <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Recent Activity" %}</h2>
       </div>
-      {% include "v2/chat/partials/_thread_list.html" %}
+      {% include "pages/chat/partials/_thread_list.html" %}
     </aside>
     {# Center panel — conversation #}
     <section class="flex-1 min-w-0 flex flex-col min-h-0 lg:border-r border-greyscale-200">
@@ -274,7 +274,7 @@
         <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
         <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
       </div>
-      {% include "v2/chat/partials/_agent_state.html" %}
+      {% include "pages/chat/partials/_agent_state.html" %}
     </aside>
     {# History drawer — the collapsed left panel. A slide-over on tablet, full takeover on phones. #}
     <div x-show="historyOpen"
@@ -316,7 +316,7 @@
           </button>
         </div>
       </div>
-      {% include "v2/chat/partials/_thread_list.html" %}
+      {% include "pages/chat/partials/_thread_list.html" %}
     </aside>
     {# Briefcase drawer — the collapsed right panel. A slide-over on tablet, full takeover on phones. #}
     <div x-show="briefcaseOpen"
@@ -349,7 +349,7 @@
           <c-atoms.icon name="x-mark" class="w-4 h-4" />
         </button>
       </div>
-      {% include "v2/chat/partials/_agent_state.html" %}
+      {% include "pages/chat/partials/_agent_state.html" %}
     </aside>
     {# Delete confirmation modal #}
     <div x-show="confirmingDelete"
