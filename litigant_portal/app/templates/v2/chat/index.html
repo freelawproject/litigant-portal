@@ -18,46 +18,31 @@
   {# The chat component is agent-agnostic: point it at any agent's API mount. #}
   <div x-data="chatApp"
        data-agent-base="/api/agents/assistant/"
-       class="flex-1 flex flex-row min-h-0">
-    {# Left panel — conversation history #}
-    <aside class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
+       class="relative overflow-hidden flex-1 flex flex-row min-h-0">
+    {# Left panel — conversation history (collapses into the history drawer below lg) #}
+    {# Sidebar width tracks the viewport slightly but the center column absorbs most of a squeeze. #}
+    <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
       <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
-        <c-atoms.icon name="chat-bubble-left-right" class="w-3.5 h-3.5 text-greyscale-400" />
+        <c-atoms.history-icon class="w-3.5 h-3.5 text-greyscale-400" />
         <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Recent Activity" %}</h2>
       </div>
-      <div class="flex-1 overflow-y-auto min-h-0 p-2 space-y-1">
-        <template x-for="thread in threads" :key="thread.id">
-          <div class="block rounded-lg px-3 py-2 cursor-pointer select-none transition-colors border"
-               x-bind:class="thread.rowClass"
-               x-bind:data-thread-id="thread.id"
-               x-on:click="selectThread">
-            <div class="flex items-center gap-2">
-              {# Status dot — grey idle, pulsing yellow streaming, green unseen #}
-              <span class="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                    x-bind:class="thread.dotClass"></span>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between gap-2">
-                  <p class="text-sm font-medium text-greyscale-800 truncate" x-text="thread.title"></p>
-                  <time class="text-xs text-greyscale-400 flex-shrink-0"
-                        x-bind:datetime="thread.last_at"
-                        x-text="thread.relativeTime"></time>
-                </div>
-                <p class="text-xs text-greyscale-500 truncate mt-0.5" x-text="thread.snippet"></p>
-              </div>
-            </div>
-          </div>
-        </template>
-        <p x-show="showEmpty"
-           x-cloak
-           class="text-xs text-greyscale-400 px-3 py-2">{% trans "No conversations yet." %}</p>
-      </div>
+      {% include "v2/chat/partials/_thread_list.html" %}
     </aside>
     {# Center panel — conversation #}
-    <section class="flex-1 min-w-0 flex flex-col min-h-0 border-r border-greyscale-200">
+    <section class="flex-1 min-w-0 flex flex-col min-h-0 lg:border-r border-greyscale-200">
       {# Toolbar — thread title + actions on the left, New chat on the right #}
       <div class="flex items-center justify-between gap-2 px-4 py-2 border-b border-greyscale-200 flex-shrink-0 min-h-[3.25rem]">
-        {# Thread title + actions menu (only with an active thread loaded) #}
-        <div x-show="threadId" x-cloak class="flex items-center gap-1 min-w-0">
+        <div class="flex items-center gap-2 min-w-0">
+          {# History drawer trigger — appears once the left panel collapses #}
+          <button type="button"
+                  x-on:click="openHistory"
+                  aria-label='{% trans "Recent activity" %}'
+                  title="{% trans "Recent activity" %}"
+                  class="lg:hidden flex-shrink-0 -ml-1 inline-flex items-center justify-center w-8 h-8 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+            <c-atoms.history-icon class="w-4.5 h-4.5" />
+          </button>
+          {# Thread title + actions menu (only with an active thread loaded) #}
+          <div x-show="threadId" x-cloak class="flex items-center gap-1 min-w-0">
           <h2 class="text-sm font-medium text-greyscale-800 truncate" x-text="threadTitle"></h2>
           <div class="relative flex-shrink-0 flex items-center">
             <button type="button"
@@ -92,16 +77,27 @@
               </button>
             </div>
           </div>
+          </div>
         </div>
-        {# New chat #}
-        <button type="button"
-                x-show="threadId"
-                x-cloak
-                x-on:click="newChat"
-                class="flex-shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 cursor-pointer">
-          <c-atoms.icon name="plus" class="w-4 h-4" />
-          {% trans "New chat" %}
-        </button>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          {# New chat #}
+          <button type="button"
+                  x-show="threadId"
+                  x-cloak
+                  x-on:click="newChat"
+                  class="flex-shrink-0 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 cursor-pointer">
+            <c-atoms.icon name="plus" class="w-4 h-4" />
+            {% trans "New chat" %}
+          </button>
+          {# Briefcase drawer trigger — appears once the right panel collapses #}
+          <button type="button"
+                  x-on:click="openBriefcase"
+                  aria-label='{% trans "Briefcase" %}'
+                  title="{% trans "Briefcase" %}"
+                  class="lg:hidden flex-shrink-0 -mr-1 inline-flex items-center justify-center w-8 h-8 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+            <c-atoms.icon name="briefcase" class="w-4.5 h-4.5" />
+          </button>
+        </div>
       </div>
       {# Messages #}
       <div x-ref="messagesArea" class="flex-1 overflow-y-auto min-h-0 p-4 space-y-3">
@@ -265,28 +261,95 @@
               <c-atoms.icon name="paper-clip" class="w-3.5 h-3.5" />
               {% trans "Attach files" %}
             </button>
-            <p class="text-xs text-greyscale-400 select-none">
+            <p class="hidden sm:block text-xs text-greyscale-400 select-none">
               {% trans "Press Enter to send, Shift + Enter for a new line." %}
             </p>
           </div>
         </form>
       </div>
     </section>
-    {# Right panel — live agent state #}
-    <aside class="hidden lg:flex w-1/5 flex-shrink-0 flex-col min-h-0">
+    {# Right panel — briefcase (live agent state for now; collapses into the briefcase drawer below lg) #}
+    <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col min-h-0">
       <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
-        <c-atoms.icon name="cpu-chip" class="w-3.5 h-3.5 text-greyscale-400" />
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Agent State" %}</h2>
+        <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
       </div>
-      <div class="flex-1 overflow-y-auto min-h-0 p-4">
-        <pre x-show="hasState"
-             x-cloak
-             class="text-xs text-greyscale-600 whitespace-pre-wrap break-words"
-             x-text="stateJson"></pre>
-        <p x-show="noState"
+      {% include "v2/chat/partials/_agent_state.html" %}
+    </aside>
+    {# History drawer — the collapsed left panel. A slide-over on tablet, full takeover on phones. #}
+    <div x-show="historyOpen"
+         x-cloak
+         x-transition.opacity
+         x-on:click="closeHistory"
+         class="lg:hidden absolute inset-0 z-30 bg-greyscale-900/30 backdrop-blur-sm"></div>
+    <aside x-show="historyOpen"
            x-cloak
-           class="text-xs text-greyscale-400">{% trans "No state yet." %}</p>
+           x-on:keydown.escape.window="closeHistory"
+           x-transition:enter="transition-transform duration-300 ease-out"
+           x-transition:enter-start="-translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition-transform duration-200 ease-in"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="-translate-x-full"
+           role="dialog"
+           aria-modal="true"
+           aria-label='{% trans "Recent Activity" %}'
+           class="lg:hidden absolute inset-y-0 left-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-r border-greyscale-200 sm:shadow-2xl">
+      <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <c-atoms.history-icon class="w-3.5 h-3.5 text-greyscale-400" />
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Recent Activity" %}</h2>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0">
+          <button type="button"
+                  x-on:click="newChat"
+                  aria-label='{% trans "New chat" %}'
+                  title="{% trans "New chat" %}"
+                  class="inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+            <c-atoms.icon name="plus" class="w-4 h-4" />
+          </button>
+          <button type="button"
+                  x-on:click="closeHistory"
+                  aria-label='{% trans "Close" %}'
+                  class="inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+            <c-atoms.icon name="x-mark" class="w-4 h-4" />
+          </button>
+        </div>
       </div>
+      {% include "v2/chat/partials/_thread_list.html" %}
+    </aside>
+    {# Briefcase drawer — the collapsed right panel. A slide-over on tablet, full takeover on phones. #}
+    <div x-show="briefcaseOpen"
+         x-cloak
+         x-transition.opacity
+         x-on:click="closeBriefcase"
+         class="lg:hidden absolute inset-0 z-30 bg-greyscale-900/30 backdrop-blur-sm"></div>
+    <aside x-show="briefcaseOpen"
+           x-cloak
+           x-on:keydown.escape.window="closeBriefcase"
+           x-transition:enter="transition-transform duration-300 ease-out"
+           x-transition:enter-start="translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition-transform duration-200 ease-in"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="translate-x-full"
+           role="dialog"
+           aria-modal="true"
+           aria-label='{% trans "Briefcase" %}'
+           class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
+      <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
+        </div>
+        <button type="button"
+                x-on:click="closeBriefcase"
+                aria-label='{% trans "Close" %}'
+                class="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+          <c-atoms.icon name="x-mark" class="w-4 h-4" />
+        </button>
+      </div>
+      {% include "v2/chat/partials/_agent_state.html" %}
     </aside>
     {# Delete confirmation modal #}
     <div x-show="confirmingDelete"

@@ -448,6 +448,9 @@ document.addEventListener('alpine:init', () => {
     streaming: false,
     sendDisabled: true,
     menuOpen: false,
+    // Slide-over drawers for the collapsed side panels at narrow widths.
+    historyOpen: false,
+    briefcaseOpen: false,
     confirmingDelete: false,
     thinkingVisible: false,
     // The in-flight stream context, if any. It owns the message array it
@@ -484,6 +487,24 @@ document.addEventListener('alpine:init', () => {
     init() {
       this.base = this.$root.dataset.agentBase
       this.loadThreads()
+      this.consumeQueryMessage()
+    },
+
+    // Landing with "?q=..." fires that message as the start of a fresh chat.
+    // The param is stripped from the URL (replaceState) before sending, so a
+    // refresh or share of the page won't fire it again.
+    consumeQueryMessage() {
+      const params = new URLSearchParams(window.location.search)
+      if (!params.has('q')) return
+      const message = (params.get('q') || '').trim()
+      params.delete('q')
+      const query = params.toString()
+      const url =
+        window.location.pathname +
+        (query ? '?' + query : '') +
+        window.location.hash
+      window.history.replaceState(null, '', url)
+      if (message) this.sendMessage(message, null)
     },
 
     // --- History ---
@@ -543,6 +564,7 @@ document.addEventListener('alpine:init', () => {
     // --- Conversation ---
 
     newChat() {
+      this.closeDrawers()
       this.threadId = null
       this.threadTitle = ''
       // A fresh array detaches the view from any in-flight stream, which
@@ -562,6 +584,31 @@ document.addEventListener('alpine:init', () => {
 
     closeMenu() {
       this.menuOpen = false
+    },
+
+    // --- Drawers (collapsed side panels at narrow widths) ---
+
+    openHistory() {
+      this.historyOpen = true
+      this.briefcaseOpen = false
+    },
+
+    closeHistory() {
+      this.historyOpen = false
+    },
+
+    openBriefcase() {
+      this.briefcaseOpen = true
+      this.historyOpen = false
+    },
+
+    closeBriefcase() {
+      this.briefcaseOpen = false
+    },
+
+    closeDrawers() {
+      this.historyOpen = false
+      this.briefcaseOpen = false
     },
 
     // Open the delete-confirmation modal for the active thread.
@@ -596,6 +643,7 @@ document.addEventListener('alpine:init', () => {
 
     // Click handler for a history row — the thread id rides on the element.
     selectThread(e) {
+      this.closeDrawers()
       this.openThread(e.currentTarget.dataset.threadId)
     },
 
