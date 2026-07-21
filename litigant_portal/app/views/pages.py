@@ -37,158 +37,6 @@ from litigant_portal.app.topic_flow.renderer import (
 )
 from litigant_portal.app.topic_flow.validation import validate_answers
 
-TOPICS = {
-    "eviction": {
-        "title": _("Housing & Eviction"),
-        "subtitle": _(
-            "Understanding the eviction process, tenant rights, and landlord obligations"
-        ),
-        "description": _("Landlord disputes, eviction defense, tenant rights"),
-        "icon": "home",
-        "meta_description": _(
-            "Learn about the eviction process, tenant rights, and landlord obligations. General legal information for self-represented litigants."
-        ),
-        "prompts": [
-            _(
-                "I received an eviction notice and need to understand my options"
-            ),
-            _("My landlord isn't making repairs — what are my rights?"),
-            _("I'm behind on rent and worried about eviction"),
-        ],
-        "context_sections": [
-            {
-                "heading": _("The eviction process"),
-                "body": _(
-                    "Eviction follows a legal process: written notice, court"
-                    " filing, hearing, judgment, and enforcement. A landlord"
-                    " cannot skip steps or use self-help eviction (changing"
-                    " locks, shutting off utilities)."
-                ),
-            },
-            {
-                "heading": _("Key tenant rights"),
-                "body": _(
-                    "You have the right to proper written notice, habitable"
-                    " living conditions, protection from retaliation, freedom"
-                    " from discrimination under the Fair Housing Act, and the"
-                    " right to appear and respond in court."
-                ),
-            },
-            {
-                "heading": _("If you received a notice"),
-                "body": _(
-                    "Read the notice carefully and note any deadlines. Do not"
-                    " ignore it — missing a court date usually results in a"
-                    " default judgment. Gather your lease, rent receipts,"
-                    " photos, and communications with your landlord."
-                ),
-            },
-        ],
-    },
-    "family": {
-        "title": _("Family & Divorce"),
-        "subtitle": _(
-            "Divorce, custody, child support, and domestic violence resources"
-        ),
-        "description": _("Divorce, custody, child support, domestic issues"),
-        "icon": "users",
-        "meta_description": _(
-            "Learn about divorce, child custody, child support, and family court. General legal information for self-represented litigants."
-        ),
-        "prompts": [],
-        "context_sections": [],
-    },
-    "small-claims": {
-        "title": _("Small Claims"),
-        "subtitle": _(
-            "Resolving disputes and understanding the small claims court process"
-        ),
-        "description": _("Disputes under $10,000, debt collection defense"),
-        "icon": "currency-dollar",
-        "meta_description": _(
-            "Learn about filing or defending a small claims case. General legal information for self-represented litigants."
-        ),
-        "prompts": [],
-        "context_sections": [],
-    },
-    "consumer": {
-        "title": _("Consumer Rights"),
-        "subtitle": _(
-            "Debt collection rules, contract disputes, and consumer protections"
-        ),
-        "description": _("Scams, unfair business practices, contracts"),
-        "icon": "shield-check",
-        "meta_description": _(
-            "Learn about consumer rights, debt collection rules, and contract disputes. General legal information for self-represented litigants."
-        ),
-        "prompts": [],
-        "context_sections": [],
-    },
-    "adult_name_change": {
-        "title": _("Adult Name Change"),
-        "subtitle": _(
-            "Legally changing your name — standalone petition process"
-        ),
-        "description": _("Petition, publication, and records cascade"),
-        "icon": "identification",
-        "meta_description": _(
-            "Learn about legally changing your name as an adult — petition process, publication requirements, and updating your records. General legal information for self-represented litigants."
-        ),
-        "prompts": [
-            _("I want to change my last name back after a divorce"),
-            _("I want to change my first or middle name"),
-            _("What forms do I need for a name change?"),
-        ],
-        "context_sections": [
-            {
-                "heading": _("Standalone vs. divorce-bundled"),
-                "body": _(
-                    "An adult name change is usually a standalone court"
-                    " petition, separate from any divorce case. If your divorce"
-                    " decree didn't include a name change, you'll file a new"
-                    " petition in your local district court."
-                ),
-            },
-            {
-                "heading": _("Two tracks: standard and waiver"),
-                "body": _(
-                    "Most jurisdictions offer two paths. A standard track —"
-                    " for any change involving the last name — usually requires"
-                    " publishing notice in a newspaper and a waiting period."
-                    " A waiver track — for first or middle name only — may"
-                    " allow the publication requirement to be waived by the"
-                    " judge."
-                ),
-            },
-            {
-                "heading": _("What to know up front"),
-                "body": _(
-                    "You'll file a petition with supporting forms, pay a"
-                    " filing fee (waivers are often available for"
-                    " income-qualifying filers), and — on the standard track —"
-                    " publish notice and wait before the judge reviews your"
-                    " petition. Background check timing varies by judge; a"
-                    " quick call to the clerk of court can confirm whether it"
-                    " happens before or after you file."
-                ),
-            },
-        ],
-    },
-    "traffic": {
-        "title": _("Traffic & Fines"),
-        "subtitle": _(
-            "Traffic violations, fines, license issues, and your options"
-        ),
-        "description": _("Tickets, license issues, court fines"),
-        "icon": "truck",
-        "meta_description": _(
-            "Learn about traffic tickets, fines, license suspension, and your options. General legal information for self-represented litigants."
-        ),
-        "prompts": [],
-        "context_sections": [],
-    },
-}
-
 
 def home(request):
     """Home page - dashboard with hero and topic grid."""
@@ -217,22 +65,6 @@ def deep_link(request, court, topic):
 
     query = urlencode({"topic": topic.lower(), "court": court.lower()})
     return redirect(f"{reverse('pages:chat')}?{query}")
-
-
-def topic_detail(request, slug):
-    """Topic detail page - informational content about a legal topic."""
-    topic = TOPICS.get(slug)
-    if not topic:
-        raise Http404(f"Topic '{slug}' not found")
-    # Eviction has reached engine parity (live corpus + guided flow), so its
-    # legacy static info page is retired: this URL now sends people to the
-    # chat entry. Other topics keep their static page until they reach parity
-    # too (see #611).
-    if slug == "eviction":
-        return redirect(f"{reverse('pages:chat')}?topic=eviction")
-    return render(
-        request, f"pages/topics/{slug}.html", {"topic": topic, "slug": slug}
-    )
 
 
 def topic_flow(request, court, topic, role):
@@ -366,7 +198,8 @@ def accessibility(request):
 
 def style_guide(request):
     """Design tokens and component library"""
-    return render(request, "pages/style_guide.html", {"topics": TOPICS})
+    topics = {t["slug"]: t for t in site_get_active_topics()}
+    return render(request, "pages/style_guide.html", {"topics": topics})
 
 
 class ProfileDetailView(LoginRequiredMixin, DetailView):

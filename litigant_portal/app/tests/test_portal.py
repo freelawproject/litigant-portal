@@ -375,53 +375,6 @@ class FooterLinkTests(TestCase):
 
 
 # =============================================================================
-# Topic Detail Page Tests
-# =============================================================================
-
-
-@pytest.mark.postgres
-class TopicDetailTests(TestCase):
-    """Tests for topic detail pages at /topics/<slug>/."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_all_topics_render_with_correct_context(self):
-        """Each topic slug should return 200 with its title from TOPICS.
-
-        Eviction is excluded: it has reached engine parity, so /topics/eviction/
-        redirects to chat instead (test_eviction_detail_redirects_to_chat).
-        """
-        from litigant_portal.app.views import TOPICS
-
-        for slug, topic in TOPICS.items():
-            if slug == "eviction":
-                continue
-            with self.subTest(slug=slug):
-                response = self.client.get(f"/topics/{slug}/")
-                self.assertEqual(response.status_code, 200)
-                self.assertEqual(response.context["topic"], topic)
-
-    def test_topic_detail_passes_slug(self):
-        """Topic detail page should pass slug in template context."""
-        response = self.client.get("/topics/adult_name_change/")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["slug"], "adult_name_change")
-
-    def test_eviction_detail_redirects_to_chat(self):
-        """Eviction reached engine parity: its static page is retired and the
-        URL now redirects to the chat entry (#611)."""
-        response = self.client.get("/topics/eviction/")
-        self.assertEqual(response.status_code, 302)
-        self.assertIn("topic=eviction", response.url)
-
-    def test_invalid_slug_returns_404(self):
-        """An unknown topic slug should return 404."""
-        response = self.client.get("/topics/nonexistent/")
-        self.assertEqual(response.status_code, 404)
-
-
-# =============================================================================
 # Deep-link Entry Tests (#327)
 # =============================================================================
 

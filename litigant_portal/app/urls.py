@@ -12,19 +12,13 @@ from litigant_portal.app.views import (
 )
 from litigant_portal.app.views import (
     assistant,
+    health,
     pages,
-)
-from litigant_portal.app.views import (
-    health as health_views,
 )
 
 app_patterns = [
-    # Main pages
     path("", pages.home, name="home"),
-    path("about/", pages.about, name="about"),
-    path("privacy/", pages.privacy, name="privacy"),
-    path("accessibility/", pages.accessibility, name="accessibility"),
-    path("topics/<slug:slug>/", pages.topic_detail, name="topic_detail"),
+    path("chat/", pages.chat_view, name="chat"),
     path("t/<slug:court>/<slug:topic>/", pages.deep_link, name="deep_link"),
     path(
         "t/<slug:court>/<slug:topic>/<slug:role>/",
@@ -37,13 +31,14 @@ app_patterns = [
         name="topic_flow_download",
     ),
     path("admin/", pages.admin, name="admin_dashboard"),
-    path("chat/", pages.chat_view, name="chat"),
-    path("style-guide/", pages.style_guide, name="style_guide"),
-    # Profile
     path("profile/", pages.ProfileDetailView.as_view(), name="profile"),
     path(
         "profile/edit/", pages.ProfileEditView.as_view(), name="profile_edit"
     ),
+    path("about/", pages.about, name="about"),
+    path("privacy/", pages.privacy, name="privacy"),
+    path("accessibility/", pages.accessibility, name="accessibility"),
+    path("style-guide/", pages.style_guide, name="style_guide"),
 ]
 
 assistant_patterns = [
@@ -123,8 +118,7 @@ urlpatterns = [
         ),
         prefix_default_language=False,
     ),
-    # Health check
-    path("api/health/", health_views.health, name="health"),
+    # Assistant API Endpoints
     path(
         "api/agents/assistant/",
         include(
@@ -132,6 +126,7 @@ urlpatterns = [
             namespace="assistant",
         ),
     ),
+    # Admin API Endpoints
     path(
         "api/admin/",
         include(
@@ -139,6 +134,8 @@ urlpatterns = [
             namespace="admin_api",
         ),
     ),
+    # Health check
+    path("api/health/", health.health, name="health"),
     # Allauth Routes
     path("accounts/", include("allauth.urls")),
     # Django Admin
