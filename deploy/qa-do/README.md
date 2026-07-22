@@ -36,6 +36,13 @@ and rolls it out on the box over SSH, then health-checks `/api/health/`.
   it read-only at `/static/`. A Docker named volume can't be used here — it inits
   root-owned and the container runs as non-root `appuser`, so `collectstatic`
   would fail. See one-time setup below.
+- **docassemble state:** named volumes on `/usr/share/docassemble/backup` and
+  `/files` — docassemble backs itself up there (clean stop + nightly) and
+  restores on boot, so playground interviews, config, and the admin password
+  survive deploys. Without them a recreate wipes everything and resets the admin
+  login to its public default (#701, the 2026-07 wipe). If a recreate ever comes
+  up empty anyway (unsafe shutdown skips the restore), re-seed from
+  `docassemble/nd-name-change/` per that folder's README.
 
 ## One-time box setup (static directory)
 
