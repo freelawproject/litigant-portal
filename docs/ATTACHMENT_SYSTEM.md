@@ -8,7 +8,7 @@ Code: [`services/assistant.py`](../litigant_portal/app/services/assistant.py)
 (upload lifecycle) ·
 [`services/attachments.py`](../litigant_portal/app/services/attachments.py)
 (LLM hydration) ·
-[`agents_v2/tools/query_document.py`](../litigant_portal/agents_v2/tools/query_document.py)
+[`agents/tools/query_document.py`](../litigant_portal/agents/tools/query_document.py)
 (reader subagent)
 
 ## 1. Supported types & upload

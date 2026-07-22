@@ -59,14 +59,14 @@ The engine renders one fixed, ordered corpus per `(court, topic, role)` as a sin
 
 ## Tech Stack Decisions
 
-| Decision           | Choice                        | Rationale                                 |
-| ------------------ | ----------------------------- | ----------------------------------------- |
-| **Backend**        | Django                        | Team expertise, proven at scale           |
-| **Components**     | Django Cotton                 | Server-rendered, no JS framework needed   |
-| **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed          |
-| **Reactivity**     | AlpineJS (standard build)     | Lightweight, supports x-html for markdown |
-| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation       |
-| **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers      |
+| Decision           | Choice                        | Rationale                               |
+| ------------------ | ----------------------------- | --------------------------------------- |
+| **Backend**        | Django                        | Team expertise, proven at scale         |
+| **Components**     | Django Cotton                 | Server-rendered, no JS framework needed |
+| **Styling**        | Tailwind CSS (standalone CLI) | Utility-first, no Node.js needed        |
+| **Reactivity**     | Alpine.js (CSP build)         | Lightweight; no `eval` — CSP compliant  |
+| **Component Docs** | Custom `/style-guide/` page   | Django-native, living documentation     |
+| **A11y Testing**   | Browser DevTools + Lighthouse | No dependencies, built into browsers    |
 
 ---
 
@@ -75,12 +75,14 @@ The engine renders one fixed, ordered corpus per `(court, topic, role)` as a sin
 ### Component Structure (Atomic Design)
 
 ```
-templates/
+litigant_portal/app/templates/
 ├── cotton/                    # Django Cotton components
-│   ├── atoms/                 # Basic elements: alert, button, chat_bubble, icon, input, link, nav_link, search_input, select, typing_indicator
-│   ├── molecules/             # Combinations: chat_message, logo, search_bar, search_result, topic_card
-│   └── organisms/             # Complex sections: chat_window, footer, header, hero, topic_grid
-├── pages/                     # Full pages (extend base.html)
+│   ├── atoms/                 # Basic elements: alert, auto_dismiss, badge, button, checkbox, icon, input, link, nav_link, search_input, select
+│   ├── molecules/             # Combinations: auth_status, flow_links, flow_section_*, form_errors, form_field, form_field_select, logo, search_bar, toast_container, topic_card, user_menu
+│   └── organisms/             # Complex sections: auth_cta, auth_layout, chat_header, fallback_resources, footer, header, hero, topic_grid
+├── pages/                     # Full pages (extend base.html): home, chat/, topic_flow, admin/, profile/, about, privacy, accessibility, style_guide
+├── tools/                     # Agent tool call/result cards (server-rendered, shipped over SSE)
+├── account/                   # Allauth template overrides
 └── base.html                  # Responsive base layout
 ```
 
@@ -107,8 +109,8 @@ Dashboard home with separate chat page:
 ```
 
 - **Dashboard** (`/`) shows hero + topic grid + footer
-- **Chat** (`/chat/`) is a full-screen chat interface (no footer, `overflow-hidden`)
-- **Agent testing** (`/test/<agent_name>/`) renders chat with a specific agent
+- **Chat** (`/chat/`) is a full-screen chat interface with thread and upload sidebars (no footer, `overflow-hidden`)
+- **Topic Flow** (`/t/<court>/<topic>/<role>/`) renders a linear corpus as a single scrollable page (see Topic Flow section above)
 
 ### Naming Conventions
 
@@ -119,11 +121,13 @@ Dashboard home with separate chat page:
 
 ### State Flow (Django → Alpine)
 
-Django renders initial state, Alpine handles client reactivity:
+Django renders initial state, Alpine handles client reactivity. The CSP build
+requires named `Alpine.data()` components — no inline expressions — with
+Django-to-Alpine config passed via `data-*` attributes:
 
 ```html
-<div x-data="{ expanded: false }" x-init="initWithState({{ state|safe }})">
-  <!-- Alpine handles UI state, Django handles data -->
+<div x-data="userMenu" data-authenticated="{{ user.is_authenticated }}">
+  <button x-on:click="toggle" x-bind:aria-expanded="open">Menu</button>
 </div>
 ```
 
@@ -165,7 +169,7 @@ Django renders initial state, Alpine handles client reactivity:
 ## Security
 
 - **CSP configured** - Inline handlers blocked, Alpine.js directives used
-- **AlpineJS standard build** - Currently using standard build for markdown rendering (x-html). CSP build planned for production hardening.
+- **Alpine.js CSP build** (`@alpinejs/csp`) - No `eval`/`new Function`; named components and dot-path expressions only
 - **django-csp** - Header management via `CSP_*` settings
 - **VDP:** [free.law/vulnerability-disclosure-policy](https://free.law/vulnerability-disclosure-policy/)
 
@@ -173,81 +177,81 @@ Django renders initial state, Alpine handles client reactivity:
 
 ## Key Files
 
-| File                          | Purpose                                         |
-| ----------------------------- | ----------------------------------------------- |
-| `config/settings.py`          | Django + Cotton config                          |
-| `static/css/main.css`         | Tailwind v4 CSS source + theme tokens           |
-| `static/js/theme.js`          | Alpine theme store                              |
-| `static/js/chat.js`           | Alpine chat components (homePage, chatWindow)   |
-| `templates/cotton/*/`         | Component library (atoms, molecules, organisms) |
-| `templates/pages/home.html`   | Dashboard with hero and topic grid              |
-| `templates/pages/chat.html`   | Full-screen chat interface                      |
-| `docker/django/Dockerfile`    | Multi-stage build (dev + prod)                  |
-| `docker-compose.yml`          | Dev/prod profiles with PostgreSQL               |
-| `docker/django/entrypoint.sh` | Container startup commands                      |
+All app paths are under `litigant_portal/`:
+
+| File                            | Purpose                                            |
+| ------------------------------- | -------------------------------------------------- |
+| `settings.py`                   | Django + Cotton + CSP + chat config                |
+| `app/src/main.css`              | Tailwind v4 CSS source + theme tokens              |
+| `app/static/js/theme.js`        | Alpine theme store                                 |
+| `app/static/js/components.js`   | Named Alpine.data() components                     |
+| `app/static/js/chat_engine.js`  | Chat engine Alpine components (chatApp, chatUsage) |
+| `app/templates/cotton/*/`       | Component library (atoms, molecules, organisms)    |
+| `app/templates/pages/home.html` | Dashboard with hero and topic grid                 |
+| `app/templates/pages/chat/`     | Chat interface (index + partials)                  |
+| `agents/`                       | Agent framework (base, tools, agents)              |
+| `app/services/chat_engine.py`   | Chat engine (streaming, tool loop, persistence)    |
+| `docker/django/Dockerfile`      | Multi-stage build (repo root)                      |
+| `docker-compose.yml`            | Local dev environment (repo root)                  |
+| `docker/django/entrypoint.sh`   | Container startup commands (repo root)             |
 
 ---
 
 ## Docker
 
-### Development
+`docker-compose.yml` is **local development only** — production is deployed
+outside this repo and consumes nothing from this file (see the root
+[README](../README.md#production)).
 
 ```bash
-cp .env.example .env
-docker compose --profile dev up
-# or: make docker-dev
+cp .env.example .env        # Add your OPENAI_API_KEY
+make docker                 # Start dev environment
 ```
 
-- Mounts source code for hot reload
-- Tailwind CSS watch mode
-- PostgreSQL (pgvector) via Docker Compose service
-
-### Production
-
-```bash
-docker compose --profile prod up
-# or: make docker-prod
-```
-
-- Gunicorn WSGI server
-- PostgreSQL (pgvector) with persistent volume
-- Pre-built CSS (minified)
-- Non-root container user
-
-### Architecture
+Four services on one machine, fronted by Caddy on port 80 (`http://localhost`
+or `http://portal.localhost` — not `:8000`, which is the container-internal
+port Caddy proxies to):
 
 ```
 ┌──────────────────────────────────────────┐
-│ docker-compose.yml                       │
+│ docker-compose.yml (local dev)           │
 ├──────────────────────────────────────────┤
-│ Profile: dev          Profile: prod      │
-│ ┌───────────┐         ┌───────────┐      │
-│ │django-dev │         │django-prod│      │
-│ │ runserver │         │ gunicorn  │      │
-│ │ + tailwind│         │           │      │
-│ └─────┬─────┘         └─────┬─────┘      │
-│       └───────┐    ┌────────┘            │
-│           ┌───┴────┴──┐                  │
-│           │ postgres   │                  │
-│           │ (pgvector) │                  │
-│           └────────────┘                  │
+│  ┌───────┐    ┌────────────────────┐     │
+│  │ caddy │───▶│ django             │     │
+│  │ :80   │    │ runserver + tailwind│     │
+│  └───────┘    └───────┬────────────┘     │
+│                ┌──────┴──────┐           │
+│         ┌──────┴─────┐  ┌────┴────┐      │
+│         │ postgres   │  │ redis   │      │
+│         │ (pgvector) │  │         │      │
+│         └────────────┘  └─────────┘      │
 └──────────────────────────────────────────┘
 ```
+
+- Mounts source code for hot reload, Tailwind CSS watch mode
+- Self-hosted/partner boxes update via `make update` — see
+  [updating.md](./updating.md)
 
 ---
 
 ## AI Chat
 
-The portal includes an AI chat feature using LiteLLM with OpenAI (gpt-4o-mini by default).
+The portal runs on a general-purpose chat engine with domain behavior packaged
+as agents. Full authoring guide: [AGENT_DEV_GUIDE.md](./AGENT_DEV_GUIDE.md) ·
+uploads: [ATTACHMENT_SYSTEM.md](./ATTACHMENT_SYSTEM.md).
 
 ### Architecture
 
 ```
-User Input → POST /api/chat/send/ → Django creates message
-           → GET /api/chat/stream/<session_id>/ (SSE)
-           → Groq API (OpenAI-compatible)
-           → StreamingHttpResponse → Alpine.js updates UI
+User Input → POST /api/agents/assistant/stream/
+           → chat engine runs the agent loop (LLM turns + tool calls, via LiteLLM)
+           → StreamingHttpResponse streams SSE events
+             (thread, content_delta, tool_call, tool_response, state, done, error)
+           → Alpine.js updates UI progressively
 ```
+
+Thread list/history/usage and uploads live under the same
+`/api/agents/assistant/` namespace (`views/assistant.py`).
 
 ### Configuration
 
@@ -257,13 +261,16 @@ User Input → POST /api/chat/send/ → Django creates message
 ```bash
 OPENAI_API_KEY=sk-...                         # Required for chat
 CHAT_ENABLED=true                             # Enable/disable chat feature
-CHAT_MODEL=openai/gpt-4o-mini                 # LiteLLM model string
+CHAT_MODEL=openai/gpt-4o-mini                 # LiteLLM model string (fallback)
 ```
 
-### Why OpenAI via LiteLLM?
+Deployed sites resolve their model from the active Site's admin config
+(`site_get_model`), falling back to `CHAT_MODEL`.
 
-- **LiteLLM** - Unified interface for 100+ LLM providers
-- **Easy to swap** - Change `CHAT_MODEL` env var to switch providers (e.g. `groq/llama-3.3-70b-versatile`)
+### Why LiteLLM?
+
+- **Unified interface** for 100+ LLM providers
+- **Easy to swap** - Change the model string to switch providers (e.g. `bedrock/...`)
 - **No local setup** - No GPU requirements, works anywhere
 
 ---
@@ -274,5 +281,5 @@ CHAT_MODEL=openai/gpt-4o-mini                 # LiteLLM model string
 - [AlpineJS](https://alpinejs.dev/)
 - [Tailwind CSS](https://tailwindcss.com/)
 - [LiteLLM](https://docs.litellm.ai/) - Unified LLM API interface
-- [WCAG 2.1 Quick Ref](https://www.w3.org/WAI/WCAG21/quickref/)
+- [WCAG 2.2 Quick Ref](https://www.w3.org/WAI/WCAG22/quickref/)
 - [CourtListener Frontend](https://github.com/freelawproject/courtlistener/wiki/New-Frontend-Architecture)
