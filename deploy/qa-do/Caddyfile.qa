@@ -5,6 +5,10 @@
 # Contracts). Caddy auto-provisions HTTPS via Let's Encrypt for {$DOMAIN}.
 
 {$DOMAIN} {
+	# Bare /interview (no trailing slash) wouldn't match /interview/* and would
+	# fall through to the LP app as a 404; 308 preserves method/body for any POST.
+	redir /interview /interview/ 308
+
 	# Document-assembly interviews. `handle` (not `handle_path`) keeps the
 	# /interview/ prefix, which docassemble expects because POSTURLROOT mounts it
 	# there. Matched before the catch-all so it wins.

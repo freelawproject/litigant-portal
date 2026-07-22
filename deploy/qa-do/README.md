@@ -29,13 +29,23 @@ and rolls it out on the box over SSH, then health-checks `/api/health/`.
 - **Postgres:** a standalone containerized pgvector instance with its own
   docker-managed volume, seeded by the `web-prod` entrypoint's `migrate` on boot.
   It is **not** shared with AWS — the box's `POSTGRES_PASSWORD` is its own
-  generated secret, independent of the EKS `litigant-env` secret. QA holds only
-  seed/demo data; reset with `docker compose -f deploy/qa-do/docker-compose.qa.yml down -v`.
+  generated secret, independent of the EKS `litigant-env` secret. The DB holds
+  only seed/demo data, but ⚠️ **don't reset with `down -v`** — that removes
+  _every_ named volume in the file, including the docassemble state below
+  (re-triggering the #701 wipe). To wipe just the DB:
+  `docker compose -f deploy/qa-do/docker-compose.qa.yml down && docker volume rm litigant-portal_qa_postgres_data`.
 - **Static files:** bind-mounted from `/opt/litigant-portal/qa-static` on the
   box. Django (`web-prod` entrypoint) runs `collectstatic` into it; Caddy serves
   it read-only at `/static/`. A Docker named volume can't be used here — it inits
   root-owned and the container runs as non-root `appuser`, so `collectstatic`
   would fail. See one-time setup below.
+- **docassemble state:** named volumes on `/usr/share/docassemble/backup` and
+  `/files` — docassemble backs itself up there (clean stop + nightly) and
+  restores on boot, so playground interviews, config, and the admin password
+  survive deploys. Without them a recreate wipes everything and resets the admin
+  login to its public default (#701, the 2026-07 wipe). If a recreate ever comes
+  up empty anyway (unsafe shutdown skips the restore), re-seed from
+  `docassemble/nd-name-change/` per that folder's README.
 
 ## One-time box setup (static directory)
 
