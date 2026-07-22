@@ -29,8 +29,11 @@ and rolls it out on the box over SSH, then health-checks `/api/health/`.
 - **Postgres:** a standalone containerized pgvector instance with its own
   docker-managed volume, seeded by the `web-prod` entrypoint's `migrate` on boot.
   It is **not** shared with AWS — the box's `POSTGRES_PASSWORD` is its own
-  generated secret, independent of the EKS `litigant-env` secret. QA holds only
-  seed/demo data; reset with `docker compose -f deploy/qa-do/docker-compose.qa.yml down -v`.
+  generated secret, independent of the EKS `litigant-env` secret. The DB holds
+  only seed/demo data, but ⚠️ **don't reset with `down -v`** — that removes
+  _every_ named volume in the file, including the docassemble state below
+  (re-triggering the #701 wipe). To wipe just the DB:
+  `docker compose -f deploy/qa-do/docker-compose.qa.yml down && docker volume rm litigant-portal_qa_postgres_data`.
 - **Static files:** bind-mounted from `/opt/litigant-portal/qa-static` on the
   box. Django (`web-prod` entrypoint) runs `collectstatic` into it; Caddy serves
   it read-only at `/static/`. A Docker named volume can't be used here — it inits

@@ -92,6 +92,13 @@ jobs:
             # images. --remove-orphans cleans up any service renamed/removed since.
             $COMPOSE pull
             $COMPOSE up -d --no-build --remove-orphans
+
+            # Compose only recreates a container when its service definition
+            # changes — edits to the bind-mounted Caddyfile.qa don't count, and
+            # caddy doesn't watch its config. Reload explicitly so Caddyfile
+            # changes apply on the deploy that ships them (zero-downtime; no-op
+            # when the config is unchanged).
+            $COMPOSE exec -T caddy caddy reload --config /etc/caddy/Caddyfile
         env:
           DEPLOY_REF: ${{ inputs.deploy_ref }}
 
