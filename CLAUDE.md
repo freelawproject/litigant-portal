@@ -11,11 +11,6 @@ Access to justice portal for self-represented litigants. Django 6.0 with server-
 Building a complete eviction flow from discovery to resolution for court partner demos. One topic, end-to-end, at production quality — every button/link does something, no placeholders. Court-neutral information where partner-specific data isn't available yet.
 
 - [Milestone](https://github.com/freelawproject/litigant-portal/milestone/3) - Beta Demo: Housing Eviction Flow
-- [Legal Flow](docs/overview-mapped-legal-flow.md) - Generic 9-stage flow (Triage / Prepare / Resolve); legal review artifact
-- [Happy Path Narrative](docs/happy-path-jane.md) - Full AI · Auth end-to-end story (base for all variations)
-- [Demo Flow](docs/demo-flow-jane.md) - Jane's 8-step demo flow (abbreviated)
-- [User Flows Matrix](docs/user-flows.md) - 3×2 matrix (Full AI / Hybrid / Basic × Anon / Auth)
-- [Retro Notes](docs/itc-demo-retro.md) - Lessons learned from ITC demo (Jan 2026)
 
 ## Environment Philosophy
 
@@ -89,7 +84,7 @@ Rules for authoring user-facing content — corpus YAML (`litigant_portal/conten
 
 ## Issue creation
 
-See [`docs/issue-conventions.md`](docs/issue-conventions.md) for the full label color scheme and template rationale.
+See [`docs/wiki/issue-conventions.md`](docs/wiki/issue-conventions.md) for the full label color scheme and template rationale.
 
 New issues use the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are disabled in `config.yml`, so the web UI forces a template; the CLI must opt in via `--template`.
 
@@ -135,16 +130,21 @@ Field ids are validated against the chosen template — a section that doesn't m
 
 ## Sprint mapping
 
-When someone references a sprint by its web-team letter/artist name ("the Ed Sheeran sprint", "Sprint F"), translate to the matching LP Iteration on board #75 via [`docs/sprint-map.md`](docs/sprint-map.md), then pull the work from #75 + git. This crosswalk is LP-specific — other JI repos don't necessarily align with the web-team retro, so it lives here, not in org-level instructions.
+When someone references a sprint by its web-team letter/artist name ("the Ed Sheeran sprint", "Sprint F"), translate to the matching LP Iteration on board #75 via the sprint-map crosswalk (JI-team record kept outside the repo; the board/vault tooling holds the current copy), then pull the work from #75 + git. This crosswalk is LP-specific — other JI repos don't necessarily align with the web-team retro, so it lives here, not in org-level instructions.
 
 ## Sizing & estimation
 
-How we size issues so velocity maps to reality (the org-level scale + board mechanics live in `~/flp/CLAUDE.md`; these are the LP-specific practice and calibration record):
+The compact rules (board mechanics live at the org level; sizing history, anchors, and calibration records are JI-team material, kept outside the repo):
 
-- [`docs/sizing-guide.md`](docs/sizing-guide.md) — contributor/onboarding: get your estimate in the zone (size the work not the diff, incident work = size the diagnosis, XL = split). Reference anchors from real LP issues.
-- [`docs/sizing-calibration.md`](docs/sizing-calibration.md) — living team record: the estimate → verify-L1 → verify-L2 model, how to run a calibration pass, and a dated log of lessons (first entry: the It2–It4 velocity baseline + It3 reconstruction).
+- **Scale:** XS 0.5 (~1–2h) · S 1 (half day) · M 3 (1–2 days) · L 5 (3–4 days), calibrated to AI-assisted effort. Size is the one human input; the board derives Estimate.
+- **Size the work, not the diff** — a one-line fix after three days of debugging isn't an XS; a 600-line mechanical rename can be. Incident work: size the diagnosis. Count off-repo work (content authoring, infra, verification).
+- **XL is a flag, not a size** — split into sub-issues before it enters a sprint.
+- **P0 is fires only** — must ship today and/or prod is down. Never "important."
+- **When in doubt, size smaller**, note the reasoning in the issue, and let iteration review correct the scale. An estimate is a forecast, not a promise.
 
 ## Architecture
+
+**Open contracts:** design partner-facing data surfaces (corpus schemas, file formats, API shapes) around explicit validated contracts, never around a particular producer or tool. Validation at the boundary enforces conformance; how the data was produced stays on the producer's side. The worked example is the Topic Flow corpus — see the `topic_flow/schema.py` module docstring. Apply the same pattern to new surfaces (ingestion, search).
 
 ### Front-End Principles
 
@@ -253,7 +253,7 @@ Using Alpine.js **CSP build** (`@alpinejs/csp` v3.14.9). Local files, no CDN. Th
 
 ## AI Chat Feature
 
-The portal runs on a general-purpose chat engine (threads, streaming, tool-calling loop, uploads) with all domain behavior packaged as agents. Agent authoring guide: [docs/AGENT_DEV_GUIDE.md](docs/AGENT_DEV_GUIDE.md) · uploads: [docs/ATTACHMENT_SYSTEM.md](docs/ATTACHMENT_SYSTEM.md).
+The portal runs on a general-purpose chat engine (threads, streaming, tool-calling loop, uploads) with all domain behavior packaged as agents. Agent authoring guide: [docs/ai-tooling/AGENT_DEV_GUIDE.md](docs/ai-tooling/AGENT_DEV_GUIDE.md) · uploads: [docs/ai-tooling/ATTACHMENT_SYSTEM.md](docs/ai-tooling/ATTACHMENT_SYSTEM.md).
 
 ### How It Works
 
@@ -295,4 +295,4 @@ docker compose down -v && docker compose up
 
 ## Versioning
 
-All frontend assets are local files, not CDN. Pinned versions and update commands: [docs/pinned-assets.md](docs/pinned-assets.md).
+All frontend assets are local files, not CDN.
