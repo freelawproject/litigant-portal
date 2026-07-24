@@ -5,12 +5,12 @@ One page for the document-assembly side: authoring gotchas, the local bench, QA 
 ## Authoring gotchas (learned on #560)
 
 - **`variable name:`, not `variable:`.** The wrong key is silently unrecognized; the block then fails as `No question type could be determined for this section`.
-- **A standalone `attachment:` block needs `variable name:`.** A standalone *list* of attachments is invalid — lists are only valid attached to a question. Multiple downloads on one screen = `attachments:` (plural) on a question.
+- **A standalone `attachment:` block needs `variable name:`.** A standalone _list_ of attachments is invalid — lists are only valid attached to a question. Multiple downloads on one screen = `attachments:` (plural) on a question.
 - **The assembly loop.** Referencing an attachment's variable from the same question that defines it → `Infinite loop: <var> already looked for`. Define documents in standalone blocks, merge in a `code` block, let the final screen only link results.
 - **`pdf_concatenate()`** takes the attachment's `DAFileCollection` directly (`petition_doc`, not `petition_doc.pdf`), returns a `DAFile`; download via `url_for(attachment=True)`. Not in the published docs — signature read from `docassemble/base/util.py`.
-- **Map AcroForm fields by page + position, never by the name's apparent meaning.** Acrobat auto-names are ambiguous (`Text1`, `First name_2`) and these court forms label blanks *after* the blank, so a field named `X` frequently fills the *next* label's blank (the trailing-label shift). A name from nearby preprinted text can be a different blank entirely (the Confidential form's `State Of North Dakota` is the Case No line — leave it empty). Extract names + positions with `pdfminer.six` (walk `/Fields`, read `/Rect` + page).
+- **Map AcroForm fields by page + position, never by the name's apparent meaning.** Acrobat auto-names are ambiguous (`Text1`, `First name_2`) and these court forms label blanks _after_ the blank, so a field named `X` frequently fills the _next_ label's blank (the trailing-label shift). A name from nearby preprinted text can be a different blank entirely (the Confidential form's `State Of North Dakota` is the Case No line — leave it empty). Extract names + positions with `pdfminer.six` (walk `/Fields`, read `/Rect` + page).
 - **Pin the form revision** (bundled Petition is "NC Pet/Rev. May 2024"). A court revising the form silently breaks the map — re-verify on revision.
-- **Programmatic checks don't prove placement.** Zero-orphans/zero-unmapped cross-checks catch bad *names*; every placement bug survived them. Only bench-filling the interview and *reading the output PDF* catches shifts and misassigned blanks.
+- **Programmatic checks don't prove placement.** Zero-orphans/zero-unmapped cross-checks catch bad _names_; every placement bug survived them. Only bench-filling the interview and _reading the output PDF_ catches shifts and misassigned blanks.
 
 ## Local bench
 

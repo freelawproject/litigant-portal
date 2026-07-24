@@ -69,9 +69,9 @@ CSP_STYLE_SRC = ("'self'", *ASSET_ORIGINS)
 
 ### What's Blocked
 
-| Blocked                   | Alternative                  |
-| ------------------------- | ---------------------------- |
-| `onclick="..."`           | `x-on:click="..."` (Alpine)  |
-| `<script>inline</script>` | External JS file             |
-| `javascript:` URLs        | Proper event handlers        |
-| `style="..."`             | CSS classes                  |
+| Blocked                   | Alternative                 |
+| ------------------------- | --------------------------- |
+| `onclick="..."`           | `x-on:click="..."` (Alpine) |
+| `<script>inline</script>` | External JS file            |
+| `javascript:` URLs        | Proper event handlers       |
+| `style="..."`             | CSS classes                 |
