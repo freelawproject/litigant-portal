@@ -120,6 +120,19 @@ services:
       USEHTTPS: 'false'
       BEHINDHTTPSLOADBALANCER: 'true'
       TIMEZONE: 'America/New_York'
+    # docassemble writes a full backup (its internal Postgres, playground files,
+    # config) to /usr/share/docassemble/backup on clean stop + nightly cron, and
+    # restores from it on boot (jhpyle/docassemble Docker/initialize.sh). Without
+    # these volumes every recreate wipes all interviews and resets the admin
+    # login to its public default (#701). The pinned project name resolves them
+    # to the pre-existing litigant-portal_docassemble_qa_* volumes on the box.
+    # The 600s grace period lets the shutdown backup finish before docker kills
+    # the container — SIGKILL both loses the delta and marks the next boot as an
+    # unsafe shutdown, which skips the restore.
+    stop_grace_period: 600s
+    volumes:
+      - docassemble_qa_backup:/usr/share/docassemble/backup
+      - docassemble_qa_files:/usr/share/docassemble/files
 
   caddy:
     image: caddy:2-alpine
@@ -144,3 +157,9 @@ volumes:
   qa_postgres_data:
   caddy_data:
   caddy_config:
+  # docassemble state (see the service's volume comment). These names resolve to
+  # litigant-portal_docassemble_qa_{backup,files} — the volumes the original
+  # override created — so the first boot after this lands restores the pre-wipe
+  # playground.
+  docassemble_qa_backup:
+  docassemble_qa_files:
