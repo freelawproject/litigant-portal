@@ -23,7 +23,9 @@ One page for the document-assembly side: authoring gotchas, the local bench, QA 
 
 ## QA hosting (path-routed under the LP hostname)
 
-docassemble serves at `/interview/` on the existing LP hostname — path, not subdomain, so a partner needs one CNAME (see Deployment principles under [Production](../README.md#production)). The QA-only compose override (`docker-compose.docassemble.qa.yml`) joins docassemble to the LP network (Caddy reaches `docassemble:80`, no public port); the route is `docker/caddy/conf.d/docassemble.caddy`. A base-only prod deploy loads none of it. State persists across deploys, and `down -v` is fenced off docassemble's volumes (#701).
+docassemble serves at `/interview/` on the existing LP hostname — path, not subdomain, so a partner needs one CNAME (see Deployment principles under [Production](../README.md#production)). It's a service in the DO QA stack (`deploy/qa-do/docker-compose.qa.yml`), so it deploys, restarts, and is removed with the rest of the box. Caddy reaches it as `docassemble:80` on the project network, no public port, and the `handle /interview/*` block in `deploy/qa-do/Caddyfile.qa` passes the prefix through.
+
+**State lives in two named volumes**, not in the image: `docassemble_qa_backup:/usr/share/docassemble/backup` and `docassemble_qa_files:/usr/share/docassemble/files`. docassemble keeps everything internally (its own Postgres, playground files, server config, user accounts), and its `initialize.sh` writes a full backup on clean stop and nightly by cron, restoring from it on boot. That backup volume is what makes a container recreate safe. `stop_grace_period: 600s` gives the shutdown backup time to finish: a SIGKILL loses the delta and flags the next boot as an unsafe shutdown, which skips the restore (#701).
 
 Gotchas the compose files don't explain:
 
@@ -31,10 +33,11 @@ Gotchas the compose files don't explain:
 - **Live updates hang** = the WebSocket isn't threading the prefix. Verify `POSTURLROOT` took and Caddy is upgrading the socket — test this first after any deploy change.
 - **`BEHINDHTTPSLOADBALANCER=true`**: Caddy terminates TLS and forwards plain HTTP; docassemble still builds `https://` URLs and secure cookies.
 - **`DA_HOSTNAME` is a bare hostname, no scheme** (`qa.litigantportal.com`, unlike `DOMAIN`). A `https://` prefix produces `https://https://…` URLs and broken cookies; unset, compose substitutes an empty string with only a warning and docassemble runs hostnameless.
-- **≥ 4 GB RAM** — docassemble idles ~2 GB and OOMs on a 2 GB box. First boot inits its own DB: 5–10 minutes.
-- **Don't run the bench and QA container on the same box** — stop `docassemble-dev` first.
+- **≥ 4 GB RAM** — docassemble idles ~2 GB and OOMs on a 2 GB box. First boot pulls the ~20 GB image and inits its own DB: 5–10 minutes.
+- **Playground empty or default admin login after a recreate** = the state volumes weren't mounted, or an unsafe shutdown skipped the restore. Check `docker volume ls | grep docassemble` before re-uploading anything by hand; if the volumes are there, a recreate with the mounts restores them.
+- **Rotate the admin password on a fresh instance.** It boots with docassemble's public default login. A restored instance keeps the rotated one.
 
-docassemble's real production home rides the CL infra move (#461); QA hosting is the interim demo host.
+docassemble's real production home rides the CL infra move (#461); QA hosting is the interim demo host. The state requirement travels with it: whatever runs docassemble on AWS must mount `/usr/share/docassemble/backup` (volume or S3-backed), or the #701 wipe repeats on the first recreate.
 
 ## Topic Flow → docassemble handoff contract
 
