@@ -75,7 +75,8 @@ def topic_flow_detail(request, topic_slug, flow_slug):
             "slug": form.slug,
             "name": form.name,
             "url": reverse(
-                "flow_form", kwargs={**slugs, "form_slug": form.slug}
+                "topic_flow_api:form",
+                kwargs={**slugs, "form_slug": form.slug},
             ),
         }
         for form in flow.forms.all()
@@ -96,7 +97,9 @@ def topic_flow_detail(request, topic_slug, flow_slug):
                 for index, section in enumerate(flow.sections.all(), start=1)
             ],
             "has_interview": bool(flow.fields),
-            "interview_data_url": reverse("flow_interview", kwargs=slugs),
+            "interview_data_url": reverse(
+                "topic_flow_api:interview", kwargs=slugs
+            ),
             "deadlines": topic_flow_deadline_rows(flow=flow, values=values),
             "forms": forms,
             "links": flow.links.all(),
@@ -106,10 +109,12 @@ def topic_flow_detail(request, topic_slug, flow_slug):
             "interview_url": DOCASSEMBLE_DEMO_URLS.get(
                 (topic_slug, flow_slug)
             ),
-            "packet_url": reverse("flow_packet", kwargs=slugs),
-            "answers_url": reverse("flow_answers", kwargs=slugs),
-            "calendar_url": reverse("flow_calendar", kwargs=slugs),
-            "contacts_vcf_url": reverse("flow_contacts", kwargs=slugs),
+            "packet_url": reverse("topic_flow_api:packet", kwargs=slugs),
+            "answers_url": reverse("topic_flow_api:answers", kwargs=slugs),
+            "calendar_url": reverse("topic_flow_api:calendar", kwargs=slugs),
+            "contacts_vcf_url": reverse(
+                "topic_flow_api:contacts", kwargs=slugs
+            ),
         },
     )
 
