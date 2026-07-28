@@ -1,10 +1,34 @@
 import logging
 
+from django.contrib.auth.models import Group, User
 from django.db import transaction
 
 from litigant_portal.app.models import UserIdentity
 
 logger = logging.getLogger(__name__)
+
+ADMINS_GROUP = "Admins"
+DEVELOPERS_GROUP = "Developers"
+
+
+def user_admin_toggle(*, user: User) -> bool:
+    """Flip a user's membership in the Admins group."""
+    group = Group.objects.get(name=ADMINS_GROUP)
+    if user.groups.filter(pk=group.pk).exists():
+        user.groups.remove(group)
+        return False
+    user.groups.add(group)
+    return True
+
+
+def user_developer_toggle(*, user: User) -> bool:
+    """Flip a user's membership in the Developers group."""
+    group = Group.objects.get(name=DEVELOPERS_GROUP)
+    if user.groups.filter(pk=group.pk).exists():
+        user.groups.remove(group)
+        return False
+    user.groups.add(group)
+    return True
 
 
 def user_identity_ensure(*, user) -> UserIdentity:
