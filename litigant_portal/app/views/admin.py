@@ -120,6 +120,7 @@ from litigant_portal.app.services.user import (
 
 USERS_PER_PAGE = 20
 FORM_PDF_MAX_BYTES = 10 * 1024 * 1024
+DEADLINE_OFFSET_DAYS_MAX = 36500
 
 
 def admin_access_required(view):
@@ -547,6 +548,10 @@ def _deadline_fields(
         offset_days = int(data.get("offset_days") or 0)
     except (TypeError, ValueError):
         return None, _("Offset must be a whole number of days")
+    if abs(offset_days) > DEADLINE_OFFSET_DAYS_MAX:
+        return None, _("Offset must be within %s days") % (
+            DEADLINE_OFFSET_DAYS_MAX
+        )
     offset_from = str(data.get("offset_from") or "").strip()
     field = topic_flow_date_field_get(flow=flow, name=offset_from)
     if field is None:
