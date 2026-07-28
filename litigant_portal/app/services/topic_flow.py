@@ -337,7 +337,7 @@ def topic_flow_form_fill(
 
 
 def topic_flow_packet(*, flow: TopicFlow, values: dict) -> bytes:
-    """Every flow form filled and merged into one PDF, in form order. """
+    """Every flow form filled and merged into one PDF, in form order."""
     resolved = _python_values(flow, values)
     writer = PdfWriter()
     for form in flow.forms.all():

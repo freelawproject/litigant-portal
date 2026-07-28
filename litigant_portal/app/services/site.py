@@ -62,9 +62,7 @@ def site_models_update(
     """Update the site's AI model selections."""
     site.fast_model = fast_model
     site.assistant_model = assistant_model
-    site.save(
-        update_fields=["fast_model", "assistant_model", "updated_at"]
-    )
+    site.save(update_fields=["fast_model", "assistant_model", "updated_at"])
     return site
 
 
