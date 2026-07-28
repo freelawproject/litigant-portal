@@ -1,0 +1,499 @@
+{% extends "base.html" %}
+
+{% load static i18n %}
+
+{% block title %}
+  {{ flow.name }} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
+
+{% block main_class %}min-h-0 flex flex-col{% endblock main_class %}
+
+{% block content %}
+  {# App-frame layout mirroring pages/chat and pages/admin: the page fills #}
+  {# the viewport, the flow-name band stays put, and the three columns #}
+  {# scroll independently (no dividers). Below lg the columns collapse into #}
+  {# one scrolling column — the interactive rail stacks above the prose, #}
+  {# the TOC hides. #}
+  {# The counted strings ride on data-* so gettext still sees them here — #}
+  {# topic_flow.js interpolates the {placeholders}. #}
+  <div x-data="flowPage"
+       data-answers-url="{{ answers_url }}"
+       data-interview-url="{{ interview_data_url }}"
+       data-step-counter-text='{% trans "Step {current} of {total}" %}'
+       data-step-fallback-text='{% trans "Step {current}" %}'
+       data-progress-text='{% trans "{answered} of {total} answered" %}'
+       class="flex-1 min-h-0 flex flex-col">
+    <header class="flex-shrink-0 border-b border-greyscale-100 bg-primary-50 px-4 py-4 sm:px-6">
+      <h1 class="text-xl font-bold text-greyscale-900">{{ flow.name }}</h1>
+    </header>
+    {# relative on the row and on each scroller is load-bearing: sr-only #}
+    {# spans (e.g. the link atom's "opens in new tab" text) are absolutely #}
+    {# positioned, and without a positioned ancestor inside the clip they #}
+    {# escape to the viewport and create phantom page scroll. #}
+    <div class="relative flex-1 min-h-0 mx-auto w-full max-w-[100rem] px-4 sm:px-6 lg:px-8 flex flex-col overflow-y-auto lg:flex-row lg:overflow-hidden lg:gap-8">
+      {# Left — table of contents. The pr/-mr pair keeps the scrollbar in #}
+      {# the column gap instead of over the links. #}
+      <nav aria-label='{% trans "On this page" %}'
+           class="relative hidden lg:block w-56 xl:w-64 flex-shrink-0 min-h-0 overflow-y-auto [scrollbar-gutter:stable] py-8 pl-2 -ml-2 pr-4 -mr-4">
+        <ul class="list-none pl-0 space-y-0.5">
+          {% for section in sections %}
+            <li>
+              <a href="#{{ section.anchor }}"
+                 class="block rounded-md px-2.5 py-1.5 text-sm text-greyscale-600 hover:bg-greyscale-100 hover:text-greyscale-900 transition-colors">{{ section.heading }}</a>
+            </li>
+          {% endfor %}
+          {% if has_forms %}
+            <li>
+              <a href="#your-documents"
+                 class="block rounded-md px-2.5 py-1.5 text-sm text-greyscale-600 hover:bg-greyscale-100 hover:text-greyscale-900 transition-colors">{% trans "Your documents" %}</a>
+            </li>
+          {% endif %}
+          {% if links %}
+            <li>
+              <a href="#links"
+                 class="block rounded-md px-2.5 py-1.5 text-sm text-greyscale-600 hover:bg-greyscale-100 hover:text-greyscale-900 transition-colors">{% trans "Links" %}</a>
+            </li>
+          {% endif %}
+          {% if contacts %}
+            <li>
+              <a href="#contacts"
+                 class="block rounded-md px-2.5 py-1.5 text-sm text-greyscale-600 hover:bg-greyscale-100 hover:text-greyscale-900 transition-colors">{% trans "Contacts" %}</a>
+            </li>
+          {% endif %}
+          {% if resources %}
+            <li>
+              <a href="#resources"
+                 class="block rounded-md px-2.5 py-1.5 text-sm text-greyscale-600 hover:bg-greyscale-100 hover:text-greyscale-900 transition-colors">{% trans "Resources" %}</a>
+            </li>
+          {% endif %}
+        </ul>
+      </nav>
+      {# Center — the flow's sections, then links/contacts/resources #}
+      <div class="relative min-w-0 flex-1 min-h-0 lg:overflow-y-auto py-8">
+        <div class="mx-auto max-w-4xl">
+          {% for section in sections %}
+            <section id="{{ section.anchor }}" class="mb-8">
+              {% if section.heading %}
+                <h2 class="mb-3 text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
+              {% endif %}
+              <div class="flow-prose text-greyscale-700">{{ section.html }}</div>
+            </section>
+          {% endfor %}
+          {% if links %}
+            <section id="links" class="mb-8">
+              <h2 class="mb-3 text-lg font-semibold text-greyscale-900">{% trans "Links" %}</h2>
+              <ul class="space-y-2 text-greyscale-700">
+                {% for link in links %}
+                  <li>
+                    <c-atoms.link href="{{ link.url }}" target="_blank" external_icon="true">{{ link.name }}</c-atoms.link>
+                  </li>
+                {% endfor %}
+              </ul>
+            </section>
+          {% endif %}
+          {% if contacts %}
+            <section id="contacts" class="mb-8">
+              <h2 class="mb-3 text-lg font-semibold text-greyscale-900">{% trans "Contacts" %}</h2>
+              <ul class="space-y-4 text-greyscale-700">
+                {% for contact in contacts %}
+                  <li>
+                    <div class="font-medium text-greyscale-900">{{ contact.name }}</div>
+                    {% if contact.phone %}
+                      <p class="text-sm text-greyscale-700">
+                        <c-atoms.link href="tel:{{ contact.phone }}">{{ contact.phone }}</c-atoms.link>
+                      </p>
+                    {% endif %}
+                    {% if contact.email %}
+                      <p class="text-sm text-greyscale-700">
+                        <c-atoms.link href="mailto:{{ contact.email }}">{{ contact.email }}</c-atoms.link>
+                      </p>
+                    {% endif %}
+                    {% if contact.url %}
+                      <p class="text-sm text-greyscale-700">
+                        <c-atoms.link href="{{ contact.url }}" target="_blank">{{ contact.url }}</c-atoms.link>
+                      </p>
+                    {% endif %}
+                    {% if contact.note %}
+                      <p class="text-sm text-greyscale-500">{{ contact.note }}</p>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+              <a href="{{ contacts_vcf_url }}"
+                 class="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 transition-colors">
+                <c-atoms.icon name="identification" class="w-3.5 h-3.5" />
+                {% trans "Save contacts" %}
+              </a>
+            </section>
+          {% endif %}
+          {% if resources %}
+            <section id="resources" class="mb-8">
+              <h2 class="mb-3 text-lg font-semibold text-greyscale-900">{% trans "Resources" %}</h2>
+              <ul class="space-y-3 text-greyscale-700">
+                {% for resource in resources %}
+                  <li>
+                    <c-atoms.link href="{{ resource.url }}" target="_blank" external_icon="true">{{ resource.label }}</c-atoms.link>
+                    {% if resource.note %}
+                      <p class="text-sm text-greyscale-500">{{ resource.note }}</p>
+                    {% endif %}
+                  </li>
+                {% endfor %}
+              </ul>
+            </section>
+          {% endif %}
+        </div>
+      </div>
+      {# Right — the interactive rail. order-first stacks it above the prose #}
+      {# in the single below-lg column (the details form leads). #}
+      {# Matches the TOC width. The pl/-ml pair gives focus rings room #}
+      {# inside the scroll clip; the wider pr/-mr pair does the same on #}
+      {# the right while pushing the scrollbar into the page padding. #}
+      <aside class="relative order-first lg:order-none w-full lg:w-80 xl:w-88 flex-shrink-0 min-h-0 lg:overflow-y-auto lg:[scrollbar-gutter:stable] py-8 space-y-6 lg:pl-2 lg:-ml-2 lg:pr-4 lg:-mr-4">
+        {% if interview_url %}
+          {# Temporary link-out to the hardcoded DocAssemble demo interview #}
+          {# — see _DOCASSEMBLE_DEMO_URLS in views/pages.py. Demoted to an #}
+          {# outline button now that the real interview owns the primary #}
+          {# action below. #}
+          <c-atoms.button
+            href="{{ interview_url }}"
+            variant="outline"
+            target="_blank"
+            rel="noopener"
+          >
+            <c-atoms.icon name="arrow-top-right-on-square" class="w-4 h-4" />
+            {% trans "DocAssemble demo" %}
+            <span class="sr-only">{% trans "(opens in a new tab)" %}</span>
+          </c-atoms.button>
+        {% endif %}
+        {% if has_interview %}
+          {# Interview launcher. The questions themselves live in the modal #}
+          {# at the foot of this page — the rail only shows how far along #}
+          {# the litigant is and gets them back in. #}
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+            {% csrf_token %}
+            <div class="flex items-center gap-1.5 mb-1">
+              <c-atoms.icon name="clipboard-document-list" class="w-4 h-4 text-greyscale-400" />
+              <h2 class="text-sm font-semibold text-greyscale-900">{% trans "Your answers" %}</h2>
+              {# Only worth offering once there's something to wipe. #}
+              <button type="button"
+                      x-show="hasAnswers"
+                      x-cloak
+                      x-on:click="openClear"
+                      class="ml-auto -mr-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-greyscale-500 hover:bg-greyscale-100 hover:text-red-600 cursor-pointer transition-colors">
+                {% trans "Clear" %}
+              </button>
+            </div>
+            <p class="text-xs text-greyscale-500 mb-3">{% trans "Answer a few questions and we'll fill in your court forms." %}</p>
+            <noscript>
+              <p class="mb-3 text-xs text-red-600">{% trans "Answering these questions requires JavaScript." %}</p>
+            </noscript>
+            {# Gated on interviewReady, not hydrated: the interview arrives #}
+            {# from topic_flow_api:interview after init(), and an empty #}
+            {# bar would #}
+            {# flash in the gap. #}
+            <div x-show="interviewReady" x-cloak class="mb-3">
+              <div class="h-1.5 w-full overflow-hidden rounded-full bg-greyscale-100">
+                <div class="h-full rounded-full bg-primary-600 transition-all duration-300"
+                     x-bind:style="progressStyle"></div>
+              </div>
+              <p class="mt-1.5 text-xs text-greyscale-500" x-text="progressLabel"></p>
+            </div>
+            <button type="button"
+                    x-on:click="openInterview"
+                    x-bind:disabled="interviewPending"
+                    class="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer transition-colors">
+              {% trans "Fill out your forms" %}
+              <c-atoms.icon name="arrow-right" class="w-4 h-4" />
+            </button>
+          </div>
+        {% endif %}
+        {% if has_forms %}
+          <div id="your-documents" class="rounded-xl border border-greyscale-200 bg-white p-4">
+            <div class="flex items-center gap-1.5 mb-1">
+              <c-atoms.icon name="document-text" class="w-4 h-4 text-greyscale-400" />
+              <h2 class="text-sm font-semibold text-greyscale-900">{% trans "Your documents" %}</h2>
+            </div>
+            <p class="text-xs text-greyscale-500 mb-3">{% trans "Court forms filled in with your details." %}</p>
+            <ul class="list-none pl-0 space-y-2">
+              {% for form in forms %}
+                <li>
+                  <a href="{{ form.url }}"
+                     class="inline-flex items-center gap-1.5 text-sm text-primary-700 underline hover:no-underline">
+                    <c-atoms.icon name="arrow-down-tray" class="w-3.5 h-3.5 text-greyscale-400" />
+                    {{ form.name }}
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+            <a href="{{ packet_url }}"
+               class="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 transition-colors">
+              <c-atoms.icon name="arrow-down-tray" class="w-4 h-4" />
+              {% trans "Download your packet" %}
+            </a>
+          </div>
+        {% endif %}
+        {% if deadlines %}
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+            <div class="flex items-center gap-1.5 mb-3">
+              <c-atoms.icon name="calendar" class="w-4 h-4 text-greyscale-400" />
+              <h2 class="text-sm font-semibold text-greyscale-900">{% trans "Deadlines" %}</h2>
+            </div>
+            {# Server-rendered rows double as the hydration seed — init() #}
+            {# reads the data attributes, then the decorated list below #}
+            {# takes over so saved answers recompute the dates in place. #}
+            <ul x-show="notHydrated" class="list-none pl-0 space-y-3">
+              {% for deadline in deadlines %}
+                <li data-deadline
+                    data-label="{{ deadline.label }}"
+                    data-description="{{ deadline.description }}"
+                    data-date="{% if deadline.date %}{{ deadline.date|date:'Y-m-d' }}{% endif %}">
+                  <div class="text-sm font-medium text-greyscale-900">{{ deadline.label }}</div>
+                  {% if deadline.date %}
+                    <p class="text-sm text-greyscale-900">
+                      <time datetime="{{ deadline.date|date:'Y-m-d' }}">{{ deadline.date|date:"F j, Y" }}</time>
+                    </p>
+                  {% else %}
+                    <p class="text-xs text-greyscale-500">{% trans "Enter your dates above to see this deadline." %}</p>
+                  {% endif %}
+                  {% if deadline.description %}
+                    <p class="text-xs text-greyscale-500">{{ deadline.description }}</p>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+            <ul x-show="hydrated" x-cloak class="list-none pl-0 space-y-3">
+              <template x-for="deadline in deadlines" :key="deadline.label">
+                <li>
+                  <div class="text-sm font-medium text-greyscale-900" x-text="deadline.label"></div>
+                  <p x-show="deadline.hasDate" class="text-sm text-greyscale-900" x-text="deadline.dateLabel"></p>
+                  <p x-show="deadline.noDate" class="text-xs text-greyscale-500">{% trans "Enter your dates above to see this deadline." %}</p>
+                  <p x-show="deadline.hasDescription" class="text-xs text-greyscale-500" x-text="deadline.description"></p>
+                </li>
+              </template>
+            </ul>
+            {# Shown once any deadline has a computed date. Before Alpine #}
+            {# (or without JS) it stays visible — the .ics is just empty #}
+            {# until the source dates are entered. #}
+            <a href="{{ calendar_url }}"
+               x-show="hasCalendar"
+               class="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 transition-colors">
+              <c-atoms.icon name="calendar" class="w-3.5 h-3.5" />
+              {% trans "Add to calendar" %}
+            </a>
+          </div>
+        {% endif %}
+      </aside>
+    </div>
+    {% if has_interview %}
+      {# Guided interview modal. Answers POST on every Next, so a refresh #}
+      {# loses only the wizard position, never the answers. #}
+      <div x-show="interviewOpen"
+           x-cloak
+           x-on:keydown.escape.window="closeInterview"
+           class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+        <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="closeInterview"></div>
+        <div role="dialog"
+             aria-modal="true"
+             aria-labelledby="interview-title"
+             class="relative flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+          {# --- Header: title, close, and the step rail --- #}
+          <div class="flex-shrink-0 border-b border-greyscale-100 px-5 py-4 sm:px-6">
+            <div class="flex items-start gap-3">
+              <div class="min-w-0">
+                <h2 id="interview-title"
+                    class="truncate text-base font-semibold text-greyscale-900 sm:text-lg">{{ flow.name }}</h2>
+                <p class="mt-0.5 text-xs text-greyscale-500" x-text="stepCounter"></p>
+              </div>
+              <button type="button"
+                      x-on:click="closeInterview"
+                      aria-label='{% trans "Close" %}'
+                      class="ml-auto -mr-1 flex-shrink-0 rounded-lg p-1.5 text-greyscale-400 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+                <c-atoms.icon name="x-mark" class="w-5 h-5" />
+              </button>
+            </div>
+            {# Evenly spaced steps: each chip is flex-1, so the connector #}
+            {# (left-1/2 of this chip back to the previous centre) lines up #}
+            {# at any step count. Markers sit above it on z-10. #}
+            <ol class="mt-4 flex list-none items-start pl-0">
+              <template x-for="chip in stepChips" :key="chip.index">
+                <li class="relative flex min-w-0 flex-1 flex-col items-center">
+                  <div x-show="chip.showConnector"
+                       aria-hidden="true"
+                       class="absolute top-4 left-[-50%] h-0.5 w-full"
+                       x-bind:class="chip.connectorClass"></div>
+                  <button type="button"
+                          x-bind:data-index="chip.index"
+                          x-bind:disabled="chip.disabled"
+                          x-on:click="goToStep"
+                          class="relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold cursor-pointer transition-colors disabled:cursor-default"
+                          x-bind:class="chip.markerClass">
+                    <span x-show="chip.showNumber" x-text="chip.number"></span>
+                    <c-atoms.icon x-show="chip.showCheck" name="check" class="w-4 h-4" />
+                  </button>
+                  <span class="mt-1.5 line-clamp-2 px-1 text-center text-[11px] leading-tight sm:text-xs"
+                        x-bind:class="chip.labelClass"
+                        x-text="chip.title"></span>
+                </li>
+              </template>
+            </ol>
+          </div>
+          {# --- Body: the current step's questions --- #}
+          <div class="min-h-0 flex-1 overflow-y-auto px-5 py-5 sm:px-6">
+            <div class="mx-auto max-w-xl">
+              <h3 x-show="step.hasTitle"
+                  class="mb-1 text-lg font-semibold text-greyscale-900"
+                  x-text="step.title"></h3>
+              <p x-show="step.hasDescription"
+                 class="mb-5 text-sm text-greyscale-600"
+                 x-text="step.description"></p>
+              <div class="space-y-5">
+                <template x-for="field in step.fields" :key="field.name">
+                  <div>
+                    <template x-if="field.isBoolean">
+                      <label class="flex cursor-pointer items-start gap-2.5">
+                        <input type="checkbox"
+                               data-interview-field
+                               x-bind:data-field="field.name"
+                               x-bind:checked="field.checked"
+                               x-on:change="setAnswer"
+                               class="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-greyscale-300 text-primary-600 focus:ring-2 focus:ring-primary-500 focus:ring-offset-2">
+                        <span>
+                          <span class="text-sm font-medium text-greyscale-800" x-text="field.label"></span>
+                          <span x-show="field.required" class="text-red-600" aria-hidden="true">*</span>
+                          <span x-show="field.hasHelp"
+                                class="mt-0.5 block text-xs text-greyscale-500"
+                                x-text="field.helpText"></span>
+                        </span>
+                      </label>
+                    </template>
+                    <template x-if="field.isChoice">
+                      <div>
+                        <label x-bind:for="field.inputId"
+                               class="mb-1 block text-sm font-medium text-greyscale-800">
+                          <span x-text="field.label"></span>
+                          <span x-show="field.required" class="text-red-600" aria-hidden="true">*</span>
+                        </label>
+                        <select x-bind:id="field.inputId"
+                                data-interview-field
+                                x-bind:data-field="field.name"
+                                x-bind:required="field.required"
+                                x-on:change="setAnswer"
+                                class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-600 focus:outline-none">
+                          <option value="">{% trans "Select…" %}</option>
+                          <template x-for="choice in field.choices" :key="choice.value">
+                            <option x-bind:value="choice.value"
+                                    x-bind:selected="choice.selected"
+                                    x-text="choice.label"></option>
+                          </template>
+                        </select>
+                        <p x-show="field.hasHelp"
+                           class="mt-1 text-xs text-greyscale-500"
+                           x-text="field.helpText"></p>
+                      </div>
+                    </template>
+                    <template x-if="field.isInput">
+                      <div>
+                        <label x-bind:for="field.inputId"
+                               class="mb-1 block text-sm font-medium text-greyscale-800">
+                          <span x-text="field.label"></span>
+                          <span x-show="field.required" class="text-red-600" aria-hidden="true">*</span>
+                        </label>
+                        <input x-bind:id="field.inputId"
+                               x-bind:type="field.inputType"
+                               x-bind:step="field.step"
+                               x-bind:value="field.value"
+                               x-bind:required="field.required"
+                               data-interview-field
+                               x-bind:data-field="field.name"
+                               x-on:input="setAnswer"
+                               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary-600 focus:outline-none">
+                        <p x-show="field.hasHelp"
+                           class="mt-1 text-xs text-greyscale-500"
+                           x-text="field.helpText"></p>
+                      </div>
+                    </template>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+          {# --- Footer: back, status, next/finish --- #}
+          <div class="flex flex-shrink-0 items-center gap-3 border-t border-greyscale-100 bg-greyscale-25 px-5 py-4 sm:px-6">
+            <button type="button"
+                    x-show="canGoBack"
+                    x-on:click="back"
+                    class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+              <c-atoms.icon name="chevron-left" class="w-4 h-4" />
+              {% trans "Back" %}
+            </button>
+            <p x-show="interviewError"
+               x-cloak
+               aria-live="polite"
+               class="min-w-0 text-xs text-red-600"
+               x-text="interviewError"></p>
+            <p x-show="showRequiredHint" class="min-w-0 text-xs text-greyscale-500">
+              {% trans "Answer the required questions to continue." %}
+            </p>
+            <button type="button"
+                    x-on:click="next"
+                    x-bind:disabled="nextDisabled"
+                    class="ml-auto inline-flex flex-shrink-0 items-center gap-1 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:bg-primary-100 disabled:text-primary-400 cursor-pointer transition-colors">
+              <span x-show="saving">{% trans "Saving…" %}</span>
+              <span x-show="showNextLabel">{% trans "Next" %}</span>
+              <span x-show="showFinishLabel">{% trans "Finish" %}</span>
+              <c-atoms.icon x-show="showNextLabel" name="chevron-right" class="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+      {# Clear-answers confirmation. Deleting every stored answer is not #}
+      {# undoable, so it gets its own stern modal rather than an inline #}
+      {# button that fires on the first click. #}
+      <div x-show="clearOpen"
+           x-cloak
+           x-on:keydown.escape.window="closeClear"
+           class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="closeClear"></div>
+        <div role="dialog"
+             aria-modal="true"
+             aria-labelledby="clear-answers-title"
+             class="relative w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+          <h3 id="clear-answers-title"
+              class="text-base font-semibold text-greyscale-900">{% trans "Clear your answers?" %}</h3>
+          <p class="mt-2 text-sm text-greyscale-600">
+            {% trans "This deletes every answer you've given for this flow. Your court forms will go back to being blank. This can't be undone." %}
+          </p>
+          <div class="mt-4 flex items-center justify-end gap-2">
+            <p x-show="clearError"
+               x-cloak
+               aria-live="polite"
+               class="mr-auto min-w-0 text-xs text-red-600"
+               x-text="clearError"></p>
+            <button type="button"
+                    x-on:click="closeClear"
+                    class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+              {% trans "Cancel" %}
+            </button>
+            <button type="button"
+                    x-on:click="confirmClear"
+                    x-bind:disabled="clearing"
+                    class="rounded-lg bg-red-500 px-3 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-red-200 disabled:text-red-400 cursor-pointer transition-colors">
+              <span x-show="clearing">{% trans "Clearing…" %}</span>
+              <span x-show="notClearing">{% trans "Clear answers" %}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+{% endblock content %}
+
+{% block extra_js %}
+  {# Registers flowPage on alpine:init — runs before the deferred Alpine build. #}
+  <script src="{% static 'js/topic_flow.js' %}"></script>
+{% endblock extra_js %}
+
+{% block footer %}
+{% endblock footer %}
