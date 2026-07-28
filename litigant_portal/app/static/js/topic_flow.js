@@ -316,6 +316,7 @@ document.addEventListener('alpine:init', () => {
 
     closeInterview() {
       this.interviewOpen = false
+      if (this.hasInterview) this.saveAnswers()
     },
 
     // Backdrop clicks close; clicks inside the dialog must not bubble out.
