@@ -1,0 +1,114 @@
+{% load i18n %}
+
+{# Interview builder rail — takes over the knowledge tab's right panel #}
+{# while a flow is open (index.html swaps it in for the topic library). #}
+{# Included by both the desktop rail and the mobile drawer, so no element #}
+{# ids here; the group/field editor modals live once, in _flow.html. #}
+<div class="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
+  <p class="px-1 text-xs text-greyscale-500" x-text="builderIntro"></p>
+  <template x-for="group in builderGroups" :key="group._k">
+    <div class="rounded-xl border border-greyscale-200 bg-white">
+      {# Group header — reorder, title + truncated description, edit #}
+      <div class="flex items-center gap-2 px-3 py-2.5">
+        <div class="flex flex-col flex-shrink-0 -ml-1">
+          <button type="button"
+                  x-bind:data-group-id="group.id"
+                  data-direction="up"
+                  x-on:click="moveBuilderGroup"
+                  x-bind:disabled="group.moveUpDisabled"
+                  aria-label="{% trans "Move group up" %}"
+                  class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+            <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" />
+          </button>
+          <button type="button"
+                  x-bind:data-group-id="group.id"
+                  data-direction="down"
+                  x-on:click="moveBuilderGroup"
+                  x-bind:disabled="group.moveDownDisabled"
+                  aria-label="{% trans "Move group down" %}"
+                  class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+            <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-greyscale-900 truncate" x-text="group.displayTitle"></p>
+          <p x-show="group.hasDescription"
+             class="text-xs text-greyscale-500 truncate"
+             x-text="group.descriptionPreview"></p>
+        </div>
+        <button type="button"
+                x-bind:data-group-id="group.id"
+                x-on:click="editBuilderGroup"
+                aria-label="{% trans "Edit group" %}"
+                class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+          <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+        </button>
+        <button type="button"
+                x-bind:data-group-id="group.id"
+                x-on:click="askDeleteBuilderGroup"
+                aria-label="{% trans "Delete group" %}"
+                class="flex items-center justify-center p-2 -ml-1 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors flex-shrink-0">
+          <c-atoms.icon name="trash" class="w-4 h-4" />
+        </button>
+      </div>
+      {# The group's fields, in interview order #}
+      <div class="border-t border-greyscale-100 px-3 py-2.5 space-y-1.5">
+        <template x-for="field in group.fields" :key="field._k">
+          <div class="rounded-lg border border-greyscale-200 bg-greyscale-50 pl-1 pr-1 py-1 flex items-center gap-1.5">
+            <div class="flex flex-col flex-shrink-0">
+              <button type="button"
+                      x-bind:data-field-id="field.id"
+                      data-direction="up"
+                      x-on:click="moveBuilderField"
+                      x-bind:disabled="field.moveUpDisabled"
+                      aria-label="{% trans "Move field up" %}"
+                      class="flex items-center justify-center px-1 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                <c-atoms.icon name="chevron-up" class="w-3 h-3" />
+              </button>
+              <button type="button"
+                      x-bind:data-field-id="field.id"
+                      data-direction="down"
+                      x-on:click="moveBuilderField"
+                      x-bind:disabled="field.moveDownDisabled"
+                      aria-label="{% trans "Move field down" %}"
+                      class="flex items-center justify-center px-1 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                <c-atoms.icon name="chevron-down" class="w-3 h-3" />
+              </button>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-medium text-greyscale-800 truncate" x-text="field.displayLabel"></p>
+              <p class="text-xs text-greyscale-500 truncate" x-text="field.detail"></p>
+            </div>
+            <button type="button"
+                    x-bind:data-field-id="field.id"
+                    x-on:click="editBuilderField"
+                    aria-label="{% trans "Edit field" %}"
+                    class="flex items-center justify-center p-1.5 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+              <c-atoms.icon name="pencil-square" class="w-3.5 h-3.5" />
+            </button>
+            <button type="button"
+                    x-bind:data-field-id="field.id"
+                    x-on:click="askDeleteBuilderField"
+                    aria-label="{% trans "Delete field" %}"
+                    class="flex items-center justify-center p-1.5 -ml-1 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors flex-shrink-0">
+              <c-atoms.icon name="trash" class="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </template>
+        <button type="button"
+                x-bind:data-group-id="group.id"
+                x-on:click="newBuilderField"
+                class="w-full rounded-lg border border-dashed border-greyscale-300 py-1 flex items-center justify-center gap-1 text-xs font-medium text-greyscale-400 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors">
+          <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+          {% trans "Add field" %}
+        </button>
+      </div>
+    </div>
+  </template>
+  <button type="button"
+          x-on:click="newBuilderGroup"
+          class="w-full rounded-xl border-2 border-dashed border-greyscale-300 p-3 flex items-center justify-center gap-2 text-sm font-medium text-greyscale-400 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors">
+    <c-atoms.icon name="plus" class="w-4 h-4" />
+    {% trans "Add group" %}
+  </button>
+</div>
