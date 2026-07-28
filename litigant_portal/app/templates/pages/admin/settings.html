@@ -1,56 +1,16 @@
 {% load i18n %}
 
-<div class="max-w-2xl">
-  {# Header row — title on the left, site switcher on the right #}
-  <div class="flex items-center justify-between gap-2 mb-4">
+<div class="max-w-4xl mx-auto">
+  {# Top-level tab heading — hidden below lg where the toolbar names the tab #}
+  <div class="mb-4 hidden lg:block">
     <h3 class="text-base font-semibold text-greyscale-900">{% trans "Settings" %}</h3>
-    {% if is_developer %}
-    <div class="relative">
-      <button type="button"
-              x-on:click="toggleSiteMenu"
-              x-bind:aria-expanded="siteMenuOpen"
-              aria-haspopup="true"
-              class="inline-flex items-center gap-1.5 rounded-lg border border-greyscale-300 bg-white px-3 py-1.5 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
-        <c-atoms.icon name="arrows-right-left" class="w-4 h-4 text-greyscale-500" />
-        <span x-text="activeSiteName"></span>
-        <c-atoms.icon name="chevron-down" class="w-4 h-4 text-greyscale-400" />
-      </button>
-      <div x-show="siteMenuOpen"
-           x-cloak
-           x-on:click.outside="closeSiteMenu"
-           x-on:keydown.escape.window="closeSiteMenu"
-           x-transition
-           class="absolute right-0 top-full mt-1 w-56 bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
-           role="menu">
-        <template x-for="site in sites" :key="site.id">
-          <button type="button"
-                  role="menuitem"
-                  x-bind:data-site-id="site.id"
-                  x-on:click="activateSite"
-                  class="flex items-center justify-between gap-2 w-full px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer">
-            <span class="truncate" x-text="site.name"></span>
-            <c-atoms.icon name="check" class="w-4 h-4 text-primary-600 flex-shrink-0" x-show="site.active" />
-          </button>
-        </template>
-      </div>
-    </div>
-    {% endif %}
+    <p class="text-sm text-greyscale-500">{% trans "This site's configuration." %}</p>
   </div>
-  {# Active site form #}
-  <form x-on:submit.prevent="saveSite" class="space-y-4">
+  {# ------- Court details ------- #}
+  <form x-on:submit.prevent="saveCourtDetails" class="space-y-4">
     {% csrf_token %}
     <div>
-      <label for="site-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Name" %}</label>
-      <input id="site-name"
-             type="text"
-             data-field="siteName"
-             x-bind:value="siteName"
-             x-on:input="updateSiteField"
-             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
-    </div>
-    {# ------- Court details ------- #}
-    <div class="border-t border-greyscale-200 pt-4">
-      <h4 class="text-sm font-semibold text-greyscale-900">{% trans "Court details" %}</h4>
+      <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Court details" %}</h4>
       <p class="text-xs text-greyscale-500">{% trans "The court this site serves — shown in headers and used to ground guidance." %}</p>
     </div>
     <div>
@@ -110,35 +70,336 @@
              x-on:input="updateSiteField"
              class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
     </div>
-    {# ------- Models ------- #}
-    <div class="border-t border-greyscale-200 pt-4 flex items-start justify-between gap-2">
-      <div>
-        <h4 class="text-sm font-semibold text-greyscale-900">{% trans "Models" %}</h4>
-        <p class="text-xs text-greyscale-500">{% trans "Which AI model each part of the pipeline uses." %}</p>
+    {# Save is aria-disabled until a field differs from its loaded value; #}
+    {# the status span announces unsaved/saved/error states. #}
+    <div class="flex items-center justify-end gap-2">
+      <span aria-live="polite"
+            class="text-xs"
+            x-bind:class="siteStatusClass"
+            x-text="siteStatus"></span>
+      <button type="submit"
+              aria-disabled="true"
+              x-bind:aria-disabled="siteClean"
+              class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors aria-disabled:bg-greyscale-300 aria-disabled:hover:bg-greyscale-300 aria-disabled:cursor-not-allowed">
+        {% trans "Save" %}
+      </button>
+    </div>
+  </form>
+
+  {# ------- Contacts ------- #}
+  <div class="border-t border-greyscale-200 pt-4 mt-6 mb-3 flex items-start justify-between gap-2">
+    <div>
+      <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Contacts" %}</h4>
+      <p class="text-xs text-greyscale-500">{% trans "Court and legal-help contacts shown to users." %}</p>
+    </div>
+    <button type="button"
+            x-on:click="newContact"
+            class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+      <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+      {% trans "Add contact" %}
+    </button>
+  </div>
+  <div class="space-y-2">
+    <template x-for="contact in contacts" :key="contact.id">
+      <div class="rounded-xl border border-greyscale-200 bg-white px-4 py-3 flex items-center gap-3">
+        {# Stacked reorder control — position lives left, actions right #}
+        <div class="flex flex-col flex-shrink-0 -ml-1">
+          <button type="button"
+                  x-bind:data-contact-id="contact.id"
+                  data-direction="up"
+                  x-on:click="moveContact"
+                  x-bind:disabled="contact.moveUpDisabled"
+                  aria-label="{% trans "Move contact up" %}"
+                  class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+            <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" />
+          </button>
+          <button type="button"
+                  x-bind:data-contact-id="contact.id"
+                  data-direction="down"
+                  x-on:click="moveContact"
+                  x-bind:disabled="contact.moveDownDisabled"
+                  aria-label="{% trans "Move contact down" %}"
+                  class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+            <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-greyscale-900 truncate" x-text="contact.name"></p>
+          <p class="text-xs text-greyscale-500 truncate" x-text="contact.detail"></p>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0" x-show="contact.notConfirmingDelete">
+          <button type="button"
+                  x-bind:data-contact-id="contact.id"
+                  x-on:click="editContact"
+                  aria-label="{% trans "Edit contact" %}"
+                  class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+            <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+          </button>
+          <button type="button"
+                  x-bind:data-contact-id="contact.id"
+                  x-on:click="askDeleteContact"
+                  aria-label="{% trans "Delete contact" %}"
+                  class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors">
+            <c-atoms.icon name="trash" class="w-4 h-4" />
+          </button>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0" x-show="contact.confirmingDelete" x-cloak>
+          <span class="text-xs text-greyscale-600">{% trans "Delete?" %}</span>
+          <button type="button"
+                  x-bind:data-contact-id="contact.id"
+                  x-on:click="confirmDeleteContact"
+                  class="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+            {% trans "Delete" %}
+          </button>
+          <button type="button"
+                  x-on:click="cancelDeleteContact"
+                  class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+            {% trans "Cancel" %}
+          </button>
+        </div>
       </div>
-      {# Provider badges — only providers whose credentials are configured #}
-      <div class="flex items-center gap-1.5 flex-shrink-0">
-        {% if openai_available %}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>
-            {% trans "OpenAI available" %}
-          </span>
-        {% endif %}
-        {% if bedrock_available %}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>
-            {% trans "Bedrock available" %}
-          </span>
-        {% endif %}
+    </template>
+  </div>
+  {# Contact editor modal #}
+  <div x-show="contactEditorVisible"
+       x-cloak
+       x-on:keydown.escape.window="cancelContactEdit"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelContactEdit"></div>
+    <form x-on:submit.prevent="saveContact"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="contact-editor-title"
+          class="relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl space-y-3">
+      <h3 id="contact-editor-title" class="text-base font-semibold text-greyscale-900" x-text="contactEditorTitle"></h3>
+    <div>
+      <label for="contact-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Name" %}</label>
+      <input id="contact-name"
+             type="text"
+             data-field="contactName"
+             x-bind:value="contactName"
+             x-on:input="updateField"
+             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label for="contact-phone" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Phone" %}</label>
+        <input id="contact-phone"
+               type="text"
+               data-field="contactPhone"
+               x-bind:value="contactPhone"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div>
+        <label for="contact-email" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Email" %}</label>
+        <input id="contact-email"
+               type="email"
+               data-field="contactEmail"
+               x-bind:value="contactEmail"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
       </div>
     </div>
+    <div>
+      <label for="contact-url" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "URL" %}</label>
+      <input id="contact-url"
+             type="url"
+             placeholder="https://"
+             data-field="contactUrl"
+             x-bind:value="contactUrl"
+             x-on:input="updateField"
+             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+    </div>
+    <div>
+      <label for="contact-note" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Note" %}</label>
+      <textarea id="contact-note"
+                rows="3"
+                data-field="contactNote"
+                x-bind:value="contactNote"
+                x-on:input="updateField"
+                class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+    </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <span x-show="contactError" x-cloak class="mr-auto text-xs text-red-600" x-text="contactError"></span>
+        <button type="button"
+                x-on:click="cancelContactEdit"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save" %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# ------- Resources ------- #}
+  <div class="border-t border-greyscale-200 pt-4 mt-6 mb-3 flex items-start justify-between gap-2">
+    <div>
+      <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Resources" %}</h4>
+      <p class="text-xs text-greyscale-500">{% trans "External resource links shown to users." %}</p>
+    </div>
+    <button type="button"
+            x-on:click="newResource"
+            class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+      <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+      {% trans "Add resource" %}
+    </button>
+  </div>
+  <div class="space-y-2">
+    <template x-for="resource in resources" :key="resource.id">
+      <div class="rounded-xl border border-greyscale-200 bg-white px-4 py-3 flex items-center gap-3">
+        {# Stacked reorder control — position lives left, actions right #}
+        <div class="flex flex-col flex-shrink-0 -ml-1">
+          <button type="button"
+                  x-bind:data-resource-id="resource.id"
+                  data-direction="up"
+                  x-on:click="moveResource"
+                  x-bind:disabled="resource.moveUpDisabled"
+                  aria-label="{% trans "Move resource up" %}"
+                  class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+            <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" />
+          </button>
+          <button type="button"
+                  x-bind:data-resource-id="resource.id"
+                  data-direction="down"
+                  x-on:click="moveResource"
+                  x-bind:disabled="resource.moveDownDisabled"
+                  aria-label="{% trans "Move resource down" %}"
+                  class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+            <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-medium text-greyscale-900 truncate" x-text="resource.label"></p>
+          <p class="text-xs text-greyscale-500 truncate" x-text="resource.url"></p>
+        </div>
+        <div class="flex items-center gap-1 flex-shrink-0" x-show="resource.notConfirmingDelete">
+          <button type="button"
+                  x-bind:data-resource-id="resource.id"
+                  x-on:click="editResource"
+                  aria-label="{% trans "Edit resource" %}"
+                  class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+            <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+          </button>
+          <button type="button"
+                  x-bind:data-resource-id="resource.id"
+                  x-on:click="askDeleteResource"
+                  aria-label="{% trans "Delete resource" %}"
+                  class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors">
+            <c-atoms.icon name="trash" class="w-4 h-4" />
+          </button>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0" x-show="resource.confirmingDelete" x-cloak>
+          <span class="text-xs text-greyscale-600">{% trans "Delete?" %}</span>
+          <button type="button"
+                  x-bind:data-resource-id="resource.id"
+                  x-on:click="confirmDeleteResource"
+                  class="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+            {% trans "Delete" %}
+          </button>
+          <button type="button"
+                  x-on:click="cancelDeleteResource"
+                  class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+            {% trans "Cancel" %}
+          </button>
+        </div>
+      </div>
+    </template>
+  </div>
+  {# Resource editor modal #}
+  <div x-show="resourceEditorVisible"
+       x-cloak
+       x-on:keydown.escape.window="cancelResourceEdit"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelResourceEdit"></div>
+    <form x-on:submit.prevent="saveResource"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="resource-editor-title"
+          class="relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl space-y-3">
+      <h3 id="resource-editor-title" class="text-base font-semibold text-greyscale-900" x-text="resourceEditorTitle"></h3>
+    <div>
+      <label for="resource-label" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Label" %}</label>
+      <input id="resource-label"
+             type="text"
+             data-field="resourceLabel"
+             x-bind:value="resourceLabel"
+             x-on:input="updateField"
+             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+    </div>
+    <div>
+      <label for="resource-url" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "URL" %}</label>
+      <input id="resource-url"
+             type="url"
+             placeholder="https://"
+             data-field="resourceUrl"
+             x-bind:value="resourceUrl"
+             x-on:input="updateField"
+             class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+    </div>
+    <div>
+      <label for="resource-note" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Note" %}</label>
+      <textarea id="resource-note"
+                rows="3"
+                data-field="resourceNote"
+                x-bind:value="resourceNote"
+                x-on:input="updateField"
+                class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+    </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <span x-show="resourceError" x-cloak class="mr-auto text-xs text-red-600" x-text="resourceError"></span>
+        <button type="button"
+                x-on:click="cancelResourceEdit"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save" %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# ------- Models ------- #}
+  <div class="border-t border-greyscale-200 pt-4 mt-6 mb-4 flex items-start justify-between gap-2">
+    <div>
+      <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">
+        {% trans "Models" %}
+        <span aria-live="polite"
+              class="ml-1 text-xs font-normal normal-case tracking-normal"
+              x-bind:class="modelsStatusClass"
+              x-text="modelsStatus"></span>
+      </h4>
+      <p class="text-xs text-greyscale-500">{% trans "Which AI model each part of the pipeline uses. Changes save automatically." %}</p>
+    </div>
+    {# Provider badges — only providers whose credentials are configured #}
+    <div class="flex items-center gap-1.5 flex-shrink-0">
+      {% if openai_available %}
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+          <span class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>
+          {% trans "OpenAI available" %}
+        </span>
+      {% endif %}
+      {% if bedrock_available %}
+        <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+          <span class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>
+          {% trans "Bedrock available" %}
+        </span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="space-y-4">
     <div class="rounded-xl border border-greyscale-200 bg-white p-4">
       <label for="site-fast-model" class="block text-sm font-semibold text-greyscale-900">{% trans "Fast model" %}</label>
       <p class="text-xs text-greyscale-500 mb-2">{% trans "Used for small background tasks that need minimal intelligence." %}</p>
       <select id="site-fast-model"
               data-field="siteFastModel"
               x-bind:value="siteFastModel"
-              x-on:change="updateSiteField"
+              x-on:change="updateSiteModel"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% blocktrans %}Default ({{ default_model_label }}){% endblocktrans %}</option>
         {% for provider, choices in model_choice_groups %}
@@ -156,7 +417,7 @@
       <select id="site-assistant-model"
               data-field="siteAssistantModel"
               x-bind:value="siteAssistantModel"
-              x-on:change="updateSiteField"
+              x-on:change="updateSiteModel"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% blocktrans %}Default ({{ default_model_label }}){% endblocktrans %}</option>
         {% for provider, choices in model_choice_groups %}
@@ -168,18 +429,5 @@
         {% endfor %}
       </select>
     </div>
-    <div class="flex items-center gap-2">
-      <button type="submit"
-              class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
-        {% trans "Save" %}
-      </button>
-      <span x-show="siteSaved"
-            x-cloak
-            class="inline-flex items-center gap-1 text-xs text-green-600">
-        <c-atoms.icon name="check" class="w-3.5 h-3.5" />
-        {% trans "Saved" %}
-      </span>
-      <span x-show="siteError" x-cloak class="text-xs text-red-600" x-text="siteError"></span>
-    </div>
-  </form>
+  </div>
 </div>
