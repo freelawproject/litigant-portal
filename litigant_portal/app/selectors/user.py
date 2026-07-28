@@ -7,6 +7,11 @@ from litigant_portal.app.services.user import (
 )
 
 
+def user_get(*, user_id: int) -> User:
+    """A single user (raises User.DoesNotExist)."""
+    return User.objects.get(id=user_id)
+
+
 def user_list(*, search: str = "") -> QuerySet[User]:
     """Users for the admin users tab, filtered by email substring, each
     annotated with ``is_admin_member`` and ``is_developer_member``."""
