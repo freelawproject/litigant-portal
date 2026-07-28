@@ -30,19 +30,21 @@ def _flow_replace_children(
     flow: TopicFlow,
     *,
     sections: list,
-    fields: list,
+    field_groups: list,
     links: list,
     deadlines: list,
 ) -> None:
-    """Replace a flow's sections/fields/links/deadlines, in order.
+    """Replace a flow's sections/field groups/links/deadlines, in order.
 
-    Sections and links replace wholesale. Fields upsert by name and
-    deadlines by label — an existing row keeps its id, so litigants'
-    stored answers (which cascade-delete with their field) and calendar
-    UIDs survive an admin save; rows absent from the payload are deleted.
-    Deadline rows carry ``offset_from`` as a field NAME; it resolves
-    against the just-saved fields (a row naming an unknown field is
-    dropped).
+    Sections and links replace wholesale. Field groups are the config's
+    interview pages: groups are reused by position (extras created,
+    surplus deleted) and fields upsert by name across the whole flow —
+    an existing field keeps its id even when it moves to another group,
+    so litigants' stored answers (which cascade-delete with their field)
+    and deadline calendar UIDs survive a re-apply; fields absent from
+    the config are deleted. Deadline rows carry ``offset_from`` as a
+    field NAME; it resolves against the just-saved fields (a row naming
+    an unknown field is dropped).
     """
     flow.sections.all().delete()
     flow.links.all().delete()
@@ -56,30 +58,41 @@ def _flow_replace_children(
     existing_fields = {}
     for field in flow.fields:
         existing_fields.setdefault(field.name, []).append(field)
-    # Library YAMLs know nothing about interview pages: existing fields
-    # keep their group, new ones land in the flow's first group (created
-    # on demand).
-    default_group = None
+    existing_groups = list(flow.field_groups.all())
     fields_by_name = {}
     field_ids = []
-    for i, row in enumerate(fields):
-        if default_group is None:
-            default_group = (
-                flow.field_groups.first()
-                or TopicFlowFieldGroup.objects.create(flow=flow)
+    for g_index, group_config in enumerate(field_groups):
+        if g_index < len(existing_groups):
+            group = existing_groups[g_index]
+            group.title = group_config["title"]
+            group.description = group_config["description"]
+            group.order = g_index
+            group.save(
+                update_fields=["title", "description", "order", "updated_at"]
             )
-        matches = existing_fields.get(row["name"]) or [
-            TopicFlowField(group=default_group)
-        ]
-        field = matches.pop(0)
-        for name, value in {**row, "order": i}.items():
-            setattr(field, name, value)
-        field.save()
-        fields_by_name[field.name] = field
-        field_ids.append(field.id)
+        else:
+            group = TopicFlowFieldGroup.objects.create(
+                flow=flow,
+                title=group_config["title"],
+                description=group_config["description"],
+                order=g_index,
+            )
+        for f_index, row in enumerate(group_config["fields"]):
+            matches = existing_fields.get(row["name"]) or [TopicFlowField()]
+            field = matches.pop(0)
+            for name, value in {**row, "group": group, "order": f_index}.items():
+                setattr(field, name, value)
+            field.save()
+            fields_by_name[field.name] = field
+            field_ids.append(field.id)
+    # Drop fields the config no longer names, then the groups the config
+    # no longer has — kept fields were already reassigned above, so a
+    # surplus group's cascade can't take anything that should survive.
     TopicFlowField.objects.filter(group__flow=flow).exclude(
         id__in=field_ids
     ).delete()
+    for group in existing_groups[len(field_groups):]:
+        group.delete()
     kept = [row for row in deadlines if row["offset_from"] in fields_by_name]
     existing_deadlines = {}
     for deadline in flow.deadlines.all():
@@ -128,8 +141,19 @@ def _topic_flow_apply(topic: Topic, config: dict) -> TopicFlow:
     """Upsert one library flow onto ``topic`` by slug: an existing flow is
     replaced with the library version, a new one is created."""
     valid_types = set(TopicFlowField.DataType.values)
-    fields = [
-        row for row in config["fields"] if row["data_type"] in valid_types
+    field_groups = [
+        cleaned
+        for group in config["field_groups"]
+        if (
+            cleaned := {
+                **group,
+                "fields": [
+                    row
+                    for row in group["fields"]
+                    if row["data_type"] in valid_types
+                ],
+            }
+        )["fields"]
     ]
     with transaction.atomic():
         flow = topic.flows.filter(slug=config["slug"]).first()
@@ -147,7 +171,7 @@ def _topic_flow_apply(topic: Topic, config: dict) -> TopicFlow:
         _flow_replace_children(
             flow,
             sections=config["sections"],
-            fields=fields,
+            field_groups=field_groups,
             links=config["links"],
             deadlines=config["deadlines"],
         )

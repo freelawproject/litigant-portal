@@ -4,6 +4,8 @@ from litigant_portal.app.models import (
     Topic,
     TopicFlow,
     TopicFlowDeadline,
+    TopicFlowField,
+    TopicFlowFieldGroup,
     TopicFlowForm,
     TopicFlowLink,
     UserIdentity,
@@ -47,6 +49,16 @@ def topic_flow_form_get(*, form_id) -> TopicFlowForm:
 def topic_flow_deadline_get(*, deadline_id) -> TopicFlowDeadline:
     """A single flow deadline (raises DoesNotExist)."""
     return TopicFlowDeadline.objects.get(id=deadline_id)
+
+
+def topic_flow_field_group_get(*, group_id) -> TopicFlowFieldGroup:
+    """A single flow field group (raises DoesNotExist)."""
+    return TopicFlowFieldGroup.objects.get(id=group_id)
+
+
+def topic_flow_field_get(*, field_id) -> TopicFlowField:
+    """A single flow field (raises DoesNotExist)."""
+    return TopicFlowField.objects.get(id=field_id)
 
 
 def topic_flow_link_get(*, link_id) -> TopicFlowLink:

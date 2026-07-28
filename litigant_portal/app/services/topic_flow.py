@@ -24,6 +24,7 @@ from litigant_portal.app.models import (
     TopicFlowAnswer,
     TopicFlowDeadline,
     TopicFlowField,
+    TopicFlowFieldGroup,
     TopicFlowForm,
     TopicFlowFormField,
     TopicFlowLink,
@@ -541,6 +542,113 @@ def topic_flow_enabled_update(*, flow: TopicFlow, enabled: bool) -> TopicFlow:
     flow.enabled = enabled
     flow.save(update_fields=["enabled", "updated_at"])
     return flow
+
+
+@busts_topic_list_cache
+def topic_flow_field_group_create(
+    *, flow: TopicFlow, **fields
+) -> TopicFlowFieldGroup:
+    """Create an interview page on ``flow``, appended to the page order."""
+    last = flow.field_groups.aggregate(m=Max("order"))["m"]
+    return TopicFlowFieldGroup.objects.create(
+        flow=flow, order=0 if last is None else last + 1, **fields
+    )
+
+
+@busts_topic_list_cache
+def topic_flow_field_group_update(
+    *, group: TopicFlowFieldGroup, **fields
+) -> TopicFlowFieldGroup:
+    """Update an interview page's editable fields."""
+    for name, value in fields.items():
+        setattr(group, name, value)
+    group.save(update_fields=[*fields, "updated_at"])
+    return group
+
+
+@busts_topic_list_cache
+def topic_flow_field_group_move(
+    *, group: TopicFlowFieldGroup, direction: str
+) -> None:
+    """Move an interview page one step up or down in its flow."""
+    with transaction.atomic():
+        row_move(list(group.flow.field_groups.all()), group, direction)
+
+
+@busts_topic_list_cache
+def topic_flow_field_group_delete(*, group: TopicFlowFieldGroup) -> None:
+    """Delete an interview page and its fields — cascading to litigants'
+    saved answers and any deadlines based on those fields."""
+    with transaction.atomic():
+        flow = group.flow
+        group.delete()
+        for position, obj in enumerate(flow.field_groups.all()):
+            if obj.order != position:
+                obj.order = position
+                obj.save(update_fields=["order", "updated_at"])
+
+
+@busts_topic_list_cache
+def topic_flow_field_create(
+    *, group: TopicFlowFieldGroup, **fields
+) -> TopicFlowField:
+    """Create a field on an interview page, appended to the field order."""
+    last = group.fields.aggregate(m=Max("order"))["m"]
+    return TopicFlowField.objects.create(
+        group=group, order=0 if last is None else last + 1, **fields
+    )
+
+
+@busts_topic_list_cache
+def topic_flow_field_update(
+    *, field: TopicFlowField, **fields
+) -> TopicFlowField:
+    """Update a field's editable attributes."""
+    for name, value in fields.items():
+        setattr(field, name, value)
+    field.save(update_fields=[*fields, "updated_at"])
+    return field
+
+
+@busts_topic_list_cache
+def topic_flow_field_group_change(
+    *, field: TopicFlowField, group: TopicFlowFieldGroup
+) -> TopicFlowField:
+    """Move a field to the end of another interview page, renumbering
+    the page it left so its orders stay dense."""
+    if group.id == field.group_id:
+        return field
+    with transaction.atomic():
+        source = field.group
+        last = group.fields.aggregate(m=Max("order"))["m"]
+        field.group = group
+        field.order = 0 if last is None else last + 1
+        field.save(update_fields=["group", "order", "updated_at"])
+        for position, obj in enumerate(source.fields.all()):
+            if obj.order != position:
+                obj.order = position
+                obj.save(update_fields=["order", "updated_at"])
+    return field
+
+
+@busts_topic_list_cache
+def topic_flow_field_move(*, field: TopicFlowField, direction: str) -> None:
+    """Move a field one step up or down within its interview page."""
+    with transaction.atomic():
+        row_move(list(field.group.fields.all()), field, direction)
+
+
+@busts_topic_list_cache
+def topic_flow_field_delete(*, field: TopicFlowField) -> None:
+    """Delete a field — cascading to litigants' saved answers and any
+    deadlines based on it — and renumber its page's remaining fields."""
+    with transaction.atomic():
+        group = field.group
+        field.delete()
+        for position, obj in enumerate(group.fields.all()):
+            if obj.order != position:
+                obj.order = position
+                obj.save(update_fields=["order", "updated_at"])
 
 
 @busts_topic_list_cache

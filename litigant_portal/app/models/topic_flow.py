@@ -100,6 +100,13 @@ class TopicFlowField(BaseModel):
 
     class Meta:
         ordering = ["order", "created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group", "order"],
+                name="unique_group_field_order",
+                deferrable=models.Deferrable.DEFERRED,
+            )
+        ]
 
 
 class TopicFlowForm(BaseModel):

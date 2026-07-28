@@ -99,6 +99,28 @@ def _clean_field_rows(items) -> list[dict]:
     return rows
 
 
+def _clean_field_group_rows(items) -> list[dict]:
+    """Normalize a flow YAML's ``field_groups`` into interview pages —
+    ``{title, description, fields}`` rows mirroring a docassemble
+    ``question`` screen. Groups that end up with no usable fields are
+    dropped."""
+    groups = []
+    for item in items if isinstance(items, list) else []:
+        if not isinstance(item, dict):
+            continue
+        fields = _clean_field_rows(item.get("fields"))
+        if not fields:
+            continue
+        groups.append(
+            {
+                "title": str(item.get("title") or "").strip(),
+                "description": str(item.get("description") or "").strip(),
+                "fields": fields,
+            }
+        )
+    return groups
+
+
 def _clean_deadline_rows(items, *, field_names: set[str]) -> list[dict]:
     """Normalize a flow YAML's deadlines; drop rows missing a label, with a
     malformed offset, or whose ``offset_from`` isn't a config field name."""
@@ -169,18 +191,22 @@ def _clean_flow_config(raw: dict, *, fallback_slug: str, topic_dir) -> dict:
             sections.append(
                 {"heading": heading, "content": str(item.get("content") or "")}
             )
-    fields = _clean_field_rows(raw.get("fields"))
+    field_groups = _clean_field_group_rows(raw.get("field_groups"))
     return {
         "slug": str(raw.get("slug") or fallback_slug).strip(),
         "name": str(raw.get("name") or fallback_slug).strip(),
         "sections": sections,
-        "fields": fields,
+        "field_groups": field_groups,
         "links": _clean_rows(
             raw.get("links"), fields=("name", "url"), required="name"
         ),
         "deadlines": _clean_deadline_rows(
             raw.get("deadlines"),
-            field_names={row["name"] for row in fields},
+            field_names={
+                row["name"]
+                for group in field_groups
+                for row in group["fields"]
+            },
         ),
         "forms": _clean_form_rows(
             raw.get("forms"), forms_dir=topic_dir / "forms"
