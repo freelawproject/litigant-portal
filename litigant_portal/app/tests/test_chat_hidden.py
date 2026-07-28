@@ -17,7 +17,7 @@ from litigant_portal.app.services.chat_engine import (
     _messages_for_llm,
     chat_message_inject_hidden,
     chat_message_inject_meta,
-    thread_render_items,
+    chat_thread_render_items,
 )
 
 
@@ -159,7 +159,7 @@ class HiddenMessageProjectionTests(TestCase):
         self.assertIn("HIDDEN CONTEXT", contents)
 
     def test_hidden_excluded_from_render_items(self):
-        items = thread_render_items(
+        items = chat_thread_render_items(
             thread=self.thread, agent_class=WeatherAgent
         )
         contents = [item.get("content") for item in items]
