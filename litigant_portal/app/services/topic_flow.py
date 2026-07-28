@@ -780,6 +780,7 @@ def topic_flow_form_update(
 
 @busts_topic_list_cache
 def topic_flow_form_delete(*, form: TopicFlowForm) -> None:
+    form.file.delete(save=False)
     form.delete()
 
 

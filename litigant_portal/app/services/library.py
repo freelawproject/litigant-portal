@@ -132,6 +132,8 @@ def _flow_forms_upsert(flow: TopicFlow, forms: list) -> None:
             )
             next_order += 1
         form.name = config["name"]
+        if form.file:
+            form.file.delete(save=False)
         form.file.save(
             config["file"],
             ContentFile(Path(config["file_path"]).read_bytes()),
