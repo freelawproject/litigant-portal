@@ -1,0 +1,55 @@
+{% load i18n %}
+
+{# Topic library card list — shared by the desktop right panel (knowledge #}
+{# tab) and the mobile drawer. #}
+<div class="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
+  <p class="px-1 text-xs text-greyscale-500">{% trans "Prebuilt topics and their guided flows. Apply one to add it to this site's knowledge base." %}</p>
+  <template x-for="entry in topicLibrary" :key="entry.key">
+    <div class="rounded-xl border border-greyscale-200 bg-white">
+      <button type="button"
+              x-bind:data-topic-key="entry.key"
+              x-on:click="toggleTopicLibraryEntry"
+              x-bind:aria-expanded="entry.expanded"
+              class="w-full flex items-center justify-between gap-2 px-3 py-2.5 cursor-pointer">
+        <span class="min-w-0 text-left">
+          <span class="block text-sm font-medium text-greyscale-900 truncate" x-text="entry.title"></span>
+          <span class="block text-xs text-greyscale-500 truncate" x-text="entry.summary"></span>
+        </span>
+        <c-atoms.icon name="chevron-down" class="w-4 h-4 text-greyscale-400 flex-shrink-0" x-show="entry.collapsed" />
+        <c-atoms.icon name="chevron-up" class="w-4 h-4 text-greyscale-400 flex-shrink-0" x-show="entry.expanded" x-cloak />
+      </button>
+      <div x-show="entry.expanded" x-cloak class="border-t border-greyscale-100 px-3 py-2.5 space-y-2.5">
+        <div>
+          <p class="text-xs font-semibold text-greyscale-700 mb-0.5">{% trans "Topic" %}</p>
+          <p class="text-xs text-greyscale-500 whitespace-pre-line break-words" x-text="entry.metaText"></p>
+        </div>
+        <div x-show="entry.hasFlows">
+          <p class="text-xs font-semibold text-greyscale-700 mb-0.5" x-text="entry.flowsHeading"></p>
+          <div class="space-y-0.5">
+            <template x-for="(flow, index) in entry.flows" :key="flow.slug">
+              <div class="flex items-center gap-1">
+                <button type="button"
+                        x-bind:data-topic-key="entry.key"
+                        x-bind:data-index="index"
+                        x-on:click="addLibraryFlow"
+                        aria-label="{% trans "Add this flow" %}"
+                        title="{% trans "Add this flow" %}"
+                        class="flex items-center justify-center p-1 -ml-1 rounded text-greyscale-400 hover:text-primary-600 hover:bg-primary-50 cursor-pointer transition-colors flex-shrink-0">
+                  <c-atoms.icon name="plus" class="w-3.5 h-3.5" x-show="flow.notAdded" />
+                  <c-atoms.icon name="check" class="w-3.5 h-3.5 text-green-600" x-show="flow.added" x-cloak />
+                </button>
+                <span class="text-xs text-greyscale-500 truncate" x-text="flow.label"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+        <button type="button"
+                x-bind:data-topic-key="entry.key"
+                x-on:click="askApplyTopicLibrary"
+                class="w-full rounded-lg bg-primary-600 px-3 py-2 text-xs font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Add topic" %}
+        </button>
+      </div>
+    </div>
+  </template>
+</div>
