@@ -1,141 +1,131 @@
-from django.contrib.auth.models import User
+import vobject
 from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Max
-from django.utils.text import slugify
 
-from litigant_portal.app.models import Site, SiteMembership, Topic
-from litigant_portal.app.selectors.admin import (
-    ACTIVE_SITE_CACHE_KEY,
-    ACTIVE_SITE_TOPICS_CACHE_KEY,
+from litigant_portal.app.models import Contact, Resource, Site
+from litigant_portal.app.selectors.site import (
+    SITE_CACHE_KEY,
+    contact_list,
+    resource_list,
 )
+from litigant_portal.app.services.utils import row_move
 
 
-def user_can_access_admin(*, user) -> bool:
-    """Whether a user may see the admin panel at all.
-
-    Developers (User.is_staff) always can; everyone else needs a membership in
-    the currently active site.
-    """
-    if not user.is_authenticated:
-        return False
-    if user.is_staff:
-        return True
-    return SiteMembership.objects.filter(user=user, site__active=True).exists()
-
-
-def user_is_developer(*, user) -> bool:
-    """Whether a user is a developer."""
-    return user.is_authenticated and user.is_staff
-
-
-def user_can_manage_site(*, user, site: Site) -> bool:
-    """Whether a user may read or edit ``site`` itself."""
-    if user.is_staff:
-        return True
-    return SiteMembership.objects.filter(user=user, site=site).exists()
-
-
-def site_membership_toggle(*, user: User, site: Site) -> bool:
-    """Flip a user's membership in ``site``; returns the new state."""
-    membership = SiteMembership.objects.filter(user=user, site=site).first()
-    if membership:
-        membership.delete()
-        return False
-    SiteMembership.objects.create(user=user, site=site)
-    return True
-
-
-def user_developer_toggle(*, user: User) -> bool:
-    """Flip a user's developer (staff) flag; returns the new state."""
-    user.is_staff = not user.is_staff
-    user.save(update_fields=["is_staff"])
-    return user.is_staff
-
-
-def site_activate(*, site: Site) -> Site:
-    """Make ``site`` the single active site row."""
-    with transaction.atomic():
-        Site.objects.filter(active=True).exclude(id=site.id).update(
-            active=False
-        )
-        if not site.active:
-            site.active = True
-            site.save(update_fields=["active", "updated_at"])
-    cache.delete(ACTIVE_SITE_CACHE_KEY)
-    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
+def site_save(*, site: Site, update_fields: list[str]) -> Site:
+    """Save the site and bust its cache so the next read re-stashes."""
+    site.save(update_fields=[*update_fields, "updated_at"])
+    transaction.on_commit(lambda: cache.delete(SITE_CACHE_KEY))
     return site
 
 
-def site_update(
+def site_court_details_update(
     *,
     site: Site,
-    name: str,
     court_name: str = "",
     jurisdiction_level: str = "",
     state: str = "",
     official_url: str = "",
     official_resources_url: str = "",
-    fast_model: str = "",
-    assistant_model: str = "",
 ) -> Site:
-    """Update a site row's editable fields."""
-    site.name = name
+    """Update the site's court detail fields."""
     site.court_name = court_name
     site.jurisdiction_level = jurisdiction_level
     site.state = state
     site.official_url = official_url
     site.official_resources_url = official_resources_url
-    site.fast_model = fast_model
-    site.assistant_model = assistant_model
-    site.save(
+    return site_save(
+        site=site,
         update_fields=[
-            "name",
             "court_name",
             "jurisdiction_level",
             "state",
             "official_url",
             "official_resources_url",
-            "fast_model",
-            "assistant_model",
-            "updated_at",
-        ]
+        ],
     )
-    cache.delete(ACTIVE_SITE_CACHE_KEY)
-    return site
 
 
-def _topic_unique_slug(*, site: Site, title: str) -> str:
-    base = slugify(title)[:64] or "topic"
-    slug, n = base, 2
-    while Topic.objects.filter(site=site, slug=slug).exists():
-        suffix = f"-{n}"
-        slug, n = base[: 64 - len(suffix)] + suffix, n + 1
-    return slug
-
-
-def topic_create(*, site: Site, **fields) -> Topic:
-    """Create a topic in ``site``."""
-    last = site.topics.aggregate(m=Max("order"))["m"]
-    topic = Topic.objects.create(
-        site=site,
-        slug=_topic_unique_slug(site=site, title=fields["title"]),
-        order=0 if last is None else last + 1,
-        **fields,
+def site_models_update(
+    *, site: Site, fast_model: str = "", assistant_model: str = ""
+) -> Site:
+    """Update the site's AI model selections."""
+    site.fast_model = fast_model
+    site.assistant_model = assistant_model
+    return site_save(
+        site=site, update_fields=["fast_model", "assistant_model"]
     )
-    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
-    return topic
 
 
-def topic_update(*, topic: Topic, **fields) -> Topic:
-    """Update a topic's editable fields."""
+def contact_create(**fields) -> Contact:
+    """Create a contact, appended to the display order."""
+    last = Contact.objects.aggregate(m=Max("order"))["m"]
+    return Contact.objects.create(
+        order=0 if last is None else last + 1, **fields
+    )
+
+
+def contact_update(*, contact: Contact, **fields) -> Contact:
+    """Update a contact's editable fields."""
     for name, value in fields.items():
-        setattr(topic, name, value)
-    topic.save(update_fields=[*fields, "updated_at"])
-    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
-    return topic
+        setattr(contact, name, value)
+    contact.save(update_fields=[*fields, "updated_at"])
+    return contact
 
 
-def topic_delete(*, topic: Topic) -> None:
-    topic.delete()
-    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
+def contact_delete(*, contact: Contact) -> None:
+    contact.delete()
+
+
+def contact_move(*, contact: Contact, direction: str) -> None:
+    """Move a contact one step up or down in the display order."""
+    with transaction.atomic():
+        row_move(list(contact_list()), contact, direction)
+
+
+def resource_create(**fields) -> Resource:
+    """Create a resource, appended to the display order."""
+    last = Resource.objects.aggregate(m=Max("order"))["m"]
+    return Resource.objects.create(
+        order=0 if last is None else last + 1, **fields
+    )
+
+
+def resource_update(*, resource: Resource, **fields) -> Resource:
+    """Update a resource's editable fields."""
+    for name, value in fields.items():
+        setattr(resource, name, value)
+    resource.save(update_fields=[*fields, "updated_at"])
+    return resource
+
+
+def resource_delete(*, resource: Resource) -> None:
+    resource.delete()
+
+
+def resource_move(*, resource: Resource, direction: str) -> None:
+    """Move a resource one step up or down in the display order."""
+    with transaction.atomic():
+        row_move(list(resource_list()), resource, direction)
+
+
+def contact_list_vcf() -> str:
+    """The site's contacts as a vCard (``.vcf``) string."""
+    out = []
+    for contact in contact_list():
+        vcard = vobject.vCard()
+        vcard.add("uid").value = f"{contact.id}@litigantportal.com"
+        vcard.add("fn").value = contact.name
+        # ORG (a structured/list value): our contacts are offices, so a
+        # phone imports them as an organization card, not a person.
+        vcard.add("org").value = [contact.name]
+        if contact.phone:
+            vcard.add("tel").value = contact.phone
+        if contact.email:
+            vcard.add("email").value = contact.email
+        if contact.url:
+            vcard.add("url").value = contact.url
+        if contact.note:
+            vcard.add("note").value = contact.note
+        out.append(vcard.serialize())
+    return "".join(out)

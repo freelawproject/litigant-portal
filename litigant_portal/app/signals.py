@@ -1,10 +1,12 @@
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.signals import user_logged_in
+from django.core.cache import cache
 from django.db import DEFAULT_DB_ALIAS
 from django.db.models.signals import post_migrate
 from django.dispatch import receiver
 
 from .models import Site
+from .selectors.site import SITE_CACHE_KEY
 from .services.user import (
     ADMINS_GROUP,
     DEVELOPERS_GROUP,
@@ -17,6 +19,10 @@ def ensure_site_row(sender, using=DEFAULT_DB_ALIAS, apps=None, **kwargs):
     """Guarantee the singleton site row exists."""
     if getattr(sender, "name", None) != "litigant_portal.app":
         return
+    try:
+        cache.delete(SITE_CACHE_KEY)
+    except Exception:
+        pass
     site_model = apps.get_model("app", "Site") if apps else Site
     if not site_model.objects.using(using).exists():
         site_model.objects.using(using).create()
