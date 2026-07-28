@@ -63,9 +63,7 @@ def _config(field_groups, deadlines=None):
 @pytest.mark.postgres
 class LibraryApplyGroupTests(TestCase):
     def _flow(self):
-        return Topic.objects.get(slug="test-topic").flows.get(
-            slug="test-flow"
-        )
+        return Topic.objects.get(slug="test-topic").flows.get(slug="test-flow")
 
     def test_apply_creates_groups_and_fields_in_order(self):
         topic_library_apply(
@@ -85,9 +83,7 @@ class LibraryApplyGroupTests(TestCase):
             [(f.name, f.order) for f in groups[0].fields.all()],
             [("a", 0), ("b", 1)],
         )
-        self.assertEqual(
-            [f.name for f in groups[1].fields.all()], ["c"]
-        )
+        self.assertEqual([f.name for f in groups[1].fields.all()], ["c"])
 
     def test_reapply_restructure_preserves_field_ids_and_answers(self):
         topic_library_apply(
@@ -113,13 +109,13 @@ class LibraryApplyGroupTests(TestCase):
         flow = self._flow()
         groups = list(flow.field_groups.all())
         self.assertEqual([g.title for g in groups], ["Only page"])
-        self.assertEqual(
-            [f.name for f in groups[0].fields.all()], ["a", "c"]
-        )
+        self.assertEqual([f.name for f in groups[0].fields.all()], ["a", "c"])
         moved_c = TopicFlowField.objects.get(group__flow=flow, name="c")
         self.assertEqual(moved_c.id, field_c.id)
         self.assertEqual(
-            TopicFlowAnswer.objects.get(identity=identity, field=moved_c).value,
+            TopicFlowAnswer.objects.get(
+                identity=identity, field=moved_c
+            ).value,
             "kept",
         )
         self.assertFalse(
@@ -131,9 +127,7 @@ class LibraryApplyGroupTests(TestCase):
             config=_config(
                 [
                     _group("Page one", [_field("a")]),
-                    _group(
-                        "Page two", [_field("served", data_type="date")]
-                    ),
+                    _group("Page two", [_field("served", data_type="date")]),
                 ],
                 deadlines=[
                     {
@@ -152,9 +146,7 @@ class LibraryApplyGroupTests(TestCase):
         config = topic_library_get(
             court_slug="north-dakota", topic_slug="adult-name-change"
         )
-        standard = next(
-            f for f in config["flows"] if f["slug"] == "standard"
-        )
+        standard = next(f for f in config["flows"] if f["slug"] == "standard")
         self.assertEqual(
             [g["title"] for g in standard["field_groups"]],
             [
