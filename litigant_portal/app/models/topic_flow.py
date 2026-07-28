@@ -70,23 +70,6 @@ class TopicFlowFieldGroup(BaseModel):
         ordering = ["order", "created_at"]
 
 
-class TopicFlowSection(BaseModel):
-    """A content section within a topic flow."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    flow = models.ForeignKey(
-        TopicFlow,
-        on_delete=models.CASCADE,
-        related_name="sections",
-    )
-    heading = models.CharField(max_length=255)
-    content = models.TextField(blank=True)
-    order = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ["order", "created_at"]
-
-
 class TopicFlowField(BaseModel):
     """A form field collected by a topic flow."""
 
@@ -113,46 +96,6 @@ class TopicFlowField(BaseModel):
     )
     choices = models.JSONField(default=list, blank=True)
     default = models.CharField(max_length=255, blank=True)
-    order = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ["order", "created_at"]
-
-
-class TopicFlowLink(BaseModel):
-    """A link associated with a topic flow."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    flow = models.ForeignKey(
-        TopicFlow,
-        on_delete=models.CASCADE,
-        related_name="links",
-    )
-    name = models.CharField(max_length=255)
-    url = models.URLField(max_length=500)
-    order = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ["order", "created_at"]
-
-
-class TopicFlowDeadline(BaseModel):
-    """A deadline computed relative to a topic flow field answer."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    flow = models.ForeignKey(
-        TopicFlow,
-        on_delete=models.CASCADE,
-        related_name="deadlines",
-    )
-    label = models.CharField(max_length=255)
-    description = models.TextField(blank=True)
-    offset_days = models.IntegerField(default=0)
-    offset_from = models.ForeignKey(
-        TopicFlowField,
-        on_delete=models.CASCADE,
-        related_name="deadlines",
-    )
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -223,3 +166,60 @@ class TopicFlowAnswer(BaseModel):
                 name="unique_identity_flow_answer",
             )
         ]
+
+
+class TopicFlowSection(BaseModel):
+    """A content section within a topic flow."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    flow = models.ForeignKey(
+        TopicFlow,
+        on_delete=models.CASCADE,
+        related_name="sections",
+    )
+    heading = models.CharField(max_length=255)
+    content = models.TextField(blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+
+class TopicFlowLink(BaseModel):
+    """A link associated with a topic flow."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    flow = models.ForeignKey(
+        TopicFlow,
+        on_delete=models.CASCADE,
+        related_name="links",
+    )
+    name = models.CharField(max_length=255)
+    url = models.URLField(max_length=500)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+
+class TopicFlowDeadline(BaseModel):
+    """A deadline computed relative to a topic flow field answer."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    flow = models.ForeignKey(
+        TopicFlow,
+        on_delete=models.CASCADE,
+        related_name="deadlines",
+    )
+    label = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    offset_days = models.IntegerField(default=0)
+    offset_from = models.ForeignKey(
+        TopicFlowField,
+        on_delete=models.CASCADE,
+        related_name="deadlines",
+    )
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "created_at"]

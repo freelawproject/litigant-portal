@@ -7,6 +7,7 @@ from django.dispatch import receiver
 
 from .models import Site
 from .selectors.site import SITE_CACHE_KEY
+from .selectors.topic_flow import TOPIC_LIST_CACHE_KEY
 from .services.user import (
     ADMINS_GROUP,
     DEVELOPERS_GROUP,
@@ -20,7 +21,7 @@ def ensure_site_row(sender, using=DEFAULT_DB_ALIAS, apps=None, **kwargs):
     if getattr(sender, "name", None) != "litigant_portal.app":
         return
     try:
-        cache.delete(SITE_CACHE_KEY)
+        cache.delete_many([SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY])
     except Exception:
         pass
     site_model = apps.get_model("app", "Site") if apps else Site
