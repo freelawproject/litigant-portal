@@ -1,25 +1,96 @@
 {% load i18n %}
 
-<div class="max-w-3xl">
+<div class="max-w-4xl mx-auto">
   {# ------- Topic list ------- #}
   <div x-show="kbListVisible">
-    <div class="mb-4">
-      <h3 class="text-base font-semibold text-greyscale-900">{% trans "Topics" %}</h3>
-      <p class="text-sm text-greyscale-500">{% trans "The legal topics this site offers — shown on the home page and used to guide chat." %}</p>
+    {# Top-level tab heading — hidden below lg where the toolbar names the tab #}
+    <div class="mb-4 hidden lg:block">
+      <h3 class="text-base font-semibold text-greyscale-900">{% trans "Knowledge Base" %}</h3>
+      <p class="text-sm text-greyscale-500">{% trans "The topics and guided flows this site offers." %}</p>
+    </div>
+    <div class="mb-4 flex items-start justify-between gap-2">
+      <div>
+        <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Topics" %}</h4>
+        <p class="text-xs text-greyscale-500">{% trans "The legal topics this site offers — shown on the home page and used to guide chat." %}</p>
+      </div>
+      <button type="button"
+              x-on:click="newTopic"
+              class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+        <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+        {% trans "New topic" %}
+      </button>
     </div>
     <div class="space-y-3">
       <template x-for="topic in kbTopics" :key="topic.id">
         <div class="rounded-xl border border-greyscale-200 bg-white p-4 flex items-start gap-4">
+          {# Stacked reorder control — position lives left, actions right #}
+          <div class="flex flex-col flex-shrink-0 -ml-1 mt-1">
+            <button type="button"
+                    x-bind:data-topic-id="topic.id"
+                    data-direction="up"
+                    x-on:click="moveTopic"
+                    x-bind:disabled="topic.moveUpDisabled"
+                    aria-label="{% trans "Move topic up" %}"
+                    class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+              <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" />
+            </button>
+            <button type="button"
+                    x-bind:data-topic-id="topic.id"
+                    data-direction="down"
+                    x-on:click="moveTopic"
+                    x-bind:disabled="topic.moveDownDisabled"
+                    aria-label="{% trans "Move topic down" %}"
+                    class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+              <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" />
+            </button>
+          </div>
           <div class="w-11 h-11 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center flex-shrink-0"
                aria-hidden="true"
                x-html="topic.iconSvg"></div>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-semibold text-greyscale-900 truncate" x-text="topic.title"></p>
             <p class="text-sm text-greyscale-600" x-text="topic.subtitle"></p>
-            <p class="mt-1 text-xs text-greyscale-400" x-text="topic.countsLabel"></p>
+            {# Flow rows — the name opens the flow, the switch flips it #}
+            {# between Draft (grey) and Live (green), saving immediately #}
+            <div x-show="topic.hasFlows"
+                 class="mt-3 rounded-lg border border-greyscale-200 divide-y divide-greyscale-100 overflow-hidden">
+              <template x-for="flow in topic.flows" :key="flow.id">
+                <div class="flex items-center gap-3 px-3 py-2 bg-white">
+                  <button type="button"
+                          x-bind:data-flow-id="flow.id"
+                          x-on:click="openFlow"
+                          x-bind:title="flow.name"
+                          class="group flex flex-1 min-w-0 items-center gap-2 text-left cursor-pointer">
+                    <c-atoms.icon name="map" class="w-3.5 h-3.5 flex-shrink-0 text-greyscale-400 group-hover:text-primary-600 transition-colors" />
+                    <span class="truncate text-sm font-medium text-greyscale-700 group-hover:text-primary-700 transition-colors" x-text="flow.name"></span>
+                  </button>
+                  <span class="flex-shrink-0 text-[11px] font-semibold uppercase tracking-wider"
+                        x-bind:class="flow.statusClass"
+                        x-text="flow.statusLabel"></span>
+                  <button type="button"
+                          role="switch"
+                          x-bind:aria-checked="flow.ariaChecked"
+                          x-bind:aria-label="flow.toggleAria"
+                          x-bind:data-flow-id="flow.id"
+                          x-on:click="toggleFlowEnabled"
+                          x-bind:class="flow.toggleClass"
+                          class="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full cursor-pointer transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 focus-visible:ring-offset-2">
+                    <span x-bind:class="flow.knobClass"
+                          class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform"></span>
+                  </button>
+                </div>
+              </template>
+            </div>
+            <button type="button"
+                    x-bind:data-topic-id="topic.id"
+                    x-on:click="newFlow"
+                    class="mt-2 w-full rounded-lg border border-dashed border-greyscale-300 py-1.5 flex items-center justify-center gap-1 text-xs font-medium text-greyscale-400 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors">
+              <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+              {% trans "Create topic flow" %}
+            </button>
           </div>
-          {# Actions — swap to an inline confirmation on delete #}
-          <div class="flex items-center gap-1 flex-shrink-0" x-show="topic.notConfirmingDelete">
+          {# Actions — delete confirms via the stern modal below #}
+          <div class="flex items-center gap-1 flex-shrink-0">
             <button type="button"
                     x-bind:data-topic-id="topic.id"
                     x-on:click="editTopic"
@@ -35,29 +106,8 @@
               <c-atoms.icon name="trash" class="w-4 h-4" />
             </button>
           </div>
-          <div class="flex items-center gap-2 flex-shrink-0" x-show="topic.confirmingDelete" x-cloak>
-            <span class="text-xs text-greyscale-600">{% trans "Delete this topic?" %}</span>
-            <button type="button"
-                    x-bind:data-topic-id="topic.id"
-                    x-on:click="confirmDeleteTopic"
-                    class="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
-              {% trans "Delete" %}
-            </button>
-            <button type="button"
-                    x-on:click="cancelDeleteTopic"
-                    class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
-              {% trans "Cancel" %}
-            </button>
-          </div>
         </div>
       </template>
-      {# Create card #}
-      <button type="button"
-              x-on:click="newTopic"
-              class="w-full rounded-xl border-2 border-dashed border-greyscale-300 p-6 flex items-center justify-center gap-2 text-sm font-medium text-greyscale-400 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors">
-        <c-atoms.icon name="plus" class="w-5 h-5" />
-        {% trans "New topic" %}
-      </button>
     </div>
   </div>
 
@@ -155,4 +205,95 @@
       </div>
     </form>
   </div>
+
+  {% include "pages/admin/_flow.html" %}
+
+  {# Create-flow modal — a new flow is just a name and a slug; it opens #}
+  {# as a draft and everything else is added in the editor. #}
+  <div x-show="flowCreateOpen"
+       x-cloak
+       x-on:keydown.escape.window="cancelFlowCreate"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelFlowCreate"></div>
+    <form x-on:submit.prevent="saveFlowCreate"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="flow-create-title"
+          class="relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl space-y-3">
+      <h3 id="flow-create-title" class="text-base font-semibold text-greyscale-900">{% trans "Create topic flow" %}</h3>
+      <p class="text-xs text-greyscale-500">{% trans "New flows start as drafts — add content, then switch them live." %}</p>
+      <div>
+        <label for="flow-create-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Name" %}</label>
+        <input id="flow-create-name"
+               type="text"
+               data-field="flowCreateName"
+               x-bind:value="flowCreateName"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div>
+        <label for="flow-create-slug" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Slug" %}</label>
+        <input id="flow-create-slug"
+               type="text"
+               data-field="flowCreateSlug"
+               x-bind:value="flowCreateSlug"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+        <p class="mt-1 text-xs text-greyscale-400">{% trans "Identifies this flow within its topic — must be unique." %}</p>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <span x-show="flowCreateError" x-cloak class="mr-auto text-xs text-red-600" x-text="flowCreateError"></span>
+        <button type="button"
+                x-on:click="cancelFlowCreate"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Create" %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# Delete-topic confirmation modal #}
+  <div x-show="topicDeleteModalOpen"
+       x-cloak
+       x-on:keydown.escape.window="cancelDeleteTopic"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelDeleteTopic"></div>
+    <div role="dialog"
+         aria-modal="true"
+         aria-labelledby="topic-delete-title"
+         class="relative w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 w-9 h-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+          <c-atoms.icon name="exclamation-triangle" class="w-5 h-5" />
+        </div>
+        <div class="min-w-0">
+          <h3 id="topic-delete-title" class="text-base font-semibold text-greyscale-900" x-text="topicDeleteTitle"></h3>
+          <p class="mt-1 text-sm text-greyscale-600">
+            {% trans "This permanently deletes the topic and every flow in it — all of their content, fields, forms, and any answers litigants have saved. This cannot be undone." %}
+          </p>
+          <p x-show="topicDeleteFlowsNote"
+             x-cloak
+             class="mt-2 text-sm font-medium text-red-600"
+             x-text="topicDeleteFlowsNote"></p>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button type="button"
+                x-on:click="cancelDeleteTopic"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="button"
+                x-on:click="confirmDeleteTopic"
+                class="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+          {% trans "Delete topic" %}
+        </button>
+      </div>
+    </div>
+  </div>
+
 </div>
