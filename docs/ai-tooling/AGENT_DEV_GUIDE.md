@@ -22,11 +22,11 @@ frontend templates those tools render with). You build new behavior by
 | Rendering tool templates → HTML              | `tools = [...]` (Tool subclasses)       |
 | Reloading a thread for the frontend          | tool templates under `templates/tools/` |
 
-Engine code: [`services/chat_v2.py`](../litigant_portal/app/services/chat_v2.py) ·
-Abstraction: [`agents_v2/base.py`](../litigant_portal/agents_v2/base.py) ·
-Demo agent: [`agents_v2/weather.py`](../litigant_portal/agents_v2/weather.py) ·
-Tools: [`agents_v2/tools/`](../litigant_portal/agents_v2/tools/) ·
-Generic views: [`views/chat_v2.py`](../litigant_portal/app/views/chat_v2.py) ·
+Engine code: [`services/chat_engine.py`](../litigant_portal/app/services/chat_engine.py) ·
+Abstraction: [`agents/base.py`](../litigant_portal/agents/base.py) ·
+Demo agent: [`agents/weather.py`](../litigant_portal/agents/weather.py) ·
+Tools: [`agents/tools/`](../litigant_portal/agents/tools/) ·
+Generic views: [`views/chat_engine.py`](../litigant_portal/app/views/chat_engine.py) ·
 Example surface: [`views/assistant.py`](../litigant_portal/app/views/assistant.py)
 
 ---
@@ -70,7 +70,7 @@ Read it as a loop:
 ## Anatomy of an agent
 
 An agent is a configuration object. It binds together five ingredients. The
-[`Agent`](../litigant_portal/agents_v2/base.py) base class is deliberately tiny —
+[`Agent`](../litigant_portal/agents/base.py) base class is deliberately tiny —
 it holds config and a prompt method, and that's it. **Streaming and tool
 execution are the engine's job, not the agent's.**
 
@@ -84,8 +84,9 @@ completion_args = {"max_tokens": 1000}
 ```
 
 These are spread into `litellm.completion(...)`. **Don't put `model` here** — you'll get an error if you try.
-The model is supplied to the engine by the endpoint (eventually from a site
-config model), not the agent, and setting it in `completion_args` raises.
+The model is supplied to the engine by the endpoint (from the active site's
+model config via `site_get_model`), not the agent, and setting it in
+`completion_args` raises.
 
 ### 2. The state — `state_schema`
 
@@ -127,7 +128,7 @@ def generate_system_prompt(self, *, thread_id) -> str:
 
 ### 4. The tools — `tools = [...]`
 
-Tools live **one per file** in the nested `agents_v2/tools/` module; an agent
+Tools live **one per file** in the nested `agents/tools/` module; an agent
 imports the ones it needs into its `tools` list. A tool is a Pydantic model
 whose fields _are_ the input schema; it implements `__call__(thread_id)` and
 returns a `ToolOutput`. Like the prompt generator, a tool gets the thread, so it
@@ -192,16 +193,14 @@ The weather agent is the canonical hello-world. Here is every file, with each
 ingredient called out. To "expand" it into a real agent you grow these same
 files — the only _new_ file you ever add is one more tool under `tools/`.
 
-### `litigant_portal/agents_v2/tools/check_weather.py`
+### `litigant_portal/agents/tools/check_weather.py`
 
 One tool per file. INGREDIENT 4 (the tool) and INGREDIENT 5 (how it renders).
 
 ```python
-"""CheckWeather — a mock weather lookup for the demo weather agent."""
-
 import time
 
-from ..base import Field, Tool, ToolOutput
+from litigant_portal.agents.base import Field, Tool, ToolOutput
 
 
 class CheckWeather(Tool):
@@ -214,9 +213,8 @@ class CheckWeather(Tool):
     tool_result_template = "tools/check_weather_result.html"
 
     def __call__(self, *, thread_id) -> ToolOutput:
+        from litigant_portal.agents.weather import WeatherState
         from litigant_portal.app.models import ChatThread
-
-        from ..weather import WeatherState
 
         time.sleep(2)  # demo-only: keeps the "checking weather" card visible
 
@@ -236,22 +234,16 @@ class CheckWeather(Tool):
         )
 ```
 
-```python
-# litigant_portal/agents_v2/tools/__init__.py — export each tool
-from .check_weather import CheckWeather
-```
+### `litigant_portal/agents/weather.py`
 
-### `litigant_portal/agents_v2/weather.py`
-
-The agent binds the ingredients together and pulls its tools from `.tools`.
+The agent binds the ingredients together, importing each tool by its module
+path (`tools/__init__.py` stays empty).
 
 ```python
-"""A hello-world weather agent demonstrating the agents_v2 abstraction."""
-
 from django.utils import timezone
 
 from .base import Agent, AgentState
-from .tools import CheckWeather
+from .tools.check_weather import CheckWeather
 
 
 # ── INGREDIENT 2: state ──────────────────────────────────────────────
@@ -267,7 +259,7 @@ class WeatherAgent(Agent):
 
     completion_args = {"max_tokens": 1000}       # INGREDIENT 1: LLM config
     state_schema = WeatherState                  # INGREDIENT 2
-    tools = [CheckWeather]                        # INGREDIENT 4 (from .tools)
+    tools = [CheckWeather]                        # INGREDIENT 4
 
     # INGREDIENT 3: the system prompt, built from the thread (state + user +
     # conversation are all reachable here).
@@ -323,7 +315,7 @@ The **result** card. Context: `data` (the tool's `render_data`).
 
 ### Registering & wiring it up: thread types and view surfaces
 
-Export the agent from `agents_v2/__init__.py`, then give it a **surface**: a
+Export the agent from `agents/__init__.py`, then give it a **surface**: a
 thin view module that binds the generic chat views to this agent.
 
 Two pieces make this work:
@@ -331,7 +323,7 @@ Two pieces make this work:
 - **`thread_type`** — a string column on `ChatThread` (indexed, e.g.
   `"user_chat"`). Every thread query in the engine — list, get, stream,
   delete — is scoped by it, so each surface sees only its own threads.
-- **Generic views** — [`views/chat_v2.py`](../litigant_portal/app/views/chat_v2.py)
+- **Generic views** — [`views/chat_engine.py`](../litigant_portal/app/views/chat_engine.py)
   provides `stream`, `thread_list`, `message_list`, `thread_usage`, and
   `thread_delete` as abstract views. Each takes the surface's bindings as
   keyword args: `agent_class`, `thread_type`, and (for `stream`) `model`.
@@ -348,17 +340,17 @@ THREAD_TYPE = "user_chat"
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def stream(request: HttpRequest):
-    return chat_v2.stream(
+    return chat_engine.stream(
         request,
         agent_class=LitigantAssistant,
         thread_type=THREAD_TYPE,
-        model=CHAT_MODEL,
+        model=site_get_model(role="assistant"),
     )
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def thread_list(request: HttpRequest) -> JsonResponse:
-    return chat_v2.thread_list(request, thread_type=THREAD_TYPE)
+    return chat_engine.thread_list(request, thread_type=THREAD_TYPE)
 ```
 
 Mount the surface under its own URL namespace in `urls.py`:
@@ -435,12 +427,12 @@ record — it reaches neither the model nor the frontend, but its `num_tokens`
 and `cost` count in `chat_thread_usage`. The engine uses one to book the cost
 of the thread-title completion (`kind: "thread_description"`).
 
-**Injecting one** — `chat_message_inject_meta` (in `services/chat_v2.py`),
+**Injecting one** — `chat_message_inject_meta` (in `services/chat_engine.py`),
 mirroring `chat_message_inject_hidden`. Use it for any side completion whose
 spend should show up in usage:
 
 ```python
-from litigant_portal.app.services.chat_v2 import chat_message_inject_meta
+from litigant_portal.app.services.chat_engine import chat_message_inject_meta
 
 chat_message_inject_meta(
     thread_id=thread_id,
@@ -457,10 +449,10 @@ Use it for context the model should have but the user shouldn't see as a chat
 turn: injected retrieval results, scaffolding/setup instructions, a note a tool
 records for later reasoning, or developer guidance mid-conversation.
 
-**Injecting one** — `chat_message_inject_hidden` (in `services/chat_v2.py`):
+**Injecting one** — `chat_message_inject_hidden` (in `services/chat_engine.py`):
 
 ```python
-from litigant_portal.app.services.chat_v2 import chat_message_inject_hidden
+from litigant_portal.app.services.chat_engine import chat_message_inject_hidden
 
 chat_message_inject_hidden(
     thread_id=thread_id,
@@ -498,18 +490,19 @@ engine already uses for tool data and hidden messages.
 
 ## TL;DR for building a new agent
 
-1. Create `agents_v2/<your_agent>.py`.
+1. Create `agents/<your_agent>.py`.
 2. Define a `state_schema` (subclass `AgentState`).
 3. Write `generate_system_prompt(thread_id)` — read state/user/conversation off
    the thread.
-4. Write one `Tool` subclass per action, one file each under `agents_v2/tools/`
-   (export it from `tools/__init__.py`); return `ToolOutput(result, render_data,
-refresh_system_prompt)`; mutate state through the thread.
+4. Write one `Tool` subclass per action, one file each under `agents/tools/`;
+   return `ToolOutput(result, render_data, refresh_system_prompt)`; mutate
+   state through the thread.
 5. (Optional) Add `templates/tools/*.html` for custom call/result cards — or
    leave the default JSON box.
-6. Subclass `Agent`, set `completion_args`, `state_schema`, and `tools` (imported
-   from `.tools`); export it from `agents_v2/__init__.py`.
-7. Give it a surface: a view module that binds the generic `views/chat_v2.py`
+6. Subclass `Agent`, set `completion_args`, `state_schema`, and `tools`
+   (each imported by its module path under `tools/`); export the agent from
+   `agents/__init__.py`.
+7. Give it a surface: a view module that binds the generic `views/chat_engine.py`
    views with your `agent_class`, a unique `thread_type`, and a model (see
    `views/assistant.py`), mounted under `api/agents/<name>/` in `urls.py`.
 

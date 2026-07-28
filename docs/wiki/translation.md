@@ -1,7 +1,14 @@
-# Translation Guide
+# Translation Guide (gettext infrastructure reference)
 
-This project uses Django's built-in i18n framework. All user-facing strings are
-wrapped with translation markers; translators work with `.po` files.
+This page documents the Django i18n plumbing that exists in the repo. The
+**translation strategy is not yet scoped** — Django gettext only covers UI
+chrome (nav, buttons, form labels). LP's dominant user-facing surfaces are
+LLM output (the model can respond in the user's language natively, no catalog
+involved) and corpus YAML (translation there is a content-architecture
+question tied to the wiki/ingestion design). Until the per-surface strategy
+issue ([#704](https://github.com/freelawproject/litigant-portal/issues/704))
+is decided, wrap strings opportunistically; don't sweep, and don't churn
+`.po` catalogs while copy is still being redrafted.
 
 ## Quick Reference
 
@@ -22,11 +29,11 @@ make compilemessages   # Compile .po → .mo (build step)
 
 ```bash
 # Example: add French
-SECRET_KEY=dev .venv/bin/python manage.py makemessages -l fr --no-location
-SECRET_KEY=dev .venv/bin/python manage.py makemessages -d djangojs -l fr --no-location
+docker compose exec django manage makemessages -l fr --no-location
+docker compose exec django manage makemessages -d djangojs -l fr --no-location
 ```
 
-Then add the language to `LANGUAGES` in `config/settings.py`:
+Then add the language to `LANGUAGES` in `litigant_portal/settings.py`:
 
 ```python
 LANGUAGES = [
@@ -44,17 +51,17 @@ make messages          # Updates all .po files, marks changed strings as fuzzy
 
 Translators then review fuzzy strings and provide translations.
 
-## Translation Platform (Weblate)
+## Translation Platform (Weblate — planned, not yet connected)
 
-We use [Weblate](https://hosted.weblate.org/) (free for open source) so
+The plan is [Weblate](https://hosted.weblate.org/) (free for open source) so
 non-developers can contribute translations.
 
-### Setup
+### Setup (when we connect)
 
 1. Connect the repo to Weblate (hosted instance, free for OSS)
 2. Configure two components:
-   - **Django** — file mask: `locale/*/LC_MESSAGES/django.po`
-   - **JavaScript** — file mask: `locale/*/LC_MESSAGES/djangojs.po`
+   - **Django** — file mask: `litigant_portal/app/locale/*/LC_MESSAGES/django.po`
+   - **JavaScript** — file mask: `litigant_portal/app/locale/*/LC_MESSAGES/djangojs.po`
 3. Weblate auto-discovers languages from the `locale/` directory
 
 ### Court Partner Access

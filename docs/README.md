@@ -1,181 +1,28 @@
-# Litigant Portal - Development Guide
+# Litigant Portal Docs
 
-## Quick Start
+The repo's reference shelf: material you reach for when you need it. Day-to-day working guidance lives in [CLAUDE.md](../CLAUDE.md); setup, deployment, and contributing basics live in the root [README](../README.md) and [CONTRIBUTING.md](../CONTRIBUTING.md). The repo itself is the source of truth — when a doc and the code disagree, trust the code and fix the doc.
 
-```bash
-cp .env.example .env        # Add your GROQ_API_KEY
-make docker-dev             # Start dev environment
-# Visit: http://portal.localhost/style-guide/
-```
+`wiki/` is deliberately in-repo rather than a hosted wiki: docs version with the code you pulled. Fork the repo, or stay on an older release, and the docs describe _that_ version.
 
-**Other Commands:**
+## AI tooling
 
-```bash
-make docker-shell           # Shell into container
-make docker-down            # Stop containers
-make test                   # Run tests
-```
+| Doc                                                       | Purpose                                                          |
+| --------------------------------------------------------- | ---------------------------------------------------------------- |
+| [AGENT_DEV_GUIDE.md](./ai-tooling/AGENT_DEV_GUIDE.md)     | Build agents on the chat engine: state, prompts, tools, surfaces |
+| [ATTACHMENT_SYSTEM.md](./ai-tooling/ATTACHMENT_SYSTEM.md) | How uploads flow into the LLM: inline vs. reader subagent        |
 
-**Requirements:** Docker
+## Document assembly
 
----
+| Doc                                | Purpose                                                 |
+| ---------------------------------- | ------------------------------------------------------- |
+| [docassemble.md](./docassemble.md) | docassemble: authoring gotchas, local bench, QA hosting |
 
-## Project Status
+## Wiki
 
-| Phase                                           | Status |
-| ----------------------------------------------- | ------ |
-| Django Foundation                               | Done   |
-| Frontend Pipeline (Tailwind CLI + Alpine local) | Done   |
-| Core Atoms (Button, Input, Link, Select, Icon)  | Done   |
-| Component Library Page                          | Done   |
-| Auth (Login/Signup/Logout)                      | Done   |
-| AI Chat with Groq                               | Done   |
-| A11y Testing                                    | Next   |
-
----
-
-## URLs (Development)
-
-| URL                                  | Purpose                   |
-| ------------------------------------ | ------------------------- |
-| http://portal.localhost/             | Dashboard (hero + topics) |
-| http://portal.localhost/chat/        | AI chat interface         |
-| http://portal.localhost/style-guide/ | Component library / guide |
-| http://portal.localhost/admin/       | Django admin              |
-
----
-
-## Project Structure
-
-```
-litigant-portal/
-├── config/                 # Django settings
-├── portal/                 # Main Django app (views, models, forms)
-├── chat/                   # AI chat app (providers, services, agents)
-├── templates/
-│   ├── base.html          # Base layout (responsive)
-│   ├── cotton/            # Django-Cotton components (Atomic Design)
-│   │   ├── atoms/         # Basic elements (button, input, link, etc.)
-│   │   ├── molecules/     # Combinations (logo, search_bar, topic_card)
-│   │   └── organisms/     # Complex sections (header, footer, hero)
-│   └── pages/             # Page templates (home, chat, profile, etc.)
-├── static/
-│   ├── css/
-│   │   ├── main.css       # Tailwind source
-│   │   └── main.built.css # Tailwind output (gitignored)
-│   ├── images/            # Static images (logo.svg)
-│   └── js/
-│       ├── theme.js       # Alpine theme store
-│       └── chat.js        # Alpine chat component
-└── docs/                  # This folder
-```
-
----
-
-## Documentation Index
-
-| Doc                                            | Purpose                             |
-| ---------------------------------------------- | ----------------------------------- |
-| [ARCHITECTURE.md](./ARCHITECTURE.md)           | Tech stack, key decisions, patterns |
-| [REQUIREMENTS.md](./REQUIREMENTS.md)           | Product requirements, UX principles |
-| [COMPONENT_LIBRARY.md](./COMPONENT_LIBRARY.md) | Component library & testing guide   |
-| [CHANGES.md](./CHANGES.md)                     | Changelog                           |
-| [SECURITY.md](./SECURITY.md)                   | Vulnerability disclosure            |
-
----
-
-## Tech Stack
-
-| Layer      | Technology                               |
-| ---------- | ---------------------------------------- |
-| Backend    | Django 5.2 LTS, Python 3.13              |
-| Components | Django Cotton                            |
-| Styling    | Tailwind CSS 4.x (standalone CLI)        |
-| Reactivity | Alpine.js 3.14.9 (local, standard build) |
-| Auth       | django-allauth                           |
-| AI Chat    | Groq (llama-3.3-70b-versatile)           |
-| Security   | django-csp                               |
-| Deployment | Self-hosted (Docker Compose + Caddy)     |
-
-**No Node.js required** - Tailwind via standalone CLI, Alpine.js local files.
-
----
-
-## Component Usage
-
-```html
-<!-- Button -->
-<c-atoms.button variant="primary">Submit</c-atoms.button>
-<c-atoms.button variant="outline">Cancel</c-atoms.button>
-<c-atoms.button variant="danger" disabled>Delete</c-atoms.button>
-
-<!-- Input -->
-<c-atoms.input type="email" placeholder="Email" error />
-
-<!-- Form Field (label + input + errors) -->
-<c-molecules.form-field
-  label="Email"
-  type="email"
-  name="email"
-  id="id_email"
-  required
-/>
-
-<!-- Link -->
-<c-atoms.link href="/dashboard" variant="primary">Dashboard</c-atoms.link>
-<c-atoms.link href="https://example.com" target="_blank" external_icon>
-  External
-</c-atoms.link>
-
-<!-- Select -->
-<c-atoms.select name="state">
-  <option value="">Select...</option>
-</c-atoms.select>
-
-<!-- Icon (Heroicons) -->
-<c-atoms.icon name="check-circle" class="w-6 h-6" />
-<c-atoms.icon
-  name="check-circle"
-  style="solid"
-  class="w-6 h-6 text-green-600"
-/>
-
-<!-- Checkbox -->
-<c-atoms.checkbox name="remember" id="remember" label="Remember me" />
-```
-
----
-
-## Design System
-
-Colors and patterns adapted from CourtListener:
-
-- **Primary:** Coral/red (`primary-600: #B5362D`)
-- **Greyscale:** Warm greys (`greyscale-900: #1C1814`)
-- **Brand:** Purple accents (`brand-600: #7F56D9`)
-
-See `/style-guide/` for live examples and full documentation.
-
----
-
-## Deployment
-
-**GitHub Pages (Static Demo):**
-
-Live site: https://freelawproject.github.io/litigant-portal/
-
-Deploys automatically on push to `main` via GitHub Actions. Uses `django-distill` to pre-render pages as static HTML.
-
-```bash
-# Generate static site locally
-uv run python manage.py collectstatic --noinput
-uv run python manage.py distill-local dist --force
-```
-
----
-
-## Workflow Guidelines
-
-- Propose changes before implementing
-- One task at a time
-- Keep responses concise
+| Doc                                                 | Purpose                                                                                                           |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| [SECURITY.md](./wiki/SECURITY.md)                   | Security architecture: production headers, secrets, CSP                                                           |
+| [ai-tone-guide.md](./wiki/ai-tone-guide.md)         | Tone and philosophy for AI-generated user-facing output                                                           |
+| [issue-conventions.md](./wiki/issue-conventions.md) | Issue templates, labels, and the reasoning behind them                                                            |
+| [translation.md](./wiki/translation.md)             | gettext infrastructure reference (strategy: [#704](https://github.com/freelawproject/litigant-portal/issues/704)) |
+| [wcag-strategy.md](./wiki/wcag-strategy.md)         | WCAG 2.2 AA compliance strategy + component checklist                                                             |

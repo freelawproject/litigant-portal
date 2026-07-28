@@ -43,14 +43,16 @@ CSP prevents XSS attacks by controlling which resources can load.
 
 ### Configuration
 
-Settings in `config/settings.py`:
+Settings in `litigant_portal/settings.py`:
 
 ```python
 CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", "https://cdn.jsdelivr.net")
-CSP_STYLE_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'", *ASSET_ORIGINS)
+CSP_STYLE_SRC = ("'self'", *ASSET_ORIGINS)
 # ... see settings.py for full config
 ```
+
+`ASSET_ORIGINS` is the S3/CDN origin the public storage serves from in production (empty in local dev, where everything is same-origin). No third-party CDNs — all frontend assets are local files or served from our own storage.
 
 ### Testing
 
@@ -65,28 +67,11 @@ CSP_STYLE_SRC = ("'self'",)
 2. CSP violations appear as errors
 3. Check `Content-Security-Policy` header in Network tab
 
-**Selenium (future - with Docker):**
-
-```python
-# Example: Verify no CSP violations in browser console
-from selenium import webdriver
-
-def test_no_csp_violations(live_server):
-    driver = webdriver.Chrome()
-    driver.get(live_server.url)
-
-    logs = driver.get_log('browser')
-    csp_errors = [l for l in logs if 'Content Security Policy' in l['message']]
-
-    assert len(csp_errors) == 0, f"CSP violations: {csp_errors}"
-    driver.quit()
-```
-
 ### What's Blocked
 
-| Blocked                   | Alternative             |
-| ------------------------- | ----------------------- |
-| `onclick="..."`           | `@click="..."` (Alpine) |
-| `<script>inline</script>` | External JS file        |
-| `javascript:` URLs        | Proper event handlers   |
-| `style="..."`             | CSS classes             |
+| Blocked                   | Alternative                 |
+| ------------------------- | --------------------------- |
+| `onclick="..."`           | `x-on:click="..."` (Alpine) |
+| `<script>inline</script>` | External JS file            |
+| `javascript:` URLs        | Proper event handlers       |
+| `style="..."`             | CSS classes                 |

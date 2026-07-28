@@ -28,7 +28,7 @@ standard/waiver split — no in-interview branching.
 
 ## Test it locally
 
-Prereq: the bench is up. See [`docs/docassemble-local-dev.md`](../../docs/docassemble-local-dev.md).
+Prereq: the bench is up. See [`docs/docassemble.md`](../../docs/docassemble.md).
 
 - Start the bench: `make docassemble-up`
 - Open `http://localhost:8100` and log in (fresh box default: `admin@example.com` / `password`)

@@ -11,11 +11,6 @@ Access to justice portal for self-represented litigants. Django 6.0 with server-
 Building a complete eviction flow from discovery to resolution for court partner demos. One topic, end-to-end, at production quality — every button/link does something, no placeholders. Court-neutral information where partner-specific data isn't available yet.
 
 - [Milestone](https://github.com/freelawproject/litigant-portal/milestone/3) - Beta Demo: Housing Eviction Flow
-- [Legal Flow](docs/overview-mapped-legal-flow.md) - Generic 9-stage flow (Triage / Prepare / Resolve); legal review artifact
-- [Happy Path Narrative](docs/happy-path-jane.md) - Full AI · Auth end-to-end story (base for all variations)
-- [Demo Flow](docs/demo-flow-jane.md) - Jane's 8-step demo flow (abbreviated)
-- [User Flows Matrix](docs/user-flows.md) - 3×2 matrix (Full AI / Hybrid / Basic × Anon / Auth)
-- [Retro Notes](docs/itc-demo-retro.md) - Lessons learned from ITC demo (Jan 2026)
 
 ## Environment Philosophy
 
@@ -26,14 +21,7 @@ Building a complete eviction flow from discovery to resolution for court partner
 | Local dev   | OpenAI        | `docker-compose.yml` + `.env`        |
 | CI          | None (mocked) | `tox.ini` — tests mock all providers |
 
-**Local dev setup:**
-
-```bash
-cp .env.example .env        # Add your OPENAI_API_KEY
-make docker                 # Start dev environment
-```
-
-Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `openai/gpt-4o-mini`).
+Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `openai/gpt-4o-mini`). Setup commands live under Commands below.
 
 ## Commands
 
@@ -96,7 +84,7 @@ Rules for authoring user-facing content — corpus YAML (`litigant_portal/conten
 
 ## Issue creation
 
-See [`docs/issue-conventions.md`](docs/issue-conventions.md) for the full label color scheme and template rationale.
+See [`docs/wiki/issue-conventions.md`](docs/wiki/issue-conventions.md) for the full label color scheme and template rationale.
 
 New issues use the templates in `.github/ISSUE_TEMPLATE/`. Blank issues are disabled in `config.yml`, so the web UI forces a template; the CLI must opt in via `--template`.
 
@@ -142,16 +130,21 @@ Field ids are validated against the chosen template — a section that doesn't m
 
 ## Sprint mapping
 
-When someone references a sprint by its web-team letter/artist name ("the Ed Sheeran sprint", "Sprint F"), translate to the matching LP Iteration on board #75 via [`docs/sprint-map.md`](docs/sprint-map.md), then pull the work from #75 + git. This crosswalk is LP-specific — other JI repos don't necessarily align with the web-team retro, so it lives here, not in org-level instructions.
+When someone references a sprint by its web-team letter/artist name ("the Ed Sheeran sprint", "Sprint F"), translate to the matching LP Iteration on board #75 via the sprint-map crosswalk (JI-team record kept outside the repo; the board/vault tooling holds the current copy), then pull the work from #75 + git. This crosswalk is LP-specific — other JI repos don't necessarily align with the web-team retro, so it lives here, not in org-level instructions.
 
 ## Sizing & estimation
 
-How we size issues so velocity maps to reality (the org-level scale + board mechanics live in `~/flp/CLAUDE.md`; these are the LP-specific practice and calibration record):
+The compact rules (board mechanics live at the org level; sizing history, anchors, and calibration records are JI-team material, kept outside the repo):
 
-- [`docs/sizing-guide.md`](docs/sizing-guide.md) — contributor/onboarding: get your estimate in the zone (size the work not the diff, incident work = size the diagnosis, XL = split). Reference anchors from real LP issues.
-- [`docs/sizing-calibration.md`](docs/sizing-calibration.md) — living team record: the estimate → verify-L1 → verify-L2 model, how to run a calibration pass, and a dated log of lessons (first entry: the It2–It4 velocity baseline + It3 reconstruction).
+- **Scale:** XS 0.5 (~1–2h) · S 1 (half day) · M 3 (1–2 days) · L 5 (3–4 days), calibrated to AI-assisted effort. Size is the one human input; the board derives Estimate.
+- **Size the work, not the diff** — a one-line fix after three days of debugging isn't an XS; a 600-line mechanical rename can be. Incident work: size the diagnosis. Count off-repo work (content authoring, infra, verification).
+- **XL is a flag, not a size** — split into sub-issues before it enters a sprint.
+- **P0 is fires only** — must ship today and/or prod is down. Never "important."
+- **When in doubt, size smaller**, note the reasoning in the issue, and let iteration review correct the scale. An estimate is a forecast, not a promise.
 
 ## Architecture
+
+**Open contracts:** design partner-facing data surfaces (corpus schemas, file formats, API shapes) around explicit validated contracts, never around a particular producer or tool. Validation at the boundary enforces conformance; how the data was produced stays on the producer's side. The worked example is the Topic Flow corpus — see the `topic_flow/schema.py` module docstring. Apply the same pattern to new surfaces (ingestion, search).
 
 ### Front-End Principles
 
@@ -179,9 +172,9 @@ Components live in `litigant_portal/app/templates/cotton/` using Atomic Design h
 
 ```
 litigant_portal/app/templates/cotton/
-├── atoms/      # Basic elements: alert, auto_dismiss, button, chat_bubble, checkbox, icon, input, link, nav_link, search_input, select, typing_indicator
-├── molecules/  # Combinations: action_item, deadline_card, form_errors, form_field, form_field_select, logo, search_bar, search_result, sidebar_section, toast_container, topic_card, user_menu
-└── organisms/  # Complex sections: footer, header, hero, topic_grid
+├── atoms/      # Basic elements: alert, auto_dismiss, badge, button, checkbox, icon, input, link, nav_link, search_input, select
+├── molecules/  # Combinations: auth_status, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, toast_container, topic_card, user_menu
+└── organisms/  # Complex sections: auth_cta, auth_layout, chat_header, fallback_resources, footer, header, hero, topic_grid
 ```
 
 **Syntax:** `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`
@@ -229,10 +222,11 @@ Using Alpine.js **CSP build** (`@alpinejs/csp` v3.14.9). Local files, no CDN. Th
 
 - `litigant_portal/app/static/js/alpine.min.js` - Minified (production)
 - `litigant_portal/app/static/js/alpine.js` - Non-minified (debug mode, auto-selected when `DEBUG=True`)
-- `litigant_portal/app/static/js/components.js` - Named `Alpine.data()` components (userMenu, activityTimeline, etc.)
-- `litigant_portal/app/static/js/chat.js` - Chat and home page components with pre-computed properties
+- `litigant_portal/app/static/js/components.js` - Named `Alpine.data()` components (autoDismiss, userMenu, devMenu, etc.)
+- `litigant_portal/app/static/js/chat_engine.js` - Chat engine components (chatApp, chatUsage) with pre-computed properties
+- `litigant_portal/app/static/js/admin.js` - LP admin dashboard component (adminApp)
 
-**`x-html` usage:** Still used for chat messages. Safe because `renderMarkdown()` escapes HTML before applying markdown transforms, and content is pre-computed in JS (`msg.renderedContent`).
+**`x-html` usage:** Still used for chat messages. Safe because `renderMarkdown()` runs everything through `escapeHtml()` before applying markdown transforms, and content is pre-computed in JS (`message.html`). Tool call/result cards (`message.callHtml` / `message.resultHtml`) are rendered server-side by Django templates before shipping over SSE.
 
 ### Form Fields Pattern
 
@@ -259,35 +253,35 @@ Using Alpine.js **CSP build** (`@alpinejs/csp` v3.14.9). Local files, no CDN. Th
 
 ## AI Chat Feature
 
-The portal includes an AI-powered chat for legal assistance with streaming responses.
+The portal runs on a general-purpose chat engine (threads, streaming, tool-calling loop, uploads) with all domain behavior packaged as agents. Agent authoring guide: [docs/ai-tooling/AGENT_DEV_GUIDE.md](docs/ai-tooling/AGENT_DEV_GUIDE.md) · uploads: [docs/ai-tooling/ATTACHMENT_SYSTEM.md](docs/ai-tooling/ATTACHMENT_SYSTEM.md).
 
 ### How It Works
 
-1. **Alpine.js** intercepts form submit, POSTs to `/chat/send/`
-2. **Django** creates session/message, returns `session_id`
-3. **Alpine.js** GETs `/chat/stream/<session_id>/` (SSE endpoint)
-4. **Django** streams tokens via `StreamingHttpResponse`
-5. **Alpine.js** updates UI progressively as tokens arrive
+1. **Alpine.js** (`chatApp` in `chat_engine.js`) POSTs the message to `/api/agents/assistant/stream/`
+2. **Django** (`services/chat_engine.py`) runs the agent loop — LLM turns plus tool calls — and streams SSE events (`thread`, `content_delta`, `tool_call`, `tool_response`, `state`, `done`, `error`) via `StreamingHttpResponse`
+3. **Alpine.js** updates the UI progressively as events arrive
+4. Thread list/history/usage and uploads live under the same `/api/agents/assistant/` namespace, bound in `views/assistant.py`
 
 No WebSockets, no Django Channels - just SSE over standard HTTP.
 
 ### LLM Provider
 
-Using **LiteLLM** with OpenAI for dev and QA. Model configured via `CHAT_MODEL` env var (default: `openai/gpt-4o-mini`). To switch providers, change the env var (e.g. `groq/llama-3.3-70b-versatile`).
+Using **LiteLLM**. The assistant's model resolves from the active Site's admin config (`site_get_model(role="assistant")`), falling back to the `CHAT_MODEL` env var (local dev default: `openai/gpt-4o-mini`, set in docker-compose.yml). To switch providers, change the model string (LiteLLM format).
 
 ## Key Files
 
-| File                                                   | Purpose                              |
-| ------------------------------------------------------ | ------------------------------------ |
-| `litigant_portal/settings.py`                          | Django + Cotton + CSP + Chat config  |
-| `litigant_portal/app/src/main.css`                     | Tailwind v4 source + theme tokens    |
-| `litigant_portal/app/static/js/alpine.js`              | Alpine.js CSP build (debug)          |
-| `litigant_portal/app/static/js/alpine.min.js`          | Alpine.js CSP build (production)     |
-| `litigant_portal/app/static/js/components.js`          | Named Alpine.data() components       |
-| `litigant_portal/app/static/js/chat.js`                | Chat and home page Alpine components |
-| `litigant_portal/app/templates/cotton/`                | Component library (Atomic Design)    |
-| `litigant_portal/app/templates/pages/style_guide.html` | Style guide page                     |
-| `litigant_portal/app/views/`                           | Main views                           |
+| File                                                   | Purpose                               |
+| ------------------------------------------------------ | ------------------------------------- |
+| `litigant_portal/settings.py`                          | Django + Cotton + CSP + Chat config   |
+| `litigant_portal/app/src/main.css`                     | Tailwind v4 source + theme tokens     |
+| `litigant_portal/app/static/js/alpine.js`              | Alpine.js CSP build (debug)           |
+| `litigant_portal/app/static/js/alpine.min.js`          | Alpine.js CSP build (production)      |
+| `litigant_portal/app/static/js/components.js`          | Named Alpine.data() components        |
+| `litigant_portal/app/static/js/chat_engine.js`         | Chat engine Alpine components         |
+| `litigant_portal/agents/`                              | Agent framework (base, tools, agents) |
+| `litigant_portal/app/templates/cotton/`                | Component library (Atomic Design)     |
+| `litigant_portal/app/templates/pages/style_guide.html` | Style guide page                      |
+| `litigant_portal/app/views/`                           | Main views                            |
 
 ## Database
 
@@ -301,19 +295,4 @@ docker compose down -v && docker compose up
 
 ## Versioning
 
-### Pinned Dependencies (Local Assets)
-
-All frontend assets are local files, not CDN. Update these in sync when upgrading:
-
-| Tool         | Version            | Location                                                                                 |
-| ------------ | ------------------ | ---------------------------------------------------------------------------------------- |
-| Tailwind CSS | v4.1.16 (CLI)      | `Dockerfile`                                                                             |
-| Alpine.js    | 3.14.9 (CSP build) | `litigant_portal/app/static/js/alpine.js`, `litigant_portal/app/static/js/alpine.min.js` |
-| Chat model   | openai/gpt-4o-mini | `CHAT_MODEL` env var (docker-compose.yml, .env)                                          |
-
-**Updating Alpine.js (CSP build):**
-
-```bash
-curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.js" -o litigant_portal/app/static/js/alpine.js
-curl -sL "https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.14.9/dist/cdn.min.js" -o litigant_portal/app/static/js/alpine.min.js
-```
+All frontend assets are local files, not CDN.

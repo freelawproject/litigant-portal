@@ -9,6 +9,13 @@ Sections are a discriminated union on ``kind`` (``info`` / ``fact_gather`` /
 discriminated union natively. Id-reference cross-checks (a deadline's
 ``offset_from`` pointing at a question, outputs pointing at deadlines/contacts)
 span sibling lists, so they live in ``loader.py`` rather than here.
+
+These models are the partner-facing corpus contract: this schema
+(``extra="forbid"``), the loader's id cross-reference checks, and the
+``checks.py`` startup guard together define the boundary. Any conformant
+producer works identically — hand-authored YAML, a partner's CMS, an
+AI-authoring tool — and a non-conformant corpus fails loudly here, never
+downstream. LP depends only on this contract, never on how a corpus was made.
 """
 
 from typing import Annotated, Literal

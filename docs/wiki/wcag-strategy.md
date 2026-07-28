@@ -21,6 +21,16 @@ _Researched 2026-02-19 · Targeting WCAG 2.2 (published Oct 2023)_
 | 3.1.4     | Abbreviations             | Spell out abbreviations on first use                                  |
 | 3.1.5     | Reading level             | Content readable at lower secondary level where possible              |
 
+## Component checklist
+
+Every component ships with:
+
+1. **Keyboard navigation** — Tab, Enter, Space, Arrows
+2. **Focus indicators** — `focus:ring-2 focus:ring-offset-2`
+3. **Color contrast** — 4.5:1 minimum (3:1 for large text; 7:1 where we adopt 1.4.6)
+4. **Touch targets** — 44×44px minimum
+5. **ARIA labels** — icon-only buttons, form associations
+
 ## Testing strategy
 
 Automated tools catch ~30–40% of WCAG issues. The rest requires human judgment.
