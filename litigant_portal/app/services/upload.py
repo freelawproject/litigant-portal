@@ -166,7 +166,7 @@ def user_upload_render_list(upload_ids: list[str]) -> list[dict[str, Any]]:
 
 
 # LLM hydration helpers
-# Turns stored uploads into llm content parts — inlining small files, 
+# Turns stored uploads into llm content parts — inlining small files,
 # stubbing large or aged ones for the query_document tool
 
 
