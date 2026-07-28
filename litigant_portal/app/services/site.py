@@ -1,3 +1,5 @@
+from functools import wraps
+
 import vobject
 from django.core.cache import cache
 from django.db import transaction
@@ -12,13 +14,19 @@ from litigant_portal.app.selectors.site import (
 from litigant_portal.app.services.utils import row_move
 
 
-def site_save(*, site: Site, update_fields: list[str]) -> Site:
-    """Save the site and bust its cache so the next read re-stashes."""
-    site.save(update_fields=[*update_fields, "updated_at"])
-    transaction.on_commit(lambda: cache.delete(SITE_CACHE_KEY))
-    return site
+def busts_site_cache(fn):
+    """Busts the site cache."""
+
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        result = fn(*args, **kwargs)
+        transaction.on_commit(lambda: cache.delete(SITE_CACHE_KEY))
+        return result
+
+    return wrapped
 
 
+@busts_site_cache
 def site_court_details_update(
     *,
     site: Site,
@@ -34,27 +42,30 @@ def site_court_details_update(
     site.state = state
     site.official_url = official_url
     site.official_resources_url = official_resources_url
-    return site_save(
-        site=site,
+    site.save(
         update_fields=[
             "court_name",
             "jurisdiction_level",
             "state",
             "official_url",
             "official_resources_url",
-        ],
+            "updated_at",
+        ]
     )
+    return site
 
 
+@busts_site_cache
 def site_models_update(
     *, site: Site, fast_model: str = "", assistant_model: str = ""
 ) -> Site:
     """Update the site's AI model selections."""
     site.fast_model = fast_model
     site.assistant_model = assistant_model
-    return site_save(
-        site=site, update_fields=["fast_model", "assistant_model"]
+    site.save(
+        update_fields=["fast_model", "assistant_model", "updated_at"]
     )
+    return site
 
 
 def contact_create(**fields) -> Contact:
