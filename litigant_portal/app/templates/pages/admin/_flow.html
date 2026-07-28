@@ -1,0 +1,899 @@
+{% load i18n %}
+
+  {# ------- Flow viewer / editor ------- #}
+  <div x-show="kbFlowVisible" x-cloak>
+    {# Back link sits above the heading so the title stays flush left #}
+    <button type="button"
+            x-on:click="closeFlow"
+            class="mb-2 inline-flex items-center gap-1 text-xs font-medium text-greyscale-500 hover:text-greyscale-800 cursor-pointer transition-colors">
+      <c-atoms.icon name="arrow-left" class="w-3.5 h-3.5" />
+      {% trans "Back to topics" %}
+    </button>
+    <div class="flex items-center gap-2 mb-4">
+      <div class="flex-1 min-w-0">
+        <h3 class="text-base font-semibold text-greyscale-900 truncate" x-text="flowTitle"></h3>
+        <p class="text-xs text-greyscale-500 truncate" x-text="flowContext"></p>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button type="button"
+                x-show="flowEditing"
+                x-cloak
+                x-on:click="cancelFlowEdit"
+                class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+      </div>
+    </div>
+
+    {# ---- Read view — fields & links as metadata cards above the prose, #}
+    {# mirroring the edit-mode order and standing apart from section #}
+    {# headings ---- #}
+    <div x-show="flowNotEditing" class="space-y-6">
+      {# Name & slug — a single-line form saving on its own #}
+      <div>
+        <form x-on:submit.prevent="saveFlowMeta" class="flex items-end gap-2">
+          <div class="flex-1 min-w-0">
+            <label for="flow-meta-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Name" %}</label>
+            <input id="flow-meta-name"
+                   type="text"
+                   data-field="flowMetaName"
+                   x-bind:value="flowMetaName"
+                   x-on:input="updateField"
+                   class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+          </div>
+          <div class="w-56 flex-shrink-0">
+            <label for="flow-meta-slug" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Slug" %}</label>
+            <input id="flow-meta-slug"
+                   type="text"
+                   data-field="flowMetaSlug"
+                   x-bind:value="flowMetaSlug"
+                   x-on:input="updateField"
+                   class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+          </div>
+          <button type="submit"
+                  class="flex-shrink-0 rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+            {% trans "Save" %}
+          </button>
+        </form>
+        <p x-show="flowMetaError" x-cloak class="mt-1 text-xs text-red-600" x-text="flowMetaError"></p>
+      </div>
+      {# Content — leads the page, truncated behind a fade until expanded #}
+      <div>
+        <div class="border-t border-greyscale-200 pt-4 mb-3 flex items-start justify-between gap-2">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Content" %}</h4>
+            <p class="text-xs text-greyscale-500">{% trans "What this flow's page walks litigants through." %}</p>
+          </div>
+          <button type="button"
+                  x-on:click="startFlowContentEdit"
+                  class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+            <c-atoms.icon name="pencil-square" class="w-3.5 h-3.5" />
+            {% trans "Edit" %}
+          </button>
+        </div>
+        <div class="relative">
+          <div x-bind:class="flowContentClass" class="space-y-6">
+            <template x-for="section in flowSections" :key="section._k">
+              <div>
+                <h4 class="text-sm font-semibold text-greyscale-900 mb-1" x-text="section.heading"></h4>
+                <div class="text-sm text-greyscale-700 leading-relaxed" x-html="section.html"></div>
+              </div>
+            </template>
+            <p x-show="flowNoSections" x-cloak class="text-sm text-greyscale-400">{% trans "No content yet — Edit to add sections." %}</p>
+          </div>
+          <div x-show="flowContentCollapsed"
+               x-cloak
+               class="pointer-events-none absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-greyscale-25 via-greyscale-25/40 to-transparent"></div>
+        </div>
+        <div x-show="flowContentCollapsible" x-cloak class="mt-2 flex justify-center">
+          <button type="button"
+                  x-on:click="toggleFlowContent"
+                  class="inline-flex items-center gap-1 rounded-full border border-greyscale-300 bg-white px-3 py-1 text-xs font-medium text-greyscale-600 hover:bg-greyscale-100 cursor-pointer transition-colors">
+            <span x-text="flowContentToggleLabel"></span>
+            <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" x-show="flowContentCollapsed" />
+            <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" x-show="flowContentExpanded" x-cloak />
+          </button>
+        </div>
+      </div>
+      {# Deadlines — standalone row editor mirroring settings contacts #}
+      <div>
+        <div class="border-t border-greyscale-200 pt-4 mb-3 flex items-start justify-between gap-2">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Deadlines" %}</h4>
+            <p class="text-xs text-greyscale-500">{% trans "Dates computed from a litigant's answers." %}</p>
+          </div>
+          <button type="button"
+                  x-on:click="newFlowDeadlineRow"
+                  class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+            <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+            {% trans "Add deadline" %}
+          </button>
+        </div>
+        <div class="space-y-2">
+          <template x-for="deadline in flowDeadlines" :key="deadline._k">
+            <div class="rounded-xl border border-greyscale-200 bg-white px-4 py-3 flex items-center gap-3">
+              <div class="flex flex-col flex-shrink-0 -ml-1">
+                <button type="button"
+                        x-bind:data-deadline-id="deadline.id"
+                        data-direction="up"
+                        x-on:click="moveFlowDeadlineRow"
+                        x-bind:disabled="deadline.moveUpDisabled"
+                        aria-label="{% trans "Move deadline up" %}"
+                        class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                  <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" />
+                </button>
+                <button type="button"
+                        x-bind:data-deadline-id="deadline.id"
+                        data-direction="down"
+                        x-on:click="moveFlowDeadlineRow"
+                        x-bind:disabled="deadline.moveDownDisabled"
+                        aria-label="{% trans "Move deadline down" %}"
+                        class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                  <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-greyscale-900 truncate" x-text="deadline.label"></p>
+                <p class="text-xs text-greyscale-500 truncate" x-text="deadline.detail"></p>
+              </div>
+              <div class="flex items-center gap-1 flex-shrink-0" x-show="deadline.notConfirmingDelete">
+                <button type="button"
+                        x-bind:data-deadline-id="deadline.id"
+                        x-on:click="editFlowDeadlineRow"
+                        aria-label="{% trans "Edit deadline" %}"
+                        class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+                  <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+                </button>
+                <button type="button"
+                        x-bind:data-deadline-id="deadline.id"
+                        x-on:click="askDeleteFlowDeadlineRow"
+                        aria-label="{% trans "Delete deadline" %}"
+                        class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors">
+                  <c-atoms.icon name="trash" class="w-4 h-4" />
+                </button>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0" x-show="deadline.confirmingDelete" x-cloak>
+                <span class="text-xs text-greyscale-600">{% trans "Delete?" %}</span>
+                <button type="button"
+                        x-bind:data-deadline-id="deadline.id"
+                        x-on:click="confirmDeleteFlowDeadlineRow"
+                        class="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+                  {% trans "Delete" %}
+                </button>
+                <button type="button"
+                        x-on:click="cancelDeleteFlowDeadlineRow"
+                        class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+                  {% trans "Cancel" %}
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+      {# Links — standalone row editor mirroring settings resources #}
+      <div>
+        <div class="border-t border-greyscale-200 pt-4 mb-3 flex items-start justify-between gap-2">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Links" %}</h4>
+            <p class="text-xs text-greyscale-500">{% trans "Helpful links shown at the end of the flow's page." %}</p>
+          </div>
+          <button type="button"
+                  x-on:click="newFlowLinkRow"
+                  class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+            <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+            {% trans "Add link" %}
+          </button>
+        </div>
+        <div class="space-y-2">
+          <template x-for="link in flowLinks" :key="link._k">
+            <div class="rounded-xl border border-greyscale-200 bg-white px-4 py-3 flex items-center gap-3">
+              <div class="flex flex-col flex-shrink-0 -ml-1">
+                <button type="button"
+                        x-bind:data-link-id="link.id"
+                        data-direction="up"
+                        x-on:click="moveFlowLinkRow"
+                        x-bind:disabled="link.moveUpDisabled"
+                        aria-label="{% trans "Move link up" %}"
+                        class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                  <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" />
+                </button>
+                <button type="button"
+                        x-bind:data-link-id="link.id"
+                        data-direction="down"
+                        x-on:click="moveFlowLinkRow"
+                        x-bind:disabled="link.moveDownDisabled"
+                        aria-label="{% trans "Move link down" %}"
+                        class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                  <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-greyscale-900 truncate" x-text="link.name"></p>
+                <p class="text-xs text-greyscale-500 truncate" x-text="link.detail"></p>
+              </div>
+              <div class="flex items-center gap-1 flex-shrink-0" x-show="link.notConfirmingDelete">
+                <button type="button"
+                        x-bind:data-link-id="link.id"
+                        x-on:click="editFlowLinkRow"
+                        aria-label="{% trans "Edit link" %}"
+                        class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+                  <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+                </button>
+                <button type="button"
+                        x-bind:data-link-id="link.id"
+                        x-on:click="askDeleteFlowLinkRow"
+                        aria-label="{% trans "Delete link" %}"
+                        class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors">
+                  <c-atoms.icon name="trash" class="w-4 h-4" />
+                </button>
+              </div>
+              <div class="flex items-center gap-2 flex-shrink-0" x-show="link.confirmingDelete" x-cloak>
+                <span class="text-xs text-greyscale-600">{% trans "Delete?" %}</span>
+                <button type="button"
+                        x-bind:data-link-id="link.id"
+                        x-on:click="confirmDeleteFlowLinkRow"
+                        class="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+                  {% trans "Delete" %}
+                </button>
+                <button type="button"
+                        x-on:click="cancelDeleteFlowLinkRow"
+                        class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+                  {% trans "Cancel" %}
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+      {# Forms — standalone row editor; create uploads a PDF, edit renames #}
+      <div>
+        <div class="border-t border-greyscale-200 pt-4 mb-3 flex items-start justify-between gap-2">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Forms" %}</h4>
+            <p class="text-xs text-greyscale-500">{% trans "Fillable PDFs completed from a litigant's answers." %}</p>
+          </div>
+          <button type="button"
+                  x-on:click="newFlowFormRow"
+                  class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors flex-shrink-0">
+            <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+            {% trans "Add form" %}
+          </button>
+        </div>
+        <div class="space-y-2">
+          <template x-for="form in flowForms" :key="form._k">
+            <div class="rounded-xl border border-greyscale-200 bg-white overflow-hidden">
+              {# Header — the form itself; mappings render underneath it #}
+              <div class="px-4 py-3 flex items-center gap-3">
+                <div class="flex flex-col flex-shrink-0 -ml-1">
+                  <button type="button"
+                          x-bind:data-form-id="form.id"
+                          data-direction="up"
+                          x-on:click="moveFlowFormRow"
+                          x-bind:disabled="form.moveUpDisabled"
+                          aria-label="{% trans "Move form up" %}"
+                          class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                    <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" />
+                  </button>
+                  <button type="button"
+                          x-bind:data-form-id="form.id"
+                          data-direction="down"
+                          x-on:click="moveFlowFormRow"
+                          x-bind:disabled="form.moveDownDisabled"
+                          aria-label="{% trans "Move form down" %}"
+                          class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                    <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-medium text-greyscale-900 truncate" x-text="form.name"></p>
+                  <p class="text-xs text-greyscale-500 truncate" x-text="form.detail"></p>
+                </div>
+                <div class="flex items-center gap-1 flex-shrink-0" x-show="form.notConfirmingDelete">
+                  <button type="button"
+                          x-bind:data-form-id="form.id"
+                          x-on:click="editFlowFormRow"
+                          aria-label="{% trans "Edit form" %}"
+                          class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+                    <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+                  </button>
+                  <button type="button"
+                          x-bind:data-form-id="form.id"
+                          x-on:click="askDeleteFlowForm"
+                          aria-label="{% trans "Delete form" %}"
+                          class="flex items-center justify-center p-2 rounded-lg text-greyscale-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-colors">
+                    <c-atoms.icon name="trash" class="w-4 h-4" />
+                  </button>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0" x-show="form.confirmingDelete" x-cloak>
+                  <span class="text-xs text-greyscale-600">{% trans "Delete?" %}</span>
+                  <button type="button"
+                          x-bind:data-form-id="form.id"
+                          x-on:click="confirmDeleteFlowForm"
+                          class="rounded-lg bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+                    {% trans "Delete" %}
+                  </button>
+                  <button type="button"
+                          x-on:click="cancelDeleteFlowForm"
+                          class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+                    {% trans "Cancel" %}
+                  </button>
+                </div>
+              </div>
+              {# Field mappings — collapsed behind a progress summary. #}
+              {# Read-only preview; temporary until the mapping editor lands. #}
+              <button type="button"
+                      x-bind:data-form-id="form.id"
+                      x-on:click="toggleFlowFormMappings"
+                      x-bind:aria-expanded="form.mappingExpanded"
+                      class="w-full border-t border-greyscale-200 bg-greyscale-50 px-4 py-2.5 flex items-center gap-3 text-left cursor-pointer hover:bg-greyscale-100 transition-colors">
+                <c-atoms.icon name="chevron-right"
+                              class="w-3.5 h-3.5 text-greyscale-400 flex-shrink-0"
+                              x-show="form.mappingCollapsed" />
+                <c-atoms.icon name="chevron-down"
+                              class="w-3.5 h-3.5 text-greyscale-400 flex-shrink-0"
+                              x-show="form.mappingExpanded"
+                              x-cloak />
+                <span class="text-[11px] font-semibold uppercase tracking-wider text-greyscale-500 flex-shrink-0">
+                  {% trans "Field mappings" %}
+                </span>
+                <span class="h-1.5 flex-1 min-w-8 rounded-full bg-greyscale-200 overflow-hidden">
+                  <span class="block h-full rounded-full transition-all"
+                        x-bind:class="form.mappingBarClass"
+                        x-bind:style="form.mappingBarStyle"></span>
+                </span>
+                <span class="text-[11px] font-medium text-greyscale-600 flex-shrink-0 tabular-nums"
+                      x-text="form.mappingProgressLabel"></span>
+              </button>
+              <div x-show="form.mappingExpanded"
+                   x-cloak
+                   class="border-t border-greyscale-200 bg-greyscale-50 px-4 py-3">
+                <div class="flex items-center gap-2 mb-2.5">
+                  <span class="text-[11px] text-greyscale-500" x-text="form.mappingCountLabel"></span>
+                  <span class="ml-auto inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 flex-shrink-0">
+                    <c-atoms.icon name="wrench-screwdriver" class="w-3 h-3" />
+                    {% trans "Field editor coming soon" %}
+                  </span>
+                </div>
+                <p x-show="form.noMappings"
+                   x-cloak
+                   class="rounded-lg border border-dashed border-greyscale-300 bg-white px-3 py-4 text-center text-xs text-greyscale-500">
+                  {% trans "No fields are mapped yet. This PDF will download blank." %}
+                </p>
+                <div x-show="form.hasMappings"
+                     x-cloak
+                     class="overflow-hidden rounded-lg border border-greyscale-200 bg-white">
+                  <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] gap-x-3 border-b border-greyscale-200 bg-greyscale-50 px-3 py-1.5">
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-greyscale-500">
+                      {% trans "PDF field" %}
+                    </span>
+                    <span class="text-[10px] font-semibold uppercase tracking-wider text-greyscale-500">
+                      {% trans "Filled with" %}
+                    </span>
+                  </div>
+                  <template x-for="mapping in form.mappings" :key="mapping._k">
+                    <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] items-baseline gap-x-3 px-3 py-1.5 border-b border-greyscale-100 last:border-b-0">
+                      <code class="text-xs text-greyscale-700 break-all" x-text="mapping.pdf_field"></code>
+                      <div class="min-w-0">
+                        <code x-show="mapping.isText"
+                              class="text-xs text-primary-700 break-all"
+                              x-text="mapping.templateDisplay"></code>
+                        <span x-show="mapping.isCheckbox" x-cloak class="inline-flex items-baseline gap-1 text-xs text-greyscale-600">
+                          {% trans "checked when" %}
+                          <code class="text-primary-700 break-all" x-text="mapping.checkedWhenDisplay"></code>
+                        </span>
+                        {# Why the bar isn't full: a template naming a field #}
+                        {# this flow doesn't collect can never be filled in. #}
+                        <span x-show="mapping.unlinkedUnknown"
+                              x-cloak
+                              class="ml-1 text-[10px] font-medium text-red-600 whitespace-nowrap">
+                          {% trans "unknown field" %}
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+      {# Danger zone — deletion confirms via the stern modal below #}
+      <div class="border-t border-greyscale-200 pt-4">
+        <button type="button"
+                x-on:click="askDeleteFlow"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+          <c-atoms.icon name="trash" class="w-4 h-4" />
+          {% trans "Delete topic flow" %}
+        </button>
+      </div>
+    </div>
+
+    {# ---- Content editor — the only in-place editor left; everything #}
+    {# else on the flow page edits through modals or the builder ---- #}
+    <div x-show="flowEditing" x-cloak class="space-y-6">
+      <div>
+        <h4 class="text-sm font-semibold text-greyscale-900 mb-2">{% trans "Content" %}</h4>
+        <div class="space-y-2">
+          <template x-for="(section, index) in flowSections" :key="section._k">
+            <div>
+              <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+                <div class="flex items-start gap-3">
+                  {# Stacked reorder control #}
+                  <div class="flex flex-col flex-shrink-0 -ml-1 mt-1">
+                    <button type="button"
+                            x-bind:data-index="index"
+                            data-direction="up"
+                            x-on:click="moveFlowSection"
+                            x-bind:disabled="section.moveUpDisabled"
+                            aria-label="{% trans "Move section up" %}"
+                            class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                      <c-atoms.icon name="chevron-up" class="w-3.5 h-3.5" />
+                    </button>
+                    <button type="button"
+                            x-bind:data-index="index"
+                            data-direction="down"
+                            x-on:click="moveFlowSection"
+                            x-bind:disabled="section.moveDownDisabled"
+                            aria-label="{% trans "Move section down" %}"
+                            class="flex items-center justify-center px-1 py-0.5 rounded text-greyscale-400 hover:text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-greyscale-400">
+                      <c-atoms.icon name="chevron-down" class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <div class="flex-1 min-w-0 space-y-2">
+                    <input type="text"
+                           placeholder="{% trans "Heading" %}"
+                           aria-label="{% trans "Section heading" %}"
+                           x-bind:data-index="index"
+                           data-key="heading"
+                           x-bind:value="section.heading"
+                           x-on:input="updateFlowSection"
+                           class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-600">
+                    {# Auto-grows to fit its text — never scrolls #}
+                    <textarea rows="3"
+                              placeholder="{% trans "Content (Markdown)" %}"
+                              aria-label="{% trans "Section content" %}"
+                              data-flow-autosize
+                              x-init="sizeFlowTextarea"
+                              x-bind:data-index="index"
+                              data-key="content"
+                              x-bind:value="section.content"
+                              x-on:input="updateFlowSection"
+                              class="block w-full resize-none overflow-hidden rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+                  </div>
+                </div>
+                <div class="mt-2 flex justify-end">
+                  <button type="button"
+                          x-bind:data-index="index"
+                          x-on:click="deleteFlowSection"
+                          class="inline-flex items-center gap-1 text-xs font-medium text-greyscale-500 hover:text-red-600 cursor-pointer transition-colors">
+                    <c-atoms.icon name="trash" class="w-3.5 h-3.5" />
+                    {% trans "Remove" %}
+                  </button>
+                </div>
+              </div>
+              {# Compact inserter between sections #}
+              <button type="button"
+                      x-bind:data-index="index"
+                      x-on:click="insertFlowSection"
+                      class="mt-2 w-full rounded-lg border border-dashed border-greyscale-300 py-1 flex items-center justify-center gap-1 text-xs font-medium text-greyscale-400 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors">
+                <c-atoms.icon name="plus" class="w-3.5 h-3.5" />
+                {% trans "Add section" %}
+              </button>
+            </div>
+          </template>
+        </div>
+        <button type="button"
+                x-show="flowNoSections"
+                x-cloak
+                x-on:click="addFlowSection"
+                class="w-full rounded-xl border-2 border-dashed border-greyscale-300 p-3 flex items-center justify-center gap-2 text-sm font-medium text-greyscale-400 hover:border-primary-400 hover:text-primary-600 cursor-pointer transition-colors">
+          <c-atoms.icon name="plus" class="w-4 h-4" />
+          {% trans "Add section" %}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# Deadline editor modal #}
+  <div x-show="flowDeadlineEditorVisible"
+       x-cloak
+       x-on:keydown.escape.window="cancelFlowDeadlineRowEdit"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelFlowDeadlineRowEdit"></div>
+    <form x-on:submit.prevent="saveFlowDeadlineRow"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="flow-deadline-editor-title"
+          class="relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl space-y-3">
+      <h3 id="flow-deadline-editor-title" class="text-base font-semibold text-greyscale-900" x-text="flowDeadlineEditorTitle"></h3>
+      <div>
+        <label for="flow-deadline-label" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Label" %}</label>
+        <input id="flow-deadline-label"
+               type="text"
+               data-field="flowDeadlineLabel"
+               x-bind:value="flowDeadlineLabel"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="flow-deadline-offset-days" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Offset in days" %}</label>
+          <input id="flow-deadline-offset-days"
+                 type="number"
+                 data-field="flowDeadlineOffsetDays"
+                 x-bind:value="flowDeadlineOffsetDays"
+                 x-on:input="updateField"
+                 class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+        </div>
+        <div>
+          <label for="flow-deadline-offset-from" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "From date field" %}</label>
+          <select id="flow-deadline-offset-from"
+                  x-show="flowDeadlineHasDateFields"
+                  data-field="flowDeadlineOffsetFrom"
+                  x-on:change="updateField"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+            <option value="">{% trans "Select…" %}</option>
+            <template x-for="option in flowDeadlineFieldOptions" :key="option.value">
+              <option x-bind:value="option.value"
+                      x-bind:selected="option.selected"
+                      x-text="option.label"></option>
+            </template>
+          </select>
+          <p x-show="flowDeadlineNoDateFields"
+             x-cloak
+             class="text-xs text-greyscale-500 py-2">{% trans "This flow has no date fields yet — add one first." %}</p>
+        </div>
+      </div>
+      <div>
+        <label for="flow-deadline-description" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Description" %}</label>
+        <textarea id="flow-deadline-description"
+                  rows="2"
+                  data-field="flowDeadlineDescription"
+                  x-bind:value="flowDeadlineDescription"
+                  x-on:input="updateField"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <span x-show="flowDeadlineError" x-cloak class="mr-auto text-xs text-red-600" x-text="flowDeadlineError"></span>
+        <button type="button"
+                x-on:click="cancelFlowDeadlineRowEdit"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save" %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# Link editor modal #}
+  <div x-show="flowLinkEditorVisible"
+       x-cloak
+       x-on:keydown.escape.window="cancelFlowLinkRowEdit"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelFlowLinkRowEdit"></div>
+    <form x-on:submit.prevent="saveFlowLinkRow"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="flow-link-editor-title"
+          class="relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl space-y-3">
+      <h3 id="flow-link-editor-title" class="text-base font-semibold text-greyscale-900" x-text="flowLinkEditorTitle"></h3>
+      <div>
+        <label for="flow-link-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Name" %}</label>
+        <input id="flow-link-name"
+               type="text"
+               data-field="flowLinkName"
+               x-bind:value="flowLinkName"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div>
+        <label for="flow-link-url" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "URL" %}</label>
+        <input id="flow-link-url"
+               type="url"
+               placeholder="https://"
+               data-field="flowLinkUrl"
+               x-bind:value="flowLinkUrl"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <span x-show="flowLinkError" x-cloak class="mr-auto text-xs text-red-600" x-text="flowLinkError"></span>
+        <button type="button"
+                x-on:click="cancelFlowLinkRowEdit"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save" %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# Form editor modal — file upload on create, rename on edit #}
+  <div x-show="flowFormEditorVisible"
+       x-cloak
+       x-on:keydown.escape.window="cancelFlowFormRowEdit"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelFlowFormRowEdit"></div>
+    <form x-on:submit.prevent="saveFlowFormRow"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="flow-form-editor-title"
+          class="relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl space-y-3">
+      <h3 id="flow-form-editor-title" class="text-base font-semibold text-greyscale-900" x-text="flowFormEditorTitle"></h3>
+      <div>
+        <label for="flow-form-row-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Name" %}</label>
+        <input id="flow-form-row-name"
+               type="text"
+               data-field="flowFormRowName"
+               x-bind:value="flowFormRowName"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div x-show="flowFormEditorCreating">
+        <label for="flow-form-row-file" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "PDF file" %}</label>
+        <input id="flow-form-row-file"
+               type="file"
+               accept="application/pdf,.pdf"
+               class="block w-full text-sm text-greyscale-600 file:mr-2 file:rounded-lg file:border-0 file:bg-greyscale-100 file:px-2.5 file:py-1.5 file:text-xs file:font-medium file:text-greyscale-700 hover:file:bg-greyscale-200 file:cursor-pointer">
+      </div>
+      <p x-show="flowFormEditorEditing" x-cloak class="text-xs text-greyscale-500">
+        <a x-bind:href="flowFormPreviewUrl"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="text-primary-700 underline hover:no-underline">{% trans "Preview the current PDF" %}</a>
+      </p>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <span x-show="flowFormRowError" x-cloak class="mr-auto text-xs text-red-600" x-text="flowFormRowError"></span>
+        <button type="button"
+                x-on:click="cancelFlowFormRowEdit"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save" %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# Builder: group editor modal #}
+  <div x-show="builderGroupEditorVisible"
+       x-cloak
+       x-on:keydown.escape.window="cancelBuilderGroupEdit"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelBuilderGroupEdit"></div>
+    <form x-on:submit.prevent="saveBuilderGroup"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="builder-group-editor-title"
+          class="relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl space-y-3">
+      <h3 id="builder-group-editor-title" class="text-base font-semibold text-greyscale-900" x-text="builderGroupEditorTitle"></h3>
+      <div>
+        <label for="builder-group-title" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Title" %}</label>
+        <input id="builder-group-title"
+               type="text"
+               data-field="builderGroupTitle"
+               x-bind:value="builderGroupTitle"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div>
+        <label for="builder-group-description" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Description" %}</label>
+        <textarea id="builder-group-description"
+                  rows="3"
+                  data-field="builderGroupDescription"
+                  x-bind:value="builderGroupDescription"
+                  x-on:input="updateField"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <span x-show="builderGroupError" x-cloak class="mr-auto text-xs text-red-600" x-text="builderGroupError"></span>
+        <button type="button"
+                x-on:click="cancelBuilderGroupEdit"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save" %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# Builder: field editor modal #}
+  <div x-show="builderFieldEditorVisible"
+       x-cloak
+       x-on:keydown.escape.window="cancelBuilderFieldEdit"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelBuilderFieldEdit"></div>
+    <form x-on:submit.prevent="saveBuilderField"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="builder-field-editor-title"
+          class="relative w-full max-w-md max-h-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl space-y-3">
+      <h3 id="builder-field-editor-title" class="text-base font-semibold text-greyscale-900" x-text="builderFieldEditorTitle"></h3>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="builder-field-name" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Name" %}</label>
+          <input id="builder-field-name"
+                 type="text"
+                 placeholder="date_of_birth"
+                 data-field="builderFieldName"
+                 x-bind:value="builderFieldName"
+                 x-on:input="updateField"
+                 class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-600">
+          <p class="mt-1 text-xs text-greyscale-500">{% trans "snake_case; used in PDF templates." %}</p>
+        </div>
+        <div>
+          <label for="builder-field-type" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Data type" %}</label>
+          <select id="builder-field-type"
+                  x-on:change="updateBuilderFieldType"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+            <template x-for="option in builderFieldTypeOptions" :key="option.value">
+              <option x-bind:value="option.value"
+                      x-bind:selected="option.selected"
+                      x-text="option.label"></option>
+            </template>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label for="builder-field-label" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Label" %}</label>
+        <input id="builder-field-label"
+               type="text"
+               data-field="builderFieldLabel"
+               x-bind:value="builderFieldLabel"
+               x-on:input="updateField"
+               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+      </div>
+      <div>
+        <label for="builder-field-help" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Help text" %}</label>
+        <textarea id="builder-field-help"
+                  rows="2"
+                  data-field="builderFieldHelpText"
+                  x-bind:value="builderFieldHelpText"
+                  x-on:input="updateField"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+      </div>
+      <div x-show="builderFieldIsChoice" x-cloak>
+        <label for="builder-field-choices" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Choices" %}</label>
+        <textarea id="builder-field-choices"
+                  rows="3"
+                  placeholder="value | Label"
+                  data-field="builderFieldChoicesText"
+                  x-bind:value="builderFieldChoicesText"
+                  x-on:input="updateField"
+                  class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+        <p class="mt-1 text-xs text-greyscale-500">{% trans "One per line: value | label (label optional)." %}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-4 items-end">
+        <div>
+          <label for="builder-field-default" class="block text-sm font-medium text-greyscale-700 mb-1">{% trans "Default value" %}</label>
+          <input id="builder-field-default"
+                 type="text"
+                 data-field="builderFieldDefault"
+                 x-bind:value="builderFieldDefault"
+                 x-on:input="updateField"
+                 class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+        </div>
+        <label class="flex items-center gap-2 pb-2 cursor-pointer">
+          <input type="checkbox"
+                 x-bind:checked="builderFieldRequired"
+                 x-on:change="toggleBuilderFieldRequired"
+                 class="w-4 h-4 rounded border-greyscale-300 text-primary-600 focus:ring-primary-500 focus:ring-2 focus:ring-offset-2">
+          <span class="text-sm text-greyscale-700 select-none">{% trans "Required" %}</span>
+        </label>
+      </div>
+      <div class="flex items-center justify-end gap-2 pt-1">
+        {# Section re-homing — picking a page appends the field to it on #}
+        {# save; the placeholder option means "keep the current group". #}
+        {# pl-only padding: the base select style owns padding-right so #}
+        {# the value clears the shared chevron. #}
+        <select x-show="builderFieldShowGroupSelect"
+                x-cloak
+                aria-label="{% trans "Move to section" %}"
+                title="{% trans "Move to section" %}"
+                x-on:change="updateBuilderFieldGroup"
+                class="block w-44 rounded-lg border border-greyscale-300 bg-white pl-2 py-2 text-sm text-greyscale-700 focus:outline-none focus:ring-2 focus:ring-primary-600">
+          <template x-for="option in builderFieldGroupOptions" :key="option.value">
+            <option x-bind:value="option.value"
+                    x-bind:selected="option.selected"
+                    x-text="option.label"></option>
+          </template>
+        </select>
+        <span x-show="builderFieldError" x-cloak class="text-xs text-red-600" x-text="builderFieldError"></span>
+        <button type="button"
+                x-on:click="cancelBuilderFieldEdit"
+                class="ml-auto rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit"
+                class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save" %}
+        </button>
+      </div>
+    </form>
+  </div>
+
+  {# Builder delete confirmation — shared by group and field deletes #}
+  <div x-show="builderDeleteModalOpen"
+       x-cloak
+       x-on:keydown.escape.window="cancelBuilderDelete"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelBuilderDelete"></div>
+    <div role="dialog"
+         aria-modal="true"
+         aria-labelledby="builder-delete-title"
+         class="relative w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 w-9 h-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+          <c-atoms.icon name="exclamation-triangle" class="w-5 h-5" />
+        </div>
+        <div class="min-w-0">
+          <h3 id="builder-delete-title" class="text-base font-semibold text-greyscale-900" x-text="builderDeleteTitle"></h3>
+          <p x-show="builderDeleteIsGroup" class="mt-1 text-sm text-greyscale-600">
+            {% trans "This permanently deletes this group and every field on it — including all answers litigants have already saved for those fields, and any deadlines based on them. This cannot be undone." %}
+          </p>
+          <p x-show="builderDeleteIsField" class="mt-1 text-sm text-greyscale-600">
+            {% trans "This permanently deletes this field — including all answers litigants have already saved for it, and any deadlines based on it. This cannot be undone." %}
+          </p>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button type="button"
+                x-on:click="cancelBuilderDelete"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="button"
+                x-on:click="confirmBuilderDelete"
+                class="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+          {% trans "Delete" %}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  {# Delete-flow confirmation modal #}
+  <div x-show="flowDeleteModalOpen"
+       x-cloak
+       x-on:keydown.escape.window="cancelDeleteFlow"
+       class="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelDeleteFlow"></div>
+    <div role="dialog"
+         aria-modal="true"
+         aria-labelledby="flow-delete-title"
+         class="relative w-full max-w-md rounded-xl bg-white p-5 shadow-xl">
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 w-9 h-9 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
+          <c-atoms.icon name="exclamation-triangle" class="w-5 h-5" />
+        </div>
+        <div class="min-w-0">
+          <h3 id="flow-delete-title" class="text-base font-semibold text-greyscale-900" x-text="flowDeleteTitle"></h3>
+          <p class="mt-1 text-sm text-greyscale-600">
+            {% trans "This permanently deletes this flow — its content, fields, deadlines, forms, and any answers litigants have saved. This cannot be undone." %}
+          </p>
+        </div>
+      </div>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button type="button"
+                x-on:click="cancelDeleteFlow"
+                class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button type="button"
+                x-on:click="confirmDeleteFlow"
+                class="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 cursor-pointer transition-colors">
+          {% trans "Delete flow" %}
+        </button>
+      </div>
+    </div>
+  </div>
