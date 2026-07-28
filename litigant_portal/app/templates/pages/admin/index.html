@@ -15,66 +15,261 @@
 {% endblock title %}
 
 {% block content %}
-  <div x-data="adminApp" class="flex-1 flex flex-row min-h-0">
-    {# Left panel — tab navigation #}
-    <aside class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
+  {# Three-panel layout mirroring pages/chat/index.html: fixed-width side #}
+  {# panels at lg+, slide-over drawers below. The right panel is reserved #}
+  {# on every tab (library content on Settings only) so the center column #}
+  {# is always centered between equal rails. #}
+  <div x-data="adminApp" class="relative overflow-hidden flex-1 flex flex-row min-h-0">
+    {# Left panel — tab navigation (collapses into the nav drawer below lg) #}
+    <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
       <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
         <c-atoms.icon name="wrench-screwdriver" class="w-3.5 h-3.5 text-greyscale-400" />
         <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Admin" %}</h2>
       </div>
-      {# Tab styling is fully static via data-active variants so the #}
-      {# pre-Alpine paint matches — Alpine only toggles the attribute. #}
-      <nav class="flex-1 overflow-y-auto min-h-0 p-2 space-y-1">
-        <button type="button"
-                data-tab="settings"
-                data-active
-                x-on:click="selectTab"
-                x-bind:data-active="tabActive.settings"
-                class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
-          <c-atoms.icon name="cog-6-tooth" class="w-4 h-4" />
-          {% trans "Settings" %}
-        </button>
-        <button type="button"
-                data-tab="users"
-                x-on:click="selectTab"
-                x-bind:data-active="tabActive.users"
-                class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
-          <c-atoms.icon name="users" class="w-4 h-4" />
-          {% trans "Users" %}
-        </button>
-        <button type="button"
-                data-tab="knowledge"
-                x-on:click="selectTab"
-                x-bind:data-active="tabActive.knowledge"
-                class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
-          <c-atoms.icon name="book-open" class="w-4 h-4" />
-          {% trans "Knowledge Base" %}
-        </button>
-        <button type="button"
-                data-tab="simulate"
-                x-on:click="selectTab"
-                x-bind:data-active="tabActive.simulate"
-                class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
-          <c-atoms.icon name="play" class="w-4 h-4" />
-          {% trans "Simulate" %}
-        </button>
-      </nav>
+      {% include "pages/admin/_nav.html" %}
     </aside>
-    {# Main panel — active tab content #}
+    {# Center panel — active tab content. The center/right divider lives #}
+    {# on the right rail below (settings only) so empty rails stay #}
+    {# invisible — restore lg:border-r here once every tab has rail #}
+    {# content. #}
     <section class="flex-1 min-w-0 flex flex-col min-h-0">
-      <div x-show="showSettings" class="flex-1 overflow-y-auto min-h-0 p-4">
+      {# Mobile toolbar — drawer triggers (side panels collapse below lg) #}
+      <div class="lg:hidden flex items-center justify-between gap-2 px-4 py-2 border-b border-greyscale-200 flex-shrink-0 min-h-[3.25rem]">
+        <div class="flex items-center gap-2 min-w-0">
+          <button type="button"
+                  x-on:click="openNav"
+                  aria-label='{% trans "Admin menu" %}'
+                  title="{% trans "Admin menu" %}"
+                  class="flex-shrink-0 -ml-1 inline-flex items-center justify-center w-8 h-8 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+            <c-atoms.icon name="bars-3" class="w-4.5 h-4.5" />
+          </button>
+          <h2 class="text-sm font-medium text-greyscale-800 truncate">
+            <span x-show="tabActive.settings">{% trans "Settings" %}</span>
+            <span x-show="tabActive.users" x-cloak>{% trans "Users" %}</span>
+            <span x-show="tabActive.knowledge" x-cloak>{% trans "Knowledge Base" %}</span>
+          </h2>
+        </div>
+        {# Library drawer trigger — only where the library exists #}
+        <button type="button"
+                x-show="railActive"
+                x-on:click="openLibrary"
+                class="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-xs font-medium text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+          <span x-show="railHeadLibrary" class="inline-flex items-center gap-1.5">
+            <c-atoms.icon name="building-library" class="w-3.5 h-3.5 text-greyscale-500" />
+            {% trans "Library" %}
+          </span>
+          <span x-show="railKbBuilder" x-cloak class="inline-flex items-center gap-1.5">
+            <c-atoms.icon name="queue-list" class="w-3.5 h-3.5 text-greyscale-500" />
+            {% trans "Builder" %}
+          </span>
+        </button>
+      </div>
+      <div x-show="showSettings" class="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6">
         {% include "pages/admin/settings.html" %}
       </div>
-      <div x-show="showUsers" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
+      <div x-show="showUsers" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6">
         {% include "pages/admin/users.html" %}
       </div>
-      <div x-show="showKnowledge" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
+      <div id="kb-scroll" x-show="showKnowledge" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6">
         {% include "pages/admin/knowledge_base.html" %}
       </div>
-      <div x-show="showSimulate" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4">
-        {% include "pages/admin/simulate.html" %}
+      {# Content editor save bar — a fixed footer of the center column, #}
+      {# shown only while editing a flow's content. Save is aria-disabled #}
+      {# until something differs, then lights up in the primary red. #}
+      <div x-show="flowEditing"
+           x-cloak
+           class="flex-shrink-0 border-t border-greyscale-200 bg-greyscale-25 px-4 py-3 flex items-center justify-end gap-3">
+        <span aria-live="polite"
+              x-show="flowError"
+              x-cloak
+              class="text-xs text-red-600"
+              x-text="flowError"></span>
+        <button type="button"
+                aria-disabled="true"
+                x-bind:aria-disabled="flowClean"
+                x-on:click="saveFlowContent"
+                class="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors aria-disabled:bg-greyscale-300 aria-disabled:hover:bg-greyscale-300 aria-disabled:cursor-not-allowed">
+          {% trans "Save content" %}
+        </button>
       </div>
     </section>
+    {# Right panel — the library: court configs on Settings, topics on #}
+    {# Knowledge Base, an empty rail elsewhere so the center column keeps #}
+    {# the same width on every tab. Collapses into the library drawer #}
+    {# below lg. #}
+    <aside class="relative hidden lg:flex w-[clamp(260px,24vw,520px)] flex-shrink-0 flex-col min-h-0">
+      {# Divider — only while the rail has content (server-rendered #}
+      {# visible since Settings is the default tab) #}
+      <div x-show="railActive" class="absolute inset-y-0 left-0 w-px bg-greyscale-200" aria-hidden="true"></div>
+      <div x-show="railActive" class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
+        <span x-show="railHeadLibrary" class="flex items-center gap-1.5">
+          <c-atoms.icon name="building-library" class="w-3.5 h-3.5 text-greyscale-400" />
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Library" %}</h2>
+        </span>
+        <span x-show="railKbBuilder" x-cloak class="flex items-center gap-1.5">
+          <c-atoms.icon name="queue-list" class="w-3.5 h-3.5 text-greyscale-400" />
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Interview builder" %}</h2>
+        </span>
+      </div>
+      <div x-show="showSettings" class="flex-1 flex flex-col min-h-0">
+        {% include "pages/admin/_library.html" %}
+      </div>
+      <div x-show="railKbLibrary" x-cloak class="flex-1 flex flex-col min-h-0">
+        {% include "pages/admin/_topic_library.html" %}
+      </div>
+      <div x-show="railKbBuilder" x-cloak class="flex-1 flex flex-col min-h-0">
+        {% include "pages/admin/_interview_builder.html" %}
+      </div>
+    </aside>
+    {# Nav drawer — the collapsed left panel. A slide-over on tablet, full takeover on phones. #}
+    <div x-show="navOpen"
+         x-cloak
+         x-transition.opacity
+         x-on:click="closeNav"
+         class="lg:hidden absolute inset-0 z-30 bg-greyscale-900/30 backdrop-blur-sm"></div>
+    <aside x-show="navOpen"
+           x-cloak
+           x-on:keydown.escape.window="closeNav"
+           x-transition:enter="transition-transform duration-300 ease-out"
+           x-transition:enter-start="-translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition-transform duration-200 ease-in"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="-translate-x-full"
+           role="dialog"
+           aria-modal="true"
+           aria-label='{% trans "Admin menu" %}'
+           class="lg:hidden absolute inset-y-0 left-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-r border-greyscale-200 sm:shadow-2xl">
+      <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <c-atoms.icon name="wrench-screwdriver" class="w-3.5 h-3.5 text-greyscale-400" />
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Admin" %}</h2>
+        </div>
+        <button type="button"
+                x-on:click="closeNav"
+                aria-label='{% trans "Close" %}'
+                class="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+          <c-atoms.icon name="x-mark" class="w-4 h-4" />
+        </button>
+      </div>
+      {% include "pages/admin/_nav.html" %}
+    </aside>
+    {# Library drawer — the collapsed right panel. A slide-over on tablet, full takeover on phones. #}
+    <div x-show="libraryOpen"
+         x-cloak
+         x-transition.opacity
+         x-on:click="closeLibrary"
+         class="lg:hidden absolute inset-0 z-30 bg-greyscale-900/30 backdrop-blur-sm"></div>
+    <aside x-show="libraryOpen"
+           x-cloak
+           x-on:keydown.escape.window="closeLibrary"
+           x-transition:enter="transition-transform duration-300 ease-out"
+           x-transition:enter-start="translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition-transform duration-200 ease-in"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="translate-x-full"
+           role="dialog"
+           aria-modal="true"
+           aria-label='{% trans "Library" %}'
+           class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-96 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
+      <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span x-show="railHeadLibrary" class="flex items-center gap-1.5">
+            <c-atoms.icon name="building-library" class="w-3.5 h-3.5 text-greyscale-400" />
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Library" %}</h2>
+          </span>
+          <span x-show="railKbBuilder" x-cloak class="flex items-center gap-1.5">
+            <c-atoms.icon name="queue-list" class="w-3.5 h-3.5 text-greyscale-400" />
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Interview builder" %}</h2>
+          </span>
+        </div>
+        <button type="button"
+                x-on:click="closeLibrary"
+                aria-label='{% trans "Close" %}'
+                class="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+          <c-atoms.icon name="x-mark" class="w-4 h-4" />
+        </button>
+      </div>
+      <div x-show="showSettings" class="flex-1 flex flex-col min-h-0">
+        {% include "pages/admin/_library.html" %}
+      </div>
+      <div x-show="railKbLibrary" x-cloak class="flex-1 flex flex-col min-h-0">
+        {% include "pages/admin/_topic_library.html" %}
+      </div>
+      <div x-show="railKbBuilder" x-cloak class="flex-1 flex flex-col min-h-0">
+        {% include "pages/admin/_interview_builder.html" %}
+      </div>
+    </aside>
+    {# Library apply confirmation modal #}
+    <div x-show="libraryModalOpen"
+         x-cloak
+         x-on:keydown.escape.window="cancelApplyLibrary"
+         class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-greyscale-900/50" x-on:click="cancelApplyLibrary"></div>
+      <div class="relative w-full max-w-md rounded-xl bg-white p-5 shadow-xl"
+           role="dialog"
+           aria-modal="true"
+           aria-labelledby="library-modal-title">
+        <h3 id="library-modal-title" class="text-base font-semibold text-greyscale-900" x-text="libraryModalTitle"></h3>
+        <p class="mt-2 text-sm text-greyscale-600" x-text="libraryModalIntro"></p>
+        {# One card per overwrite category, each item on its own row #}
+        <div class="mt-3 space-y-2 max-h-72 overflow-y-auto">
+          <template x-for="section in libraryModalSections" :key="section.heading">
+            <div class="rounded-lg border border-greyscale-200 bg-greyscale-50 px-3.5 py-2.5">
+              <p class="text-xs font-semibold uppercase tracking-wider text-greyscale-500 mb-1.5" x-text="section.heading"></p>
+              <div class="space-y-1">
+                <template x-for="item in section.items" :key="item">
+                  <p class="text-sm text-greyscale-800 truncate" x-text="item"></p>
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+        <p x-show="libraryModalNote"
+           x-cloak
+           class="mt-3 text-xs text-greyscale-500"
+           x-text="libraryModalNote"></p>
+        {# Prune option — apply mode only. Checking it enumerates the #}
+        {# rows outside this configuration that would be deleted. #}
+        <div x-show="libraryModalShowPrune" x-cloak class="mt-3">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox"
+                   x-bind:checked="libraryModalPrune"
+                   x-on:change="toggleLibraryPrune"
+                   class="w-4 h-4 rounded border-greyscale-300 text-primary-600 focus:ring-primary-500 focus:ring-2 focus:ring-offset-2">
+            <span class="text-sm text-greyscale-600 select-none">{% trans "Delete contacts and resources not in this configuration" %}</span>
+          </label>
+          <div x-show="libraryModalPrune" x-cloak class="mt-2 space-y-2 max-h-48 overflow-y-auto">
+            <template x-for="section in libraryModalDeleteSections" :key="section.heading">
+              <div class="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5">
+                <p class="text-xs font-semibold uppercase tracking-wider text-red-600 mb-1.5" x-text="section.heading"></p>
+                <div class="space-y-1">
+                  <template x-for="item in section.items" :key="item">
+                    <p class="text-sm text-red-800 truncate" x-text="item"></p>
+                  </template>
+                </div>
+              </div>
+            </template>
+            <p x-show="libraryModalDeleteEmpty"
+               x-cloak
+               class="text-xs text-greyscale-500">{% trans "Nothing to delete — all of your contacts and resources are part of this configuration." %}</p>
+          </div>
+        </div>
+        <div class="mt-4 flex items-center justify-end gap-2">
+          <span x-show="libraryError" x-cloak class="mr-auto text-xs text-red-600" x-text="libraryError"></span>
+          <button type="button"
+                  x-on:click="cancelApplyLibrary"
+                  class="rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+            {% trans "Cancel" %}
+          </button>
+          <button type="button"
+                  x-on:click="confirmApplyLibrary"
+                  class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors"
+                  x-text="libraryModalConfirmLabel"></button>
+        </div>
+      </div>
+    </div>
   </div>
 {% endblock content %}
 

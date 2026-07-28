@@ -269,7 +269,8 @@
       </div>
     </section>
     {# Right panel — briefcase (live agent state for now; collapses into the briefcase drawer below lg) #}
-    <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col min-h-0">
+    {# Wider than the left rail: the right panel carries the content-rich surface. Keep in sync with pages/admin/index.html. #}
+    <aside class="hidden lg:flex w-[clamp(260px,24vw,520px)] flex-shrink-0 flex-col min-h-0">
       <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
         <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
         <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
@@ -336,7 +337,7 @@
            role="dialog"
            aria-modal="true"
            aria-label='{% trans "Briefcase" %}'
-           class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
+           class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-96 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
       <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
         <div class="flex items-center gap-1.5 min-w-0">
           <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
