@@ -80,7 +80,11 @@ def _flow_replace_children(
         for f_index, row in enumerate(group_config["fields"]):
             matches = existing_fields.get(row["name"]) or [TopicFlowField()]
             field = matches.pop(0)
-            for name, value in {**row, "group": group, "order": f_index}.items():
+            for name, value in {
+                **row,
+                "group": group,
+                "order": f_index,
+            }.items():
                 setattr(field, name, value)
             field.save()
             fields_by_name[field.name] = field
@@ -91,7 +95,7 @@ def _flow_replace_children(
     TopicFlowField.objects.filter(group__flow=flow).exclude(
         id__in=field_ids
     ).delete()
-    for group in existing_groups[len(field_groups):]:
+    for group in existing_groups[len(field_groups) :]:
         group.delete()
     kept = [row for row in deadlines if row["offset_from"] in fields_by_name]
     existing_deadlines = {}

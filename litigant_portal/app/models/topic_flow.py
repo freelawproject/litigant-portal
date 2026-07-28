@@ -165,6 +165,7 @@ class TopicFlowAnswer(BaseModel):
         related_name="answers",
     )
     value = models.JSONField(null=True, blank=True)
+    reviewed = models.BooleanField(default=False)
 
     class Meta:
         constraints = [

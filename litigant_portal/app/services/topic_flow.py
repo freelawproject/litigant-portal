@@ -66,15 +66,15 @@ def _md_link(match: re.Match) -> str:
     label, url = match.group(1), match.group(2)
     safe = url if _MD_SAFE_URL_RE.match(url) else "#"
     return (
-        f'<a href="{safe}" target="_blank" rel="noopener noreferrer"'
-        f' class="text-primary-700 underline hover:no-underline">{label}</a>'
+        f'<a href="{safe}" target="_blank"'
+        f' rel="noopener noreferrer">{label}</a>'
     )
 
 
 def _md_inline(text: str) -> str:
     text = _MD_LINK_RE.sub(_md_link, _md_escape(text))
-    text = _MD_BOLD_RE.sub(r'<strong class="font-semibold">\1</strong>', text)
-    return _MD_EM_RE.sub(r'<em class="italic">\1</em>', text)
+    text = _MD_BOLD_RE.sub(r"<strong>\1</strong>", text)
+    return _MD_EM_RE.sub(r"<em>\1</em>", text)
 
 
 def render_markdown(text) -> str:
@@ -94,15 +94,9 @@ def render_markdown(text) -> str:
                 item = _MD_LIST_RE.sub("", lines[i], count=1)
                 items.append(f"<li>{_md_inline(item)}</li>")
                 i += 1
-            out.append(
-                '<ul class="list-disc pl-5 my-2 space-y-0.5">'
-                + "".join(items)
-                + "</ul>"
-            )
+            out.append("<ul>" + "".join(items) + "</ul>")
             continue
-        out.append(
-            f'<p class="my-2 first:mt-0 last:mb-0">{_md_inline(line)}</p>'
-        )
+        out.append(f"<p>{_md_inline(line)}</p>")
         i += 1
     return mark_safe("".join(out))
 
@@ -142,7 +136,7 @@ def _answer_validate(field: TopicFlowField, value):
 
 
 def topic_flow_answers_update(
-    *, identity: UserIdentity, flow: TopicFlow, answers: dict
+    *, identity: UserIdentity, flow: TopicFlow, answers: dict, reviewed: bool
 ) -> dict:
     """Store validated ``answers`` for the flow's fields (unknown names are
     ignored, null/empty clears); returns the current values map. Raises
@@ -160,7 +154,10 @@ def topic_flow_answers_update(
             TopicFlowAnswer.objects.update_or_create(
                 identity=identity,
                 field=field,
-                defaults={"value": _answer_validate(field, value)},
+                defaults={
+                    "value": _answer_validate(field, value),
+                    "reviewed": reviewed,
+                },
             )
     return topic_flow_answer_values(identity=identity, flow=flow)
 
@@ -177,19 +174,41 @@ def _coerce_date(value) -> date | None:
         return None
 
 
+def topic_flow_field_value(*, field: TopicFlowField, raw):
+    """A stored answer (or an authored default) as its canonical Python
+    value for ``field``'s data type; ``None`` when there's nothing to show."""
+    if raw is None or raw == "":
+        return None
+    if field.data_type in (DataType.DATE, DataType.DATETIME):
+        return _coerce_date(raw)
+    if field.data_type == DataType.BOOLEAN:
+        if isinstance(raw, str):
+            return raw.strip().lower() in {"1", "true", "yes", "on"}
+        return bool(raw)
+    if field.data_type == DataType.NUMBER:
+        try:
+            number = float(raw)
+        except (TypeError, ValueError):
+            return None
+        return int(number) if number.is_integer() else number
+    return str(raw)
+
+
 def _python_values(flow: TopicFlow, values: dict) -> dict:
     """Stored answer values (an authored field default filling in for an
-    unanswered field) with date/datetime answers coerced to ``date``
-    objects per the field's data type (for template formatting)."""
+    unanswered field), each coerced per its field's data type so templates
+    can format them. An unanswered field drops out entirely, leaving
+    ``_SafeFormatter`` to render it as "".
+    """
     out = dict(values)
     for field in flow.fields:
-        if field.name not in out and field.default:
-            out[field.name] = field.default
-        if (
-            field.data_type in (DataType.DATE, DataType.DATETIME)
-            and field.name in out
-        ):
-            out[field.name] = _coerce_date(out[field.name])
+        value = topic_flow_field_value(
+            field=field, raw=out.get(field.name, field.default)
+        )
+        if value is None:
+            out.pop(field.name, None)
+        else:
+            out[field.name] = value
     return out
 
 
@@ -198,7 +217,10 @@ def topic_flow_deadline_rows(*, flow: TopicFlow, values: dict) -> list[dict]:
     answer plus ``offset_days``, or ``None`` while unanswered."""
     rows = []
     for deadline in flow.deadlines.all():
-        answered = _coerce_date(values.get(deadline.offset_from.name))
+        answered = topic_flow_field_value(
+            field=deadline.offset_from,
+            raw=values.get(deadline.offset_from.name),
+        )
         rows.append(
             {
                 "label": deadline.label,

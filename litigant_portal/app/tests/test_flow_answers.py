@@ -6,6 +6,7 @@ overwrite, where a stale True would be worse than never having the flag.
 """
 
 from django.test import TestCase
+from django.urls import reverse
 
 from litigant_portal.app.models import (
     Topic,
@@ -112,7 +113,10 @@ class FlowAnswersViewTests(TestCase):
 
     def test_post_marks_answers_reviewed(self):
         response = self.client.post(
-            "/t/name-change/standard/answers/",
+            reverse(
+                "topic_flow_api:answers",
+                kwargs={"topic_slug": "name-change", "flow_slug": "standard"},
+            ),
             data={"answers": {"full_name": "Jane Doe"}},
             content_type="application/json",
         )
@@ -125,7 +129,10 @@ class FlowAnswersViewTests(TestCase):
     def test_client_cannot_claim_a_review_it_did_not_do(self):
         """``reviewed`` is decided server-side; a body flag is ignored."""
         self.client.post(
-            "/t/name-change/standard/answers/",
+            reverse(
+                "topic_flow_api:answers",
+                kwargs={"topic_slug": "name-change", "flow_slug": "standard"},
+            ),
             data={"answers": {"full_name": "Jane"}, "reviewed": False},
             content_type="application/json",
         )

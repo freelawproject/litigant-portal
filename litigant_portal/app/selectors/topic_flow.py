@@ -66,11 +66,51 @@ def topic_flow_link_get(*, link_id) -> TopicFlowLink:
     return TopicFlowLink.objects.get(id=link_id)
 
 
+def topic_flow_slug_taken(*, topic: Topic, slug: str, exclude_id=None) -> bool:
+    """Whether ``topic`` already has a flow with this slug — the unique
+    pair behind ``/t/<topic>/<flow>/``."""
+    flows = topic.flows.filter(slug=slug)
+    if exclude_id is not None:
+        flows = flows.exclude(id=exclude_id)
+    return flows.exists()
+
+
+def topic_flow_date_field_get(
+    *, flow: TopicFlow, name: str
+) -> TopicFlowField | None:
+    """One of ``flow``'s date/datetime fields by name, or ``None``.
+
+    A deadline counts forward from a date the litigant supplies, so only
+    these types can anchor one.
+    """
+    return TopicFlowField.objects.filter(
+        group__flow=flow,
+        name=name,
+        data_type__in=[
+            TopicFlowField.DataType.DATE,
+            TopicFlowField.DataType.DATETIME,
+        ],
+    ).first()
+
+
+def topic_flow_field_name_taken(
+    *, flow: TopicFlow, name: str, exclude_id=None
+) -> bool:
+    """Whether ``flow`` already has a field with this name. Names are the
+    answer keys and PDF-template variables, so they're unique per flow."""
+    fields = TopicFlowField.objects.filter(group__flow=flow, name=name)
+    if exclude_id is not None:
+        fields = fields.exclude(id=exclude_id)
+    return fields.exists()
+
+
 def topic_flow_get_public(*, topic_slug: str, flow_slug: str) -> TopicFlow:
-    """A flow by topic and flow slug (raises TopicFlow.DoesNotExist),
-    with children prefetched for the flow page."""
+    """A live flow by topic and flow slug (raises TopicFlow.DoesNotExist),
+    with children prefetched for the flow page. Draft flows are invisible here."""
     return (
-        TopicFlow.objects.filter(topic__slug=topic_slug, slug=flow_slug)
+        TopicFlow.objects.filter(
+            topic__slug=topic_slug, slug=flow_slug, enabled=True
+        )
         .prefetch_related(
             "sections",
             "field_groups__fields",

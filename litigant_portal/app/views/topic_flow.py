@@ -71,7 +71,7 @@ def _interview_field(field: TopicFlowField, values: dict) -> dict:
 
 
 def _interview_payload(flow: TopicFlow, values: dict) -> dict:
-    """The flow's interview as steps, one per field group, in order. """
+    """The flow's interview as steps, one per field group, in order."""
     steps = []
     for group in flow.field_groups.all():
         fields = [_interview_field(f, values) for f in group.fields.all()]
