@@ -143,6 +143,20 @@
     @apply font-sans text-greyscale-900 bg-greyscale-25;
   }
 
+  select:not([multiple]):not([size]) {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='1.5' stroke='%23776f61'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='m19.5 8.25-7.5 7.5-7.5-7.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem 1rem;
+    padding-right: 2.25rem;
+  }
+
+  select:disabled {
+    cursor: not-allowed;
+  }
+
   /* Headings */
   h1 {
     @apply font-cooper text-display-sm font-semibold md:text-display-lg;
@@ -678,16 +692,26 @@
     @apply hover:border-primary-300 hover:shadow-sm transition-all;
   }
 
-  /* Topic Flow in-header table-of-contents (<details> disclosure).
-     Hide the native disclosure triangle so the summary reads as a plain
-     hamburger button; flex display handles Chrome/Firefox, the webkit rule
-     covers older iOS Safari. */
-  .topic-flow-toc > summary {
-    @apply list-none;
+  /* Flow Prose — authored flow copy rendered by services/topic_flow.py's
+     render_markdown, which emits bare tags and leaves styling here. */
+  .flow-prose p {
+    @apply my-2 first:mt-0 last:mb-0;
   }
 
-  .topic-flow-toc > summary::-webkit-details-marker {
-    display: none;
+  .flow-prose ul {
+    @apply list-disc pl-5 my-2 space-y-0.5;
+  }
+
+  .flow-prose a {
+    @apply text-primary-700 underline hover:no-underline;
+  }
+
+  .flow-prose strong {
+    @apply font-semibold;
+  }
+
+  .flow-prose em {
+    @apply italic;
   }
 
   /* ==========================================================================
