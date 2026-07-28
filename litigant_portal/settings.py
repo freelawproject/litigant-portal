@@ -343,13 +343,3 @@ if not DEBUG:
     # Additional security headers
     SECURE_CONTENT_TYPE_NOSNIFF = True
     SECURE_REFERRER_POLICY = "same-origin"
-
-
-# AI Chat configuration
-CHAT_ENABLED = os.environ.get("CHAT_ENABLED", "true").lower() == "true"
-DEFAULT_CHAT_AGENT = os.environ.get(
-    "DEFAULT_CHAT_AGENT", "LitigantAssistantAgent"
-)
-CHAT_MODEL = os.environ.get(
-    "CHAT_MODEL", "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
-)
