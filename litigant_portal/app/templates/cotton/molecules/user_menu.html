@@ -29,7 +29,7 @@
         <c-atoms.icon name="user" class="w-5 h-5 text-greyscale-500" />
         {% trans "Profile" %}
       </a>
-      {% if can_access_admin %}
+      {% if perms.app.manage_site %}
         <a href="{% url 'pages:admin_dashboard' %}"
            class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100"
            role="menuitem">

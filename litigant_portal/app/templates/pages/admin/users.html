@@ -1,7 +1,7 @@
 {% load i18n %}
 
-<div class="max-w-4xl">
-  <div class="mb-4">
+<div class="max-w-4xl mx-auto">
+  <div class="mb-4 hidden lg:block">
     <h3 class="text-base font-semibold text-greyscale-900">{% trans "Users" %}</h3>
     <p class="text-sm text-greyscale-500">{% trans "All registered users." %}</p>
   </div>
@@ -20,7 +20,7 @@
           <th class="px-4 py-2.5">{% trans "Name" %}</th>
           <th class="px-4 py-2.5">{% trans "Joined" %}</th>
           <th class="px-4 py-2.5">{% trans "Admin" %}</th>
-          {% if is_developer %}
+          {% if perms.app.manage_developers %}
             <th class="px-4 py-2.5">{% trans "Developer" %}</th>
           {% endif %}
         </tr>
@@ -43,7 +43,7 @@
                 <span x-show="user.notAdmin">{% trans "Off" %}</span>
               </button>
             </td>
-            {% if is_developer %}
+            {% if perms.app.manage_developers %}
               <td class="px-4 py-2.5">
                 <button type="button"
                         x-bind:data-user-id="user.id"
