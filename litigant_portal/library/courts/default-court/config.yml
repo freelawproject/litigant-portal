@@ -1,0 +1,5 @@
+# Placeholder court for topic content that isn't court-specific. Court-level
+# metadata is intentionally minimal; the topics/ folder is what matters here.
+
+name: 'Default Court'
+court_name: 'Default Court'

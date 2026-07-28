@@ -1,0 +1,9 @@
+# Consumer Rights topic metadata (Topic model fields). The folder name is the
+# topic slug. Source: seed_data.SEED_TOPICS. No flows yet.
+
+title: 'Consumer Rights'
+subtitle: 'Debt collection rules, contract disputes, and consumer protections'
+description: 'Scams, unfair business practices, contracts'
+icon: shield-check
+meta_description: 'Learn about consumer rights, debt collection rules, and contract disputes. General legal information for self-represented litigants.'
+order: 3

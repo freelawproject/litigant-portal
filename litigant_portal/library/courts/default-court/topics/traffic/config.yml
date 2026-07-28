@@ -1,0 +1,9 @@
+# Traffic & Fines topic metadata (Topic model fields). The folder name is the
+# topic slug. Source: seed_data.SEED_TOPICS. No flows yet.
+
+title: 'Traffic & Fines'
+subtitle: 'Traffic violations, fines, license issues, and your options'
+description: 'Tickets, license issues, court fines'
+icon: truck
+meta_description: 'Learn about traffic tickets, fines, license suspension, and your options. General legal information for self-represented litigants.'
+order: 5

@@ -1,0 +1,13 @@
+# Housing & Eviction topic metadata (Topic model fields). The folder name is
+# the topic slug. Source: seed_data.SEED_TOPICS.
+
+title: 'Housing & Eviction'
+subtitle: 'Understanding the eviction process, tenant rights, and landlord obligations'
+description: 'Landlord disputes, eviction defense, tenant rights'
+icon: home
+meta_description: 'Learn about the eviction process, tenant rights, and landlord obligations. General legal information for self-represented litigants.'
+prompts:
+  - 'I received an eviction notice and need to understand my options'
+  - "My landlord isn't making repairs. What are my rights?"
+  - "I'm behind on rent and worried about eviction"
+order: 0

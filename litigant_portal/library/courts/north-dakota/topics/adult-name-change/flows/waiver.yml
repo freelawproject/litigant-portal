@@ -1,0 +1,479 @@
+# Adult Name Change (North Dakota), WAIVER track (first/middle only,
+# publication may be waived), scoped to the TopicFlow data models. The
+# directory locates the court and topic. No deadlines: publication and the
+# 30-day wait can be waived, so there is no fixed date to compute. Source
+# copy: content/adult-name-change-waiver.yml. Field set and form mappings
+# ported from docassemble/nd-name-change/petition-waiver.yml; same PDFs and
+# field names as the standard track, differing only at Petition/Declaration
+# §11 (waive instead of publish) and §12 (requesting waiver), and with no
+# Notice of Petition (that form is standard-track only). Form PDFs live in
+# the topic-level ../../forms/ directory, shared across flows.
+
+slug: waiver
+name: 'Adult Name Change (Publication Waiver)'
+
+sections:
+  - heading: 'Changing your first or middle name in North Dakota'
+    content: |
+      This walks you through a standalone adult name-change petition in North Dakota district court, on the waiver track: changing your first and/or middle name only, leaving your last name unchanged.
+
+      On this track a judge may waive the newspaper publication requirement, and if publication is waived there is no 30-day waiting period. The waiver is the judge's decision on the facts you present. It is not guaranteed, so plan for the possibility that publication is still required.
+
+      If you are changing your last name (or any combination that includes it), use the publication-required version of this tool instead.
+
+      One common mix-up: if you wanted your name changed as part of a divorce, that has to be requested inside the divorce case. It is not handled here.
+
+  - heading: 'Who can file'
+    content: |
+      To petition for a name change in North Dakota you must be a U.S. citizen or a U.S. permanent resident. You attest to this on the Petition.
+
+      A name change cannot be used to defraud anyone or to evade a legal obligation (for example, debts or a criminal record). These are conditions you confirm on the forms, not something you have to explain to anyone here.
+
+  - heading: 'What it costs'
+    content: |
+      The filing fee is $160. If you cannot afford it, you can file fee-waiver forms at the same time asking the judge to waive the fee. The fee-waiver link is in the resources at the end of this page.
+
+      Two other costs can come up later: if the judge requires a criminal history background check, you pay for it; and certified copies of your final Order cost $10 for the first copy and $5 for each additional copy requested at the same time.
+
+  - heading: 'Criminal history background check'
+    content: |
+      Asking to waive publication does not remove the criminal history step. Before granting a name change, the judge has to determine whether you have a criminal record. Some judges require every adult filer to get a statewide or national criminal history background check; others decide after reviewing your petition. Call the clerk before you file to ask which applies in your county. The check can take weeks, so it is worth starting early.
+
+      If the judge requires one, you request it at edo.cjis.gov and pay the cost yourself.
+
+      If you have a felony conviction, North Dakota law assumes a name-change request is made in bad faith. A judge may still grant it, but you would need to show by clear and convincing evidence that your request is made in good faith and not to defraud, mislead, injure anyone, or compromise public safety.
+
+  - heading: 'About the publication waiver'
+    content: |
+      Because you are not changing your last name, you can ask the judge to waive the requirement to publish a notice in the newspaper. If the judge grants the waiver, there is no 30-day waiting period and your petition can be considered sooner.
+
+      The judge decides this on your particular facts, so it is not automatic. Ask the clerk how your county handles the waiver request, and be ready in case publication is still required.
+
+  - heading: 'Before you sign'
+    content: |
+      A few things in North Dakota's process are easy to miss, and each one has a real consequence if it is missed:
+
+      - The case number stays blank. The clerk assigns it when you file.
+      - Only the judge signs the Proposed Order.
+      - The Confidential Information Form is sealed and stays out of the public file. A copy must be attached to every certified copy of your Order, or North Dakota Vital Records will reject your updates later. Keep copies.
+
+  - heading: 'Will there be a hearing?'
+    content: |
+      North Dakota does not presumptively require a hearing for a name change, but the judge may decide one is needed. If a hearing is scheduled, the Clerk of District Court will send notice with the date, time, and location.
+
+  - heading: 'After the judge signs your Order'
+    content: |
+      Ask the clerk for at least three certified copies of your Order. Certified copies cost $10 for the first and $5 for each additional copy requested at the same time, and each one needs the Confidential Information Form attached.
+
+      Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
+
+# Field groups ported from petition-waiver.yml's question blocks — one group
+# per docassemble interview page (title = the page's question, description =
+# its subquestion). Labels for the name fields stay prefixed (Current/
+# Requested) because the public flow page still renders a flat list. The
+# interview's waiver_reasons checkboxes group is flattened into two boolean
+# fields (waiver_first_or_middle / waiver_domestic_violence); the page's
+# select-every-reason instruction lives on the group description.
+field_groups:
+  - title: 'Your current legal name'
+    fields:
+      - name: current_first
+        label: 'Current first name'
+        required: true
+      - name: current_middle
+        label: 'Current middle name(s) (if any)'
+      - name: current_last
+        label: 'Current last name'
+        required: true
+  - title: 'The name you want'
+    fields:
+      - name: requested_first
+        label: 'Requested first name'
+        required: true
+      - name: requested_middle
+        label: 'Requested middle name(s) (if any)'
+      - name: requested_last
+        label: 'Requested last name'
+        required: true
+  - title: 'Where you live'
+    fields:
+      - name: residence_street
+        label: 'Street address'
+        required: true
+      - name: residence_city
+        label: 'City'
+        required: true
+      - name: residence_county
+        label: 'County'
+        required: true
+      - name: residence_zip
+        label: 'ZIP code'
+        required: true
+      - name: residence_since
+        label: 'You have lived in this county since (month and year)'
+        help_text: 'e.g. January 2025'
+        required: true
+  - title: 'A few details the Petition requires'
+    fields:
+      - name: citizenship
+        label: 'Citizenship status'
+        data_type: choice
+        required: true
+        choices:
+          - value: citizen
+            label: 'U.S. citizen'
+          - value: resident_alien
+            label: 'Permanent resident alien'
+      - name: criminal_history
+        label: 'Criminal history'
+        data_type: choice
+        required: true
+        choices:
+          - value: none
+            label: 'I have never been convicted of a crime'
+          - value: convicted
+            label: 'I have been convicted of a crime'
+  - title: 'Why you are asking the court to waive publication'
+    description: 'A judge may waive publishing your notice. Select every reason that applies.'
+    fields:
+      - name: waiver_first_or_middle
+        label: 'I am only changing my first or middle name'
+        data_type: boolean
+      - name: waiver_domestic_violence
+        label: 'I am a victim of domestic violence'
+        data_type: boolean
+  - title: 'A few more details for the rest of your packet'
+    description: 'These appear on the Order, Declaration, and Confidential Information form.'
+    fields:
+      - name: date_of_birth
+        label: 'Date of birth'
+        data_type: date
+        required: true
+      - name: place_of_birth
+        label: 'Place of birth'
+        help_text: 'e.g. Fargo, North Dakota'
+        required: true
+      - name: residency_years
+        label: 'Years you have lived in North Dakota'
+        data_type: number
+        required: true
+      - name: residency_months
+        label: 'Additional months'
+        data_type: number
+        required: true
+        default: '0'
+      - name: phone_number
+        label: 'Your phone number'
+
+# The full filing packet, in filing order: Petition, its Declaration,
+# Confidential, Order (no Notice on the waiver track). Mappings ported
+# line-for-line from the bench-confirmed attachment blocks in
+# petition-waiver.yml; the Confidential and Order mappings are identical to
+# the standard track (bench-verified, #560), only the Petition and Declaration
+# differ, at §11/§12. Checkbox "on" state ("Yes" on all four PDFs) is detected
+# from the PDF at fill time.
+forms:
+  # === Petition for Name Change (waiver track) ============================
+  - slug: petition
+    name: 'Petition for Name Change'
+    file: petition.pdf
+    fields:
+      # Caption
+      - pdf_field: 'Text1'
+        template: '{residence_county}'
+      - pdf_field: 'Case No'
+        template: ''
+      - pdf_field: 'Petitioners current first middle if any and last legal name'
+        template: '{current_first} {current_middle} {current_last}'
+      # 2. Current legal name
+      - pdf_field: 'First name'
+        template: '{current_first}'
+      - pdf_field: 'Middle names if any'
+        template: '{current_middle}'
+      - pdf_field: 'Last name'
+        template: '{current_last}'
+      # 3. Residence (trailing-label shift: blanks run address -> city -> county -> zip)
+      - pdf_field: 'Petitioner currently resides at'
+        template: '{residence_street}'
+      - pdf_field: 'address'
+        template: '{residence_city}'
+      - pdf_field: 'city'
+        template: '{residence_county}'
+      - pdf_field: 'North Dakota'
+        template: '{residence_zip}'
+      # 4. Residency
+      - pdf_field: 'Petitioner has been a resident of'
+        template: '{residence_county}'
+      - pdf_field: 'since'
+        template: '{residence_since}'
+      # 5. Citizenship (choose one)
+      - pdf_field: 'Check Box2'
+        template: '{citizenship}'
+        checked_when: 'citizen'
+      - pdf_field: 'Check Box3'
+        template: '{citizenship}'
+        checked_when: 'resident_alien'
+      # 7. Requested name
+      - pdf_field: 'First name_2'
+        template: '{requested_first}'
+      - pdf_field: 'Middle names if any_2'
+        template: '{requested_middle}'
+      - pdf_field: 'Last name_2'
+        template: '{requested_last}'
+      # 9. Criminal history (choose one)
+      - pdf_field: 'Check Box1'
+        template: '{criminal_history}'
+        checked_when: 'none'
+      - pdf_field: 'Check Box4'
+        template: '{criminal_history}'
+        checked_when: 'convicted'
+      # 11. Notice, WAIVER track: not published, blanks left empty
+      - pdf_field: 'Check Box5'
+        template: ''
+        checked_when: ''
+      - pdf_field: 'A Notice of Petition for Name Change was published on'
+        template: ''
+      - pdf_field: 'month date year in the'
+        template: ''
+      - pdf_field: 'newspaper the official newspaper in'
+        template: ''
+      # 11. Waiver of publication + reason(s)
+      - pdf_field: 'Check Box6'
+        template: 'yes'
+        checked_when: 'yes'
+      - pdf_field: 'Check Box7'
+        template: '{waiver_first_or_middle}'
+        checked_when: 'True'
+      - pdf_field: 'Check Box8'
+        template: '{waiver_domestic_violence}'
+        checked_when: 'True'
+      # 12. Objections, WAIVER track: requesting waiver
+      - pdf_field: 'Check Box9'
+        template: ''
+        checked_when: ''
+      - pdf_field: 'Check Box10'
+        template: ''
+        checked_when: ''
+      - pdf_field: 'Check Box11'
+        template: 'yes'
+        checked_when: 'yes'
+      # Page 4, change "from" (current) / "to" (requested)
+      - pdf_field: 'First name_3'
+        template: '{current_first}'
+      - pdf_field: 'Middle names if any_3'
+        template: '{current_middle}'
+      - pdf_field: 'Last name_3'
+        template: '{current_last}'
+      - pdf_field: 'First name_4'
+        template: '{requested_first}'
+      - pdf_field: 'Middle names if any_4'
+        template: '{requested_middle}'
+      - pdf_field: 'Last name_4'
+        template: '{requested_last}'
+      # Page 4, signature block
+      - pdf_field: 'type or print your name'
+        template: '{current_first} {current_middle} {current_last}'
+      - pdf_field: 'type or print your address city state zip code'
+        template: '{residence_street}, {residence_city}, ND {residence_zip}'
+      - pdf_field: 'type or print your telephone number and email address'
+        template: ''
+
+  # === Declaration in Support of Petition (waiver track) ==================
+  # Identical to the standard Declaration except §11 (waive instead of publish)
+  # and §12 (requesting waiver). Field mapping is position-verified the same way
+  # (#560); the shared Declaration fields were bench-confirmed on the standard track.
+  - slug: declaration
+    name: 'Declaration in Support of Petition'
+    file: declaration.pdf
+    fields:
+      # Caption
+      - pdf_field: 'In District Court'
+        template: '{residence_county}'
+      - pdf_field: 'Case No'
+        template: ''
+      - pdf_field: 'Petitioners current first middle if any and last legal name'
+        template: '{current_first} {current_middle} {current_last}'
+      # Preamble "I, ____ (current legal name)"
+      - pdf_field: 'I'
+        template: '{current_first} {current_middle} {current_last}'
+      # 1. Current legal name
+      - pdf_field: 'First name'
+        template: '{current_first}'
+      - pdf_field: 'Middle names if any'
+        template: '{current_middle}'
+      - pdf_field: 'Last name'
+        template: '{current_last}'
+      # 2. Citizenship (Check Box1 = citizen, Check Box2 = resident alien)
+      - pdf_field: 'Check Box1'
+        template: '{citizenship}'
+        checked_when: 'citizen'
+      - pdf_field: 'Check Box2'
+        template: '{citizenship}'
+        checked_when: 'resident_alien'
+      # 3. "resident of North Dakota for ___ years and ___ months"
+      - pdf_field: 'I have been a resident of North Dakota for'
+        template: '{residency_years}'
+      - pdf_field: 'years and'
+        template: '{residency_months}'
+      # 4. "resident of ___ County ... since ___ (month and year)"
+      - pdf_field: 'I have been a resident of'
+        template: '{residence_county}'
+      - pdf_field: 'month and year more than six months immediately before the'
+        template: '{residence_since}'
+      # 5. Place of birth
+      - pdf_field: 'My place of birth is'
+        template: '{place_of_birth}'
+      # 6. Year of birth
+      - pdf_field: 'My year of birth is'
+        template: '{date_of_birth:%Y}'
+      # 7. Requested name
+      - pdf_field: 'First name_2'
+        template: '{requested_first}'
+      - pdf_field: 'Middle names if any_2'
+        template: '{requested_middle}'
+      - pdf_field: 'Last name_2'
+        template: '{requested_last}'
+      # 8. Reasons: litigant-handwritten narrative, left unmapped (parity w/ Petition).
+      # 9. Criminal history (Check Box3 = never, Check Box4 = convicted)
+      - pdf_field: 'Check Box3'
+        template: '{criminal_history}'
+        checked_when: 'none'
+      - pdf_field: 'Check Box4'
+        template: '{criminal_history}'
+        checked_when: 'convicted'
+      # 9. Conviction table: blank for the demo persona (never convicted).
+      # 11. Notice, WAIVER track: not published, blanks empty
+      - pdf_field: 'Check Box7'
+        template: ''
+        checked_when: ''
+      - pdf_field: 'Notice choose the same checkbox as Paragraph 11 of your Petition'
+        template: ''
+      - pdf_field: 'newspaper the official'
+        template: ''
+      - pdf_field: 'newspaper in'
+        template: ''
+      # 11. Waiver of publication + reason(s)
+      - pdf_field: 'Check Box8'
+        template: 'yes'
+        checked_when: 'yes'
+      - pdf_field: 'Check Box9'
+        template: '{waiver_first_or_middle}'
+        checked_when: 'True'
+      - pdf_field: 'Check Box10'
+        template: '{waiver_domestic_violence}'
+        checked_when: 'True'
+      # 12. Objections, WAIVER track: requesting waiver (Check Box14)
+      - pdf_field: 'Check Box12'
+        template: ''
+        checked_when: ''
+      - pdf_field: 'Check Box13'
+        template: ''
+        checked_when: ''
+      - pdf_field: 'Check Box14'
+        template: 'yes'
+        checked_when: 'yes'
+      # 13. Signature block, same one-row label shift as the standard track (shared
+      #     declaration.pdf): 'Text15' = (Printed Name) line, 'Printed Name of
+      #     Petitioner' = (Address / City, State, Zip) line, 'Address' = (Telephone /
+      #     Email) line. The signature + "Signed on ___" blanks are handwritten.
+      - pdf_field: 'Text15'
+        template: '{current_first} {current_middle} {current_last}' # -> (Printed Name of Petitioner)
+      - pdf_field: 'Printed Name of Petitioner'
+        template: '{residence_street}, {residence_city}, ND {residence_zip}' # -> (Address / City, State, Zip)
+      - pdf_field: 'Address'
+        template: '{phone_number}' # -> (Telephone Number / Email); no email collected
+      # additional-sheets 'Check Box5'/'Check Box6' (¶8/¶9) stay off (Off on the bench).
+
+  # === Confidential Information Form (identical to standard, bench-verified) ===
+  - slug: confidential-info
+    name: 'Confidential Information Form'
+    file: confidential-info.pdf
+    fields:
+      - pdf_field: 'In District Court County Of'
+        template: '{residence_county}'
+      # 'State Of North Dakota' field is positionally the Case No blank, leave empty.
+      - pdf_field: 'State Of North Dakota'
+        template: ''
+      - pdf_field: 'In The Matter Of The Petition For Name Change Of'
+        template: '{current_first} {current_middle} {current_last}'
+      - pdf_field: 'First name'
+        template: '{current_first}'
+      - pdf_field: 'Middle names if any'
+        template: '{current_middle}'
+      - pdf_field: 'Last name'
+        template: '{current_last}'
+      # Bench-confirmed: DOB lands on "Full Information", birth year on "Redacted".
+      - pdf_field: 'Full Information'
+        template: '{date_of_birth}'
+      - pdf_field: 'Redacted Information'
+        template: '{date_of_birth:%Y}'
+      # Signature block trails by one row (Petition §3 gotcha), values shifted one
+      # field name up; "-> (...)" is the blank each field actually fills.
+      - pdf_field: 'Text1'
+        template: '{current_first} {current_middle} {current_last}' # -> (Typed or Printed Name)
+      - pdf_field: 'Petitioners Typed or Printed Name'
+        template: '{residence_street}' # -> (Address)
+      - pdf_field: 'Address'
+        template: '{residence_city}, ND {residence_zip}' # -> (City, State, Zip Code)
+      - pdf_field: 'City State Zip Code'
+        template: '{phone_number}' # -> (Telephone Number)
+      - pdf_field: 'Telephone Number'
+        template: '' # -> (Email Address); no email collected
+
+  # === Proposed Order for Name Change (identical to standard, bench-verified) ===
+  - slug: order
+    name: 'Proposed Order for Name Change'
+    file: order.pdf
+    fields:
+      # Bench-confirmed: header holds the county name.
+      - pdf_field: 'In District Court'
+        template: '{residence_county}'
+      - pdf_field: 'Case No'
+        template: ''
+      - pdf_field: 'County of'
+        template: '{residence_county}'
+      # Bench-confirmed: stray single-char field on the "County of" line, blank.
+      - pdf_field: '1'
+        template: ''
+      - pdf_field: 'The Petitioners birth year is'
+        template: '{date_of_birth:%Y}'
+      - pdf_field: 'Petitioners Current First Middle If Any And Last Legal Name'
+        template: '{current_first} {current_middle} {current_last}'
+      # §2 current
+      - pdf_field: 'First name'
+        template: '{current_first}'
+      - pdf_field: 'Middle names if any'
+        template: '{current_middle}'
+      - pdf_field: 'Last name'
+        template: '{current_last}'
+      # §3 requested
+      - pdf_field: 'First name_2'
+        template: '{requested_first}'
+      - pdf_field: 'Middle names if any_2'
+        template: '{requested_middle}'
+      - pdf_field: 'Last name_2'
+        template: '{requested_last}'
+      # §6 current
+      - pdf_field: 'First name_3'
+        template: '{current_first}'
+      - pdf_field: 'Middle names if any_3'
+        template: '{current_middle}'
+      - pdf_field: 'Last name_3'
+        template: '{current_last}'
+      # §6 changed-to (new) = requested
+      - pdf_field: 'First name_4'
+        template: '{requested_first}'
+      - pdf_field: 'Middle names if any_4'
+        template: '{requested_middle}'
+      - pdf_field: 'Last name_4'
+        template: '{requested_last}'
+
+links:
+  - name: 'Petition for Name Change'
+    url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf'
+  - name: 'Declaration in Support of Petition'
+    url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf'
+  - name: 'Confidential Information Form'
+    url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf'
+  - name: 'Proposed Order for Name Change'
+    url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf'

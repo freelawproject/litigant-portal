@@ -11,6 +11,8 @@ repos:
     rev: v5.0.0
     hooks:
       - id: check-added-large-files
+        # Library form PDFs are deliberate, PR-reviewed binaries.
+        exclude: ^litigant_portal/library/.*/forms/.*\.pdf$
       - id: check-ast
       - id: check-json
       - id: check-merge-conflict

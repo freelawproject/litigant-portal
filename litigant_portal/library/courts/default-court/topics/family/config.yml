@@ -1,0 +1,9 @@
+# Family & Divorce topic metadata (Topic model fields). The folder name is
+# the topic slug. Source: seed_data.SEED_TOPICS. No flows yet.
+
+title: 'Family & Divorce'
+subtitle: 'Divorce, custody, child support, and domestic violence resources'
+description: 'Divorce, custody, child support, domestic issues'
+icon: users
+meta_description: 'Learn about divorce, child custody, child support, and family court. General legal information for self-represented litigants.'
+order: 1
