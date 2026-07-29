@@ -60,14 +60,4 @@ document.addEventListener('alpine:init', () => {
       location.reload()
     },
   }))
-
-  // ===========================================================================
-  // Action plan page (print button)
-  // ===========================================================================
-
-  Alpine.data('actionPlanPage', () => ({
-    printPage() {
-      window.print()
-    },
-  }))
 })
