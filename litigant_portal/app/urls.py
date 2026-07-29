@@ -116,7 +116,7 @@ urlpatterns = [
             "",
             include((app_patterns, "litigant_portal.app"), namespace="pages"),
         ),
-        prefix_default_language=False,
+        prefix_default_language=False,  # Keep English URLs unprefixed (/chat/ not /en/chat/)
     ),
     # Assistant API Endpoints
     path(
