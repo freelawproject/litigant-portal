@@ -21,6 +21,22 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `ty
 
 `make lint` and `make test` before pushing (`make pre-commit` runs both; pre-commit hooks also run on every commit). `make test` execs into the Django container, so `make docker` needs to be running first. What "done" actually requires — testing philosophy, WCAG/CSP/progressive-enhancement gates, content style, component discipline — lives in [docs/wiki/definition-of-done.md](docs/wiki/definition-of-done.md); that's the canonical bar for every PR and issue.
 
+## Contributor License Agreement (CLA)
+
+Free Law Project requires a signed CLA before a PR can be merged. A bot checks this automatically on every PR.
+
+- **Sign here:** [cla-assistant.io/freelawproject/litigant-portal](https://cla-assistant.io/freelawproject/litigant-portal) — one click via GitHub OAuth.
+- **Already signed but the check still shows pending?** The CLA Assistant bot's comment on your PR includes a "Let us recheck it" link — click it to re-verify your signature against that PR.
+- **What it is:** the [Apache Individual Contributor License Agreement V2.0](https://www.apache.org/licenses/icla.pdf), adapted with FLP's names. In return, FLP makes a public-benefit covenant: it "shall not use Your Contributions in a way that is contrary to the public benefit or inconsistent with universal access to public court documents."
+- **You keep your copyright.** This is a license grant, not a copyright assignment — you're licensing FLP to use your contribution, not signing ownership over.
+- **One signature, every FLP repo.** Sign once and it covers all `freelawproject` projects going forward, not just this one.
+
+**Contributing on behalf of an employer?** The ICLA references an employer having "executed a separate Corporate CLA with the Project," but the repo has no documented contact or process for that path yet. If this applies to you, flag it on your PR or issue and we'll get you an answer before merge.
+
+## Code of Conduct
+
+This project follows the [Contributor Covenant](CODE_OF_CONDUCT.md). Participation in this repo — issues, PRs, discussions — means agreeing to abide by it.
+
 ## Security
 
 Report vulnerabilities through our [vulnerability disclosure policy](https://free.law/vulnerability-disclosure-policy/) (see [SECURITY.md](SECURITY.md)), not public issues.

@@ -56,7 +56,7 @@ Visit: http://localhost (Caddy serves on port 80).
 
 ## Contributing
 
-Issue-first workflow, Conventional Commits, WCAG AA floor — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Issue-first workflow, Conventional Commits, WCAG AA floor — see [CONTRIBUTING.md](CONTRIBUTING.md). A signed [CLA](https://cla-assistant.io/freelawproject/litigant-portal) is required before merge (one click, covers all FLP repos); see the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
