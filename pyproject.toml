@@ -60,7 +60,6 @@ dependencies = [
     # Rate limiting
     "django-ratelimit>=4.1",
     # PDF text extraction
-    "pdfplumber>=0.11",
     "pypdf>=5.0",
     "mammoth>=1.8",
     "openpyxl>=3.1",
