@@ -5,9 +5,9 @@ from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.agents import LitigantAssistant
 from litigant_portal.app.models import UserUpload
-from litigant_portal.app.selectors.admin import site_get_model
-from litigant_portal.app.selectors.assistant import user_upload_list
-from litigant_portal.app.services.assistant import (
+from litigant_portal.app.selectors.site import site_get_model
+from litigant_portal.app.selectors.upload import user_upload_list
+from litigant_portal.app.services.upload import (
     UploadValidationError,
     user_upload_create,
     user_upload_delete,

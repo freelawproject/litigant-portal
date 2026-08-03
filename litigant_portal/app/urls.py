@@ -15,6 +15,9 @@ from litigant_portal.app.views import (
     health,
     pages,
 )
+from litigant_portal.app.views import (
+    topic_flow as topic_flow_views,
+)
 
 app_patterns = [
     path("", pages.home, name="home"),
@@ -27,7 +30,7 @@ app_patterns = [
     ),
     path(
         "t/<slug:court>/<slug:topic>/<slug:role>/download/<slug:output_id>/",
-        pages.topic_flow_download,
+        topic_flow_views.topic_flow_download,
         name="topic_flow_download",
     ),
     path("admin/", pages.admin, name="admin_dashboard"),

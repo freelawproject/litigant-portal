@@ -3,7 +3,7 @@ from django.shortcuts import redirect, render
 from django.utils.functional import SimpleLazyObject
 
 from litigant_portal.app.models import UserIdentity
-from litigant_portal.app.services.identity import identity_ensure
+from litigant_portal.app.services.user import user_identity_ensure
 
 
 class SitePasswordMiddleware:
@@ -57,7 +57,7 @@ def resolve_identity(request) -> UserIdentity:
     """Resolve the UserIdentity that owns this request's data, creating it if
     needed."""
     if request.user.is_authenticated:
-        return identity_ensure(user=request.user)
+        return user_identity_ensure(user=request.user)
     if not request.session.session_key:
         request.session.create()
     identity, _ = UserIdentity.objects.get_or_create(

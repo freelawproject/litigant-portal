@@ -29,10 +29,10 @@ class QueryDocument(Tool):
 
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.app.models import ChatThread, UserUpload
-        from litigant_portal.app.selectors.admin import site_get_model
-        from litigant_portal.app.services.attachments import (
-            content_part,
-            reader_limit_error,
+        from litigant_portal.app.selectors.site import site_get_model
+        from litigant_portal.app.services.upload import (
+            user_upload_content_part,
+            user_upload_reader_limit_error,
         )
 
         thread = ChatThread.objects.get(id=thread_id)
@@ -49,7 +49,7 @@ class QueryDocument(Tool):
         with upload.file.open("rb") as f:
             data = f.read()
 
-        too_large = reader_limit_error(upload, data)
+        too_large = user_upload_reader_limit_error(upload, data)
         if too_large:
             return ToolOutput(
                 result=(
@@ -59,7 +59,7 @@ class QueryDocument(Tool):
             )
 
         model = site_get_model(role="assistant")
-        part = content_part(upload=upload, data=data, model=model)
+        part = user_upload_content_part(upload=upload, data=data, model=model)
         if part is None:
             return ToolOutput(
                 result=(

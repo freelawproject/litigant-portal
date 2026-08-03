@@ -1,11 +1,10 @@
 import uuid
 
-from django.conf import settings
 from django.db import models
 
 from .base import BaseModel
-from .choices import AI_MODEL_CHOICES, JurisdictionLevel, State
 from .site import Site
+
 
 class Topic(BaseModel):
     """A legal topic the app supports."""
