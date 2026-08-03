@@ -22,12 +22,12 @@ frontend templates those tools render with). You build new behavior by
 | Rendering tool templates → HTML              | `tools = [...]` (Tool subclasses)       |
 | Reloading a thread for the frontend          | tool templates under `templates/tools/` |
 
-Engine code: [`services/chat_engine.py`](../litigant_portal/app/services/chat_engine.py) ·
-Abstraction: [`agents/base.py`](../litigant_portal/agents/base.py) ·
-Demo agent: [`agents/weather.py`](../litigant_portal/agents/weather.py) ·
-Tools: [`agents/tools/`](../litigant_portal/agents/tools/) ·
-Generic views: [`views/chat_engine.py`](../litigant_portal/app/views/chat_engine.py) ·
-Example surface: [`views/assistant.py`](../litigant_portal/app/views/assistant.py)
+Engine code: [`services/chat_engine.py`](../../litigant_portal/app/services/chat_engine.py) ·
+Abstraction: [`agents/base.py`](../../litigant_portal/agents/base.py) ·
+Demo agent: [`agents/weather.py`](../../litigant_portal/agents/weather.py) ·
+Tools: [`agents/tools/`](../../litigant_portal/agents/tools/) ·
+Generic views: [`views/chat_engine.py`](../../litigant_portal/app/views/chat_engine.py) ·
+Example surface: [`views/assistant.py`](../../litigant_portal/app/views/assistant.py)
 
 ---
 
@@ -70,7 +70,7 @@ Read it as a loop:
 ## Anatomy of an agent
 
 An agent is a configuration object. It binds together five ingredients. The
-[`Agent`](../litigant_portal/agents/base.py) base class is deliberately tiny —
+[`Agent`](../../litigant_portal/agents/base.py) base class is deliberately tiny —
 it holds config and a prompt method, and that's it. **Streaming and tool
 execution are the engine's job, not the agent's.**
 
@@ -323,14 +323,14 @@ Two pieces make this work:
 - **`thread_type`** — a string column on `ChatThread` (indexed, e.g.
   `"user_chat"`). Every thread query in the engine — list, get, stream,
   delete — is scoped by it, so each surface sees only its own threads.
-- **Generic views** — [`views/chat_engine.py`](../litigant_portal/app/views/chat_engine.py)
+- **Generic views** — [`views/chat_engine.py`](../../litigant_portal/app/views/chat_engine.py)
   provides `stream`, `thread_list`, `message_list`, `thread_usage`, and
   `thread_delete` as abstract views. Each takes the surface's bindings as
   keyword args: `agent_class`, `thread_type`, and (for `stream`) `model`.
 
 A surface module fills in those blanks and adds the HTTP concerns (method
 decorators, rate limits) plus any surface-specific endpoints.
-[`views/assistant.py`](../litigant_portal/app/views/assistant.py) is the live
+[`views/assistant.py`](../../litigant_portal/app/views/assistant.py) is the live
 example — it binds `LitigantAssistant` and adds the upload endpoints:
 
 ```python
@@ -392,9 +392,9 @@ engine then derives two views explicitly:
 
 - **`_to_llm_message`** — whitelists only API-valid keys, so frontend-only
   fields can never leak into the completion request.
-- **`thread_render_items`** — pairs each assistant tool call with its result by
-  `tool_call_id` and re-renders the templates, so a **reloaded** thread looks
-  identical to a freshly streamed one.
+- **`chat_thread_render_items`** — pairs each assistant tool call with its
+  result by `tool_call_id` and re-renders the templates, so a **reloaded**
+  thread looks identical to a freshly streamed one.
 
 ---
 
@@ -407,11 +407,11 @@ tools opt in, the engine does the rest.
 Messages are stored once; the `chat_message_list` selector carves out each
 projection with two flags (`exclude_hidden`, `exclude_meta`):
 
-| Projection              | Call                                        | Used for                                |
-| ----------------------- | ------------------------------------------- | --------------------------------------- |
-| Accounting (everything) | `chat_message_list(thread=…)`               | `chat_thread_usage` token/cost totals   |
-| LLM history             | `…(exclude_meta=True)`                      | what `chat_stream` feeds to litellm     |
-| Render view             | `…(exclude_hidden=True, exclude_meta=True)` | `thread_render_items`, sidebar snippets |
+| Projection              | Call                                        | Used for                                     |
+| ----------------------- | ------------------------------------------- | -------------------------------------------- |
+| Accounting (everything) | `chat_message_list(thread=…)`               | `chat_thread_usage` token/cost totals        |
+| LLM history             | `…(exclude_meta=True)`                      | what `chat_stream` feeds to litellm          |
+| Render view             | `…(exclude_hidden=True, exclude_meta=True)` | `chat_thread_render_items`, sidebar snippets |
 
 ### Hidden messages
 
