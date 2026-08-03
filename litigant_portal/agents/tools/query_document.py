@@ -49,7 +49,7 @@ class QueryDocument(Tool):
         with upload.file.open("rb") as f:
             data = f.read()
 
-        too_large = user_upload_reader_limit_error(upload, data)
+        too_large = user_upload_reader_limit_error(upload=upload, data=data)
         if too_large:
             return ToolOutput(
                 result=(

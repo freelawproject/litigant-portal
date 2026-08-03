@@ -73,7 +73,6 @@ class UploadValidationError(Exception):
     """A user upload failed validation (bad type or too large)."""
 
 
-# Lifecycle helpers
 # Upload lifecycle (create/delete/serialize) backs the chat upload picker
 
 
@@ -241,7 +240,7 @@ def _token_count(text: str) -> int:
 
 
 def user_upload_reader_limit_error(
-    upload: UserUpload, data: bytes
+    *, upload: UserUpload, data: bytes
 ) -> str | None:
     """Check if an attachment exceeds the reader model's limits."""
     kind = _file_kind(upload.content_type)

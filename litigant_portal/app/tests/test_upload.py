@@ -1,13 +1,14 @@
-"""Unit tests for the upload services (services/upload.py)."""
+"""Tests for the upload services (services/upload.py) and the attachment
+ownership boundary the stream endpoint enforces on top of them."""
 
 import io
 import tempfile
 
 import pytest
 from django.core.files.base import ContentFile
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 
-from litigant_portal.app.models import UserIdentity, UserUpload
+from litigant_portal.app.models import ChatThread, UserIdentity, UserUpload
 from litigant_portal.app.services.upload import (
     INLINE_MAX_BYTES,
     INLINE_MAX_PAGES,
@@ -23,6 +24,8 @@ BEDROCK = "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0"
 DOCX_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
+
+ASSISTANT_BASE = "/api/agents/assistant/"
 
 
 def make_pdf(pages: int = 1) -> bytes:
@@ -312,13 +315,15 @@ class ReaderLimitTests(TestCase):
 
     def test_pdf_within_limits_passes(self):
         upload = UserUpload(content_type="application/pdf", pages=3)
-        self.assertIsNone(user_upload_reader_limit_error(upload, make_pdf(3)))
+        self.assertIsNone(
+            user_upload_reader_limit_error(upload=upload, data=make_pdf(3))
+        )
 
     def test_very_long_pdf_is_refused(self):
         upload = UserUpload(
             content_type="application/pdf", pages=READER_MAX_PAGES + 1
         )
-        error = user_upload_reader_limit_error(upload, make_pdf(1))
+        error = user_upload_reader_limit_error(upload=upload, data=make_pdf(1))
         self.assertIn(f"{READER_MAX_PAGES + 1} pages", error)
 
     def test_huge_text_is_refused_by_token_count(self):
@@ -328,11 +333,61 @@ class ReaderLimitTests(TestCase):
         data = " ".join(
             str(i) for i in range(READER_MAX_TEXT_TOKENS + 10_000)
         ).encode()
-        error = user_upload_reader_limit_error(upload, data)
+        error = user_upload_reader_limit_error(upload=upload, data=data)
         self.assertIn("tokens of text", error)
 
     def test_small_text_passes(self):
         upload = UserUpload(content_type="text/plain")
         self.assertIsNone(
-            user_upload_reader_limit_error(upload, b"a short note")
+            user_upload_reader_limit_error(upload=upload, data=b"a short note")
         )
+
+
+@pytest.mark.postgres
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class AttachmentOwnershipTests(TestCase):
+    """A caller can only attach uploads its own identity owns.
+
+    The check runs before the thread is created, so a rejected attachment
+    leaves no trace and never reaches the LLM.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        # First request establishes a session + identity for the client.
+        self.client.get(ASSISTANT_BASE + "uploads/")
+        self.identity = UserIdentity.objects.get(
+            session_key=self.client.session.session_key
+        )
+        self.stranger = UserIdentity.objects.create(session_key="stranger")
+        self.their_upload = UserUpload.objects.create(
+            identity=self.stranger,
+            file=ContentFile(b"private", name="theirs.txt"),
+            name="theirs.txt",
+            content_type="text/plain",
+            size=7,
+        )
+
+    def _stream(self, attachment_id):
+        return self.client.post(
+            ASSISTANT_BASE + "stream/",
+            {"message": "read this", "attachment_ids": [str(attachment_id)]},
+        )
+
+    def test_another_identitys_upload_is_refused(self):
+        res = self._stream(self.their_upload.id)
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["error"], "Invalid attachment")
+        self.assertFalse(ChatThread.objects.exists())
+
+    def test_unknown_upload_id_is_refused(self):
+        res = self._stream("00000000-0000-0000-0000-000000000000")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["error"], "Invalid attachment")
+        self.assertFalse(ChatThread.objects.exists())
+
+    def test_malformed_upload_id_is_refused(self):
+        res = self._stream("not-a-uuid")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["error"], "Invalid attachment")
+        self.assertFalse(ChatThread.objects.exists())
