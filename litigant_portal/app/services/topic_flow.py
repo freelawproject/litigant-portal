@@ -3,7 +3,9 @@ from django.db.models import Max
 from django.utils.text import slugify
 
 from litigant_portal.app.models import Site, Topic
-from litigant_portal.app.selectors.site import ACTIVE_SITE_TOPICS_CACHE_KEY
+from litigant_portal.app.selectors.topic_flow import (
+    ACTIVE_SITE_TOPICS_CACHE_KEY,
+)
 
 
 def _topic_unique_slug(*, site: Site, title: str) -> str:
