@@ -8,7 +8,7 @@ Litigant Portal is an open-source access-to-justice project by [Free Law Project
 - **One branch per issue**, named `{issue#}-{slug}` (e.g. `220-update-action-plan-tool`).
 - **Open a draft PR early** — a pushed branch with a draft PR is the best place to discuss direction while work is in flight.
 - **Every PR closes its issue** with a closing keyword ("Closes #220"). Keep PRs focused; one logical change per PR.
-- **Definition of done lives on the issue.** Scoped issues carry a DoD checklist; the checklist is what "done" means. If you spot adjacent problems along the way, file them as new issues rather than growing the PR.
+- **Ticket-specific acceptance criteria live on the issue**, on top of the repo-wide bar in [docs/wiki/definition-of-done.md](docs/wiki/definition-of-done.md). If you spot adjacent problems along the way, file them as new issues rather than growing the PR.
 - **Priority and size** are assigned by the team during grooming — leave them off when filing.
 
 ## Commits
@@ -17,11 +17,9 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `ty
 
 ## Quality bar
 
-- `make lint` and `make test` before pushing (`make pre-commit` runs both; pre-commit hooks also run on every commit).
-- **Test our code, not libraries** — tests should fail when our logic breaks, not assert static copy or framework behavior.
-- **WCAG 2.2 AA is a hard requirement**, not a target: [docs/wiki/wcag-strategy.md](docs/wiki/wcag-strategy.md).
-- **CSP compliance:** no inline event handlers (a pre-commit hook blocks them); Alpine.js CSP build patterns only.
-- **Progressive enhancement:** base workflows work without JavaScript — our users are on flaky networks, old devices, and courthouse kiosks.
+**First-time setup:** `make install` (installs `pre-commit` and other dev tools via `uv sync --extra dev`) — required before `make lint` will run.
+
+`make lint` and `make test` before pushing (`make pre-commit` runs both; pre-commit hooks also run on every commit). `make test` execs into the Django container, so `make docker` needs to be running first. What "done" actually requires — testing philosophy, WCAG/CSP/progressive-enhancement gates, content style, component discipline — lives in [docs/wiki/definition-of-done.md](docs/wiki/definition-of-done.md); that's the canonical bar for every PR and issue.
 
 ## Security
 
