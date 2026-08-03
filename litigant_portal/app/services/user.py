@@ -3,44 +3,9 @@ import logging
 from django.contrib.auth.models import User
 from django.db import transaction
 
-from litigant_portal.app.models import Site, SiteMembership, UserIdentity
+from litigant_portal.app.models import UserIdentity
 
 logger = logging.getLogger(__name__)
-
-
-def user_can_access_admin(*, user) -> bool:
-    """Whether a user may see the admin panel at all.
-
-    Developers (User.is_staff) always can; everyone else needs a membership in
-    the currently active site.
-    """
-    if not user.is_authenticated:
-        return False
-    if user.is_staff:
-        return True
-    return SiteMembership.objects.filter(user=user, site__active=True).exists()
-
-
-def user_is_developer(*, user) -> bool:
-    """Whether a user is a developer."""
-    return user.is_authenticated and user.is_staff
-
-
-def user_can_manage_site(*, user, site: Site) -> bool:
-    """Whether a user may read or edit ``site`` itself."""
-    if user.is_staff:
-        return True
-    return SiteMembership.objects.filter(user=user, site=site).exists()
-
-
-def site_membership_toggle(*, user: User, site: Site) -> bool:
-    """Flip a user's membership in ``site``; returns the new state."""
-    membership = SiteMembership.objects.filter(user=user, site=site).first()
-    if membership:
-        membership.delete()
-        return False
-    SiteMembership.objects.create(user=user, site=site)
-    return True
 
 
 def user_developer_toggle(*, user: User) -> bool:
