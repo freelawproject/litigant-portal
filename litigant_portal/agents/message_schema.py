@@ -17,15 +17,6 @@ logger = logging.getLogger(__name__)
 
 Field = PydanticField
 
-
-def llm_completion(**kwargs):
-    """Wrapper around litellm.completion() that injects default args."""
-    import litellm
-
-    kwargs.setdefault("drop_params", True)
-    return litellm.completion(**kwargs)
-
-
 # =============================================================================
 # Message Types
 # =============================================================================
