@@ -339,7 +339,7 @@ const NEW_CHAT_TITLE = 'New chat'
 
 // --- Attachments -------------------------------------------------------------
 
-// Mirrors the backend's allowed types (services/assistant.py) so obviously bad
+// Mirrors the backend's allowed types (services/upload.py) so obviously bad
 // files are rejected before a round trip. The server remains the authority.
 const UPLOAD_EXTENSIONS = [
   '.pdf',
