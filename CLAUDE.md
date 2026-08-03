@@ -164,6 +164,10 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 
 **Naming:** services and selectors are `{model_name}_{action}` — `site_get_active`, `topic_create`, `user_identity_merge`, `user_upload_llm_parts`. Allow some liberty when a utility genuinely implicates two models equally. Anything not part of a module's public surface takes a leading underscore.
 
+**Reads are selectors, writes are services** — including permission predicates. `user_can_access_admin` reads, so it's a selector; `user_developer_toggle` writes, so it's a service. A cache key lives in the selector module that reads through it, and whoever invalidates it imports it from there.
+
+**`app/topic_flow/` is not a data-layer module.** It's the corpus engine (schema, registry, renderer, downloads) that reads YAML from `litigant_portal/content/`. The `topic_flow` entries under `models/`, `selectors/`, `services/`, and `views/` are the data layer for the `Topic` rows the corpus is attached to. Two different things sharing a name; always import both absolutely.
+
 **By surface** — views, templates, JS, and the URL pattern lists:
 
 - **`views/pages.py`** — views that render a page. Keep them thin; let endpoints do the work so pages stay reactive.
@@ -281,7 +285,7 @@ Using Alpine.js **CSP build** (`@alpinejs/csp` v3.14.9). Local files, no CDN. Th
 
 ## AI Chat Feature
 
-The portal runs on a general-purpose chat engine (threads, streaming, tool-calling loop, uploads) with all domain behavior packaged as agents. Agent authoring guide: [docs/ai-tooling/AGENT_DEV_GUIDE.md](docs/ai-tooling/AGENT_DEV_GUIDE.md) · uploads: [docs/ai-tooling/ATTACHMENT_SYSTEM.md](docs/ai-tooling/ATTACHMENT_SYSTEM.md).
+The portal runs on a general-purpose chat engine (threads, streaming, tool-calling loop, uploads) with all domain behavior packaged as agents. Agent authoring guide: [docs/ai-tooling/AGENT_DEV_GUIDE.md](docs/ai-tooling/AGENT_DEV_GUIDE.md) · uploads: [docs/ai-tooling/UPLOAD_SYSTEM.md](docs/ai-tooling/UPLOAD_SYSTEM.md).
 
 ### How It Works
 
