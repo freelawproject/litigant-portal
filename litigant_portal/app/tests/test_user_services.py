@@ -1,4 +1,4 @@
-"""Unit tests for the identity services.
+"""Unit tests for the user identity services (services/user.py).
 
 These exercise the core logic directly — no HTTP client, no login flow —
 which is the payoff of moving the merge out of the signal handler. The

@@ -1,4 +1,4 @@
-"""Unit tests for attachment hydration (services/upload.py)."""
+"""Unit tests for the upload services (services/upload.py)."""
 
 import io
 import tempfile
