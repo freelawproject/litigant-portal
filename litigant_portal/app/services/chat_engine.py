@@ -13,9 +13,10 @@ from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_get,
 )
-from litigant_portal.app.services.assistant import attachment_render_list
-from litigant_portal.app.services.attachments import (
-    attachments_for_llm,
+from litigant_portal.app.selectors.site import site_get_model
+from litigant_portal.app.services.upload import (
+    user_upload_llm_parts,
+    user_upload_render_list,
 )
 
 logger = logging.getLogger(__name__)
@@ -97,8 +98,6 @@ def chat_message_inject_meta(
 
 def chat_thread_generate_description(*, thread: ChatThread) -> str:
     """Generate and store a short description of a thread's conversation."""
-    from litigant_portal.app.selectors.admin import site_get_model
-
     model = site_get_model(role="fast")
     conversation = "\n".join(
         f"{m.data.get('role')}: {m.data.get('content')}"
@@ -183,7 +182,7 @@ def _messages_for_llm(
 ) -> list[dict[str, Any]]:
     """Prepend the (never-stored) system prompt and project to litellm shape,
     and inject attachment content parts or stubs."""
-    hydrated = attachments_for_llm(
+    hydrated = user_upload_llm_parts(
         history=history, model=model, cache=attachment_cache
     )
     messages: list[dict[str, Any]] = [
@@ -244,7 +243,7 @@ def _tool_item(tool_call: dict, results: dict, tools: dict) -> dict[str, Any]:
     }
 
 
-def thread_render_items(
+def chat_thread_render_items(
     *, thread: ChatThread, agent_class: type[Agent]
 ) -> list[dict[str, Any]]:
     """Project a thread's stored messages into frontend render items."""
@@ -269,7 +268,7 @@ def thread_render_items(
                 "content": msg.get("content", ""),
             }
             if msg.get("attachments"):
-                item["attachments"] = attachment_render_list(
+                item["attachments"] = user_upload_render_list(
                     msg["attachments"]
                 )
             items.append(item)
