@@ -6,10 +6,10 @@ The repo's reference shelf: material you reach for when you need it. Day-to-day 
 
 ## AI tooling
 
-| Doc                                                       | Purpose                                                          |
-| --------------------------------------------------------- | ---------------------------------------------------------------- |
-| [AGENT_DEV_GUIDE.md](./ai-tooling/AGENT_DEV_GUIDE.md)     | Build agents on the chat engine: state, prompts, tools, surfaces |
-| [ATTACHMENT_SYSTEM.md](./ai-tooling/ATTACHMENT_SYSTEM.md) | How uploads flow into the LLM: inline vs. reader subagent        |
+| Doc                                                   | Purpose                                                          |
+| ----------------------------------------------------- | ---------------------------------------------------------------- |
+| [AGENT_DEV_GUIDE.md](./ai-tooling/AGENT_DEV_GUIDE.md) | Build agents on the chat engine: state, prompts, tools, surfaces |
+| [UPLOAD_SYSTEM.md](./ai-tooling/UPLOAD_SYSTEM.md)     | How uploads flow into the LLM: inline vs. reader subagent        |
 
 ## Document assembly
 
