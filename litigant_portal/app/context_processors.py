@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.messages import get_messages
 from django.utils.functional import SimpleLazyObject
 
-from litigant_portal.app.services.user import (
+from litigant_portal.app.selectors.user import (
     user_can_access_admin,
     user_is_developer,
 )

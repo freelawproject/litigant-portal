@@ -1,9 +1,7 @@
 from django.contrib.auth.signals import user_logged_in
 from django.dispatch import receiver
 
-from .services.user import (
-    user_identity_merge_anonymous,
-)
+from .services.user import user_identity_merge_anonymous
 
 
 @receiver(user_logged_in)
