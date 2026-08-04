@@ -42,7 +42,8 @@ def ensure_permission_groups(
         if len(permissions) != len(codenames):
             logger.warning(
                 "Group %r is missing permissions: expected %s, found %s. "
-                "Nobody in it will have admin access until they exist.",
+                "Nobody in it will have admin access until the missing "
+                "permissions exist.",
                 name,
                 sorted(codenames),
                 sorted(p.codename for p in permissions),
