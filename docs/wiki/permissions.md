@@ -9,6 +9,8 @@ whole API.
 
 Declared in: [`models/site.py`](../../litigant_portal/app/models/site.py)
 (`Site.Meta.permissions`) ·
+mapped to groups in
+[`permissions.py`](../../litigant_portal/app/permissions.py) ·
 provisioned by [`signals.py`](../../litigant_portal/app/signals.py)
 (`ensure_permission_groups`) ·
 granted through the admin panel's Users tab.

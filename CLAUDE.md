@@ -178,6 +178,8 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 - **`static/js/<surface>.js`** — that surface's Alpine components; cross-cutting ones live in `components.js`.
 - **`urls.py`** — one pattern list per group (`app_patterns`, `assistant_patterns`, `admin_api_patterns`), each `include`d under its own namespace.
 
+**`utils.py`** — any package may carry one for helpers shared across its own modules, like the JSON permission decorators in `views/utils.py`.
+
 A `library` domain (importing court and topic configs from the content library) is planned but does not exist yet — its absence is deliberate, not an oversight.
 
 ### Front-End Principles
