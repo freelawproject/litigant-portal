@@ -12,10 +12,9 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.test import Client, TestCase
 
+from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 from litigant_portal.app.selectors.user import user_list
 from litigant_portal.app.services.user import (
-    ADMINS_GROUP,
-    DEVELOPERS_GROUP,
     user_admin_toggle,
     user_developer_toggle,
 )
@@ -106,6 +105,36 @@ class GroupToggleTests(TestCase):
         row = user_list().get(pk=self.user.pk)
         self.assertTrue(row.is_admin_member)
         self.assertFalse(row.is_developer_member)
+
+
+@pytest.mark.postgres
+class SuperuserTests(TestCase):
+    """Superusers hold every permission implicitly, without a group.
+
+    Worth pinning: ``bootstrap_superuser`` creates the account that has to
+    be able to grant everyone else access, and it never touches a group.
+    """
+
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            username="s", password="p"
+        )
+
+    def test_holds_both_permissions_with_no_group_membership(self):
+        self.assertEqual(self.superuser.groups.count(), 0)
+        self.assertTrue(self.superuser.has_perm("app.manage_site"))
+        self.assertTrue(self.superuser.has_perm("app.manage_developers"))
+
+    def test_passes_the_page_guard_and_both_json_guards(self):
+        client = client_for(self.superuser)
+        self.assertEqual(client.get("/admin/").status_code, 200)
+        self.assertEqual(client.get("/api/admin/users/").status_code, 200)
+
+        target = User.objects.create_user(username="t", password="p")
+        response = client.post(
+            f"/api/admin/users/{target.pk}/developer/toggle/"
+        )
+        self.assertEqual(response.status_code, 200)
 
 
 @pytest.mark.postgres
