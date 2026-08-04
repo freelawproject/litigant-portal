@@ -1,7 +1,7 @@
 from django.contrib.auth.models import Group, User
 from django.db.models import Exists, OuterRef, QuerySet
 
-from litigant_portal.app.services.user import ADMINS_GROUP, DEVELOPERS_GROUP
+from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 
 
 def user_get(*, user_id: int) -> User:

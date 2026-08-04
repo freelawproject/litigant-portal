@@ -4,16 +4,14 @@ from django.contrib.auth.models import Group, User
 from django.db import transaction
 
 from litigant_portal.app.models import UserIdentity
+from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 
 logger = logging.getLogger(__name__)
-
-ADMINS_GROUP = "Admins"
-DEVELOPERS_GROUP = "Developers"
 
 
 def _group_toggle(*, user: User, name: str) -> bool:
     """Flip a user's membership in a group; returns the new state."""
-    group = Group.objects.get(name=name)
+    group, _ = Group.objects.get_or_create(name=name)
     if user.groups.filter(pk=group.pk).exists():
         user.groups.remove(group)
         return False
