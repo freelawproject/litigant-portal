@@ -3,7 +3,6 @@ import logging
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.signals import user_logged_in
 from django.db import DEFAULT_DB_ALIAS
-from django.db.models.signals import post_migrate
 from django.dispatch import receiver
 
 from .permissions import GROUP_PERMISSIONS
@@ -12,7 +11,6 @@ from .services.user import user_identity_merge_anonymous
 logger = logging.getLogger(__name__)
 
 
-@receiver(post_migrate)
 def ensure_permission_groups(
     sender, using=DEFAULT_DB_ALIAS, apps=None, **kwargs
 ):
@@ -20,14 +18,9 @@ def ensure_permission_groups(
     their permissions.
 
     Relies on ``django.contrib.auth`` preceding this app in
-    ``INSTALLED_APPS``: its ``create_permissions`` receiver connects to
-    ``post_migrate`` first and so runs first for the same sender, creating
-    the permissions handed out here. The warning below is what surfaces
-    that ordering if it ever stops holding — without it, the groups would
-    be created empty and the only symptom would be a 403 for every admin.
+    ``INSTALLED_APPS``. Fired from AppConfig.ready() so that is only runs
+    for this app.
     """
-    if getattr(sender, "name", None) != "litigant_portal.app":
-        return
     group_model = apps.get_model("auth", "Group") if apps else Group
     permission_model = (
         apps.get_model("auth", "Permission") if apps else Permission
