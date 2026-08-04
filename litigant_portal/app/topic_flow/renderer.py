@@ -162,9 +162,14 @@ def submitted_section_anchor(corpus, submitted_ids):
 
 
 def _answered_in_corpus_order(corpus, answers):
-    """Yield ``{label, value}`` for answered questions, in corpus order."""
+    """Yield ``{label, value}`` for answered questions, in corpus order.
+
+    Same leak vector as the fact_gather form: skip anything in
+    ``_NEVER_PREFILL`` so a prior guest's answer can't surface in the recap
+    either (#638).
+    """
     for question in _fact_gather_questions(corpus):
-        if question.id in answers:
+        if question.id in answers and question.id not in _NEVER_PREFILL:
             yield {"label": question.label, "value": answers[question.id]}
 
 

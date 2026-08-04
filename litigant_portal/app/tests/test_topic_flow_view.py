@@ -448,6 +448,25 @@ def test_get_prefills_form_from_existing_session_answers(client, monkeypatch):
 
 
 @pytest.mark.django_db
+def test_recap_never_shows_publication_date(client, monkeypatch):
+    # #638: the recap reads the same session-backed answers as the fact_gather
+    # form above it — a prior guest's publication_date can't surface there
+    # either, even though filing_county (unaffected by the fix) still shows.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    session = client.session
+    session["topic_flow"] = {
+        f"{COURT}/{TOPIC}/{ROLE}": {
+            "publication_date": "2026-03-15",
+            "filing_county": "Cass",
+        }
+    }
+    session.save()
+    html = client.get(URL).content.decode()
+    assert "2026-03-15" not in html
+    assert "Cass" in html
+
+
+@pytest.mark.django_db
 def test_post_stores_only_known_question_ids(client, monkeypatch):
     # The handler accepts only the corpus's question ids — csrf tokens and any
     # stray/injected POST keys must not land in the answer store.

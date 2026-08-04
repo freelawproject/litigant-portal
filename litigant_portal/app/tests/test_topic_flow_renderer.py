@@ -203,6 +203,28 @@ def test_summary_omits_unanswered_questions():
     ]
 
 
+def test_summary_never_prefills_publication_date():
+    # #638: the recap reads the same session-backed answers as the fact_gather
+    # form — a prior guest's publication_date can't leak in here either.
+    fg = _fg(
+        [
+            Question(
+                id="publication_date", label="Publication date", type="date"
+            ),
+            Question(id="filing_county", label="County"),
+        ]
+    )
+    summary = SummaryOutput(
+        kind="output", output_type="summary", id="recap", heading="Recap"
+    )
+    rendered = render_section(
+        summary,
+        _corpus(fg, summary),
+        {"publication_date": "2026-05-01", "filing_county": "Cass"},
+    )
+    assert rendered.context["items"] == [{"label": "County", "value": "Cass"}]
+
+
 # --- packet -----------------------------------------------------------------
 
 
