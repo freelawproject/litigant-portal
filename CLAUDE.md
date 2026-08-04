@@ -164,7 +164,9 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 
 **Naming:** services and selectors are `{model_name}_{action}` — `site_get_active`, `topic_create`, `user_identity_merge`, `user_upload_llm_parts`. Allow some liberty when a utility genuinely implicates two models equally. Anything not part of a module's public surface takes a leading underscore.
 
-**Reads are selectors, writes are services** — including permission predicates. `user_can_access_admin` reads, so it's a selector; `user_developer_toggle` writes, so it's a service. A cache key lives in the selector module that reads through it, and whoever invalidates it imports it from there.
+**Reads are selectors, writes are services.** `user_list` reads, so it's a selector; `user_developer_toggle` writes, so it's a service. A cache key lives in the selector module that reads through it, and whoever invalidates it imports it from there.
+
+**Permissions.** Admin access is the `app.manage_site` and `app.manage_developers` permissions, carried by the `Admins` and `Developers` groups (provisioned by a `post_migrate` receiver in `signals.py`). Check them with `request.user.has_perm(...)` in views and `{% if perms.app.manage_site %}` in templates — don't wrap either in a selector. Page views use Django's `@permission_required(..., raise_exception=True)`; the JSON API keeps its own `admin_access_required` / `developer_required` decorators, because the built-in renders an HTML 403 where those endpoints must return a JSON body. These are deliberately separate from the auto-generated `add/change/delete/view` permissions that gate Django admin.
 
 **`app/topic_flow/` is not a data-layer module.** It's the corpus engine (schema, registry, renderer, downloads) that reads YAML from `litigant_portal/content/`. The `topic_flow` entries under `models/`, `selectors/`, `services/`, and `views/` are the data layer for the `Topic` rows the corpus is attached to. Two different things sharing a name; always import both absolutely.
 
