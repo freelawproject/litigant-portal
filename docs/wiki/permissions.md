@@ -96,20 +96,19 @@ available to any surface:
 
 ```python
 from litigant_portal.app.views.utils import (
-    admin_access_required,
-    developer_required,
+    manage_site_required,
+    manage_developers_required,
 )
 
 
 @require_GET
-@admin_access_required
+@manage_site_required
 def user_list_view(request):
     ...
 ```
 
-`admin_access_required` requires `manage_site`; `developer_required`
-requires `manage_developers`. They exist because the built-in decorator
-raises `PermissionDenied`, which renders an **HTML** 403 page — these
+They exist rather than reusing `permission_required` because the built-in
+raises `PermissionDenied`, which renders an **HTML** 403 page. These
 endpoints must answer with `{"error": "Forbidden"}` and a 403 status,
 because the frontend parses the response body.
 

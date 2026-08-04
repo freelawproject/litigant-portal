@@ -19,10 +19,10 @@ def _perm_required(codename: str):
     return decorator
 
 
-admin_access_required = _perm_required("app.manage_site")
+manage_site_required = _perm_required("app.manage_site")
 """JSON guard: requires ``app.manage_site`` (held by the Admins and
 Developers groups and, implicitly, superusers)."""
 
-developer_required = _perm_required("app.manage_developers")
+manage_developers_required = _perm_required("app.manage_developers")
 """JSON guard: requires ``app.manage_developers`` (held by the Developers
 group and, implicitly, superusers)."""

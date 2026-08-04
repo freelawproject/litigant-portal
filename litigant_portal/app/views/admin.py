@@ -34,8 +34,8 @@ from litigant_portal.app.services.user import (
     user_developer_toggle,
 )
 from litigant_portal.app.views.utils import (
-    admin_access_required,
-    developer_required,
+    manage_developers_required,
+    manage_site_required,
 )
 
 USERS_PER_PAGE = 20
@@ -58,7 +58,7 @@ def _site_payload(site: Site) -> dict:
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def site_list_view(request: HttpRequest) -> JsonResponse:
     """Site rows for the admin settings tab."""
     return JsonResponse({"sites": [_site_payload(s) for s in site_list()]})
@@ -66,7 +66,7 @@ def site_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
     """Update a site row's editable fields."""
     name = (request.POST.get("name") or "").strip()
@@ -123,7 +123,7 @@ def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@developer_required
+@manage_developers_required
 def site_activate_view(request: HttpRequest, site_id) -> JsonResponse:
     """Make a site row the single active one. Developers only."""
     try:
@@ -176,7 +176,7 @@ def _topic_fields(request: HttpRequest) -> tuple[dict | None, str | None]:
 
 @require_GET
 @ratelimit(key="ip", rate="120/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def topic_list_view(request: HttpRequest) -> JsonResponse:
     """The active site's topics for the knowledge base tab."""
     try:
@@ -190,7 +190,7 @@ def topic_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_create_view(request: HttpRequest) -> JsonResponse:
     """Create a topic in the active site."""
     fields, error = _topic_fields(request)
@@ -205,7 +205,7 @@ def topic_create_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_update_view(request: HttpRequest, topic_id) -> JsonResponse:
     """Update a topic's editable fields."""
     fields, error = _topic_fields(request)
@@ -220,7 +220,7 @@ def topic_update_view(request: HttpRequest, topic_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_delete_view(request: HttpRequest, topic_id) -> JsonResponse:
     """Delete a topic from the active site."""
     try:
@@ -249,7 +249,7 @@ def _user_payload(user: User, *, viewer: User) -> dict:
 
 @require_GET
 @ratelimit(key="ip", rate="120/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def user_list_view(request: HttpRequest) -> JsonResponse:
     """Paginated users for the admin users tab; ``q`` filters by email."""
     search = (request.GET.get("q") or "").strip()
@@ -267,7 +267,7 @@ def user_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def user_admin_toggle_view(request: HttpRequest, user_id: int) -> JsonResponse:
     """Toggle a user's Admins-group membership (admin access)."""
     try:
@@ -288,7 +288,7 @@ def user_admin_toggle_view(request: HttpRequest, user_id: int) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@developer_required
+@manage_developers_required
 def user_developer_toggle_view(
     request: HttpRequest, user_id: int
 ) -> JsonResponse:
