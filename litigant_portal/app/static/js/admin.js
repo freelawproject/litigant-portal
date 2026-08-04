@@ -411,9 +411,9 @@ document.addEventListener('alpine:init', () => {
       return {
         ...u,
         notAdmin: !u.is_admin,
-        notStaff: !u.is_staff,
+        notDeveloper: !u.is_developer,
         adminToggleClass: u.is_admin ? PILL_ON : PILL_OFF,
-        devToggleClass: u.is_staff ? PILL_ON : PILL_OFF,
+        devToggleClass: u.is_developer ? PILL_ON : PILL_OFF,
         // Self-revocation guard mirrors the server: you can't drop your
         // own highest permission, so those toggles render disabled.
         adminToggleDisabled: !u.can_toggle_admin,
@@ -430,7 +430,7 @@ document.addEventListener('alpine:init', () => {
       )
     },
 
-    // Toggle membership (admin access) in the active site.
+    // Toggle membership in the Admins group (admin access).
     async toggleUserAdmin(e) {
       const userId = e.currentTarget.dataset.userId
       try {
@@ -448,7 +448,7 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    // Toggle the developer (staff) flag.
+    // Toggle membership in the Developers group.
     async toggleUserDeveloper(e) {
       const userId = e.currentTarget.dataset.userId
       try {
@@ -460,7 +460,7 @@ document.addEventListener('alpine:init', () => {
         )
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         const data = await res.json()
-        this.patchUser(userId, { is_staff: data.is_staff })
+        this.patchUser(userId, { is_developer: data.is_developer })
       } catch (err) {
         console.error('Failed to toggle developer status:', err)
       }

@@ -20,7 +20,7 @@
           <th class="px-4 py-2.5">{% trans "Name" %}</th>
           <th class="px-4 py-2.5">{% trans "Joined" %}</th>
           <th class="px-4 py-2.5">{% trans "Admin" %}</th>
-          {% if is_developer %}
+          {% if perms.app.manage_developers %}
             <th class="px-4 py-2.5">{% trans "Developer" %}</th>
           {% endif %}
         </tr>
@@ -31,7 +31,7 @@
             <td class="px-4 py-2.5 text-greyscale-900" x-text="user.email"></td>
             <td class="px-4 py-2.5 text-greyscale-600" x-text="user.name"></td>
             <td class="px-4 py-2.5 text-greyscale-500" x-text="user.joined"></td>
-            {# Membership in the active site #}
+            {# Membership in the Admins group #}
             <td class="px-4 py-2.5">
               <button type="button"
                       x-bind:data-user-id="user.id"
@@ -43,7 +43,7 @@
                 <span x-show="user.notAdmin">{% trans "Off" %}</span>
               </button>
             </td>
-            {% if is_developer %}
+            {% if perms.app.manage_developers %}
               <td class="px-4 py-2.5">
                 <button type="button"
                         x-bind:data-user-id="user.id"
@@ -51,8 +51,8 @@
                         x-bind:class="user.devToggleClass"
                         x-bind:disabled="user.devToggleDisabled"
                         class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-default disabled:pointer-events-none">
-                  <span x-show="user.is_staff">{% trans "On" %}</span>
-                  <span x-show="user.notStaff">{% trans "Off" %}</span>
+                  <span x-show="user.is_developer">{% trans "On" %}</span>
+                  <span x-show="user.notDeveloper">{% trans "Off" %}</span>
                 </button>
               </td>
             {% endif %}

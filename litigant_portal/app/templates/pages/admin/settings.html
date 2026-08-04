@@ -4,7 +4,7 @@
   {# Header row — title on the left, site switcher on the right #}
   <div class="flex items-center justify-between gap-2 mb-4">
     <h3 class="text-base font-semibold text-greyscale-900">{% trans "Settings" %}</h3>
-    {% if is_developer %}
+    {% if perms.app.manage_developers %}
     <div class="relative">
       <button type="button"
               x-on:click="toggleSiteMenu"
