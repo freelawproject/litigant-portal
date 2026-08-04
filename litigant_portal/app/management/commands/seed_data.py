@@ -3,8 +3,8 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from litigant_portal.app.models import Site, Topic
-from litigant_portal.app.selectors.admin import (
-    ACTIVE_SITE_CACHE_KEY,
+from litigant_portal.app.selectors.site import ACTIVE_SITE_CACHE_KEY
+from litigant_portal.app.selectors.topic_flow import (
     ACTIVE_SITE_TOPICS_CACHE_KEY,
 )
 

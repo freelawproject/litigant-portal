@@ -4,16 +4,17 @@ from django.http import HttpRequest, JsonResponse
 from django.utils.translation import gettext as _
 
 from litigant_portal.agents.base import Agent
-from litigant_portal.app.models import ChatThread, UserUpload
+from litigant_portal.app.models import ChatThread
 from litigant_portal.app.selectors.chat_engine import (
     chat_thread_get,
     chat_thread_list,
     chat_thread_usage,
 )
+from litigant_portal.app.selectors.upload import user_upload_list
 from litigant_portal.app.services.chat_engine import (
     chat_stream,
     chat_thread_delete,
-    thread_render_items,
+    chat_thread_render_items,
 )
 
 
@@ -39,9 +40,11 @@ def stream(
             )
         except ValueError:
             return JsonResponse({"error": _("Invalid attachment")}, status=400)
-        owned = UserUpload.objects.filter(
-            identity=request.identity, id__in=attachment_ids
-        ).count()
+        owned = (
+            user_upload_list(identity=request.identity)
+            .filter(id__in=attachment_ids)
+            .count()
+        )
         if owned != len(attachment_ids):
             return JsonResponse({"error": _("Invalid attachment")}, status=400)
 
@@ -98,7 +101,7 @@ def message_list(
         {
             "id": str(thread.id),
             "description": thread.description,
-            "items": thread_render_items(
+            "items": chat_thread_render_items(
                 thread=thread, agent_class=agent_class
             ),
             "state": thread.state,

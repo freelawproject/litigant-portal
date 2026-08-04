@@ -17,25 +17,28 @@ from litigant_portal.app.models.choices import (
     OpenAIModel,
     State,
 )
-from litigant_portal.app.selectors.admin import (
+from litigant_portal.app.selectors.site import (
     site_get,
     site_get_active,
     site_list,
-    topic_get,
-    topic_list,
+)
+from litigant_portal.app.selectors.topic_flow import topic_get, topic_list
+from litigant_portal.app.selectors.user import (
+    user_can_access_admin,
+    user_can_manage_site,
     user_list,
 )
-from litigant_portal.app.services.admin import (
+from litigant_portal.app.services.site import (
     site_activate,
     site_membership_toggle,
     site_update,
+)
+from litigant_portal.app.services.topic_flow import (
     topic_create,
     topic_delete,
     topic_update,
-    user_can_access_admin,
-    user_can_manage_site,
-    user_developer_toggle,
 )
+from litigant_portal.app.services.user import user_developer_toggle
 
 USERS_PER_PAGE = 20
 

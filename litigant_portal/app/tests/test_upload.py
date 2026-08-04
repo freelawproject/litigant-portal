@@ -1,20 +1,21 @@
-"""Unit tests for attachment hydration (services/attachments.py)."""
+"""Tests for the upload services (services/upload.py) and the attachment
+ownership boundary the stream endpoint enforces on top of them."""
 
 import io
 import tempfile
 
 import pytest
 from django.core.files.base import ContentFile
-from django.test import TestCase, override_settings
+from django.test import Client, TestCase, override_settings
 
-from litigant_portal.app.models import UserIdentity, UserUpload
-from litigant_portal.app.services.attachments import (
+from litigant_portal.app.models import ChatThread, UserIdentity, UserUpload
+from litigant_portal.app.services.upload import (
     INLINE_MAX_BYTES,
     INLINE_MAX_PAGES,
     READER_MAX_PAGES,
     READER_MAX_TEXT_TOKENS,
-    attachments_for_llm,
-    reader_limit_error,
+    user_upload_llm_parts,
+    user_upload_reader_limit_error,
 )
 
 OPENAI = "gpt-5-mini"
@@ -23,6 +24,8 @@ BEDROCK = "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0"
 DOCX_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
+
+ASSISTANT_BASE = "/api/agents/assistant/"
 
 
 def make_pdf(pages: int = 1) -> bytes:
@@ -75,7 +78,9 @@ class AttachmentHydrationTests(TestCase):
     def test_text_file_inlines_as_text_part(self):
         upload = self._upload("notes.txt", "text/plain", b"secret: BANANA-42")
         history = self._history([upload])
-        hydrated = attachments_for_llm(history=history, model=OPENAI, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history, model=OPENAI, cache={}
+        )
         parts = hydrated[0]
         self.assertEqual(parts[0], {"type": "text", "text": "message 0"})
         self.assertEqual(parts[1]["type"], "text")
@@ -83,7 +88,7 @@ class AttachmentHydrationTests(TestCase):
 
     def test_image_inlines_as_image_part(self):
         upload = self._upload("photo.png", "image/png", b"\x89PNGfake")
-        hydrated = attachments_for_llm(
+        hydrated = user_upload_llm_parts(
             history=self._history([upload]), model=OPENAI, cache={}
         )
         part = hydrated[0][1]
@@ -95,7 +100,7 @@ class AttachmentHydrationTests(TestCase):
     def test_pdf_inlines_as_file_part_on_both_providers(self):
         upload = self._upload("lease.pdf", "application/pdf", make_pdf())
         for model in (OPENAI, BEDROCK):
-            hydrated = attachments_for_llm(
+            hydrated = user_upload_llm_parts(
                 history=self._history([upload]), model=model, cache={}
             )
             part = hydrated[0][1]
@@ -106,12 +111,12 @@ class AttachmentHydrationTests(TestCase):
         # Invalid docx bytes: Bedrock ships them natively as a file part;
         # OpenAI extraction fails and degrades to an unreadable stub.
         upload = self._upload("motion.docx", DOCX_TYPE, b"not a real docx")
-        hydrated = attachments_for_llm(
+        hydrated = user_upload_llm_parts(
             history=self._history([upload]), model=BEDROCK, cache={}
         )
         self.assertEqual(hydrated[0][1]["type"], "file")
 
-        hydrated = attachments_for_llm(
+        hydrated = user_upload_llm_parts(
             history=self._history([upload]), model=OPENAI, cache={}
         )
         part = hydrated[0][1]
@@ -124,7 +129,7 @@ class AttachmentHydrationTests(TestCase):
             "big.pdf", "application/pdf", size=INLINE_MAX_BYTES + 1
         )
         cache: dict = {}
-        hydrated = attachments_for_llm(
+        hydrated = user_upload_llm_parts(
             history=self._history([upload]), model=OPENAI, cache=cache
         )
         part = hydrated[0][1]
@@ -138,7 +143,7 @@ class AttachmentHydrationTests(TestCase):
             "legacy.pdf", "application/pdf", make_pdf(INLINE_MAX_PAGES + 5)
         )
         self.assertIsNone(upload.pages)
-        hydrated = attachments_for_llm(
+        hydrated = user_upload_llm_parts(
             history=self._history([upload]), model=OPENAI, cache={}
         )
         part = hydrated[0][1]
@@ -152,7 +157,7 @@ class AttachmentHydrationTests(TestCase):
         upload = self._upload(
             "long.pdf", "application/pdf", make_pdf(2), pages=150
         )
-        hydrated = attachments_for_llm(
+        hydrated = user_upload_llm_parts(
             history=self._history([upload]), model=OPENAI, cache={}
         )
         part = hydrated[0][1]
@@ -166,7 +171,7 @@ class AttachmentHydrationTests(TestCase):
             "tome.docx", DOCX_TYPE, b"tiny bytes", text_chars=500_000
         )
         for model in (OPENAI, BEDROCK):
-            hydrated = attachments_for_llm(
+            hydrated = user_upload_llm_parts(
                 history=self._history([upload]), model=model, cache={}
             )
             part = hydrated[0][1]
@@ -179,7 +184,9 @@ class AttachmentHydrationTests(TestCase):
             for i in range(5)
         ]
         history = self._history(*[[u] for u in uploads])
-        hydrated = attachments_for_llm(history=history, model=OPENAI, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history, model=OPENAI, cache={}
+        )
         # Budget is 4 docs, newest first: the oldest message gets a stub.
         self.assertEqual(hydrated[0][1]["type"], "text")
         self.assertIn("no longer inlined", hydrated[0][1]["text"])
@@ -194,7 +201,9 @@ class AttachmentHydrationTests(TestCase):
             for i in range(4)
         ]
         history = self._history(*[[u] for u in uploads])
-        hydrated = attachments_for_llm(history=history, model=OPENAI, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history, model=OPENAI, cache={}
+        )
         self.assertIn("no longer inlined", hydrated[0][1]["text"])
         for i in (1, 2, 3):
             self.assertIn("xxx", hydrated[i][1]["text"])
@@ -208,7 +217,9 @@ class AttachmentHydrationTests(TestCase):
             for i in range(4)
         ]
         history = self._history([text], *[[u] for u in pdfs])
-        hydrated = attachments_for_llm(history=history, model=OPENAI, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history, model=OPENAI, cache={}
+        )
         self.assertIn("the facts", hydrated[0][1]["text"])
         for i in range(1, 5):
             self.assertEqual(hydrated[i][1]["type"], "file")
@@ -221,13 +232,15 @@ class AttachmentHydrationTests(TestCase):
                 "attachments": ["00000000-0000-0000-0000-000000000000"],
             }
         ]
-        hydrated = attachments_for_llm(history=history, model=OPENAI, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history, model=OPENAI, cache={}
+        )
         self.assertIn("no longer available", hydrated[0][1]["text"])
 
     def test_no_attachments_returns_empty(self):
         history = [{"role": "user", "content": "hi"}]
         self.assertEqual(
-            attachments_for_llm(history=history, model=OPENAI, cache={}), {}
+            user_upload_llm_parts(history=history, model=OPENAI, cache={}), {}
         )
 
 
@@ -242,7 +255,7 @@ class UploadMetadataTests(TestCase):
     def test_pdf_gets_page_count(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        from litigant_portal.app.services.assistant import user_upload_create
+        from litigant_portal.app.services.upload import user_upload_create
 
         upload = user_upload_create(
             identity=self.identity,
@@ -254,7 +267,7 @@ class UploadMetadataTests(TestCase):
     def test_text_file_gets_char_count(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        from litigant_portal.app.services.assistant import user_upload_create
+        from litigant_portal.app.services.upload import user_upload_create
 
         upload = user_upload_create(
             identity=self.identity,
@@ -266,7 +279,7 @@ class UploadMetadataTests(TestCase):
     def test_delete_removes_row_and_stored_file(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        from litigant_portal.app.services.assistant import (
+        from litigant_portal.app.services.upload import (
             user_upload_create,
             user_upload_delete,
         )
@@ -284,7 +297,7 @@ class UploadMetadataTests(TestCase):
     def test_delete_requires_ownership(self):
         from django.core.files.uploadedfile import SimpleUploadedFile
 
-        from litigant_portal.app.services.assistant import (
+        from litigant_portal.app.services.upload import (
             user_upload_create,
             user_upload_delete,
         )
@@ -302,13 +315,15 @@ class ReaderLimitTests(TestCase):
 
     def test_pdf_within_limits_passes(self):
         upload = UserUpload(content_type="application/pdf", pages=3)
-        self.assertIsNone(reader_limit_error(upload, make_pdf(3)))
+        self.assertIsNone(
+            user_upload_reader_limit_error(upload=upload, data=make_pdf(3))
+        )
 
     def test_very_long_pdf_is_refused(self):
         upload = UserUpload(
             content_type="application/pdf", pages=READER_MAX_PAGES + 1
         )
-        error = reader_limit_error(upload, make_pdf(1))
+        error = user_upload_reader_limit_error(upload=upload, data=make_pdf(1))
         self.assertIn(f"{READER_MAX_PAGES + 1} pages", error)
 
     def test_huge_text_is_refused_by_token_count(self):
@@ -318,9 +333,61 @@ class ReaderLimitTests(TestCase):
         data = " ".join(
             str(i) for i in range(READER_MAX_TEXT_TOKENS + 10_000)
         ).encode()
-        error = reader_limit_error(upload, data)
+        error = user_upload_reader_limit_error(upload=upload, data=data)
         self.assertIn("tokens of text", error)
 
     def test_small_text_passes(self):
         upload = UserUpload(content_type="text/plain")
-        self.assertIsNone(reader_limit_error(upload, b"a short note"))
+        self.assertIsNone(
+            user_upload_reader_limit_error(upload=upload, data=b"a short note")
+        )
+
+
+@pytest.mark.postgres
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class AttachmentOwnershipTests(TestCase):
+    """A caller can only attach uploads its own identity owns.
+
+    The check runs before the thread is created, so a rejected attachment
+    leaves no trace and never reaches the LLM.
+    """
+
+    def setUp(self):
+        self.client = Client()
+        # First request establishes a session + identity for the client.
+        self.client.get(ASSISTANT_BASE + "uploads/")
+        self.identity = UserIdentity.objects.get(
+            session_key=self.client.session.session_key
+        )
+        self.stranger = UserIdentity.objects.create(session_key="stranger")
+        self.their_upload = UserUpload.objects.create(
+            identity=self.stranger,
+            file=ContentFile(b"private", name="theirs.txt"),
+            name="theirs.txt",
+            content_type="text/plain",
+            size=7,
+        )
+
+    def _stream(self, attachment_id):
+        return self.client.post(
+            ASSISTANT_BASE + "stream/",
+            {"message": "read this", "attachment_ids": [str(attachment_id)]},
+        )
+
+    def test_another_identitys_upload_is_refused(self):
+        res = self._stream(self.their_upload.id)
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["error"], "Invalid attachment")
+        self.assertFalse(ChatThread.objects.exists())
+
+    def test_unknown_upload_id_is_refused(self):
+        res = self._stream("00000000-0000-0000-0000-000000000000")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["error"], "Invalid attachment")
+        self.assertFalse(ChatThread.objects.exists())
+
+    def test_malformed_upload_id_is_refused(self):
+        res = self._stream("not-a-uuid")
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["error"], "Invalid attachment")
+        self.assertFalse(ChatThread.objects.exists())

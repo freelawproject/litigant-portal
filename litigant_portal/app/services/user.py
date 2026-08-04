@@ -1,5 +1,6 @@
 import logging
 
+from django.contrib.auth.models import User
 from django.db import transaction
 
 from litigant_portal.app.models import UserIdentity
@@ -7,7 +8,14 @@ from litigant_portal.app.models import UserIdentity
 logger = logging.getLogger(__name__)
 
 
-def identity_ensure(*, user) -> UserIdentity:
+def user_developer_toggle(*, user: User) -> bool:
+    """Flip a user's developer (staff) flag; returns the new state."""
+    user.is_staff = not user.is_staff
+    user.save(update_fields=["is_staff"])
+    return user.is_staff
+
+
+def user_identity_ensure(*, user) -> UserIdentity:
     """Return the UserIdentity for an authenticated user, creating it if needed."""
     identity, _ = UserIdentity.objects.get_or_create(
         user=user, defaults={"session_key": ""}
@@ -16,7 +24,7 @@ def identity_ensure(*, user) -> UserIdentity:
 
 
 @transaction.atomic
-def identity_merge(
+def user_identity_merge(
     *, source_identity: UserIdentity, target_identity: UserIdentity
 ) -> None:
     """Fold ``source`` into ``target``, then delete ``source``.
@@ -37,14 +45,14 @@ def identity_merge(
     )
 
 
-def identity_merge_anonymous(*, user, session_key: str) -> None:
+def user_identity_merge_anonymous(*, user, session_key: str) -> None:
     """On login, fold the anonymous identity for ``session_key`` into ``user``."""
     anon_identity = UserIdentity.objects.filter(
         session_key=session_key, user__isnull=True
     ).first()
     if anon_identity is None:
         return
-    target_identity = identity_ensure(user=user)
-    identity_merge(
+    target_identity = user_identity_ensure(user=user)
+    user_identity_merge(
         source_identity=anon_identity, target_identity=target_identity
     )

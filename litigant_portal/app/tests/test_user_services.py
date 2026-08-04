@@ -1,4 +1,4 @@
-"""Unit tests for the identity services.
+"""Unit tests for the user identity services (services/user.py).
 
 These exercise the core logic directly — no HTTP client, no login flow —
 which is the payoff of moving the merge out of the signal handler. The
@@ -14,10 +14,10 @@ from litigant_portal.app.models import (
     UserIdentity,
     UserUpload,
 )
-from litigant_portal.app.services.identity import (
-    identity_ensure,
-    identity_merge,
-    identity_merge_anonymous,
+from litigant_portal.app.services.user import (
+    user_identity_ensure,
+    user_identity_merge,
+    user_identity_merge_anonymous,
 )
 
 User = get_user_model()
@@ -29,13 +29,13 @@ class IdentityEnsureTests(TestCase):
         self.user = User.objects.create_user(username="u", password="p")
 
     def test_creates_identity_when_missing(self):
-        identity = identity_ensure(user=self.user)
+        identity = user_identity_ensure(user=self.user)
         self.assertEqual(identity.user, self.user)
         self.assertEqual(identity.session_key, "")
 
     def test_returns_existing_identity_without_duplicating(self):
         existing = UserIdentity.objects.create(user=self.user)
-        self.assertEqual(identity_ensure(user=self.user), existing)
+        self.assertEqual(user_identity_ensure(user=self.user), existing)
         self.assertEqual(
             UserIdentity.objects.filter(user=self.user).count(), 1
         )
@@ -57,7 +57,9 @@ class IdentityMergeTests(TestCase):
             content_type="text/plain",
             size=5,
         )
-        identity_merge(source_identity=self.anon, target_identity=self.target)
+        user_identity_merge(
+            source_identity=self.anon, target_identity=self.target
+        )
         thread.refresh_from_db()
         upload.refresh_from_db()
         self.assertEqual(thread.identity, self.target)
@@ -72,14 +74,14 @@ class IdentityAbsorbAnonymousTests(TestCase):
         self.user = User.objects.create_user(username="u", password="p")
 
     def test_noop_when_no_anonymous_identity(self):
-        identity_merge_anonymous(user=self.user, session_key="missing")
+        user_identity_merge_anonymous(user=self.user, session_key="missing")
         self.assertFalse(UserIdentity.objects.filter(user=self.user).exists())
 
     def test_ignores_logged_in_identity_sharing_the_session_key(self):
         # A user-owned identity must never be treated as anonymous, even if it
         # somehow shares the session key — guards the user__isnull filter.
         UserIdentity.objects.create(user=self.user, session_key="abc123")
-        identity_merge_anonymous(user=self.user, session_key="abc123")
+        user_identity_merge_anonymous(user=self.user, session_key="abc123")
         self.assertEqual(
             UserIdentity.objects.filter(user=self.user).count(), 1
         )

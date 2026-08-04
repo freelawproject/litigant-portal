@@ -11,7 +11,7 @@ def user_upload_path(instance, filename: str) -> str:
 
 
 class UserUpload(BaseModel):
-    """A file uploaded by a user, attachable to assistant messages."""
+    """A file uploaded by a user, attachable to chat messages."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     identity = models.ForeignKey(

@@ -4,11 +4,9 @@ How user-uploaded files flow into the chat engine: uploaded once, attached to
 messages by id, inlined into the LLM request while small and recent, and read
 through a subagent tool otherwise.
 
-Code: [`services/assistant.py`](../litigant_portal/app/services/assistant.py)
-(upload lifecycle) ·
-[`services/attachments.py`](../litigant_portal/app/services/attachments.py)
-(LLM hydration) ·
-[`agents/tools/query_document.py`](../litigant_portal/agents/tools/query_document.py)
+Code: [`services/upload.py`](../../litigant_portal/app/services/upload.py)
+(upload lifecycle + LLM hydration) ·
+[`agents/tools/query_document.py`](../../litigant_portal/agents/tools/query_document.py)
 (reader subagent)
 
 ## 1. Supported types & upload
@@ -22,17 +20,17 @@ Code: [`services/assistant.py`](../litigant_portal/app/services/assistant.py)
 - **Storage**: a `UserUpload` row owned by a `UserIdentity`, with the file at
   `uploads/<uuid>/<filename>` in default storage (S3 in deployment). Uploads
   are identity-scoped everywhere — every lookup filters by owner.
-- **Metadata at upload**: `content_metadata` computes `pages` (PDFs) and
+- **Metadata at upload**: `_content_metadata` computes `pages` (PDFs) and
   `text_chars` (text-family files) once, so later small/large decisions don't
   re-parse the file. Rows from before this existed are backfilled lazily
-  (`ensure_metadata`).
+  (`_ensure_metadata`).
 - Messages store only **attachment ids**: `chat_stream` saves
   `attachments: [upload_id, ...]` on the user message; content is hydrated
   fresh on every request.
 
 ## 2. Small vs. large
 
-`is_small` classifies each attachment by its filetype's own criteria:
+`_is_small` classifies each attachment by its filetype's own criteria:
 
 | Check              | Limit                                 |
 | ------------------ | ------------------------------------- |
@@ -47,13 +45,13 @@ fully inline or fully behind the tool.
 
 ## 3. Inlining small files
 
-`attachments_for_llm` maps each user message that carries attachments to
-litellm content parts (`content_part`):
+`user_upload_llm_parts` maps each user message that carries attachments to
+litellm content parts (`user_upload_content_part`):
 
 - **Images** → `image_url` data URLs (native everywhere).
 - **PDFs** → `file` parts (native everywhere).
 - **Office / text files** → native document blocks on Bedrock
-  (`BEDROCK_DOC_TYPES`); extracted plain text elsewhere (`extract_text`:
+  (`BEDROCK_DOC_TYPES`); extracted plain text elsewhere (`_extract_text`:
   mammoth for docx, openpyxl for xlsx, utf-8 decode for text).
 - File bytes are read once per stream request via a request-lifetime cache.
 
@@ -69,8 +67,8 @@ to a reader model in one call:
   **reader limits**: 100 PDF pages, ~150k text tokens (counted with
   tiktoken `o200k_base` as an approximation). Past those it returns a
   too-large error rather than cropping.
-- Builds the same `content_part` the inline path uses, and makes a one-shot
-  litellm call: a document-analyzer system prompt plus
+- Builds the same `user_upload_content_part` the inline path uses, and makes
+  a one-shot litellm call: a document-analyzer system prompt plus
   `File: "<name>" / Request: <request>` and the file itself.
 - Returns the reader's answer as the tool result (cost tracked), with call /
   result cards rendered from `render_data`.
@@ -80,11 +78,11 @@ is available but not shown — query it, never guess its contents.
 
 ## 5. Aging out
 
-Inline budgets are spent **newest-message-first**: `attachments_for_llm` walks
-the history in reverse, so the most recent attachments claim the budget and
-older ones degrade to stubs.
+Inline budgets are spent **newest-message-first**: `user_upload_llm_parts`
+walks the history in reverse, so the most recent attachments claim the budget
+and older ones degrade to stubs.
 
-Every non-inlined attachment becomes a text stub (`attachment_stub`) naming
+Every non-inlined attachment becomes a text stub (`_attachment_stub`) naming
 the file, type, size, and `upload_id`, plus the reason:
 
 - **Aged out** — "attached earlier and no longer inlined; use the
