@@ -243,7 +243,9 @@ def _user_payload(user: User, *, viewer: User) -> dict:
         "can_toggle_admin": (
             viewer.has_perm("app.manage_developers") or not is_self
         ),
-        "can_toggle_developer": not is_self,
+        "can_toggle_developer": (
+            viewer.has_perm("app.manage_developers") and not is_self
+        ),
     }
 
 
