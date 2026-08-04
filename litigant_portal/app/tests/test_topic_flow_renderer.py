@@ -91,6 +91,23 @@ def test_fact_gather_unanswered_question_prefills_empty():
     assert q["value"] == ""
 
 
+def test_fact_gather_never_prefills_publication_date():
+    # #638: unlike other fields, publication_date must never echo a stored
+    # answer back into the form.
+    section = _fg(
+        [
+            Question(
+                id="publication_date", label="Publication date", type="date"
+            )
+        ]
+    )
+    rendered = render_section(
+        section, _corpus(section), {"publication_date": "2026-05-01"}
+    )
+    (q,) = rendered.context["questions"]
+    assert q["value"] == ""
+
+
 def test_fact_gather_carries_choice_metadata():
     section = _fg(
         [
