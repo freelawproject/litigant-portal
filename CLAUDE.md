@@ -156,7 +156,7 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 | ------------- | ------------------------------------------------------------ |
 | `site`        | Global site settings and court config                        |
 | `topic_flow`  | Topics and topic flow data (spans admin and public surfaces) |
-| `user`        | Identity, profile, permission predicates and toggles         |
+| `user`        | Identity, profile, and group membership toggles              |
 | `upload`      | Attachment upload and its helper logic                       |
 | `chat_engine` | Threads, messages, streaming                                 |
 
