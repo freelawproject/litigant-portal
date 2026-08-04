@@ -1,5 +1,4 @@
 import json
-from functools import wraps
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -23,48 +22,23 @@ from litigant_portal.app.selectors.site import (
     site_list,
 )
 from litigant_portal.app.selectors.topic_flow import topic_get, topic_list
-from litigant_portal.app.selectors.user import (
-    user_can_access_admin,
-    user_can_manage_site,
-    user_list,
-)
-from litigant_portal.app.services.site import (
-    site_activate,
-    site_membership_toggle,
-    site_update,
-)
+from litigant_portal.app.selectors.user import user_get, user_list
+from litigant_portal.app.services.site import site_activate, site_update
 from litigant_portal.app.services.topic_flow import (
     topic_create,
     topic_delete,
     topic_update,
 )
-from litigant_portal.app.services.user import user_developer_toggle
+from litigant_portal.app.services.user import (
+    user_admin_toggle,
+    user_developer_toggle,
+)
+from litigant_portal.app.views.utils import (
+    admin_access_required,
+    developer_required,
+)
 
 USERS_PER_PAGE = 20
-
-
-def admin_access_required(view):
-    """JSON guard: developers (staff) or members of the active site."""
-
-    @wraps(view)
-    def wrapped(request, *args, **kwargs):
-        if not user_can_access_admin(user=request.user):
-            return JsonResponse({"error": _("Forbidden")}, status=403)
-        return view(request, *args, **kwargs)
-
-    return wrapped
-
-
-def staff_required(view):
-    """JSON guard: developers (staff) only."""
-
-    @wraps(view)
-    def wrapped(request, *args, **kwargs):
-        if not request.user.is_staff:
-            return JsonResponse({"error": _("Forbidden")}, status=403)
-        return view(request, *args, **kwargs)
-
-    return wrapped
 
 
 def _site_payload(site: Site) -> dict:
@@ -86,10 +60,8 @@ def _site_payload(site: Site) -> dict:
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 @admin_access_required
 def site_list_view(request: HttpRequest) -> JsonResponse:
-    """The caller's visible site rows for the admin settings tab."""
-    return JsonResponse(
-        {"sites": [_site_payload(s) for s in site_list(for_user=request.user)]}
-    )
+    """Site rows for the admin settings tab."""
+    return JsonResponse({"sites": [_site_payload(s) for s in site_list()]})
 
 
 @require_POST
@@ -134,8 +106,6 @@ def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
         site = site_get(site_id=site_id)
     except Site.DoesNotExist:
         return JsonResponse({"error": _("Site not found")}, status=404)
-    if not user_can_manage_site(user=request.user, site=site):
-        return JsonResponse({"error": _("Forbidden")}, status=403)
     return JsonResponse(
         _site_payload(
             site_update(
@@ -153,7 +123,7 @@ def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@staff_required
+@developer_required
 def site_activate_view(request: HttpRequest, site_id) -> JsonResponse:
     """Make a site row the single active one. Developers only."""
     try:
@@ -268,9 +238,11 @@ def _user_payload(user: User, *, viewer: User) -> dict:
         "email": user.email,
         "name": user.get_full_name(),
         "joined": user.date_joined.strftime("%Y-%m-%d"),
-        "is_admin": getattr(user, "is_site_member", False),
-        "is_staff": user.is_staff,
-        "can_toggle_admin": viewer.is_staff or not is_self,
+        "is_admin": getattr(user, "is_admin_member", False),
+        "is_developer": getattr(user, "is_developer_member", False),
+        "can_toggle_admin": (
+            viewer.has_perm("app.manage_developers") or not is_self
+        ),
         "can_toggle_developer": not is_self,
     }
 
@@ -281,11 +253,7 @@ def _user_payload(user: User, *, viewer: User) -> dict:
 def user_list_view(request: HttpRequest) -> JsonResponse:
     """Paginated users for the admin users tab; ``q`` filters by email."""
     search = (request.GET.get("q") or "").strip()
-    try:
-        site = site_get_active()
-    except Site.DoesNotExist:
-        site = None
-    paginator = Paginator(user_list(search=search, site=site), USERS_PER_PAGE)
+    paginator = Paginator(user_list(search=search), USERS_PER_PAGE)
     page = paginator.get_page(request.GET.get("page"))
     return JsonResponse(
         {
@@ -301,33 +269,32 @@ def user_list_view(request: HttpRequest) -> JsonResponse:
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 @admin_access_required
 def user_admin_toggle_view(request: HttpRequest, user_id: int) -> JsonResponse:
-    """Toggle a user's membership (admin access) in the active site."""
+    """Toggle a user's Admins-group membership (admin access)."""
     try:
-        target = User.objects.get(id=user_id)
+        target = user_get(user_id=user_id)
     except User.DoesNotExist:
         return JsonResponse({"error": _("User not found")}, status=404)
-    if target.id == request.user.id and not request.user.is_staff:
+    if target.id == request.user.id and not request.user.has_perm(
+        "app.manage_developers"
+    ):
         return JsonResponse(
             {"error": _("You can't change your own admin access")},
             status=403,
         )
-    try:
-        site = site_get_active()
-    except Site.DoesNotExist:
-        return JsonResponse({"error": _("No active site")}, status=409)
-    is_admin = site_membership_toggle(user=target, site=site)
-    return JsonResponse({"id": target.id, "is_admin": is_admin})
+    return JsonResponse(
+        {"id": target.id, "is_admin": user_admin_toggle(user=target)}
+    )
 
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@staff_required
+@developer_required
 def user_developer_toggle_view(
     request: HttpRequest, user_id: int
 ) -> JsonResponse:
-    """Toggle a user's developer (staff) flag."""
+    """Toggle a user's Developers-group membership."""
     try:
-        target = User.objects.get(id=user_id)
+        target = user_get(user_id=user_id)
     except User.DoesNotExist:
         return JsonResponse({"error": _("User not found")}, status=404)
     if target.id == request.user.id:
@@ -336,5 +303,5 @@ def user_developer_toggle_view(
             status=403,
         )
     return JsonResponse(
-        {"id": target.id, "is_staff": user_developer_toggle(user=target)}
+        {"id": target.id, "is_developer": user_developer_toggle(user=target)}
     )
