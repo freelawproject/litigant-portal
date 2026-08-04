@@ -339,6 +339,18 @@ def test_fact_gather_marks_required_questions_and_leaves_optional_unmarked(
 
 
 @pytest.mark.django_db
+def test_fact_gather_date_field_disables_browser_autocomplete(
+    client, monkeypatch
+):
+    # #638: on a shared/public terminal, Chrome's own autofill could otherwise
+    # suggest a prior user's typed date from its own memory, independent of
+    # our session. autocomplete="off" should stop that.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    html = client.get(URL).content.decode()
+    assert 'autocomplete="off"' in _field_tag(html, "publication_date")
+
+
+@pytest.mark.django_db
 def test_headingless_fact_gather_skipped_in_toc_but_body_still_renders(
     client, monkeypatch
 ):
@@ -402,30 +414,56 @@ def test_post_redirects_to_the_saved_section_anchor(client, monkeypatch):
 
 @pytest.mark.django_db
 def test_posted_answers_prefill_on_the_redirected_get(client, monkeypatch):
-    # The whole point: what you submitted comes back filled in. Text echoes its
-    # value; the choice marks its option selected.
+    # What you submitted comes back filled in: the choice marks its option
+    # selected. publication_date is the exception (#638) — it never echoes
+    # back, even right after you just submitted it.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(
         URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
     )
     html = client.get(URL).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert 'value="2026-02-01"' in _field_tag(html, "publication_date")
+    assert 'value="2026-02-01"' not in _field_tag(html, "publication_date")
     assert re.search(r'<option value="Cass"[^>]*selected', flat)
 
 
 @pytest.mark.django_db
 def test_get_prefills_form_from_existing_session_answers(client, monkeypatch):
-    # Answers already in the session (e.g. a returning guest) prefill on a plain
-    # GET — the AnswerStore is the source, not just the immediately-prior POST.
+    # Answers already in the session (e.g. a returning guest) prefill on a
+    # plain GET — the AnswerStore is the source, not just the
+    # immediately-prior POST. publication_date is exempt from this (#638).
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     session = client.session
     session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-03-15"}
+        f"{COURT}/{TOPIC}/{ROLE}": {
+            "publication_date": "2026-03-15",
+            "filing_county": "Cass",
+        }
     }
     session.save()
     html = client.get(URL).content.decode()
-    assert 'value="2026-03-15"' in _field_tag(html, "publication_date")
+    flat = re.sub(r"\s+", " ", html)
+    assert 'value="2026-03-15"' not in _field_tag(html, "publication_date")
+    assert re.search(r'<option value="Cass"[^>]*selected', flat)
+
+
+@pytest.mark.django_db
+def test_recap_never_shows_publication_date(client, monkeypatch):
+    # #638: the recap reads the same session-backed answers as the fact_gather
+    # form above it — a prior guest's publication_date can't surface there
+    # either, even though filing_county (unaffected by the fix) still shows.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    session = client.session
+    session["topic_flow"] = {
+        f"{COURT}/{TOPIC}/{ROLE}": {
+            "publication_date": "2026-03-15",
+            "filing_county": "Cass",
+        }
+    }
+    session.save()
+    html = client.get(URL).content.decode()
+    assert "2026-03-15" not in html
+    assert "Cass" in html
 
 
 @pytest.mark.django_db

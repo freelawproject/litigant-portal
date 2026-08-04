@@ -91,6 +91,13 @@ def _render_info(section, corpus, answers):
     )
 
 
+# publication_date is the one field left cached across sessions on a shared
+# terminal (#621 already pruned the riskier name/county questions) (#638).
+# It's still saved to AnswerStore for deadline computation — just never
+# echoed back into the form.
+_NEVER_PREFILL = {"publication_date"}
+
+
 @renderer("fact_gather")
 def _render_fact_gather(section, corpus, answers):
     questions = [
@@ -101,7 +108,7 @@ def _render_fact_gather(section, corpus, answers):
             "required": q.required,
             "choices": q.choices,
             "help_text": q.help_text,
-            "value": answers.get(q.id, ""),
+            "value": "" if q.id in _NEVER_PREFILL else answers.get(q.id, ""),
             "errors": [],
             "autofocus": False,
         }
@@ -155,9 +162,14 @@ def submitted_section_anchor(corpus, submitted_ids):
 
 
 def _answered_in_corpus_order(corpus, answers):
-    """Yield ``{label, value}`` for answered questions, in corpus order."""
+    """Yield ``{label, value}`` for answered questions, in corpus order.
+
+    Same leak vector as the fact_gather form: skip anything in
+    ``_NEVER_PREFILL`` so a prior guest's answer can't surface in the recap
+    either (#638).
+    """
     for question in _fact_gather_questions(corpus):
-        if question.id in answers:
+        if question.id in answers and question.id not in _NEVER_PREFILL:
             yield {"label": question.label, "value": answers[question.id]}
 
 
