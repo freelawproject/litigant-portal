@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def _group_toggle(*, user: User, name: str) -> bool:
     """Flip a user's membership in a group; returns the new state."""
-    group, _ = Group.objects.get_or_create(name=name)
+    group = Group.objects.get(name=name)
     if user.groups.filter(pk=group.pk).exists():
         user.groups.remove(group)
         return False
