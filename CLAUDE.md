@@ -164,7 +164,9 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 
 **Naming:** services and selectors are `{model_name}_{action}` — `site_get_active`, `topic_create`, `user_identity_merge`, `user_upload_llm_parts`. Allow some liberty when a utility genuinely implicates two models equally. Anything not part of a module's public surface takes a leading underscore.
 
-**Reads are selectors, writes are services.** `user_list` reads, so it's a selector; `user_developer_toggle` writes, so it's a service. A cache key lives in the selector module that reads through it, and whoever invalidates it imports it from there.
+**Reads are selectors, writes are services.** `user_list` reads, so it's a selector; `user_developer_toggle` writes, so it's a service.
+
+**Cross-layer constants get their own module**, so no domain module has to import a constant out of another one: cache keys in `app/cache.py`, group and permission names in `app/permissions.py`. Each is read, written, and invalidated from a different layer, and anchoring one to any single consumer makes the other two reach sideways for it.
 
 **Permissions.** Admin access is the `app.manage_site` and `app.manage_developers` permissions, carried by the `Admins` and `Developers` groups (provisioned by a `post_migrate` receiver in `signals.py`). Check them with `request.user.has_perm(...)` in views and `{% if perms.app.manage_site %}` in templates — don't wrap either in a selector. Page views use Django's `@permission_required(..., raise_exception=True)`; the JSON API keeps its own `manage_site_required` / `manage_developers_required` decorators, because the built-in renders an HTML 403 where those endpoints must return a JSON body. These are deliberately separate from the auto-generated `add/change/delete/view` permissions that gate Django admin. Full reference: [`docs/wiki/permissions.md`](docs/wiki/permissions.md).
 
