@@ -1,0 +1,18 @@
+# Code owners for litigant-portal.
+#
+# The `main: review + CI` ruleset sets require_code_owner_review, so at least one
+# person listed here must approve before a PR can merge. Any single owner
+# satisfies the requirement, and GitHub requests review from all of them.
+#
+# Two owners minimum, always: GitHub won't let anyone approve their own PR, so a
+# single-owner file would block every PR that owner opens. Admins can bypass;
+# everyone else just gets stuck.
+#
+# Owners must have write access to the repo, and unmatched usernames are ignored
+# silently, which leaves the gate switched on and inert. Verify a change here
+# against a real PR rather than assuming it took.
+#
+# Last matching pattern wins, so any narrower rule added below the catch-all
+# replaces it for those paths instead of adding to it.
+
+* @mitch-mitchel @nicolearagao
