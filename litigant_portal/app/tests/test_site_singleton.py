@@ -15,6 +15,7 @@ from django.test import TestCase
 
 from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import Site, Topic
+from litigant_portal.app.models.choices import OpenAIModel, get_default_model
 from litigant_portal.app.models.site import SITE_ID
 from litigant_portal.app.selectors.site import site_get, site_get_model
 from litigant_portal.app.selectors.topic_flow import topic_list
@@ -45,8 +46,9 @@ class SingletonRowTests(TestCase):
 
 @pytest.mark.postgres
 class SiteCacheTests(TestCase):
-    def setUp(self):
-        cache.delete(SITE_CACHE_KEY)
+    # No setUp clearing the key: the autouse test_cache fixture calls
+    # cache.clear() before each test, and pytest sets fixtures up before
+    # unittest's setUp runs.
 
     def test_site_get_populates_the_cache(self):
         self.assertIsNone(cache.get(SITE_CACHE_KEY))
@@ -59,30 +61,39 @@ class SiteCacheTests(TestCase):
         # transaction that never commits, so on_commit hooks would otherwise
         # never run and this would pass for the wrong reason.
         with self.captureOnCommitCallbacks(execute=True):
-            site_update(site=Site.objects.get(), court_name="Cass County")
+            site_update(court_name="Cass County")
         self.assertIsNone(cache.get(SITE_CACHE_KEY))
         self.assertEqual(site_get().court_name, "Cass County")
 
     def test_invalidation_is_deferred_until_commit(self):
         site_get()
         with self.captureOnCommitCallbacks() as callbacks:
-            site_update(site=Site.objects.get(), court_name="Pending")
-            # Queued, not run: a reader racing this transaction must not be
-            # able to repopulate the cache from an uncommitted row.
+            site_update(court_name="Pending")
+            # Queued, not run. Deleting here instead would let a reader on
+            # another connection refill the key with the pre-commit row, and
+            # nothing would bust it again — the keys have no timeout, so that
+            # stale copy would be permanent.
             self.assertIsNotNone(cache.get(SITE_CACHE_KEY))
         self.assertEqual(len(callbacks), 1)
 
     def test_site_get_model_falls_back_when_unset(self):
-        site_update(site=Site.objects.get(), assistant_model="")
-        self.assertTrue(site_get_model(role="assistant"))
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(assistant_model="")
+        self.assertEqual(site_get_model(role="assistant"), get_default_model())
+
+    def test_site_get_model_prefers_the_configured_model(self):
+        # Not the smallest model of either provider, so it can never be what
+        # get_default_model() would have returned — the assertion below would
+        # otherwise pass on a broken fallback.
+        model = OpenAIModel.GPT_5_5
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(assistant_model=model)
+        self.assertEqual(site_get_model(role="assistant"), model)
 
 
 @pytest.mark.postgres
 class TopicScopingTests(TestCase):
     """Topics are no longer scoped to a site."""
-
-    def setUp(self):
-        cache.delete(TOPIC_LIST_CACHE_KEY)
 
     def test_topic_needs_no_site(self):
         topic = topic_create(title="Evictions")
