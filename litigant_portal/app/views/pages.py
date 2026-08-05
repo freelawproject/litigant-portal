@@ -19,7 +19,7 @@ from litigant_portal.app.models.choices import (
     State,
     get_default_model,
 )
-from litigant_portal.app.selectors.topic_flow import topic_list_active
+from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.topic_flow.answer_store import AnswerStore
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
@@ -32,7 +32,7 @@ from litigant_portal.app.topic_flow.validation import validate_answers
 
 def home(request):
     """Home page - dashboard with hero and topic grid."""
-    topics = {t["slug"]: t for t in topic_list_active()}
+    topics = {t.slug: t for t in topic_list()}
     return render(request, "pages/home.html", {"topics": topics})
 
 
@@ -163,7 +163,7 @@ def accessibility(request):
 
 def style_guide(request):
     """Design tokens and component library"""
-    topics = {t["slug"]: t for t in topic_list_active()}
+    topics = {t.slug: t for t in topic_list()}
     return render(request, "pages/style_guide.html", {"topics": topics})
 
 
