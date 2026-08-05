@@ -23,6 +23,7 @@ def ensure_site_row(sender, using=DEFAULT_DB_ALIAS, apps=None, **kwargs):
             "Could not clear %r after migrate; a stale site may be served "
             "until the next write.",
             SITE_CACHE_KEY,
+            exc_info=True,
         )
     site_model = apps.get_model("app", "Site") if apps else Site
     site_model.objects.using(using).get_or_create()
