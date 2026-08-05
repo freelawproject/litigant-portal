@@ -1,24 +1,10 @@
-from functools import wraps
-
-from django.core.cache import cache
-from django.db import transaction
 from django.db.models import Max
 from django.utils.text import slugify
 
 from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import Topic
 
-
-def busts_topic_list_cache(fn):
-    """Drop the cached topic list once the surrounding transaction commits."""
-
-    @wraps(fn)
-    def wrapped(*args, **kwargs):
-        result = fn(*args, **kwargs)
-        transaction.on_commit(lambda: cache.delete(TOPIC_LIST_CACHE_KEY))
-        return result
-
-    return wrapped
+from .utils import busts_cache
 
 
 def _topic_unique_slug(*, title: str) -> str:
@@ -30,7 +16,7 @@ def _topic_unique_slug(*, title: str) -> str:
     return slug
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_create(**fields) -> Topic:
     """Create a topic, appended to the display order."""
     last = Topic.objects.aggregate(m=Max("order"))["m"]
@@ -41,7 +27,7 @@ def topic_create(**fields) -> Topic:
     )
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_update(*, topic: Topic, **fields) -> Topic:
     """Update a topic's editable fields."""
     for name, value in fields.items():
@@ -50,6 +36,6 @@ def topic_update(*, topic: Topic, **fields) -> Topic:
     return topic
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_delete(*, topic: Topic) -> None:
     topic.delete()

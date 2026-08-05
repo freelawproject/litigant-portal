@@ -1,25 +1,11 @@
-from functools import wraps
-
-from django.core.cache import cache
-from django.db import transaction
-
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import Site
+from litigant_portal.app.selectors.site import site_get
+
+from .utils import busts_cache
 
 
-def busts_site_cache(fn):
-    """Drop the cached site row once the surrounding transaction commits."""
-
-    @wraps(fn)
-    def wrapped(*args, **kwargs):
-        result = fn(*args, **kwargs)
-        transaction.on_commit(lambda: cache.delete(SITE_CACHE_KEY))
-        return result
-
-    return wrapped
-
-
-@busts_site_cache
+@busts_cache(SITE_CACHE_KEY)
 def site_update(
     *,
     court_name: str = "",
