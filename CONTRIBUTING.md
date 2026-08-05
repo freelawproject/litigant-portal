@@ -28,6 +28,7 @@ Free Law Project requires a signed CLA before a PR can be merged. A bot checks t
 - **Sign here:** [cla-assistant.io/freelawproject/litigant-portal](https://cla-assistant.io/freelawproject/litigant-portal) — one click via GitHub OAuth.
 - **Already signed but the check still shows pending?** The CLA Assistant bot's comment on your PR includes a "Let us recheck it" link — click it to re-verify your signature against that PR.
 - **What it is:** the [Apache Individual Contributor License Agreement V2.0](https://www.apache.org/licenses/icla.pdf), adapted with FLP's names. In return, FLP makes a public-benefit covenant: it "shall not use Your Contributions in a way that is contrary to the public benefit or inconsistent with universal access to public court documents."
+- **What you're asserting.** Signing represents that each contribution is your own work and that you have the right to license it.
 - **You keep your copyright.** This is a license grant, not a copyright assignment — you're licensing FLP to use your contribution, not signing ownership over.
 - **One signature, every FLP repo.** Sign once and it covers all `freelawproject` projects going forward, not just this one.
 

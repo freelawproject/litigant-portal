@@ -15,4 +15,5 @@
 # Last matching pattern wins, so any narrower rule added below the catch-all
 # replaces it for those paths instead of adding to it.
 
-* @mitch-mitchel @nicolearagao
+* @mitch-mitchel @nicolearagao @nadahlberg
+
