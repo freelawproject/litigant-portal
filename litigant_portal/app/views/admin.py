@@ -16,14 +16,10 @@ from litigant_portal.app.models.choices import (
     OpenAIModel,
     State,
 )
-from litigant_portal.app.selectors.site import (
-    site_get,
-    site_get_active,
-    site_list,
-)
+from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.selectors.topic_flow import topic_get, topic_list
 from litigant_portal.app.selectors.user import user_get, user_list
-from litigant_portal.app.services.site import site_activate, site_update
+from litigant_portal.app.services.site import site_update
 from litigant_portal.app.services.topic_flow import (
     topic_create,
     topic_delete,
@@ -43,9 +39,6 @@ USERS_PER_PAGE = 20
 
 def _site_payload(site: Site) -> dict:
     return {
-        "id": str(site.id),
-        "name": site.name,
-        "active": site.active,
         "court_name": site.court_name,
         "jurisdiction_level": site.jurisdiction_level,
         "state": site.state,
@@ -59,19 +52,16 @@ def _site_payload(site: Site) -> dict:
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 @manage_site_required
-def site_list_view(request: HttpRequest) -> JsonResponse:
-    """Site rows for the admin settings tab."""
-    return JsonResponse({"sites": [_site_payload(s) for s in site_list()]})
+def site_view(request: HttpRequest) -> JsonResponse:
+    """The site's settings for the admin settings tab."""
+    return JsonResponse(_site_payload(site_get()))
 
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 @manage_site_required
-def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
-    """Update a site row's editable fields."""
-    name = (request.POST.get("name") or "").strip()
-    if not name:
-        return JsonResponse({"error": _("Name is required")}, status=400)
+def site_update_view(request: HttpRequest) -> JsonResponse:
+    """Update the site's editable fields."""
     court_name = (request.POST.get("court_name") or "").strip()
     jurisdiction_level = (request.POST.get("jurisdiction_level") or "").strip()
     if jurisdiction_level and jurisdiction_level not in (
@@ -102,15 +92,10 @@ def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
         if model and model not in valid_models:
             return JsonResponse({"error": _("Invalid model")}, status=400)
         ai_models[field] = model
-    try:
-        site = site_get(site_id=site_id)
-    except Site.DoesNotExist:
-        return JsonResponse({"error": _("Site not found")}, status=404)
     return JsonResponse(
         _site_payload(
             site_update(
-                site=site,
-                name=name,
+                site=site_get(),
                 court_name=court_name,
                 jurisdiction_level=jurisdiction_level,
                 state=state,
@@ -119,18 +104,6 @@ def site_update_view(request: HttpRequest, site_id) -> JsonResponse:
             )
         )
     )
-
-
-@require_POST
-@ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@manage_developers_required
-def site_activate_view(request: HttpRequest, site_id) -> JsonResponse:
-    """Make a site row the single active one. Developers only."""
-    try:
-        site = site_get(site_id=site_id)
-    except Site.DoesNotExist:
-        return JsonResponse({"error": _("Site not found")}, status=404)
-    return JsonResponse(_site_payload(site_activate(site=site)))
 
 
 def _topic_payload(topic: Topic) -> dict:
@@ -178,29 +151,19 @@ def _topic_fields(request: HttpRequest) -> tuple[dict | None, str | None]:
 @ratelimit(key="ip", rate="120/m", method="GET", block=True)
 @manage_site_required
 def topic_list_view(request: HttpRequest) -> JsonResponse:
-    """The active site's topics for the knowledge base tab."""
-    try:
-        site = site_get_active()
-    except Site.DoesNotExist:
-        return JsonResponse({"topics": []})
-    return JsonResponse(
-        {"topics": [_topic_payload(t) for t in topic_list(site=site)]}
-    )
+    """Topics for the knowledge base tab."""
+    return JsonResponse({"topics": [_topic_payload(t) for t in topic_list()]})
 
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 @manage_site_required
 def topic_create_view(request: HttpRequest) -> JsonResponse:
-    """Create a topic in the active site."""
+    """Create a topic."""
     fields, error = _topic_fields(request)
     if error:
         return JsonResponse({"error": error}, status=400)
-    try:
-        site = site_get_active()
-    except Site.DoesNotExist:
-        return JsonResponse({"error": _("No active site")}, status=409)
-    return JsonResponse(_topic_payload(topic_create(site=site, **fields)))
+    return JsonResponse(_topic_payload(topic_create(**fields)))
 
 
 @require_POST
@@ -212,8 +175,8 @@ def topic_update_view(request: HttpRequest, topic_id) -> JsonResponse:
     if error:
         return JsonResponse({"error": error}, status=400)
     try:
-        topic = topic_get(site=site_get_active(), topic_id=topic_id)
-    except (Site.DoesNotExist, Topic.DoesNotExist):
+        topic = topic_get(topic_id=topic_id)
+    except Topic.DoesNotExist:
         return JsonResponse({"error": _("Topic not found")}, status=404)
     return JsonResponse(_topic_payload(topic_update(topic=topic, **fields)))
 
@@ -222,10 +185,10 @@ def topic_update_view(request: HttpRequest, topic_id) -> JsonResponse:
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 @manage_site_required
 def topic_delete_view(request: HttpRequest, topic_id) -> JsonResponse:
-    """Delete a topic from the active site."""
+    """Delete a topic."""
     try:
-        topic = topic_get(site=site_get_active(), topic_id=topic_id)
-    except (Site.DoesNotExist, Topic.DoesNotExist):
+        topic = topic_get(topic_id=topic_id)
+    except Topic.DoesNotExist:
         return JsonResponse({"error": _("Topic not found")}, status=404)
     topic_delete(topic=topic)
     return JsonResponse({"deleted": True, "id": str(topic_id)})
