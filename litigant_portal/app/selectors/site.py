@@ -16,8 +16,4 @@ def site_get() -> Site:
 
 def site_get_model(*, role: str) -> str:
     """The site's AI model for a pipeline role."""
-    try:
-        site = site_get()
-    except Site.DoesNotExist:
-        return get_default_model()
-    return getattr(site, f"{role}_model") or get_default_model()
+    return getattr(site_get(), f"{role}_model") or get_default_model()
