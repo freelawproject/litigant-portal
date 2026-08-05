@@ -1,31 +1,28 @@
+from functools import wraps
+
 from django.core.cache import cache
 from django.db import transaction
 
+from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import Site
-from litigant_portal.app.selectors.site import ACTIVE_SITE_CACHE_KEY
-from litigant_portal.app.selectors.topic_flow import (
-    ACTIVE_SITE_TOPICS_CACHE_KEY,
-)
 
 
-def site_activate(*, site: Site) -> Site:
-    """Make ``site`` the single active site row."""
-    with transaction.atomic():
-        Site.objects.filter(active=True).exclude(id=site.id).update(
-            active=False
-        )
-        if not site.active:
-            site.active = True
-            site.save(update_fields=["active", "updated_at"])
-    cache.delete(ACTIVE_SITE_CACHE_KEY)
-    cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
-    return site
+def busts_site_cache(fn):
+    """Drop the cached site row once the surrounding transaction commits."""
+
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        result = fn(*args, **kwargs)
+        transaction.on_commit(lambda: cache.delete(SITE_CACHE_KEY))
+        return result
+
+    return wrapped
 
 
+@busts_site_cache
 def site_update(
     *,
     site: Site,
-    name: str,
     court_name: str = "",
     jurisdiction_level: str = "",
     state: str = "",
@@ -34,8 +31,7 @@ def site_update(
     fast_model: str = "",
     assistant_model: str = "",
 ) -> Site:
-    """Update a site row's editable fields."""
-    site.name = name
+    """Update the site's editable fields."""
     site.court_name = court_name
     site.jurisdiction_level = jurisdiction_level
     site.state = state
@@ -45,7 +41,6 @@ def site_update(
     site.assistant_model = assistant_model
     site.save(
         update_fields=[
-            "name",
             "court_name",
             "jurisdiction_level",
             "state",
@@ -56,5 +51,4 @@ def site_update(
             "updated_at",
         ]
     )
-    cache.delete(ACTIVE_SITE_CACHE_KEY)
     return site
