@@ -2,11 +2,8 @@ from django.core.cache import cache
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from litigant_portal.app.models import Site, Topic
-from litigant_portal.app.selectors.site import ACTIVE_SITE_CACHE_KEY
-from litigant_portal.app.selectors.topic_flow import (
-    ACTIVE_SITE_TOPICS_CACHE_KEY,
-)
+from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
+from litigant_portal.app.models import Topic
 
 SEED_TOPICS = [
     {
@@ -71,21 +68,16 @@ SEED_TOPICS = [
 
 
 class Command(BaseCommand):
-    help = "Seed app with an initial site and topics."
+    help = "Seed app with the initial topics."
 
     @transaction.atomic
     def handle(self, *args, **options):
-        if Site.objects.exists():
-            self.stdout.write("Site rows already exist — nothing to seed.")
+        if Topic.objects.exists():
+            self.stdout.write("Topics already exist — nothing to seed.")
             return
-        site = Site.objects.create(name="default", active=True)
         for order, data in enumerate(SEED_TOPICS):
-            Topic.objects.create(site=site, order=order, **data)
-        cache.delete(ACTIVE_SITE_CACHE_KEY)
-        cache.delete(ACTIVE_SITE_TOPICS_CACHE_KEY)
+            Topic.objects.create(order=order, **data)
+        cache.delete(TOPIC_LIST_CACHE_KEY)
         self.stdout.write(
-            self.style.SUCCESS(
-                f"Created active site '{site.name}' "
-                f"with {len(SEED_TOPICS)} topics."
-            )
+            self.style.SUCCESS(f"Created {len(SEED_TOPICS)} topics.")
         )
