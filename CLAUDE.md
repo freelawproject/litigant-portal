@@ -168,7 +168,7 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 
 **Cross-layer constants get their own module**, so no domain module has to import a constant out of another one: cache keys in `app/cache.py`, group and permission names in `app/permissions.py`. Each is read, written, and invalidated from a different layer, and anchoring one to any single consumer makes the other two reach sideways for it.
 
-**Cached reads are invalidated at commit, never before.** A selector that caches wears a `timeout=None`, and every service that writes the same rows wears `@busts(KEY)` from `services/utils.py`. Deferring the delete to commit is the whole point: an immediate delete lets a reader on another connection repopulate the key with the pre-commit value, and nothing busts it a second time, so the stale copy is permanent. The same rule binds management commands — `transaction.on_commit`, not a bare `cache.delete`. Cached values are pickled model instances, so the keys carry a version suffix to bump whenever the model's fields change.
+**Cached reads are invalidated at commit, never before.** A selector that caches wears a `timeout=None`, and every service that writes the same rows wears `@busts_cache(KEY)` from `services/utils.py`. Deferring the delete to commit is the whole point: an immediate delete lets a reader on another connection repopulate the key with the pre-commit value, and nothing busts it a second time, so the stale copy is permanent. The same rule binds management commands — `transaction.on_commit`, not a bare `cache.delete`.
 
 **Permissions.** Admin access is the `app.manage_site` and `app.manage_developers` permissions, carried by the `Admins` and `Developers` groups (provisioned by a `post_migrate` receiver in `signals.py`). Check them with `request.user.has_perm(...)` in views and `{% if perms.app.manage_site %}` in templates — don't wrap either in a selector. Page views use Django's `@permission_required(..., raise_exception=True)`; the JSON API keeps its own `manage_site_required` / `manage_developers_required` decorators, because the built-in renders an HTML 403 where those endpoints must return a JSON body. These are deliberately separate from the auto-generated `add/change/delete/view` permissions that gate Django admin. Full reference: [`docs/wiki/permissions.md`](docs/wiki/permissions.md).
 
@@ -306,7 +306,7 @@ No WebSockets, no Django Channels - just SSE over standard HTTP.
 
 ### LLM Provider
 
-Using **LiteLLM**. The assistant's model resolves from the active Site's admin config (`site_get_model(role="assistant")`), falling back to the `CHAT_MODEL` env var (local dev default: `openai/gpt-4o-mini`, set in docker-compose.yml). To switch providers, change the model string (LiteLLM format).
+Using **LiteLLM**. The assistant's model resolves from the Site's admin config (`site_get_model(role="assistant")`), falling back to the `CHAT_MODEL` env var (local dev default: `openai/gpt-4o-mini`, set in docker-compose.yml). To switch providers, change the model string (LiteLLM format).
 
 ## Key Files
 
