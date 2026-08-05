@@ -49,7 +49,7 @@ dependencies = [
     # Topic Flow file artifacts — .ics calendar + .vcf vCard export
     "vobject>=0.9.6.1",
     # Security minimums (transitive deps — Dependabot #13-#25)
-    "aiohttp>=3.13.4",
+    "aiohttp>=3.14.3",
     "cryptography>=48.0.1",
     "pygments>=2.20.0",
     "requests>=2.33.0",
