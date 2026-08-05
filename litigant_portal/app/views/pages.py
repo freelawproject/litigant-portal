@@ -1,9 +1,8 @@
 import os
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
@@ -21,7 +20,6 @@ from litigant_portal.app.models.choices import (
     get_default_model,
 )
 from litigant_portal.app.selectors.topic_flow import topic_list_active
-from litigant_portal.app.selectors.user import user_can_access_admin
 from litigant_portal.app.topic_flow.answer_store import AnswerStore
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
@@ -199,10 +197,9 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
 
 
 @login_required
+@permission_required("app.manage_site", raise_exception=True)
 def admin(request: HttpRequest) -> HttpResponse:
-    """Admin dashboard shell — developers or active-site members only."""
-    if not user_can_access_admin(user=request.user):
-        raise PermissionDenied
+    """Admin dashboard shell."""
     openai_available = bool(os.environ.get("OPENAI_API_KEY"))
     bedrock_available = bool(os.environ.get("AWS_BEARER_TOKEN_BEDROCK"))
     model_choice_groups = []

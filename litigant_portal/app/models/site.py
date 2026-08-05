@@ -1,6 +1,5 @@
 import uuid
 
-from django.conf import settings
 from django.db import models
 
 from .base import BaseModel
@@ -41,26 +40,7 @@ class Site(BaseModel):
                 name="unique_active_site",
             )
         ]
-
-
-class SiteMembership(BaseModel):
-    """Grants a user admin access to one site's content."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="site_memberships",
-    )
-    site = models.ForeignKey(
-        Site,
-        on_delete=models.CASCADE,
-        related_name="memberships",
-    )
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "site"], name="unique_site_membership"
-            )
+        permissions = [
+            ("manage_site", "Can manage the site"),
+            ("manage_developers", "Can manage developer access"),
         ]
