@@ -1,41 +1,23 @@
 from django.core.cache import cache
-from django.db.models import QuerySet
-from django.forms.models import model_to_dict
 
+from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import Site
 from litigant_portal.app.models.choices import get_default_model
 
-ACTIVE_SITE_CACHE_KEY = "active_site_data"
 
-
-def site_get_active_data() -> dict | None:
-    """The cached active site's settings."""
-    data = cache.get(ACTIVE_SITE_CACHE_KEY)
-    if data is None:
-        site = Site.objects.filter(active=True).first()
-        if site is None:
-            return None
-        data = {"id": str(site.id)} | model_to_dict(site)
-        cache.set(ACTIVE_SITE_CACHE_KEY, data, timeout=None)
-    return data
+def site_get() -> Site:
+    """The singleton settings row, served from cache."""
+    site = cache.get(SITE_CACHE_KEY)
+    if site is None:
+        site = Site.objects.get()
+        cache.set(SITE_CACHE_KEY, site, timeout=None)
+    return site
 
 
 def site_get_model(*, role: str) -> str:
-    """The active site's AI model for a pipeline role."""
-    data = site_get_active_data() or {}
-    return data.get(f"{role}_model") or get_default_model()
-
-
-def site_list() -> QuerySet[Site]:
-    """Site rows, oldest first."""
-    return Site.objects.order_by("created_at")
-
-
-def site_get(*, site_id) -> Site:
-    """A single site row by id (raises Site.DoesNotExist)."""
-    return Site.objects.get(id=site_id)
-
-
-def site_get_active() -> Site:
-    """The active site row (raises Site.DoesNotExist)."""
-    return Site.objects.get(active=True)
+    """The site's AI model for a pipeline role."""
+    try:
+        site = site_get()
+    except Site.DoesNotExist:
+        return get_default_model()
+    return getattr(site, f"{role}_model") or get_default_model()
