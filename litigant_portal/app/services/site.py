@@ -22,7 +22,6 @@ def busts_site_cache(fn):
 @busts_site_cache
 def site_update(
     *,
-    site: Site,
     court_name: str = "",
     jurisdiction_level: str = "",
     state: str = "",
@@ -32,6 +31,7 @@ def site_update(
     assistant_model: str = "",
 ) -> Site:
     """Update the site's editable fields."""
+    site = site_get()
     site.court_name = court_name
     site.jurisdiction_level = jurisdiction_level
     site.state = state

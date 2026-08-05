@@ -95,7 +95,6 @@ def site_update_view(request: HttpRequest) -> JsonResponse:
     return JsonResponse(
         _site_payload(
             site_update(
-                site=site_get(),
                 court_name=court_name,
                 jurisdiction_level=jurisdiction_level,
                 state=state,
