@@ -77,7 +77,7 @@ class Command(BaseCommand):
             return
         for order, data in enumerate(SEED_TOPICS):
             Topic.objects.create(order=order, **data)
-        cache.delete(TOPIC_LIST_CACHE_KEY)
+        transaction.on_commit(lambda: cache.delete(TOPIC_LIST_CACHE_KEY))
         self.stdout.write(
             self.style.SUCCESS(f"Created {len(SEED_TOPICS)} topics.")
         )
