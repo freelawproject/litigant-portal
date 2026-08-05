@@ -2,13 +2,30 @@ import logging
 
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.signals import user_logged_in
+from django.core.cache import cache
 from django.db import DEFAULT_DB_ALIAS
 from django.dispatch import receiver
 
+from .cache import SITE_CACHE_KEY
+from .models import Site
 from .permissions import GROUP_PERMISSIONS
 from .services.user import user_identity_merge_anonymous
 
 logger = logging.getLogger(__name__)
+
+
+def ensure_site_row(sender, using=DEFAULT_DB_ALIAS, apps=None, **kwargs):
+    """Guarantee the singleton site row exists, and drop any cached copy."""
+    try:
+        cache.delete(SITE_CACHE_KEY)
+    except Exception:
+        logger.warning(
+            "Could not clear %r after migrate; a stale site may be served "
+            "until the next write.",
+            SITE_CACHE_KEY,
+        )
+    site_model = apps.get_model("app", "Site") if apps else Site
+    site_model.objects.using(using).get_or_create()
 
 
 def ensure_permission_groups(

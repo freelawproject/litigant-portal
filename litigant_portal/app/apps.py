@@ -11,4 +11,5 @@ class AppConfig(DjangoAppConfig):
         import litigant_portal.app.topic_flow.checks  # noqa: F401
         from litigant_portal.app import signals
 
+        post_migrate.connect(signals.ensure_site_row, sender=self)
         post_migrate.connect(signals.ensure_permission_groups, sender=self)
