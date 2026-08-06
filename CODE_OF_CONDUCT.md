@@ -60,7 +60,7 @@ representative at an event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported to the community leaders responsible for enforcement at
-conduct@free.law. All complaints will be reviewed and
+report@free.law. All complaints will be reviewed and
 investigated promptly and fairly, and reporter privacy will be respected.
 
 ## Enforcement Guidelines
