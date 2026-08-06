@@ -18,10 +18,9 @@
     {# Left panel — conversation history (collapses into the history drawer below lg) #}
     {# Sidebar width tracks the viewport slightly but the center column absorbs most of a squeeze. #}
     <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
-      <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
-        <c-atoms.icon name="history" class="w-3.5 h-3.5 text-greyscale-400" />
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Recent Activity" %}</h2>
-      </div>
+      <c-atoms.eyebrow icon="history"
+                       label='{% trans "Recent Activity" %}'
+                       class="px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0" />
       {% include "pages/chat/partials/_thread_list.html" %}
     </aside>
     {# Center panel — conversation #}
@@ -272,10 +271,9 @@
     {# Right panel — briefcase (live agent state for now; collapses into the briefcase drawer below lg) #}
     {% if perms.app.manage_developers %}
       <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-l border-greyscale-200 min-h-0">
-        <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
-          <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Briefcase" %}</h2>
-        </div>
+        <c-atoms.eyebrow icon="briefcase"
+                         label='{% trans "Briefcase" %}'
+                         class="px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0" />
         {% include "pages/chat/partials/_agent_state.html" %}
       </aside>
     {% endif %}
@@ -299,10 +297,9 @@
            aria-label='{% trans "Recent Activity" %}'
            class="lg:hidden absolute inset-y-0 left-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-r border-greyscale-200 sm:shadow-2xl">
       <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
-        <div class="flex items-center gap-1.5 min-w-0">
-          <c-atoms.icon name="history" class="w-3.5 h-3.5 text-greyscale-400" />
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Recent Activity" %}</h2>
-        </div>
+        <c-atoms.eyebrow icon="history"
+                         label='{% trans "Recent Activity" %}'
+                         class="min-w-0" />
         <div class="flex items-center gap-1 flex-shrink-0">
           <button type="button"
                   x-on:click="newChat"
@@ -342,10 +339,9 @@
              aria-label='{% trans "Briefcase" %}'
              class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
         <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
-          <div class="flex items-center gap-1.5 min-w-0">
-            <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Briefcase" %}</h2>
-          </div>
+          <c-atoms.eyebrow icon="briefcase"
+                           label='{% trans "Briefcase" %}'
+                           class="min-w-0" />
           <button type="button"
                   x-on:click="closeBriefcase"
                   aria-label='{% trans "Close" %}'
@@ -466,7 +462,7 @@
         {# Library #}
         <div class="px-6 pt-4 pb-1">
           <div class="flex items-center justify-between mb-2">
-            <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Your files" %}</h4>
+            <c-atoms.eyebrow label='{% trans "Your files" %}' level="4" />
             <span class="text-xs text-greyscale-500" x-text="uploadCountLabel"></span>
           </div>
           <div class="max-h-56 overflow-y-auto -mx-1 px-1 pt-1 pb-1">
