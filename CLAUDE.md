@@ -128,13 +128,18 @@ EOF
 
 Field ids are validated against the chosen template — a section that doesn't match (wrong field or wrong template) warns and would render blank. The label is applied by the template; set assignee/priority/size in the browser. See `scripts/file_issue.py` for the full format and accepted type aliases.
 
-## Sprint mapping
+## Work tracking
 
-When someone references a sprint by its web-team letter/artist name ("the Ed Sheeran sprint", "Sprint F"), translate to the matching LP Iteration on board #75 via the sprint-map crosswalk (JI-team record kept outside the repo; the board/vault tooling holds the current copy), then pull the work from #75 + git. This crosswalk is LP-specific — other JI repos don't necessarily align with the web-team retro, so it lives here, not in org-level instructions.
+Contributor-facing docs are canonical — don't restate them here:
+
+- **Board, iterations, statuses, assignment:** [CONTRIBUTING.md](CONTRIBUTING.md#how-work-is-tracked)
+- **Where priority and size live, and why the board mirrors them:** [docs/wiki/issue-conventions.md](docs/wiki/issue-conventions.md#where-priority-and-size-live)
+
+LP iterations are numbered and dated, with no crosswalk to the web team's letter/artist sprint names. When someone references "Sprint F" or an artist name, match on the date range rather than a translation table.
 
 ## Sizing & estimation
 
-The compact rules (board mechanics live at the org level; sizing history, anchors, and calibration records are JI-team material, kept outside the repo):
+The compact rules (sizing history, anchors, and calibration records are JI-team material, kept outside the repo):
 
 - **Scale:** XS 0.5 (~1–2h) · S 1 (half day) · M 3 (1–2 days) · L 5 (3–4 days), calibrated to AI-assisted effort. Size is the one human input; the board derives Estimate.
 - **Size the work, not the diff** — a one-line fix after three days of debugging isn't an XS; a 600-line mechanical rename can be. Incident work: size the diagnosis. Count off-repo work (content authoring, infra, verification).

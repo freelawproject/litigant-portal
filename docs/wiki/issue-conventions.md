@@ -85,6 +85,16 @@ Each surface area gets its own distinct hue so multi-label issues are scannable.
 | `tech debt`        | `#D4C5F9` | Deferred cleanup, consolidation, refactoring                 |
 | `user story`       | `#0FB3A1` | Persona user story — living reference, exempt from stale bot |
 
+## Where priority and size live
+
+**The labels on the issue are the source of truth.** The [Sprint (Litigant Portal)](https://github.com/orgs/freelawproject/projects/75) board mirrors `P0`–`P3` and `size: *` into its own Priority and Size fields, and derives Estimate from Size. That mirror exists only because [a project board can't group or sort by label](https://docs.github.com/en/issues/planning-and-tracking-with-projects/customizing-views-in-your-project/customizing-the-board-layout) — it isn't a second place to record the value.
+
+The sync is one way, label → field. Change priority or size by editing the label on the issue, which anyone with write access can do from the issue page or `gh`. An edit made in the board UI is invisible from the issue and gets overwritten on the next sync.
+
+GitHub now offers organization-level issue fields as a first-class replacement for encoding this on labels — one typed value on the issue that boards read directly. Adopting them is an org-wide decision, tracked in #777. Until that lands, labels stay canonical.
+
+How the board is used day to day — statuses, iterations, assignment — lives in [CONTRIBUTING.md](../../CONTRIBUTING.md#how-work-is-tracked).
+
 ## Conventions
 
 - **Lowercase, spaces (no hyphens)** for multi-word labels. Matches GitHub defaults (`good first issue`, `help wanted`).
@@ -106,3 +116,4 @@ Each surface area gets its own distinct hue so multi-label issues are scannable.
 - 2026-05-21 — label audit: 32 → 28 labels. Resolved color collisions (`security`, `research`, `a11y`); sizes unified to soft grey; deleted unused `blocked`, `invalid`, `wontfix`, `Chat Flow`. Created `task` label; renamed `QA` → `qa` (lowercase).
 - 2026-06-15 — added `user story` label (`#0FB3A1`) and added it to the stale bot's exempt list, so persona stories under #22 don't auto-close. Applied to #26, #190, #191, #192, #311, #312.
 - 2026-06-16 — dropped the dead `blocked` reference from `stale.yml` (label was deleted in the 2026-05-21 audit); renamed the new label `user-story` → `user story` to match the no-hyphens convention.
+- 2026-08-06 — documented where priority and size live: the labels are the source of truth and the board mirrors them one way, because a board can't group or sort by label. Board usage (statuses, iterations, assignment) documented in `CONTRIBUTING.md`. Org-wide issue fields as the eventual replacement tracked in #777. PR for #776.

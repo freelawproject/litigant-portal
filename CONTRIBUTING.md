@@ -11,6 +11,28 @@ Litigant Portal is an open-source access-to-justice project by [Free Law Project
 - **Ticket-specific acceptance criteria live on the issue**, on top of the repo-wide bar in [docs/wiki/definition-of-done.md](docs/wiki/definition-of-done.md). If you spot adjacent problems along the way, file them as new issues rather than growing the PR.
 - **Priority and size** are assigned by the team during grooming — leave them off when filing.
 
+## How work is tracked
+
+Work is tracked on the [Sprint (Litigant Portal)](https://github.com/orgs/freelawproject/projects/75) board, which is public — anyone can read it without being a member.
+
+**Assignment.** Issues are assigned when someone starts work, not when they're filed. Unassigned is normal and legitimate, including for work in the current iteration. `good first issue` and `help wanted` are never pre-assigned.
+
+**Iterations.** Sprints are two-week iterations on the board, identified by number and date range (e.g. "Iteration 9 · Aug 5–18"). Unfinished work returns to Backlog at the end of an iteration and is re-committed at the next planning session; it's never auto-rolled into a future iteration.
+
+**Status.** The Iteration field records commitment. Status records where the work is.
+
+| Status      | Meaning                                                                             |
+| ----------- | ----------------------------------------------------------------------------------- |
+| Backlog     | Not committed to an iteration. No Iteration set; size and priority not required.    |
+| Ready       | Committed to the current iteration, not started. Iteration, size, and priority set. |
+| In progress | Being worked on now.                                                                |
+| In review   | PR open, awaiting review.                                                           |
+| Done        | PR merged or issue closed.                                                          |
+
+Size and priority are the gate to _leave_ Backlog, not to enter it — an issue can be filed and sit there untriaged. Work placed in a future iteration stays in Backlog until that iteration opens. Issues that aren't units of work at all (decision records, research threads, open questions) live in Backlog permanently and are never sized.
+
+**Priority and size live on the issue as labels** (`P0`–`P3`, `size: XS` through `size: XL`), set during grooming. The board mirrors them into its own Priority and Size fields, because a project board can't group or sort by label. The labels are the source of truth — edit those, not the board fields.
+
 ## Commits
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope?): description`, with types `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`. Imperative mood, atomic commits.
