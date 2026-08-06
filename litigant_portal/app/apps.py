@@ -13,3 +13,4 @@ class AppConfig(DjangoAppConfig):
 
         post_migrate.connect(signals.ensure_site_row, sender=self)
         post_migrate.connect(signals.ensure_permission_groups, sender=self)
+        post_migrate.connect(signals.clear_data_model_cache, sender=self)
