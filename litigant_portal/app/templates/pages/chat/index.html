@@ -271,7 +271,7 @@
     </section>
     {# Right panel — briefcase (live agent state for now; collapses into the briefcase drawer below lg) #}
     {% if request.user.is_superuser %}
-      <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col min-h-0">
+      <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-l border-greyscale-200 min-h-0">
         <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
           <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
           <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Briefcase" %}</h2>
