@@ -84,7 +84,7 @@ completion_args = {"max_tokens": 1000}
 ```
 
 These are spread into `litellm.completion(...)`. **Don't put `model` here** — you'll get an error if you try.
-The model is supplied to the engine by the endpoint (from the active site's
+The model is supplied to the engine by the endpoint (from the site's
 model config via `site_get_model`), not the agent, and setting it in
 `completion_args` raises.
 

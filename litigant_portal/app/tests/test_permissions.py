@@ -176,14 +176,14 @@ class AdminApiGuardTests(TestCase):
         self.nobody = User.objects.create_user(username="n", password="p")
 
     def test_manage_site_endpoints_reject_users_without_permission(self):
-        for path in ("/api/admin/users/", "/api/admin/sites/"):
+        for path in ("/api/admin/users/", "/api/admin/site/"):
             with self.subTest(path=path):
                 response = client_for(self.nobody).get(path)
                 self.assertEqual(response.status_code, 403)
                 self.assertEqual(response.json()["error"], "Forbidden")
 
     def test_manage_site_endpoints_allow_admins(self):
-        for path in ("/api/admin/users/", "/api/admin/sites/"):
+        for path in ("/api/admin/users/", "/api/admin/site/"):
             with self.subTest(path=path):
                 self.assertEqual(
                     client_for(self.admin).get(path).status_code, 200
