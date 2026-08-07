@@ -31,8 +31,8 @@ This document is the **canonical bar for every PR and issue**. Ticket-specific a
 
 ### Deploy & release safety: in all cases
 
-- **`main` is never knowingly broken.** Every merge to `main` triggers `deploy.yml`, which builds and publishes a Docker image to Docker Hub (see its own header comment: the EKS deploy job is "intentionally NOT wired up yet"). We don't merge code we know is broken or incomplete, since that image is one manual step away from being deployed.
-- **`staging` is not actively used right now, despite `staging-deploy.yml` existing.** That workflow would auto-deploy to prod on push to `staging` once AWS auth is finished, but nobody's pushing there today: `origin/staging` is ~10 days stale relative to `main`. The actual live environment for this MVP is the DigitalOcean QA box (`qa.litigantportal.com`), deployed manually via `qa-deploy-do.yml` (its own comment calls it "LP's only live env until the AWS `qa-litigant` env is wired up," #587). Treat the `staging` pipeline as a not-yet-active future path, not a current gate.
+- **`main` is never knowingly broken.** Every merge to `main` triggers `deploy.yml`, which runs the test suite, then builds and publishes a Docker image to Docker Hub, then rolls it out to `litigantportal.com` on the CL EKS cluster. Nothing is manual after the merge, so we don't merge code we know is broken or incomplete, a failing test stops the pipeline before anything is published.
+- **QA is a manual deploy.** `qa.litigantportal.com` ships via `qa-deploy-do.yml`, currently to the DigitalOcean box until the AWS `qa-litigant` env is wired up. It is deliberately not test-gated: it's the lever for putting a work-in-progress branch in front of a stakeholder. There is no `staging` pipeline: prod-on-merge plus manual QA covers our needs (#461).
 - **Migrations are safe to run unattended.** The prod container runs `manage migrate` automatically on every deploy, with no manual gate. Migrations must be backward-compatible with the code currently running (additive columns, no dropping/renaming something still read by in-flight code) unless the team has explicitly agreed to a destructive one and planned around it.
 - **New dependencies are checked for known vulnerabilities** before merge. No dependency with an open critical/high advisory goes in without a team decision to accept the risk.
 
@@ -68,3 +68,4 @@ Raise it with the team: this is a living snapshot, not policy handed down. Updat
 
 - 2026-07-30: initial Definition of Done for litigant-portal, consolidating the quality-bar criteria previously duplicated in CONTRIBUTING.md into this canonical file.
 - 2026-07-30: removed em-dashes throughout (personal preference; the content-style ban technically exempts dev-facing docs, but kept it consistent anyway).
+- 2026-08-07: updated the deploy topology: `main` now auto-deploys to production behind a test gate, QA remains a manual deployment flow, and the `staging` pipeline has been removed.
