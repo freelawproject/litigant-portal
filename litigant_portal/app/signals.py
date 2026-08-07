@@ -20,19 +20,6 @@ def ensure_site_row(sender, using=DEFAULT_DB_ALIAS, apps=None, **kwargs):
     site_model.objects.using(using).get_or_create()
 
 
-def clear_data_model_cache(sender, **kwargs):
-    """Drop the cached model rows after migrate."""
-    try:
-        cache.delete_many(DATA_MODEL_CACHE_KEYS)
-    except Exception:
-        logger.warning(
-            "Could not clear %s after migrate; stale values may be served "
-            "until the next write.",
-            DATA_MODEL_CACHE_KEYS,
-            exc_info=True,
-        )
-
-
 def ensure_permission_groups(
     sender, using=DEFAULT_DB_ALIAS, apps=None, **kwargs
 ):
@@ -65,6 +52,19 @@ def ensure_permission_groups(
             )
         # add() already skips rows the group has, and is a no-op when empty.
         group.permissions.add(*permissions)
+
+
+def clear_data_model_cache(sender, **kwargs):
+    """Drop the cached model rows after migrate."""
+    try:
+        cache.delete_many(DATA_MODEL_CACHE_KEYS)
+    except Exception:
+        logger.warning(
+            "Could not clear %s after migrate; stale values may be served "
+            "until the next write.",
+            DATA_MODEL_CACHE_KEYS,
+            exc_info=True,
+        )
 
 
 @receiver(user_logged_in)
