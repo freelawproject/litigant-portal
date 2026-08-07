@@ -1,9 +1,12 @@
 name: Build and Push to Docker Hub
 
-# v1: build the portal image and publish it to Docker Hub on every merge to main.
-# The EKS deploy job is intentionally NOT wired up yet — that comes in a
-# follow-up once AWS auth is ready.
-
+# Builds and publishes the portal image for every merge to `main`.
+#
+# This workflow composes the reusable test workflow into the publish pipeline,
+# making a successful test run a prerequisite for publishing instead of relying
+# on an independent workflow.
+#
+# EKS deployment will be added in a follow-up once AWS authentication is ready.
 on:
   push:
     branches:
@@ -21,6 +24,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Runs even when the publish is labelled off. `build` needs it, so a red
+  # suite stops the publish.
+  tests:
+    uses: ./.github/workflows/tests.yml
+
   get-pr-labels:
     runs-on: ubuntu-latest
     outputs:
@@ -54,7 +62,7 @@ jobs:
             console.log(`PR #${pr.number} labels: ${labels.join(", ")}`);
 
   build:
-    needs: get-pr-labels
+    needs: [tests, get-pr-labels]
     runs-on: ubuntu-latest
     if: ${{ !contains(needs.get-pr-labels.outputs.labels, 'skip-deploy') }}
     steps:
