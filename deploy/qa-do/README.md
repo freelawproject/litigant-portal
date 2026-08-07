@@ -3,7 +3,8 @@
 This directory and the `.github/workflows/qa-deploy-do.yml` workflow are a
 **temporary** manual deploy path for the DigitalOcean QA box
 (`qa.litigantportal.com`). It exists only until the AWS `qa-litigant`
-environment is wired up (#587). Until then, DO QA is LP's only live environment.
+environment is wired up (#587). Prod (`litigantportal.com`) is separate: it runs
+on EKS and deploys from `main`. This box is QA only.
 
 ## Why it exists
 
@@ -72,5 +73,7 @@ dir's ownership intact, so this chown is one-time. (The old root-owned
 git rm -r deploy/qa-do .github/workflows/qa-deploy-do.yml
 ```
 
-Nothing else references either — no edits to `docker-compose.yml`, `deploy.yml`,
-or `staging-deploy.yml` to unwind.
+Nothing else references either — no edits to `docker-compose.yml` or
+`deploy.yml` to unwind. The AWS replacement keeps the same shape: a manual
+`workflow_dispatch` that deploys any ref, separate from the `main`-on-merge prod
+pipeline in `deploy.yml`.
