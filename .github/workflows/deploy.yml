@@ -14,6 +14,10 @@ name: Build and Push to Docker Hub
 # replaced. The web entrypoint runs `migrate` again during startup, making it a
 # no-op after a successful deployment.
 #
+# That temp pod is reaped at the start of each deploy rather than at the end of
+# a failed one: a failure leaves the pod up so it can be inspected, and a bare
+# pod has no TTL of its own to clean it up later.
+#
 # Escape hatches (PR labels):
 # - `skip-deploy`: run tests only; skip publishing and deployment.
 # - `skip-web-deploy`: publish the image and run migrations, but leave the web
@@ -116,10 +120,20 @@ jobs:
           LITIGANT_ENV: litigant-env
         run: kubectl annotate es $LITIGANT_ENV force-sync=$(date +%s) --overwrite -n ${{ env.EKS_NAMESPACE }} && kubectl wait es -n ${{ env.EKS_NAMESPACE }} --for=jsonpath="{.status.conditions[?(@.reason=='SecretSynced')].status}"=True --timeout=30s $LITIGANT_ENV
 
+      # Reap temp pods left behind by earlier deploys. A failed deploy keeps its
+      # pod on purpose (the migration handler below tells you to shell into it),
+      # and nothing in Kubernetes reaps a bare pod for us. Without this
+      # sweep, re-running a failed deploy dies on AlreadyExists for the same
+      # temp-pod-<sha>, and pods from older failures accumulate in the
+      # namespace. Sweeping by label is safe because the concurrency group means
+      # no other deploy is in flight.
+      - name: Reap Stale Temporary Pods
+        run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} -l app=litigant-deploy-temp --ignore-not-found --timeout=60s
+
       # Sleep-only override bypasses the entrypoint so we control migrate/collectstatic.
       - name: Launch Temporary Pod
         run: |
-          kubectl run temp-pod-${{ needs.build.outputs.sha_short }} -n ${{ env.EKS_NAMESPACE }} --image=freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod --restart Never --pod-running-timeout=120s --overrides='
+          kubectl run temp-pod-${{ needs.build.outputs.sha_short }} -n ${{ env.EKS_NAMESPACE }} --labels=app=litigant-deploy-temp --image=freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod --restart Never --pod-running-timeout=120s --overrides='
           {
               "spec": {
               "containers": [{
@@ -151,9 +165,12 @@ jobs:
         if: failure()
         run: |
           echo "Migrations failed. Open a shell into pod temp-pod-${{ needs.build.outputs.sha_short }} to investigate."
-          echo "That pod deletes itself after an hour."
+          echo "It stops running after an hour but is kept around for debugging; the next deploy reaps it."
           exit 1
 
+      # No `if:` here on purpose: when an earlier step fails this is skipped, so
+      # the pod survives for the debugging the handler above points at. The reap
+      # step at the top of the next deploy is what cleans it up.
       - name: Delete Temporary Pod
         run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }}
 
