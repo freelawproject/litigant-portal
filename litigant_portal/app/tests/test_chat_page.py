@@ -3,8 +3,9 @@
 These pin the contract: no `chat_header.html` override on the chat page
 itself (`pages/admin/index.html` still depends on that file - see
 `AdminHeaderRegressionTests`), the Briefcase agent-state aside gated
-server-side to superusers, an accessible live region on the messages
-container, and a handful of Tailwind hygiene swaps.
+server-side to the `manage_developers` permission, an accessible live
+region on the messages container, and a handful of Tailwind hygiene
+swaps.
 """
 
 import re
@@ -12,8 +13,11 @@ from pathlib import Path
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import Client, TestCase
 from django.urls import reverse
+
+from litigant_portal.app.permissions import DEVELOPERS_GROUP
 
 TEMPLATE_PATH = Path("litigant_portal/app/templates/pages/chat/index.html")
 MAIN_CSS_PATH = Path("litigant_portal/app/src/main.css")
@@ -91,14 +95,17 @@ class AdminHeaderRegressionTests(TestCase):
 @pytest.mark.postgres
 class AgentStateGatingTests(TestCase):
     """The Briefcase agent-state aside is only present in the response body
-    for superusers — server-side gated, not just CSS/Alpine-hidden."""
+    for users holding `manage_developers` — server-side gated, not just
+    CSS/Alpine-hidden."""
 
     def setUp(self):
         self.client = Client()
         User = get_user_model()
-        self.superuser = User.objects.create_superuser(
-            username="root", email="root@example.com", password="pw"
+        developers = Group.objects.get(name=DEVELOPERS_GROUP)
+        self.developer = User.objects.create_user(
+            username="dev", email="dev@example.com", password="pw"
         )
+        self.developer.groups.add(developers)
         self.regular_user = User.objects.create_user(
             username="regular", email="regular@example.com", password="pw"
         )
@@ -109,24 +116,24 @@ class AgentStateGatingTests(TestCase):
         self.assertNotIn(AGENT_STATE_MARKER, content)
         self.assertNotRegex(content, BRIEFCASE_CHROME_RE)
 
-    def test_non_superuser_does_not_see_agent_state(self):
+    def test_non_developer_does_not_see_agent_state(self):
         self.client.login(username="regular", password="pw")
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
         self.assertNotIn(AGENT_STATE_MARKER, content)
         self.assertNotRegex(content, BRIEFCASE_CHROME_RE)
 
-    def test_superuser_sees_agent_state(self):
-        self.client.login(username="root", password="pw")
+    def test_developer_sees_agent_state(self):
+        self.client.login(username="dev", password="pw")
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
         self.assertIn(AGENT_STATE_MARKER, content)
         self.assertRegex(content, BRIEFCASE_CHROME_RE)
 
-    def test_superuser_sees_agent_state_in_both_inline_and_drawer_variants(
+    def test_developer_sees_agent_state_in_both_inline_and_drawer_variants(
         self,
     ):
-        self.client.login(username="root", password="pw")
+        self.client.login(username="dev", password="pw")
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
         # _agent_state.html is included twice: inline sidebar + drawer.
@@ -200,5 +207,5 @@ class ChatTemplateHygieneTests(TestCase):
 
     def test_agent_state_partial_contrast_left_untouched(self):
         # Accepted gap: _agent_state.html's own greyscale-400 text is out
-        # of scope for this phase, since that partial is superuser-only.
+        # of scope for this phase, since that partial requires manage_developers.
         self.assertIn("text-greyscale-400", AGENT_STATE_PATH.read_text())
