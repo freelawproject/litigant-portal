@@ -1,4 +1,5 @@
 import pytest
+from django.core.cache import cache
 
 
 @pytest.fixture(autouse=True)
@@ -10,6 +11,9 @@ def test_cache(settings):
         }
     }
     settings.RATELIMIT_ENABLE = False
+    cache.clear()
+    yield
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

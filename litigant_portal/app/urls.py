@@ -72,16 +72,11 @@ assistant_patterns = [
 ]
 
 admin_api_patterns = [
-    path("sites/", admin_views.site_list_view, name="site_list"),
+    path("site/", admin_views.site_view, name="site"),
     path(
-        "sites/<uuid:site_id>/update/",
+        "site/update/",
         admin_views.site_update_view,
         name="site_update",
-    ),
-    path(
-        "sites/<uuid:site_id>/activate/",
-        admin_views.site_activate_view,
-        name="site_activate",
     ),
     path("topics/", admin_views.topic_list_view, name="topic_list"),
     path(

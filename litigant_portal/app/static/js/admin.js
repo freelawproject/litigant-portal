@@ -54,9 +54,6 @@ document.addEventListener('alpine:init', () => {
     showKnowledge: false,
     showSimulate: false,
     // Site settings
-    sites: [],
-    siteId: null,
-    siteName: '',
     siteCourtName: '',
     siteJurisdictionLevel: '',
     siteState: '',
@@ -64,8 +61,6 @@ document.addEventListener('alpine:init', () => {
     siteOfficialResourcesUrl: '',
     siteFastModel: '',
     siteAssistantModel: '',
-    activeSiteName: '',
-    siteMenuOpen: false,
     siteSaved: false,
     siteError: '',
     // Knowledge base tab
@@ -95,7 +90,7 @@ document.addEventListener('alpine:init', () => {
     usersFetchSeq: 0,
 
     init() {
-      this.loadSites()
+      this.loadSite()
       this.loadUsers()
       this.loadTopics()
     },
@@ -118,27 +113,20 @@ document.addEventListener('alpine:init', () => {
 
     // --- Site settings ---
 
-    async loadSites() {
+    async loadSite() {
       try {
-        const res = await fetch('/api/admin/sites/', {
+        const res = await fetch('/api/admin/site/', {
           headers: { Accept: 'application/json' },
         })
         if (!res.ok) throw new Error('Request failed: ' + res.status)
-        const data = await res.json()
-        this.sites = data.sites || []
-        const active = this.sites.find((s) => s.active)
-        this.siteId = active ? active.id : null
-        this.siteName = active ? active.name : ''
-        this.siteCourtName = active ? active.court_name : ''
-        this.siteJurisdictionLevel = active ? active.jurisdiction_level : ''
-        this.siteState = active ? active.state : ''
-        this.siteOfficialUrl = active ? active.official_url : ''
-        this.siteOfficialResourcesUrl = active
-          ? active.official_resources_url
-          : ''
-        this.siteFastModel = (active && active.fast_model) || ''
-        this.siteAssistantModel = (active && active.assistant_model) || ''
-        this.activeSiteName = active ? active.name : ''
+        const site = await res.json()
+        this.siteCourtName = site.court_name
+        this.siteJurisdictionLevel = site.jurisdiction_level
+        this.siteState = site.state
+        this.siteOfficialUrl = site.official_url
+        this.siteOfficialResourcesUrl = site.official_resources_url
+        this.siteFastModel = site.fast_model
+        this.siteAssistantModel = site.assistant_model
       } catch (e) {
         console.error('Failed to load site settings:', e)
       }
@@ -153,10 +141,8 @@ document.addEventListener('alpine:init', () => {
     },
 
     async saveSite() {
-      if (!this.siteId || !this.siteName.trim()) return
       try {
         const body = new FormData()
-        body.append('name', this.siteName.trim())
         body.append('court_name', this.siteCourtName.trim())
         body.append('jurisdiction_level', this.siteJurisdictionLevel)
         body.append('state', this.siteState.trim().toUpperCase())
@@ -168,10 +154,10 @@ document.addEventListener('alpine:init', () => {
         body.append('fast_model', this.siteFastModel)
         body.append('assistant_model', this.siteAssistantModel)
         body.append('csrfmiddlewaretoken', this.csrfToken())
-        const res = await fetch(
-          '/api/admin/sites/' + this.siteId + '/update/',
-          { method: 'POST', body }
-        )
+        const res = await fetch('/api/admin/site/update/', {
+          method: 'POST',
+          body,
+        })
         if (!res.ok) {
           // Surface the server's validation message next to Save.
           const data = await res.json().catch(() => ({}))
@@ -179,40 +165,10 @@ document.addEventListener('alpine:init', () => {
         }
         this.siteSaved = true
         this.siteError = ''
-        await this.loadSites()
+        await this.loadSite()
       } catch (e) {
         console.error('Failed to save site settings:', e)
         this.siteError = e.message
-      }
-    },
-
-    toggleSiteMenu() {
-      this.siteMenuOpen = !this.siteMenuOpen
-    },
-
-    closeSiteMenu() {
-      this.siteMenuOpen = false
-    },
-
-    // Click handler for a switcher row — the site id rides on the element.
-    async activateSite(e) {
-      const siteId = e.currentTarget.dataset.siteId
-      this.siteMenuOpen = false
-      if (!siteId || siteId === this.siteId) return
-      try {
-        const body = new FormData()
-        body.append('csrfmiddlewaretoken', this.csrfToken())
-        const res = await fetch('/api/admin/sites/' + siteId + '/activate/', {
-          method: 'POST',
-          body,
-        })
-        if (!res.ok) throw new Error('Request failed: ' + res.status)
-        this.siteSaved = false
-        await this.loadSites()
-        // Topics belong to the active site — refresh the knowledge base.
-        await this.loadTopics()
-      } catch (e) {
-        console.error('Failed to activate site:', e)
       }
     },
 
@@ -411,9 +367,9 @@ document.addEventListener('alpine:init', () => {
       return {
         ...u,
         notAdmin: !u.is_admin,
-        notStaff: !u.is_staff,
+        notDeveloper: !u.is_developer,
         adminToggleClass: u.is_admin ? PILL_ON : PILL_OFF,
-        devToggleClass: u.is_staff ? PILL_ON : PILL_OFF,
+        devToggleClass: u.is_developer ? PILL_ON : PILL_OFF,
         // Self-revocation guard mirrors the server: you can't drop your
         // own highest permission, so those toggles render disabled.
         adminToggleDisabled: !u.can_toggle_admin,
@@ -430,7 +386,7 @@ document.addEventListener('alpine:init', () => {
       )
     },
 
-    // Toggle membership (admin access) in the active site.
+    // Toggle membership in the Admins group (admin access).
     async toggleUserAdmin(e) {
       const userId = e.currentTarget.dataset.userId
       try {
@@ -448,7 +404,7 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    // Toggle the developer (staff) flag.
+    // Toggle membership in the Developers group.
     async toggleUserDeveloper(e) {
       const userId = e.currentTarget.dataset.userId
       try {
@@ -460,7 +416,7 @@ document.addEventListener('alpine:init', () => {
         )
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         const data = await res.json()
-        this.patchUser(userId, { is_staff: data.is_staff })
+        this.patchUser(userId, { is_developer: data.is_developer })
       } catch (err) {
         console.error('Failed to toggle developer status:', err)
       }

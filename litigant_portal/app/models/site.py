@@ -1,18 +1,17 @@
 import uuid
 
-from django.conf import settings
 from django.db import models
 
 from .base import BaseModel
 from .choices import AI_MODEL_CHOICES, JurisdictionLevel, State
 
+SITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
 
 class Site(BaseModel):
-    """Site-wide settings. Exactly one row is `active` at a time."""
+    """Site-wide settings. Constrained to a single row."""
 
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255)
-    active = models.BooleanField(default=False)
+    id = models.UUIDField(primary_key=True, default=SITE_ID, editable=False)
     court_name = models.CharField(max_length=255, blank=True)
     jurisdiction_level = models.CharField(
         max_length=16, blank=True, choices=JurisdictionLevel.choices
@@ -35,32 +34,11 @@ class Site(BaseModel):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(
-                fields=["active"],
-                condition=models.Q(active=True),
-                name="unique_active_site",
+            models.CheckConstraint(
+                condition=models.Q(id=SITE_ID), name="single_site_row"
             )
         ]
-
-
-class SiteMembership(BaseModel):
-    """Grants a user admin access to one site's content."""
-
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="site_memberships",
-    )
-    site = models.ForeignKey(
-        Site,
-        on_delete=models.CASCADE,
-        related_name="memberships",
-    )
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=["user", "site"], name="unique_site_membership"
-            )
+        permissions = [
+            ("manage_site", "Can manage the site"),
+            ("manage_developers", "Can manage developer access"),
         ]
