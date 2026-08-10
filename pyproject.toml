@@ -60,7 +60,7 @@ dependencies = [
     # Rate limiting
     "django-ratelimit>=4.1",
     # PDF text extraction
-    "pypdf>=5.0",
+    "pypdf>=6.15.0",
     "mammoth>=1.8",
     "openpyxl>=3.1",
     # Token counting for attachment-size gates
