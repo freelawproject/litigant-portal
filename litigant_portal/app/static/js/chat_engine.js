@@ -398,11 +398,11 @@ function uploadCardClass(selected) {
 // red "Confirm delete" pill; clicking anywhere else collapses it.
 function uploadDeleteClass(armed) {
   return (
-    'absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center ' +
-    'h-5 rounded-full border shadow cursor-pointer transition-all duration-150 ' +
+    'absolute top-1.5 z-10 inline-flex items-center justify-center ' +
+    'border shadow cursor-pointer transition-all duration-150 ' +
     (armed
-      ? 'px-2 bg-red-600 border-red-600 text-white'
-      : 'w-5 bg-white/90 border-greyscale-200 text-greyscale-400 hover:text-red-600 hover:border-red-300')
+      ? 'inset-x-1.5 min-h-5 px-2 py-0.5 rounded-lg bg-red-600 border-red-600 text-white'
+      : 'right-1.5 w-5 h-5 rounded-full bg-white/90 border-greyscale-200 text-greyscale-400 hover:text-red-600 hover:border-red-300')
   )
 }
 
