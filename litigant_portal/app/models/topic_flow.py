@@ -34,9 +34,10 @@ class TopicFlow(BaseModel):
     slug = models.SlugField(max_length=64)
     name = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ["created_at"]
+        ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["topic", "slug"], name="unique_topic_flow_slug"
