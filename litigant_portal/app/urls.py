@@ -23,6 +23,11 @@ app_patterns = [
     path("", pages.home, name="home"),
     path("chat/", pages.chat_view, name="chat"),
     path(
+        "t/<slug:topic_slug>/",
+        pages.topic_detail,
+        name="topic",
+    ),
+    path(
         "t/<slug:topic_slug>/<slug:flow_slug>/",
         pages.topic_flow_detail,
         name="topic_flow",

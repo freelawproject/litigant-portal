@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% load cotton i18n %}
+
+{% block title %}
+  {{ topic.title }} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block content %}
+  <header class="border-b border-greyscale-100 bg-primary-50 px-4 py-6 sm:px-6">
+    <div class="max-w-content mx-auto topic-entry-header">
+      <div class="topic-entry-icon">
+        <c-atoms.icon name="{{ topic.icon }}" class="w-6 h-6" />
+      </div>
+      <div>
+        <h1 class="topic-entry-title">{{ topic.title }}</h1>
+        {% if topic.subtitle %}<p class="topic-entry-subtitle">{{ topic.subtitle }}</p>{% endif %}
+      </div>
+    </div>
+  </header>
+  <section class="topic-grid-section">
+    <h2 class="topic-grid-heading">{% trans "Step-by-step guides" %}</h2>
+    <div class="topic-grid">
+      {% for flow in flows %}
+        <c-molecules.topic-card icon="{{ topic.icon }}" title="{{ flow.name }}" href="{% url 'pages:topic_flow' topic_slug=topic.slug flow_slug=flow.slug %}" />
+      {% empty %}
+        <p class="text-greyscale-600">{% trans "No guides are available for this topic yet." %}</p>
+      {% endfor %}
+    </div>
+    <div class="max-w-content mx-auto mt-6">
+      <c-atoms.button href="{% url 'pages:chat' %}?topic={{ topic.slug }}" variant="subtle" size="sm">
+      <c-atoms.icon name="chat-bubble-left-right" class="w-4 h-4" />
+      {% trans "Chat with our AI assistant about this topic" %}
+      </c-atoms.button>
+    </div>
+  </section>
+{% endblock content %}

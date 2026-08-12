@@ -41,6 +41,18 @@ def home(request):
     return render(request, "pages/home.html", {"topics": topics})
 
 
+def topic_detail(request, topic_slug):
+    """Public topic page: cards for the topic's live flows."""
+    topics = {t.slug: t for t in topic_list()}
+    topic = topics.get(topic_slug)
+    if topic is None:
+        raise Http404(f"No Topic {topic_slug}")
+    flows = [flow for flow in topic.flows.all() if flow.enabled]
+    return render(
+        request, "pages/topic.html", {"topic": topic, "flows": flows}
+    )
+
+
 def chat_view(request):
     """Chat page"""
     return render(request, "pages/chat/index.html")

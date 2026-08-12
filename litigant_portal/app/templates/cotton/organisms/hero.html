@@ -9,5 +9,9 @@
     <h1 class="hero-heading">{{ heading }}</h1>
     <p class="hero-subheading">{{ subheading }}</p>
     <c-molecules.search-bar placeholder="{{ search_placeholder }}" action="/chat/" />
+    <c-atoms.button href="{% url 'pages:chat' %}" variant="subtle" size="sm" class="mx-auto mt-4">
+    <c-atoms.icon name="chat-bubble-left-right" class="w-4 h-4" />
+    {% trans "Chat with our AI assistant" %}
+    </c-atoms.button>
   </div>
 </section>
