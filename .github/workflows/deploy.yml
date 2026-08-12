@@ -1,13 +1,36 @@
 name: Build and Push to Docker Hub
 
-# v1: build the portal image and publish it to Docker Hub on every merge to main.
-# The EKS deploy job is intentionally NOT wired up yet — that comes in a
-# follow-up once AWS auth is ready.
-
+# Builds and publishes the portal image, then deploys it to the `litigant`
+# namespace on the EKS cluster.
+#
+# The action enforces the following order:
+#   tests -> build & publish -> deploy
+#
+# The test suite is invoked as a reusable workflow so each stage depends on
+# the previous one, preventing failed tests from reaching production.
+#
+# Migrations are applied in a temporary pod before the web deployment is
+# updated. This catches migration failures before any production pods are
+# replaced. The web entrypoint runs `migrate` again during startup, making it a
+# no-op after a successful deployment.
+#
+# That temp pod is reaped at the start of each deploy rather than at the end of
+# a failed one: a failure leaves the pod up so it can be inspected, and a bare
+# pod has no TTL of its own to clean it up later.
+#
+# Escape hatches (PR labels):
+# - `skip-deploy`: run tests only; skip publishing and deployment.
+# - `skip-web-deploy`: publish the image and run migrations, but leave the web
+#   deployment on its current image.
 on:
   push:
     branches:
       - main
+
+env:
+  AWS_REGION: us-west-2
+  EKS_CLUSTER_NAME: courtlistener
+  EKS_NAMESPACE: litigant
 
 # github-script lists the PR associated with the merge commit; that needs
 # pull-requests: read. contents: read is for checkout.
@@ -17,10 +40,15 @@ permissions:
 
 # Serialize publishes so back-to-back merges push image tags in order.
 concurrency:
-  group: dockerhub-publish
+  group: litigant-prod-deploy
   cancel-in-progress: false
 
 jobs:
+  # Runs even when the publish is labelled off. `build` needs it, so a red
+  # suite stops the publish.
+  tests:
+    uses: ./.github/workflows/tests.yml
+
   get-pr-labels:
     runs-on: ubuntu-latest
     outputs:
@@ -54,15 +82,113 @@ jobs:
             console.log(`PR #${pr.number} labels: ${labels.join(", ")}`);
 
   build:
-    needs: get-pr-labels
+    needs: [tests, get-pr-labels]
     runs-on: ubuntu-latest
     if: ${{ !contains(needs.get-pr-labels.outputs.labels, 'skip-deploy') }}
+    outputs:
+      sha_short: ${{ steps.vars.outputs.sha_short }}
     steps:
       - uses: actions/checkout@v6
+      - name: Set shortcode
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and Push
-        run: make push-image -e VERSION=$(git rev-parse --short HEAD)
+        run: make push-image -e VERSION=${{ steps.vars.outputs.sha_short }}
+
+  setup-deploy:
+    needs: [get-pr-labels, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create Kubeconfig with AWS CLI
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      # Force the ExternalSecret to re-sync so the litigant-env Secret is current
+      # before the temp-pod (and the web pod) read it via envFrom.
+      - name: Update Environment Variables
+        env:
+          LITIGANT_ENV: litigant-env
+        run: kubectl annotate es $LITIGANT_ENV force-sync=$(date +%s) --overwrite -n ${{ env.EKS_NAMESPACE }} && kubectl wait es -n ${{ env.EKS_NAMESPACE }} --for=jsonpath="{.status.conditions[?(@.reason=='SecretSynced')].status}"=True --timeout=30s $LITIGANT_ENV
+
+      # Reap temp pods left behind by earlier deploys. A failed deploy keeps its
+      # pod on purpose (the migration handler below tells you to shell into it),
+      # and nothing in Kubernetes reaps a bare pod for us. Without this
+      # sweep, re-running a failed deploy dies on AlreadyExists for the same
+      # temp-pod-<sha>, and pods from older failures accumulate in the
+      # namespace. Sweeping by label is safe because the concurrency group means
+      # no other deploy is in flight.
+      - name: Reap Stale Temporary Pods
+        run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} -l app=litigant-deploy-temp --ignore-not-found --timeout=60s
+
+      # Sleep-only override bypasses the entrypoint so we control migrate/collectstatic.
+      - name: Launch Temporary Pod
+        run: |
+          kubectl run temp-pod-${{ needs.build.outputs.sha_short }} -n ${{ env.EKS_NAMESPACE }} --labels=app=litigant-deploy-temp --image=freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod --restart Never --pod-running-timeout=120s --overrides='
+          {
+              "spec": {
+              "containers": [{
+                  "name": "temp-pod",
+                  "image": "freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod",
+                  "command": ["/bin/sh", "-c", "trap : TERM INT; sleep 3600 & wait"],
+                  "envFrom": [{
+                  "secretRef": {
+                      "name": "litigant-env"
+                  }
+                  }]
+              }]
+              }
+          }'
+      - name: Wait for Temporary Pod to Start
+        run: kubectl wait pods -n ${{ env.EKS_NAMESPACE }} --for condition=Ready --timeout=90s temp-pod-${{ needs.build.outputs.sha_short }}
+
+      - name: Collect Static Assets
+        run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage collectstatic --noinput --clear
+      - name: Handle Collectstatic Error
+        if: failure()
+        run: |
+          echo "collectstatic failed--aborting deploy"
+          exit 1
+
+      - name: Apply Migrations
+        run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage migrate --noinput
+      - name: Handle Migration Error
+        if: failure()
+        run: |
+          echo "Migrations failed. Open a shell into pod temp-pod-${{ needs.build.outputs.sha_short }} to investigate."
+          echo "It stops running after an hour but is kept around for debugging; the next deploy reaps it."
+          exit 1
+
+      # No `if:` here on purpose: when an earlier step fails this is skipped, so
+      # the pod survives for the debugging the handler above points at. The reap
+      # step at the top of the next deploy is what cleans it up.
+      - name: Delete Temporary Pod
+        run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }}
+
+  deploy-web:
+    needs: [get-pr-labels, build, setup-deploy]
+    runs-on: ubuntu-latest
+    if: ${{ !contains(needs.get-pr-labels.outputs.labels, 'skip-web-deploy') }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create Kubeconfig with AWS CLI
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Rollout litigant-web
+        run: kubectl set image -n ${{ env.EKS_NAMESPACE }} deployment/litigant-web web=freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod
+      - name: Watch litigant-web rollout status
+        run: kubectl rollout status -n ${{ env.EKS_NAMESPACE }} deployment/litigant-web

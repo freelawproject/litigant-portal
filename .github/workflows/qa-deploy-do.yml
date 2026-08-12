@@ -1,10 +1,11 @@
 name: Deploy to DigitalOcean QA (manual)
 
-# TEMPORARY manual deploy for the DigitalOcean QA box (qa.litigantportal.com),
-# which is LP's only live env until the AWS `qa-litigant` env is wired up (#587).
+# TEMPORARY manual deploy for the DigitalOcean QA box (qa.litigantportal.com).
+# It stands in for the AWS `qa-litigant` env until that is wired up (#587). Prod
+# is separate: it runs on EKS and deploys from `main` (deploy.yml).
 # Manual-only (workflow_dispatch): pick a ref, build its image, push to Docker
-# Hub, and roll it out on the box over SSH. No auto-deploy on merge — image
-# publishing for AWS still lives in deploy.yml and is unaffected.
+# Hub, and roll it out on the box over SSH. No auto-deploy on merge, and no test
+# gate.
 #
 # REMOVAL AT CUTOVER: delete this file + the `deploy/qa-do/` dir. Nothing else
 # references either. See deploy/qa-do/README.md.
@@ -69,8 +70,8 @@ jobs:
             COMPOSE="docker compose -f deploy/qa-do/docker-compose.qa.yml --env-file /opt/litigant-portal/.env"
 
             # Rollback breadcrumb: record the image the box is running NOW before
-            # we replace it. QA is the only live env, so if the new image
-            # misbehaves you can repull this digest by hand.
+            # we replace it. if the new image misbehaves this digest is what you
+            # repull by hand.
             echo "Currently-running django image (for rollback):"
             $COMPOSE images django || true
 

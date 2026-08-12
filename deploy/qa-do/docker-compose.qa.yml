@@ -20,7 +20,7 @@
 
 # Pin the project name so it's stable regardless of which dir compose runs from.
 # It MUST match the box's currently-running stack, or `up` spins up a parallel
-# stack and collides on ports 80/443 (taking the only live env down). Confirm on
+# stack and collides on ports 80/443 (taking QA down). Confirm on
 # the box: `docker compose ls`.
 name: litigant-portal # FILL IN — confirm matches the running stack
 

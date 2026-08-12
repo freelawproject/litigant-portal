@@ -2,9 +2,10 @@ name: Tests
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
+  # Exposes the test suite as a reusable workflow. Deployment workflows call
+  # this instead of relying on a independent test run, keeping testing as
+  # part of the deployment pipeline and avoiding duplicate executions.
+  workflow_call:
 
 jobs:
   build:
