@@ -72,6 +72,7 @@ def chat_thread_export_data(*, thread: ChatThread) -> dict:
         "updated_at": thread.updated_at.isoformat(),
         "owner": {
             "user_email": identity.user.email if identity.user_id else None,
+            "username": identity.user.username if identity.user_id else None,
             "session_key": identity.session_key,
         },
         "messages": [

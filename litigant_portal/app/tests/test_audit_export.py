@@ -122,6 +122,15 @@ class ThreadExportTests(TestCase):
             export["updated_at"], self.thread.updated_at.isoformat()
         )
 
+    def test_json_owner_carries_username_when_email_is_blank(self):
+        user = User.objects.create_user(username="no-email", password="pw")
+        thread = ChatThread.objects.create(
+            identity=UserIdentity.objects.create(user=user)
+        )
+        owner = chat_thread_export_data(thread=thread)["owner"]
+        self.assertEqual(owner["user_email"], "")
+        self.assertEqual(owner["username"], "no-email")
+
     def test_json_export_carries_token_and_cost_fields(self):
         self._message(
             {"role": "assistant", "content": "Here is what to do."},

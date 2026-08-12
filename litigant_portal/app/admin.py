@@ -121,10 +121,16 @@ class ChatThreadAdmin(admin.ModelAdmin):
         ]
         return custom + super().get_urls()
 
-    def transcript_markdown_view(self, request, pk):
-        thread = get_object_or_404(ChatThread, pk=pk)
+    def _get_thread_or_403(self, request, pk):
+        thread = get_object_or_404(
+            ChatThread.objects.select_related("identity__user"), pk=pk
+        )
         if not self.has_view_permission(request, thread):
             raise PermissionDenied
+        return thread
+
+    def transcript_markdown_view(self, request, pk):
+        thread = self._get_thread_or_403(request, pk)
         response = HttpResponse(
             chat_thread_export_markdown(thread=thread),
             content_type="text/markdown; charset=utf-8",
@@ -135,9 +141,7 @@ class ChatThreadAdmin(admin.ModelAdmin):
         return response
 
     def transcript_json_view(self, request, pk):
-        thread = get_object_or_404(ChatThread, pk=pk)
-        if not self.has_view_permission(request, thread):
-            raise PermissionDenied
+        thread = self._get_thread_or_403(request, pk)
         response = JsonResponse(
             chat_thread_export_data(thread=thread),
             json_dumps_params={"indent": 2, "ensure_ascii": False},
