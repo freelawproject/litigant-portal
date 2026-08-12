@@ -2,10 +2,6 @@
 
 {% load static i18n %}
 
-{% block header %}
-  {% include "cotton/organisms/chat_header.html" %}
-{% endblock header %}
-
 {% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
 
 {% block main_class %}min-h-0 flex flex-col{% endblock main_class %}
@@ -24,14 +20,14 @@
     <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
       <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
         <c-atoms.icon name="history" class="w-3.5 h-3.5 text-greyscale-400" />
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Recent Activity" %}</h2>
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Recent Activity" %}</h2>
       </div>
       {% include "pages/chat/partials/_thread_list.html" %}
     </aside>
     {# Center panel — conversation #}
-    <section class="flex-1 min-w-0 flex flex-col min-h-0 lg:border-r border-greyscale-200">
+    <section class="flex-1 min-w-0 flex flex-col min-h-0">
       {# Toolbar — thread title + actions on the left, New chat on the right #}
-      <div class="flex items-center justify-between gap-2 px-4 py-2 border-b border-greyscale-200 flex-shrink-0 min-h-[3.25rem]">
+      <div class="flex items-center justify-between gap-2 px-4 py-2 border-b border-greyscale-200 flex-shrink-0 min-h-13">
         <div class="flex items-center gap-2 min-w-0">
           {# History drawer trigger — appears once the left panel collapses #}
           <button type="button"
@@ -90,17 +86,22 @@
             {% trans "New chat" %}
           </button>
           {# Briefcase drawer trigger — appears once the right panel collapses #}
-          <button type="button"
-                  x-on:click="openBriefcase"
-                  aria-label='{% trans "Briefcase" %}'
-                  title="{% trans "Briefcase" %}"
-                  class="lg:hidden flex-shrink-0 -mr-1 inline-flex items-center justify-center w-8 h-8 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
-            <c-atoms.icon name="briefcase" class="w-4.5 h-4.5" />
-          </button>
+          {% if perms.app.manage_developers %}
+            <button type="button"
+                    x-on:click="openBriefcase"
+                    aria-label='{% trans "Briefcase" %}'
+                    title="{% trans "Briefcase" %}"
+                    class="lg:hidden flex-shrink-0 -mr-1 inline-flex items-center justify-center w-8 h-8 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+              <c-atoms.icon name="briefcase" class="w-4.5 h-4.5" />
+            </button>
+          {% endif %}
         </div>
       </div>
       {# Messages #}
-      <div x-ref="messagesArea" class="flex-1 overflow-y-auto min-h-0 p-4 space-y-3">
+      <div x-ref="messagesArea"
+           role="log"
+           aria-live="polite"
+           class="flex-1 overflow-y-auto min-h-0 p-4 space-y-3">
         <template x-for="message in messages" :key="message.id">
           <div class="flex flex-col" x-bind:class="message.rowClass">
             {# Tool part — call/result cards #}
@@ -118,7 +119,7 @@
                       <span class="typing-dot"></span>
                       <span class="typing-dot"></span>
                     </span>
-                    <span class="text-[10px] font-medium uppercase tracking-wide text-greyscale-400">{% trans "args" %}</span>
+                    <span class="text-2xs font-medium uppercase tracking-wide text-greyscale-500">{% trans "args" %}</span>
                   </span>
                 </div>
                 <pre class="px-3 py-2 text-xs text-greyscale-600 overflow-x-auto whitespace-pre-wrap break-words" x-text="message.argsJson"></pre>
@@ -130,7 +131,7 @@
                    class="rounded-lg border border-greyscale-200 bg-greyscale-50 overflow-hidden">
                 <div class="flex items-center justify-between px-3 py-1.5 border-b border-greyscale-200 bg-white">
                   <span class="text-xs font-medium text-greyscale-700" x-text="message.name"></span>
-                  <span class="text-[10px] font-medium uppercase tracking-wide text-greyscale-400">{% trans "result" %}</span>
+                  <span class="text-2xs font-medium uppercase tracking-wide text-greyscale-500">{% trans "result" %}</span>
                 </div>
                 <pre class="px-3 py-2 text-xs text-greyscale-600 overflow-x-auto whitespace-pre-wrap break-words" x-text="message.renderDataJson"></pre>
               </div>
@@ -192,16 +193,16 @@
         <div x-show="conversationEmpty"
              x-cloak
              class="h-full flex items-center justify-center">
-          <p class="text-sm text-greyscale-400">{% trans "Send a message to start a conversation." %}</p>
+          <p class="text-sm text-greyscale-500">{% trans "Send a message to start a conversation." %}</p>
         </div>
       </div>
       {# Input #}
       <div class="border-t border-greyscale-200 p-3 flex-shrink-0">
-        {% if request.user.is_superuser %}
+        {% if perms.app.manage_developers %}
           {# Dev-only token/cost readout for the active thread #}
           <div x-data="chatUsage"
                x-cloak
-               class="flex items-center gap-1.5 mb-2 text-xs text-greyscale-400 select-none">
+               class="flex items-center gap-1.5 mb-2 text-xs text-greyscale-500 select-none">
             <span x-text="totalTokens"></span>
             <span>{% trans "tokens" %}</span>
             <span class="text-greyscale-300">·</span>
@@ -226,7 +227,7 @@
                 </span>
                 <span class="flex flex-col min-w-0">
                   <span class="text-xs font-medium text-greyscale-800 truncate max-w-36" x-text="att.name"></span>
-                  <span class="text-[10px] text-greyscale-400 leading-tight" x-text="att.sizeLabel"></span>
+                  <span class="text-2xs text-greyscale-500 leading-tight" x-text="att.sizeLabel"></span>
                 </span>
                 <button type="button"
                         x-bind:data-upload-id="att.id"
@@ -246,7 +247,7 @@
                       x-bind:disabled="streaming"
                       rows="2"
                       placeholder='{% trans "Type your message..." %}'
-                      class="block w-full resize-none rounded-lg border border-greyscale-300 py-2.5 pl-3 pr-12 text-sm leading-relaxed min-h-[4.5rem] max-h-40 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-primary-600 disabled:bg-greyscale-50"></textarea>
+                      class="block w-full resize-none rounded-lg border border-greyscale-300 py-2.5 pl-3 pr-12 text-sm leading-relaxed min-h-18 max-h-40 overflow-y-auto focus:outline-none focus:ring-2 focus:ring-primary-600 disabled:bg-greyscale-50"></textarea>
             <button type="submit"
                     x-bind:disabled="sendDisabled"
                     aria-label='{% trans "Send" %}'
@@ -261,7 +262,7 @@
               <c-atoms.icon name="paper-clip" class="w-3.5 h-3.5" />
               {% trans "Attach files" %}
             </button>
-            <p class="hidden sm:block text-xs text-greyscale-400 select-none">
+            <p class="hidden sm:block text-xs text-greyscale-500 select-none">
               {% trans "Press Enter to send, Shift + Enter for a new line." %}
             </p>
           </div>
@@ -269,13 +270,15 @@
       </div>
     </section>
     {# Right panel — briefcase (live agent state for now; collapses into the briefcase drawer below lg) #}
-    <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col min-h-0">
-      <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
-        <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
-      </div>
-      {% include "pages/chat/partials/_agent_state.html" %}
-    </aside>
+    {% if perms.app.manage_developers %}
+      <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-l border-greyscale-200 min-h-0">
+        <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
+          <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Briefcase" %}</h2>
+        </div>
+        {% include "pages/chat/partials/_agent_state.html" %}
+      </aside>
+    {% endif %}
     {# History drawer — the collapsed left panel. A slide-over on tablet, full takeover on phones. #}
     <div x-show="historyOpen"
          x-cloak
@@ -298,7 +301,7 @@
       <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
         <div class="flex items-center gap-1.5 min-w-0">
           <c-atoms.icon name="history" class="w-3.5 h-3.5 text-greyscale-400" />
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Recent Activity" %}</h2>
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Recent Activity" %}</h2>
         </div>
         <div class="flex items-center gap-1 flex-shrink-0">
           <button type="button"
@@ -324,33 +327,35 @@
          x-transition.opacity
          x-on:click="closeBriefcase"
          class="lg:hidden absolute inset-0 z-30 bg-greyscale-900/30 backdrop-blur-sm"></div>
-    <aside x-show="briefcaseOpen"
-           x-cloak
-           x-on:keydown.escape.window="closeBriefcase"
-           x-transition:enter="transition-transform duration-300 ease-out"
-           x-transition:enter-start="translate-x-full"
-           x-transition:enter-end="translate-x-0"
-           x-transition:leave="transition-transform duration-200 ease-in"
-           x-transition:leave-start="translate-x-0"
-           x-transition:leave-end="translate-x-full"
-           role="dialog"
-           aria-modal="true"
-           aria-label='{% trans "Briefcase" %}'
-           class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
-      <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
-        <div class="flex items-center gap-1.5 min-w-0">
-          <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
-          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
+    {% if perms.app.manage_developers %}
+      <aside x-show="briefcaseOpen"
+             x-cloak
+             x-on:keydown.escape.window="closeBriefcase"
+             x-transition:enter="transition-transform duration-300 ease-out"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition-transform duration-200 ease-in"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             role="dialog"
+             aria-modal="true"
+             aria-label='{% trans "Briefcase" %}'
+             class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
+        <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
+          <div class="flex items-center gap-1.5 min-w-0">
+            <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Briefcase" %}</h2>
+          </div>
+          <button type="button"
+                  x-on:click="closeBriefcase"
+                  aria-label='{% trans "Close" %}'
+                  class="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+            <c-atoms.icon name="x-mark" class="w-4 h-4" />
+          </button>
         </div>
-        <button type="button"
-                x-on:click="closeBriefcase"
-                aria-label='{% trans "Close" %}'
-                class="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
-          <c-atoms.icon name="x-mark" class="w-4 h-4" />
-        </button>
-      </div>
-      {% include "pages/chat/partials/_agent_state.html" %}
-    </aside>
+        {% include "pages/chat/partials/_agent_state.html" %}
+      </aside>
+    {% endif %}
     {# Delete confirmation modal #}
     <div x-show="confirmingDelete"
          x-cloak
@@ -439,7 +444,7 @@
             <span class="block mt-0.5 text-xs text-greyscale-500 pointer-events-none">
               {% trans "or" %} <span class="font-medium text-primary-600">{% trans "browse from your computer" %}</span>
             </span>
-            <span class="block mt-2 text-[11px] text-greyscale-400 pointer-events-none">
+            <span class="block mt-2 text-2xs text-greyscale-500 pointer-events-none">
               {% trans "PDF, Word, Excel, images & text — up to 20 MB each" %}
             </span>
           </button>
@@ -454,15 +459,15 @@
             <div class="flex items-center gap-2.5 rounded-lg border border-greyscale-200 bg-greyscale-50 px-3 py-2">
               <c-atoms.icon name="arrow-path" class="w-4 h-4 text-primary-600 animate-spin flex-shrink-0" />
               <span class="text-xs font-medium text-greyscale-700 truncate" x-text="p.name"></span>
-              <span class="ml-auto text-[10px] font-medium uppercase tracking-wide text-greyscale-400 flex-shrink-0">{% trans "Uploading…" %}</span>
+              <span class="ml-auto text-2xs font-medium uppercase tracking-wide text-greyscale-500 flex-shrink-0">{% trans "Uploading…" %}</span>
             </div>
           </template>
         </div>
         {# Library #}
         <div class="px-6 pt-4 pb-1">
           <div class="flex items-center justify-between mb-2">
-            <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Your files" %}</h4>
-            <span class="text-xs text-greyscale-400" x-text="uploadCountLabel"></span>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{% trans "Your files" %}</h4>
+            <span class="text-xs text-greyscale-500" x-text="uploadCountLabel"></span>
           </div>
           <div class="max-h-56 overflow-y-auto -mx-1 px-1 pt-1 pb-1">
             <div x-show="hasUploads" class="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
@@ -489,12 +494,12 @@
                           class="flex h-20 w-full flex-col items-center justify-center gap-1"
                           x-bind:class="upload.tileClass">
                       <c-atoms.icon name="document-text" class="w-6 h-6" />
-                      <span class="text-[9px] font-bold tracking-widest" x-text="upload.badge"></span>
+                      <span class="text-2xs font-bold tracking-widest" x-text="upload.badge"></span>
                     </span>
                     {# Meta #}
                     <span class="block px-2 py-1.5 border-t border-greyscale-100">
-                      <span class="block text-[11px] font-medium text-greyscale-800 truncate" x-text="upload.name"></span>
-                      <span class="block text-[10px] text-greyscale-400 truncate" x-text="upload.metaLabel"></span>
+                      <span class="block text-2xs font-medium text-greyscale-800 truncate" x-text="upload.name"></span>
+                      <span class="block text-2xs text-greyscale-500 truncate" x-text="upload.metaLabel"></span>
                     </span>
                   </button>
                   {# Permanent delete — the X expands into a confirm pill #}
@@ -508,7 +513,7 @@
                     <c-atoms.icon name="x-mark" class="w-3 h-3" x-show="upload.deleteIdle" />
                     <span x-show="upload.deleteArmed"
                           x-cloak
-                          class="text-[10px] font-semibold whitespace-nowrap leading-none">
+                          class="text-2xs font-semibold leading-none text-center">
                       {% trans "Confirm delete" %}
                     </span>
                   </button>
@@ -519,7 +524,7 @@
                  x-cloak
                  class="flex flex-col items-center justify-center py-8 text-center">
               <c-atoms.icon name="folder-open" class="w-7 h-7 text-greyscale-300 mb-2" />
-              <p class="text-xs text-greyscale-400">{% trans "No files yet — drop something above to get started." %}</p>
+              <p class="text-xs text-greyscale-500">{% trans "No files yet — drop something above to get started." %}</p>
             </div>
           </div>
         </div>
@@ -535,7 +540,7 @@
             <button type="button"
                     x-on:click="confirmAttach"
                     x-bind:disabled="attachDisabled"
-                    class="px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-greyscale-200 disabled:text-greyscale-400 cursor-pointer disabled:cursor-default transition-colors"
+                    class="px-3.5 py-2 rounded-lg text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:bg-greyscale-200 disabled:text-greyscale-500 cursor-pointer disabled:cursor-default transition-colors"
                     x-text="attachLabel"></button>
           </div>
         </div>
