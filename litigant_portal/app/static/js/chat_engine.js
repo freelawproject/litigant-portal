@@ -460,7 +460,10 @@ document.addEventListener('alpine:init', () => {
     // Sidebar status per thread id: 'streaming' | 'unseen' (finished in
     // the background and not yet viewed).
     threadStatus: {},
-    // Agent state for the active thread (pulled on load + as messages stream).
+    // Agent state for the active thread (pulled on load + as messages
+    // stream). Agent-specific companions (e.g. assistant.js) can nest
+    // inside this component, grab it via Alpine.$data like chatUsage
+    // does, and watch stateData to react to it.
     stateData: {},
     stateJson: '',
     hasState: false,

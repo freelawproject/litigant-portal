@@ -325,9 +325,8 @@
                        x-bind:class="chip.connectorClass"></div>
                   <button type="button"
                           x-bind:data-index="chip.index"
-                          x-bind:disabled="chip.disabled"
                           x-on:click="goToStep"
-                          class="relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold cursor-pointer transition-colors disabled:cursor-default"
+                          class="relative z-10 flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-semibold cursor-pointer transition-colors"
                           x-bind:class="chip.markerClass">
                     <span x-show="chip.showNumber" x-text="chip.number"></span>
                     <c-atoms.icon x-show="chip.showCheck" name="check" class="w-4 h-4" />
@@ -434,7 +433,7 @@
                class="min-w-0 text-xs text-red-600"
                x-text="interviewError"></p>
             <p x-show="showRequiredHint" class="min-w-0 text-xs text-greyscale-500">
-              {% trans "Answer the required questions to continue." %}
+              {% trans "Some required questions are still unanswered." %}
             </p>
             <button type="button"
                     x-on:click="next"

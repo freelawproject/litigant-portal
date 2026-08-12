@@ -9,6 +9,7 @@ from django.http import (
     HttpResponse,
     JsonResponse,
 )
+from django.urls import reverse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
@@ -26,6 +27,7 @@ from litigant_portal.app.services.topic_flow import (
     topic_flow_field_value,
     topic_flow_form_fill,
     topic_flow_packet,
+    topic_flow_progress,
 )
 
 
@@ -52,7 +54,10 @@ def _interview_field(field: TopicFlowField, values: dict) -> dict:
     raw = values.get(field.name, field.default)
     value = topic_flow_field_value(field=field, raw=raw)
     if field.data_type == TopicFlowField.DataType.BOOLEAN:
-        value = bool(value)
+        # None means "never answered" — kept distinct from False so the
+        # client neither counts untouched checkboxes as answered nor saves
+        # phantom False rows for them (posting null deletes, a no-op).
+        value = None if value is None else bool(value)
     elif field.data_type == TopicFlowField.DataType.DATETIME:
         value = _datetime_local(raw)
     elif isinstance(value, date):
@@ -67,6 +72,10 @@ def _interview_field(field: TopicFlowField, values: dict) -> dict:
         "required": field.required,
         "choices": field.choices,
         "value": value,
+        # Whether an answer is actually stored. Distinct from value, which
+        # merges in authored defaults so they prefill the wizard's inputs:
+        # a default is a suggestion, not progress.
+        "answered": field.name in values,
     }
 
 
@@ -133,6 +142,49 @@ def topic_flow_answers_view(
                 }
                 for row in topic_flow_deadline_rows(flow=flow, values=values)
             ],
+        }
+    )
+
+
+@require_GET
+@ratelimit(key="ip", rate="60/m", method="GET", block=True)
+def topic_flow_summary_view(
+    request: HttpRequest, topic_slug: str, flow_slug: str
+) -> JsonResponse:
+    """The flow's live status for the chat briefcase card: interview
+    progress plus its forms and download links."""
+    flow = _topic_flow(topic_slug, flow_slug)
+    values = topic_flow_answer_values(identity=request.identity, flow=flow)
+    answered, total = topic_flow_progress(flow=flow, values=values)
+    slugs = {"topic_slug": topic_slug, "flow_slug": flow_slug}
+    forms = [
+        {
+            "slug": form.slug,
+            "name": form.name,
+            "url": reverse(
+                "topic_flow_api:form",
+                kwargs={**slugs, "form_slug": form.slug},
+            ),
+        }
+        for form in flow.forms.all()
+    ]
+    return JsonResponse(
+        {
+            "topic_title": flow.topic.title,
+            "name": flow.name,
+            "url": reverse("pages:topic_flow", kwargs=slugs),
+            "progress": {
+                "answered": answered,
+                "total": total,
+                "label": _("%(answered)d of %(total)d answered")
+                % {"answered": answered, "total": total},
+            },
+            "forms": forms,
+            "packet_url": (
+                reverse("topic_flow_api:packet", kwargs=slugs)
+                if forms
+                else None
+            ),
         }
     )
 

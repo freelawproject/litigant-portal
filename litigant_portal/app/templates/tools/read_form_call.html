@@ -1,0 +1,9 @@
+{# ReadForm call card — spinner while the form is reviewed. Context: `args`. #}
+{% load i18n %}
+<div class="max-w-md rounded-lg border border-greyscale-200 bg-white px-3 py-2">
+  <span class="flex items-center gap-2">
+    <span class="w-3.5 h-3.5 rounded-full border-2 border-primary-100 border-t-primary-600 animate-spin flex-shrink-0"
+          aria-hidden="true"></span>
+    <span class="text-sm text-greyscale-700">{% trans "Reviewing the form…" %}</span>
+  </span>
+</div>

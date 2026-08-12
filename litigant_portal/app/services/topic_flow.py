@@ -235,6 +235,23 @@ def topic_flow_deadline_rows(*, flow: TopicFlow, values: dict) -> list[dict]:
     return rows
 
 
+def topic_flow_progress(*, flow: TopicFlow, values: dict) -> tuple[int, int]:
+    """(answered, total) across the flow's fields, mirroring the interview
+    wizard's counting: only stored answers count. Authored defaults prefill
+    the wizard (and resolve into forms) but are suggestions, not progress;
+    a stored False is a deliberate checkbox answer."""
+    total = 0
+    answered = 0
+    for field in flow.fields:
+        total += 1
+        value = topic_flow_field_value(
+            field=field, raw=values.get(field.name)
+        )
+        if value is not None:
+            answered += 1
+    return answered, total
+
+
 def topic_flow_sample_values(*, flow: TopicFlow) -> dict:
     """Per-data-type sample answers for the admin form preview."""
     values = {}
@@ -357,6 +374,49 @@ def topic_flow_form_fill(
 ) -> bytes:
     """Fill ``form``'s PDF from answer ``values`` via its mappings."""
     return _fill_form_pdf(form, _python_values(flow or form.flow, values))
+
+
+def topic_flow_form_status(
+    *, form: TopicFlowForm, values: dict, flow: TopicFlow | None = None
+) -> dict:
+    """How ``form`` currently resolves against answer ``values``:
+    each mapping with its resolved value, plus the flow field names its
+    templates reference that still have no answer (or default)."""
+    flow = flow or form.flow
+    resolved = _python_values(flow, values)
+    mappings = [
+        {
+            "pdf_field": mapping.pdf_field,
+            "template": mapping.template,
+            "value": _resolve_template(mapping.template, resolved),
+        }
+        for mapping in form.mappings.all()
+    ]
+    referenced = set()
+    for mapping in form.mappings.all():
+        for _, field_name, _, _ in _FORMATTER.parse(mapping.template or ""):
+            if field_name:
+                referenced.add(field_name.split(".")[0].split("[")[0])
+    flow_field_names = {field.name for field in flow.fields}
+    missing = sorted(
+        (referenced & flow_field_names) - set(resolved)
+    )
+    return {"mappings": mappings, "missing_fields": missing}
+
+
+def topic_flow_form_text(*, form: TopicFlowForm, max_chars: int = 8000) -> str:
+    """The form PDF's extracted text, truncated to ``max_chars``."""
+    parts = []
+    with form.file.open("rb") as fh:
+        for page in PdfReader(fh).pages:
+            try:
+                parts.append(page.extract_text() or "")
+            except Exception:
+                parts.append("")
+    text = "\n".join(parts).strip()
+    if len(text) > max_chars:
+        text = text[:max_chars].rstrip() + "\n[form text truncated]"
+    return text
 
 
 def topic_flow_packet(*, flow: TopicFlow, values: dict) -> bytes:

@@ -30,19 +30,13 @@ const INPUT_TYPES = {
   number: 'number',
 }
 
-// A required field counts as answered once it holds something. false is a
-// deliberate answer to a checkbox, so booleans are always considered answered.
+// A field counts as answered when an answer is stored (the server sends
+// `answered` alongside the default-merged value) or the user has edited it
+// this session (setAnswer keeps the flag current). Authored defaults
+// prefill inputs but are suggestions, not answers — so a fresh flow shows
+// zero progress even when some inputs arrive prefilled.
 function isAnswered(field) {
-  if (field.dataType === 'boolean') return true
-  return String(field.value ?? '').trim() !== ''
-}
-
-// Whether a field holds anything the server would have stored. Distinct from
-// isAnswered: an untouched checkbox satisfies "required" but is nothing to
-// clear, so Clear stays hidden until there's actually something to wipe.
-function hasValue(field) {
-  if (field.dataType === 'boolean') return field.value === true
-  return String(field.value ?? '').trim() !== ''
+  return field.answered === true
 }
 
 // "Step {current} of {total}" -> "Step 2 of 5". Counted strings come from
@@ -74,9 +68,6 @@ document.addEventListener('alpine:init', () => {
     interviewReady: false,
     steps: [],
     stepIndex: 0,
-    // Furthest step reached this session — the stepper lets you jump back to
-    // anything you've seen, but never skip forward past the Next gate.
-    maxVisited: 0,
     // Never null: the modal's bindings walk these paths before init() lands.
     step: {
       title: '',
@@ -152,9 +143,11 @@ document.addEventListener('alpine:init', () => {
         return
       }
       this.hasInterview = this.steps.length > 0
+      // Seed only stored answers: an untouched prefilled default must not
+      // ride along on the next save and silently become a stored answer.
       for (const step of this.steps) {
         for (const field of step.fields) {
-          this.answers[field.name] = field.value
+          if (field.answered) this.answers[field.name] = field.value
         }
       }
       this.refreshInterview()
@@ -184,7 +177,9 @@ document.addEventListener('alpine:init', () => {
 
     // --- Interview state ---------------------------------------------
 
-    // Every required field on a step must be answered before Next unlocks.
+    // Whether a step's required fields are all answered. Purely a signal
+    // (chip check marks, the footer hint) — nothing gates on it, since the
+    // interview lets people move freely and come back to gaps later.
     stepIsComplete(step) {
       return step.fields.every((f) => !f.required || isAnswered(f))
     },
@@ -245,8 +240,6 @@ document.addEventListener('alpine:init', () => {
           // A tick replaces the number on a finished step you're not on.
           showCheck: done && !isCurrent,
           showNumber: !(done && !isCurrent),
-          clickable: index <= this.maxVisited,
-          disabled: index > this.maxVisited,
           markerClass: isCurrent
             ? 'border-primary-600 bg-primary-600 text-white'
             : done
@@ -271,11 +264,13 @@ document.addEventListener('alpine:init', () => {
       this.refreshProgress()
     },
 
-    // The Next/Finish button's gate and which label shows. Split out because
-    // `saving` and answer edits move it without rebuilding the whole step.
+    // The Next/Finish button's state and which label shows. Split out
+    // because `saving` and answer edits move it without rebuilding the
+    // whole step. Unanswered required fields only show the hint — they
+    // never block Next.
     syncNext() {
       const complete = this.stepIsComplete(this.steps[this.stepIndex])
-      this.nextDisabled = !complete || this.saving
+      this.nextDisabled = this.saving
       this.showRequiredHint = !complete
       this.showNextLabel = !this.saving && !this.isLastStep
       this.showFinishLabel = !this.saving && this.isLastStep
@@ -294,7 +289,7 @@ document.addEventListener('alpine:init', () => {
       this.progressStyle = {
         width: total ? `${Math.round((answered / total) * 100)}%` : '0%',
       }
-      this.hasAnswers = fields.some((f) => hasValue(f))
+      this.hasAnswers = fields.some((f) => isAnswered(f))
     },
 
     // --- Interview actions -------------------------------------------
@@ -307,7 +302,6 @@ document.addEventListener('alpine:init', () => {
       // Always reopen at the beginning: answers persist, wizard position
       // deliberately doesn't.
       this.stepIndex = 0
-      this.maxVisited = 0
       this.interviewError = ''
       this.interviewOpen = true
       this.refreshInterview()
@@ -339,10 +333,13 @@ document.addEventListener('alpine:init', () => {
       const value = el.type === 'checkbox' ? el.checked : el.value
       this.answers[name] = value
       // Write through to the step definition so the decorated copy, the
-      // progress count, and the Next gate all see it.
+      // progress count, and the completeness signals all see it.
       for (const step of this.steps) {
         for (const field of step.fields) {
-          if (field.name === name) field.value = value
+          if (field.name !== name) continue
+          field.value = value
+          field.answered =
+            el.type === 'checkbox' || String(value ?? '').trim() !== ''
         }
       }
       this.syncNext()
@@ -350,9 +347,13 @@ document.addEventListener('alpine:init', () => {
       this.interviewError = ''
     },
 
+    // Jump anywhere from the stepper. The save is fire-and-forget: every
+    // save posts the whole answers map, so a failure here loses nothing —
+    // the next save (Next, close, another jump) carries the same answers.
     goToStep(e) {
       const index = Number(e.currentTarget.dataset.index)
-      if (Number.isNaN(index) || index > this.maxVisited) return
+      if (Number.isNaN(index) || index === this.stepIndex) return
+      this.saveAnswers()
       this.stepIndex = index
       this.interviewError = ''
       this.refreshInterview()
@@ -371,7 +372,7 @@ document.addEventListener('alpine:init', () => {
     // with the error showing — advancing past answers we didn't persist is
     // exactly the silent data loss this flow is supposed to prevent.
     async next() {
-      if (this.nextDisabled) return
+      if (this.saving) return
       const saved = await this.saveAnswers()
       if (!saved) return
       if (this.isLastStep) {
@@ -379,7 +380,6 @@ document.addEventListener('alpine:init', () => {
         return
       }
       this.stepIndex += 1
-      this.maxVisited = Math.max(this.maxVisited, this.stepIndex)
       this.refreshInterview()
       this.focusFirstField()
     },
@@ -448,16 +448,14 @@ document.addEventListener('alpine:init', () => {
       }
       try {
         const data = await this.postAnswers(blank)
-        for (const step of this.steps) {
-          for (const field of step.fields) {
-            field.value = field.dataType === 'boolean' ? false : ''
-            this.answers[field.name] = field.value
-          }
-        }
-        this.stepIndex = 0
-        this.maxVisited = 0
-        this.interviewError = ''
         this.applyDeadlines(data.deadlines || [])
+        // Re-fetch instead of blanking locally: the server re-merges
+        // authored field defaults into the interview, so this is the only
+        // way the post-clear view matches what a refresh would show.
+        this.answers = {}
+        await this.loadInterview()
+        this.stepIndex = 0
+        this.interviewError = ''
         this.refreshInterview()
         this.clearOpen = false
       } catch (err) {

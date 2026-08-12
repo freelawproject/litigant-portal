@@ -82,6 +82,11 @@ topic_flow_api_patterns = [
         name="answers",
     ),
     path(
+        "<slug:topic_slug>/<slug:flow_slug>/summary/",
+        topic_flow_views.topic_flow_summary_view,
+        name="summary",
+    ),
+    path(
         "<slug:topic_slug>/<slug:flow_slug>/packet/",
         topic_flow_views.topic_flow_packet_view,
         name="packet",
