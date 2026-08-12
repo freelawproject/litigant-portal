@@ -11,61 +11,6 @@
     </a>
     <div class="flex items-center gap-1 sm:gap-2">
       <c-molecules.user-menu class="hidden sm:flex" />
-      {% if deployment_env != "prod" %}
-        {% trans "Dev tools" as dev_tools_label %}
-        <div x-data="devMenu" class="relative">
-          <c-atoms.button type="button" variant="ghost" aria_label="{{ dev_tools_label }}" class="!p-2" x-on:click="toggle" x-bind:aria-expanded="open" aria-haspopup="true">
-          <c-atoms.icon name="bars-3" class="w-6 h-6" />
-          </c-atoms.button>
-          <div x-show="open"
-               x-cloak
-               x-on:click.outside="close"
-               x-on:keydown.escape.window="close"
-               x-transition:enter="transition ease-out duration-100"
-               x-transition:enter-start="opacity-0 scale-95"
-               x-transition:enter-end="opacity-100 scale-100"
-               x-transition:leave="transition ease-in duration-75"
-               x-transition:leave-start="opacity-100 scale-100"
-               x-transition:leave-end="opacity-0 scale-95"
-               class="absolute right-0 mt-2 w-max bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50"
-               role="menu"
-               aria-orientation="vertical">
-            {# User-language label: it erases chat + case and reloads. When a prod #}
-            {# site menu lands (#120), this item rides into it for real users. #}
-            <button type="button" x-on:click="resetDemo" class="flex items-center gap-2 w-full px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
-              <c-atoms.icon name="arrow-path" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Start over" %}
-            </button>
-            <a href="{% url 'pages:topic_flow' topic_slug='adult-name-change' flow_slug='standard' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
-              <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Demo: Name Change — Standard" %}
-            </a>
-            <a href="{% url 'pages:topic_flow' topic_slug='adult-name-change' flow_slug='waiver' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
-              <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Demo: Name Change — Waiver" %}
-            </a>
-            <a href="{% url 'pages:topic_flow' topic_slug='eviction' flow_slug='landlord' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
-              <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Demo: Eviction — Landlord" %}
-            </a>
-            <a href="{% url 'pages:topic_flow' topic_slug='eviction' flow_slug='tenant' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
-              <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Demo: Eviction — Tenant" %}
-            </a>
-            <a href="{% url 'pages:style_guide' %}" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
-              <c-atoms.icon name="swatch" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Style Guide" %}
-            </a>
-            <a href="https://github.com/freelawproject/litigant-portal/issues/new" target="_blank" rel="noopener" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100" role="menuitem">
-              <c-atoms.icon name="chat-bubble-left-ellipsis" class="w-5 h-5 text-greyscale-500" />
-              {% trans "Feedback" %}
-            </a>
-            <div class="border-t border-greyscale-200 mt-1 px-4 py-2 text-xs text-greyscale-400 tabular-nums" aria-label="{% trans "Build time" %}">
-              {{ app_build_time }}
-            </div>
-          </div>
-        </div>
-      {% endif %}
     </div>
   </div>
 </header>

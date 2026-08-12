@@ -151,22 +151,6 @@
       {# inside the scroll clip; the wider pr/-mr pair does the same on #}
       {# the right while pushing the scrollbar into the page padding. #}
       <aside class="relative order-first lg:order-none w-full lg:w-80 xl:w-88 flex-shrink-0 min-h-0 lg:overflow-y-auto lg:[scrollbar-gutter:stable] py-8 space-y-6 lg:pl-2 lg:-ml-2 lg:pr-4 lg:-mr-4">
-        {% if interview_url %}
-          {# Temporary link-out to the hardcoded DocAssemble demo interview #}
-          {# — see _DOCASSEMBLE_DEMO_URLS in views/pages.py. Demoted to an #}
-          {# outline button now that the real interview owns the primary #}
-          {# action below. #}
-          <c-atoms.button
-            href="{{ interview_url }}"
-            variant="outline"
-            target="_blank"
-            rel="noopener"
-          >
-            <c-atoms.icon name="arrow-top-right-on-square" class="w-4 h-4" />
-            {% trans "DocAssemble demo" %}
-            <span class="sr-only">{% trans "(opens in a new tab)" %}</span>
-          </c-atoms.button>
-        {% endif %}
         {% if has_interview %}
           {# Interview launcher. The questions themselves live in the modal #}
           {# at the foot of this page — the rail only shows how far along #}

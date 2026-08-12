@@ -58,19 +58,6 @@ def chat_view(request):
     return render(request, "pages/chat/index.html")
 
 
-# Temp demo URLs for hard-coded Docassemble flows
-DOCASSEMBLE_DEMO_URLS = {
-    ("adult-name-change", "standard"): (
-        "https://qa.litigantportal.com/interview/interview"
-        "?i=docassemble.playground1:petition-standard.yml"
-    ),
-    ("adult-name-change", "waiver"): (
-        "https://qa.litigantportal.com/interview/interview"
-        "?i=docassemble.playground1:petition-waiver.yml"
-    ),
-}
-
-
 def topic_flow_detail(request, topic_slug, flow_slug):
     """Public Topic Flow page: sections, interview, deadlines, and downloads."""
     try:
@@ -118,9 +105,6 @@ def topic_flow_detail(request, topic_slug, flow_slug):
             "contacts": contact_list(),
             "resources": resource_list(),
             "has_forms": bool(forms),
-            "interview_url": DOCASSEMBLE_DEMO_URLS.get(
-                (topic_slug, flow_slug)
-            ),
             "packet_url": reverse("topic_flow_api:packet", kwargs=slugs),
             "answers_url": reverse("topic_flow_api:answers", kwargs=slugs),
             "calendar_url": reverse("topic_flow_api:calendar", kwargs=slugs),

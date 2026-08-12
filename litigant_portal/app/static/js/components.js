@@ -31,37 +31,6 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
-  // Dev menu (header dropdown — visible in dev + QA only)
-  // ===========================================================================
-
-  Alpine.data('devMenu', () => ({
-    open: false,
-    toggle() {
-      this.open = !this.open
-    },
-    close() {
-      this.open = false
-    },
-    async resetDemo() {
-      const csrfToken =
-        document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-        document.cookie
-          .split(';')
-          .find((c) => c.trim().startsWith('csrftoken='))
-          ?.split('=')[1] ||
-        ''
-      const formData = new FormData()
-      formData.append('csrfmiddlewaretoken', csrfToken)
-      try {
-        await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
-      } catch (e) {
-        console.error('Failed to reset demo:', e)
-      }
-      location.reload()
-    },
-  }))
-
-  // ===========================================================================
   // Action plan page (print button)
   // ===========================================================================
 
