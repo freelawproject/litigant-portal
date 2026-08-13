@@ -3,10 +3,14 @@
 // LitigantAssistant agent — like the briefcase's active-guide card —
 // lives here instead.
 //
-// assistantBriefcase nests inside the chatApp component (its x-data sits
-// on the briefcase markup) and grabs the engine's data with Alpine.$data,
+// assistantBriefcase nests inside a host component marked with the
+// data-briefcase-host attribute (chatApp on the chat page, simulateApp on
+// the admin simulate tab) and grabs the host's data with Alpine.$data,
 // the same pattern chatUsage uses — under the CSP build, `this` inside a
 // component's methods only sees its own data, never the parent scope.
+// The host contract: a `stateData` object (the agent thread state), plus
+// an optional `resolveSummaryUrl(ref)` override for hosts whose flow
+// summaries must be fetched for someone else's identity.
 
 // Blank card so the CSP-safe dot-paths in the template never hit null.
 function blankFlowCard() {
@@ -55,13 +59,27 @@ document.addEventListener('alpine:init', () => {
     flowCard: blankFlowCard(),
     hasFlowCard: false,
     flowCardFetchUrl: '',
+    // Debug view of the raw agent state (the briefcase's fallback body).
+    stateJson: '',
+    hasState: false,
+    noState: true,
     app: null,
 
     init() {
-      // `stateData` belongs to the enclosing chat component; watching it
+      // `stateData` belongs to the enclosing host component; watching it
       // refreshes the card on thread loads and as tool calls stream state.
-      this.app = Alpine.$data(this.$root.closest('[x-data="chatApp"]'))
-      this.$watch('app.stateData', () => this.refreshFlowCard())
+      this.app = Alpine.$data(this.$root.closest('[data-briefcase-host]'))
+      this.$watch('app.stateData', () => this.refresh())
+      this.refresh()
+    },
+
+    // Everything the briefcase renders derives from the host's stateData,
+    // computed here so the partial's bindings all live on this component.
+    refresh() {
+      const state = (this.app && this.app.stateData) || {}
+      this.stateJson = prettyJson(state)
+      this.hasState = Object.keys(state).length > 0
+      this.noState = !this.hasState
       this.refreshFlowCard()
     },
 
@@ -71,7 +89,11 @@ document.addEventListener('alpine:init', () => {
     async refreshFlowCard() {
       const state = (this.app && this.app.stateData) || {}
       const ref = state.active_topic_flow
-      const url = ref && ref.summary_url
+      const url =
+        ref &&
+        (this.app.resolveSummaryUrl
+          ? this.app.resolveSummaryUrl(ref)
+          : ref.summary_url)
       if (!url) {
         this.hasFlowCard = false
         this.flowCard = blankFlowCard()

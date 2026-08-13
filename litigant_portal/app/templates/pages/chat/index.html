@@ -17,6 +17,7 @@
 {% block content %}
   {# The chat component is agent-agnostic: point it at any agent's API mount. #}
   <div x-data="chatApp"
+       data-briefcase-host
        data-agent-base="/api/agents/assistant/"
        class="relative overflow-hidden flex-1 flex flex-row min-h-0">
     {# Left panel — conversation history (collapses into the history drawer below lg) #}
@@ -93,101 +94,7 @@
         </div>
       </div>
       {# Messages #}
-      <div x-ref="messagesArea" class="flex-1 overflow-y-auto min-h-0 p-4 space-y-3">
-        <template x-for="message in messages" :key="message.id">
-          <div class="flex flex-col" x-bind:class="message.rowClass">
-            {# Tool part — call/result cards #}
-            <div x-show="message.isTool" x-cloak class="w-full max-w-[80%] space-y-1.5">
-              {# Custom call card (e.g. a spinner), only while in flight #}
-              <div x-show="message.showCallCustom" x-html="message.callHtml"></div>
-              {# Default call card — the tool's input as a JSON box #}
-              <div x-show="message.showCallDefault"
-                   class="rounded-lg border border-greyscale-200 bg-greyscale-50 overflow-hidden">
-                <div class="flex items-center justify-between px-3 py-1.5 border-b border-greyscale-200 bg-white">
-                  <span class="text-xs font-medium text-greyscale-700" x-text="message.name"></span>
-                  <span class="flex items-center gap-2">
-                    <span x-show="message.pending" class="flex gap-1">
-                      <span class="typing-dot"></span>
-                      <span class="typing-dot"></span>
-                      <span class="typing-dot"></span>
-                    </span>
-                    <span class="text-[10px] font-medium uppercase tracking-wide text-greyscale-400">{% trans "args" %}</span>
-                  </span>
-                </div>
-                <pre class="px-3 py-2 text-xs text-greyscale-600 overflow-x-auto whitespace-pre-wrap break-words" x-text="message.argsJson"></pre>
-              </div>
-              {# Custom result card #}
-              <div x-show="message.showResultCustom" x-html="message.resultHtml"></div>
-              {# Default result card — the tool's render data as a JSON box #}
-              <div x-show="message.showResultDefault"
-                   class="rounded-lg border border-greyscale-200 bg-greyscale-50 overflow-hidden">
-                <div class="flex items-center justify-between px-3 py-1.5 border-b border-greyscale-200 bg-white">
-                  <span class="text-xs font-medium text-greyscale-700" x-text="message.name"></span>
-                  <span class="text-[10px] font-medium uppercase tracking-wide text-greyscale-400">{% trans "result" %}</span>
-                </div>
-                <pre class="px-3 py-2 text-xs text-greyscale-600 overflow-x-auto whitespace-pre-wrap break-words" x-text="message.renderDataJson"></pre>
-              </div>
-            </div>
-            {# Attachments riding on a sent user message #}
-            <div x-show="message.hasAtts" x-cloak class="flex flex-wrap justify-end gap-1.5 mb-1 max-w-[80%]">
-              <template x-for="att in message.attachments" :key="att.id">
-                <div class="flex items-center gap-1.5 pl-1 pr-2 py-1 rounded-lg border border-greyscale-200 bg-white shadow-sm">
-                  <img x-show="att.isImage"
-                       x-cloak
-                       x-bind:src="att.url"
-                       x-bind:alt="att.name"
-                       class="w-6 h-6 rounded object-cover flex-shrink-0" />
-                  <span x-show="att.notImage"
-                        class="inline-flex items-center justify-center w-6 h-6 rounded flex-shrink-0"
-                        x-bind:class="att.tileClass">
-                    <c-atoms.icon name="document-text" class="w-3.5 h-3.5" />
-                  </span>
-                  <span class="text-xs font-medium text-greyscale-700 truncate max-w-40" x-text="att.name"></span>
-                </div>
-              </template>
-            </div>
-            {# Text part — user / assistant bubble #}
-            <div x-show="message.notTool"
-                 class="max-w-[80%] rounded-lg px-3 py-2 text-sm break-words"
-                 x-bind:class="message.bubbleClass">
-              <div x-show="message.isAssistant" x-html="message.html"></div>
-              <div x-show="message.isUser" x-text="message.content" class="whitespace-pre-wrap"></div>
-            </div>
-            <div x-show="message.notTool"
-                 class="mt-1 flex items-center gap-2 text-xs leading-none text-greyscale-400 select-none">
-              <button type="button"
-                      x-bind:data-message-id="message.id"
-                      x-on:click="copyMessage"
-                      aria-label="{% trans "Copy message" %}"
-                      title="{% trans "Copy message" %}"
-                      class="inline-flex items-center gap-1 hover:text-greyscale-600 cursor-pointer">
-                <c-atoms.icon name="document-duplicate" class="w-3.5 h-3.5" x-show="message.notCopied" />
-                <span x-show="message.copied"
-                      x-cloak
-                      class="inline-flex items-center gap-1 text-green-600">
-                  <c-atoms.icon name="check" class="w-3.5 h-3.5" />
-                  {% trans "Copied" %}
-                </span>
-              </button>
-            </div>
-          </div>
-        </template>
-        {# Thinking indicator while awaiting the next token / step #}
-        <div x-show="thinkingVisible" x-cloak class="flex items-start">
-          <div class="rounded-lg px-3 py-2 bg-greyscale-100">
-            <div class="flex gap-1 py-1" aria-label='{% trans "Assistant is thinking" %}'>
-              <span class="typing-dot"></span>
-              <span class="typing-dot"></span>
-              <span class="typing-dot"></span>
-            </div>
-          </div>
-        </div>
-        <div x-show="conversationEmpty"
-             x-cloak
-             class="h-full flex items-center justify-center">
-          <p class="text-sm text-greyscale-400">{% trans "Send a message to start a conversation." %}</p>
-        </div>
-      </div>
+      <c-organisms.chat-messages />
       {# Input #}
       <div class="border-t border-greyscale-200 p-3 flex-shrink-0">
         {% if request.user.is_superuser %}

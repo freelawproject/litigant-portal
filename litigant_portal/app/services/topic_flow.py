@@ -244,9 +244,7 @@ def topic_flow_progress(*, flow: TopicFlow, values: dict) -> tuple[int, int]:
     answered = 0
     for field in flow.fields:
         total += 1
-        value = topic_flow_field_value(
-            field=field, raw=values.get(field.name)
-        )
+        value = topic_flow_field_value(field=field, raw=values.get(field.name))
         if value is not None:
             answered += 1
     return answered, total
@@ -394,13 +392,12 @@ def topic_flow_form_status(
     ]
     referenced = set()
     for mapping in form.mappings.all():
-        for _, field_name, _, _ in _FORMATTER.parse(mapping.template or ""):
+        for parsed in _FORMATTER.parse(mapping.template or ""):
+            field_name = parsed[1]
             if field_name:
                 referenced.add(field_name.split(".")[0].split("[")[0])
     flow_field_names = {field.name for field in flow.fields}
-    missing = sorted(
-        (referenced & flow_field_names) - set(resolved)
-    )
+    missing = sorted((referenced & flow_field_names) - set(resolved))
     return {"mappings": mappings, "missing_fields": missing}
 
 

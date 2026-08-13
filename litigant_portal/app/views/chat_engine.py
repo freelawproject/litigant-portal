@@ -24,8 +24,14 @@ def stream(
     agent_class: type[Agent],
     thread_type: str,
     model: str,
+    identity=None,
 ):
-    """Stream an agent reply for a message within a thread."""
+    """Stream an agent reply for a message within a thread.
+
+    ``identity`` defaults to the requester's; a caller may pass another
+    identity it is authorized to act for (e.g. a simulated user's).
+    """
+    identity = identity or request.identity
     message = request.POST.get("message", "").strip()
     thread_id = request.POST.get("thread_id") or None
     attachment_ids = request.POST.getlist("attachment_ids")
@@ -41,7 +47,7 @@ def stream(
         except ValueError:
             return JsonResponse({"error": _("Invalid attachment")}, status=400)
         owned = (
-            user_upload_list(identity=request.identity)
+            user_upload_list(identity=identity)
             .filter(id__in=attachment_ids)
             .count()
         )
@@ -50,7 +56,7 @@ def stream(
 
     try:
         return chat_stream(
-            identity=request.identity,
+            identity=identity,
             message=message,
             thread_id=thread_id,
             attachment_ids=attachment_ids or None,
@@ -62,7 +68,9 @@ def stream(
         return JsonResponse({"error": _("Thread not found")}, status=404)
 
 
-def thread_list(request: HttpRequest, *, thread_type: str) -> JsonResponse:
+def thread_list(
+    request: HttpRequest, *, thread_type: str, identity=None
+) -> JsonResponse:
     """List the identity's threads for this surface."""
     threads = [
         {
@@ -74,7 +82,7 @@ def thread_list(request: HttpRequest, *, thread_type: str) -> JsonResponse:
             ).isoformat(),
         }
         for thread in chat_thread_list(
-            identity=request.identity, thread_type=thread_type
+            identity=identity or request.identity, thread_type=thread_type
         )
     ]
     return JsonResponse({"threads": threads})
@@ -86,11 +94,12 @@ def message_list(
     *,
     agent_class: type[Agent],
     thread_type: str,
+    identity=None,
 ) -> JsonResponse:
     """Load a thread's messages and state so the frontend can render it."""
     try:
         thread = chat_thread_get(
-            identity=request.identity,
+            identity=identity or request.identity,
             thread_id=thread_id,
             thread_type=thread_type,
         )

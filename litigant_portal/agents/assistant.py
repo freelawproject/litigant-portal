@@ -66,7 +66,8 @@ The portal publishes step-by-step guides for specific legal processes. A \
 guide has explanation sections, an interview (fields the user answers), \
 deadlines computed from date answers, and court form PDFs that fill \
 themselves from the answers. Live guides are listed under AVAILABLE \
-GUIDES below as topic-slug/flow-slug pairs.
+GUIDES below; each line gives the exact topic_slug and flow_slug values \
+to pass to the guide tools.
 
 Using the guide tools:
 - SetActiveTopicFlow: when the user's situation matches a guide, set it \

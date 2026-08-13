@@ -16,6 +16,9 @@ from litigant_portal.app.views import (
     pages,
 )
 from litigant_portal.app.views import (
+    simulate as simulate_views,
+)
+from litigant_portal.app.views import (
     topic_flow as topic_flow_views,
 )
 
@@ -351,6 +354,79 @@ admin_api_patterns = [
     ),
 ]
 
+simulate_api_patterns = [
+    path(
+        "users/",
+        simulate_views.simulated_user_list_view,
+        name="user_list",
+    ),
+    path(
+        "users/create/",
+        simulate_views.simulated_user_create_view,
+        name="user_create",
+    ),
+    path(
+        "users/<uuid:sim_id>/update/",
+        simulate_views.simulated_user_update_view,
+        name="user_update",
+    ),
+    path(
+        "users/<uuid:sim_id>/delete/",
+        simulate_views.simulated_user_delete_view,
+        name="user_delete",
+    ),
+    path(
+        "users/<uuid:sim_id>/uploads/",
+        simulate_views.simulated_upload_list_view,
+        name="upload_list",
+    ),
+    path(
+        "users/<uuid:sim_id>/uploads/create/",
+        simulate_views.simulated_upload_create_view,
+        name="upload_create",
+    ),
+    path(
+        "users/<uuid:sim_id>/uploads/<uuid:upload_id>/delete/",
+        simulate_views.simulated_upload_delete_view,
+        name="upload_delete",
+    ),
+    path(
+        "users/<uuid:sim_id>/runs/",
+        simulate_views.simulation_run_list_view,
+        name="run_list",
+    ),
+    path(
+        "users/<uuid:sim_id>/runs/create/",
+        simulate_views.simulation_run_create_view,
+        name="run_create",
+    ),
+    path(
+        "users/<uuid:sim_id>/threads/<uuid:thread_id>/",
+        simulate_views.simulation_thread_view,
+        name="thread",
+    ),
+    path(
+        "users/<uuid:sim_id>/threads/<uuid:thread_id>/delete/",
+        simulate_views.simulation_thread_delete_view,
+        name="thread_delete",
+    ),
+    path(
+        "users/<uuid:sim_id>/topic-flow/<slug:topic_slug>/<slug:flow_slug>/summary/",
+        simulate_views.simulation_topic_flow_summary_view,
+        name="topic_flow_summary",
+    ),
+    path(
+        "users/<uuid:sim_id>/assistant/stream/",
+        simulate_views.simulation_assistant_stream_view,
+        name="assistant_stream",
+    ),
+    path(
+        "users/<uuid:sim_id>/actor/stream/",
+        simulate_views.simulation_actor_stream_view,
+        name="actor_stream",
+    ),
+]
+
 urlpatterns = [
     # App Routes
     *i18n_patterns(
@@ -382,6 +458,14 @@ urlpatterns = [
         include(
             (admin_api_patterns, "litigant_portal.app"),
             namespace="admin_api",
+        ),
+    ),
+    # Admin Simulate API Endpoints
+    path(
+        "api/admin/simulate/",
+        include(
+            (simulate_api_patterns, "litigant_portal.app"),
+            namespace="simulate_api",
         ),
     ),
     # Health check

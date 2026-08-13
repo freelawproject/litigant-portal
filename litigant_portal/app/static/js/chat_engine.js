@@ -287,14 +287,16 @@ function computeToolFlags(t) {
 }
 
 // A tool part from a live `tool_call` event (result fills in later).
-function makeToolFromCall(event) {
+// `forceDefault` ignores the tool's custom templates and renders the raw
+// JSON cards instead — dev-harness surfaces opt in.
+function makeToolFromCall(event, forceDefault) {
   return computeToolFlags({
     ...blankMessage(),
     id: ++messageSeq,
     toolId: event.id,
     name: event.name,
     argsJson: prettyJson(event.args || {}),
-    callMode: event.render_mode,
+    callMode: forceDefault ? 'default' : event.render_mode,
     callHtml: event.render_html || '',
     resultMode: 'pending',
     resultHtml: '',
@@ -305,16 +307,16 @@ function makeToolFromCall(event) {
 }
 
 // A completed tool part from a reloaded thread's render item.
-function makeToolFromItem(item) {
+function makeToolFromItem(item, forceDefault) {
   return computeToolFlags({
     ...blankMessage(),
     id: ++messageSeq,
     toolId: item.id,
     name: item.name,
     argsJson: prettyJson(item.args || {}),
-    callMode: item.call_render_mode,
+    callMode: forceDefault ? 'default' : item.call_render_mode,
     callHtml: item.call_render_html || '',
-    resultMode: item.result_render_mode,
+    resultMode: forceDefault ? 'default' : item.result_render_mode,
     resultHtml: item.result_render_html || '',
     renderDataJson: prettyJson(item.render_data),
     status: 'done',
@@ -323,8 +325,8 @@ function makeToolFromItem(item) {
 }
 
 // Build a render item (from the reload endpoint) into a message/tool part.
-function buildItem(item) {
-  if (item.kind === 'tool') return makeToolFromItem(item)
+function buildItem(item, forceDefaultToolCards) {
+  if (item.kind === 'tool') return makeToolFromItem(item, forceDefaultToolCards)
   return makeMessage(
     item.kind,
     item.content,
@@ -463,11 +465,9 @@ document.addEventListener('alpine:init', () => {
     // Agent state for the active thread (pulled on load + as messages
     // stream). Agent-specific companions (e.g. assistant.js) can nest
     // inside this component, grab it via Alpine.$data like chatUsage
-    // does, and watch stateData to react to it.
+    // does, and watch stateData to react to it — presentation of the
+    // state is theirs, the engine only carries the data.
     stateData: {},
-    stateJson: '',
-    hasState: false,
-    noState: true,
     // Attach-files modal + attachments riding on the next message.
     attachOpen: false,
     uploads: [],
@@ -885,9 +885,6 @@ document.addEventListener('alpine:init', () => {
     // Pull in agent state (on load and as the stream reports changes).
     setState(state) {
       this.stateData = state || {}
-      this.stateJson = prettyJson(this.stateData)
-      this.hasState = !!state && Object.keys(state).length > 0
-      this.noState = !this.hasState
     },
 
     // Show the standalone thinking row while waiting, unless a tool spinner or

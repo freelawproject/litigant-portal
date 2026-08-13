@@ -28,11 +28,10 @@
       </div>
       {% include "pages/admin/_nav.html" %}
     </aside>
-    {# Center panel — active tab content. The center/right divider lives #}
-    {# on the right rail below (settings only) so empty rails stay #}
-    {# invisible — restore lg:border-r here once every tab has rail #}
-    {# content. #}
-    <section class="flex-1 min-w-0 flex flex-col min-h-0">
+    {# Center panel — active tab content. Carries the center/right divider #}
+    {# on every tab (mirroring pages/chat), so the frame reads the same #}
+    {# even while a tab's rail is blank. #}
+    <section class="flex-1 min-w-0 flex flex-col min-h-0 lg:border-r border-greyscale-200">
       {# Mobile toolbar — drawer triggers (side panels collapse below lg) #}
       <div class="lg:hidden flex items-center justify-between gap-2 px-4 py-2 border-b border-greyscale-200 flex-shrink-0 min-h-[3.25rem]">
         <div class="flex items-center gap-2 min-w-0">
@@ -47,6 +46,7 @@
             <span x-show="tabActive.settings">{% trans "Settings" %}</span>
             <span x-show="tabActive.users" x-cloak>{% trans "Users" %}</span>
             <span x-show="tabActive.knowledge" x-cloak>{% trans "Knowledge Base" %}</span>
+            <span x-show="tabActive.simulate" x-cloak>{% trans "Simulate" %}</span>
           </h2>
         </div>
         {# Library drawer trigger — only where the library exists #}
@@ -73,6 +73,11 @@
       <div id="kb-scroll" x-show="showKnowledge" x-cloak class="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6">
         {% include "pages/admin/knowledge_base.html" %}
       </div>
+      {# Simulate is an app-frame tab (conversation + config panel), not a #}
+      {# scrolling document like the others, so it manages its own layout. #}
+      <div x-show="showSimulate" x-cloak class="flex-1 min-h-0 flex flex-col">
+        {% include "pages/admin/simulate.html" %}
+      </div>
       {# Content editor save bar — a fixed footer of the center column, #}
       {# shown only while editing a flow's content. Save is aria-disabled #}
       {# until something differs, then lights up in the primary red. #}
@@ -98,9 +103,7 @@
     {# the same width on every tab. Collapses into the library drawer #}
     {# below lg. #}
     <aside class="relative hidden lg:flex w-[clamp(260px,24vw,520px)] flex-shrink-0 flex-col min-h-0">
-      {# Divider — only while the rail has content (server-rendered #}
-      {# visible since Settings is the default tab) #}
-      <div x-show="railActive" class="absolute inset-y-0 left-0 w-px bg-greyscale-200" aria-hidden="true"></div>
+      {# The center section owns the divider; the rail draws none of its own. #}
       <div x-show="railActive" class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
         <span x-show="railHeadLibrary" class="flex items-center gap-1.5">
           <c-atoms.icon name="building-library" class="w-3.5 h-3.5 text-greyscale-400" />
@@ -276,6 +279,10 @@
 {% block extra_js %}
   {# Registers adminApp on alpine:init — runs before the deferred Alpine build. #}
   <script src="{% static 'js/admin.js' %}"></script>
+  {# assistantBriefcase — the briefcase body used by the Simulate tab. #}
+  <script src="{% static 'js/assistant.js' %}"></script>
+  {# simulateApp reuses chat_engine.js's message-part builders (loaded via base). #}
+  <script src="{% static 'js/simulate.js' %}"></script>
 {% endblock extra_js %}
 
 {% block footer %}

@@ -33,15 +33,52 @@ def topic_flow_find(*, topic_slug: str, flow_slug: str):
 
 
 def topic_flow_catalog_lines() -> list[str]:
-    """One line per live guide, for the system prompt and error results."""
+    """One line per live guide, for the system prompt and error results.
+
+    The args are spelled out per line because small models misparse a
+    combined ``topic/flow`` pair as the topic_slug alone."""
     from litigant_portal.app.selectors.topic_flow import topic_list
 
     return [
-        f"- {topic.slug}/{flow.slug}: {flow.name} (topic: {topic.title})"
+        f'- topic_slug "{topic.slug}", flow_slug "{flow.slug}": '
+        f"{flow.name} (topic: {topic.title})"
         for topic in topic_list()
         for flow in topic.flows.all()
         if flow.enabled
     ]
+
+
+def topic_flow_resolve(*, topic_slug: str, flow_slug: str):
+    """A live flow from the arg shapes models actually produce.
+
+    Tolerates the combined catalog pair landing in either argument
+    ("eviction/tenant" as the topic_slug) and, as a last resort, the
+    flow's display name passed in place of its slug."""
+    from litigant_portal.app.selectors.topic_flow import topic_list
+
+    raw_topic = (topic_slug or "").strip().strip("/")
+    raw_flow = (flow_slug or "").strip().strip("/")
+    candidates = [(raw_topic, raw_flow)]
+    if "/" in raw_topic:
+        first, _, rest = raw_topic.partition("/")
+        candidates.append((first, rest))
+    if "/" in raw_flow:
+        first, _, rest = raw_flow.partition("/")
+        candidates.append((first, rest))
+    for topic, flow in candidates:
+        found = topic_flow_find(
+            topic_slug=topic.lower(), flow_slug=flow.lower()
+        )
+        if found is not None:
+            return found
+    names = {raw_topic.lower(), raw_flow.lower()}
+    by_name = [
+        flow
+        for topic in topic_list()
+        for flow in topic.flows.all()
+        if flow.enabled and flow.name.lower() in names
+    ]
+    return by_name[0] if len(by_name) == 1 else None
 
 
 def _flow_page_url(flow) -> str:
@@ -132,9 +169,7 @@ def _active_flow(thread):
     ref = state.active_topic_flow
     if ref is None:
         return None
-    return topic_flow_find(
-        topic_slug=ref.topic_slug, flow_slug=ref.flow_slug
-    )
+    return topic_flow_find(topic_slug=ref.topic_slug, flow_slug=ref.flow_slug)
 
 
 class LoadTopicFlow(Tool):
@@ -155,7 +190,7 @@ class LoadTopicFlow(Tool):
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.app.models import ChatThread
 
-        flow = topic_flow_find(
+        flow = topic_flow_resolve(
             topic_slug=self.topic_slug, flow_slug=self.flow_slug
         )
         if flow is None:
@@ -205,24 +240,21 @@ class SetActiveTopicFlow(Tool):
         )
         from litigant_portal.app.models import ChatThread
 
-        flow = topic_flow_find(
+        flow = topic_flow_resolve(
             topic_slug=self.topic_slug, flow_slug=self.flow_slug
         )
         if flow is None:
             return _unknown_flow_result(self.topic_slug, self.flow_slug)
 
+        # Canonical slugs from the resolved flow, not the raw args — the
+        # resolver may have repaired them.
+        slugs = {"topic_slug": flow.topic.slug, "flow_slug": flow.slug}
         thread = ChatThread.objects.get(id=thread_id)
         state = LitigantAssistantState.model_validate(thread.state or {})
         state.active_topic_flow = ActiveTopicFlowRef(
-            topic_slug=self.topic_slug,
-            flow_slug=self.flow_slug,
-            summary_url=reverse(
-                "topic_flow_api:summary",
-                kwargs={
-                    "topic_slug": self.topic_slug,
-                    "flow_slug": self.flow_slug,
-                },
-            ),
+            topic_slug=flow.topic.slug,
+            flow_slug=flow.slug,
+            summary_url=reverse("topic_flow_api:summary", kwargs=slugs),
         )
         thread.state = state.model_dump()
         thread.save(update_fields=["state", "updated_at"])
@@ -230,7 +262,7 @@ class SetActiveTopicFlow(Tool):
         return ToolOutput(
             result=(
                 f"Active guide is now {flow.name} "
-                f"({self.topic_slug}/{self.flow_slug}). Its live field "
+                f"({flow.topic.slug}/{flow.slug}). Its live field "
                 "status appears in your instructions. Use LoadTopicFlow to "
                 "read its full content."
             ),

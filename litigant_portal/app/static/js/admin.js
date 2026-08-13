@@ -3,7 +3,7 @@
 // styling lives in the template via data-active variants; Alpine only
 // toggles the data-active attribute, so the server-rendered default
 // (settings active) paints correctly before Alpine loads.
-const ADMIN_TABS = ['settings', 'users', 'knowledge']
+const ADMIN_TABS = ['settings', 'users', 'knowledge', 'simulate']
 // On/off pill styles for the per-user permission toggles.
 const PILL_ON = 'bg-primary-100 text-primary-700 hover:bg-primary-200'
 const PILL_OFF = 'bg-greyscale-100 text-greyscale-500 hover:bg-greyscale-200'
@@ -177,10 +177,12 @@ document.addEventListener('alpine:init', () => {
       settings: true,
       users: false,
       knowledge: false,
+      simulate: false,
     },
     showSettings: true,
     showUsers: false,
     showKnowledge: false,
+    showSimulate: false,
     // Mobile drawers — the side panels collapse below lg.
     navOpen: false,
     libraryOpen: false,
@@ -424,6 +426,7 @@ document.addEventListener('alpine:init', () => {
       this.showSettings = tab === 'settings'
       this.showUsers = tab === 'users'
       this.showKnowledge = tab === 'knowledge'
+      this.showSimulate = tab === 'simulate'
       this.railActive = tab === 'settings' || tab === 'knowledge'
       // Selecting a tab (usually from the nav drawer) dismisses drawers.
       this.navOpen = false

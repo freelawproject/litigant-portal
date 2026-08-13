@@ -114,8 +114,28 @@ class TopicFlowToolTests(TestCase):
             thread_id=self.thread.id
         )
         self.assertIn("Error", output.result)
-        self.assertIn("eviction/respond", output.result)
+        self.assertIn(
+            'topic_slug "eviction", flow_slug "respond"', output.result
+        )
         self.assertIsNone(self._state().active_topic_flow)
+
+    def test_set_active_topic_flow_repairs_combined_pair(self):
+        """Small models pass the catalog pair as the topic_slug; the
+        resolver repairs it and the state stores canonical slugs."""
+        output = SetActiveTopicFlow(
+            topic_slug="eviction/respond", flow_slug="junk"
+        )(thread_id=self.thread.id)
+        self.assertTrue(output.refresh_system_prompt)
+        ref = self._state().active_topic_flow
+        self.assertEqual(ref.topic_slug, "eviction")
+        self.assertEqual(ref.flow_slug, "respond")
+
+    def test_set_active_topic_flow_accepts_display_name(self):
+        SetActiveTopicFlow(
+            topic_slug="eviction", flow_slug="Respond to an Eviction"
+        )(thread_id=self.thread.id)
+        ref = self._state().active_topic_flow
+        self.assertEqual(ref.flow_slug, "respond")
 
     def test_update_fields_requires_active_flow(self):
         output = UpdateTopicFlowFields(fields={"full_name": "Jane Roe"})(
@@ -175,7 +195,7 @@ class TopicFlowToolTests(TestCase):
     def test_system_prompt_lists_guides_and_active_status(self):
         agent = LitigantAssistant()
         prompt = agent.generate_system_prompt(thread_id=self.thread.id)
-        self.assertIn("eviction/respond", prompt)
+        self.assertIn('topic_slug "eviction", flow_slug "respond"', prompt)
         self.assertNotIn("ACTIVE GUIDE", prompt)
         self._set_active()
         prompt = agent.generate_system_prompt(thread_id=self.thread.id)

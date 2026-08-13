@@ -29,4 +29,12 @@
     <c-atoms.icon name="users" class="w-4 h-4" />
     {% trans "Users" %}
   </button>
+  <button type="button"
+          data-tab="simulate"
+          x-on:click="selectTab"
+          x-bind:data-active="tabActive.simulate"
+          class="flex items-center gap-2.5 w-full rounded-lg px-3 py-2 text-sm font-medium cursor-pointer select-none transition-colors border border-transparent text-greyscale-600 not-data-active:hover:bg-greyscale-100 data-active:border-primary-500 data-active:bg-white data-active:text-greyscale-900">
+    <c-atoms.icon name="play" class="w-4 h-4" />
+    {% trans "Simulate" %}
+  </button>
 </nav>

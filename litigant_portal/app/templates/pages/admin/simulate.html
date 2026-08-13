@@ -1,0 +1,247 @@
+{% load i18n %}
+
+{# Simulate tab — run a conversation between a simulated user and the #}
+{# litigant assistant. A single compact control bar sits at the top (user #}
+{# picker, run picker, play); the conversation (shared chat-messages #}
+{# organism, assistant-side thread) fills the rest of the panel. The #}
+{# persona and document-bank editors live in a modal so the bar stays #}
+{# small. simulateApp is in static/js/simulate.js and reuses #}
+{# chat_engine.js's part builders. #}
+<div x-data="simulateApp" data-briefcase-host class="flex-1 min-h-0 flex flex-col">
+  {% csrf_token %}
+  {# --- Control bar: persona half | run half, selects absorb the width --- #}
+  <div class="flex items-center border-b border-greyscale-200 bg-greyscale-25 px-4 py-3 flex-shrink-0">
+    <div class="flex flex-1 min-w-0 items-center gap-2 pr-3">
+      <label class="sr-only" for="sim-user-select">{% trans "Simulated user" %}</label>
+      <select id="sim-user-select"
+              x-on:change="selectSimUser"
+              x-bind:disabled="running"
+              class="flex-1 w-full min-w-0 rounded-lg border border-greyscale-300 bg-white pl-2.5 pr-9 py-1.5 text-sm text-greyscale-800">
+        <template x-for="u in simUserOptions" :key="u.id">
+          <option x-bind:value="u.id" x-text="u.name" x-bind:selected="u.selected"></option>
+        </template>
+      </select>
+      <button type="button"
+              x-on:click="createSimUser"
+              x-bind:disabled="running"
+              title="{% trans "New simulated user" %}"
+              aria-label="{% trans "New simulated user" %}"
+              class="inline-flex flex-shrink-0 items-center justify-center w-8 h-8 rounded-lg border border-greyscale-300 bg-white text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:text-greyscale-400">
+        <c-atoms.icon name="plus" class="w-4 h-4" />
+      </button>
+      <button type="button"
+              x-on:click="openPersona"
+              x-bind:disabled="personaDisabled"
+              class="inline-flex flex-shrink-0 items-center gap-1.5 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-sm text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:text-greyscale-400">
+        <c-atoms.icon name="identification" class="w-4 h-4 text-greyscale-500" />
+        {% trans "Persona" %}
+      </button>
+    </div>
+    <div class="self-stretch border-l border-greyscale-200" aria-hidden="true"></div>
+    <div class="flex flex-1 min-w-0 items-center gap-2 pl-3">
+      <label class="sr-only" for="sim-run-select">{% trans "Run" %}</label>
+      <select id="sim-run-select"
+              x-on:change="selectRun"
+              x-bind:disabled="running"
+              class="flex-1 w-full min-w-0 rounded-lg border border-greyscale-300 bg-white pl-2.5 pr-9 py-1.5 text-sm text-greyscale-800">
+        <template x-for="r in runOptions" :key="r.id">
+          <option x-bind:value="r.id" x-text="r.label" x-bind:selected="r.selected"></option>
+        </template>
+      </select>
+      <button type="button"
+              x-on:click="newRun"
+              x-bind:disabled="running"
+              title="{% trans "New run" %}"
+              aria-label="{% trans "New run" %}"
+              class="inline-flex flex-shrink-0 items-center justify-center w-8 h-8 rounded-lg border border-greyscale-300 bg-white text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:text-greyscale-400">
+        <c-atoms.icon name="arrow-path" class="w-4 h-4" />
+      </button>
+      <button type="button"
+              x-show="notRunning"
+              x-on:click="play"
+              x-bind:disabled="playDisabled"
+              title="{% trans "Play" %}"
+              aria-label="{% trans "Play" %}"
+              class="inline-flex flex-shrink-0 items-center justify-center w-8 h-8 rounded-lg bg-primary-600 text-white hover:bg-primary-700 cursor-pointer transition-colors disabled:cursor-not-allowed disabled:bg-primary-100 disabled:text-primary-400">
+        <c-atoms.icon name="play" style="solid" class="w-4 h-4" />
+      </button>
+      <button type="button"
+              x-show="running"
+              x-cloak
+              x-on:click="stop"
+              title="{% trans "Stop" %}"
+              aria-label="{% trans "Stop" %}"
+              class="inline-flex flex-shrink-0 items-center justify-center w-8 h-8 rounded-lg bg-greyscale-800 text-white hover:bg-greyscale-700 cursor-pointer transition-colors">
+        <c-atoms.icon name="stop" style="solid" class="w-4 h-4" />
+      </button>
+    </div>
+  </div>
+  {# --- Conversation + briefcase --- #}
+  {# At lg+ the briefcase is an in-flow panel that width-animates open and #}
+  {# squishes the messages beside it; below lg it overlays as a slide-over #}
+  {# drawer (the chat page's mobile pattern). One flag drives both. #}
+  <div class="relative flex-1 min-h-0 flex flex-row overflow-hidden">
+    {% trans "Pick or create a simulated user above, then press Play to run a conversation." as sim_empty %}
+    <c-organisms.chat-messages empty_text="{{ sim_empty }}" />
+    {# Floating status pill — top-left of the conversation, so changing #}
+    {# text never reflows the control bar. Shows only while non-empty. #}
+    <div x-show="statusLabel"
+         x-cloak
+         aria-live="polite"
+         class="absolute top-3 left-3 z-10 rounded-full border border-greyscale-200 bg-white px-3 py-1.5 text-xs text-greyscale-600 shadow-sm">
+      <span x-text="statusLabel"></span>
+    </div>
+    {# Floating briefcase toggle — top-right of the conversation; hides #}
+    {# while the briefcase is open (its header X collapses it instead). #}
+    <button type="button"
+            x-show="notBriefcaseOpen"
+            x-on:click="toggleBriefcase"
+            title="{% trans "Briefcase" %}"
+            aria-label="{% trans "Briefcase" %}"
+            class="absolute top-3 right-3 z-10 inline-flex items-center justify-center w-9 h-9 rounded-lg border border-greyscale-200 bg-white text-greyscale-600 shadow-sm hover:bg-greyscale-100 hover:text-greyscale-800 cursor-pointer transition-colors">
+      <c-atoms.icon name="briefcase" class="w-4.5 h-4.5" />
+    </button>
+    {# Desktop briefcase — squishes the conversation, never covers it #}
+    <aside x-cloak
+           aria-label="{% trans "Briefcase" %}"
+           x-bind:class="briefcasePanelClass"
+           class="hidden lg:flex lg:w-0 flex-col min-h-0 overflow-hidden bg-greyscale-25 transition-all duration-300">
+      <div class="flex-1 min-h-0 flex flex-col lg:min-w-72">
+        <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
+          <span class="flex items-center gap-1.5">
+            <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
+          </span>
+          <button type="button"
+                  x-on:click="closeBriefcase"
+                  aria-label="{% trans "Close" %}"
+                  class="inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+            <c-atoms.icon name="x-mark" class="w-4 h-4" />
+          </button>
+        </div>
+        {% include "pages/chat/partials/_agent_state.html" %}
+      </div>
+    </aside>
+    {# Below lg — slide-over drawer #}
+    <div x-show="briefcaseOpen"
+         x-cloak
+         x-transition.opacity
+         x-on:click="closeBriefcase"
+         class="lg:hidden absolute inset-0 z-30 bg-greyscale-900/30 backdrop-blur-sm"></div>
+    <aside x-show="briefcaseOpen"
+           x-cloak
+           x-on:keydown.escape.window="closeBriefcase"
+           x-transition:enter="transition-transform duration-300 ease-out"
+           x-transition:enter-start="translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition-transform duration-200 ease-in"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="translate-x-full"
+           role="dialog"
+           aria-modal="true"
+           aria-label="{% trans "Briefcase" %}"
+           class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-96 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
+      <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
+        <span class="flex items-center gap-1.5">
+          <c-atoms.icon name="briefcase" class="w-3.5 h-3.5 text-greyscale-400" />
+          <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Briefcase" %}</h2>
+        </span>
+        <button type="button"
+                x-on:click="closeBriefcase"
+                aria-label="{% trans "Close" %}"
+                class="inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+          <c-atoms.icon name="x-mark" class="w-4 h-4" />
+        </button>
+      </div>
+      {% include "pages/chat/partials/_agent_state.html" %}
+    </aside>
+  </div>
+  {# --- Persona modal (persona + document bank) --- #}
+  <div x-show="personaOpen"
+       x-cloak
+       x-on:click="closePersona"
+       x-on:keydown.escape.window="closePersona"
+       class="fixed inset-0 z-50 flex items-center justify-center bg-greyscale-900/50 p-4"
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="persona-title">
+    <div x-on:click="stopClick"
+         class="flex max-h-full w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
+      <div class="flex items-center justify-between gap-3 border-b border-greyscale-100 px-5 py-4">
+        <h2 id="persona-title" class="text-base font-semibold text-greyscale-900">{% trans "Simulated user" %}</h2>
+        <span aria-live="polite" class="ml-auto text-xs text-greyscale-400" x-text="personaStatus"></span>
+        <button type="button"
+                x-on:click="closePersona"
+                aria-label="{% trans "Close" %}"
+                class="-mr-1 flex-shrink-0 rounded-lg p-1.5 text-greyscale-400 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+          <c-atoms.icon name="x-mark" class="w-5 h-5" />
+        </button>
+      </div>
+      <div class="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <div>
+          <label class="block text-xs font-medium text-greyscale-600 mb-1" for="sim-name">{% trans "Name" %}</label>
+          <input id="sim-name"
+                 type="text"
+                 x-bind:value="simName"
+                 x-on:input="updateSimName"
+                 class="w-full rounded-lg border border-greyscale-300 px-3 py-2 text-sm text-greyscale-800">
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-greyscale-600 mb-1" for="sim-story">{% trans "User story" %}</label>
+          <textarea id="sim-story"
+                    rows="8"
+                    x-bind:value="simStory"
+                    x-on:input="updateSimStory"
+                    placeholder="{% trans "Who they are, what happened, what they want. The simulator plays this person." %}"
+                    class="w-full rounded-lg border border-greyscale-300 px-3 py-2 text-sm text-greyscale-800 resize-y"></textarea>
+        </div>
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-2">
+            <h3 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Documents" %}</h3>
+            <button type="button"
+                    x-on:click="pickFile"
+                    class="inline-flex items-center gap-1 rounded-lg border border-greyscale-300 bg-white px-2.5 py-1 text-xs text-greyscale-700 hover:bg-greyscale-100 cursor-pointer transition-colors">
+              <c-atoms.icon name="plus" class="w-3 h-3" />
+              {% trans "Add document" %}
+            </button>
+            <input type="file" x-ref="fileInput" x-on:change="uploadFile" class="hidden">
+          </div>
+          <p class="text-xs text-greyscale-500 mb-2">{% trans "The simulated user can attach these when the assistant asks for them." %}</p>
+          <p x-show="uploadError" x-cloak aria-live="polite" class="text-xs text-red-600 mb-2" x-text="uploadError"></p>
+          <ul class="list-none pl-0 m-0 space-y-1.5">
+            <template x-for="doc in uploads" :key="doc.id">
+              <li class="flex items-center gap-2 rounded-lg border border-greyscale-200 px-2.5 py-1.5">
+                <span class="inline-flex items-center justify-center w-6 h-6 rounded flex-shrink-0" x-bind:class="doc.tileClass">
+                  <c-atoms.icon name="document-text" class="w-3.5 h-3.5" />
+                </span>
+                <span class="min-w-0 flex-1 truncate text-sm text-greyscale-700" x-text="doc.name"></span>
+                <span class="text-xs text-greyscale-400 flex-shrink-0" x-text="doc.sizeLabel"></span>
+                <button type="button"
+                        x-bind:data-upload-id="doc.id"
+                        x-on:click="deleteUpload"
+                        aria-label="{% trans "Delete document" %}"
+                        class="flex-shrink-0 text-greyscale-400 hover:text-red-600 cursor-pointer">
+                  <c-atoms.icon name="x-mark" class="w-4 h-4" />
+                </button>
+              </li>
+            </template>
+          </ul>
+          <p x-show="noUploads" x-cloak class="text-xs text-greyscale-400">{% trans "No documents yet." %}</p>
+        </div>
+      </div>
+      <div class="flex items-center justify-between gap-2 border-t border-greyscale-100 px-5 py-3">
+        <button type="button"
+                x-on:click="deleteSimUser"
+                x-bind:disabled="running"
+                class="text-xs text-red-600 hover:text-red-700 hover:underline cursor-pointer disabled:cursor-not-allowed disabled:text-greyscale-400">
+          {% trans "Delete this user" %}
+        </button>
+        <button type="button"
+                x-on:click="savePersona"
+                class="rounded-lg bg-primary-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">
+          {% trans "Save persona" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

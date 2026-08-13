@@ -146,17 +146,12 @@ def topic_flow_answers_view(
     )
 
 
-@require_GET
-@ratelimit(key="ip", rate="60/m", method="GET", block=True)
-def topic_flow_summary_view(
-    request: HttpRequest, topic_slug: str, flow_slug: str
-) -> JsonResponse:
-    """The flow's live status for the chat briefcase card: interview
-    progress plus its forms and download links."""
-    flow = _topic_flow(topic_slug, flow_slug)
-    values = topic_flow_answer_values(identity=request.identity, flow=flow)
+def topic_flow_summary_payload(*, flow: TopicFlow, identity) -> dict:
+    """The flow's live status for a briefcase card: interview progress
+    plus its forms and download links, computed for ``identity``."""
+    values = topic_flow_answer_values(identity=identity, flow=flow)
     answered, total = topic_flow_progress(flow=flow, values=values)
-    slugs = {"topic_slug": topic_slug, "flow_slug": flow_slug}
+    slugs = {"topic_slug": flow.topic.slug, "flow_slug": flow.slug}
     forms = [
         {
             "slug": form.slug,
@@ -168,24 +163,32 @@ def topic_flow_summary_view(
         }
         for form in flow.forms.all()
     ]
+    return {
+        "topic_title": flow.topic.title,
+        "name": flow.name,
+        "url": reverse("pages:topic_flow", kwargs=slugs),
+        "progress": {
+            "answered": answered,
+            "total": total,
+            "label": _("%(answered)d of %(total)d answered")
+            % {"answered": answered, "total": total},
+        },
+        "forms": forms,
+        "packet_url": (
+            reverse("topic_flow_api:packet", kwargs=slugs) if forms else None
+        ),
+    }
+
+
+@require_GET
+@ratelimit(key="ip", rate="60/m", method="GET", block=True)
+def topic_flow_summary_view(
+    request: HttpRequest, topic_slug: str, flow_slug: str
+) -> JsonResponse:
+    """The requester's own live status for a flow (chat briefcase card)."""
+    flow = _topic_flow(topic_slug, flow_slug)
     return JsonResponse(
-        {
-            "topic_title": flow.topic.title,
-            "name": flow.name,
-            "url": reverse("pages:topic_flow", kwargs=slugs),
-            "progress": {
-                "answered": answered,
-                "total": total,
-                "label": _("%(answered)d of %(total)d answered")
-                % {"answered": answered, "total": total},
-            },
-            "forms": forms,
-            "packet_url": (
-                reverse("topic_flow_api:packet", kwargs=slugs)
-                if forms
-                else None
-            ),
-        }
+        topic_flow_summary_payload(flow=flow, identity=request.identity)
     )
 
 
