@@ -91,6 +91,11 @@ class TopicFlowField(BaseModel):
         BOOLEAN = "boolean", "Boolean"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    flow = models.ForeignKey(
+        TopicFlow,
+        on_delete=models.CASCADE,
+        related_name="fields",
+    )
     group = models.ForeignKey(
         TopicFlowFieldGroup,
         on_delete=models.CASCADE,
@@ -111,9 +116,8 @@ class TopicFlowField(BaseModel):
         ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["group", "order"],
-                name="unique_group_field_order",
-                deferrable=models.Deferrable.DEFERRED,
+                fields=["flow", "name"],
+                name="unique_topic_flow_field_name",
             )
         ]
 
