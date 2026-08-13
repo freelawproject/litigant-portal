@@ -2,12 +2,10 @@ import io
 import math
 import re
 from datetime import date, datetime, timedelta
-from functools import wraps
 from string import Formatter
 
 import vobject
 import yaml
-from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Max
 from django.utils.safestring import mark_safe
@@ -18,6 +16,7 @@ from pypdf import PdfReader, PdfWriter
 # serialize (see topic_flow/artifacts.py, whose output format this mirrors).
 from vobject.icalendar import utc
 
+from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import (
     Topic,
     TopicFlow,
@@ -32,10 +31,14 @@ from litigant_portal.app.models import (
     UserIdentity,
 )
 from litigant_portal.app.selectors.topic_flow import (
-    TOPIC_LIST_CACHE_KEY,
     topic_flow_answer_values,
+    topic_flow_fields,
 )
-from litigant_portal.app.services.utils import row_move, unique_slug
+from litigant_portal.app.services.utils import (
+    busts_cache,
+    row_move,
+    unique_slug,
+)
 
 DataType = TopicFlowField.DataType
 
@@ -142,7 +145,7 @@ def topic_flow_answers_update(
     ignored, null/empty clears); returns the current values map. Raises
     ``ValueError`` on an invalid value."""
     with transaction.atomic():
-        for field in flow.fields:
+        for field in topic_flow_fields(flow=flow):
             if field.name not in answers:
                 continue
             value = answers[field.name]
@@ -201,7 +204,7 @@ def _python_values(flow: TopicFlow, values: dict) -> dict:
     ``_SafeFormatter`` to render it as "".
     """
     out = dict(values)
-    for field in flow.fields:
+    for field in topic_flow_fields(flow=flow):
         value = topic_flow_field_value(
             field=field, raw=out.get(field.name, field.default)
         )
@@ -242,7 +245,7 @@ def topic_flow_progress(*, flow: TopicFlow, values: dict) -> tuple[int, int]:
     a stored False is a deliberate checkbox answer."""
     total = 0
     answered = 0
-    for field in flow.fields:
+    for field in topic_flow_fields(flow=flow):
         total += 1
         value = topic_flow_field_value(field=field, raw=values.get(field.name))
         if value is not None:
@@ -253,7 +256,7 @@ def topic_flow_progress(*, flow: TopicFlow, values: dict) -> tuple[int, int]:
 def topic_flow_sample_values(*, flow: TopicFlow) -> dict:
     """Per-data-type sample answers for the admin form preview."""
     values = {}
-    for field in flow.fields:
+    for field in topic_flow_fields(flow=flow):
         if field.data_type in (DataType.DATE, DataType.DATETIME):
             values[field.name] = date(2026, 1, 15)
         elif field.data_type == DataType.NUMBER:
@@ -396,7 +399,7 @@ def topic_flow_form_status(
             field_name = parsed[1]
             if field_name:
                 referenced.add(field_name.split(".")[0].split("[")[0])
-    flow_field_names = {field.name for field in flow.fields}
+    flow_field_names = {field.name for field in topic_flow_fields(flow=flow)}
     missing = sorted((referenced & flow_field_names) - set(resolved))
     return {"mappings": mappings, "missing_fields": missing}
 
@@ -536,19 +539,7 @@ def topic_flow_interview_yaml(*, flow: TopicFlow) -> str:
 # services/library.py.
 
 
-def busts_topic_list_cache(fn):
-    """Busts the cached topic list."""
-
-    @wraps(fn)
-    def wrapped(*args, **kwargs):
-        result = fn(*args, **kwargs)
-        transaction.on_commit(lambda: cache.delete(TOPIC_LIST_CACHE_KEY))
-        return result
-
-    return wrapped
-
-
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_create(**fields) -> Topic:
     """Create a topic."""
     last = Topic.objects.aggregate(m=Max("order"))["m"]
@@ -559,7 +550,7 @@ def topic_create(**fields) -> Topic:
     )
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_update(*, topic: Topic, **fields) -> Topic:
     """Update a topic's editable fields."""
     for name, value in fields.items():
@@ -568,25 +559,25 @@ def topic_update(*, topic: Topic, **fields) -> Topic:
     return topic
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_delete(*, topic: Topic) -> None:
     topic.delete()
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_move(*, topic: Topic, direction: str) -> None:
     """Move a topic one step up or down in the display order."""
     with transaction.atomic():
         row_move(list(Topic.objects.all()), topic, direction)
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_create(*, topic: Topic, slug: str, name: str) -> TopicFlow:
     """Create an empty flow on ``topic`` (the create-flow modal)."""
     return TopicFlow.objects.create(topic=topic, slug=slug, name=name)
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_content_update(*, flow: TopicFlow, sections: list) -> TopicFlow:
     """Replace just a flow's content sections (the content editor's Save)."""
     with transaction.atomic():
@@ -599,7 +590,7 @@ def topic_flow_content_update(*, flow: TopicFlow, sections: list) -> TopicFlow:
     return flow
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_details_update(
     *, flow: TopicFlow, name: str, slug: str
 ) -> TopicFlow:
@@ -610,12 +601,12 @@ def topic_flow_details_update(
     return flow
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_delete(*, flow: TopicFlow) -> None:
     flow.delete()
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_enabled_update(*, flow: TopicFlow, enabled: bool) -> TopicFlow:
     """Set whether a flow is live (the topic card's Draft/Live switch)."""
     flow.enabled = enabled
@@ -623,7 +614,7 @@ def topic_flow_enabled_update(*, flow: TopicFlow, enabled: bool) -> TopicFlow:
     return flow
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_group_create(
     *, flow: TopicFlow, **fields
 ) -> TopicFlowFieldGroup:
@@ -634,7 +625,7 @@ def topic_flow_field_group_create(
     )
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_group_update(
     *, group: TopicFlowFieldGroup, **fields
 ) -> TopicFlowFieldGroup:
@@ -645,7 +636,7 @@ def topic_flow_field_group_update(
     return group
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_group_move(
     *, group: TopicFlowFieldGroup, direction: str
 ) -> None:
@@ -654,7 +645,7 @@ def topic_flow_field_group_move(
         row_move(list(group.flow.field_groups.all()), group, direction)
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_group_delete(*, group: TopicFlowFieldGroup) -> None:
     """Delete an interview page and its fields — cascading to litigants'
     saved answers and any deadlines based on those fields."""
@@ -667,18 +658,25 @@ def topic_flow_field_group_delete(*, group: TopicFlowFieldGroup) -> None:
                 obj.save(update_fields=["order", "updated_at"])
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_create(
     *, group: TopicFlowFieldGroup, **fields
 ) -> TopicFlowField:
-    """Create a field on an interview page, appended to the field order."""
+    """Create a field on an interview page, appended to the field order.
+
+    ``flow`` is derived from the group, never taken from the caller — the
+    denormalized pair can't disagree at creation.
+    """
     last = group.fields.aggregate(m=Max("order"))["m"]
     return TopicFlowField.objects.create(
-        group=group, order=0 if last is None else last + 1, **fields
+        flow=group.flow,
+        group=group,
+        order=0 if last is None else last + 1,
+        **fields,
     )
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_update(
     *, field: TopicFlowField, **fields
 ) -> TopicFlowField:
@@ -689,7 +687,7 @@ def topic_flow_field_update(
     return field
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_group_change(
     *, field: TopicFlowField, group: TopicFlowFieldGroup
 ) -> TopicFlowField:
@@ -710,14 +708,14 @@ def topic_flow_field_group_change(
     return field
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_move(*, field: TopicFlowField, direction: str) -> None:
     """Move a field one step up or down within its interview page."""
     with transaction.atomic():
         row_move(list(field.group.fields.all()), field, direction)
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_field_delete(*, field: TopicFlowField) -> None:
     """Delete a field — cascading to litigants' saved answers and any
     deadlines based on it — and renumber its page's remaining fields."""
@@ -730,7 +728,7 @@ def topic_flow_field_delete(*, field: TopicFlowField) -> None:
                 obj.save(update_fields=["order", "updated_at"])
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_deadline_create(
     *, flow: TopicFlow, **fields
 ) -> TopicFlowDeadline:
@@ -741,7 +739,7 @@ def topic_flow_deadline_create(
     )
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_deadline_update(
     *, deadline: TopicFlowDeadline, **fields
 ) -> TopicFlowDeadline:
@@ -752,12 +750,12 @@ def topic_flow_deadline_update(
     return deadline
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_deadline_delete(*, deadline: TopicFlowDeadline) -> None:
     deadline.delete()
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_deadline_move(
     *, deadline: TopicFlowDeadline, direction: str
 ) -> None:
@@ -766,7 +764,7 @@ def topic_flow_deadline_move(
         row_move(list(deadline.flow.deadlines.all()), deadline, direction)
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_link_create(*, flow: TopicFlow, **fields) -> TopicFlowLink:
     """Create a link on ``flow``, appended to the display order."""
     last = flow.links.aggregate(m=Max("order"))["m"]
@@ -775,7 +773,7 @@ def topic_flow_link_create(*, flow: TopicFlow, **fields) -> TopicFlowLink:
     )
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_link_update(*, link: TopicFlowLink, **fields) -> TopicFlowLink:
     """Update a link's editable fields."""
     for name, value in fields.items():
@@ -784,19 +782,19 @@ def topic_flow_link_update(*, link: TopicFlowLink, **fields) -> TopicFlowLink:
     return link
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_link_delete(*, link: TopicFlowLink) -> None:
     link.delete()
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_link_move(*, link: TopicFlowLink, direction: str) -> None:
     """Move a link one step up or down in its flow's display order."""
     with transaction.atomic():
         row_move(list(link.flow.links.all()), link, direction)
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_form_mappings_replace(
     form: TopicFlowForm, mappings: list
 ) -> None:
@@ -808,7 +806,7 @@ def topic_flow_form_mappings_replace(
     )
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_form_create(
     *, flow: TopicFlow, name: str, file
 ) -> TopicFlowForm:
@@ -823,7 +821,7 @@ def topic_flow_form_create(
     )
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_form_update(
     *, form: TopicFlowForm, name: str, mappings: list
 ) -> TopicFlowForm:
@@ -835,13 +833,13 @@ def topic_flow_form_update(
     return form
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_form_delete(*, form: TopicFlowForm) -> None:
     form.file.delete(save=False)
     form.delete()
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_form_move(*, form: TopicFlowForm, direction: str) -> None:
     """Move a form one step up or down in its flow's display order."""
     with transaction.atomic():

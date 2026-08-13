@@ -1,10 +1,9 @@
 from django.core.cache import cache
 from django.db.models import QuerySet
 
+from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import Contact, Resource, Site
 from litigant_portal.app.models.choices import get_default_model
-
-SITE_CACHE_KEY = "site"
 
 
 def site_get() -> Site:

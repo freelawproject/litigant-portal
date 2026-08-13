@@ -115,6 +115,7 @@ def topic_flow_status_text(*, flow, identity) -> str:
     interview progress, fields with current answers, deadlines, and forms."""
     from litigant_portal.app.selectors.topic_flow import (
         topic_flow_answer_values,
+        topic_flow_fields,
     )
     from litigant_portal.app.services.topic_flow import (
         topic_flow_deadline_rows,
@@ -127,12 +128,11 @@ def topic_flow_status_text(*, flow, identity) -> str:
         f"Guide: {flow.name} ({flow.topic.slug}/{flow.slug})",
         f"Guide page (share this link with the user): {_flow_page_url(flow)}",
     ]
-    if flow.fields:
+    fields = topic_flow_fields(flow=flow)
+    if fields:
         lines.append(f"Interview progress: {answered} of {total} answered.")
         lines.append("Fields (save with UpdateTopicFlowFields):")
-        lines.extend(
-            _field_status_line(field, values) for field in flow.fields
-        )
+        lines.extend(_field_status_line(field, values) for field in fields)
     deadlines = list(flow.deadlines.all())
     if deadlines:
         lines.append("Deadlines:")
@@ -296,6 +296,9 @@ class UpdateTopicFlowFields(Tool):
 
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.app.models import ChatThread
+        from litigant_portal.app.selectors.topic_flow import (
+            topic_flow_fields,
+        )
         from litigant_portal.app.services.topic_flow import (
             topic_flow_answers_update,
         )
@@ -306,7 +309,8 @@ class UpdateTopicFlowFields(Tool):
             return ToolOutput(result=NO_ACTIVE_FLOW)
 
         labels = {
-            field.name: field.label or field.name for field in flow.fields
+            field.name: field.label or field.name
+            for field in topic_flow_fields(flow=flow)
         }
         unknown = sorted(set(self.fields) - set(labels))
         try:

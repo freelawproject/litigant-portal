@@ -4,6 +4,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.db.models import Max
 
+from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import (
     Contact,
     Resource,
@@ -19,11 +20,11 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import JurisdictionLevel, State
 from litigant_portal.app.selectors.site import site_get
-from litigant_portal.app.services.site import busts_site_cache
+from litigant_portal.app.selectors.topic_flow import topic_flow_fields
 from litigant_portal.app.services.topic_flow import (
-    busts_topic_list_cache,
     topic_flow_form_mappings_replace,
 )
+from litigant_portal.app.services.utils import busts_cache
 
 
 def _flow_replace_children(
@@ -56,7 +57,7 @@ def _flow_replace_children(
         TopicFlowLink(flow=flow, order=i, **row) for i, row in enumerate(links)
     )
     existing_fields = {}
-    for field in flow.fields:
+    for field in topic_flow_fields(flow=flow):
         existing_fields.setdefault(field.name, []).append(field)
     existing_groups = list(flow.field_groups.all())
     fields_by_name = {}
@@ -82,6 +83,7 @@ def _flow_replace_children(
             field = matches.pop(0)
             for name, value in {
                 **row,
+                "flow": flow,
                 "group": group,
                 "order": f_index,
             }.items():
@@ -213,7 +215,7 @@ def _topic_upsert_from_config(*, config: dict) -> Topic:
     return topic
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_library_apply(*, config: dict) -> Topic:
     """Apply a full topic library config: upsert the topic's fields and
     every one of its flows (by slug)."""
@@ -224,7 +226,7 @@ def topic_library_apply(*, config: dict) -> Topic:
     return topic
 
 
-@busts_topic_list_cache
+@busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_flow_library_apply(*, config: dict, flow_config: dict) -> TopicFlow:
     """Apply a single library flow: reuse its topic when it exists
     (leaving the topic's fields untouched), otherwise create it from the
@@ -237,7 +239,7 @@ def topic_flow_library_apply(*, config: dict, flow_config: dict) -> TopicFlow:
     return flow
 
 
-@busts_site_cache
+@busts_cache(SITE_CACHE_KEY)
 def court_library_apply(*, config: dict, prune: bool = False) -> Site:
     """Pre-populate the site from a court library config.
 

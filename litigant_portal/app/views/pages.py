@@ -1,9 +1,8 @@
 import os
 
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.urls import reverse, reverse_lazy
@@ -166,10 +165,9 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
 
 
 @login_required
+@permission_required("app.manage_site", raise_exception=True)
 def admin(request: HttpRequest) -> HttpResponse:
     """Admin dashboard shell — requires the ``app.manage_site`` permission."""
-    if not request.user.has_perm("app.manage_site"):
-        raise PermissionDenied
     openai_available = bool(os.environ.get("OPENAI_API_KEY"))
     bedrock_available = bool(os.environ.get("AWS_BEARER_TOKEN_BEDROCK"))
     model_choice_groups = []

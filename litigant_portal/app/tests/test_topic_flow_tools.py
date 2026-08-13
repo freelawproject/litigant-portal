@@ -53,6 +53,7 @@ def _build_flow():
     )
     group = TopicFlowFieldGroup.objects.create(flow=flow, order=0)
     TopicFlowField.objects.create(
+        flow=flow,
         group=group,
         name="full_name",
         label="Your full name",
@@ -60,7 +61,7 @@ def _build_flow():
         order=0,
     )
     TopicFlowField.objects.create(
-        group=group, name="hearing_date", data_type="date", order=1
+        flow=flow, group=group, name="hearing_date", data_type="date", order=1
     )
     TopicFlowSection.objects.create(
         flow=flow, heading="About", content="How it works.", order=0

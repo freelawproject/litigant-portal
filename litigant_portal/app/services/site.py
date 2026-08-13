@@ -1,32 +1,14 @@
-from functools import wraps
-
 import vobject
-from django.core.cache import cache
 from django.db import transaction
 from django.db.models import Max
 
+from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import Contact, Resource, Site
-from litigant_portal.app.selectors.site import (
-    SITE_CACHE_KEY,
-    contact_list,
-    resource_list,
-)
-from litigant_portal.app.services.utils import row_move
+from litigant_portal.app.selectors.site import contact_list, resource_list
+from litigant_portal.app.services.utils import busts_cache, row_move
 
 
-def busts_site_cache(fn):
-    """Busts the site cache."""
-
-    @wraps(fn)
-    def wrapped(*args, **kwargs):
-        result = fn(*args, **kwargs)
-        transaction.on_commit(lambda: cache.delete(SITE_CACHE_KEY))
-        return result
-
-    return wrapped
-
-
-@busts_site_cache
+@busts_cache(SITE_CACHE_KEY)
 def site_court_details_update(
     *,
     site: Site,
@@ -55,7 +37,7 @@ def site_court_details_update(
     return site
 
 
-@busts_site_cache
+@busts_cache(SITE_CACHE_KEY)
 def site_models_update(
     *, site: Site, fast_model: str = "", assistant_model: str = ""
 ) -> Site:

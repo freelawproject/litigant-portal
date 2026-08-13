@@ -30,7 +30,11 @@ class TopicFlowAnswersUpdateTests(TestCase):
             flow=self.flow, title="About you", order=0
         )
         self.field = TopicFlowField.objects.create(
-            group=group, name="full_name", data_type="text", order=0
+            flow=self.flow,
+            group=group,
+            name="full_name",
+            data_type="text",
+            order=0,
         )
         self.identity = UserIdentity.objects.create(session_key="abc123")
 
@@ -108,7 +112,11 @@ class FlowAnswersViewTests(TestCase):
             flow=self.flow, title="About you", order=0
         )
         TopicFlowField.objects.create(
-            group=group, name="full_name", data_type="text", order=0
+            flow=self.flow,
+            group=group,
+            name="full_name",
+            data_type="text",
+            order=0,
         )
 
     def test_post_marks_answers_reviewed(self):
@@ -151,9 +159,14 @@ class InterviewPayloadTests(TestCase):
             flow=self.flow, title="About you", order=0
         )
         TopicFlowField.objects.create(
-            group=about, name="full_name", data_type="text", order=0
+            flow=self.flow,
+            group=about,
+            name="full_name",
+            data_type="text",
+            order=0,
         )
         TopicFlowField.objects.create(
+            flow=self.flow,
             group=about,
             name="agrees",
             data_type="boolean",
@@ -161,10 +174,18 @@ class InterviewPayloadTests(TestCase):
             order=1,
         )
         TopicFlowField.objects.create(
-            group=about, name="hearing_at", data_type="datetime", order=2
+            flow=self.flow,
+            group=about,
+            name="hearing_at",
+            data_type="datetime",
+            order=2,
         )
         TopicFlowField.objects.create(
-            group=about, name="filed_on", data_type="date", order=3
+            flow=self.flow,
+            group=about,
+            name="filed_on",
+            data_type="date",
+            order=3,
         )
         # An empty group is a dead click in the wizard and must be dropped.
         TopicFlowFieldGroup.objects.create(

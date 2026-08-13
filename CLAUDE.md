@@ -153,6 +153,46 @@ How we size issues so velocity maps to reality (the org-level scale + board mech
 
 ## Architecture
 
+**Open contracts:** design partner-facing data surfaces (config schemas, file formats, API shapes) around explicit validated contracts, never around a particular producer or tool. Validation at the boundary enforces conformance; how the data was produced stays on the producer's side. The worked example is the prompts court/topic configs, validated against JSON schemas by the system checks in `app/checks.py`. Apply the same pattern to new surfaces (ingestion, search).
+
+### Code Layout: domain below, surface above
+
+**The data layer groups by domain; everything a user touches groups by surface.** Models and their utilities get reused across many pages, so they're organized around the data. Endpoints and templates serve exactly one page, so they're organized around that page.
+
+**By domain** — `models/`, `selectors/`, and `services/` each carry one module per domain, and the three agree on module names:
+
+| Domain        | Holds                                                        |
+| ------------- | ------------------------------------------------------------ |
+| `site`        | Global site settings and court config                        |
+| `topic_flow`  | Topics and topic flow data (spans admin and public surfaces) |
+| `library`     | Court and topic config import from the content library       |
+| `user`        | Identity, profile, and group membership toggles              |
+| `upload`      | Attachment upload and its helper logic                       |
+| `chat_engine` | Threads, messages, streaming                                 |
+| `simulate`    | Simulated users and simulation runs                          |
+
+**Never name a data-layer module after the page that consumes it.** Site settings apply app-wide; topic utilities serve both the admin editor and the public flow page. Naming either one `admin` mislocates it the moment a second caller shows up — which is exactly what happened to the module this layout replaced.
+
+**Naming:** services and selectors are `{model_name}_{action}` — `site_get`, `topic_create`, `user_identity_merge`, `user_upload_llm_parts`. Allow some liberty when a utility genuinely implicates two models equally. Anything not part of a module's public surface takes a leading underscore.
+
+**Reads are selectors, writes are services.** `user_list` reads, so it's a selector; `user_developer_toggle` writes, so it's a service.
+
+**Cross-layer constants get their own module**, so no domain module has to import a constant out of another one: cache keys in `app/cache.py`, group and permission names in `app/permissions.py`. Each is read, written, and invalidated from a different layer, and anchoring one to any single consumer makes the other two reach sideways for it.
+
+**Cached reads are invalidated at commit, never before.** A selector that caches wears a `timeout=None`, and every service that writes the same rows wears `@busts_cache(KEY)` from `services/utils.py`. Deferring the delete to commit is the whole point: an immediate delete lets a reader on another connection repopulate the key with the pre-commit value, and nothing busts it a second time, so the stale copy is permanent. The same rule binds management commands — `transaction.on_commit`, not a bare `cache.delete`.
+
+**Permissions.** Admin access is the `app.manage_site` and `app.manage_developers` permissions, carried by the `Admins` and `Developers` groups (provisioned by a `post_migrate` receiver in `signals.py`). Check them with `request.user.has_perm(...)` in views and `{% if perms.app.manage_site %}` in templates — don't wrap either in a selector. Page views use Django's `@permission_required(..., raise_exception=True)`; the JSON API keeps its own `manage_site_required` / `manage_developers_required` decorators in `views/utils.py`, because the built-in renders an HTML 403 where those endpoints must return a JSON body. These are deliberately separate from the auto-generated `add/change/delete/view` permissions that gate Django admin. Full reference: [`docs/wiki/permissions.md`](docs/wiki/permissions.md).
+
+**By surface** — views, templates, JS, and the URL pattern lists:
+
+- **`views/pages.py`** — views that render a page. Keep them thin; let endpoints do the work so pages stay reactive.
+- **`views/<surface>.py`** — one endpoint module per surface (`admin`, `assistant`, `simulate`, `topic_flow`). Not every surface needs one.
+- **`templates/pages/<surface>/`** — that surface's templates. Shared UI becomes a Cotton component under `templates/cotton/`, never a copied partial.
+- **`static/js/<surface>.js`** — that surface's Alpine components; cross-cutting ones live in `components.js`.
+- **`urls.py`** — one pattern list per group (`app_patterns`, `assistant_patterns`, `admin_api_patterns`), each `include`d under its own namespace.
+
+**`utils.py`** — any package may carry one for helpers shared across its own modules, like the JSON permission decorators in `views/utils.py`.
+
 ### Front-End Principles
 
 When choosing how to implement UI behavior, follow this priority order:

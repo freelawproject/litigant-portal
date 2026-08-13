@@ -45,8 +45,8 @@ from litigant_portal.app.services.upload import (
     user_upload_serialize,
 )
 from litigant_portal.app.views import chat_engine
-from litigant_portal.app.views.admin import admin_access_required
 from litigant_portal.app.views.topic_flow import topic_flow_summary_payload
+from litigant_portal.app.views.utils import manage_site_required
 
 
 def _sim_or_none(sim_id) -> SimulatedUser | None:
@@ -72,7 +72,7 @@ def _json_body(request: HttpRequest) -> dict:
 
 
 @require_GET
-@admin_access_required
+@manage_site_required
 def simulated_user_list_view(request: HttpRequest) -> JsonResponse:
     return JsonResponse(
         {
@@ -84,7 +84,7 @@ def simulated_user_list_view(request: HttpRequest) -> JsonResponse:
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 def simulated_user_create_view(request: HttpRequest) -> JsonResponse:
     data = _json_body(request)
     name = str(data.get("name") or "").strip() or str(_("New user"))
@@ -94,7 +94,7 @@ def simulated_user_create_view(request: HttpRequest) -> JsonResponse:
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 def simulated_user_update_view(request: HttpRequest, sim_id) -> JsonResponse:
     sim = _sim_or_none(sim_id)
     if sim is None:
@@ -115,7 +115,7 @@ def simulated_user_update_view(request: HttpRequest, sim_id) -> JsonResponse:
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 def simulated_user_delete_view(request: HttpRequest, sim_id) -> JsonResponse:
     sim = _sim_or_none(sim_id)
     if sim is None:
@@ -128,7 +128,7 @@ def simulated_user_delete_view(request: HttpRequest, sim_id) -> JsonResponse:
 
 
 @require_GET
-@admin_access_required
+@manage_site_required
 def simulated_upload_list_view(request: HttpRequest, sim_id) -> JsonResponse:
     sim = _sim_or_none(sim_id)
     if sim is None:
@@ -144,7 +144,7 @@ def simulated_upload_list_view(request: HttpRequest, sim_id) -> JsonResponse:
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 def simulated_upload_create_view(request: HttpRequest, sim_id) -> JsonResponse:
     sim = _sim_or_none(sim_id)
     if sim is None:
@@ -160,7 +160,7 @@ def simulated_upload_create_view(request: HttpRequest, sim_id) -> JsonResponse:
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 def simulated_upload_delete_view(
     request: HttpRequest, sim_id, upload_id
 ) -> JsonResponse:
@@ -178,7 +178,7 @@ def simulated_upload_delete_view(
 
 
 @require_GET
-@admin_access_required
+@manage_site_required
 def simulation_run_list_view(request: HttpRequest, sim_id) -> JsonResponse:
     sim = _sim_or_none(sim_id)
     if sim is None:
@@ -197,7 +197,7 @@ def simulation_run_list_view(request: HttpRequest, sim_id) -> JsonResponse:
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 def simulation_run_create_view(request: HttpRequest, sim_id) -> JsonResponse:
     sim = _sim_or_none(sim_id)
     if sim is None:
@@ -206,7 +206,7 @@ def simulation_run_create_view(request: HttpRequest, sim_id) -> JsonResponse:
 
 
 @require_GET
-@admin_access_required
+@manage_site_required
 def simulation_thread_view(request: HttpRequest, sim_id, thread_id):
     """The assistant-side thread, rendered for the simulate panel."""
     sim = _sim_or_none(sim_id)
@@ -222,7 +222,7 @@ def simulation_thread_view(request: HttpRequest, sim_id, thread_id):
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 def simulation_thread_delete_view(
     request: HttpRequest, sim_id, thread_id
 ) -> JsonResponse:
@@ -250,7 +250,7 @@ def simulation_thread_delete_view(
 
 
 @require_GET
-@admin_access_required
+@manage_site_required
 def simulation_topic_flow_summary_view(
     request: HttpRequest, sim_id, topic_slug, flow_slug
 ) -> JsonResponse:
@@ -275,7 +275,7 @@ def simulation_topic_flow_summary_view(
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
 def simulation_assistant_stream_view(request: HttpRequest, sim_id):
     """One assistant turn on the simulated user's conversation."""
@@ -292,7 +292,7 @@ def simulation_assistant_stream_view(request: HttpRequest, sim_id):
 
 
 @require_POST
-@admin_access_required
+@manage_site_required
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
 def simulation_actor_stream_view(request: HttpRequest, sim_id):
     """One simulated-user turn: the actor decides what the person says."""

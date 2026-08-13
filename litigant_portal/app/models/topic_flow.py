@@ -34,22 +34,14 @@ class TopicFlow(BaseModel):
     slug = models.SlugField(max_length=64)
     name = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ["created_at"]
+        ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
                 fields=["topic", "slug"], name="unique_topic_flow_slug"
             )
-        ]
-
-    @property
-    def fields(self):
-        """The flow's fields across all its groups, in interview order."""
-        return [
-            field
-            for group in self.field_groups.all()
-            for field in group.fields.all()
         ]
 
 
@@ -82,6 +74,15 @@ class TopicFlowField(BaseModel):
         BOOLEAN = "boolean", "Boolean"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    # Denormalized copy of group.flow, because the per-flow name constraint
+    # below can't reach across the group join. Writes derive it from group;
+    # anything that ever moves a group between flows must move its fields'
+    # flow in the same transaction.
+    flow = models.ForeignKey(
+        TopicFlow,
+        on_delete=models.CASCADE,
+        related_name="fields",
+    )
     group = models.ForeignKey(
         TopicFlowFieldGroup,
         on_delete=models.CASCADE,
@@ -102,9 +103,8 @@ class TopicFlowField(BaseModel):
         ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["group", "order"],
-                name="unique_group_field_order",
-                deferrable=models.Deferrable.DEFERRED,
+                fields=["flow", "name"],
+                name="unique_topic_flow_field_name",
             )
         ]
 

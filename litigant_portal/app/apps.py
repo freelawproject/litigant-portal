@@ -1,4 +1,5 @@
 from django.apps import AppConfig as DjangoAppConfig
+from django.db.models.signals import post_migrate
 
 
 class AppConfig(DjangoAppConfig):
@@ -7,4 +8,8 @@ class AppConfig(DjangoAppConfig):
 
     def ready(self):
         import litigant_portal.app.checks  # noqa: F401
-        import litigant_portal.app.signals  # noqa: F401
+        from litigant_portal.app import signals
+
+        post_migrate.connect(signals.ensure_site_row, sender=self)
+        post_migrate.connect(signals.ensure_permission_groups, sender=self)
+        post_migrate.connect(signals.clear_data_model_cache, sender=self)

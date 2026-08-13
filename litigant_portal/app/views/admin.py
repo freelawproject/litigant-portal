@@ -1,7 +1,6 @@
 import io
 import json
 import re
-from functools import wraps
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
@@ -53,6 +52,7 @@ from litigant_portal.app.selectors.topic_flow import (
     topic_flow_field_get,
     topic_flow_field_group_get,
     topic_flow_field_name_taken,
+    topic_flow_fields,
     topic_flow_form_get,
     topic_flow_get,
     topic_flow_link_get,
@@ -117,36 +117,14 @@ from litigant_portal.app.services.user import (
     user_admin_toggle,
     user_developer_toggle,
 )
+from litigant_portal.app.views.utils import (
+    manage_developers_required,
+    manage_site_required,
+)
 
 USERS_PER_PAGE = 20
 FORM_PDF_MAX_BYTES = 10 * 1024 * 1024
 DEADLINE_OFFSET_DAYS_MAX = 36500
-
-
-def admin_access_required(view):
-    """JSON guard: requires the ``app.manage_site`` permission (held by
-    the Admins/Developers groups and, implicitly, superusers)."""
-
-    @wraps(view)
-    def wrapped(request, *args, **kwargs):
-        if not request.user.has_perm("app.manage_site"):
-            return JsonResponse({"error": _("Forbidden")}, status=403)
-        return view(request, *args, **kwargs)
-
-    return wrapped
-
-
-def developer_required(view):
-    """JSON guard: requires ``app.manage_developers`` (held by the
-    Developers group and, implicitly, superusers)."""
-
-    @wraps(view)
-    def wrapped(request, *args, **kwargs):
-        if not request.user.has_perm("app.manage_developers"):
-            return JsonResponse({"error": _("Forbidden")}, status=403)
-        return view(request, *args, **kwargs)
-
-    return wrapped
 
 
 def _json_body(request: HttpRequest) -> dict | None:
@@ -172,7 +150,7 @@ def _site_payload(site: Site) -> dict:
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def site_view(request: HttpRequest) -> JsonResponse:
     """The site's settings for the admin settings tab."""
     try:
@@ -183,7 +161,7 @@ def site_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def site_court_details_update_view(request: HttpRequest) -> JsonResponse:
     """Update the site's court detail fields."""
     court_name = (request.POST.get("court_name") or "").strip()
@@ -228,7 +206,7 @@ def site_court_details_update_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def site_models_update_view(request: HttpRequest) -> JsonResponse:
     """Update the site's AI model selections."""
     valid_models = set(OpenAIModel.values) | set(BedrockModel.values)
@@ -290,7 +268,7 @@ def _flow_payload(flow: TopicFlow) -> dict:
         ],
         # Flat list (the deadline modal's date-field options) and the
         # grouped interview shape (builder + library comparison).
-        "fields": [_field_payload(f) for f in flow.fields],
+        "fields": [_field_payload(f) for f in topic_flow_fields(flow=flow)],
         "field_groups": [
             {
                 "id": str(g.id),
@@ -359,7 +337,7 @@ def _topic_fields(request: HttpRequest) -> tuple[dict | None, str | None]:
 
 @require_GET
 @ratelimit(key="ip", rate="120/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def topic_list_view(request: HttpRequest) -> JsonResponse:
     """The topics for the knowledge base tab."""
     return JsonResponse({"topics": [_topic_payload(t) for t in topic_list()]})
@@ -367,7 +345,7 @@ def topic_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_create_view(request: HttpRequest) -> JsonResponse:
     """Create a topic."""
     fields, error = _topic_fields(request)
@@ -378,7 +356,7 @@ def topic_create_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_update_view(request: HttpRequest, topic_id) -> JsonResponse:
     """Update a topic's editable fields."""
     fields, error = _topic_fields(request)
@@ -393,7 +371,7 @@ def topic_update_view(request: HttpRequest, topic_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_delete_view(request: HttpRequest, topic_id) -> JsonResponse:
     """Delete a topic."""
     try:
@@ -406,7 +384,7 @@ def topic_delete_view(request: HttpRequest, topic_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_move_view(request: HttpRequest, topic_id) -> JsonResponse:
     """Move a topic up or down; returns the refreshed ordered list."""
     direction = (request.POST.get("direction") or "").strip()
@@ -422,7 +400,7 @@ def topic_move_view(request: HttpRequest, topic_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_create_view(request: HttpRequest, topic_id) -> JsonResponse:
     """Create a flow on a topic (the create-flow modal): name and slug
     only — everything else is added on the flow page afterwards."""
@@ -451,7 +429,7 @@ def topic_flow_create_view(request: HttpRequest, topic_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_content_update_view(
     request: HttpRequest, flow_id
 ) -> JsonResponse:
@@ -486,7 +464,7 @@ def topic_flow_content_update_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_details_update_view(
     request: HttpRequest, flow_id
 ) -> JsonResponse:
@@ -522,7 +500,7 @@ def topic_flow_details_update_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_delete_view(request: HttpRequest, flow_id) -> JsonResponse:
     """Delete a flow (the flow page's danger button)."""
     try:
@@ -568,7 +546,7 @@ def _deadline_fields(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_deadline_create_view(
     request: HttpRequest, flow_id
 ) -> JsonResponse:
@@ -586,7 +564,7 @@ def topic_flow_deadline_create_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_deadline_update_view(
     request: HttpRequest, deadline_id
 ) -> JsonResponse:
@@ -604,7 +582,7 @@ def topic_flow_deadline_update_view(
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_deadline_delete_view(
     request: HttpRequest, deadline_id
 ) -> JsonResponse:
@@ -619,7 +597,7 @@ def topic_flow_deadline_delete_view(
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_deadline_move_view(
     request: HttpRequest, deadline_id
 ) -> JsonResponse:
@@ -703,7 +681,7 @@ def _field_fields(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_field_group_create_view(
     request: HttpRequest, flow_id
 ) -> JsonResponse:
@@ -721,7 +699,7 @@ def topic_flow_field_group_create_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_field_group_update_view(
     request: HttpRequest, group_id
 ) -> JsonResponse:
@@ -739,7 +717,7 @@ def topic_flow_field_group_update_view(
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_field_group_move_view(
     request: HttpRequest, group_id
 ) -> JsonResponse:
@@ -757,7 +735,7 @@ def topic_flow_field_group_move_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_field_group_delete_view(
     request: HttpRequest, group_id
 ) -> JsonResponse:
@@ -773,7 +751,7 @@ def topic_flow_field_group_delete_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_field_create_view(
     request: HttpRequest, group_id
 ) -> JsonResponse:
@@ -791,7 +769,7 @@ def topic_flow_field_create_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_field_update_view(
     request: HttpRequest, field_id
 ) -> JsonResponse:
@@ -825,7 +803,7 @@ def topic_flow_field_update_view(
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_field_move_view(request: HttpRequest, field_id) -> JsonResponse:
     """Move a field up or down within its interview page."""
     direction = (request.POST.get("direction") or "").strip()
@@ -841,7 +819,7 @@ def topic_flow_field_move_view(request: HttpRequest, field_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_field_delete_view(
     request: HttpRequest, field_id
 ) -> JsonResponse:
@@ -873,7 +851,7 @@ def _link_fields(request: HttpRequest) -> tuple[dict | None, str | None]:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_link_create_view(request: HttpRequest, flow_id) -> JsonResponse:
     """Create a link on a flow (the flow page's link modal)."""
     fields, error = _link_fields(request)
@@ -889,7 +867,7 @@ def topic_flow_link_create_view(request: HttpRequest, flow_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_link_update_view(request: HttpRequest, link_id) -> JsonResponse:
     """Update a link (the flow page's link modal)."""
     fields, error = _link_fields(request)
@@ -905,7 +883,7 @@ def topic_flow_link_update_view(request: HttpRequest, link_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_link_delete_view(request: HttpRequest, link_id) -> JsonResponse:
     """Delete a link from a flow."""
     try:
@@ -918,7 +896,7 @@ def topic_flow_link_delete_view(request: HttpRequest, link_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_link_move_view(request: HttpRequest, link_id) -> JsonResponse:
     """Move a link up or down in its flow's display order."""
     direction = (request.POST.get("direction") or "").strip()
@@ -934,7 +912,7 @@ def topic_flow_link_move_view(request: HttpRequest, link_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_form_move_view(request: HttpRequest, form_id) -> JsonResponse:
     """Move a form up or down in its flow's display order."""
     direction = (request.POST.get("direction") or "").strip()
@@ -950,7 +928,7 @@ def topic_flow_form_move_view(request: HttpRequest, form_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_enabled_update_view(
     request: HttpRequest, flow_id
 ) -> JsonResponse:
@@ -971,7 +949,7 @@ def topic_flow_enabled_update_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_form_create_view(request: HttpRequest, flow_id) -> JsonResponse:
     """Attach an uploaded fillable PDF form to a flow."""
     name = (request.POST.get("name") or "").strip()
@@ -1034,7 +1012,7 @@ def _form_fields(request: HttpRequest) -> tuple[dict | None, str | None]:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_form_update_view(request: HttpRequest, form_id) -> JsonResponse:
     """Save a form's name and field mappings from the form editor."""
     fields, error = _form_fields(request)
@@ -1051,7 +1029,7 @@ def topic_flow_form_update_view(request: HttpRequest, form_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_form_delete_view(request: HttpRequest, form_id) -> JsonResponse:
     """Delete a form from a flow."""
     try:
@@ -1064,7 +1042,7 @@ def topic_flow_form_delete_view(request: HttpRequest, form_id) -> JsonResponse:
 
 @require_GET
 @ratelimit(key="ip", rate="30/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def topic_flow_form_preview_view(request: HttpRequest, form_id):
     """The form filled with sample answers, for the admin preview."""
     try:
@@ -1083,7 +1061,7 @@ def topic_flow_form_preview_view(request: HttpRequest, form_id):
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def library_topic_list_view(request: HttpRequest) -> JsonResponse:
     """Topic configs from the content library for the admin sidebar."""
     return JsonResponse({"topics": topic_library_list()})
@@ -1091,7 +1069,7 @@ def library_topic_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def library_topic_apply_view(
     request: HttpRequest, court_slug: str, topic_slug: str
 ) -> JsonResponse:
@@ -1107,7 +1085,7 @@ def library_topic_apply_view(
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def library_topic_flow_apply_view(
     request: HttpRequest, court_slug: str, topic_slug: str, flow_slug: str
 ) -> JsonResponse:
@@ -1168,7 +1146,7 @@ def _contact_fields(request: HttpRequest) -> tuple[dict | None, str | None]:
 
 @require_GET
 @ratelimit(key="ip", rate="120/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def contact_list_view(request: HttpRequest) -> JsonResponse:
     """The site's contacts for the admin settings tab."""
     return JsonResponse(
@@ -1178,7 +1156,7 @@ def contact_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def contact_create_view(request: HttpRequest) -> JsonResponse:
     """Create a contact."""
     fields, error = _contact_fields(request)
@@ -1194,7 +1172,7 @@ def contact_create_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def contact_update_view(request: HttpRequest, contact_id) -> JsonResponse:
     """Update a contact's editable fields."""
     fields, error = _contact_fields(request)
@@ -1216,7 +1194,7 @@ def contact_update_view(request: HttpRequest, contact_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def contact_delete_view(request: HttpRequest, contact_id) -> JsonResponse:
     """Delete a contact."""
     try:
@@ -1229,7 +1207,7 @@ def contact_delete_view(request: HttpRequest, contact_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def contact_move_view(request: HttpRequest, contact_id) -> JsonResponse:
     """Move a contact up or down; returns the refreshed ordered list."""
     direction = (request.POST.get("direction") or "").strip()
@@ -1279,7 +1257,7 @@ def _resource_fields(request: HttpRequest) -> tuple[dict | None, str | None]:
 
 @require_GET
 @ratelimit(key="ip", rate="120/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def resource_list_view(request: HttpRequest) -> JsonResponse:
     """The site's resources for the admin settings tab."""
     return JsonResponse(
@@ -1289,7 +1267,7 @@ def resource_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def resource_create_view(request: HttpRequest) -> JsonResponse:
     """Create a resource."""
     fields, error = _resource_fields(request)
@@ -1305,7 +1283,7 @@ def resource_create_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def resource_update_view(request: HttpRequest, resource_id) -> JsonResponse:
     """Update a resource's editable fields."""
     fields, error = _resource_fields(request)
@@ -1327,7 +1305,7 @@ def resource_update_view(request: HttpRequest, resource_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def resource_delete_view(request: HttpRequest, resource_id) -> JsonResponse:
     """Delete a resource."""
     try:
@@ -1340,7 +1318,7 @@ def resource_delete_view(request: HttpRequest, resource_id) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="60/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def resource_move_view(request: HttpRequest, resource_id) -> JsonResponse:
     """Move a resource up or down; returns the refreshed ordered list."""
     direction = (request.POST.get("direction") or "").strip()
@@ -1358,7 +1336,7 @@ def resource_move_view(request: HttpRequest, resource_id) -> JsonResponse:
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def library_court_list_view(request: HttpRequest) -> JsonResponse:
     """Court configs from the content library for the admin sidebar."""
     return JsonResponse({"courts": court_library_list()})
@@ -1366,7 +1344,7 @@ def library_court_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def library_court_apply_view(request: HttpRequest, slug: str) -> JsonResponse:
     """Pre-populate the site from a court library config."""
     config = court_library_get(slug=slug)
@@ -1404,7 +1382,7 @@ def _user_payload(user: User, *, viewer: User) -> dict:
 
 @require_GET
 @ratelimit(key="ip", rate="120/m", method="GET", block=True)
-@admin_access_required
+@manage_site_required
 def user_list_view(request: HttpRequest) -> JsonResponse:
     """Paginated users for the admin users tab; ``q`` filters by email."""
     search = (request.GET.get("q") or "").strip()
@@ -1422,7 +1400,7 @@ def user_list_view(request: HttpRequest) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@admin_access_required
+@manage_site_required
 def user_admin_toggle_view(request: HttpRequest, user_id: int) -> JsonResponse:
     """Toggle a user's Admins-group membership (admin access)."""
     try:
@@ -1442,7 +1420,7 @@ def user_admin_toggle_view(request: HttpRequest, user_id: int) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@developer_required
+@manage_developers_required
 def user_developer_toggle_view(
     request: HttpRequest, user_id: int
 ) -> JsonResponse:

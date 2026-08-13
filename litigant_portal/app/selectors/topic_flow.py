@@ -1,5 +1,6 @@
 from django.core.cache import cache
 
+from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import (
     Topic,
     TopicFlow,
@@ -10,8 +11,6 @@ from litigant_portal.app.models import (
     TopicFlowLink,
     UserIdentity,
 )
-
-TOPIC_LIST_CACHE_KEY = "topic_list"
 
 
 def topic_list() -> list[Topic]:
@@ -39,6 +38,21 @@ def topic_get(*, topic_id) -> Topic:
 def topic_flow_get(*, flow_id) -> TopicFlow:
     """A single flow (raises TopicFlow.DoesNotExist)."""
     return TopicFlow.objects.get(id=flow_id)
+
+
+def topic_flow_fields(*, flow: TopicFlow) -> list[TopicFlowField]:
+    """The flow's fields across all its groups, in interview order.
+
+    Not the ``flow.fields`` related manager: that sorts flow-wide by field
+    order alone, which interleaves groups. Interview order composes group
+    order with field order, and iterating the two related managers keeps
+    any prefetch the caller set up.
+    """
+    return [
+        field
+        for group in flow.field_groups.all()
+        for field in group.fields.all()
+    ]
 
 
 def topic_flow_form_get(*, form_id) -> TopicFlowForm:

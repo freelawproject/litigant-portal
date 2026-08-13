@@ -221,7 +221,7 @@ class SimulateApiPermissionTests(TestCase):
         )
         group = TopicFlowFieldGroup.objects.create(flow=flow, order=0)
         TopicFlowField.objects.create(
-            group=group, name="full_name", data_type="text", order=0
+            flow=flow, group=group, name="full_name", data_type="text", order=0
         )
         topic_flow_answers_update(
             identity=self.sim.identity,
