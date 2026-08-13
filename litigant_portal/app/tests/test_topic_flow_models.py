@@ -7,7 +7,7 @@ what a litigant sees first.
 """
 
 import pytest
-from django.db import IntegrityError, connection, transaction
+from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from litigant_portal.app.models import (
@@ -62,17 +62,19 @@ class InterviewFieldTests(TestCase):
             flow=self.flow, title="Your notice", order=0
         )
 
+    def field(self, name, **kwargs):
+        kwargs.setdefault("group", self.group)
+        return TopicFlowField.objects.create(
+            flow=self.flow, name=name, **kwargs
+        )
+
     def test_group_and_field_order_compose_into_interview_order(self):
         second = TopicFlowFieldGroup.objects.create(
             flow=self.flow, title="Your case", order=1
         )
-        TopicFlowField.objects.create(group=second, name="county", order=0)
-        TopicFlowField.objects.create(
-            group=self.group, name="landlord", order=1
-        )
-        TopicFlowField.objects.create(
-            group=self.group, name="notice_date", order=0
-        )
+        self.field("county", group=second, order=0)
+        self.field("landlord", order=1)
+        self.field("notice_date", order=0)
 
         # Two Meta.ordering declarations compose into the order a litigant
         # is asked things in: groups by order, then fields by order within
@@ -85,39 +87,35 @@ class InterviewFieldTests(TestCase):
         ]
         self.assertEqual(ordered, ["notice_date", "landlord", "county"])
 
-    def test_two_fields_cannot_share_an_order_within_a_group(self):
-        TopicFlowField.objects.create(group=self.group, name="a", order=0)
-        # The constraint is DEFERRED, so the database only checks it at
-        # COMMIT — and TestCase wraps each test in a transaction that never
-        # commits. check_constraints() forces the check that a real request's
-        # autocommit would have triggered.
+    def test_name_is_unique_per_flow_not_per_group(self):
+        # Same name under a different flow is fine.
+        other = build_flow("landlord")
+        TopicFlowField.objects.create(
+            flow=other,
+            group=TopicFlowFieldGroup.objects.create(flow=other),
+            name="notice_date",
+        )
+        self.field("notice_date")
+
+        # The constraint reaches across groups: the same name on another
+        # page of the same interview is still a clash. Answers and library
+        # re-imports both identify a field by name within its flow.
+        second = TopicFlowFieldGroup.objects.create(flow=self.flow, order=1)
         with self.assertRaises(IntegrityError), transaction.atomic():
-            TopicFlowField.objects.create(group=self.group, name="b", order=0)
-            connection.check_constraints()
+            self.field("notice_date", group=second)
 
-    def test_the_order_constraint_defers_so_a_swap_can_pass_through_a_clash(
-        self,
-    ):
-        first = TopicFlowField.objects.create(
-            group=self.group, name="a", order=0
-        )
-        second = TopicFlowField.objects.create(
-            group=self.group, name="b", order=1
-        )
-
-        # Reordering renumbers rows one at a time, so the table is briefly
-        # in a state the constraint forbids. DEFERRED is what lets that work
-        # without a temporary sentinel value.
-        with transaction.atomic():
-            first.order, second.order = 1, 0
-            first.save(update_fields=["order"])
-            second.save(update_fields=["order"])
-
-        self.assertEqual([f.name for f in self.group.fields.all()], ["b", "a"])
+    def test_duplicate_orders_fall_back_to_creation_order(self):
+        # order is a display hint, not an invariant: ties never raise, they
+        # resolve by created_at, and the move services renumber siblings
+        # densely, so a list written out of band self-heals on first move.
+        self.field("a", order=0)
+        self.field("b", order=0)
+        self.assertEqual([f.name for f in self.group.fields.all()], ["a", "b"])
 
     def test_fields_default_to_text(self):
-        field = TopicFlowField.objects.create(group=self.group, name="a")
-        self.assertEqual(field.data_type, TopicFlowField.DataType.TEXT)
+        self.assertEqual(
+            self.field("a").data_type, TopicFlowField.DataType.TEXT
+        )
 
 
 @pytest.mark.postgres
@@ -143,7 +141,7 @@ class FlowContentTests(TestCase):
     def test_a_deadline_hangs_off_a_field_and_dies_with_it(self):
         group = TopicFlowFieldGroup.objects.create(flow=self.flow)
         field = TopicFlowField.objects.create(
-            group=group, name="notice_date", data_type="date"
+            flow=self.flow, group=group, name="notice_date", data_type="date"
         )
         deadline = TopicFlowDeadline.objects.create(
             flow=self.flow,
@@ -159,11 +157,63 @@ class FlowContentTests(TestCase):
 
 
 @pytest.mark.postgres
+class FlowDeletionTests(TestCase):
+    def test_deleting_a_flow_takes_all_eight_collections(self):
+        # Deleting a flow is the destructive action the admin editor will
+        # actually offer, and it must reach every depth: five collections
+        # hang off the flow directly, fields also arrive through their
+        # group (a diamond the delete collector must resolve), answers
+        # through fields, and mappings through forms.
+        flow = build_flow()
+        TopicFlowSection.objects.create(flow=flow, heading="h")
+        TopicFlowLink.objects.create(
+            flow=flow, name="n", url="https://example.test"
+        )
+        group = TopicFlowFieldGroup.objects.create(flow=flow)
+        field = TopicFlowField.objects.create(
+            flow=flow, group=group, name="notice_date"
+        )
+        TopicFlowDeadline.objects.create(
+            flow=flow, label="Answer due", offset_days=7, offset_from=field
+        )
+        identity = UserIdentity.objects.create(session_key="abc123")
+        TopicFlowAnswer.objects.create(
+            identity=identity, field=field, value="x"
+        )
+        form = TopicFlowForm.objects.create(
+            flow=flow, slug="answer", name="Answer", file="f.pdf"
+        )
+        TopicFlowFormField.objects.create(form=form, pdf_field="Field1")
+
+        flow.delete()
+
+        for model in (
+            TopicFlowSection,
+            TopicFlowLink,
+            TopicFlowFieldGroup,
+            TopicFlowField,
+            TopicFlowDeadline,
+            TopicFlowAnswer,
+            TopicFlowForm,
+            TopicFlowFormField,
+        ):
+            with self.subTest(model=model.__name__):
+                self.assertEqual(model.objects.count(), 0)
+        # Only flow content dies with the flow.
+        self.assertTrue(Topic.objects.exists())
+        self.assertTrue(UserIdentity.objects.exists())
+
+
+@pytest.mark.postgres
 class FormMappingTests(TestCase):
     def setUp(self):
         self.flow = build_flow()
 
-    def test_form_slug_is_unique_per_flow(self):
+    def test_form_slug_is_unique_per_flow_not_globally(self):
+        # Same slug under a different flow is fine.
+        TopicFlowForm.objects.create(
+            flow=build_flow("landlord"), slug="answer", name="A", file="f.pdf"
+        )
         TopicFlowForm.objects.create(
             flow=self.flow, slug="answer", name="Answer", file="f.pdf"
         )
@@ -187,7 +237,9 @@ class AnswerTests(TestCase):
     def setUp(self):
         self.flow = build_flow()
         group = TopicFlowFieldGroup.objects.create(flow=self.flow)
-        self.field = TopicFlowField.objects.create(group=group, name="county")
+        self.field = TopicFlowField.objects.create(
+            flow=self.flow, group=group, name="county"
+        )
         self.identity = UserIdentity.objects.create(session_key="abc123")
 
     def test_one_answer_per_identity_per_field(self):
