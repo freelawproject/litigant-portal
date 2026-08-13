@@ -1,0 +1,8 @@
+/* Transcript block on the read-only ChatThread admin page. */
+.audit-transcript {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 40em;
+  overflow-y: auto;
+  margin: 0;
+}

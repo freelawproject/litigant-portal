@@ -49,6 +49,91 @@ def chat_message_list(
     return messages
 
 
+def chat_thread_owner_label(*, thread: ChatThread) -> str:
+    """The review label for a thread's owner: email or session key."""
+    identity = thread.identity
+    if identity.user_id:
+        return identity.user.email or identity.user.username
+    return f"anonymous (session {identity.session_key})"
+
+
+def chat_thread_export_data(*, thread: ChatThread) -> dict:
+    """Full-fidelity audit export: thread metadata plus every message row.
+
+    Built from raw ChatMessage.data with hidden and meta rows included. The
+    frontend render path (thread_render_items) is lossy and unsuitable here.
+    """
+    identity = thread.identity
+    return {
+        "thread_id": str(thread.id),
+        "thread_type": thread.thread_type,
+        "description": thread.description,
+        "created_at": thread.created_at.isoformat(),
+        "updated_at": thread.updated_at.isoformat(),
+        "owner": {
+            "user_email": identity.user.email if identity.user_id else None,
+            "username": identity.user.username if identity.user_id else None,
+            "session_key": identity.session_key,
+        },
+        "messages": [
+            {
+                "id": str(m.id),
+                "created_at": m.created_at.isoformat(),
+                "hidden": m.hidden,
+                "meta": m.meta,
+                "num_tokens": m.num_tokens,
+                "cost": m.cost,
+                "data": dict(m.data),
+            }
+            for m in chat_message_list(thread=thread)
+        ],
+    }
+
+
+def chat_thread_export_markdown(*, thread: ChatThread) -> str:
+    """Human-readable audit transcript of every message row."""
+    export = chat_thread_export_data(thread=thread)
+    lines = [
+        f"# Chat transcript {export['thread_id']}",
+        "",
+        f"- Owner: {chat_thread_owner_label(thread=thread)}",
+        f"- Started: {export['created_at']}",
+        f"- Description: {export['description'] or '(none)'}",
+    ]
+    for msg in export["messages"]:
+        lines.append("")
+        lines.extend(_message_lines(msg))
+    return "\n".join(lines) + "\n"
+
+
+def _message_lines(msg: dict) -> list[str]:
+    data = msg["data"]
+    role = data.get("role", "unknown")
+    heading = role
+    if role == "tool":
+        heading = f"tool result: {data.get('name', 'unknown')}"
+    elif role == "meta":
+        heading = f"meta: {data.get('kind', 'unknown')}"
+    flags = [flag for flag in ("hidden", "meta") if msg[flag]]
+    if flags:
+        heading += " [" + ", ".join(flags) + "]"
+    lines = [f"## {heading} ({msg['created_at']})"]
+    if data.get("content"):
+        lines += ["", data["content"]]
+    for call in data.get("tool_calls") or []:
+        function = call.get("function", {})
+        name = function.get("name", "unknown")
+        lines += ["", f"Tool call: {name}({function.get('arguments', '')})"]
+    if data.get("attachments"):
+        lines += ["", f"Attachments: {', '.join(data['attachments'])}"]
+    if role == "meta":
+        lines += [
+            "",
+            f"(accounting only: {msg['num_tokens']} tokens, cost {msg['cost']})",
+        ]
+    return lines
+
+
 def chat_thread_usage(*, thread: ChatThread) -> dict:
     """Total tokens and cost across all of a thread's messages (incl.
     hidden and meta)."""
