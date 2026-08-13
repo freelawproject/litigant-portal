@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
+from litigant_portal.app.tests.utils import SESSION_KEY, SHORT_KEY
 
 User = get_user_model()
 
@@ -18,7 +19,7 @@ class AuditAdminTests(TestCase):
         self.staff = User.objects.create_user(
             username="staff", password="pw", is_staff=True
         )
-        self.identity = UserIdentity.objects.create(session_key="anon-key-1")
+        self.identity = UserIdentity.objects.create(session_key=SESSION_KEY)
         self.thread = ChatThread.objects.create(
             identity=self.identity, description="Eviction help"
         )
@@ -65,10 +66,11 @@ class AuditAdminTests(TestCase):
         response = self.client.get("/django-admin/")
         self.assertContains(response, "/django-admin/app/chatthread/")
 
-    def test_changelist_lists_thread_with_owner(self):
+    def test_changelist_lists_thread_with_truncated_owner(self):
         response = self.client.get("/django-admin/app/chatthread/")
         self.assertContains(response, "Eviction help")
-        self.assertContains(response, "anon-key-1")
+        self.assertContains(response, f"anonymous (session {SHORT_KEY})")
+        self.assertNotContains(response, SESSION_KEY)
 
     def test_view_page_renders_full_transcript(self):
         response = self.client.get(f"{self.base_url}/change/")
@@ -77,8 +79,12 @@ class AuditAdminTests(TestCase):
         self.assertContains(response, "Found the housing topic.")
         self.assertContains(response, "[hidden]")
         self.assertContains(response, "injected context")
+        self.assertContains(response, f"anonymous (session {SHORT_KEY})")
+        self.assertNotContains(response, SESSION_KEY)
 
-    def test_search_finds_threads_by_email_and_session_key(self):
+    def test_search_finds_threads_by_email_and_full_session_key(self):
+        """Staff who already hold a key can still paste the whole thing in,
+        even though no surface renders it."""
         owner = User.objects.create_user(
             username="litigant", email="litigant@example.com", password="pw"
         )
@@ -92,7 +98,7 @@ class AuditAdminTests(TestCase):
         self.assertContains(by_email, "Account holder thread")
         self.assertNotContains(by_email, "Eviction help")
 
-        by_session = self.client.get(changelist, {"q": "anon-key-1"})
+        by_session = self.client.get(changelist, {"q": SESSION_KEY})
         self.assertContains(by_session, "Eviction help")
         self.assertNotContains(by_session, "Account holder thread")
 
@@ -107,7 +113,8 @@ class AuditAdminTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("attachment", response["Content-Disposition"])
         content = response.content.decode()
-        self.assertIn("anonymous (session anon-key-1)", content)
+        self.assertIn(f"anonymous (session {SHORT_KEY})", content)
+        self.assertNotIn(SESSION_KEY, content)
         self.assertIn("Tool call: search_topics", content)
         self.assertIn("[hidden]", content)
 
@@ -117,7 +124,9 @@ class AuditAdminTests(TestCase):
         self.assertIn("attachment", response["Content-Disposition"])
         export = json.loads(response.content)
         self.assertEqual(export["thread_id"], str(self.thread.pk))
-        self.assertEqual(export["owner"]["session_key"], "anon-key-1")
+        self.assertEqual(export["owner"]["session_key"], SHORT_KEY)
+        self.assertEqual(export["owner"]["identity_id"], str(self.identity.id))
+        self.assertNotIn(SESSION_KEY, response.content.decode())
         roles = [m["data"]["role"] for m in export["messages"]]
         self.assertEqual(roles, ["user", "assistant", "tool", "user"])
         self.assertTrue(export["messages"][3]["hidden"])
@@ -153,3 +162,34 @@ class AuditAdminTests(TestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 302)
             self.assertIn("/django-admin/login/", response["Location"])
+
+
+@pytest.mark.postgres
+class UserIdentityAdminTests(TestCase):
+    """UserIdentityAdmin keeps Django's per-model permissions, so these need a
+    superuser rather than the bare staff account the transcript surface uses."""
+
+    def setUp(self):
+        self.client = Client()
+        User.objects.create_superuser(username="root", password="pw")
+        self.client.login(username="root", password="pw")
+        self.identity = UserIdentity.objects.create(session_key=SESSION_KEY)
+
+    def test_changelist_truncates_the_session_key(self):
+        response = self.client.get("/django-admin/app/useridentity/")
+        self.assertContains(response, SHORT_KEY)
+        self.assertNotContains(response, SESSION_KEY)
+
+    def test_change_form_neither_renders_nor_edits_the_session_key(self):
+        response = self.client.get(
+            f"/django-admin/app/useridentity/{self.identity.id}/change/"
+        )
+        self.assertContains(response, SHORT_KEY)
+        self.assertNotContains(response, SESSION_KEY)
+        self.assertNotContains(response, 'name="session_key"')
+
+    def test_changelist_still_finds_an_identity_by_full_session_key(self):
+        response = self.client.get(
+            "/django-admin/app/useridentity/", {"q": SESSION_KEY}
+        )
+        self.assertContains(response, str(self.identity.id))

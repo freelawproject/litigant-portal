@@ -1,6 +1,7 @@
 from django.db.models import OuterRef, QuerySet, Subquery, Sum
 
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
+from litigant_portal.app.selectors.user import user_identity_session_key_short
 
 
 def chat_thread_list(
@@ -50,11 +51,12 @@ def chat_message_list(
 
 
 def chat_thread_owner_label(*, thread: ChatThread) -> str:
-    """The review label for a thread's owner: email or session key."""
+    """The review label for a thread's owner: email or truncated session key."""
     identity = thread.identity
     if identity.user_id:
         return identity.user.email or identity.user.username
-    return f"anonymous (session {identity.session_key})"
+    short_key = user_identity_session_key_short(identity=identity)
+    return f"anonymous (session {short_key})"
 
 
 def chat_thread_export_data(*, thread: ChatThread) -> dict:
@@ -71,9 +73,11 @@ def chat_thread_export_data(*, thread: ChatThread) -> dict:
         "created_at": thread.created_at.isoformat(),
         "updated_at": thread.updated_at.isoformat(),
         "owner": {
+            # identity_id is the stable handle; the short key is only a hint.
+            "identity_id": str(identity.id),
             "user_email": identity.user.email if identity.user_id else None,
             "username": identity.user.username if identity.user_id else None,
-            "session_key": identity.session_key,
+            "session_key": user_identity_session_key_short(identity=identity),
         },
         "messages": [
             {

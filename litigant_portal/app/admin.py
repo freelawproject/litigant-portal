@@ -18,6 +18,7 @@ from .selectors.chat_engine import (
     chat_thread_export_markdown,
     chat_thread_owner_label,
 )
+from .selectors.user import user_identity_session_key_short
 
 
 @admin.register(UserProfile)
@@ -28,10 +29,17 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(UserIdentity)
 class UserIdentityAdmin(admin.ModelAdmin):
-    list_display = ["id", "user", "session_key", "created_at"]
+    list_display = ["id", "user", "session_key_short", "created_at"]
     list_filter = ["created_at"]
     search_fields = ["user__email", "session_key"]
-    readonly_fields = ["id", "created_at"]
+    # readonly_fields would still print session_key; only leaving it out of
+    # `fields` keeps the full value off the page.
+    fields = ["id", "user", "session_key_short", "created_at"]
+    readonly_fields = ["id", "session_key_short", "created_at"]
+
+    @admin.display(description="Session key", ordering="session_key")
+    def session_key_short(self, obj):
+        return user_identity_session_key_short(identity=obj)
 
 
 @admin.register(ChatThread)

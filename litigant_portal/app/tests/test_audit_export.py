@@ -10,6 +10,7 @@ from litigant_portal.app.selectors.chat_engine import (
     chat_thread_export_markdown,
     chat_thread_owner_label,
 )
+from litigant_portal.app.tests.utils import SESSION_KEY, SHORT_KEY
 
 User = get_user_model()
 
@@ -33,19 +34,18 @@ class ThreadOwnerLabelTests(TestCase):
         thread = self._thread_for(UserIdentity.objects.create(user=user))
         self.assertEqual(chat_thread_owner_label(thread=thread), "no-email")
 
-    def test_labels_an_anonymous_owner_by_session_key(self):
-        identity = UserIdentity.objects.create(session_key="anon-key-1")
+    def test_labels_an_anonymous_owner_by_truncated_session_key(self):
+        identity = UserIdentity.objects.create(session_key=SESSION_KEY)
         thread = self._thread_for(identity)
-        self.assertEqual(
-            chat_thread_owner_label(thread=thread),
-            "anonymous (session anon-key-1)",
-        )
+        label = chat_thread_owner_label(thread=thread)
+        self.assertEqual(label, f"anonymous (session {SHORT_KEY})")
+        self.assertNotIn(SESSION_KEY, label)
 
 
 @pytest.mark.postgres
 class ThreadExportTests(TestCase):
     def setUp(self):
-        self.identity = UserIdentity.objects.create(session_key="anon-key-1")
+        self.identity = UserIdentity.objects.create(session_key=SESSION_KEY)
         self.thread = ChatThread.objects.create(
             identity=self.identity, description="Eviction help"
         )
@@ -121,6 +121,21 @@ class ThreadExportTests(TestCase):
         self.assertEqual(
             export["updated_at"], self.thread.updated_at.isoformat()
         )
+
+    def test_markdown_owner_line_truncates_the_session_key(self):
+        markdown = chat_thread_export_markdown(thread=self.thread)
+        self.assertIn(f"- Owner: anonymous (session {SHORT_KEY})", markdown)
+        self.assertNotIn(SESSION_KEY, markdown)
+
+    def test_json_owner_truncates_the_session_key(self):
+        owner = chat_thread_export_data(thread=self.thread)["owner"]
+        self.assertEqual(owner["session_key"], SHORT_KEY)
+
+    def test_json_owner_carries_the_identity_id(self):
+        """The truncated key is a hint; the identity id is the real handle for
+        correlating several threads to one visitor."""
+        owner = chat_thread_export_data(thread=self.thread)["owner"]
+        self.assertEqual(owner["identity_id"], str(self.identity.id))
 
     def test_json_owner_carries_username_when_email_is_blank(self):
         user = User.objects.create_user(username="no-email", password="pw")
