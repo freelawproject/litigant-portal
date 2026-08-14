@@ -2,8 +2,8 @@
 
 Cotton tags compile only through django_cotton's loader, so these exercise the
 atom through the pages that use it rather than in isolation. Between them the
-chat page and the style guide cover every prop: with an icon and without,
-level 2 and level 4.
+chat page, the admin page, and the style guide cover every prop: with an icon
+and without, explicit levels 2 and 4 and the default.
 """
 
 import re
@@ -11,8 +11,11 @@ from pathlib import Path
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
+
+from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 
 CHAT_TEMPLATE_PATH = Path(
     "litigant_portal/app/templates/pages/chat/index.html"
@@ -49,14 +52,15 @@ class HandRolledEyebrowGuardTests(SimpleTestCase):
 class ChatPageEyebrowTests(TestCase):
     """Every chat-page eyebrow renders a heading at its declared level."""
 
-    def test_superuser_sees_every_eyebrow_heading(self):
+    def test_developer_sees_every_eyebrow_heading(self):
         User = get_user_model()
-        User.objects.create_superuser(
-            username="eyebrow_root",
-            email="eyebrow_root@example.com",
+        developer = User.objects.create_user(
+            username="eyebrow_dev",
+            email="eyebrow_dev@example.com",
             password="pw",
         )
-        self.client.login(username="eyebrow_root", password="pw")
+        developer.groups.add(Group.objects.get(name=DEVELOPERS_GROUP))
+        self.client.login(username="eyebrow_dev", password="pw")
 
         response = self.client.get(reverse("pages:chat"))
 
@@ -66,6 +70,27 @@ class ChatPageEyebrowTests(TestCase):
         self.assertEqual(_heading_count(content, "Recent Activity", "2"), 2)
         self.assertEqual(_heading_count(content, "Briefcase", "2"), 2)
         self.assertEqual(_heading_count(content, "Your files", "4"), 1)
+
+
+@pytest.mark.postgres
+class AdminPageEyebrowTests(TestCase):
+    """The admin panel eyebrow (icon, default level) renders as a heading."""
+
+    def test_admin_sees_panel_eyebrow_heading(self):
+        User = get_user_model()
+        site_admin = User.objects.create_user(
+            username="eyebrow_admin",
+            email="eyebrow_admin@example.com",
+            password="pw",
+        )
+        site_admin.groups.add(Group.objects.get(name=ADMINS_GROUP))
+        self.client.login(username="eyebrow_admin", password="pw")
+
+        response = self.client.get(reverse("pages:admin_dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode()
+        self.assertEqual(_heading_count(content, "Admin", "2"), 1)
 
 
 @pytest.mark.postgres
