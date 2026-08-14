@@ -21,8 +21,8 @@ jobs:
           stale-issue-label: 'stale'
           stale-issue-message: >
             This issue has had no activity for 90 days. It will be
-            closed in 14 days unless there is new activity or it is
-            explicitly marked to keep open.
+            closed in 14 days unless there is new activity, it is
+            assigned to someone, or it is labeled `pinned`.
           close-issue-message: >
             Closed due to inactivity. Feel free to reopen if this is
             still relevant.
@@ -33,7 +33,8 @@ jobs:
           stale-pr-label: 'stale'
           stale-pr-message: >
             This PR has had no activity for 30 days. It will be closed
-            in 7 days unless updated.
+            in 7 days unless it is updated, it is assigned to someone,
+            or it is labeled `pinned`.
           close-pr-message: >
             Closed due to inactivity. Feel free to reopen if you'd
             like to continue this work.

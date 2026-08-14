@@ -351,3 +351,6 @@ DEFAULT_CHAT_AGENT = os.environ.get(
 CHAT_MODEL = os.environ.get(
     "CHAT_MODEL", "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0"
 )
+
+# Audit window: cleanup_sessions keeps chat activity this many days.
+AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "30"))

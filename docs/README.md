@@ -23,6 +23,7 @@ The repo's reference shelf: material you reach for when you need it. Day-to-day 
 | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | [SECURITY.md](./wiki/SECURITY.md)                   | Security architecture: production headers, secrets, CSP                                                           |
 | [ai-tone-guide.md](./wiki/ai-tone-guide.md)         | Tone and philosophy for AI-generated user-facing output                                                           |
+| [audit-transcripts.md](./wiki/audit-transcripts.md) | How staff pull AI conversation transcripts, plus the retention policy                                             |
 | [issue-conventions.md](./wiki/issue-conventions.md) | Issue templates, labels, and the reasoning behind them                                                            |
 | [permissions.md](./wiki/permissions.md)             | Admin panel permissions: the two permissions, the two groups, and how to check them                               |
 | [translation.md](./wiki/translation.md)             | gettext infrastructure reference (strategy: [#704](https://github.com/freelawproject/litigant-portal/issues/704)) |

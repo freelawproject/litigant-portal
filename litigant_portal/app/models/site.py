@@ -42,3 +42,31 @@ class Site(BaseModel):
             ("manage_site", "Can manage the site"),
             ("manage_developers", "Can manage developer access"),
         ]
+
+
+class Contact(BaseModel):
+    """A court or legal-help contact."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255, unique=True)
+    phone = models.CharField(max_length=32, blank=True)
+    email = models.EmailField(blank=True)
+    url = models.URLField(max_length=500, blank=True)
+    note = models.TextField(blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "created_at"]
+
+
+class Resource(BaseModel):
+    """An external resource link."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    label = models.CharField(max_length=255, unique=True)
+    url = models.URLField(max_length=500)
+    note = models.TextField(blank=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "created_at"]
