@@ -18,10 +18,9 @@
   <div x-data="adminApp" class="flex-1 flex flex-row min-h-0">
     {# Left panel — tab navigation #}
     <aside class="hidden lg:flex w-1/5 flex-shrink-0 flex-col border-r border-greyscale-200 min-h-0">
-      <div class="flex items-center gap-1.5 px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0">
-        <c-atoms.icon name="wrench-screwdriver" class="w-3.5 h-3.5 text-greyscale-400" />
-        <h2 class="text-xs font-semibold uppercase tracking-wider text-greyscale-400">{% trans "Admin" %}</h2>
-      </div>
+      <c-atoms.eyebrow icon="wrench-screwdriver"
+                       label='{% trans "Admin" %}'
+                       class="px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0" />
       {# Tab styling is fully static via data-active variants so the #}
       {# pre-Alpine paint matches — Alpine only toggles the attribute. #}
       <nav class="flex-1 overflow-y-auto min-h-0 p-2 space-y-1">

@@ -1,0 +1,6 @@
+<c-vars label="" icon="" level="2" />
+{# Section label — small caps heading (level 2-6) with an optional leading icon. #}
+<div class="flex items-center gap-1.5 {{ class }}" {{ attrs }}>
+  {% if icon %}<c-atoms.icon name="{{ icon }}" class="w-3.5 h-3.5 text-greyscale-400" />{% endif %}
+  <h{{ level }} class="text-xs font-semibold uppercase tracking-wider text-greyscale-500">{{ label }}</h{{ level }}>
+</div>
