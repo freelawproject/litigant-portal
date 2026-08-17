@@ -70,6 +70,10 @@
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Badges</a>
             </li>
             <li>
+              <a href="#eyebrow"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Eyebrow</a>
+            </li>
+            <li>
               <a href="#checkbox"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Checkbox</a>
             </li>
@@ -715,6 +719,38 @@
               <div class="flex flex-col md:flex-row">
                 <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
                 <span class="p-2.5">"sm" (default) | "md"</span>
+              </div>
+            </div>
+          </section>
+          <section id="eyebrow" class="mb-12" aria-labelledby="eyebrow-heading">
+            <h3 id="eyebrow-heading" class="mb-4">Eyebrow</h3>
+            <p class="text-greyscale-600 mb-6">Small caps section label with an optional leading icon. Used for panel and drawer headers.</p>
+            <div class="space-y-3 mb-6 max-w-xs">
+              <c-atoms.eyebrow icon="history" label="Recent Activity" />
+              <c-atoms.eyebrow icon="briefcase" label="Briefcase" />
+              <c-atoms.eyebrow label="No icon" />
+            </div>
+            <h4 class="mb-3">With layout classes</h4>
+            <p class="text-greyscale-600 mb-4">Spacing and borders come from the caller via <code>class</code> — the atom only owns the icon and heading styling.</p>
+            <div class="border border-greyscale-200 rounded-xl mb-6 max-w-xs">
+              <c-atoms.eyebrow icon="document-text"
+                               label="Your files"
+                               class="px-4 pt-4 pb-3 border-b border-greyscale-200" />
+              <p class="px-4 py-3 text-sm text-greyscale-500">Panel content</p>
+            </div>
+            <h4 class="mt-8">Props</h4>
+            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
+                <span class="p-2.5">Heading text</span>
+              </div>
+              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+                <span class="p-2.5">Icon name — optional, omit for a label-only eyebrow</span>
+              </div>
+              <div class="flex flex-col md:flex-row">
+                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>level</code></span>
+                <span class="p-2.5">Heading level, <code>2</code>–<code>6</code> (default <code>2</code>) — match the surrounding outline</span>
               </div>
             </div>
           </section>
