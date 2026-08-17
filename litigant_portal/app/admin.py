@@ -18,7 +18,6 @@ from .selectors.chat_engine import (
     chat_thread_export_markdown,
     chat_thread_owner_label,
 )
-from .selectors.user import user_identity_session_key_short
 
 
 @admin.register(UserProfile)
@@ -39,7 +38,7 @@ class UserIdentityAdmin(admin.ModelAdmin):
 
     @admin.display(description="Session key", ordering="session_key")
     def session_key_short(self, obj):
-        return user_identity_session_key_short(identity=obj)
+        return obj.session_key_short
 
 
 @admin.register(ChatThread)

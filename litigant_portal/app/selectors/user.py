@@ -1,22 +1,7 @@
 from django.contrib.auth.models import Group, User
 from django.db.models import Exists, OuterRef, QuerySet
 
-from litigant_portal.app.models import UserIdentity
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
-
-SESSION_KEY_DISPLAY_CHARS = 8
-
-
-def user_identity_session_key_short(*, identity: UserIdentity) -> str:
-    """An identity's session key, truncated for display.
-
-    ``session_key`` is the live value of the visitor's sessionid cookie, so no
-    audit surface renders it whole. The full value stays in the database and in
-    admin ``search_fields``, which is how staff already holding a key look a
-    thread up; 8 characters is a hint, not a usable handle. Use
-    ``UserIdentity.id`` to correlate threads to one visitor.
-    """
-    return identity.session_key[:SESSION_KEY_DISPLAY_CHARS]
 
 
 def user_get(*, user_id: int) -> User:

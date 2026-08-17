@@ -4,6 +4,8 @@ from django.utils.translation import gettext_lazy as _
 
 from .base import BaseModel
 
+SESSION_KEY_DISPLAY_CHARS = 8
+
 
 class UserIdentity(BaseModel):
     """Single identity row for either an authenticated user or an anonymous session."""
@@ -16,6 +18,18 @@ class UserIdentity(BaseModel):
         related_name="identity",
     )
     session_key = models.CharField(max_length=40, blank=True, db_index=True)
+
+    @property
+    def session_key_short(self) -> str:
+        """The session key, truncated for display.
+
+        ``session_key`` is the live value of the visitor's sessionid cookie, so
+        no audit surface renders it whole. The full value stays in the database
+        and in admin ``search_fields``, which is how staff already holding a key
+        look a thread up; 8 characters is a hint, not a usable handle. Use
+        ``UserIdentity.id`` to correlate threads to one visitor.
+        """
+        return self.session_key[:SESSION_KEY_DISPLAY_CHARS]
 
 
 class UserProfile(models.Model):

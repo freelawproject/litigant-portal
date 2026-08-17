@@ -28,7 +28,7 @@ The reason is that a session key is the value of that visitor's browser cookie. 
 
 What this means in practice:
 
-- **Searching still works with the whole key.** If you already have a full session key, paste it into the search box and it will find the thread. Search matches the stored value; the page just never prints it.
+- **Searching still works with the whole key.** If you already have a full session key, paste it into the search box and it will find the thread. Search matches the stored value, and the box echoes back what you typed, but the key is never printed in a thread listing or a download.
 - **To tie several conversations to the same visitor, use the identity ID, not the shortened key.** The JSON download carries it as `owner.identity_id`. Matching identity IDs mean the same visitor. Matching 8-character keys are a hint, not proof.
 
 ## Retention

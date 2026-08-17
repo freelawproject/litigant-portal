@@ -1,7 +1,6 @@
 from django.db.models import OuterRef, QuerySet, Subquery, Sum
 
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
-from litigant_portal.app.selectors.user import user_identity_session_key_short
 
 
 def chat_thread_list(
@@ -55,8 +54,7 @@ def chat_thread_owner_label(*, thread: ChatThread) -> str:
     identity = thread.identity
     if identity.user_id:
         return identity.user.email or identity.user.username
-    short_key = user_identity_session_key_short(identity=identity)
-    return f"anonymous (session {short_key})"
+    return f"anonymous (session {identity.session_key_short})"
 
 
 def chat_thread_export_data(*, thread: ChatThread) -> dict:
@@ -77,7 +75,7 @@ def chat_thread_export_data(*, thread: ChatThread) -> dict:
             "identity_id": str(identity.id),
             "user_email": identity.user.email if identity.user_id else None,
             "username": identity.user.username if identity.user_id else None,
-            "session_key": user_identity_session_key_short(identity=identity),
+            "session_key": identity.session_key_short,
         },
         "messages": [
             {
