@@ -42,10 +42,6 @@ RUN TAILWIND_VERSION=${TAILWIND_VERSION} \
 # -----------------------------------------------------------------------------
 # Stage 4: Application code
 # -----------------------------------------------------------------------------
-# Git SHA of the code being baked in; stamped on chat messages for audit (#801).
-ARG GIT_SHA=unknown
-ENV GIT_SHA=${GIT_SHA}
-
 COPY litigant_portal litigant_portal
 
 RUN /tmp/tailwindcss \
@@ -59,6 +55,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app
 USER appuser
+
+# Git SHA of the code being baked in; stamped on chat messages for audit.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
 
 ENTRYPOINT ["docker/django/entrypoint.sh"]
 CMD ["web-prod"]
