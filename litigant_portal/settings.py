@@ -27,6 +27,11 @@ if DEPLOYMENT_ENV not in {"dev", "qa", "prod"}:
 # in the dev/QA header so testers can disambiguate deploys by the minute.
 APP_BUILD_TIME = datetime.now().strftime("%Y/%m/%d %H:%M")
 
+# Git SHA of the deployed code, baked into the image at build time (#801).
+# Stamped on chat messages so audited conversations can be reconstituted
+# against the exact prompt layers that produced them.
+GIT_SHA = os.environ.get("GIT_SHA", "unknown")
+
 SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
 
 # Temporary site-wide password gate; empty disables it. See

@@ -42,6 +42,10 @@ RUN TAILWIND_VERSION=${TAILWIND_VERSION} \
 # -----------------------------------------------------------------------------
 # Stage 4: Application code
 # -----------------------------------------------------------------------------
+# Git SHA of the code being baked in; stamped on chat messages for audit (#801).
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 COPY litigant_portal litigant_portal
 
 RUN /tmp/tailwindcss \
