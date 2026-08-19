@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from typing import Any
 
 import litellm
+from django.conf import settings
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 
@@ -52,6 +53,7 @@ def chat_message_create(
         meta=meta,
         num_tokens=num_tokens,
         cost=cost,
+        git_sha=settings.GIT_SHA,
     )
 
 
