@@ -28,10 +28,17 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(UserIdentity)
 class UserIdentityAdmin(admin.ModelAdmin):
-    list_display = ["id", "user", "session_key", "created_at"]
+    list_display = ["id", "user", "session_key_short", "created_at"]
     list_filter = ["created_at"]
     search_fields = ["user__email", "session_key"]
-    readonly_fields = ["id", "created_at"]
+    # readonly_fields would still print session_key; only leaving it out of
+    # `fields` keeps the full value off the page.
+    fields = ["id", "user", "session_key_short", "created_at"]
+    readonly_fields = ["id", "session_key_short", "created_at"]
+
+    @admin.display(description="Session key", ordering="session_key")
+    def session_key_short(self, obj):
+        return obj.session_key_short
 
 
 @admin.register(ChatThread)

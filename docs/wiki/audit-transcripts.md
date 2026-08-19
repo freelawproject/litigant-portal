@@ -11,7 +11,7 @@ You need a portal account with **staff status**. A developer grants this once (i
 1. Go to `/django-admin/` on the portal and log in.
 2. Click **Chat threads**. Every AI conversation on the site is listed here, newest first.
 3. Find the conversation you need. You can:
-   - **Search** by the user's email address, by session key (for anonymous users), by words in the thread description, or by pasting a full thread ID.
+   - **Search** by the user's email address, by session key (for anonymous users), by words in the thread description, or by pasting a full thread ID. Session key search matches the whole key, even though only the first 8 characters are ever displayed (see [Session keys](#session-keys)).
    - **Filter** by date or thread type using the sidebar.
 4. Click the thread to open it. The page shows who the conversation belongs to, when it started, and the full transcript: user messages, AI answers, tool calls the AI made, and tool results. Rows marked `[hidden]` or `[meta]` were not visible to the user; they are included because an audit needs the complete record.
 5. To save a copy, use the **Downloads** links on the same page:
@@ -19,6 +19,17 @@ You need a portal account with **staff status**. A developer grants this once (i
    - **JSON**: the raw record with timestamps, token counts, and cost, good for deeper analysis or archiving.
 
 Everything is read-only. You cannot change or delete a conversation from this screen.
+
+## Session keys
+
+Anonymous visitors have no email address, so a conversation of theirs is labeled by session key: `anonymous (session k3f9ab21)`. **Only the first 8 characters are shown**, everywhere: the thread list, the thread page, the User identities list, and both downloads.
+
+The reason is that a session key is the value of that visitor's browser cookie. While their session is still active, anyone holding the whole key could use it to take over the session, so a transcript you hand to court staff should not carry it.
+
+What this means in practice:
+
+- **Searching still works with the whole key.** If you already have a full session key, paste it into the search box and it will find the thread. Search matches the stored value, and the box echoes back what you typed, but the key is never printed in a thread listing or a download.
+- **To tie several conversations to the same visitor, use the identity ID, not the shortened key.** The JSON download carries it as `owner.identity_id`. Matching identity IDs mean the same visitor. Matching 8-character keys are a hint, not proof.
 
 ## Retention
 
