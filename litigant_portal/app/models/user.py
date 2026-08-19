@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 from .base import BaseModel
+from .choices import State
 
 SESSION_KEY_DISPLAY_CHARS = 8
 
@@ -40,60 +41,6 @@ class UserProfile(models.Model):
     information without modifying AUTH_USER_MODEL.
     """
 
-    STATE_CHOICES = [
-        ("AL", _("Alabama")),
-        ("AK", _("Alaska")),
-        ("AZ", _("Arizona")),
-        ("AR", _("Arkansas")),
-        ("CA", _("California")),
-        ("CO", _("Colorado")),
-        ("CT", _("Connecticut")),
-        ("DE", _("Delaware")),
-        ("FL", _("Florida")),
-        ("GA", _("Georgia")),
-        ("HI", _("Hawaii")),
-        ("ID", _("Idaho")),
-        ("IL", _("Illinois")),
-        ("IN", _("Indiana")),
-        ("IA", _("Iowa")),
-        ("KS", _("Kansas")),
-        ("KY", _("Kentucky")),
-        ("LA", _("Louisiana")),
-        ("ME", _("Maine")),
-        ("MD", _("Maryland")),
-        ("MA", _("Massachusetts")),
-        ("MI", _("Michigan")),
-        ("MN", _("Minnesota")),
-        ("MS", _("Mississippi")),
-        ("MO", _("Missouri")),
-        ("MT", _("Montana")),
-        ("NE", _("Nebraska")),
-        ("NV", _("Nevada")),
-        ("NH", _("New Hampshire")),
-        ("NJ", _("New Jersey")),
-        ("NM", _("New Mexico")),
-        ("NY", _("New York")),
-        ("NC", _("North Carolina")),
-        ("ND", _("North Dakota")),
-        ("OH", _("Ohio")),
-        ("OK", _("Oklahoma")),
-        ("OR", _("Oregon")),
-        ("PA", _("Pennsylvania")),
-        ("RI", _("Rhode Island")),
-        ("SC", _("South Carolina")),
-        ("SD", _("South Dakota")),
-        ("TN", _("Tennessee")),
-        ("TX", _("Texas")),
-        ("UT", _("Utah")),
-        ("VT", _("Vermont")),
-        ("VA", _("Virginia")),
-        ("WA", _("Washington")),
-        ("WV", _("West Virginia")),
-        ("WI", _("Wisconsin")),
-        ("WY", _("Wyoming")),
-        ("DC", _("District of Columbia")),
-    ]
-
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -116,7 +63,7 @@ class UserProfile(models.Model):
         max_length=255, blank=True, verbose_name=_("Apt, suite, etc.")
     )
     city = models.CharField(max_length=100, blank=True)
-    state = models.CharField(max_length=2, choices=STATE_CHOICES, blank=True)
+    state = models.CharField(max_length=2, choices=State.choices, blank=True)
     zip_code = models.CharField(
         max_length=10, blank=True, verbose_name=_("ZIP code")
     )
