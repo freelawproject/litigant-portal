@@ -8,6 +8,7 @@ and the delete rules that decide what a flow can and cannot take with it.
 """
 
 import pytest
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models import ProtectedError
 from django.test import TestCase
@@ -75,6 +76,19 @@ class GlossaryTests(TestCase):
         Variable.objects.create(name="notice_date")
         with self.assertRaises(IntegrityError), transaction.atomic():
             Variable.objects.create(name="notice_date")
+
+    def test_name_is_locked_to_snake_case(self):
+        # Names become docassemble variable names and are permanent API;
+        # the check constraint rejects anything but snake_case on every
+        # write path.
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Variable.objects.create(name="hearingDate")
+
+    def test_the_name_validator_reports_before_the_constraint(self):
+        # Same rule at the form layer: full_clean() surfaces a field error
+        # instead of letting admin writes die on the IntegrityError.
+        with self.assertRaises(ValidationError):
+            Variable(name="hearingDate").full_clean()
 
     def test_variables_default_to_scoped_text(self):
         variable = Variable.objects.create(name="county")

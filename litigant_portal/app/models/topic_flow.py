@@ -1,9 +1,12 @@
 import uuid
 
+from django.core.validators import RegexValidator
 from django.db import models
 
 from .base import BaseModel
 from .choices import TopicFlowFormConditionOperator, VariableDataType
+
+SNAKE_CASE_PATTERN = r"^[a-z][a-z0-9_]*$"
 
 
 class Topic(BaseModel):
@@ -67,7 +70,11 @@ class Variable(BaseModel):
     """A fact about the person or their case, named once app-wide."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        validators=[RegexValidator(SNAKE_CASE_PATTERN, "Use snake_case.")],
+    )
     label = models.CharField(max_length=255, blank=True)
     question = models.CharField(max_length=255, blank=True)
     help_text = models.TextField(blank=True)
@@ -93,12 +100,16 @@ class Variable(BaseModel):
         ordering = ["name"]
         constraints = [
             models.CheckConstraint(
+                condition=models.Q(name__regex=SNAKE_CASE_PATTERN),
+                name="variable_name_snake_case",
+            ),
+            models.CheckConstraint(
                 condition=(
                     models.Q(asked_when__isnull=False)
                     | models.Q(asked_when_value__isnull=True)
                 ),
                 name="variable_gate_value_requires_gate",
-            )
+            ),
         ]
 
 
