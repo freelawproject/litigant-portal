@@ -102,6 +102,13 @@ class GlossaryTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             Variable.objects.create(name="was_felony", asked_when_value=True)
 
+    def test_a_gate_requires_a_value(self):
+        # The mirror shape: a gate with no value to compare against can
+        # never be evaluated, so the pair is all-or-nothing.
+        gate = Variable.objects.create(name="has_conviction")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Variable.objects.create(name="was_felony", asked_when=gate)
+
     def test_gating_chains_are_expressible(self):
         gate = Variable.objects.create(
             name="has_conviction", data_type=VariableDataType.BOOLEAN
@@ -217,6 +224,15 @@ class FormConditionTests(TestCase):
         with self.assertRaises(IntegrityError), transaction.atomic():
             TopicFlowFormCondition.objects.create(
                 flow=self.flow, form=self.form, value=True
+            )
+
+    def test_a_variable_requires_a_value(self):
+        # The mirror shape: NULL means "no answer yet", so a condition can
+        # never match on it; variable and value are all-or-nothing.
+        fee = Variable.objects.create(name="can_pay_filing_fee")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            TopicFlowFormCondition.objects.create(
+                flow=self.flow, form=self.form, variable=fee
             )
 
     def test_repeat_rows_for_the_same_pair_are_allowed(self):

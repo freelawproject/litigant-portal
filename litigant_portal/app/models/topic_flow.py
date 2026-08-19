@@ -110,6 +110,13 @@ class Variable(BaseModel):
                 ),
                 name="variable_gate_value_requires_gate",
             ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(asked_when__isnull=True)
+                    | models.Q(asked_when_value__isnull=False)
+                ),
+                name="variable_gate_requires_value",
+            ),
         ]
 
 
@@ -207,7 +214,14 @@ class TopicFlowFormCondition(BaseModel):
                     | models.Q(value__isnull=True)
                 ),
                 name="form_condition_value_requires_variable",
-            )
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(variable__isnull=True)
+                    | models.Q(value__isnull=False)
+                ),
+                name="form_condition_variable_requires_value",
+            ),
         ]
 
 
