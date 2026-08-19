@@ -56,5 +56,9 @@ RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
+# Git SHA of the code being baked in; stamped on chat messages for audit.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 ENTRYPOINT ["docker/django/entrypoint.sh"]
 CMD ["web-prod"]

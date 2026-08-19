@@ -121,7 +121,7 @@ REPO ?= freelawproject/litigant-portal
 DOCKER_TAG_PROD = $(VERSION)-prod
 
 build-image: ## Build the prod portal image (requires VERSION=...)
-	docker build -t $(REPO):$(DOCKER_TAG_PROD) --file docker/django/Dockerfile .
+	docker build -t $(REPO):$(DOCKER_TAG_PROD) --build-arg GIT_SHA=$(VERSION) --file docker/django/Dockerfile .
 
 push-image: build-image ## Build then push the prod portal image (amd64 only)
 	@if [ "$$(uname -m)" != "x86_64" ]; then \
