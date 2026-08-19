@@ -157,3 +157,28 @@ class ThreadExportTests(TestCase):
         self.assertEqual(message["cost"], 0.0031)
         self.assertFalse(message["hidden"])
         self.assertFalse(message["meta"])
+
+    def test_json_export_carries_git_sha_per_message(self):
+        self._message({"role": "user", "content": "hi"}, git_sha="abc1234")
+        message = chat_thread_export_data(thread=self.thread)["messages"][0]
+        self.assertEqual(message["git_sha"], "abc1234")
+
+    def test_markdown_shows_deployed_sha_header(self):
+        self._message({"role": "user", "content": "hi"}, git_sha="abc1234")
+        markdown = chat_thread_export_markdown(thread=self.thread)
+        self.assertIn("- Deployed SHA: abc1234", markdown)
+
+    def test_markdown_header_falls_back_to_unknown_for_blank_sha(self):
+        self._message({"role": "user", "content": "hi"}, git_sha="")
+        markdown = chat_thread_export_markdown(thread=self.thread)
+        self.assertIn("- Deployed SHA: unknown", markdown)
+
+    def test_markdown_flags_a_sha_change_mid_thread(self):
+        self._message({"role": "user", "content": "before"}, git_sha="abc1234")
+        self._message(
+            {"role": "assistant", "content": "after"}, git_sha="def5678"
+        )
+        markdown = chat_thread_export_markdown(thread=self.thread)
+        self.assertIn("**Deployed SHA changed to def5678**", markdown)
+        # Only the change is flagged, not the initial SHA already in the header.
+        self.assertNotIn("changed to abc1234", markdown)

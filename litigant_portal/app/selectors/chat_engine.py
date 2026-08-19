@@ -85,6 +85,7 @@ def chat_thread_export_data(*, thread: ChatThread) -> dict:
                 "meta": m.meta,
                 "num_tokens": m.num_tokens,
                 "cost": m.cost,
+                "git_sha": m.git_sha,
                 "data": dict(m.data),
             }
             for m in chat_message_list(thread=thread)
@@ -95,6 +96,7 @@ def chat_thread_export_data(*, thread: ChatThread) -> dict:
 def chat_thread_export_markdown(*, thread: ChatThread) -> str:
     """Human-readable audit transcript of every message row."""
     export = chat_thread_export_data(thread=thread)
+    messages = export["messages"]
     lines = [
         f"# Chat transcript {export['thread_id']}",
         "",
@@ -102,10 +104,25 @@ def chat_thread_export_markdown(*, thread: ChatThread) -> str:
         f"- Started: {export['created_at']}",
         f"- Description: {export['description'] or '(none)'}",
     ]
-    for msg in export["messages"]:
+    if messages:
+        lines.append(f"- Deployed SHA: {_sha_label(messages[0]['git_sha'])}")
+
+    previous_sha = messages[0]["git_sha"] if messages else None
+    for msg in messages:
+        if msg["git_sha"] != previous_sha:
+            lines += [
+                "",
+                f"**Deployed SHA changed to {_sha_label(msg['git_sha'])}**",
+            ]
+            previous_sha = msg["git_sha"]
         lines.append("")
         lines.extend(_message_lines(msg))
     return "\n".join(lines) + "\n"
+
+
+def _sha_label(git_sha: str) -> str:
+    """A blank git_sha means the message predates this feature (#801)."""
+    return git_sha or "unknown"
 
 
 def _message_lines(msg: dict) -> list[str]:

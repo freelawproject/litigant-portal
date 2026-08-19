@@ -1,4 +1,4 @@
-"""Tests that chat_message_create stamps the deployed git SHA (#801)."""
+"""Tests that chat_message_create stamps the deployed git SHA."""
 
 import pytest
 from django.test import TestCase, override_settings
