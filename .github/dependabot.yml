@@ -1,0 +1,18 @@
+version: 2
+
+updates:
+  # Version updates for GitHub Actions. Security updates already run without this
+  # file (they're driven by advisories + the dependency graph); version updates are
+  # what keep SHA-pinned actions from going stale.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    # One grouped PR per week instead of one per action.
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: build(deps)
