@@ -1,5 +1,5 @@
-# Petition for Name Change, WAIVER track. Shares nd-name-change-petition.pdf with
-# nd-name-change-petition; identical except §11 (waive instead of publish,
+# Petition for Name Change, WAIVER track. Same PDF as
+# nd-name-change-petition (duplicated; every form owns its PDF); identical except §11 (waive instead of publish,
 # with the reason checkboxes) and §12 (requesting waiver instead of no
 # objections). Mappings ported line-for-line from the bench-confirmed
 # attachment blocks in docassemble/nd-name-change/petition-waiver.yml; the
@@ -7,7 +7,6 @@
 # time.
 
 name: 'Petition for Name Change'
-file: nd-name-change-petition.pdf
 
 fields:
   # Caption

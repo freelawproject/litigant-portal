@@ -1,5 +1,5 @@
-# Declaration in Support of Petition, STANDARD (publication) track. Shares
-# declaration.pdf with nd-name-change-declaration-waiver; the two differ only
+# Declaration in Support of Petition, STANDARD (publication) track. Same
+# PDF as nd-name-change-declaration-waiver (duplicated); the two differ only
 # at §11 (published vs waived) and §12 (no objections vs requesting waiver).
 # The 93-field form mirrors the Petition. Field names are the PDF's real
 # AcroForm names, mapped against page/position (parsed page-by-page, top-to-
@@ -9,7 +9,6 @@
 # row noted below.
 
 name: 'Declaration in Support of Petition'
-file: nd-name-change-declaration.pdf
 
 fields:
   # Caption

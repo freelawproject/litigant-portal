@@ -67,12 +67,17 @@ def _sync_forms(corpus: CorpusSchema) -> dict[str, Form]:
     rows = {f.slug: f for f in Form.objects.all()}
     for slug, schema in corpus.forms.items():
         form = rows.get(slug) or Form(slug=slug)
-        _apply(form, schema, exclude={"file", "fields"})
+        _apply(form, schema, exclude={"fields"})
         if form.file:
             form.file.delete(save=False)
+        # Also clear the target name: a stray file there (an orphan from a
+        # prior sync) would otherwise suffix the new name on every sync.
+        target = f"forms/{slug}.pdf"
+        if form.file.storage.exists(target):
+            form.file.storage.delete(target)
         form.file.save(
-            schema.file,
-            ContentFile((FORMS_DIR / schema.file).read_bytes()),
+            f"{slug}.pdf",
+            ContentFile((FORMS_DIR / f"{slug}.pdf").read_bytes()),
             save=False,
         )
         form.save()

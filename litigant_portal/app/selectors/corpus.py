@@ -213,7 +213,6 @@ class FormSchema(BaseSchema):
     """Populates a ``Form`` row."""
 
     name: str = Field(min_length=1)
-    file: str = Field(min_length=1)
     fields: list[FormFieldMappingSchema]
 
 
@@ -384,23 +383,23 @@ class CorpusSchema(BaseSchema):
     @model_validator(mode="after")
     def _forms_resolve(self):
         """Validates:
-        - each form's file is a PDF in the corpus
+        - each form has its matching ``<slug>.pdf``
         - each mapped pdf_field exists in the PDF's AcroForm
         - each template placeholder names a known variable
-        - each PDF is referenced by a form
+        - each PDF has its matching form document
         """
         variables = set(self.variables)
         for slug, form in sorted(self.forms.items()):
-            if form.file not in self.form_acro_fields:
+            if slug not in self.form_acro_fields:
                 raise ValueError(
-                    f"form {slug}: file {form.file} is not a PDF in the corpus"
+                    f"form {slug}: no matching {slug}.pdf in the corpus"
                 )
-            pdf_fields = self.form_acro_fields[form.file]
+            pdf_fields = self.form_acro_fields[slug]
             for mapping in form.fields:
                 if mapping.pdf_field not in pdf_fields:
                     raise ValueError(
                         f"form {slug}: pdf_field {mapping.pdf_field!r} "
-                        f"does not exist in {form.file}"
+                        f"does not exist in {slug}.pdf"
                     )
                 unknown = sorted(
                     set(TEMPLATE_VARIABLE_PATTERN.findall(mapping.template))
@@ -411,9 +410,8 @@ class CorpusSchema(BaseSchema):
                         f"form {slug}: template references unknown "
                         f"variable {unknown[0]}"
                     )
-        referenced = {form.file for form in self.forms.values()}
-        for pdf_name in sorted(set(self.form_acro_fields) - referenced):
-            raise ValueError(f"{pdf_name}: not referenced by any form")
+        for stem in sorted(set(self.form_acro_fields) - set(self.forms)):
+            raise ValueError(f"{stem}.pdf: no matching form document")
         return self
 
     @model_validator(mode="after")
@@ -587,14 +585,14 @@ def corpus_load_forms() -> dict[str, FormSchema]:
 
 
 def corpus_load_form_acro_fields() -> dict[str, set[str]]:
-    """Every fillable PDF's AcroForm field names, by file name."""
+    """Every fillable PDF's AcroForm field names, by form slug."""
     pdfs = {}
     for path in sorted(FORMS_DIR.glob("*.pdf")):
         try:
             reader = PdfReader(path)
         except Exception as exc:
             raise ValueError(f"{path}: cannot read PDF: {exc}") from exc
-        pdfs[path.name] = set((reader.get_fields() or {}).keys())
+        pdfs[path.stem] = set((reader.get_fields() or {}).keys())
     return pdfs
 
 

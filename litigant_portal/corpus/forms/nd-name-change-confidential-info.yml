@@ -4,7 +4,6 @@
 # be attached to every certified copy of the Order.
 
 name: 'Confidential Information Form'
-file: nd-name-change-confidential-info.pdf
 
 fields:
   - pdf_field: 'In District Court County Of'

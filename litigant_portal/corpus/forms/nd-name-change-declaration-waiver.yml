@@ -1,12 +1,11 @@
-# Declaration in Support of Petition, WAIVER track. Shares nd-name-change-declaration.pdf
-# with nd-name-change-declaration; identical except §11 (waive instead of
+# Declaration in Support of Petition, WAIVER track. Same PDF as
+# nd-name-change-declaration (duplicated; every form owns its PDF); identical except §11 (waive instead of
 # publish, with the reason checkboxes) and §12 (requesting waiver, Check
 # Box14). Mappings ported from docassemble/nd-name-change/petition-waiver.yml;
 # the shared Declaration fields were bench-confirmed on the standard track
 # (#560), except the conviction table row noted below.
 
 name: 'Declaration in Support of Petition'
-file: nd-name-change-declaration.pdf
 
 fields:
   # Caption

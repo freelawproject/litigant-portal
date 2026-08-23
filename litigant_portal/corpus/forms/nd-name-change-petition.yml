@@ -1,5 +1,5 @@
-# Petition for Name Change, STANDARD (publication) track. Shares nd-name-change-petition.pdf
-# with nd-name-change-petition-waiver; the two are separate forms because the
+# Petition for Name Change, STANDARD (publication) track. Same PDF as
+# nd-name-change-petition-waiver (duplicated); the two are separate forms because the
 # mappings differ at §11 (published vs waived) and §12 (objections vs
 # requesting waiver). Mappings ported line-for-line from the bench-confirmed
 # attachment blocks in docassemble/nd-name-change/petition-standard.yml
@@ -7,7 +7,6 @@
 # PDF at fill time.
 
 name: 'Petition for Name Change'
-file: nd-name-change-petition.pdf
 
 fields:
   # Caption

@@ -4,7 +4,6 @@
 # attachment block in docassemble/nd-name-change/petition-standard.yml (#560).
 
 name: 'Notice of Petition for Name Change'
-file: nd-name-change-notice.pdf
 
 fields:
   # Bench-confirmed: header holds the county name.
