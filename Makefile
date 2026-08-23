@@ -1,6 +1,6 @@
 .PHONY: help install lint test test-v pre-commit \
 	   css css-watch css-minify clean \
-	   migrate shell collectstatic superuser messages compilemessages \
+	   check migrate shell collectstatic superuser messages compilemessages \
 	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
 	   docassemble-up docassemble-down \
 	   file-issue build-image push-image
@@ -57,6 +57,10 @@ makemigrations: ## Create database migrations
 migrate: ## Run database migrations
 	$(require-docker)
 	docker compose exec django manage migrate
+
+check: ## Run Django system checks
+	$(require-docker)
+	docker compose exec django manage check
 
 shell: ## Open Django shell
 	$(require-docker)
