@@ -85,8 +85,9 @@ class Variable(BaseModel):
         default=VariableDataType.TEXT,
     )
     choices = models.JSONField(default=list, blank=True)
-    default = models.CharField(max_length=255, blank=True)
+    default = models.JSONField(null=True, blank=True)
     is_global = models.BooleanField(default=False)
+    in_schema = models.BooleanField(default=True)
     asked_when = models.ForeignKey(
         "self",
         on_delete=models.PROTECT,
