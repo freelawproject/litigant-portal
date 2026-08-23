@@ -64,6 +64,24 @@ def chat_thread_export_data(*, thread: ChatThread) -> dict:
     frontend render path (thread_render_items) is lossy and unsuitable here.
     """
     identity = thread.identity
+    messages = list(
+        chat_message_list(thread=thread).select_related("prompt_artifact")
+    )
+    prompt_artifacts = {}
+    for message in messages:
+        artifact = message.prompt_artifact
+        if artifact is None:
+            continue
+        artifact_id = str(artifact.id)
+        prompt_artifacts.setdefault(
+            artifact_id,
+            {
+                "id": artifact_id,
+                "content_hash": artifact.content_hash,
+                "system_prompt": artifact.system_prompt,
+                "tool_schemas": artifact.tool_schemas,
+            },
+        )
     return {
         "thread_id": str(thread.id),
         "thread_type": thread.thread_type,
@@ -77,6 +95,7 @@ def chat_thread_export_data(*, thread: ChatThread) -> dict:
             "username": identity.user.username if identity.user_id else None,
             "session_key": identity.session_key_short,
         },
+        "prompt_artifacts": list(prompt_artifacts.values()),
         "messages": [
             {
                 "id": str(m.id),
@@ -86,9 +105,12 @@ def chat_thread_export_data(*, thread: ChatThread) -> dict:
                 "num_tokens": m.num_tokens,
                 "cost": m.cost,
                 "git_sha": m.git_sha,
+                "prompt_artifact_id": (
+                    str(m.prompt_artifact_id) if m.prompt_artifact_id else None
+                ),
                 "data": dict(m.data),
             }
-            for m in chat_message_list(thread=thread)
+            for m in messages
         ],
     }
 

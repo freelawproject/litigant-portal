@@ -4,7 +4,12 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
+from litigant_portal.app.models import (
+    ChatMessage,
+    ChatThread,
+    PromptArtifact,
+    UserIdentity,
+)
 from litigant_portal.app.selectors.chat_engine import (
     chat_thread_export_data,
     chat_thread_export_markdown,
@@ -182,3 +187,109 @@ class ThreadExportTests(TestCase):
         self.assertIn("**Deployed SHA changed to def5678**", markdown)
         # Only the change is flagged, not the initial SHA already in the header.
         self.assertNotIn("changed to abc1234", markdown)
+
+    def test_json_export_defines_each_referenced_prompt_artifact_once(self):
+        artifact = PromptArtifact.objects.create(
+            system_prompt="Audit this exact prompt.",
+            tool_schemas=[
+                {"type": "function", "function": {"name": "lookup"}}
+            ],
+            content_hash="a" * 64,
+        )
+        user = self._message(
+            {"role": "user", "content": "Help me."},
+        )
+        first = self._message(
+            {"role": "assistant", "content": "First answer."},
+            prompt_artifact=artifact,
+        )
+        second = self._message(
+            {"role": "assistant", "content": "Second answer."},
+            prompt_artifact=artifact,
+        )
+
+        export = chat_thread_export_data(thread=self.thread)
+
+        self.assertEqual(
+            export["prompt_artifacts"],
+            [
+                {
+                    "id": str(artifact.id),
+                    "content_hash": "a" * 64,
+                    "system_prompt": "Audit this exact prompt.",
+                    "tool_schemas": [
+                        {"type": "function", "function": {"name": "lookup"}}
+                    ],
+                }
+            ],
+        )
+        references = {
+            message["id"]: message["prompt_artifact_id"]
+            for message in export["messages"]
+        }
+        self.assertIsNone(references[str(user.id)])
+        self.assertEqual(references[str(first.id)], str(artifact.id))
+        self.assertEqual(references[str(second.id)], str(artifact.id))
+
+    def test_json_export_includes_two_distinct_prompt_artifacts(self):
+        first_artifact = PromptArtifact.objects.create(
+            system_prompt="First rendered prompt.",
+            tool_schemas=[],
+            content_hash="b" * 64,
+        )
+        second_artifact = PromptArtifact.objects.create(
+            system_prompt="Refreshed rendered prompt.",
+            tool_schemas=[
+                {"type": "function", "function": {"name": "lookup"}}
+            ],
+            content_hash="c" * 64,
+        )
+        first_assistant = self._message(
+            {"role": "assistant", "content": "First answer."},
+            prompt_artifact=first_artifact,
+        )
+        second_assistant = self._message(
+            {"role": "assistant", "content": "Second answer."},
+            prompt_artifact=second_artifact,
+        )
+
+        export = chat_thread_export_data(thread=self.thread)
+
+        artifacts_by_id = {
+            artifact["id"]: artifact for artifact in export["prompt_artifacts"]
+        }
+        self.assertEqual(len(export["prompt_artifacts"]), 2)
+        self.assertEqual(
+            set(artifacts_by_id),
+            {str(first_artifact.id), str(second_artifact.id)},
+        )
+        self.assertEqual(
+            artifacts_by_id[str(first_artifact.id)]["system_prompt"],
+            "First rendered prompt.",
+        )
+        self.assertEqual(
+            artifacts_by_id[str(second_artifact.id)]["system_prompt"],
+            "Refreshed rendered prompt.",
+        )
+
+        references = {
+            message["id"]: message["prompt_artifact_id"]
+            for message in export["messages"]
+        }
+        self.assertEqual(
+            references[str(first_assistant.id)], str(first_artifact.id)
+        )
+        self.assertEqual(
+            references[str(second_assistant.id)], str(second_artifact.id)
+        )
+
+    def test_json_export_handles_legacy_null_prompt_artifact(self):
+        legacy = self._message(
+            {"role": "assistant", "content": "Pre-artifact answer."}
+        )
+
+        export = chat_thread_export_data(thread=self.thread)
+
+        self.assertEqual(export["prompt_artifacts"], [])
+        self.assertIsNone(export["messages"][0]["prompt_artifact_id"])
+        self.assertEqual(export["messages"][0]["id"], str(legacy.id))
