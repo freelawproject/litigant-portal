@@ -1,0 +1,19 @@
+# Petition for Fee Waiver: the North Dakota Legal Self Help Center's
+# combined instructions-and-forms packet for asking a court to waive a civil
+# filing fee. Court-wide (nd- prefix, no topic): the same packet serves any
+# ND civil case, so other ND topics can reference it too. Conditionally in
+# the name-change packet via name_change_fee_waiver_needed.
+#
+# Source: https://www.ndcourts.gov/legal-self-help/fee-waiver ("All Filing
+# Fee Waiver Instructions and Forms", downloaded 2026-08-21 from
+# https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Other%20Forms/Fee%20Waiver/All%20Petition%20for%20Fee%20Waiver%20Instructions%20%20Forms.pdf).
+#
+# No mappings yet, deliberately: the packet centers on a financial statement
+# (income, assets, expenses) the interview does not collect, so the litigant
+# completes it by hand. Caption fields can be mapped after a bench-confirmed
+# fill of the downloaded PDF.
+
+name: 'Petition for Fee Waiver'
+file: nd-fee-waiver-petition.pdf
+
+fields: []

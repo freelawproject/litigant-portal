@@ -1,0 +1,48 @@
+# Franklin County (Columbus, OH) court-level content, scoped to the site
+# data models (court fields on Site, Contact, Resource). Ported from the wip
+# library; source copy: content/eviction-tenant.yml and
+# content/eviction-landlord.yml, contacts and resources merged across the
+# two roles with role-specific notes neutralized.
+
+name: 'Franklin County, Ohio'
+court_name: 'Franklin County Municipal Court'
+jurisdiction_level: county
+state: OH
+official_url: 'https://www.fcmcclerk.com'
+official_resources_url: 'https://www.fcmcclerk.com/forms/civil'
+
+contacts:
+  - name: 'Franklin County Municipal Court Clerk'
+    phone: '(614) 645-8186'
+    url: 'https://www.fcmcclerk.com'
+    note: '375 South High Street, Columbus. Filing questions, the fee schedule, and the public case search.'
+  - name: 'Franklin County Municipal Court Self Help Center'
+    phone: '(614) 645-7381'
+    note: '375 South High Street, 16th Floor, Columbus. Help with court forms and the process for people who do not have a lawyer.'
+  - name: "FCMC Service Bailiff's Office"
+    phone: '(614) 645-7780'
+    note: 'Arranges the set out after a judgment. The clerk sends your paperwork here; call to schedule.'
+  - name: 'Legal Aid of Southeast and Central Ohio (LASCO)'
+    phone: '1-888-246-4420'
+    url: 'https://www.lasco.org'
+    note: 'Free legal help with noncriminal issues for people with low incomes, seniors, and veterans in 36 Ohio counties, including Franklin County. Apply by phone or through their website.'
+  - name: 'Columbus Urban League'
+    phone: '(614) 257-6300'
+    note: "The court's FAQ points tenants here for information about tenant rights."
+  - name: 'Columbus Bar Association Lawyer Referral Service'
+    phone: '(614) 221-0754'
+    note: 'The court points filers here to locate an attorney. Required if the property is owned by a corporation, LLC, or trust.'
+
+resources:
+  - label: 'Ohio Revised Code Chapter 1923 (eviction law)'
+    url: 'https://codes.ohio.gov/ohio-revised-code/chapter-1923'
+    note: 'The state law eviction cases follow: notice, summons, hearing, and writ rules.'
+  - label: 'Franklin County Municipal Court Clerk eviction FAQ'
+    url: 'https://www.fcmcclerk.com/faq/civil/evictions'
+    note: "The clerk's answers about filing, service, hearing scheduling, and set outs, plus the public case search."
+  - label: 'Franklin County Municipal Court civil forms'
+    url: 'https://www.fcmcclerk.com/forms/civil'
+    note: 'Court forms, including the fee waiver affidavit, a blank response form, and the application to ask that an eviction record be removed from online access.'
+  - label: 'LASCO tenant guides on eviction'
+    url: 'https://www.lasco.org/housing'
+    note: 'Plain-language guides from Legal Aid of Southeast and Central Ohio: the five steps of eviction, notices to leave, illegal lockouts, answering a money claim, and getting a case dismissed after moving out.'

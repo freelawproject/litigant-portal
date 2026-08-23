@@ -1,0 +1,129 @@
+# Declaration in Support of Petition, STANDARD (publication) track. Shares
+# declaration.pdf with nd-name-change-declaration-waiver; the two differ only
+# at §11 (published vs waived) and §12 (no objections vs requesting waiver).
+# The 93-field form mirrors the Petition. Field names are the PDF's real
+# AcroForm names, mapped against page/position (parsed page-by-page, top-to-
+# bottom, same method as the Petition). Auto-generated names are not name-
+# obvious, so each section notes what the field actually fills. Bench-
+# confirmed by a full-packet fill (#560 DoD), except the conviction table
+# row noted below.
+
+name: 'Declaration in Support of Petition'
+file: nd-name-change-declaration.pdf
+
+fields:
+  # Caption
+  - pdf_field: 'In District Court'
+    template: '{county}'
+  - pdf_field: 'Case No'
+    template: ''
+  - pdf_field: 'Petitioners current first middle if any and last legal name'
+    template: '{first_name} {middle_name} {last_name}'
+  # Preamble "I, ____ (current legal name), the undersigned, states..."
+  - pdf_field: 'I'
+    template: '{first_name} {middle_name} {last_name}'
+  # 1. Current legal name
+  - pdf_field: 'First name'
+    template: '{first_name}'
+  - pdf_field: 'Middle names if any'
+    template: '{middle_name}'
+  - pdf_field: 'Last name'
+    template: '{last_name}'
+  # 2. Citizenship (same line: Check Box1 = citizen [left], Check Box2 = resident alien [right])
+  - pdf_field: 'Check Box1'
+    template: '{name_change_citizenship}'
+    checked_when: 'citizen'
+  - pdf_field: 'Check Box2'
+    template: '{name_change_citizenship}'
+    checked_when: 'resident_alien'
+  # 3. "resident of North Dakota for ___ years and ___ months"
+  - pdf_field: 'I have been a resident of North Dakota for'
+    template: '{name_change_residency_years}'
+  - pdf_field: 'years and'
+    template: '{name_change_residency_months}'
+  # 4. "resident of ___ County ... since ___ (month and year)"
+  - pdf_field: 'I have been a resident of'
+    template: '{county}'
+  - pdf_field: 'month and year more than six months immediately before the'
+    template: '{name_change_residence_since}'
+  # 5. Place of birth
+  - pdf_field: 'My place of birth is'
+    template: '{place_of_birth}'
+  # 6. Year of birth
+  - pdf_field: 'My year of birth is'
+    template: '{date_of_birth:%Y}'
+  # 7. Requested name
+  - pdf_field: 'First name_2'
+    template: '{name_change_requested_first}'
+  - pdf_field: 'Middle names if any_2'
+    template: '{name_change_requested_middle}'
+  - pdf_field: 'Last name_2'
+    template: '{name_change_requested_last}'
+  # 8. Reasons for the change: a free narrative the litigant writes by hand,
+  #    left unmapped for parity with the Petition (which also collects no
+  #    reason). The ruled overflow lines are fields 'on Page 3 1'..'on Page 3
+  #    16' (p2) and '1'/'2'/'3'/'4'/'undefined' (p3).
+  # 9. Criminal history (Check Box3 = never [top], Check Box4 = convicted [below])
+  - pdf_field: 'Check Box3'
+    template: '{name_change_criminal_history}'
+    checked_when: 'none'
+  - pdf_field: 'Check Box4'
+    template: '{name_change_criminal_history}'
+    checked_when: 'convicted'
+  # 9. Conviction table, row 1: the gated conviction variables. Field names
+  #    verified against the PDF's AcroForm field list (ChargeRow/ClassRow/
+  #    Name of CourtRow/YearRow run 1-6); this row is NOT yet bench-confirmed
+  #    by a fill. Rows 2-6 are left for hand completion by litigants with
+  #    more than one conviction.
+  - pdf_field: 'ChargeRow1'
+    template: '{name_change_conviction_charge}'
+  - pdf_field: 'ClassRow1'
+    template: '{name_change_conviction_class}'
+  - pdf_field: 'Name of CourtRow1'
+    template: '{name_change_conviction_court}'
+  - pdf_field: 'YearRow1'
+    template: '{name_change_conviction_year}'
+  # 11. Notice, standard track: published (mirrors Petition §11)
+  - pdf_field: 'Check Box7'
+    template: 'yes'
+    checked_when: 'yes'
+  - pdf_field: 'Notice choose the same checkbox as Paragraph 11 of your Petition'
+    template: '{name_change_publication_date}'
+  - pdf_field: 'newspaper the official'
+    template: '{name_change_publication_newspaper}'
+  - pdf_field: 'newspaper in'
+    template: '{name_change_publication_county}'
+  # 11. Waiver sub-checkboxes (unused on the standard path)
+  - pdf_field: 'Check Box8'
+    template: ''
+    checked_when: ''
+  - pdf_field: 'Check Box9'
+    template: ''
+    checked_when: ''
+  - pdf_field: 'Check Box10'
+    template: ''
+    checked_when: ''
+  # 12. Objections, standard track: none (Check Box12 = no objections)
+  - pdf_field: 'Check Box12'
+    template: 'yes'
+    checked_when: 'yes'
+  - pdf_field: 'Check Box13'
+    template: ''
+    checked_when: ''
+  - pdf_field: 'Check Box14'
+    template: ''
+    checked_when: ''
+  # 13. Signature block. Bench fill (#560) showed the field names trail their
+  #     visual labels by one row (same gotcha as Petition §3 / the Confidential
+  #     form): 'Text15' sits on the (Printed Name) line, 'Printed Name of
+  #     Petitioner' on the (Address / City, State, Zip) line, 'Address' on the
+  #     (Telephone / Email) line. The (Signature) line and the "Signed on ___"
+  #     date/city blanks have no fields; the litigant signs and dates by hand.
+  - pdf_field: 'Text15'
+    template: '{first_name} {middle_name} {last_name}' # -> (Printed Name of Petitioner)
+  - pdf_field: 'Printed Name of Petitioner'
+    template: '{street_address}, {city}, ND {zip_code}' # -> (Address / City, State, Zip)
+  - pdf_field: 'Address'
+    template: '{phone_number}' # -> (Telephone Number / Email); no email collected
+  # Bench-confirmed: additional-sheets toggles ('Check Box5'/'Check Box6', ¶8/¶9)
+  # stay off.

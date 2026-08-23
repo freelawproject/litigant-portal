@@ -1,0 +1,111 @@
+# Petition for Name Change, WAIVER track. Shares nd-name-change-petition.pdf with
+# nd-name-change-petition; identical except §11 (waive instead of publish,
+# with the reason checkboxes) and §12 (requesting waiver instead of no
+# objections). Mappings ported line-for-line from the bench-confirmed
+# attachment blocks in docassemble/nd-name-change/petition-waiver.yml; the
+# checkbox "on" state ("Yes" on this PDF) is detected from the PDF at fill
+# time.
+
+name: 'Petition for Name Change'
+file: nd-name-change-petition.pdf
+
+fields:
+  # Caption
+  - pdf_field: 'Text1'
+    template: '{county}'
+  - pdf_field: 'Case No'
+    template: ''
+  - pdf_field: 'Petitioners current first middle if any and last legal name'
+    template: '{first_name} {middle_name} {last_name}'
+  # 2. Current legal name
+  - pdf_field: 'First name'
+    template: '{first_name}'
+  - pdf_field: 'Middle names if any'
+    template: '{middle_name}'
+  - pdf_field: 'Last name'
+    template: '{last_name}'
+  # 3. Residence (trailing-label shift: blanks run address -> city -> county -> zip)
+  - pdf_field: 'Petitioner currently resides at'
+    template: '{street_address}'
+  - pdf_field: 'address'
+    template: '{city}'
+  - pdf_field: 'city'
+    template: '{county}'
+  - pdf_field: 'North Dakota'
+    template: '{zip_code}'
+  # 4. Residency
+  - pdf_field: 'Petitioner has been a resident of'
+    template: '{county}'
+  - pdf_field: 'since'
+    template: '{name_change_residence_since}'
+  # 5. Citizenship (choose one)
+  - pdf_field: 'Check Box2'
+    template: '{name_change_citizenship}'
+    checked_when: 'citizen'
+  - pdf_field: 'Check Box3'
+    template: '{name_change_citizenship}'
+    checked_when: 'resident_alien'
+  # 7. Requested name
+  - pdf_field: 'First name_2'
+    template: '{name_change_requested_first}'
+  - pdf_field: 'Middle names if any_2'
+    template: '{name_change_requested_middle}'
+  - pdf_field: 'Last name_2'
+    template: '{name_change_requested_last}'
+  # 9. Criminal history (choose one)
+  - pdf_field: 'Check Box1'
+    template: '{name_change_criminal_history}'
+    checked_when: 'none'
+  - pdf_field: 'Check Box4'
+    template: '{name_change_criminal_history}'
+    checked_when: 'convicted'
+  # 11. Notice, WAIVER track: not published, blanks left empty
+  - pdf_field: 'Check Box5'
+    template: ''
+    checked_when: ''
+  - pdf_field: 'A Notice of Petition for Name Change was published on'
+    template: ''
+  - pdf_field: 'month date year in the'
+    template: ''
+  - pdf_field: 'newspaper the official newspaper in'
+    template: ''
+  # 11. Waiver of publication + reason(s)
+  - pdf_field: 'Check Box6'
+    template: 'yes'
+    checked_when: 'yes'
+  - pdf_field: 'Check Box7'
+    template: '{name_change_waiver_first_or_middle}'
+    checked_when: 'True'
+  - pdf_field: 'Check Box8'
+    template: '{name_change_waiver_domestic_violence}'
+    checked_when: 'True'
+  # 12. Objections, WAIVER track: requesting waiver
+  - pdf_field: 'Check Box9'
+    template: ''
+    checked_when: ''
+  - pdf_field: 'Check Box10'
+    template: ''
+    checked_when: ''
+  - pdf_field: 'Check Box11'
+    template: 'yes'
+    checked_when: 'yes'
+  # Page 4, change "from" (current) / "to" (requested)
+  - pdf_field: 'First name_3'
+    template: '{first_name}'
+  - pdf_field: 'Middle names if any_3'
+    template: '{middle_name}'
+  - pdf_field: 'Last name_3'
+    template: '{last_name}'
+  - pdf_field: 'First name_4'
+    template: '{name_change_requested_first}'
+  - pdf_field: 'Middle names if any_4'
+    template: '{name_change_requested_middle}'
+  - pdf_field: 'Last name_4'
+    template: '{name_change_requested_last}'
+  # Page 4, signature block
+  - pdf_field: 'type or print your name'
+    template: '{first_name} {middle_name} {last_name}'
+  - pdf_field: 'type or print your address city state zip code'
+    template: '{street_address}, {city}, ND {zip_code}'
+  - pdf_field: 'type or print your telephone number and email address'
+    template: ''
