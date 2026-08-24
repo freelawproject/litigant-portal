@@ -467,6 +467,18 @@ wheels = [
 ]
 
 [[package]]
+name = "django-linear-migrations"
+version = "2.19.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "django" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/de/dc/7f7a0464cea07575296ad7f640943f562ea78115d2f5f353c4c7dc2dff37/django_linear_migrations-2.19.0.tar.gz", hash = "sha256:5436a7d980ceb65b936a87bac5461bcce68ea24e03cd804f284ea91565589e1b", size = 19576, upload-time = "2025-09-18T11:11:33.9Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6a/59/2a0dd9869dda4332c9d7b3b5a1de3f1975d039c42b323eb5501d02a29b21/django_linear_migrations-2.19.0-py3-none-any.whl", hash = "sha256:0fecc25bbb8a2e12e2110efa88c7237564d92adae45733c078c1eca73098c9f7", size = 15793, upload-time = "2025-09-18T11:11:32.428Z" },
+]
+
+[[package]]
 name = "django-pydantic-field"
 version = "0.5.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1018,6 +1030,7 @@ dependencies = [
     { name = "django-allauth" },
     { name = "django-cotton" },
     { name = "django-csp" },
+    { name = "django-linear-migrations" },
     { name = "django-pydantic-field" },
     { name = "django-ratelimit" },
     { name = "django-storages", extra = ["s3"] },
@@ -1061,6 +1074,7 @@ requires-dist = [
     { name = "django-allauth", specifier = ">=65.0" },
     { name = "django-cotton", specifier = ">=1.0" },
     { name = "django-csp", specifier = ">=3.8" },
+    { name = "django-linear-migrations", specifier = ">=2.19" },
     { name = "django-pydantic-field", specifier = ">=0.5.1" },
     { name = "django-ratelimit", specifier = ">=4.1" },
     { name = "django-storages", extras = ["s3"], specifier = ">=1.14" },

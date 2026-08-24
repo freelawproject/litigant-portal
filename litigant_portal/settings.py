@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "allauth.account",
     "allauth.socialaccount",
     "django_cotton",
+    "django_linear_migrations",
     "heroicons",
     # Local apps
     "litigant_portal.app",
