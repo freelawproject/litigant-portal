@@ -91,6 +91,19 @@ manage = "litigant_portal.manage:main"
 [tool.setuptools.packages.find]
 include = [ "litigant_portal*" ]
 
+
+[tool.setuptools.package-data]
+litigant_portal = [
+  "app/templates/**/*.html",
+  "app/static/**/*",
+  "app/locale/**/*.po",
+  "app/locale/**/*.mo",
+  "content/**/*.yml",
+  "content/**/*.yaml",
+  "prompts/**/*.json",
+  "prompts/**/*.md",
+]
+
 [tool.ruff]
 line-length = 79
 lint.extend-safe-fixes = [
