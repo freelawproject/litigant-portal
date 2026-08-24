@@ -53,6 +53,8 @@ jobs:
           context: .
           file: docker/django/Dockerfile
           push: true
+          build-args: |
+            GIT_SHA=${{ steps.sha.outputs.short }}
           tags: |
             freelawproject/litigant-portal:qa
             freelawproject/litigant-portal:${{ steps.sha.outputs.short }}-prod

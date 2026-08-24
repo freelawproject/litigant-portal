@@ -40,3 +40,4 @@ class ChatMessage(BaseModel):
     meta = models.BooleanField(default=False)
     num_tokens = models.PositiveIntegerField(default=0)
     cost = models.FloatField(default=0.0)
+    git_sha = models.CharField(max_length=40, blank=True, default="")
