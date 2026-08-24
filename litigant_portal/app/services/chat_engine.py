@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 from collections.abc import Iterator
@@ -9,7 +10,12 @@ from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 
 from litigant_portal.agents.base import Agent, ToolOutput
-from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
+from litigant_portal.app.models import (
+    ChatMessage,
+    ChatThread,
+    PromptArtifact,
+    UserIdentity,
+)
 from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_get,
@@ -31,6 +37,39 @@ DESCRIPTION_PROMPT = (
 )
 
 
+def prompt_artifact_content_hash(
+    *, system_prompt: str, tool_schemas: list[dict]
+) -> str:
+    """Hash a canonical representation of the model's instruction state."""
+    content = json.dumps(
+        {
+            "system_prompt": system_prompt,
+            "tool_schemas": tool_schemas,
+        },
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def prompt_artifact_get_or_create(
+    *, system_prompt: str, tool_schemas: list[dict]
+) -> PromptArtifact:
+    """Return the shared artifact for an exact model instruction state."""
+    content_hash = prompt_artifact_content_hash(
+        system_prompt=system_prompt, tool_schemas=tool_schemas
+    )
+    artifact, _ = PromptArtifact.objects.get_or_create(
+        content_hash=content_hash,
+        defaults={
+            "system_prompt": system_prompt,
+            "tool_schemas": tool_schemas,
+        },
+    )
+    return artifact
+
+
 def chat_message_create(
     *,
     thread_id,
@@ -40,6 +79,7 @@ def chat_message_create(
     hidden: bool = False,
     meta: bool = False,
     cost: float = 0.0,
+    prompt_artifact: PromptArtifact | None = None,
 ) -> ChatMessage:
     """Add a message to a thread."""
     if num_tokens is None:
@@ -54,6 +94,7 @@ def chat_message_create(
         num_tokens=num_tokens,
         cost=cost,
         git_sha=settings.GIT_SHA,
+        prompt_artifact=prompt_artifact,
     )
 
 
@@ -341,6 +382,11 @@ def chat_stream(
             system_prompt = agent.generate_system_prompt(thread_id=thread.id)
 
             for _ in range(MAX_STEPS):
+                tool_schemas = agent.tool_schemas or []
+                prompt_artifact = prompt_artifact_get_or_create(
+                    system_prompt=system_prompt,
+                    tool_schemas=tool_schemas,
+                )
                 call_args: dict[str, Any] = {
                     **agent.completion_args,
                     "model": model,
@@ -353,8 +399,8 @@ def chat_stream(
                     "stream": True,
                     "stream_options": {"include_usage": True},
                 }
-                if agent.tool_schemas:
-                    call_args["tools"] = agent.tool_schemas
+                if tool_schemas:
+                    call_args["tools"] = tool_schemas
 
                 content_parts: list[str] = []
                 tool_calls: list[dict[str, Any]] = []
@@ -419,6 +465,7 @@ def chat_stream(
                     model=model,
                     num_tokens=completion_tokens,
                     cost=cost,
+                    prompt_artifact=prompt_artifact,
                 )
 
                 if not tool_calls:

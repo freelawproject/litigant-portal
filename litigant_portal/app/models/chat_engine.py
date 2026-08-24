@@ -24,6 +24,15 @@ class ChatThread(BaseModel):
     description = models.CharField(max_length=255, blank=True, default="")
 
 
+class PromptArtifact(BaseModel):
+    """The instruction state sent to the model for an assistant message."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    system_prompt = models.TextField()
+    tool_schemas = models.JSONField(default=list, blank=True)
+    content_hash = models.CharField(max_length=64, unique=True)
+
+
 class ChatMessage(BaseModel):
     """A message within a chat thread."""
 
@@ -32,6 +41,13 @@ class ChatMessage(BaseModel):
         ChatThread,
         related_name="messages",
         on_delete=models.CASCADE,
+    )
+    prompt_artifact = models.ForeignKey(
+        PromptArtifact,
+        related_name="chat_messages",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
     )
     data = SchemaField(
         schema=MessageSchema, default={"role": "system", "content": ""}

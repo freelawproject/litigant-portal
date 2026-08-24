@@ -1,4 +1,4 @@
-from .chat_engine import ChatMessage, ChatThread
+from .chat_engine import ChatMessage, ChatThread, PromptArtifact
 from .site import Contact, Resource, Site
 from .topic_flow import (
     Form,
@@ -20,6 +20,7 @@ from .user import UserIdentity, UserProfile
 __all__ = [
     "ChatMessage",
     "ChatThread",
+    "PromptArtifact",
     "Contact",
     "Form",
     "FormField",
