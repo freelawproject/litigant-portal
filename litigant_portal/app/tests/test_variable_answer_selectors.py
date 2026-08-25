@@ -51,6 +51,25 @@ class VariableAnswerListTests(TestCase):
             ["residence_city", "residence_county"],
         )
 
+    def test_omits_answers_to_out_of_schema_variables(self):
+        # sync_corpus keeps the row so a migration can move the answer, but
+        # nothing references the variable anymore.
+        vestigial = Variable.objects.create(
+            name="old_county",
+            data_type=VariableDataType.TEXT,
+            in_schema=False,
+        )
+        VariableAnswer.objects.create(
+            identity=self.identity, variable=vestigial, value="Stark"
+        )
+        VariableAnswer.objects.create(
+            identity=self.identity, variable=self.county, value="Cass"
+        )
+        answers = variable_answer_list(identity=self.identity)
+        self.assertEqual(
+            [a.variable.name for a in answers], ["residence_county"]
+        )
+
 
 @pytest.mark.postgres
 class VariableAnswerMapTests(TestCase):
@@ -89,6 +108,17 @@ class VariableAnswerMapTests(TestCase):
         )
         self.assertEqual(result, {"residence_county": "Cass"})
 
+    def test_omits_cleared_answers(self):
+        # A cleared answer counts as no answer: prefill must see an absent
+        # key, not fill a blank with None.
+        VariableAnswer.objects.create(
+            identity=self.identity, variable=self.county, value=None
+        )
+        result = variable_answer_map(
+            identity=self.identity, names=["residence_county"]
+        )
+        self.assertEqual(result, {})
+
     def test_omits_names_not_requested(self):
         VariableAnswer.objects.create(
             identity=self.identity, variable=self.county, value="Cass"
@@ -107,5 +137,19 @@ class VariableAnswerMapTests(TestCase):
         )
         result = variable_answer_map(
             identity=self.identity, names=["residence_county"]
+        )
+        self.assertEqual(result, {})
+
+    def test_omits_out_of_schema_variables(self):
+        vestigial = Variable.objects.create(
+            name="old_county",
+            data_type=VariableDataType.TEXT,
+            in_schema=False,
+        )
+        VariableAnswer.objects.create(
+            identity=self.identity, variable=vestigial, value="Stark"
+        )
+        result = variable_answer_map(
+            identity=self.identity, names=["old_county", "residence_county"]
         )
         self.assertEqual(result, {})
