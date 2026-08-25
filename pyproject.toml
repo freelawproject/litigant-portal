@@ -100,6 +100,8 @@ litigant_portal = [
   "app/locale/**/*.mo",
   "content/**/*.yml",
   "content/**/*.yaml",
+  "corpus/**/*.yml",
+  "corpus/**/*.pdf",
   "prompts/**/*.json",
   "prompts/**/*.md",
 ]
