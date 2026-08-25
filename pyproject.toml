@@ -38,6 +38,7 @@ dependencies = [
     "django-allauth>=65.0",
     "django-cotton>=1.0",
     "django-csp>=3.8",
+    "django-linear-migrations>=2.19",
     "django-pydantic-field>=0.5.1",
     "gunicorn>=23.0",
     "heroicons>=2.0",
@@ -89,6 +90,19 @@ manage = "litigant_portal.manage:main"
 
 [tool.setuptools.packages.find]
 include = [ "litigant_portal*" ]
+
+
+[tool.setuptools.package-data]
+litigant_portal = [
+  "app/templates/**/*.html",
+  "app/static/**/*",
+  "app/locale/**/*.po",
+  "app/locale/**/*.mo",
+  "content/**/*.yml",
+  "content/**/*.yaml",
+  "prompts/**/*.json",
+  "prompts/**/*.md",
+]
 
 [tool.ruff]
 line-length = 79
