@@ -25,7 +25,9 @@ Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `opena
 
 ## Commands
 
-**`make lint`, `make test`, `make pre-commit`** — sandbox restrictions prevent Claude from running them. Never attempt to run them yourself. Mitch runs lint/test as part of his own workflow — a single post-commit mention is plenty; don't re-prompt about them across the commit/PR steps.
+**`make lint`, `make test`, `make pre-commit`** — sandbox restrictions prevent Claude from running these Docker- and Postgres-backed targets. Mitch runs the full lint/test workflow as part of his own process. A single post-commit mention is plenty; don't re-prompt about it across the commit/PR steps.
+
+**DB-free fast tests** — when `.tox/fast` already exists, Claude can run a focused test directly with `.tox/fast/bin/pytest <path>`. Use that suite for a real RED→GREEN cycle on non-DB units: write the focused test, run it and confirm that it fails for the expected reason, implement the change, then rerun it to green. Tests marked `postgres` require `make test` and Docker. The fast marker filter is not a complete database-isolation boundary: unmarked tests may still use Django's database, so run only focused tests already known to be DB-free through this path.
 
 ### Local Development (Docker)
 
