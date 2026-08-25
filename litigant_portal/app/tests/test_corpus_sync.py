@@ -188,13 +188,17 @@ class IdempotencyTests(CorpusSyncTests):
 
     def test_checkbox_wiring(self):
         self._sync(_make_corpus(), court=None)
-        conditional = FormField.objects.get(pdf_field="Check Box1")
+        # Both fixture forms map a "Name" field, so scope to one form.
+        fields = {
+            row.pdf_field: row
+            for row in FormField.objects.filter(form__slug="license")
+        }
+        conditional = fields["Check Box1"]
         self.assertEqual(conditional.checked_when.name, "pet_kind")
         self.assertEqual(conditional.checked_when_value, "dog")
-        self.assertIs(
-            FormField.objects.get(pdf_field="Check Box2").checked, True
-        )
-        self.assertIsNone(FormField.objects.get(pdf_field="Name").checked)
+        self.assertIs(fields["Check Box2"].checked, True)
+        self.assertIsNone(fields["Name"].checked)
+        self.assertIsNone(fields["Name"].checked_when)
 
 
 @pytest.mark.postgres
