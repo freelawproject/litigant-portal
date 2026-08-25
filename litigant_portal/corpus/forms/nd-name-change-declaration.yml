@@ -30,11 +30,13 @@ fields:
     template: '{last_name}'
   # 2. Citizenship (same line: Check Box1 = citizen [left], Check Box2 = resident alien [right])
   - pdf_field: 'Check Box1'
-    template: '{name_change_citizenship}'
-    checked_when: 'citizen'
+    checked_when:
+      variable: name_change_citizenship
+      value: citizen
   - pdf_field: 'Check Box2'
-    template: '{name_change_citizenship}'
-    checked_when: 'resident_alien'
+    checked_when:
+      variable: name_change_citizenship
+      value: resident_alien
   # 3. "resident of North Dakota for ___ years and ___ months"
   - pdf_field: 'I have been a resident of North Dakota for'
     template: '{name_change_residency_years}'
@@ -64,11 +66,13 @@ fields:
   #    16' (p2) and '1'/'2'/'3'/'4'/'undefined' (p3).
   # 9. Criminal history (Check Box3 = never [top], Check Box4 = convicted [below])
   - pdf_field: 'Check Box3'
-    template: '{name_change_criminal_history}'
-    checked_when: 'none'
+    checked_when:
+      variable: name_change_criminal_history
+      value: none
   - pdf_field: 'Check Box4'
-    template: '{name_change_criminal_history}'
-    checked_when: 'convicted'
+    checked_when:
+      variable: name_change_criminal_history
+      value: convicted
   # 9. Conviction table, row 1: the gated conviction variables. Field names
   #    verified against the PDF's AcroForm field list (ChargeRow/ClassRow/
   #    Name of CourtRow/YearRow run 1-6); this row is NOT yet bench-confirmed
@@ -84,8 +88,7 @@ fields:
     template: '{name_change_conviction_year}'
   # 11. Notice, standard track: published (mirrors Petition §11)
   - pdf_field: 'Check Box7'
-    template: 'yes'
-    checked_when: 'yes'
+    checked: true
   - pdf_field: 'Notice choose the same checkbox as Paragraph 11 of your Petition'
     template: '{name_change_publication_date}'
   - pdf_field: 'newspaper the official'
@@ -94,24 +97,18 @@ fields:
     template: '{name_change_publication_county}'
   # 11. Waiver sub-checkboxes (unused on the standard path)
   - pdf_field: 'Check Box8'
-    template: ''
-    checked_when: ''
+    checked: false
   - pdf_field: 'Check Box9'
-    template: ''
-    checked_when: ''
+    checked: false
   - pdf_field: 'Check Box10'
-    template: ''
-    checked_when: ''
+    checked: false
   # 12. Objections, standard track: none (Check Box12 = no objections)
   - pdf_field: 'Check Box12'
-    template: 'yes'
-    checked_when: 'yes'
+    checked: true
   - pdf_field: 'Check Box13'
-    template: ''
-    checked_when: ''
+    checked: false
   - pdf_field: 'Check Box14'
-    template: ''
-    checked_when: ''
+    checked: false
   # 13. Signature block. Bench fill (#560) showed the field names trail their
   #     visual labels by one row (same gotcha as Petition §3 / the Confidential
   #     form): 'Text15' sits on the (Printed Name) line, 'Printed Name of

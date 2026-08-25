@@ -41,11 +41,13 @@ fields:
     template: '{name_change_residence_since}'
   # 5. Citizenship (choose one)
   - pdf_field: 'Check Box2'
-    template: '{name_change_citizenship}'
-    checked_when: 'citizen'
+    checked_when:
+      variable: name_change_citizenship
+      value: citizen
   - pdf_field: 'Check Box3'
-    template: '{name_change_citizenship}'
-    checked_when: 'resident_alien'
+    checked_when:
+      variable: name_change_citizenship
+      value: resident_alien
   # 7. Requested name
   - pdf_field: 'First name_2'
     template: '{name_change_requested_first}'
@@ -55,15 +57,16 @@ fields:
     template: '{name_change_requested_last}'
   # 9. Criminal history (choose one)
   - pdf_field: 'Check Box1'
-    template: '{name_change_criminal_history}'
-    checked_when: 'none'
+    checked_when:
+      variable: name_change_criminal_history
+      value: none
   - pdf_field: 'Check Box4'
-    template: '{name_change_criminal_history}'
-    checked_when: 'convicted'
+    checked_when:
+      variable: name_change_criminal_history
+      value: convicted
   # 11. Notice, standard track: published
   - pdf_field: 'Check Box5'
-    template: 'yes'
-    checked_when: 'yes'
+    checked: true
   - pdf_field: 'A Notice of Petition for Name Change was published on'
     template: '{name_change_publication_date}'
   - pdf_field: 'month date year in the'
@@ -72,24 +75,18 @@ fields:
     template: '{name_change_publication_county}'
   # 11. Waiver track (unused on standard path)
   - pdf_field: 'Check Box6'
-    template: ''
-    checked_when: ''
+    checked: false
   - pdf_field: 'Check Box7'
-    template: ''
-    checked_when: ''
+    checked: false
   - pdf_field: 'Check Box8'
-    template: ''
-    checked_when: ''
+    checked: false
   # 12. Objections, standard track: none
   - pdf_field: 'Check Box9'
-    template: 'yes'
-    checked_when: 'yes'
+    checked: true
   - pdf_field: 'Check Box10'
-    template: ''
-    checked_when: ''
+    checked: false
   - pdf_field: 'Check Box11'
-    template: ''
-    checked_when: ''
+    checked: false
   # Page 4, change "from" (current) / "to" (requested)
   - pdf_field: 'First name_3'
     template: '{first_name}'

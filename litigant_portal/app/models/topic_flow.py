@@ -160,7 +160,8 @@ class Form(BaseModel):
 
 
 class FormField(BaseModel):
-    """One AcroForm blank on a PDF, and the template that fills it."""
+    """One AcroForm blank on a PDF: a template fills a text field, and
+    ``checked``/``checked_when`` turn on a checkbox."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     form = models.ForeignKey(
@@ -170,11 +171,56 @@ class FormField(BaseModel):
     )
     pdf_field = models.CharField(max_length=255)
     template = models.TextField(blank=True)
-    checked_when = models.CharField(max_length=255, blank=True)
+    checked = models.BooleanField(null=True, blank=True)
+    checked_when = models.ForeignKey(
+        Variable,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="checkbox_fields",
+    )
+    checked_when_value = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["order", "created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(checked_when__isnull=False)
+                    | models.Q(checked_when_value__isnull=True)
+                ),
+                name="formfield_condition_value_requires_condition",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(checked_when__isnull=True)
+                    | models.Q(checked_when_value__isnull=False)
+                ),
+                name="formfield_condition_requires_value",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(checked__isnull=True)
+                    | models.Q(checked_when__isnull=True)
+                ),
+                name="formfield_checked_or_condition",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(template="")
+                    | (
+                        models.Q(checked__isnull=True)
+                        & models.Q(checked_when__isnull=True)
+                    )
+                ),
+                name="formfield_checkbox_takes_no_template",
+            ),
+            models.UniqueConstraint(
+                fields=["form", "pdf_field"],
+                name="formfield_pdf_field_unique_per_form",
+            ),
+        ]
 
 
 class TopicFlowFormCondition(BaseModel):

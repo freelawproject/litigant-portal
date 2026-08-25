@@ -61,7 +61,23 @@ def _sync_variables(corpus: CorpusSchema) -> dict[str, Variable]:
     return rows
 
 
-def _sync_forms(corpus: CorpusSchema) -> dict[str, Form]:
+def _form_field(
+    form: Form, order: int, mapping, variables: dict[str, Variable]
+) -> FormField:
+    """Build one FormField row, resolving checked_when to its Variable."""
+    when = mapping.checked_when
+    return FormField(
+        form=form,
+        order=order,
+        checked_when=variables[when.variable] if when else None,
+        checked_when_value=when.value if when else None,
+        **mapping.model_dump(exclude={"checked_when"}),
+    )
+
+
+def _sync_forms(
+    corpus: CorpusSchema, variables: dict[str, Variable]
+) -> dict[str, Form]:
     """Upsert every form by slug, rewriting its stored PDF and replacing
     its field mappings wholesale."""
     rows = {f.slug: f for f in Form.objects.all()}
@@ -83,7 +99,7 @@ def _sync_forms(corpus: CorpusSchema) -> dict[str, Form]:
         form.save()
         form.fields.all().delete()
         FormField.objects.bulk_create(
-            FormField(form=form, order=order, **mapping.model_dump())
+            _form_field(form, order, mapping, variables)
             for order, mapping in enumerate(schema.fields)
         )
         rows[slug] = form
@@ -213,7 +229,7 @@ def corpus_sync(
     deleted = 0
     with transaction.atomic():
         variables = _sync_variables(corpus)
-        forms = _sync_forms(corpus)
+        forms = _sync_forms(corpus, variables)
         topics: dict[str, Topic] = {}
         for (court_slug, topic_slug), schema in sorted(corpus.topics.items()):
             if court is not None and court_slug != court:

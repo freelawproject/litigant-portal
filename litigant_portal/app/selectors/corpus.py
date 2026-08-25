@@ -201,12 +201,43 @@ class VariablesSchema(BaseSchema):
 # Forms
 
 
+class CheckedWhenSchema(BaseSchema):
+    """Populates ``FormField.checked_when`` and ``checked_when_value``."""
+
+    variable: VariableNameField
+    value: ValueType
+
+
 class FormFieldMappingSchema(BaseSchema):
     """Populates a ``FormField`` row."""
 
     pdf_field: str = Field(min_length=1)
     template: str = ""
-    checked_when: str = ""
+    checked: bool | None = None
+    checked_when: CheckedWhenSchema | None = None
+
+    @model_validator(mode="after")
+    def _one_mode(self):
+        """Validates:
+        - checked and checked_when do not combine
+        - a checkbox mapping carries no template
+        """
+        if self.checked is not None and self.checked_when is not None:
+            raise ValueError(
+                f"pdf_field {self.pdf_field!r}: checked and checked_when "
+                "do not combine"
+            )
+        if self.template and not self.is_text:
+            raise ValueError(
+                f"pdf_field {self.pdf_field!r}: a checkbox mapping takes "
+                "no template"
+            )
+        return self
+
+    @property
+    def is_text(self) -> bool:
+        """A text-fill mapping, as opposed to a checkbox one."""
+        return self.checked is None and self.checked_when is None
 
 
 class FormSchema(BaseSchema):
@@ -214,6 +245,17 @@ class FormSchema(BaseSchema):
 
     name: str = Field(min_length=1)
     fields: list[FormFieldMappingSchema]
+
+    @model_validator(mode="after")
+    def _unique_pdf_fields(self):
+        """Validates:
+        - each pdf_field is mapped at most once
+        """
+        names = [m.pdf_field for m in self.fields]
+        duplicates = sorted({n for n in names if names.count(n) > 1})
+        if duplicates:
+            raise ValueError(f"pdf_field mapped more than once: {duplicates}")
+        return self
 
 
 # Courts
@@ -375,7 +417,7 @@ class CorpusSchema(BaseSchema):
 
     variables: dict[VariableNameField, VariableSchema]
     forms: dict[SlugField, FormSchema]
-    form_acro_fields: dict[str, set[str]]
+    form_acro_fields: dict[str, dict[str, str]]
     courts: dict[SlugField, CourtSchema]
     topics: dict[tuple[SlugField, SlugField], TopicSchema]
     flows: dict[tuple[SlugField, SlugField, SlugField], FlowSchema]
@@ -385,7 +427,10 @@ class CorpusSchema(BaseSchema):
         """Validates:
         - each form has its matching ``<slug>.pdf``
         - each mapped pdf_field exists in the PDF's AcroForm
+        - each checkbox mapping declares checked or checked_when, and
+          only checkbox mappings do
         - each template placeholder names a known variable
+        - each checked_when names a known variable and a legal value
         - each PDF has its matching form document
         """
         variables = set(self.variables)
@@ -401,6 +446,17 @@ class CorpusSchema(BaseSchema):
                         f"form {slug}: pdf_field {mapping.pdf_field!r} "
                         f"does not exist in {slug}.pdf"
                     )
+                is_checkbox = pdf_fields[mapping.pdf_field] == "/Btn"
+                if is_checkbox and mapping.is_text:
+                    raise ValueError(
+                        f"form {slug}: {mapping.pdf_field!r} is a checkbox; "
+                        "declare checked or checked_when"
+                    )
+                if not is_checkbox and not mapping.is_text:
+                    raise ValueError(
+                        f"form {slug}: {mapping.pdf_field!r} is not a "
+                        "checkbox; it takes a template only"
+                    )
                 unknown = sorted(
                     set(TEMPLATE_VARIABLE_PATTERN.findall(mapping.template))
                     - variables
@@ -409,6 +465,22 @@ class CorpusSchema(BaseSchema):
                     raise ValueError(
                         f"form {slug}: template references unknown "
                         f"variable {unknown[0]}"
+                    )
+                condition = mapping.checked_when
+                if condition is None:
+                    continue
+                variable = self.variables.get(condition.variable)
+                if variable is None:
+                    raise ValueError(
+                        f"form {slug}: checked_when names unknown "
+                        f"variable {condition.variable}"
+                    )
+                problem = _variable_value_problem(condition.value, variable)
+                if problem is not None:
+                    raise ValueError(
+                        f"form {slug}: checked_when value "
+                        f"{condition.value!r} {problem} "
+                        f"({condition.variable} is {variable.data_type})"
                     )
         for stem in sorted(set(self.form_acro_fields) - set(self.forms)):
             raise ValueError(f"{stem}.pdf: no matching form document")
@@ -458,6 +530,8 @@ class CorpusSchema(BaseSchema):
                 form_names |= set(
                     TEMPLATE_VARIABLE_PATTERN.findall(mapping.template)
                 )
+                if mapping.checked_when is not None:
+                    form_names.add(mapping.checked_when.variable)
             form_names &= set(variables)
             consumed |= form_names
             if entry.when is None:
@@ -584,15 +658,18 @@ def corpus_load_forms() -> dict[str, FormSchema]:
     }
 
 
-def corpus_load_form_acro_fields() -> dict[str, set[str]]:
-    """Every fillable PDF's AcroForm field names, by form slug."""
+def corpus_load_form_acro_fields() -> dict[str, dict[str, str]]:
+    """Every fillable PDF's AcroForm field types by name, by form slug."""
     pdfs = {}
     for path in sorted(FORMS_DIR.glob("*.pdf")):
         try:
             reader = PdfReader(path)
         except Exception as exc:
             raise ValueError(f"{path}: cannot read PDF: {exc}") from exc
-        pdfs[path.stem] = set((reader.get_fields() or {}).keys())
+        pdfs[path.stem] = {
+            name: str(field.field_type)
+            for name, field in (reader.get_fields() or {}).items()
+        }
     return pdfs
 
 
