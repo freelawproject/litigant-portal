@@ -48,22 +48,23 @@ def topic_delete(*, topic: Topic) -> None:
 def variable_value_validate(*, data_type: str, choices: list, value):
     """Check a raw value against a variable's data_type and choices.
 
-    Pure and DB-free so both the answer-writing path and the corpus loader
-    can call it. Returns the value unchanged when valid; None always passes
-    (it clears the answer). Raises ValidationError otherwise.
+    The one place that decides whether a value is legal, for both the
+    answer-writing path and the corpus loader (``_variable_value_problem``
+    in selectors/corpus.py adapts this to a message string). Pure and
+    DB-free. ``choices`` is the stored shape, a list of {value, label}
+    dicts. Returns the value unchanged when valid; None always passes (it
+    clears the answer). Raises ValidationError otherwise, worded as a
+    fragment so callers can embed it in a fuller sentence.
     """
     if value is None:
         return None
 
-    if data_type == VariableDataType.TEXT:
-        if not isinstance(value, str):
-            raise ValidationError("Must be text.")
-    elif data_type == VariableDataType.NUMBER:
+    if data_type == VariableDataType.NUMBER:
         if isinstance(value, bool) or not isinstance(value, int | float):
-            raise ValidationError("Must be a number.")
+            raise ValidationError("must be a number")
     elif data_type == VariableDataType.BOOLEAN:
         if not isinstance(value, bool):
-            raise ValidationError("Must be true or false.")
+            raise ValidationError("must be true or false")
     elif data_type in (VariableDataType.DATE, VariableDataType.DATETIME):
         parser = (
             date.fromisoformat
@@ -73,11 +74,15 @@ def variable_value_validate(*, data_type: str, choices: list, value):
         try:
             parser(value)
         except (TypeError, ValueError) as exc:
-            raise ValidationError(f"Must be a valid ISO {data_type}.") from exc
-    elif data_type == VariableDataType.CHOICE and value not in {
-        c["value"] for c in choices
-    }:
-        raise ValidationError("Must be one of the declared choices.")
+            raise ValidationError(
+                f"must be an ISO {data_type} string"
+            ) from exc
+    elif data_type == VariableDataType.CHOICE:
+        values = [c["value"] for c in choices or []]
+        if value not in values:
+            raise ValidationError(f"must be one of {values}")
+    elif not isinstance(value, str):
+        raise ValidationError("must be a string")
 
     return value
 
