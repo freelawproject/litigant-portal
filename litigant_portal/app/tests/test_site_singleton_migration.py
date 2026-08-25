@@ -68,7 +68,6 @@ class SiteSingletonMigrationTests(TransactionTestCase):
         old_topic.objects.create(
             site=live, slug="eviction", title="Live Evictions", order=0
         )
-        # The uuid4 that seed_data minted, which 0012 has to repoint.
         self.assertNotEqual(live.id, SITE_ID)
 
         self._migrate(MIGRATE_TO)

@@ -76,7 +76,7 @@ No auto-formatter for `.html` templates — djlint runs lint-only. **Load the gl
 
 ## Content style (user-facing copy)
 
-Rules for authoring user-facing content — corpus YAML (`litigant_portal/content/`), UI strings, and prompt layers that shape chat output:
+Rules for authoring user-facing content — corpus YAML (`litigant_portal/corpus/`), UI strings, and prompt layers that shape chat output:
 
 - **No em-dashes.** Use a period, comma, colon, or parentheses instead. Em-dash-heavy prose reads as AI-generated and undermines user trust (legal review, #620). Dev-facing text (code comments, docs, commit messages) is exempt.
 - **Corpus info bodies: one line per paragraph.** The renderer pipes `body` through Django's `linebreaks`, so every newline becomes a `<br>` — hard-wrapped prose breaks mid-sentence on the page. Separate paragraphs with blank lines; never wrap a paragraph across source lines.

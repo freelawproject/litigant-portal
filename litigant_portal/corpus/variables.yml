@@ -1,0 +1,199 @@
+# The variable glossary: every fact the app can ask a person, named once
+# app-wide.
+#
+# Global variables are facts about the person, not about any topic. A
+# variable is global when its answer means the same thing everywhere it is
+# asked (a name, an address, a birth date), so any flow may reference it and
+# every flow shares the stored answer. Their labels are context-free on
+# purpose ("First name", not "Current first name"): the interview page a
+# flow places a variable on supplies the context (e.g. "Your current legal
+# name").
+#
+# Everything else is scoped and carries its topic as a name prefix
+# (name_change_*, eviction_*), because it only means something inside that
+# topic; the flows that share the topic share the variable. Default to
+# scoped; promote a variable to global only when a second topic asks the
+# identical question.
+#
+# Labels and help text ported from the wip library flow configs, which took
+# them from docassemble/nd-name-change/petition-*.yml and the legacy corpus.
+
+variables:
+  # ── Global ──────────────────────────────────────────────────────────────
+
+  - name: first_name
+    label: 'First name'
+    global: true
+    required: true
+
+  - name: middle_name
+    label: 'Middle name(s) (if any)'
+    global: true
+
+  - name: last_name
+    label: 'Last name'
+    global: true
+    required: true
+
+  - name: street_address
+    label: 'Street address'
+    global: true
+    required: true
+
+  - name: city
+    label: 'City'
+    global: true
+    required: true
+
+  - name: county
+    label: 'County'
+    global: true
+    required: true
+
+  - name: zip_code
+    label: 'ZIP code'
+    global: true
+    required: true
+
+  - name: date_of_birth
+    label: 'Date of birth'
+    data_type: date
+    global: true
+    required: true
+
+  - name: place_of_birth
+    label: 'Place of birth'
+    help_text: 'e.g. Fargo, North Dakota'
+    global: true
+    required: true
+
+  - name: phone_number
+    label: 'Phone number'
+    global: true
+
+  # ── Adult name change ───────────────────────────────────────────────────
+
+  - name: name_change_requested_first
+    label: 'Requested first name'
+    required: true
+
+  - name: name_change_requested_middle
+    label: 'Requested middle name(s) (if any)'
+
+  - name: name_change_requested_last
+    label: 'Requested last name'
+    required: true
+
+  - name: name_change_residence_since
+    label: 'You have lived in this county since (month and year)'
+    help_text: 'e.g. January 2025'
+    required: true
+
+  - name: name_change_citizenship
+    label: 'Citizenship status'
+    data_type: choice
+    required: true
+    choices:
+      - value: citizen
+        label: 'U.S. citizen'
+      - value: resident_alien
+        label: 'Permanent resident alien'
+
+  - name: name_change_criminal_history
+    label: 'Criminal history'
+    question: 'Have you ever been convicted of a crime?'
+    data_type: choice
+    required: true
+    choices:
+      - value: none
+        label: 'I have never been convicted of a crime'
+      - value: convicted
+        label: 'I have been convicted of a crime'
+
+  # The four columns of the Declaration's conviction table (row 1). Only
+  # asked when the answer above is "convicted"; litigants with more than one
+  # conviction complete rows 2-6 of the table by hand.
+  - name: name_change_conviction_charge
+    label: 'Charge you were convicted of'
+    asked_when:
+      variable: name_change_criminal_history
+      value: convicted
+
+  - name: name_change_conviction_class
+    label: 'Class (felony or misdemeanor)'
+    asked_when:
+      variable: name_change_criminal_history
+      value: convicted
+
+  - name: name_change_conviction_court
+    label: 'Court that convicted you'
+    asked_when:
+      variable: name_change_criminal_history
+      value: convicted
+
+  - name: name_change_conviction_year
+    label: 'Year of conviction'
+    data_type: number
+    asked_when:
+      variable: name_change_criminal_history
+      value: convicted
+
+  - name: name_change_residency_years
+    label: 'Years you have lived in North Dakota'
+    data_type: number
+    required: true
+
+  - name: name_change_residency_months
+    label: 'Additional months'
+    data_type: number
+    required: true
+    default: 0
+
+  # Standard (publication) track only.
+  - name: name_change_publication_date
+    label: 'Date the notice was published'
+    data_type: date
+    help_text: 'Leave blank until your notice runs in the newspaper. Then enter it here and your deadline updates. Found on the affidavit of publication from the paper.'
+
+  - name: name_change_publication_newspaper
+    label: 'Newspaper name'
+    required: true
+
+  - name: name_change_publication_county
+    label: 'County of publication'
+    required: true
+
+  # Waiver track only. The interview's select-every-reason instruction lives
+  # on the interview page description in the waiver flow.
+  - name: name_change_waiver_first_or_middle
+    label: 'I am only changing my first or middle name'
+    data_type: boolean
+
+  - name: name_change_waiver_domestic_violence
+    label: 'I am a victim of domestic violence'
+    data_type: boolean
+
+  # Drives the fee-waiver form condition in both flows.
+  - name: name_change_fee_waiver_needed
+    label: 'I need to ask the court to waive the filing fee'
+    question: 'The filing fee is $160. Do you need to ask the court to waive it?'
+    data_type: boolean
+
+  # ── Eviction ────────────────────────────────────────────────────────────
+  # eviction_papers_received_date and eviction_hearing_date are asked on the
+  # tenant flow, eviction_notice_served_date on the landlord flow.
+
+  - name: eviction_papers_received_date
+    label: 'Date you received the court papers'
+    data_type: date
+    help_text: 'The day the summons and complaint were handed to you, mailed to you, or posted on your door. This starts the 28-day window to answer a money claim. Not sure? Call the clerk with your case number and ask for the date you were served.'
+
+  - name: eviction_hearing_date
+    label: 'Your hearing date'
+    data_type: date
+    help_text: 'Printed on the Summons in Forcible Entry and Detainer. Enter it to add it to your calendar below.'
+
+  - name: eviction_notice_served_date
+    label: 'Date you served the Notice to Leave'
+    data_type: date
+    help_text: 'The day you handed the notice to your tenant, left it at the property, or sent it by certified mail.'

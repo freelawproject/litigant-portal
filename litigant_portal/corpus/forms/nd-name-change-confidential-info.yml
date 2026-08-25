@@ -1,0 +1,42 @@
+# Confidential Information Form. One form shared by both tracks: the
+# mappings are identical on the standard and waiver paths (bench-verified,
+# #560). Sealed by the court and stays out of the public file; a copy must
+# be attached to every certified copy of the Order.
+
+name: 'Confidential Information Form'
+
+fields:
+  - pdf_field: 'In District Court County Of'
+    template: '{county}'
+  # Bench-confirmed: the field auto-named 'State Of North Dakota' is positionally
+  # the Case No blank (the state itself is preprinted), leave it empty; the
+  # clerk assigns the case number.
+  - pdf_field: 'State Of North Dakota'
+    template: ''
+  - pdf_field: 'In The Matter Of The Petition For Name Change Of'
+    template: '{first_name} {middle_name} {last_name}'
+  - pdf_field: 'First name'
+    template: '{first_name}'
+  - pdf_field: 'Middle names if any'
+    template: '{middle_name}'
+  - pdf_field: 'Last name'
+    template: '{last_name}'
+  # Bench-confirmed: DOB lands on "Full Information", birth year on "Redacted".
+  - pdf_field: 'Full Information'
+    template: '{date_of_birth}'
+  - pdf_field: 'Redacted Information'
+    template: '{date_of_birth:%Y}'
+  # Signature block: field names trail their blanks by one row (same gotcha as
+  # Petition §3, bench fill showed every value one row too low), so each value
+  # goes one field name UP from its visual label. The "-> (...)" notes the blank
+  # each field actually fills.
+  - pdf_field: 'Text1'
+    template: '{first_name} {middle_name} {last_name}' # -> (Typed or Printed Name)
+  - pdf_field: 'Petitioners Typed or Printed Name'
+    template: '{street_address}' # -> (Address)
+  - pdf_field: 'Address'
+    template: '{city}, ND {zip_code}' # -> (City, State, Zip Code)
+  - pdf_field: 'City State Zip Code'
+    template: '{phone_number}' # -> (Telephone Number)
+  - pdf_field: 'Telephone Number'
+    template: '' # -> (Email Address); no email collected

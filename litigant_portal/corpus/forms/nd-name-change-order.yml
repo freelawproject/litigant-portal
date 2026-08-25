@@ -1,0 +1,56 @@
+# Proposed Order for Name Change. One form shared by both tracks: the
+# mappings are identical on the standard and waiver paths (bench-verified,
+# #560). Four name-sets (base / _2 / _3 / _4), bench-confirmed by page
+# position (see the per-field notes below). The judge signs the Order, so no
+# signature mapping.
+
+name: 'Proposed Order for Name Change'
+
+fields:
+  # Bench-confirmed: header holds the county name.
+  - pdf_field: 'In District Court'
+    template: '{county}'
+  - pdf_field: 'Case No'
+    template: ''
+  - pdf_field: 'County of'
+    template: '{county}'
+  # Bench-confirmed: stray single-char field on the "County of" line, blank.
+  - pdf_field: '1'
+    template: ''
+  - pdf_field: 'The Petitioners birth year is'
+    template: '{date_of_birth:%Y}'
+  - pdf_field: 'Petitioners Current First Middle If Any And Last Legal Name'
+    template: '{first_name} {middle_name} {last_name}'
+  # Name-sets mapped by bench-confirmed page position (#560):
+  #   §2 "current name"   = base 'First name'  (page 1)
+  #   §3 "requested name" = 'First name_2'     (page 1)
+  #   §6 "current name"   = 'First name_3'     (page 2)
+  #   §6 "changed to"     = 'First name_4'     (page 2)
+  # §2 current
+  - pdf_field: 'First name'
+    template: '{first_name}'
+  - pdf_field: 'Middle names if any'
+    template: '{middle_name}'
+  - pdf_field: 'Last name'
+    template: '{last_name}'
+  # §3 requested
+  - pdf_field: 'First name_2'
+    template: '{name_change_requested_first}'
+  - pdf_field: 'Middle names if any_2'
+    template: '{name_change_requested_middle}'
+  - pdf_field: 'Last name_2'
+    template: '{name_change_requested_last}'
+  # §6 current
+  - pdf_field: 'First name_3'
+    template: '{first_name}'
+  - pdf_field: 'Middle names if any_3'
+    template: '{middle_name}'
+  - pdf_field: 'Last name_3'
+    template: '{last_name}'
+  # §6 changed-to (new) = requested
+  - pdf_field: 'First name_4'
+    template: '{name_change_requested_first}'
+  - pdf_field: 'Middle names if any_4'
+    template: '{name_change_requested_middle}'
+  - pdf_field: 'Last name_4'
+    template: '{name_change_requested_last}'

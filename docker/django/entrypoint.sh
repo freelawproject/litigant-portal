@@ -14,9 +14,9 @@ run_bootstrap_superuser() {
     manage bootstrap_superuser
 }
 
-run_seed_data() {
-    echo "Seeding baseline data ..."
-    manage seed_data
+run_sync_corpus() {
+    echo "Syncing corpus ..."
+    manage sync_corpus --strict
 }
 
 run_collectstatic() {
@@ -55,7 +55,7 @@ case "$1" in
         run_compilemessages
         run_collectstatic
         run_migrations
-        run_seed_data
+        run_sync_corpus
         run_bootstrap_superuser
         run_dev_server
         ;;
@@ -65,7 +65,7 @@ case "$1" in
         run_compilemessages
         run_collectstatic
         run_migrations
-        run_seed_data
+        run_sync_corpus
         run_bootstrap_superuser
         run_prod_server
         ;;

@@ -1,0 +1,25 @@
+# Notice of Petition for Name Change. Standard (publication) track only: the
+# notice is what runs in the newspaper, and the waiver track asks the judge
+# to skip it. Mappings ported line-for-line from the bench-confirmed
+# attachment block in docassemble/nd-name-change/petition-standard.yml (#560).
+
+name: 'Notice of Petition for Name Change'
+
+fields:
+  # Bench-confirmed: header holds the county name.
+  - pdf_field: 'In District Court'
+    template: '{county}'
+  - pdf_field: 'In The Matter Of The Petition For Name Change Of'
+    template: '{first_name} {middle_name} {last_name}'
+  - pdf_field: 'an Order changing the Petitioners name of'
+    template: '{first_name} {middle_name} {last_name}'
+  - pdf_field: 'to'
+    template: '{name_change_requested_first} {name_change_requested_middle} {name_change_requested_last}'
+  # Bench-confirmed: signing/date line above the printed-name/address block,
+  # left blank for the litigant to sign by hand.
+  - pdf_field: 'Text1'
+    template: ''
+  - pdf_field: 'Printed Name'
+    template: '{first_name} {middle_name} {last_name}'
+  - pdf_field: 'Address'
+    template: '{street_address}, {city}, ND {zip_code}'
