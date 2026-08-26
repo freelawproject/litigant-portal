@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Literal
 
 import yaml
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -22,6 +22,7 @@ from litigant_portal.app.models.choices import (
     TopicFlowFormConditionOperator,
     VariableDataType,
 )
+from litigant_portal.app.services.topic_flow import variable_value_validate
 
 CORPUS_DIR = settings.BASE_DIR / "corpus"
 FORMS_DIR = CORPUS_DIR / "forms"
@@ -44,30 +45,22 @@ ValueType = bool | int | float | str
 
 
 def _variable_value_problem(value, variable) -> str | None:
-    """Why ``value`` is not a legal value for ``variable``, or None."""
-    data_type = variable.data_type
-    if data_type == "boolean":
-        return None if isinstance(value, bool) else "must be true or false"
-    if data_type == "number":
-        ok = isinstance(value, int | float) and not isinstance(value, bool)
-        return None if ok else "must be a number"
-    if data_type == "choice":
-        values = [c.value for c in variable.choices or []]
-        if isinstance(value, str) and value in values:
-            return None
-        return f"must be one of {values}"
-    if data_type in ("date", "datetime"):
-        parse = (
-            date.fromisoformat
-            if data_type == "date"
-            else datetime.fromisoformat
+    """Why ``value`` is not a legal value for ``variable``, or None.
+
+    Adapts ``variable_value_validate`` (the single source of truth for legal
+    values) to the message-string shape these validators embed in their own
+    errors. ``variable`` is a schema, so its choices are ChoiceSchema
+    objects; the service takes the stored {value, label} dict shape.
+    """
+    try:
+        variable_value_validate(
+            data_type=variable.data_type,
+            choices=[c.model_dump() for c in variable.choices or []],
+            value=value,
         )
-        try:
-            parse(value)
-        except (TypeError, ValueError):
-            return f"must be an ISO {data_type} string"
-        return None
-    return None if isinstance(value, str) else "must be a string"
+    except DjangoValidationError as exc:
+        return exc.messages[0]
+    return None
 
 
 class BaseSchema(BaseModel):

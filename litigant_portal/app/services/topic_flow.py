@@ -1,8 +1,12 @@
+from datetime import date, datetime
+
+from django.core.exceptions import ValidationError
 from django.db.models import Max
 from django.utils.text import slugify
 
 from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
-from litigant_portal.app.models import Topic
+from litigant_portal.app.models import Topic, Variable, VariableAnswer
+from litigant_portal.app.models.choices import VariableDataType
 
 from .utils import busts_cache
 
@@ -39,3 +43,71 @@ def topic_update(*, topic: Topic, **fields) -> Topic:
 @busts_cache(TOPIC_LIST_CACHE_KEY)
 def topic_delete(*, topic: Topic) -> None:
     topic.delete()
+
+
+def variable_value_validate(*, data_type: str, choices: list, value):
+    """Check a raw value against a variable's data_type and choices.
+
+    The one place that decides whether a value is legal, for both the
+    answer-writing path and the corpus loader (``_variable_value_problem``
+    in selectors/corpus.py adapts this to a message string). Pure and
+    DB-free. ``choices`` is the stored shape, a list of {value, label}
+    dicts. Returns the value unchanged when valid; None always passes (it
+    clears the answer). Raises ValidationError otherwise, worded as a
+    fragment so callers can embed it in a fuller sentence.
+    """
+    if value is None:
+        return None
+
+    if data_type == VariableDataType.NUMBER:
+        if isinstance(value, bool) or not isinstance(value, int | float):
+            raise ValidationError("must be a number")
+    elif data_type == VariableDataType.BOOLEAN:
+        if not isinstance(value, bool):
+            raise ValidationError("must be true or false")
+    elif data_type in (VariableDataType.DATE, VariableDataType.DATETIME):
+        parser = (
+            date.fromisoformat
+            if data_type == VariableDataType.DATE
+            else datetime.fromisoformat
+        )
+        try:
+            parser(value)
+        except (TypeError, ValueError) as exc:
+            raise ValidationError(
+                f"must be an ISO {data_type} string"
+            ) from exc
+    elif data_type == VariableDataType.CHOICE:
+        values = [c["value"] for c in choices or []]
+        if value not in values:
+            raise ValidationError(f"must be one of {values}")
+    elif not isinstance(value, str):
+        raise ValidationError("must be a string")
+
+    return value
+
+
+def variable_answer_set(
+    *, identity, variable: Variable, value, reviewed: bool = False
+) -> VariableAnswer:
+    """Upsert an identity's answer to a variable.
+
+    Validates against the variable's data_type/choices first — an invalid
+    value writes nothing. ``reviewed`` defaults to False (AI-written); pass
+    True only from the guided fact page after human confirmation. Only
+    reviewed=True answers may reach the docassemble prefill payload, since
+    prefilled variables skip their questions with no further human check.
+    Every unconfirmed write resets reviewed, even one that rewrites the
+    same value. Deliberately conservative: dropping a confirmation only
+    re-asks a question, while carrying a stale one forward would prefill
+    a court form unchecked.
+    """
+    value = variable_value_validate(
+        data_type=variable.data_type, choices=variable.choices, value=value
+    )
+    answer, _ = VariableAnswer.objects.update_or_create(
+        identity=identity,
+        variable=variable,
+        defaults={"value": value, "reviewed": reviewed},
+    )
+    return answer
