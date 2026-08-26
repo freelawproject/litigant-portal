@@ -92,17 +92,21 @@ def test_fact_gather_unanswered_question_prefills_empty():
 
 
 def test_fact_gather_never_prefills_publication_date():
-    # #638: unlike other fields, publication_date must never echo a stored
+    # #638: unlike other fields, name_change_publication_date must never echo a stored
     # answer back into the form.
     section = _fg(
         [
             Question(
-                id="publication_date", label="Publication date", type="date"
+                id="name_change_publication_date",
+                label="Publication date",
+                type="date",
             )
         ]
     )
     rendered = render_section(
-        section, _corpus(section), {"publication_date": "2026-05-01"}
+        section,
+        _corpus(section),
+        {"name_change_publication_date": "2026-05-01"},
     )
     (q,) = rendered.context["questions"]
     assert q["value"] == ""
@@ -205,11 +209,13 @@ def test_summary_omits_unanswered_questions():
 
 def test_summary_never_prefills_publication_date():
     # #638: the recap reads the same session-backed answers as the fact_gather
-    # form — a prior guest's publication_date can't leak in here either.
+    # form — a prior guest's name_change_publication_date can't leak in here either.
     fg = _fg(
         [
             Question(
-                id="publication_date", label="Publication date", type="date"
+                id="name_change_publication_date",
+                label="Publication date",
+                type="date",
             ),
             Question(id="filing_county", label="County"),
         ]
@@ -220,7 +226,10 @@ def test_summary_never_prefills_publication_date():
     rendered = render_section(
         summary,
         _corpus(fg, summary),
-        {"publication_date": "2026-05-01", "filing_county": "Cass"},
+        {
+            "name_change_publication_date": "2026-05-01",
+            "filing_county": "Cass",
+        },
     )
     assert rendered.context["items"] == [{"label": "County", "value": "Cass"}]
 
@@ -333,12 +342,14 @@ def test_each_kind_dispatches_to_a_distinct_template():
 # answers, via resolve_ics_deadlines (shared with the .ics download, #504).
 # These cover the visible, JS-off date list + the download-link context.
 
-_PUB_Q = Question(id="publication_date", label="Publication date", type="date")
+_PUB_Q = Question(
+    id="name_change_publication_date", label="Publication date", type="date"
+)
 _PUB_DEADLINE = Deadline(
     id="publication_wait",
     label="30-day publication wait",
     offset_days=30,
-    offset_from="publication_date",
+    offset_from="name_change_publication_date",
     description="The judge can review 30 days after publication.",
 )
 
@@ -359,7 +370,9 @@ def _ics_corpus(
 
 def test_ics_renders_computed_deadline_from_answer():
     corpus, ics = _ics_corpus()
-    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    rendered = render_section(
+        ics, corpus, {"name_change_publication_date": "2026-02-01"}
+    )
     (d,) = rendered.context["deadlines"]
     assert d["label"] == "30-day publication wait"
     # 30 days after 2026-02-01 = 2026-03-03 (Feb 2026 has 28 days).
@@ -395,7 +408,9 @@ def test_ics_deadline_pending_when_answer_missing():
 
 def test_ics_deadline_pending_when_answer_malformed():
     corpus, ics = _ics_corpus()
-    rendered = render_section(ics, corpus, {"publication_date": "not-a-date"})
+    rendered = render_section(
+        ics, corpus, {"name_change_publication_date": "not-a-date"}
+    )
     (d,) = rendered.context["deadlines"]
     assert d["date_iso"] is None
 
@@ -415,13 +430,15 @@ def test_ics_lists_deadlines_in_deadline_ids_order():
         id="second",
         label="Second",
         offset_days=5,
-        offset_from="publication_date",
+        offset_from="name_change_publication_date",
     )
     corpus, ics = _ics_corpus(
         deadline_ids=("second", "publication_wait"),
         deadlines=(_PUB_DEADLINE, second),
     )
-    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    rendered = render_section(
+        ics, corpus, {"name_change_publication_date": "2026-02-01"}
+    )
     assert [d["label"] for d in rendered.context["deadlines"]] == [
         "Second",
         "30-day publication wait",
@@ -431,7 +448,9 @@ def test_ics_lists_deadlines_in_deadline_ids_order():
 def test_ics_has_dates_true_when_a_deadline_is_computed():
     # Gates the download link: a calendar with at least one dated event.
     corpus, ics = _ics_corpus()
-    rendered = render_section(ics, corpus, {"publication_date": "2026-02-01"})
+    rendered = render_section(
+        ics, corpus, {"name_change_publication_date": "2026-02-01"}
+    )
     assert rendered.context["has_dates"] is True
 
 

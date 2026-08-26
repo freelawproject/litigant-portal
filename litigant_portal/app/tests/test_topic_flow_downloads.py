@@ -31,8 +31,8 @@ from litigant_portal.app.topic_flow.schema import (
     VcfOutput,
 )
 
-# An answered publication_date; 30 days on = 2026-03-03.
-ANSWERS = {"publication_date": "2026-02-01"}
+# An answered name_change_publication_date; 30 days on = 2026-03-03.
+ANSWERS = {"name_change_publication_date": "2026-02-01"}
 
 
 def _corpus():
@@ -48,7 +48,7 @@ def _corpus():
                 id="publication_wait",
                 label="30-day publication wait",
                 offset_days=30,
-                offset_from="publication_date",
+                offset_from="name_change_publication_date",
                 description="Judge may review after this.",
             )
         ],
@@ -66,7 +66,11 @@ def _corpus():
                 kind="fact_gather",
                 id="key_dates",
                 questions=[
-                    Question(id="publication_date", label="When", type="date")
+                    Question(
+                        id="name_change_publication_date",
+                        label="When",
+                        type="date",
+                    )
                 ],
             ),
             IcsOutput(

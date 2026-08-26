@@ -64,7 +64,7 @@ def _corpus():
                 heading="Your dates",
                 questions=[
                     Question(
-                        id="publication_date",
+                        id="name_change_publication_date",
                         label="Date your notice was published",
                         type="date",
                         required=True,
@@ -180,7 +180,7 @@ def test_fact_gather_renders_post_form_with_a_field_per_question(
     html = client.get(URL).content.decode()
     assert 'method="post"' in html
     assert "csrfmiddlewaretoken" in html
-    assert 'name="publication_date"' in html
+    assert 'name="name_change_publication_date"' in html
     assert 'name="filing_county"' in html
 
 
@@ -329,12 +329,14 @@ def test_fact_gather_marks_required_questions_and_leaves_optional_unmarked(
     client, monkeypatch
 ):
     # The HTML `required` attribute must track the corpus `required` flag:
-    # publication_date is required=True, filing_county defaults required=False.
+    # name_change_publication_date is required=True, filing_county defaults required=False.
     # If an optional field renders required, the browser blocks the litigant on
     # a question the author meant to be skippable — the bug this guards.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
-    assert re.search(r"\brequired\b", _field_tag(html, "publication_date"))
+    assert re.search(
+        r"\brequired\b", _field_tag(html, "name_change_publication_date")
+    )
     assert not re.search(r"\brequired\b", _field_tag(html, "filing_county"))
 
 
@@ -347,7 +349,9 @@ def test_fact_gather_date_field_disables_browser_autocomplete(
     # our session. autocomplete="off" should stop that.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
-    assert 'autocomplete="off"' in _field_tag(html, "publication_date")
+    assert 'autocomplete="off"' in _field_tag(
+        html, "name_change_publication_date"
+    )
 
 
 @pytest.mark.django_db
@@ -370,7 +374,11 @@ def test_headingless_fact_gather_skipped_in_toc_but_body_still_renders(
                 kind="fact_gather",
                 id="key_dates",
                 questions=[
-                    Question(id="publication_date", label="When", type="date")
+                    Question(
+                        id="name_change_publication_date",
+                        label="When",
+                        type="date",
+                    )
                 ],
             ),
         ],
@@ -379,7 +387,7 @@ def test_headingless_fact_gather_skipped_in_toc_but_body_still_renders(
     html = client.get(URL).content.decode()
     assert 'href="#overview"' in html  # heading section -> TOC link
     assert 'href="#key_dates"' not in html  # headingless -> no empty link
-    assert 'name="publication_date"' in html  # body still renders
+    assert 'name="name_change_publication_date"' in html  # body still renders
 
 
 # --- fact_gather POST + prefill (Item 5, needs DB) --------------------------
@@ -394,7 +402,11 @@ def test_post_persists_answers_and_redirects_prg(client, monkeypatch):
     # 200 in place. Otherwise a browser reload re-submits the form.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
     )
     assert response.status_code == 302
     assert response["Location"].startswith(URL)
@@ -407,7 +419,11 @@ def test_post_redirects_to_the_saved_section_anchor(client, monkeypatch):
     # deadlines that recompute just below it — not the top of the page.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
     )
     assert response["Location"] == f"{URL}#key_dates"
 
@@ -415,15 +431,21 @@ def test_post_redirects_to_the_saved_section_anchor(client, monkeypatch):
 @pytest.mark.django_db
 def test_posted_answers_prefill_on_the_redirected_get(client, monkeypatch):
     # What you submitted comes back filled in: the choice marks its option
-    # selected. publication_date is the exception (#638) — it never echoes
+    # selected. name_change_publication_date is the exception (#638) — it never echoes
     # back, even right after you just submitted it.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
     )
     html = client.get(URL).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert 'value="2026-02-01"' not in _field_tag(html, "publication_date")
+    assert 'value="2026-02-01"' not in _field_tag(
+        html, "name_change_publication_date"
+    )
     assert re.search(r'<option value="Cass"[^>]*selected', flat)
 
 
@@ -431,32 +453,34 @@ def test_posted_answers_prefill_on_the_redirected_get(client, monkeypatch):
 def test_get_prefills_form_from_existing_session_answers(client, monkeypatch):
     # Answers already in the session (e.g. a returning guest) prefill on a
     # plain GET — the AnswerStore is the source, not just the
-    # immediately-prior POST. publication_date is exempt from this (#638).
+    # immediately-prior POST. name_change_publication_date is exempt from this (#638).
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     session = client.session
     session["topic_flow"] = {
         f"{COURT}/{TOPIC}/{ROLE}": {
-            "publication_date": "2026-03-15",
+            "name_change_publication_date": "2026-03-15",
             "filing_county": "Cass",
         }
     }
     session.save()
     html = client.get(URL).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert 'value="2026-03-15"' not in _field_tag(html, "publication_date")
+    assert 'value="2026-03-15"' not in _field_tag(
+        html, "name_change_publication_date"
+    )
     assert re.search(r'<option value="Cass"[^>]*selected', flat)
 
 
 @pytest.mark.django_db
 def test_recap_never_shows_publication_date(client, monkeypatch):
     # #638: the recap reads the same session-backed answers as the fact_gather
-    # form above it — a prior guest's publication_date can't surface there
+    # form above it — a prior guest's name_change_publication_date can't surface there
     # either, even though filing_county (unaffected by the fix) still shows.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     session = client.session
     session["topic_flow"] = {
         f"{COURT}/{TOPIC}/{ROLE}": {
-            "publication_date": "2026-03-15",
+            "name_change_publication_date": "2026-03-15",
             "filing_county": "Cass",
         }
     }
@@ -471,9 +495,12 @@ def test_post_stores_only_known_question_ids(client, monkeypatch):
     # The handler accepts only the corpus's question ids — csrf tokens and any
     # stray/injected POST keys must not land in the answer store.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    client.post(URL, {"publication_date": "2026-02-01", "not_a_question": "x"})
+    client.post(
+        URL,
+        {"name_change_publication_date": "2026-02-01", "not_a_question": "x"},
+    )
     flow = client.session["topic_flow"][f"{COURT}/{TOPIC}/{ROLE}"]
-    assert flow.get("publication_date") == "2026-02-01"
+    assert flow.get("name_change_publication_date") == "2026-02-01"
     assert "not_a_question" not in flow
 
 
@@ -494,7 +521,9 @@ def test_post_empty_required_rerenders_in_place(client, monkeypatch):
     # Invalid submit soft-gates: re-render 200 (so the inline error shows),
     # not a PRG 302. A 302 would bounce the litigant forward past the gap.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    response = client.post(URL, {"publication_date": "", "filing_county": ""})
+    response = client.post(
+        URL, {"name_change_publication_date": "", "filing_county": ""}
+    )
     assert response.status_code == 200
 
 
@@ -503,8 +532,8 @@ def test_post_empty_required_is_not_persisted(client, monkeypatch):
     # The blank required answer must not land in the store — otherwise the
     # litigant could advance toward filing with a missing answer.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    client.post(URL, {"publication_date": "", "filing_county": ""})
-    assert "publication_date" not in _flow_answers(client)
+    client.post(URL, {"name_change_publication_date": "", "filing_county": ""})
+    assert "name_change_publication_date" not in _flow_answers(client)
 
 
 @pytest.mark.django_db
@@ -513,10 +542,12 @@ def test_post_empty_required_marks_the_field_invalid(client, monkeypatch):
     # signal the form-field error pattern renders. Functional, not copy.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.post(
-        URL, {"publication_date": "", "filing_county": ""}
+        URL, {"name_change_publication_date": "", "filing_county": ""}
     ).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert re.search(r'name="publication_date"[^>]*aria-invalid="true"', flat)
+    assert re.search(
+        r'name="name_change_publication_date"[^>]*aria-invalid="true"', flat
+    )
 
 
 @pytest.mark.django_db
@@ -525,7 +556,11 @@ def test_post_choice_outside_list_is_rejected_not_stored(client, monkeypatch):
     # (the silent-accept hole this issue closes).
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Stark",
+        },
     )
     assert response.status_code == 200
     assert "filing_county" not in _flow_answers(client)
@@ -537,13 +572,17 @@ def test_post_saves_valid_fields_even_when_a_sibling_is_invalid(
 ):
     # Partial-invalid submit: the valid field still persists so the litigant
     # doesn't lose good input on every fix-and-resubmit; only the bad one is
-    # flagged. (publication_date valid, filing_county out-of-list.)
+    # flagged. (name_change_publication_date valid, filing_county out-of-list.)
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Stark",
+        },
     )
     answers = _flow_answers(client)
-    assert answers.get("publication_date") == "2026-02-01"
+    assert answers.get("name_change_publication_date") == "2026-02-01"
     assert "filing_county" not in answers
 
 
@@ -552,7 +591,11 @@ def test_post_all_valid_still_redirects_prg(client, monkeypatch):
     # The happy path is unchanged: a fully valid submit persists and 302s (PRG).
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
     )
     assert response.status_code == 302
     assert _flow_answers(client).get("filing_county") == "Cass"
@@ -566,7 +609,11 @@ def test_error_rerender_does_not_leak_rejected_value(client, monkeypatch):
     # against the page contradicting itself (form says "fix", summary says "ok").
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Stark",
+        },
     ).content.decode()
     assert "Stark" not in html
 
@@ -578,7 +625,11 @@ def test_post_persists_stripped_value(client, monkeypatch):
     # on re-render, and a padded date breaks date.fromisoformat downstream.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass  "}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass  ",
+        },
     )
     assert _flow_answers(client).get("filing_county") == "Cass"
 
@@ -596,7 +647,7 @@ def _corpus_with_deadline():
                 id="publication_wait",
                 label="30-day publication wait",
                 offset_days=30,
-                offset_from="publication_date",
+                offset_from="name_change_publication_date",
             )
         ],
         sections=[
@@ -606,7 +657,7 @@ def _corpus_with_deadline():
                 heading="Your dates",
                 questions=[
                     Question(
-                        id="publication_date",
+                        id="name_change_publication_date",
                         label="Date your notice was published",
                         type="date",
                         required=True,
@@ -633,7 +684,9 @@ def test_ics_section_renders_personalized_deadline(client, monkeypatch):
     )
     session = client.session
     session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
+        f"{COURT}/{TOPIC}/{ROLE}": {
+            "name_change_publication_date": "2026-02-01"
+        }
     }
     session.save()
     html = client.get(URL).content.decode()
@@ -692,7 +745,9 @@ def test_download_streams_ics_attachment_with_the_computed_deadline(
     )
     session = client.session
     session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
+        f"{COURT}/{TOPIC}/{ROLE}": {
+            "name_change_publication_date": "2026-02-01"
+        }
     }
     session.save()
     response = client.get(DOWNLOAD_URL)
@@ -749,7 +804,9 @@ def test_ics_section_links_to_the_download_once_a_date_is_entered(
     )
     session = client.session
     session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
+        f"{COURT}/{TOPIC}/{ROLE}": {
+            "name_change_publication_date": "2026-02-01"
+        }
     }
     session.save()
     html = client.get(URL).content.decode()

@@ -91,11 +91,12 @@ def _render_info(section, corpus, answers):
     )
 
 
-# publication_date is the one field left cached across sessions on a shared
-# terminal (#621 already pruned the riskier name/county questions) (#638).
+# name_change_publication_date is the one field left cached across sessions
+# on a shared terminal (#621 already pruned the riskier name/county
+# questions) (#638).
 # It's still saved to AnswerStore for deadline computation — just never
 # echoed back into the form.
-_NEVER_PREFILL = {"publication_date"}
+_NEVER_PREFILL = {"name_change_publication_date"}
 
 
 @renderer("fact_gather")

@@ -51,12 +51,12 @@ deadlines:
   - id: answer_due
     label: 'Answer to a money claim is due'
     offset_days: 28
-    offset_from: papers_received_date
+    offset_from: eviction_papers_received_date
     description: 'If the complaint includes a claim for money (a second cause of action), your written Answer must be filed within 28 days of the day you received the court papers. If the last day falls on a weekend or holiday, you have until the next business day.'
   - id: hearing_day
     label: 'Your eviction hearing'
     offset_days: 0
-    offset_from: hearing_date
+    offset_from: eviction_hearing_date
     description: 'The date, time, and location are on your summons. Arrive early and check in with the bailiff. If you do not appear, the case is decided without you.'
 
 resources:
@@ -116,11 +116,11 @@ sections:
     id: court_dates
     heading: 'Your court dates'
     questions:
-      - id: papers_received_date
+      - id: eviction_papers_received_date
         label: 'Date you received the court papers'
         type: date
         help_text: 'The day the summons and complaint were handed to you, mailed to you, or posted on your door. This starts the 28-day window to answer a money claim. Not sure? Call the clerk with your case number and ask for the date you were served.'
-      - id: hearing_date
+      - id: eviction_hearing_date
         label: 'Your hearing date'
         type: date
         help_text: 'Printed on the Summons in Forcible Entry and Detainer. Enter it to add it to your calendar below.'
