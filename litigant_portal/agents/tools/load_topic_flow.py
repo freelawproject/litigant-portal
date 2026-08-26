@@ -1,5 +1,7 @@
 import json
 
+from django.db import transaction
+
 from litigant_portal.agents.base import Field, Tool, ToolOutput
 
 
@@ -123,12 +125,13 @@ class LoadTopicFlow(Tool):
                 )
             )
 
-        thread = ChatThread.objects.get(id=thread_id)
-        thread.state = {
-            **(thread.state or {}),
-            "active_topic_flow": topic_flow_path(flow),
-        }
-        thread.save(update_fields=["state", "updated_at"])
+        with transaction.atomic():
+            thread = ChatThread.objects.select_for_update().get(id=thread_id)
+            thread.state = {
+                **(thread.state or {}),
+                "active_topic_flow": topic_flow_path(flow),
+            }
+            thread.save(update_fields=["state", "updated_at"])
 
         return ToolOutput(
             result=(

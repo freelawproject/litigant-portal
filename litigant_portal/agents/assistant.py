@@ -1,3 +1,5 @@
+from django.db import transaction
+
 from .base import Agent, AgentState
 from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
 from .tools.query_document import QueryDocument
@@ -71,13 +73,14 @@ class LitigantAssistant(Agent):
         from litigant_portal.app.models import ChatThread
         from litigant_portal.app.selectors.topic_flow import topic_flow_list
 
-        thread = ChatThread.objects.get(id=thread_id)
-        active = (thread.state or {}).get("active_topic_flow")
-        if active and active not in {
-            topic_flow_path(f) for f in topic_flow_list()
-        }:
-            thread.state = {**thread.state, "active_topic_flow": None}
-            thread.save(update_fields=["state", "updated_at"])
+        with transaction.atomic():
+            thread = ChatThread.objects.select_for_update().get(id=thread_id)
+            active = (thread.state or {}).get("active_topic_flow")
+            if active and active not in {
+                topic_flow_path(f) for f in topic_flow_list()
+            }:
+                thread.state = {**thread.state, "active_topic_flow": None}
+                thread.save(update_fields=["state", "updated_at"])
 
     def generate_system_prompt(self, *, thread_id) -> str:
         """Each prompt piece injected into PROMPT_TEMPLATE."""
