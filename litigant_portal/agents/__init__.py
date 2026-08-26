@@ -1,4 +1,4 @@
-from .assistant import LitigantAssistant
+from .assistant import LitigantAssistant, LitigantAssistantState
 from .base import Agent, AgentState, Field, Tool, ToolOutput
 from .weather import WeatherAgent, WeatherState
 
@@ -11,4 +11,5 @@ __all__ = [
     "WeatherAgent",
     "WeatherState",
     "LitigantAssistant",
+    "LitigantAssistantState",
 ]
