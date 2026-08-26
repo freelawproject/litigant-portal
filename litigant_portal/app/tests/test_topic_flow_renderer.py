@@ -2,8 +2,7 @@
 
 The renderer is a fat, pure function of ``(section, corpus, answers)`` → a
 ``RenderedSection`` carrying a template path + flat, dumb context. It takes a
-plain ``answers`` dict (not an AnswerStore), so these tests need no session or
-DB. The ``ics`` handler renders its deadline list here (#494); the ``vcf``
+plain ``answers`` dict, so these tests need no session or DB. The ``ics`` handler renders its deadline list here (#494); the ``vcf``
 handler renders its contact list (#473). An output_type with no registered
 handler is a code gap and fails fast.
 """
