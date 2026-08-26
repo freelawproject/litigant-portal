@@ -359,6 +359,8 @@ def chat_stream(
             "the model is passed to chat_stream by the caller."
         )
 
+    agent.prepare_thread(thread_id=thread.id)
+
     user_data: dict[str, Any] = {"role": "user", "content": message}
     if attachment_ids:
         user_data["attachments"] = [str(i) for i in attachment_ids]
