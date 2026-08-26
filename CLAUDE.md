@@ -154,13 +154,14 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 
 **By domain** — `models/`, `selectors/`, and `services/` each carry one module per domain, and the three agree on module names:
 
-| Domain        | Holds                                                        |
-| ------------- | ------------------------------------------------------------ |
-| `site`        | Global site settings and court config                        |
-| `topic_flow`  | Topics and topic flow data (spans admin and public surfaces) |
-| `user`        | Identity, profile, and group membership toggles              |
-| `upload`      | Attachment upload and its helper logic                       |
-| `chat_engine` | Threads, messages, streaming                                 |
+| Domain        | Holds                                                             |
+| ------------- | ----------------------------------------------------------------- |
+| `site`        | Global site settings and court config                             |
+| `topic_flow`  | Topics and topic flow data (spans admin and public surfaces)      |
+| `corpus`      | Corpus schemas, YAML loading, and sync into `topic_flow` rows (selectors + services only; no models module) |
+| `user`        | Identity, profile, and group membership toggles                   |
+| `upload`      | Attachment upload and its helper logic                            |
+| `chat_engine` | Threads, messages, streaming                                      |
 
 **Never name a data-layer module after the page that consumes it.** Site settings apply app-wide; topic utilities serve both the admin editor and the public flow page. Naming either one `admin` mislocates it the moment a second caller shows up — which is exactly what happened to the module this layout replaced.
 
