@@ -377,6 +377,8 @@ def chat_stream(
 
     def event_stream() -> Iterator[str]:
         yield _sse({"type": "thread", "thread_id": str(thread.id)})
+        thread.refresh_from_db(fields=["state"])
+        yield _sse({"type": "state", "state": thread.state})
 
         attachment_cache: dict = {}
 

@@ -1,6 +1,8 @@
 """The engine runs Agent.prepare_thread once per user message, before the
-first model call."""
+first model call, and syncs its state writes to the client at stream
+start."""
 
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -17,6 +19,9 @@ class PreparingAgent(Agent):
 
     def prepare_thread(self, *, thread_id) -> None:
         type(self).events.append("prepare")
+        thread = ChatThread.objects.get(id=thread_id)
+        thread.state = {"prepared": True}
+        thread.save(update_fields=["state", "updated_at"])
 
     def generate_system_prompt(self, *, thread_id) -> str:
         type(self).events.append("prompt")
@@ -69,8 +74,17 @@ class PrepareThreadEngineTests(TestCase):
                 model="gpt-5-mini",
                 thread_id=str(self.thread.id),
             )
-            list(response.streaming_content)
+            frames = [
+                json.loads(chunk.decode().removeprefix("data: "))
+                for chunk in response.streaming_content
+            ]
 
         self.assertEqual(PreparingAgent.events.count("prepare"), 1)
         self.assertEqual(PreparingAgent.events[0], "prepare")
         self.assertIn("prompt", PreparingAgent.events)
+
+        # The hook's state write reaches the client at stream start, even
+        # on a turn with no tool calls.
+        self.assertEqual(frames[0]["type"], "thread")
+        self.assertEqual(frames[1]["type"], "state")
+        self.assertEqual(frames[1]["state"], {"prepared": True})
