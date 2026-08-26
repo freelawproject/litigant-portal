@@ -2,8 +2,9 @@
 
 ``validate_answers`` is pure and DB-free: given a corpus and a submitted
 ``{qid: value}`` map, it returns ``{qid: [error]}`` for empty ``required``
-fields and ``choice`` answers outside the declared list. An empty dict means
-the submission is valid. These run in the fast suite.
+fields, ``choice`` answers outside the declared list, and dates that won't
+parse. An empty dict means the submission is valid. These run in the fast
+suite.
 """
 
 from litigant_portal.app.topic_flow.schema import (
@@ -57,6 +58,30 @@ def test_filled_required_field_passes():
 
 def test_choice_outside_declared_list_is_flagged():
     assert "county" in validate_answers(_corpus(), {"county": "Stark"})
+
+
+def test_unparseable_date_is_flagged():
+    assert "pub_date" in validate_answers(
+        _corpus(), {"pub_date": "not a date"}
+    )
+
+
+def test_date_in_a_non_iso_order_is_flagged():
+    assert "pub_date" in validate_answers(
+        _corpus(), {"pub_date": "01/02/2026"}
+    )
+
+
+def test_impossible_calendar_date_is_flagged():
+    assert "pub_date" in validate_answers(
+        _corpus(), {"pub_date": "2026-02-30"}
+    )
+
+
+def test_blank_optional_date_is_not_flagged():
+    corpus = _corpus()
+    corpus.sections[0].questions[0].required = False
+    assert validate_answers(corpus, {"pub_date": ""}) == {}
 
 
 def test_choice_within_declared_list_passes():
