@@ -84,7 +84,14 @@ class LitigantAssistant(Agent):
         chat_thread_state_merge(thread_id=thread_id, updates=clear_if_stale)
 
     def generate_system_prompt(self, *, thread_id) -> str:
-        """Each prompt piece injected into PROMPT_TEMPLATE."""
+        """Each prompt piece injected into PROMPT_TEMPLATE.
+
+        The active topic flow is deliberately absent: the model learns it
+        from the LoadTopicFlow result in history, which only works while
+        the engine sends the full history. When we add automatic compaction,
+        we'll need to account for the active topic flow data being dropped from
+        history.
+        """
         return PROMPT_TEMPLATE.format(
             base=BASE_PROMPT,
             topic_flows=generate_topic_flows_prompt(),
