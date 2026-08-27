@@ -119,13 +119,27 @@ class TopicFlowMarkdownTests(TestCase):
             data_type=VariableDataType.CHOICE,
             choices=[{"value": "cass", "label": "Cass County"}],
         )
+        lease_end = Variable.objects.create(
+            name="lease_end",
+            question="When does your lease end?",
+            data_type=VariableDataType.DATE,
+            asked_when=county,
+            asked_when_value="cass",
+        )
         page = TopicFlowInterviewPage.objects.create(
             flow=flow, title="About your case"
         )
         TopicFlowInterviewVariable.objects.create(page=page, variable=served)
         TopicFlowInterviewVariable.objects.create(page=page, variable=county)
+        TopicFlowInterviewVariable.objects.create(
+            page=page, variable=lease_end
+        )
         form = Form.objects.create(slug="answer", name="Answer Form")
         TopicFlowFormCondition.objects.create(flow=flow, form=form)
+        fee_waiver = Form.objects.create(slug="fee-waiver", name="Fee Waiver")
+        TopicFlowFormCondition.objects.create(
+            flow=flow, form=fee_waiver, variable=county, value="cass"
+        )
         TopicFlowLink.objects.create(
             flow=flow, name="Court site", url="https://example.com/court"
         )
@@ -142,10 +156,18 @@ class TopicFlowMarkdownTests(TestCase):
             "- Answer due: 28 days after Date you were served", markdown
         )
         self.assertIn("- Answer Form", markdown)
+        self.assertIn(
+            '- Fee Waiver (included when county equals "cass")', markdown
+        )
         self.assertIn("### About your case", markdown)
         self.assertIn("- date_served (date): Date you were served", markdown)
         self.assertIn(
             "- county (choice): What county do you live in? [choices: cass]",
+            markdown,
+        )
+        self.assertIn(
+            "- lease_end (date): When does your lease end? "
+            '(asked when county = "cass")',
             markdown,
         )
         self.assertIn("- Court site: https://example.com/court", markdown)
