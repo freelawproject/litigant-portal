@@ -60,6 +60,19 @@ class ThreadExportTests(TestCase):
             thread=self.thread, data=data, **kwargs
         )
 
+    def _artifact(
+        self,
+        *,
+        system_prompt="Audit this prompt.",
+        tool_schemas=None,
+        hash_char="a",
+    ):
+        return PromptArtifact.objects.create(
+            system_prompt=system_prompt,
+            tool_schemas=[] if tool_schemas is None else tool_schemas,
+            content_hash=hash_char * 64,
+        )
+
     def test_markdown_renders_meta_rows_with_accounting(self):
         self._message(
             {"role": "meta", "kind": "thread_description"},
@@ -187,6 +200,208 @@ class ThreadExportTests(TestCase):
         self.assertIn("**Deployed SHA changed to def5678**", markdown)
         # Only the change is flagged, not the initial SHA already in the header.
         self.assertNotIn("changed to abc1234", markdown)
+
+    def test_markdown_renders_first_artifact_without_repeating_it(self):
+        artifact = self._artifact()
+        self._message({"role": "user", "content": "Help me."})
+        self._message(
+            {"role": "assistant", "content": "First answer."},
+            prompt_artifact=artifact,
+        )
+        self._message(
+            {"role": "assistant", "content": "Second answer."},
+            prompt_artifact=artifact,
+        )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertEqual(markdown.count("## Prompt artifact"), 1)
+        self.assertEqual(markdown.count(f"- ID: `{artifact.id}`"), 1)
+        self.assertIn(f"- Content hash: `{artifact.content_hash}`", markdown)
+        self.assertLess(
+            markdown.index(f"- ID: `{artifact.id}`"),
+            markdown.index("First answer."),
+        )
+        self.assertIn("```json\n[]\n```", markdown)
+
+    def test_markdown_renders_changed_artifact(self):
+        first = self._artifact(system_prompt="First prompt.")
+        second = self._artifact(system_prompt="Second prompt.", hash_char="b")
+        self._message(
+            {"role": "assistant", "content": "First answer."},
+            prompt_artifact=first,
+        )
+        self._message(
+            {"role": "assistant", "content": "Second answer."},
+            prompt_artifact=second,
+        )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertEqual(markdown.count("## Prompt artifact"), 2)
+        self.assertLess(
+            markdown.index(f"- ID: `{first.id}`"),
+            markdown.index(f"- ID: `{second.id}`"),
+        )
+        self.assertLess(
+            markdown.index(f"- ID: `{second.id}`"),
+            markdown.index("Second answer."),
+        )
+
+    def test_markdown_renders_artifact_again_when_returning_to_it(self):
+        first = self._artifact(system_prompt="First prompt.")
+        second = self._artifact(system_prompt="Second prompt.", hash_char="b")
+        for content, artifact in (
+            ("First answer.", first),
+            ("Second answer.", second),
+            ("Third answer.", first),
+        ):
+            self._message(
+                {"role": "assistant", "content": content},
+                prompt_artifact=artifact,
+            )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertEqual(markdown.count("## Prompt artifact"), 3)
+        self.assertEqual(markdown.count(f"- ID: `{first.id}`"), 2)
+        second_first_id = markdown.index(f"- ID: `{second.id}`")
+        returned_first_id = markdown.index(
+            f"- ID: `{first.id}`", second_first_id
+        )
+        self.assertLess(returned_first_id, markdown.index("Third answer."))
+
+    def test_markdown_null_rows_do_not_reset_active_artifact(self):
+        artifact = self._artifact()
+        self._message(
+            {"role": "assistant", "content": "First answer."},
+            prompt_artifact=artifact,
+        )
+        self._message({"role": "user", "content": "Follow-up."})
+        self._message(
+            {
+                "role": "tool",
+                "name": "lookup",
+                "tool_call_id": "call-1",
+                "content": "Tool result.",
+            }
+        )
+        self._message({"role": "meta", "kind": "accounting"}, meta=True)
+        self._message(
+            {"role": "assistant", "content": "Second answer."},
+            prompt_artifact=artifact,
+        )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertEqual(markdown.count("## Prompt artifact"), 1)
+        self.assertIn("Follow-up.", markdown)
+        self.assertIn("Tool result.", markdown)
+        self.assertIn("## meta: accounting [meta]", markdown)
+
+    def test_markdown_legacy_null_assistant_messages_are_safe(self):
+        artifact = self._artifact()
+        self._message({"role": "assistant", "content": "Legacy before."})
+        self._message(
+            {"role": "assistant", "content": "Captured answer."},
+            prompt_artifact=artifact,
+        )
+        self._message({"role": "assistant", "content": "Legacy between."})
+        self._message(
+            {"role": "assistant", "content": "Captured again."},
+            prompt_artifact=artifact,
+        )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertEqual(markdown.count("## Prompt artifact"), 1)
+        self.assertLess(
+            markdown.index("Legacy before."),
+            markdown.index(f"- ID: `{artifact.id}`"),
+        )
+        self.assertIn("Legacy between.", markdown)
+
+    def test_markdown_tool_call_only_assistant_renders_artifact(self):
+        artifact = self._artifact()
+        self._message(
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [
+                    {
+                        "id": "call-1",
+                        "type": "function",
+                        "function": {
+                            "name": "lookup",
+                            "arguments": '{"query": "eviction"}',
+                        },
+                    }
+                ],
+            },
+            prompt_artifact=artifact,
+        )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertLess(
+            markdown.index(f"- ID: `{artifact.id}`"),
+            markdown.index('Tool call: lookup({"query": "eviction"})'),
+        )
+
+    def test_markdown_tool_schema_only_change_is_visible(self):
+        first = self._artifact(
+            system_prompt="Same prompt.",
+            tool_schemas=[{"function": {"name": "first_tool"}}],
+        )
+        second = self._artifact(
+            system_prompt="Same prompt.",
+            tool_schemas=[{"function": {"name": "second_tool"}}],
+            hash_char="b",
+        )
+        self._message(
+            {"role": "assistant", "content": "First answer."},
+            prompt_artifact=first,
+        )
+        self._message(
+            {"role": "assistant", "content": "Second answer."},
+            prompt_artifact=second,
+        )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertEqual(markdown.count("## Prompt artifact"), 2)
+        self.assertEqual(markdown.count("Same prompt."), 2)
+        self.assertIn('"name": "first_tool"', markdown)
+        self.assertIn('"name": "second_tool"', markdown)
+
+    def test_markdown_contains_fences_and_orders_sha_before_prompt_change(
+        self,
+    ):
+        embedded_markdown = "# Nested heading\n\n```python\nprint('safe')\n```"
+        first = self._artifact(system_prompt="First prompt.")
+        second = self._artifact(system_prompt=embedded_markdown, hash_char="b")
+        self._message(
+            {"role": "assistant", "content": "Before deploy."},
+            prompt_artifact=first,
+            git_sha="abc1234",
+        )
+        self._message(
+            {"role": "assistant", "content": "After deploy."},
+            prompt_artifact=second,
+            git_sha="def5678",
+        )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertIn(
+            f"````text\n{embedded_markdown}\n````",
+            markdown,
+        )
+        sha_change = markdown.index("**Deployed SHA changed to def5678**")
+        prompt_change = markdown.index(f"- ID: `{second.id}`")
+        assistant_message = markdown.index("After deploy.")
+        self.assertLess(sha_change, prompt_change)
+        self.assertLess(prompt_change, assistant_message)
 
     def test_json_export_defines_each_referenced_prompt_artifact_once(self):
         artifact = PromptArtifact.objects.create(

@@ -15,7 +15,7 @@ You need a portal account with **staff status**. A developer grants this once (i
    - **Filter** by date or thread type using the sidebar.
 4. Click the thread to open it. The page shows who the conversation belongs to, when it started, and the full transcript: user messages, AI answers, tool calls the AI made, and tool results. Rows marked `[hidden]` or `[meta]` were not visible to the user; they are included because an audit needs the complete record.
 5. To save a copy, use the **Downloads** links on the same page:
-   - **Markdown**: a readable transcript, good for review and sharing.
+   - **Markdown**: a readable transcript, including captured instruction states on first use and whenever they change, good for review and sharing.
    - **JSON**: the raw record with timestamps, token counts, and cost, good for deeper analysis or archiving.
 
 Everything is read-only. You cannot change or delete a conversation from this screen.
@@ -33,10 +33,10 @@ What this means in practice:
 
 ## Reconstituting a conversation's prompts
 
-For model-backed assistant messages, the JSON download stores the instruction state used for that call. Each message's `prompt_artifact_id` points to an entry in the top-level `prompt_artifacts` collection containing the rendered system prompt, tool-schema snapshot, and content hash. Each message also carries the deployed commit SHA (`git_sha` in JSON, or the `Deployed SHA` line(s) in Markdown), preserving the code version that produced it.
+For model-backed assistant messages with a captured prompt artifact, both downloads surface the instruction state used for that call: the rendered system prompt and tool-schema snapshot. The Markdown transcript renders the full prompt artifact immediately before its first use and again whenever the active artifact changes. The JSON download provides exact per-message references: each message's `prompt_artifact_id` points to an entry in the top-level `prompt_artifacts` collection containing the system prompt, tool schemas, and content hash. Each message also carries the deployed commit SHA (`git_sha` in JSON, or the `Deployed SHA` line(s) in Markdown), preserving the code version that produced it.
 
-1. Open the thread's JSON download and find the assistant message for the turn you need.
-2. If it has a `prompt_artifact_id`, find that ID in `prompt_artifacts`. Its `system_prompt` and `tool_schemas` are the values captured for that model call.
+1. For a readable review, open the Markdown transcript. A `Prompt artifact` block appears immediately before its first referenced assistant message and again when a later non-null `prompt_artifact_id` changes. Null references do not reset the renderer's last-known artifact state. Each block includes the artifact ID, content hash, complete system prompt, and tool-schema snapshot.
+2. For exact per-message linkage, open the JSON download and find the assistant message for the turn you need. If it has a `prompt_artifact_id`, find that ID in `prompt_artifacts`. Its `system_prompt` and `tool_schemas` are the values captured for that model call.
 3. Use the message's `git_sha` when you also need the deployed code, or when a legacy message has no prompt artifact. Check it out with `git checkout <sha>`. Long conversations can span more than one SHA; Markdown flags each change and JSON records it per message.
 4. A tool may run its own prompt against another model. Those tool-internal prompts are not captured by prompt artifacts. Currently the only one is the document-query tool, `litigant_portal/agents/tools/query_document.py` (`READER_SYSTEM_PROMPT`), which can be inspected at the recorded SHA.
 5. Combine the captured system prompt, any separately reconstructed tool prompts, and the transcript to see what the AI was told and what it said.
@@ -54,6 +54,7 @@ A spot-check has to happen inside that 30-day window, or the transcript has to b
 ## Known limits
 
 - **Users can delete their own conversations.** The delete button in the portal removes a thread and all its messages immediately and permanently, at any time. The retention window above only protects against the automatic cleanup job, not against the user's own delete. If a transcript matters, download it early. Changing this behavior (for example, hiding a deleted conversation from the user but keeping it for audit) is an open team decision, deliberately deferred.
-- **Prompt artifacts are JSON-only and scoped to assistant model calls.** User, tool, hidden, meta, and legacy messages do not carry a prompt artifact. Markdown transcripts show deployed SHA changes but do not render prompt artifacts.
+- **Prompt artifacts are scoped to assistant model calls.** User, tool, hidden, meta, and legacy messages do not carry a prompt artifact. A null reference does not reset the Markdown renderer's last-known artifact state.
+- **Unreferenced prompt artifacts are not collected yet.** Prompt artifacts are shared across messages and threads. Deleting the last message that references one currently leaves the artifact row in place; orphan cleanup remains separate retention work.
 - **Session keys are lost at login.** If an anonymous user later logs in, their conversations move to their account and the old session key is discarded. The transcript survives; searching by the old session key will not find it, but searching by their email will.
 - **The whole transcript loads at once.** The page renders every message, with no paging or cap, so a very long conversation makes for a slow page. Use the Markdown download instead if a thread is unwieldy on screen.
