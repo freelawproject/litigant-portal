@@ -1,11 +1,12 @@
 import hashlib
 import json
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 import litellm
 from django.conf import settings
+from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 
@@ -105,6 +106,27 @@ def chat_thread_delete(
     chat_thread_get(
         identity=identity, thread_id=thread_id, thread_type=thread_type
     ).delete()
+
+
+StateUpdates = dict[str, Any] | Callable[[dict[str, Any]], dict[str, Any]]
+
+
+def chat_thread_state_merge(*, thread_id, updates: StateUpdates) -> dict:
+    """Merge ``updates`` into a thread's state under a row lock.
+
+    ``updates`` is the dict to merge, or a callable given the locked
+    current state and returning that dict (return {} to skip the write).
+    Every thread-state write goes through here so no writer can race
+    another's read-modify-write.
+    """
+    with transaction.atomic():
+        thread = ChatThread.objects.select_for_update().get(id=thread_id)
+        state = thread.state or {}
+        merged = updates(state) if callable(updates) else updates
+        if merged:
+            thread.state = {**state, **merged}
+            thread.save(update_fields=["state", "updated_at"])
+        return thread.state
 
 
 def chat_message_inject_hidden(

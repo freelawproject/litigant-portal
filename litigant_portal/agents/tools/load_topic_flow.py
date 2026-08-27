@@ -1,7 +1,5 @@
 import json
 
-from django.db import transaction
-
 from litigant_portal.agents.base import Field, Tool, ToolOutput
 
 
@@ -109,8 +107,10 @@ class LoadTopicFlow(Tool):
     )
 
     def __call__(self, *, thread_id) -> ToolOutput:
-        from litigant_portal.app.models import ChatThread
         from litigant_portal.app.selectors.topic_flow import topic_flow_list
+        from litigant_portal.app.services.chat_engine import (
+            chat_thread_state_merge,
+        )
 
         flow = topic_flow_from_path(self.topic_flow)
         if flow is None:
@@ -125,13 +125,10 @@ class LoadTopicFlow(Tool):
                 )
             )
 
-        with transaction.atomic():
-            thread = ChatThread.objects.select_for_update().get(id=thread_id)
-            thread.state = {
-                **(thread.state or {}),
-                "active_topic_flow": topic_flow_path(flow),
-            }
-            thread.save(update_fields=["state", "updated_at"])
+        chat_thread_state_merge(
+            thread_id=thread_id,
+            updates={"active_topic_flow": topic_flow_path(flow)},
+        )
 
         return ToolOutput(
             result=(
