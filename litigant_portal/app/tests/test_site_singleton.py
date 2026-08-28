@@ -15,7 +15,10 @@ from django.test import TestCase
 
 from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import Site, Topic
-from litigant_portal.app.models.choices import OpenAIModel, get_default_model
+from litigant_portal.app.models.choices import (
+    DEFAULT_BEDROCK_MODEL,
+    BedrockModel,
+)
 from litigant_portal.app.models.site import SITE_ID
 from litigant_portal.app.selectors.site import site_get, site_get_model
 from litigant_portal.app.selectors.topic_flow import topic_list
@@ -79,13 +82,14 @@ class SiteCacheTests(TestCase):
     def test_site_get_model_falls_back_when_unset(self):
         with self.captureOnCommitCallbacks(execute=True):
             site_update(assistant_model="")
-        self.assertEqual(site_get_model(role="assistant"), get_default_model())
+        self.assertEqual(
+            site_get_model(role="assistant"), DEFAULT_BEDROCK_MODEL
+        )
 
     def test_site_get_model_prefers_the_configured_model(self):
-        # Not the smallest model of either provider, so it can never be what
-        # get_default_model() would have returned — the assertion below would
-        # otherwise pass on a broken fallback.
-        model = OpenAIModel.GPT_5_5
+        # Not the default model, so the assertion below can't pass on a
+        # broken fallback.
+        model = BedrockModel.GPT_5_6_SOL
         with self.captureOnCommitCallbacks(execute=True):
             site_update(assistant_model=model)
         self.assertEqual(site_get_model(role="assistant"), model)

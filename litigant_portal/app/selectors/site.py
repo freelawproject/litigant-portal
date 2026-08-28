@@ -2,7 +2,7 @@ from django.core.cache import cache
 
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import Site
-from litigant_portal.app.models.choices import get_default_model
+from litigant_portal.app.models.choices import DEFAULT_BEDROCK_MODEL
 
 
 def site_get() -> Site:
@@ -16,4 +16,4 @@ def site_get() -> Site:
 
 def site_get_model(*, role: str) -> str:
     """The site's AI model for a pipeline role."""
-    return getattr(site_get(), f"{role}_model") or get_default_model()
+    return getattr(site_get(), f"{role}_model") or DEFAULT_BEDROCK_MODEL

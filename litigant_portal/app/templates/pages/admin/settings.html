@@ -74,14 +74,8 @@
         <h4 class="text-sm font-semibold text-greyscale-900">{% trans "Models" %}</h4>
         <p class="text-xs text-greyscale-500">{% trans "Which AI model each part of the pipeline uses." %}</p>
       </div>
-      {# Provider badges — only providers whose credentials are configured #}
+      {# Credential badge — shown when Bedrock credentials are configured #}
       <div class="flex items-center gap-1.5 flex-shrink-0">
-        {% if openai_available %}
-          <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
-            <span class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>
-            {% trans "OpenAI available" %}
-          </span>
-        {% endif %}
         {% if bedrock_available %}
           <span class="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
             <span class="w-1.5 h-1.5 rounded-full bg-green-500" aria-hidden="true"></span>
@@ -99,12 +93,8 @@
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% blocktrans %}Default ({{ default_model_label }}){% endblocktrans %}</option>
-        {% for provider, choices in model_choice_groups %}
-          <optgroup label="{{ provider }}">
-            {% for value, label in choices %}
-              <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </optgroup>
+        {% for value, label in model_choices %}
+          <option value="{{ value }}">{{ label }}</option>
         {% endfor %}
       </select>
     </div>
@@ -117,12 +107,8 @@
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% blocktrans %}Default ({{ default_model_label }}){% endblocktrans %}</option>
-        {% for provider, choices in model_choice_groups %}
-          <optgroup label="{{ provider }}">
-            {% for value, label in choices %}
-              <option value="{{ value }}">{{ label }}</option>
-            {% endfor %}
-          </optgroup>
+        {% for value, label in model_choices %}
+          <option value="{{ value }}">{{ label }}</option>
         {% endfor %}
       </select>
     </div>

@@ -1,44 +1,21 @@
-import os
-
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
-class OpenAIModel(models.TextChoices):
-    """OpenAI models as LiteLLM model strings, smallest first."""
-
-    GPT_5_NANO = "openai/gpt-5-nano", "GPT-5 Nano"
-    GPT_5_4_MINI = "openai/gpt-5.4-mini", "GPT-5.4 Mini"
-    GPT_5_5 = "openai/gpt-5.5", "GPT-5.5"
-
-
 class BedrockModel(models.TextChoices):
-    """Claude models on AWS Bedrock as LiteLLM model strings, smallest
-    first."""
+    """Models on AWS Bedrock as LiteLLM model strings."""
 
-    HAIKU_4_5 = (
-        "bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0",
+    GPT_5_6_LUNA = "bedrock_mantle/openai.gpt-5.6-luna", "GPT-5.6 Luna"
+    GPT_5_6_TERRA = "bedrock_mantle/openai.gpt-5.6-terra", "GPT-5.6 Terra"
+    GPT_5_6_SOL = "bedrock_mantle/openai.gpt-5.6-sol", "GPT-5.6 Sol"
+    CLAUDE_HAIKU_4_5 = (
+        "bedrock_mantle/anthropic.claude-haiku-4-5",
         "Claude Haiku 4.5",
     )
-    SONNET_5 = "bedrock/us.anthropic.claude-sonnet-5", "Claude Sonnet 5"
-    OPUS_4_8 = "bedrock/us.anthropic.claude-opus-4-8", "Claude Opus 4.8"
+    GLM_4_7_FLASH = "bedrock_mantle/zai.glm-4.7-flash", "GLM 4.7 Flash"
 
 
-AI_MODEL_CHOICES = [
-    ("OpenAI", OpenAIModel.choices),
-    ("AWS Bedrock", BedrockModel.choices),
-]
-
-
-def get_default_model() -> str:
-    """The model used when a site hasn't chosen one: the smallest model
-    from whichever provider is configured, preferring Bedrock. Falls back
-    to the smallest Bedrock model when neither provider is configured."""
-    if os.environ.get("AWS_BEARER_TOKEN_BEDROCK"):
-        return BedrockModel.HAIKU_4_5
-    if os.environ.get("OPENAI_API_KEY"):
-        return OpenAIModel.GPT_5_NANO
-    return BedrockModel.HAIKU_4_5
+DEFAULT_BEDROCK_MODEL = BedrockModel.GPT_5_6_LUNA
 
 
 class JurisdictionLevel(models.TextChoices):
