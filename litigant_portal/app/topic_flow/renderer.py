@@ -7,7 +7,7 @@ orchestration-only and templates stay logic-free. All section-type dispatch
 nothing downstream branches on section type.
 
 The renderer is *fat* but *pure*: it takes the ``corpus`` and a plain
-``answers`` dict (e.g. from ``AnswerStore.all()``) and resolves everything the
+``answers`` dict (``{question_id: value}``) and resolves everything the
 template needs — prefilled fields, answer labels, form lists. It imports no
 session/request machinery.
 
@@ -91,11 +91,12 @@ def _render_info(section, corpus, answers):
     )
 
 
-# publication_date is the one field left cached across sessions on a shared
-# terminal (#621 already pruned the riskier name/county questions) (#638).
-# It's still saved to AnswerStore for deadline computation — just never
-# echoed back into the form.
-_NEVER_PREFILL = {"publication_date"}
+# name_change_publication_date is the one field left cached across sessions
+# on a shared terminal (#621 already pruned the riskier name/county
+# questions) (#638).
+# It's still stored for deadline computation — just never echoed back into
+# the form.
+_NEVER_PREFILL = {"name_change_publication_date"}
 
 
 @renderer("fact_gather")

@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Max
 from django.utils.text import slugify
 
@@ -111,3 +112,32 @@ def variable_answer_set(
         defaults={"value": value, "reviewed": reviewed},
     )
     return answer
+
+
+@transaction.atomic
+def variable_answer_set_many(
+    *, identity, values: dict, reviewed: bool = False
+) -> int:
+    """Upsert answers keyed by variable name; returns how many were written.
+
+    Raises ``Variable.DoesNotExist`` if a name has no glossary row. That is
+    a corpus-sync failure, not litigant input, so it must surface rather
+    than drop the answer silently. All-or-nothing: one invalid value rolls
+    the whole batch back.
+    """
+    variables = {
+        variable.name: variable
+        for variable in Variable.objects.filter(name__in=values)
+    }
+    missing = sorted(set(values) - set(variables))
+    if missing:
+        raise Variable.DoesNotExist(f"No glossary variable named {missing}")
+
+    for name, value in values.items():
+        variable_answer_set(
+            identity=identity,
+            variable=variables[name],
+            value=value,
+            reviewed=reviewed,
+        )
+    return len(values)

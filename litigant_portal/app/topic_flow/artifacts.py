@@ -7,7 +7,7 @@ file bytes out, no corpus / answers / host page, mirroring the pure style of
 - ``deadlines_to_ics`` — computed deadline events → an iCalendar (``.ics``).
 - ``contacts_to_vcf`` — resolved contacts → vCards (``.vcf``).
 
-The view layer resolves the corpus, reads the session AnswerStore, and computes
+The view layer resolves the corpus, reads the stored answers, and computes
 the data; this module only turns the resulting dicts into bytes, so the field
 mapping is unit-testable without Django and ``vobject`` owns the RFC escaping
 and line folding (RFC 5545 for iCalendar, RFC 6350 for vCard).
