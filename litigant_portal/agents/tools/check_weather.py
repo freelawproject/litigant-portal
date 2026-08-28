@@ -15,17 +15,21 @@ class CheckWeather(Tool):
 
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.agents.weather import WeatherState
-        from litigant_portal.app.models import ChatThread
+        from litigant_portal.app.services.chat_engine import (
+            chat_thread_state_merge,
+        )
 
         # Artificial delay so the "checking weather" call card is visible.
         time.sleep(2)
 
-        thread = ChatThread.objects.get(id=thread_id)
-        state = WeatherState.model_validate(thread.state or {})
-        if self.location not in state.recent_locations:
+        def add_location(current: dict) -> dict:
+            state = WeatherState.model_validate(current)
+            if self.location in state.recent_locations:
+                return {}
             state.recent_locations.append(self.location)
-            thread.state = state.model_dump()
-            thread.save(update_fields=["state", "updated_at"])
+            return state.model_dump()
+
+        chat_thread_state_merge(thread_id=thread_id, updates=add_location)
 
         temp_f = 72
         return ToolOutput(
