@@ -18,10 +18,10 @@ Building a complete eviction flow from discovery to resolution for court partner
 
 | Environment | Chat Provider | Config Source                        |
 | ----------- | ------------- | ------------------------------------ |
-| Local dev   | OpenAI        | `docker-compose.yml` + `.env`        |
+| Local dev   | AWS Bedrock   | `docker-compose.yml` + `.env`        |
 | CI          | None (mocked) | `tox.ini` — tests mock all providers |
 
-Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `openai/gpt-4o-mini`). Setup commands live under Commands below.
+The chat model is chosen in the admin settings UI (`BedrockModel` enum), defaulting to GPT-5.6 Luna. Setup commands live under Commands below.
 
 ## Commands
 
@@ -32,7 +32,7 @@ Chat model is configurable via `CHAT_MODEL` env var (LiteLLM format, e.g. `opena
 ### Local Development (Docker)
 
 ```sh
-cp .env.example .env        # Add your OPENAI_API_KEY
+cp .env.example .env        # Add your AWS_BEARER_TOKEN_BEDROCK
 make docker                 # Start dev environment
 make docker-bash           # Shell into container
 make docker-down            # Stop containers
@@ -309,7 +309,7 @@ No WebSockets, no Django Channels - just SSE over standard HTTP.
 
 ### LLM Provider
 
-Using **LiteLLM**. The assistant's model resolves from the Site's admin config (`site_get_model(role="assistant")`), falling back to the `CHAT_MODEL` env var (local dev default: `openai/gpt-4o-mini`, set in docker-compose.yml). To switch providers, change the model string (LiteLLM format).
+Using **LiteLLM**. All models are served through AWS Bedrock (credential: `AWS_BEARER_TOKEN_BEDROCK`). The assistant's model resolves from the Site's admin config (`site_get_model(role="assistant")`), falling back to `DEFAULT_BEDROCK_MODEL` (GPT-5.6 Luna) when unset. Model choices live in the `BedrockModel` enum in `app/models/choices.py`.
 
 ## Key Files
 
