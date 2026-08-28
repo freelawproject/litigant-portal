@@ -18,9 +18,6 @@ from litigant_portal.app.services.upload import (
     user_upload_reader_limit_error,
 )
 
-OPENAI = "gpt-5-mini"
-BEDROCK = "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0"
-
 DOCX_TYPE = (
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 )
@@ -75,21 +72,19 @@ class AttachmentHydrationTests(TestCase):
             for i, uploads in enumerate(uploads_per_message)
         ]
 
-    def test_text_file_inlines_as_text_part(self):
+    def test_text_file_inlines_as_document_part(self):
         upload = self._upload("notes.txt", "text/plain", b"secret: BANANA-42")
         history = self._history([upload])
-        hydrated = user_upload_llm_parts(
-            history=history, model=OPENAI, cache={}
-        )
+        hydrated = user_upload_llm_parts(history=history, cache={})
         parts = hydrated[0]
         self.assertEqual(parts[0], {"type": "text", "text": "message 0"})
-        self.assertEqual(parts[1]["type"], "text")
-        self.assertIn("BANANA-42", parts[1]["text"])
+        self.assertEqual(parts[1]["type"], "file")
+        self.assertEqual(parts[1]["file"]["filename"], "notes.txt")
 
     def test_image_inlines_as_image_part(self):
         upload = self._upload("photo.png", "image/png", b"\x89PNGfake")
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), model=OPENAI, cache={}
+            history=self._history([upload]), cache={}
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "image_url")
@@ -97,27 +92,28 @@ class AttachmentHydrationTests(TestCase):
             part["image_url"]["url"].startswith("data:image/png;base64,")
         )
 
-    def test_pdf_inlines_as_file_part_on_both_providers(self):
+    def test_pdf_inlines_as_file_part(self):
         upload = self._upload("lease.pdf", "application/pdf", make_pdf())
-        for model in (OPENAI, BEDROCK):
-            hydrated = user_upload_llm_parts(
-                history=self._history([upload]), model=model, cache={}
-            )
-            part = hydrated[0][1]
-            self.assertEqual(part["type"], "file", model)
-            self.assertEqual(part["file"]["filename"], "lease.pdf")
+        hydrated = user_upload_llm_parts(
+            history=self._history([upload]), cache={}
+        )
+        part = hydrated[0][1]
+        self.assertEqual(part["type"], "file")
+        self.assertEqual(part["file"]["filename"], "lease.pdf")
 
-    def test_docx_native_on_bedrock_but_extracted_on_openai(self):
-        # Invalid docx bytes: Bedrock ships them natively as a file part;
-        # OpenAI extraction fails and degrades to an unreadable stub.
+    def test_docx_ships_natively_even_when_unparseable(self):
+        # Bedrock consumes the document block itself, so hydration never
+        # parses docx bytes — invalid ones still ship as a file part.
         upload = self._upload("motion.docx", DOCX_TYPE, b"not a real docx")
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), model=BEDROCK, cache={}
+            history=self._history([upload]), cache={}
         )
         self.assertEqual(hydrated[0][1]["type"], "file")
 
+    def test_rtf_stubs_as_unreadable(self):
+        upload = self._upload("old.rtf", "application/rtf", b"{\\rtf1}")
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), model=OPENAI, cache={}
+            history=self._history([upload]), cache={}
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "text")
@@ -130,7 +126,7 @@ class AttachmentHydrationTests(TestCase):
         )
         cache: dict = {}
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), model=OPENAI, cache=cache
+            history=self._history([upload]), cache=cache
         )
         part = hydrated[0][1]
         self.assertIn("too large", part["text"])
@@ -144,7 +140,7 @@ class AttachmentHydrationTests(TestCase):
         )
         self.assertIsNone(upload.pages)
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), model=OPENAI, cache={}
+            history=self._history([upload]), cache={}
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "text")
@@ -158,25 +154,25 @@ class AttachmentHydrationTests(TestCase):
             "long.pdf", "application/pdf", make_pdf(2), pages=150
         )
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), model=OPENAI, cache={}
+            history=self._history([upload]), cache={}
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "text")
         self.assertIn("too large", part["text"])
         self.assertIn("query_document", part["text"])
 
-    def test_text_dense_file_stubs_on_any_provider(self):
-        # Zipped docx with a huge extracted-text count is large everywhere.
+    def test_text_dense_file_stubs(self):
+        # Zipped docx with a huge extracted-text count is large regardless
+        # of its byte size.
         upload = self._upload(
             "tome.docx", DOCX_TYPE, b"tiny bytes", text_chars=500_000
         )
-        for model in (OPENAI, BEDROCK):
-            hydrated = user_upload_llm_parts(
-                history=self._history([upload]), model=model, cache={}
-            )
-            part = hydrated[0][1]
-            self.assertEqual(part["type"], "text", model)
-            self.assertIn("query_document", part["text"])
+        hydrated = user_upload_llm_parts(
+            history=self._history([upload]), cache={}
+        )
+        part = hydrated[0][1]
+        self.assertEqual(part["type"], "text")
+        self.assertIn("query_document", part["text"])
 
     def test_doc_budget_ages_out_oldest_attachments(self):
         uploads = [
@@ -184,43 +180,25 @@ class AttachmentHydrationTests(TestCase):
             for i in range(5)
         ]
         history = self._history(*[[u] for u in uploads])
-        hydrated = user_upload_llm_parts(
-            history=history, model=OPENAI, cache={}
-        )
+        hydrated = user_upload_llm_parts(history=history, cache={})
         # Budget is 4 docs, newest first: the oldest message gets a stub.
         self.assertEqual(hydrated[0][1]["type"], "text")
         self.assertIn("no longer inlined", hydrated[0][1]["text"])
         for i in range(1, 5):
             self.assertEqual(hydrated[i][1]["type"], "file")
 
-    def test_text_budget_ages_out_by_extracted_chars(self):
-        # Four 35k-char text files: each is small enough to inline, but the
-        # 120k char pool fits only the three newest.
-        uploads = [
-            self._upload(f"notes{i}.txt", "text/plain", b"x" * 35_000)
-            for i in range(4)
-        ]
-        history = self._history(*[[u] for u in uploads])
-        hydrated = user_upload_llm_parts(
-            history=history, model=OPENAI, cache={}
-        )
-        self.assertIn("no longer inlined", hydrated[0][1]["text"])
-        for i in (1, 2, 3):
-            self.assertIn("xxx", hydrated[i][1]["text"])
-
-    def test_text_extracts_do_not_consume_document_slots(self):
-        # Four PDFs exhaust the doc budget, but an older text file still
-        # inlines — extracts spend the char pool, not document slots.
+    def test_text_files_consume_document_slots(self):
+        # Text files are document blocks like any other doc: four PDFs
+        # exhaust the doc budget and age out the older text file.
         text = self._upload("notes.txt", "text/plain", b"the facts")
         pdfs = [
             self._upload(f"doc{i}.pdf", "application/pdf", make_pdf())
             for i in range(4)
         ]
         history = self._history([text], *[[u] for u in pdfs])
-        hydrated = user_upload_llm_parts(
-            history=history, model=OPENAI, cache={}
-        )
-        self.assertIn("the facts", hydrated[0][1]["text"])
+        hydrated = user_upload_llm_parts(history=history, cache={})
+        self.assertEqual(hydrated[0][1]["type"], "text")
+        self.assertIn("no longer inlined", hydrated[0][1]["text"])
         for i in range(1, 5):
             self.assertEqual(hydrated[i][1]["type"], "file")
 
@@ -232,16 +210,12 @@ class AttachmentHydrationTests(TestCase):
                 "attachments": ["00000000-0000-0000-0000-000000000000"],
             }
         ]
-        hydrated = user_upload_llm_parts(
-            history=history, model=OPENAI, cache={}
-        )
+        hydrated = user_upload_llm_parts(history=history, cache={})
         self.assertIn("no longer available", hydrated[0][1]["text"])
 
     def test_no_attachments_returns_empty(self):
         history = [{"role": "user", "content": "hi"}]
-        self.assertEqual(
-            user_upload_llm_parts(history=history, model=OPENAI, cache={}), {}
-        )
+        self.assertEqual(user_upload_llm_parts(history=history, cache={}), {})
 
 
 @pytest.mark.postgres
