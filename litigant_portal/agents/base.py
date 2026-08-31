@@ -60,6 +60,15 @@ class Agent:
     state_schema: ClassVar[type[AgentState]] = AgentState
     tools: ClassVar[list[type[Tool]]] = []
 
+    def prepare_thread(self, *, thread_id) -> None:
+        """Reconcile thread state before a turn starts.
+
+        The engine calls this once per user message, after the thread is
+        resolved and before the message is stored or the first model call
+        is made. Override it to bring state in line with the current
+        world.
+        """
+
     def generate_system_prompt(self, *, thread_id) -> str:
         """Build the system prompt for ``thread_id`` from its state."""
         raise NotImplementedError

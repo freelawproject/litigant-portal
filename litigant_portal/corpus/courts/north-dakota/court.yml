@@ -1,0 +1,48 @@
+# North Dakota court-level content, scoped to the site data models (court
+# fields on Site, Contact, Resource). Ported from the wip library; source
+# copy: content/adult-name-change-standard.yml.
+
+name: 'North Dakota'
+court_name: 'North Dakota Court System'
+jurisdiction_level: state
+state: ND
+official_url: 'https://www.ndcourts.gov'
+official_resources_url: 'https://www.ndcourts.gov/legal-self-help'
+
+contacts:
+  - name: 'Clerk of District Court (your county)'
+    url: 'https://www.ndcourts.gov/court-locations'
+    note: "You file in the district court for the county where you have lived the past 6 months. Use the court locator to find your county's clerk, then call before filing to ask whether the judge requires the criminal history background check before or after you file. Timing varies by judge. This is the one call to make first."
+  - name: 'North Dakota Legal Self Help Center'
+    phone: '(701) 328-1852'
+    email: 'ndselfhelp@ndcourts.gov'
+    url: 'https://www.ndcourts.gov/legal-self-help'
+    note: 'A division of the ND Supreme Court Law Library. Provides information about the civil court process for self-represented filers. They cannot give legal advice or help with criminal matters.'
+  - name: 'Legal Services of North Dakota'
+    phone: '(800) 634-5263'
+    url: 'https://lsnd.org'
+    note: 'Free civil legal help for North Dakotans who qualify by income. Useful if your name change touches a divorce or other family-law matter. They can also screen you for the Volunteer Lawyers low-cost program.'
+  - name: 'Dakota Plains Legal Services'
+    url: 'https://www.dpls.org'
+    note: 'Free legal assistance for low-income individuals, older Americans, veterans, and nine tribal nations across North and South Dakota.'
+  - name: 'State Bar Association of North Dakota (Lawyer Referral)'
+    phone: '(866) 450-9579'
+    url: 'https://www.sband.org'
+    note: 'Matches you with a lawyer for paid legal services. Ask about limited (unbundled) representation: hiring a lawyer for just part of your case, like reviewing your paperwork, while you handle the rest.'
+
+resources:
+  - label: 'North Dakota name-change guidance and forms'
+    url: 'https://www.ndcourts.gov/legal-self-help/name-change-adult'
+    note: "The North Dakota Legal Self Help Center's adult name-change page: process overview and the source for every form in your packet."
+  - label: 'North Dakota Century Code Chapter 32-28'
+    url: 'https://ndlegis.gov/cencode/t32c28.html'
+    note: 'The state law this name-change process follows.'
+  - label: 'Filing-fee waiver forms'
+    url: 'https://www.ndcourts.gov/legal-self-help/fee-waiver'
+    note: 'If you cannot afford the $160 filing fee, file these forms at the same time as your name-change documents to ask the judge to waive it.'
+  - label: 'Criminal history record check (edo.cjis.gov)'
+    url: 'https://www.edo.cjis.gov'
+    note: 'If the judge requires a background check, request it here. You pay the cost, and it can take weeks, so ask the clerk early.'
+  - label: 'North Dakota Free Legal Answers'
+    url: 'https://nd.freelegalanswers.org'
+    note: 'Ask a civil legal question online for free; volunteer lawyers answer if you qualify by income. Not for criminal questions.'

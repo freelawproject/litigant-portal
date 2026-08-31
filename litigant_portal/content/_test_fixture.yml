@@ -27,7 +27,7 @@ deadlines:
   - id: publication_wait
     label: '30-day publication wait'
     offset_days: 30
-    offset_from: publication_date
+    offset_from: name_change_publication_date
     description: 'The judge can review the petition 30 days after the notice is published.'
 
 resources:
@@ -49,7 +49,7 @@ sections:
     id: key_dates
     heading: 'Your dates and name'
     questions:
-      - id: publication_date
+      - id: name_change_publication_date
         label: 'Date your notice was published'
         type: date
         required: true

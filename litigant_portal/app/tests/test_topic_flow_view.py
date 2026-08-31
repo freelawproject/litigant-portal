@@ -14,8 +14,16 @@ auth/session machinery, so they need a database — run via Docker ``make test``
 import re
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.urls import resolve, reverse
 
+from litigant_portal.app.models import (
+    UserIdentity,
+    Variable,
+    VariableAnswer,
+)
+from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.topic_flow.renderer import RenderedSection
 from litigant_portal.app.topic_flow.schema import (
     Contact,
@@ -64,7 +72,7 @@ def _corpus():
                 heading="Your dates",
                 questions=[
                     Question(
-                        id="publication_date",
+                        id="name_change_publication_date",
                         label="Date your notice was published",
                         type="date",
                         required=True,
@@ -92,6 +100,60 @@ def _corpus():
             ),
         ],
     )
+
+
+# --- answer storage helpers -------------------------------------------------
+
+
+@pytest.fixture
+def variables(db):
+    Variable.objects.create(
+        name="name_change_publication_date",
+        data_type=VariableDataType.DATE,
+    )
+    Variable.objects.create(
+        name="filing_county",
+        data_type=VariableDataType.CHOICE,
+        choices=[
+            {"value": "Cass", "label": "Cass"},
+            {"value": "Burleigh", "label": "Burleigh"},
+        ],
+    )
+
+
+def _identity(client):
+    """The identity the middleware will resolve for this client's session.
+
+    Same get_or_create the middleware uses, so seeding an answer before a
+    request and letting the view resolve the identity land on one row.
+    """
+    identity, _ = UserIdentity.objects.get_or_create(
+        user=None, session_key=client.session.session_key
+    )
+    return identity
+
+
+def _store(client, name, value, reviewed=False):
+    """Store an answer the way another surface would (the assistant, say)."""
+    variable_answer_set(
+        identity=_identity(client),
+        variable=Variable.objects.get(name=name),
+        value=value,
+        reviewed=reviewed,
+    )
+
+
+def _answers():
+    """``{variable_name: VariableAnswer}`` for the single visitor in a test."""
+    return {
+        answer.variable.name: answer
+        for answer in VariableAnswer.objects.select_related("variable")
+    }
+
+
+def _values():
+    """``{variable_name: value}`` for the single visitor in a test."""
+    return {name: a.value for name, a in _answers().items()}
 
 
 # --- URL resolution (DB-free) -----------------------------------------------
@@ -180,7 +242,7 @@ def test_fact_gather_renders_post_form_with_a_field_per_question(
     html = client.get(URL).content.decode()
     assert 'method="post"' in html
     assert "csrfmiddlewaretoken" in html
-    assert 'name="publication_date"' in html
+    assert 'name="name_change_publication_date"' in html
     assert 'name="filing_county"' in html
 
 
@@ -329,12 +391,14 @@ def test_fact_gather_marks_required_questions_and_leaves_optional_unmarked(
     client, monkeypatch
 ):
     # The HTML `required` attribute must track the corpus `required` flag:
-    # publication_date is required=True, filing_county defaults required=False.
+    # name_change_publication_date is required=True, filing_county defaults required=False.
     # If an optional field renders required, the browser blocks the litigant on
     # a question the author meant to be skippable — the bug this guards.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
-    assert re.search(r"\brequired\b", _field_tag(html, "publication_date"))
+    assert re.search(
+        r"\brequired\b", _field_tag(html, "name_change_publication_date")
+    )
     assert not re.search(r"\brequired\b", _field_tag(html, "filing_county"))
 
 
@@ -347,7 +411,9 @@ def test_fact_gather_date_field_disables_browser_autocomplete(
     # our session. autocomplete="off" should stop that.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
-    assert 'autocomplete="off"' in _field_tag(html, "publication_date")
+    assert 'autocomplete="off"' in _field_tag(
+        html, "name_change_publication_date"
+    )
 
 
 @pytest.mark.django_db
@@ -370,7 +436,11 @@ def test_headingless_fact_gather_skipped_in_toc_but_body_still_renders(
                 kind="fact_gather",
                 id="key_dates",
                 questions=[
-                    Question(id="publication_date", label="When", type="date")
+                    Question(
+                        id="name_change_publication_date",
+                        label="When",
+                        type="date",
+                    )
                 ],
             ),
         ],
@@ -379,102 +449,211 @@ def test_headingless_fact_gather_skipped_in_toc_but_body_still_renders(
     html = client.get(URL).content.decode()
     assert 'href="#overview"' in html  # heading section -> TOC link
     assert 'href="#key_dates"' not in html  # headingless -> no empty link
-    assert 'name="publication_date"' in html  # body still renders
+    assert 'name="name_change_publication_date"' in html  # body still renders
 
 
-# --- fact_gather POST + prefill (Item 5, needs DB) --------------------------
-# The form rendered by #486 now persists. POST writes answers to the
-# session-backed AnswerStore and redirects (PRG); the redirected GET prefills
-# the form. Functional contract — answers survive a reload — not markup.
+# --- fact_gather POST + prefill (needs DB) --------------------------
 
 
 @pytest.mark.django_db
-def test_post_persists_answers_and_redirects_prg(client, monkeypatch):
+def test_post_persists_answers_and_redirects_prg(
+    client, monkeypatch, variables
+):
     # Post-Redirect-Get: the POST must 302 back to the flow URL, never render
     # 200 in place. Otherwise a browser reload re-submits the form.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
     )
     assert response.status_code == 302
     assert response["Location"].startswith(URL)
 
 
 @pytest.mark.django_db
-def test_post_redirects_to_the_saved_section_anchor(client, monkeypatch):
+def test_post_redirects_to_the_saved_section_anchor(
+    client, monkeypatch, variables
+):
     # Scroll restore (#510): the PRG lands on the fact_gather section's anchor,
     # so saving returns the litigant to the form they were filling — and the
     # deadlines that recompute just below it — not the top of the page.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
     )
     assert response["Location"] == f"{URL}#key_dates"
 
 
 @pytest.mark.django_db
-def test_posted_answers_prefill_on_the_redirected_get(client, monkeypatch):
+def test_posted_answers_prefill_on_the_redirected_get(
+    client, monkeypatch, variables
+):
     # What you submitted comes back filled in: the choice marks its option
-    # selected. publication_date is the exception (#638) — it never echoes
+    # selected. name_change_publication_date is the exception (#638) — it never echoes
     # back, even right after you just submitted it.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
     )
     html = client.get(URL).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert 'value="2026-02-01"' not in _field_tag(html, "publication_date")
+    assert 'value="2026-02-01"' not in _field_tag(
+        html, "name_change_publication_date"
+    )
     assert re.search(r'<option value="Cass"[^>]*selected', flat)
 
 
 @pytest.mark.django_db
-def test_get_prefills_form_from_existing_session_answers(client, monkeypatch):
-    # Answers already in the session (e.g. a returning guest) prefill on a
-    # plain GET — the AnswerStore is the source, not just the
-    # immediately-prior POST. publication_date is exempt from this (#638).
+def test_get_prefills_form_from_stored_answers(client, monkeypatch, variables):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    session = client.session
-    session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {
-            "publication_date": "2026-03-15",
-            "filing_county": "Cass",
-        }
-    }
-    session.save()
+    _store(client, "name_change_publication_date", "2026-03-15")
+    _store(client, "filing_county", "Cass")
     html = client.get(URL).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert 'value="2026-03-15"' not in _field_tag(html, "publication_date")
+    assert 'value="2026-03-15"' not in _field_tag(
+        html, "name_change_publication_date"
+    )
     assert re.search(r'<option value="Cass"[^>]*selected', flat)
 
 
 @pytest.mark.django_db
-def test_recap_never_shows_publication_date(client, monkeypatch):
-    # #638: the recap reads the same session-backed answers as the fact_gather
-    # form above it — a prior guest's publication_date can't surface there
-    # either, even though filing_county (unaffected by the fix) still shows.
+def test_get_prefills_an_unreviewed_answer_from_the_other_pathway(
+    client, monkeypatch, variables
+):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    session = client.session
-    session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {
-            "publication_date": "2026-03-15",
-            "filing_county": "Cass",
-        }
-    }
-    session.save()
+    _store(client, "filing_county", "Cass", reviewed=False)
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert re.search(r'<option value="Cass"[^>]*selected', flat)
+
+
+@pytest.mark.django_db
+def test_get_leaves_a_cleared_answer_empty(client, monkeypatch, variables):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    _store(client, "filing_county", None)
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert not re.search(r'<option value="Cass"[^>]*selected', flat)
+
+
+@pytest.mark.django_db
+def test_get_for_a_first_time_visitor_creates_no_identity(client, monkeypatch):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    assert client.get(URL).status_code == 200
+    assert UserIdentity.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_recap_never_shows_publication_date(client, monkeypatch, variables):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    _store(client, "name_change_publication_date", "2026-03-15")
+    _store(client, "filing_county", "Cass")
     html = client.get(URL).content.decode()
     assert "2026-03-15" not in html
     assert "Cass" in html
 
 
 @pytest.mark.django_db
-def test_post_stores_only_known_question_ids(client, monkeypatch):
-    # The handler accepts only the corpus's question ids — csrf tokens and any
-    # stray/injected POST keys must not land in the answer store.
+def test_post_stores_only_known_question_ids(client, monkeypatch, variables):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    client.post(URL, {"publication_date": "2026-02-01", "not_a_question": "x"})
-    flow = client.session["topic_flow"][f"{COURT}/{TOPIC}/{ROLE}"]
-    assert flow.get("publication_date") == "2026-02-01"
-    assert "not_a_question" not in flow
+    client.post(
+        URL,
+        {"name_change_publication_date": "2026-02-01", "not_a_question": "x"},
+    )
+    assert _values() == {"name_change_publication_date": "2026-02-01"}
+
+
+@pytest.mark.django_db
+def test_post_marks_saved_answers_reviewed(client, monkeypatch, variables):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
+    )
+    assert all(answer.reviewed for answer in _answers().values())
+
+
+@pytest.mark.django_db
+def test_post_owns_answers_by_the_visitor_identity(
+    client, monkeypatch, variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(URL, {"name_change_publication_date": "2026-02-01"})
+    identity = UserIdentity.objects.get()
+    assert identity.session_key == client.session.session_key
+    assert list(identity.variable_answers.all()) == list(
+        VariableAnswer.objects.all()
+    )
+
+
+@pytest.mark.django_db
+def test_reposting_updates_the_same_answer_row(client, monkeypatch, variables):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(URL, {"name_change_publication_date": "2026-02-01"})
+    client.post(URL, {"name_change_publication_date": "2026-03-01"})
+    answer = VariableAnswer.objects.get()
+    assert answer.value == "2026-03-01"
+    assert answer.reviewed
+
+
+@pytest.mark.django_db
+def test_post_unparseable_date_soft_gates_instead_of_erroring(
+    client, monkeypatch, variables
+):
+    # Answers are stored typed now, so a date the storage layer would reject
+    # has to be caught as litigant input: re-render with an inline error, not
+    # a 500, and store nothing.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(URL, {"name_change_publication_date": "01/02/2026"})
+    assert response.status_code == 200
+    flat = re.sub(r"\s+", " ", response.content.decode())
+    assert re.search(
+        r'name="name_change_publication_date"[^>]*aria-invalid="true"', flat
+    )
+    assert not VariableAnswer.objects.exists()
+
+
+@pytest.mark.django_db
+def test_post_without_a_glossary_variable_fails_loud(client, monkeypatch):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    with pytest.raises(Variable.DoesNotExist):
+        client.post(URL, {"name_change_publication_date": "2026-02-01"})
+    assert not VariableAnswer.objects.exists()
+
+
+@pytest.mark.django_db
+def test_answers_survive_login(client, monkeypatch, variables):
+    # What a guest saved is still theirs, and still confirmed, after the
+    # identity merge runs on login.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    client.post(URL, {"filing_county": "Cass"})
+    user = get_user_model().objects.create_user(username="u", password="p")
+
+    # The GET is load-bearing, not filler: AnonymousSessionKeyMiddleware only
+    # records the key on a request that already carries a session cookie, and
+    # the POST above created the session mid-request. A real litigant makes
+    # this request by navigating to the login page; client.login() skips
+    # middleware, so without it the merge has no key to work from.
+    client.get(URL)
+    assert client.login(username="u", password="p")
+
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert re.search(r'<option value="Cass"[^>]*selected', flat)
+    answer = VariableAnswer.objects.get()
+    assert answer.identity.user == user
+    assert answer.reviewed
 
 
 # --- fact_gather POST validation (#525, needs DB) ---------------------------
@@ -483,104 +662,130 @@ def test_post_stores_only_known_question_ids(client, monkeypatch):
 # with inline errors (re-render, not PRG) and never stored. JS-off-safe.
 
 
-def _flow_answers(client):
-    return client.session.get("topic_flow", {}).get(
-        f"{COURT}/{TOPIC}/{ROLE}", {}
-    )
-
-
 @pytest.mark.django_db
-def test_post_empty_required_rerenders_in_place(client, monkeypatch):
+def test_post_empty_required_rerenders_in_place(
+    client, monkeypatch, variables
+):
     # Invalid submit soft-gates: re-render 200 (so the inline error shows),
     # not a PRG 302. A 302 would bounce the litigant forward past the gap.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    response = client.post(URL, {"publication_date": "", "filing_county": ""})
+    response = client.post(
+        URL, {"name_change_publication_date": "", "filing_county": ""}
+    )
     assert response.status_code == 200
 
 
 @pytest.mark.django_db
-def test_post_empty_required_is_not_persisted(client, monkeypatch):
+def test_post_empty_required_is_not_persisted(client, monkeypatch, variables):
     # The blank required answer must not land in the store — otherwise the
     # litigant could advance toward filing with a missing answer.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    client.post(URL, {"publication_date": "", "filing_county": ""})
-    assert "publication_date" not in _flow_answers(client)
+    client.post(URL, {"name_change_publication_date": "", "filing_county": ""})
+    assert "name_change_publication_date" not in _values()
 
 
 @pytest.mark.django_db
-def test_post_empty_required_marks_the_field_invalid(client, monkeypatch):
+def test_post_empty_required_marks_the_field_invalid(
+    client, monkeypatch, variables
+):
     # The offending field carries aria-invalid="true" — the JS-off-safe a11y
     # signal the form-field error pattern renders. Functional, not copy.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.post(
-        URL, {"publication_date": "", "filing_county": ""}
+        URL, {"name_change_publication_date": "", "filing_county": ""}
     ).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert re.search(r'name="publication_date"[^>]*aria-invalid="true"', flat)
+    assert re.search(
+        r'name="name_change_publication_date"[^>]*aria-invalid="true"', flat
+    )
 
 
 @pytest.mark.django_db
-def test_post_choice_outside_list_is_rejected_not_stored(client, monkeypatch):
+def test_post_choice_outside_list_is_rejected_not_stored(
+    client, monkeypatch, variables
+):
     # A choice answer outside the declared options is dropped, never persisted
     # (the silent-accept hole this issue closes).
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Stark",
+        },
     )
     assert response.status_code == 200
-    assert "filing_county" not in _flow_answers(client)
+    assert "filing_county" not in _values()
 
 
 @pytest.mark.django_db
 def test_post_saves_valid_fields_even_when_a_sibling_is_invalid(
-    client, monkeypatch
+    client, monkeypatch, variables
 ):
     # Partial-invalid submit: the valid field still persists so the litigant
     # doesn't lose good input on every fix-and-resubmit; only the bad one is
-    # flagged. (publication_date valid, filing_county out-of-list.)
+    # flagged. (name_change_publication_date valid, filing_county out-of-list.)
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Stark",
+        },
     )
-    answers = _flow_answers(client)
-    assert answers.get("publication_date") == "2026-02-01"
+    answers = _values()
+    assert answers.get("name_change_publication_date") == "2026-02-01"
     assert "filing_county" not in answers
 
 
 @pytest.mark.django_db
-def test_post_all_valid_still_redirects_prg(client, monkeypatch):
+def test_post_all_valid_still_redirects_prg(client, monkeypatch, variables):
     # The happy path is unchanged: a fully valid submit persists and 302s (PRG).
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass",
+        },
     )
     assert response.status_code == 302
-    assert _flow_answers(client).get("filing_county") == "Cass"
+    assert _values().get("filing_county") == "Cass"
 
 
 @pytest.mark.django_db
-def test_error_rerender_does_not_leak_rejected_value(client, monkeypatch):
+def test_error_rerender_does_not_leak_rejected_value(
+    client, monkeypatch, variables
+):
     # The soft-gate re-renders from the stored answers, not the raw submission,
     # so a rejected choice ("Stark") appears nowhere — the fact_gather form
     # flags it, but the summary section can't echo it as a saved answer. Guards
     # against the page contradicting itself (form says "fix", summary says "ok").
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     html = client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Stark"}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Stark",
+        },
     ).content.decode()
     assert "Stark" not in html
 
 
 @pytest.mark.django_db
-def test_post_persists_stripped_value(client, monkeypatch):
+def test_post_persists_stripped_value(client, monkeypatch, variables):
     # validate_answers checks the stripped value, so storage must strip too —
     # else a padded choice validates but fails the strict option-selected match
     # on re-render, and a padded date breaks date.fromisoformat downstream.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(
-        URL, {"publication_date": "2026-02-01", "filing_county": "Cass  "}
+        URL,
+        {
+            "name_change_publication_date": "2026-02-01",
+            "filing_county": "Cass  ",
+        },
     )
-    assert _flow_answers(client).get("filing_county") == "Cass"
+    assert _values().get("filing_county") == "Cass"
 
 
 # --- ics deadline rendering (#494, needs DB) --------------------------------
@@ -596,7 +801,7 @@ def _corpus_with_deadline():
                 id="publication_wait",
                 label="30-day publication wait",
                 offset_days=30,
-                offset_from="publication_date",
+                offset_from="name_change_publication_date",
             )
         ],
         sections=[
@@ -606,7 +811,7 @@ def _corpus_with_deadline():
                 heading="Your dates",
                 questions=[
                     Question(
-                        id="publication_date",
+                        id="name_change_publication_date",
                         label="Date your notice was published",
                         type="date",
                         required=True,
@@ -625,17 +830,15 @@ def _corpus_with_deadline():
 
 
 @pytest.mark.django_db
-def test_ics_section_renders_personalized_deadline(client, monkeypatch):
+def test_ics_section_renders_personalized_deadline(
+    client, monkeypatch, variables
+):
     # The payoff: a stored answer drives compute_deadline and the concrete date
     # appears on the page, server-rendered. 30 days after 2026-02-01 = 2026-03-03.
     monkeypatch.setattr(
         pages.registry, "get", lambda *a: _corpus_with_deadline()
     )
-    session = client.session
-    session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
-    }
-    session.save()
+    _store(client, "name_change_publication_date", "2026-02-01")
     html = client.get(URL).content.decode()
     assert 'datetime="2026-03-03"' in html  # machine-readable <time>
     assert "March 3, 2026" in html  # human-readable date
@@ -683,18 +886,14 @@ def test_download_url_reverses_with_the_output_id():
 
 @pytest.mark.django_db
 def test_download_streams_ics_attachment_with_the_computed_deadline(
-    client, monkeypatch
+    client, monkeypatch, variables
 ):
     # The payoff: the stored answer drives the same compute_deadline path, and
     # the downloaded calendar carries the concrete date as an all-day event.
     monkeypatch.setattr(
         pages.registry, "get", lambda *a: _corpus_with_deadline()
     )
-    session = client.session
-    session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
-    }
-    session.save()
+    _store(client, "name_change_publication_date", "2026-02-01")
     response = client.get(DOWNLOAD_URL)
     assert response.status_code == 200
     assert "text/calendar" in response["Content-Type"]
@@ -740,18 +939,14 @@ def test_download_non_downloadable_output_returns_404(client, monkeypatch):
 
 @pytest.mark.django_db
 def test_ics_section_links_to_the_download_once_a_date_is_entered(
-    client, monkeypatch
+    client, monkeypatch, variables
 ):
     # The page must surface a reachable link to the download URL — without it
     # the litigant can't get the calendar file. Functional target, not markup.
     monkeypatch.setattr(
         pages.registry, "get", lambda *a: _corpus_with_deadline()
     )
-    session = client.session
-    session["topic_flow"] = {
-        f"{COURT}/{TOPIC}/{ROLE}": {"publication_date": "2026-02-01"}
-    }
-    session.save()
+    _store(client, "name_change_publication_date", "2026-02-01")
     html = client.get(URL).content.decode()
     assert f'href="{DOWNLOAD_URL}"' in html
 

@@ -21,6 +21,7 @@ frontend templates those tools render with). You build new behavior by
 | SSE events (`content_delta`, `tool_call`, …) | `generate_system_prompt(thread_id)`     |
 | Rendering tool templates → HTML              | `tools = [...]` (Tool subclasses)       |
 | Reloading a thread for the frontend          | tool templates under `templates/tools/` |
+| Calling the per-message lifecycle hook       | `prepare_thread(thread_id)` (optional)  |
 
 Engine code: [`services/chat_engine.py`](../../litigant_portal/app/services/chat_engine.py) ·
 Abstraction: [`agents/base.py`](../../litigant_portal/agents/base.py) ·
@@ -125,6 +126,17 @@ def generate_system_prompt(self, *, thread_id) -> str:
 > for every request (and again mid-turn whenever a tool sets
 > `refresh_system_prompt=True`). This is what lets state changes show up in the
 > model's instructions instantly.
+
+### Optional: the per-message hook — `prepare_thread(thread_id)`
+
+The engine calls `prepare_thread(thread_id=...)` **once per user message**,
+after the thread is resolved and before the message is stored or the first
+model call is made. The default is a no-op. Override it to reconcile state
+against the current world before the turn starts — e.g. the litigant
+assistant clears its `active_topic_flow` when the flow it names has been
+renamed, disabled, or deleted. This is the place for state writes with a
+per-turn cadence: `generate_system_prompt` can run several times per turn
+and should stay a pure read, while `prepare_thread` runs exactly once.
 
 ### 4. The tools — `tools = [...]`
 

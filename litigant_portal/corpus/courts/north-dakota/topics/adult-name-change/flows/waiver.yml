@@ -1,0 +1,135 @@
+# Adult Name Change (North Dakota), WAIVER track (first/middle only,
+# publication may be waived). The directory locates the court and topic; the
+# file name is the flow slug. No deadlines: publication and the 30-day wait
+# can be waived, so there is no fixed date to compute. Ported from the wip
+# library flow config (source copy: content/adult-name-change-waiver.yml;
+# forms via docassemble/nd-name-change/petition-waiver.yml), restructured
+# for the glossary schema. The packet shares nd-name-change-confidential-info
+# and nd-name-change-order with the standard flow; the petition and
+# declaration are the waiver-track forms over the same PDFs.
+
+name: 'Adult Name Change (Publication Waiver)'
+enabled: true
+order: 1
+
+sections:
+  - heading: 'Changing your first or middle name in North Dakota'
+    content: |
+      This walks you through a standalone adult name-change petition in North Dakota district court, on the waiver track: changing your first and/or middle name only, leaving your last name unchanged.
+
+      On this track a judge may waive the newspaper publication requirement, and if publication is waived there is no 30-day waiting period. The waiver is the judge's decision on the facts you present. It is not guaranteed, so plan for the possibility that publication is still required.
+
+      If you are changing your last name (or any combination that includes it), use the publication-required version of this tool instead.
+
+      One common mix-up: if you wanted your name changed as part of a divorce, that has to be requested inside the divorce case. It is not handled here.
+
+  - heading: 'Who can file'
+    content: |
+      To petition for a name change in North Dakota you must be a U.S. citizen or a U.S. permanent resident. You attest to this on the Petition.
+
+      A name change cannot be used to defraud anyone or to evade a legal obligation (for example, debts or a criminal record). These are conditions you confirm on the forms, not something you have to explain to anyone here.
+
+  - heading: 'What it costs'
+    content: |
+      The filing fee is $160. If you cannot afford it, you can file fee-waiver forms at the same time asking the judge to waive the fee. The fee-waiver link is in the resources at the end of this page.
+
+      Two other costs can come up later: if the judge requires a criminal history background check, you pay for it; and certified copies of your final Order cost $10 for the first copy and $5 for each additional copy requested at the same time.
+
+  - heading: 'Criminal history background check'
+    content: |
+      Asking to waive publication does not remove the criminal history step. Before granting a name change, the judge has to determine whether you have a criminal record. Some judges require every adult filer to get a statewide or national criminal history background check; others decide after reviewing your petition. Call the clerk before you file to ask which applies in your county. The check can take weeks, so it is worth starting early.
+
+      If the judge requires one, you request it at edo.cjis.gov and pay the cost yourself.
+
+      If you have a felony conviction, North Dakota law assumes a name-change request is made in bad faith. A judge may still grant it, but you would need to show by clear and convincing evidence that your request is made in good faith and not to defraud, mislead, injure anyone, or compromise public safety.
+
+  - heading: 'About the publication waiver'
+    content: |
+      Because you are not changing your last name, you can ask the judge to waive the requirement to publish a notice in the newspaper. If the judge grants the waiver, there is no 30-day waiting period and your petition can be considered sooner.
+
+      The judge decides this on your particular facts, so it is not automatic. Ask the clerk how your county handles the waiver request, and be ready in case publication is still required.
+
+  - heading: 'Before you sign'
+    content: |
+      A few things in North Dakota's process are easy to miss, and each one has a real consequence if it is missed:
+
+      - The case number stays blank. The clerk assigns it when you file.
+      - Only the judge signs the Proposed Order.
+      - The Confidential Information Form is sealed and stays out of the public file. A copy must be attached to every certified copy of your Order, or North Dakota Vital Records will reject your updates later. Keep copies.
+
+  - heading: 'Will there be a hearing?'
+    content: |
+      North Dakota does not presumptively require a hearing for a name change, but the judge may decide one is needed. If a hearing is scheduled, the Clerk of District Court will send notice with the date, time, and location.
+
+  - heading: 'After the judge signs your Order'
+    content: |
+      Ask the clerk for at least three certified copies of your Order. Certified copies cost $10 for the first and $5 for each additional copy requested at the same time, and each one needs the Confidential Information Form attached.
+
+      Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
+
+# One page per docassemble interview page. The waiver-reasons page replaces
+# the standard track's publication page; its select-every-reason instruction
+# lives on the page description.
+interview:
+  - title: 'Your current legal name'
+    variables:
+      - first_name
+      - middle_name
+      - last_name
+  - title: 'The name you want'
+    variables:
+      - name_change_requested_first
+      - name_change_requested_middle
+      - name_change_requested_last
+  - title: 'Where you live'
+    variables:
+      - street_address
+      - city
+      - county
+      - zip_code
+      - name_change_residence_since
+  - title: 'A few details the Petition requires'
+    variables:
+      - name_change_citizenship
+      - name_change_criminal_history
+      - name_change_conviction_charge
+      - name_change_conviction_class
+      - name_change_conviction_court
+      - name_change_conviction_year
+  - title: 'Why you are asking the court to waive publication'
+    description: 'A judge may waive publishing your notice. Select every reason that applies.'
+    variables:
+      - name_change_waiver_first_or_middle
+      - name_change_waiver_domestic_violence
+  - title: 'The filing fee'
+    variables:
+      - name_change_fee_waiver_needed
+  - title: 'A few more details for the rest of your packet'
+    description: 'These appear on the Order, Declaration, and Confidential Information form.'
+    variables:
+      - date_of_birth
+      - place_of_birth
+      - name_change_residency_years
+      - name_change_residency_months
+      - phone_number
+
+# The filing packet, in filing order (no Notice on the waiver track).
+packet:
+  - form: nd-name-change-petition-waiver
+  - form: nd-name-change-declaration-waiver
+  - form: nd-name-change-confidential-info
+  - form: nd-name-change-order
+  - form: nd-fee-waiver-petition
+    when:
+      variable: name_change_fee_waiver_needed
+      value: true
+
+links:
+  - name: 'Petition for Name Change'
+    url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf'
+  - name: 'Declaration in Support of Petition'
+    url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf'
+  - name: 'Confidential Information Form'
+    url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf'
+  - name: 'Proposed Order for Name Change'
+    url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf'

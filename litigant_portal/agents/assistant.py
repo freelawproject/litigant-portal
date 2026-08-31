@@ -1,4 +1,5 @@
-from .base import Agent
+from .base import Agent, AgentState
+from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
 from .tools.query_document import QueryDocument
 
 BASE_PROMPT = """\
@@ -12,11 +13,86 @@ files appear directly in the conversation. A note reading [Attached file \
 tool with its upload_id to read or query it. Never guess at the contents \
 of a file you haven't seen."""
 
+TOPIC_FLOWS_PROMPT = """\
+## Guided topic flows
+
+The portal has guided topic flows: step-by-step guides for specific legal \
+situations, with local court information, deadlines, and forms. As soon as \
+the user's situation matches one, call the LoadTopicFlow tool with the \
+flow's path (the topic-slug/flow-slug before the colon in the list \
+below). The result names the conversation's active flow and gives you the \
+flow's full content; treat that content as your primary source while the \
+flow is active. Available flows:
+
+{flows}"""
+
+PROMPT_TEMPLATE = """\
+{base}
+
+{topic_flows}"""
+
+
+def generate_topic_flows_prompt() -> str:
+    """The guided-topic-flows section, or '' when no flows are enabled."""
+    from litigant_portal.app.selectors.topic_flow import topic_flow_list
+
+    flows = topic_flow_list()
+    if not flows:
+        return ""
+    return TOPIC_FLOWS_PROMPT.format(
+        flows="\n".join(
+            f"- {topic_flow_path(f)}: {f.name} ({f.topic.title})"
+            for f in flows
+        )
+    )
+
+
+class LitigantAssistantState(AgentState):
+    """Litigant assistant state."""
+
+    active_topic_flow: str | None = None
+
 
 class LitigantAssistant(Agent):
     """The user-facing assistant for self-represented litigants."""
 
-    tools = [QueryDocument]
+    state_schema = LitigantAssistantState
+    tools = [QueryDocument, LoadTopicFlow]
+
+    def prepare_thread(self, *, thread_id) -> None:
+        """Clear the thread's active topic flow when it no longer names an
+        enabled flow.
+
+        State stores a slug path, not a foreign key, so the flow may have
+        been renamed, disabled, or deleted since it was set. The engine
+        runs this once per user message, so a stale path never survives
+        into a turn.
+        """
+        from litigant_portal.app.selectors.topic_flow import topic_flow_list
+        from litigant_portal.app.services.chat_engine import (
+            chat_thread_state_merge,
+        )
+
+        def clear_if_stale(state: dict) -> dict:
+            active = state.get("active_topic_flow")
+            if active and active not in {
+                topic_flow_path(f) for f in topic_flow_list()
+            }:
+                return {"active_topic_flow": None}
+            return {}
+
+        chat_thread_state_merge(thread_id=thread_id, updates=clear_if_stale)
 
     def generate_system_prompt(self, *, thread_id) -> str:
-        return BASE_PROMPT
+        """Each prompt piece injected into PROMPT_TEMPLATE.
+
+        The active topic flow is deliberately absent: the model learns it
+        from the LoadTopicFlow result in history, which only works while
+        the engine sends the full history. When we add automatic compaction,
+        we'll need to account for the active topic flow data being dropped from
+        history.
+        """
+        return PROMPT_TEMPLATE.format(
+            base=BASE_PROMPT,
+            topic_flows=generate_topic_flows_prompt(),
+        ).strip()

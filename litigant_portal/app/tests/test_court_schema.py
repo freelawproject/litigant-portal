@@ -9,8 +9,8 @@ from unittest import mock
 import jsonschema
 from django.test import TestCase
 
-from litigant_portal.app import checks as chat_checks
-from litigant_portal.app.checks import check_court_json_schema
+from litigant_portal.app.checks import prompts as chat_checks
+from litigant_portal.app.checks.prompts import check_court_json_schema
 from litigant_portal.prompts import _PROMPTS_DIR, iter_courts
 
 COURTS_DIR = _PROMPTS_DIR / "courts"

@@ -43,7 +43,7 @@ deadlines:
   - id: earliest_filing
     label: 'Earliest day to file your eviction case'
     offset_days: 3
-    offset_from: notice_served_date
+    offset_from: eviction_notice_served_date
     description: 'Ohio law requires the Notice to Leave at least three days before you begin the eviction action. If you are unsure how the days count in your situation, ask the clerk before filing.'
 
 resources:
@@ -85,7 +85,7 @@ sections:
     id: notice_details
     heading: 'Your notice date'
     questions:
-      - id: notice_served_date
+      - id: eviction_notice_served_date
         label: 'Date you served the Notice to Leave'
         type: date
         help_text: 'The day you handed the notice to your tenant, left it at the property, or sent it by certified mail.'

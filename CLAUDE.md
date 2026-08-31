@@ -76,7 +76,7 @@ No auto-formatter for `.html` templates — djlint runs lint-only. **Load the gl
 
 ## Content style (user-facing copy)
 
-Rules for authoring user-facing content — corpus YAML (`litigant_portal/content/`), UI strings, and prompt layers that shape chat output:
+Rules for authoring user-facing content — corpus YAML (`litigant_portal/corpus/`), UI strings, and prompt layers that shape chat output:
 
 - **No em-dashes.** Use a period, comma, colon, or parentheses instead. Em-dash-heavy prose reads as AI-generated and undermines user trust (legal review, #620). Dev-facing text (code comments, docs, commit messages) is exempt.
 - **Corpus info bodies: one line per paragraph.** The renderer pipes `body` through Django's `linebreaks`, so every newline becomes a `<br>` — hard-wrapped prose breaks mid-sentence on the page. Separate paragraphs with blank lines; never wrap a paragraph across source lines.
@@ -154,17 +154,18 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 
 **By domain** — `models/`, `selectors/`, and `services/` each carry one module per domain, and the three agree on module names:
 
-| Domain        | Holds                                                        |
-| ------------- | ------------------------------------------------------------ |
-| `site`        | Global site settings and court config                        |
-| `topic_flow`  | Topics and topic flow data (spans admin and public surfaces) |
-| `user`        | Identity, profile, and group membership toggles              |
-| `upload`      | Attachment upload and its helper logic                       |
-| `chat_engine` | Threads, messages, streaming                                 |
+| Domain        | Holds                                                                                                       |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| `site`        | Global site settings and court config                                                                       |
+| `topic_flow`  | Topics and topic flow data (spans admin and public surfaces)                                                |
+| `corpus`      | Corpus schemas, YAML loading, and sync into `topic_flow` rows (selectors + services only; no models module) |
+| `user`        | Identity, profile, and group membership toggles                                                             |
+| `upload`      | Attachment upload and its helper logic                                                                      |
+| `chat_engine` | Threads, messages, streaming                                                                                |
 
 **Never name a data-layer module after the page that consumes it.** Site settings apply app-wide; topic utilities serve both the admin editor and the public flow page. Naming either one `admin` mislocates it the moment a second caller shows up — which is exactly what happened to the module this layout replaced.
 
-**Naming:** services and selectors are `{model_name}_{action}` — `site_get`, `topic_create`, `user_identity_merge`, `user_upload_llm_parts`. Allow some liberty when a utility genuinely implicates two models equally. Anything not part of a module's public surface takes a leading underscore.
+**Naming:** services and selectors are `{model_name}_{action}` — `site_get`, `topic_create`, `user_identity_merge`, `user_upload_llm_parts`. Allow some liberty when a utility genuinely implicates two models equally. Anything not part of a module's public surface takes a leading underscore. Single-row selector verbs encode miss behavior: `*_get` raises on a missing row, `*_find` returns None — pick the verb by how callers treat a miss.
 
 **Reads are selectors, writes are services.** `user_list` reads, so it's a selector; `user_developer_toggle` writes, so it's a service.
 
