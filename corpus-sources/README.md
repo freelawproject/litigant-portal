@@ -1,8 +1,12 @@
 # Corpus source documents (local archive)
 
 Local archive of the **source material** court partners give us — official forms,
-instruction guides, and feedback — that backs the Topic Flow corpus in
-`litigant_portal/content/`.
+instruction guides, and feedback — that backs the Topic Flow corpus.
+
+**The corpus lives in two trees right now, both live.** `litigant_portal/content/*.yml` renders
+the public flow pages (read by `app/topic_flow/registry.py`); `litigant_portal/corpus/`
+syncs to database rows (read by `app/selectors/corpus.py`). Editing one does not update
+the other, and the failure is silent. Which tree retires is an open decision under #179.
 
 **These files are gitignored on purpose.** Everything under `corpus-sources/`
 except this README is excluded from version control:
@@ -36,6 +40,7 @@ corpus-sources/north-dakota/adult-name-change/
 ## Using it
 
 1. Drop the partner's uploaded files under the right `<court>/<topic>/`.
-2. Author or correct the corpus in `litigant_portal/content/` against them.
+2. Author or correct the corpus against them, in whichever tree you are targeting — see the
+   two-tree note above, and `CLAUDE.md` under Content style.
 3. Note provenance (a `SOURCE.md` with the Drive link + date) so a later reader
    knows where a batch came from and how current it is.
