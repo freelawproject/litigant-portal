@@ -14,8 +14,11 @@ from litigant_portal.app.services.upload import (
     INLINE_MAX_PAGES,
     READER_MAX_PAGES,
     READER_MAX_TEXT_TOKENS,
+    user_upload_create,
     user_upload_llm_parts,
     user_upload_reader_limit_error,
+    user_upload_render_list,
+    user_upload_serialize,
 )
 
 OPENAI = "gpt-5-mini"
@@ -391,3 +394,73 @@ class AttachmentOwnershipTests(TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertEqual(res.json()["error"], "Invalid attachment")
         self.assertFalse(ChatThread.objects.exists())
+
+
+@pytest.mark.postgres
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class UploadSerializeTests(TestCase):
+    """user_upload_serialize is the JSON contract the chat frontend renders."""
+
+    def setUp(self):
+        self.identity = UserIdentity.objects.create(session_key="abc123")
+
+    def _upload(self, name, data=b"x"):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return user_upload_create(
+            identity=self.identity, file=SimpleUploadedFile(name, data)
+        )
+
+    def test_serializes_document_payload(self):
+        upload = self._upload("notes.txt", b"hello")
+        payload = user_upload_serialize(upload)
+        self.assertEqual(
+            payload,
+            {
+                "id": str(upload.id),
+                "name": "notes.txt",
+                "content_type": "text/plain",
+                "size": 5,
+                "is_image": False,
+                "url": upload.file.url,
+                "created_at": upload.created_at.isoformat(),
+            },
+        )
+
+    def test_image_content_type_sets_is_image(self):
+        upload = self._upload("photo.png")
+        self.assertTrue(user_upload_serialize(upload)["is_image"])
+
+    def test_render_list_preserves_requested_order(self):
+        first = self._upload("a.txt")
+        second = self._upload("b.txt")
+        items = user_upload_render_list([str(second.id), str(first.id)])
+        self.assertEqual(
+            [i["id"] for i in items], [str(second.id), str(first.id)]
+        )
+
+    def test_render_list_stubs_deleted_uploads(self):
+        gone = "00000000-0000-0000-0000-000000000000"
+        items = user_upload_render_list([gone])
+        self.assertEqual(
+            items,
+            [
+                {
+                    "id": gone,
+                    "name": "(deleted file)",
+                    "content_type": "",
+                    "size": 0,
+                    "is_image": False,
+                    "url": "",
+                    "missing": True,
+                }
+            ],
+        )
+
+    def test_render_list_mixes_present_and_missing(self):
+        upload = self._upload("a.txt")
+        gone = "00000000-0000-0000-0000-000000000000"
+        items = user_upload_render_list([str(upload.id), gone])
+        self.assertEqual(items[0]["name"], "a.txt")
+        self.assertNotIn("missing", items[0])
+        self.assertTrue(items[1]["missing"])
