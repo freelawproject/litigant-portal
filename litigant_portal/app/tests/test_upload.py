@@ -6,6 +6,7 @@ import tempfile
 
 import pytest
 from django.core.files.base import ContentFile
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase, override_settings
 
 from litigant_portal.app.models import ChatThread, UserIdentity, UserUpload
@@ -405,8 +406,6 @@ class UploadSerializeTests(TestCase):
         self.identity = UserIdentity.objects.create(session_key="abc123")
 
     def _upload(self, name, data=b"x"):
-        from django.core.files.uploadedfile import SimpleUploadedFile
-
         return user_upload_create(
             identity=self.identity, file=SimpleUploadedFile(name, data)
         )

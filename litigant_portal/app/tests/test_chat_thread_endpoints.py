@@ -137,8 +137,8 @@ def test_message_list_returns_thread_payload():
     assert payload["id"] == str(thread.id)
     assert payload["description"] == "my case"
     assert payload["state"] == {}
-    # Item contents are pinned by test_chat_hidden.py; here only the shape.
-    assert isinstance(payload["items"], list)
+    # Item contents are pinned by test_chat_hidden.py; here only the count.
+    assert len(payload["items"]) == 1
 
 
 def test_message_list_of_another_identitys_thread_is_404():
