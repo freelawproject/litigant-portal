@@ -249,13 +249,21 @@ litigant_portal/app/templates/cotton/
 
 Style guide available at `/style-guide/` during development.
 
-Component & style discipline follows the org rule (`~/flp/CLAUDE.md`): compose from existing components first, extend with a prop when almost-right, new components/tokens only when nothing combines. LP paths: components in `litigant_portal/app/templates/cotton/`, theme tokens in `litigant_portal/app/src/main.css`. Check props (variants, sizes, `href`, `full_width`, `class` passthrough) before assuming a component can't do it.
+**Component & style discipline:** compose from existing components first, extend with a prop when one is almost right, and add new components or theme tokens only when nothing combines. Components live in `litigant_portal/app/templates/cotton/`, theme tokens in `litigant_portal/app/src/main.css`. Check a component's props (variants, sizes, `href`, `full_width`, `class` passthrough) before assuming it can't do the job.
 
 **Atomic design check (both directions):** After any template or component change:
 
 - **Top-down:** Are templates composing existing atoms/molecules/organisms? No hand-rolled HTML that duplicates a component.
-- **Bottom-up:** Are there repeated patterns across templates that should be _extracted_ into new components? If 3+ templates share the same HTML structure (same tags, classes, layout), that's a missing molecule or organism.
+- **Bottom-up:** Are there repeated patterns across templates that should be _extracted_ into new components? If two templates share the same HTML structure (same tags, classes, layout), that's a missing molecule or organism.
 - **Style guide:** Does `litigant_portal/app/templates/pages/style_guide.html` need updating? New components, new props, or changed behavior should be reflected there.
+
+**Component rules** — reasoning and tradeoffs in [`docs/wiki/frontend-design-principles.md`](docs/wiki/frontend-design-principles.md):
+
+- **Extract on the second use.** First use, write it inline. Second use, extract — a copy-paste _is_ the second use. Never extract for an imagined third.
+- **Tier by composition, not size.** An atom is one element carrying a design or accessibility decision. A molecule is atoms plus the layout that gives them one job. An organism is a page section composed of molecules. When it's genuinely ambiguous, take the lower tier.
+- **Variants or separate components?** One component with variants when a change to one should propagate to the others (`button variant="primary|secondary"`). Two components when the only thing they share is looking alike today.
+- **Primitives own accessibility.** Buttons, links, form fields, and icons go through their atoms. A raw `<button>` inherits none of the WCAG floor those atoms carry.
+- **The style guide is part of the change, not follow-up.** Adding a component adds its `style_guide.html` entry in the same commit. Deleting one removes its entry _and every `<c-...>` reference to it_ in the same commit — a dangling reference is a runtime error on whatever page renders it, and it won't surface until someone opens that page.
 
 ### State Flow
 
