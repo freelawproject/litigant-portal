@@ -19,7 +19,7 @@ from litigant_portal.app.models.choices import (
     State,
 )
 from litigant_portal.app.selectors.topic_flow import topic_list
-from litigant_portal.app.topic_flow.answer_store import AnswerStore
+from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
     question_ids,
@@ -27,6 +27,7 @@ from litigant_portal.app.topic_flow.renderer import (
     submitted_section_anchor,
 )
 from litigant_portal.app.topic_flow.validation import validate_answers
+from litigant_portal.app.views.utils import topic_flow_answers
 
 
 def home(request):
@@ -62,17 +63,19 @@ def topic_flow(request, court, topic, role):
     """Topic Flow entry: /t/{court}/{topic}/{role}/ → rendered corpus sections.
 
     Resolves the corpus from the registry (404 on miss). GET renders each
-    section via SectionRenderer with the guest's stored answers (so fact_gather
-    fields prefill). POST persists the submitted answers to the session-backed
-    AnswerStore and redirects (PRG) so a reload re-GETs rather than re-submits —
-    the whole flow works with JS off. The view stays thin: section dispatch
-    lives in renderer.py, deadline math in deadlines.py.
+    section via SectionRenderer with the visitor's stored answers (so
+    fact_gather fields prefill). POST persists the submitted answers as
+    VariableAnswer rows and redirects (PRG) so a reload re-GETs rather than
+    re-submits — the whole flow works with JS off. The view stays thin:
+    section dispatch lives in renderer.py, deadline math in deadlines.py.
+
+    Saving marks answers ``reviewed=True``: this page is where a human
+    confirms what the assistant guessed, and only reviewed answers may
+    reach the docassemble prefill.
     """
     corpus = registry.get(court, topic, role)
     if corpus is None:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-
-    store = AnswerStore(request.session, court, topic, role)
 
     if request.method == "POST":
         submitted = {
@@ -86,21 +89,26 @@ def topic_flow(request, court, topic, role):
         # ("Cass  ") stores raw and fails the strict option-selected match on
         # re-render, and a padded date breaks date.fromisoformat in the
         # deadline compute. A blank required field or an out-of-list choice
-        # never lands in the store; valid siblings still save.
+        # never lands in the store; valid siblings still save. A blank
+        # optional field stores None, which clears the answer.
         valid = {
-            qid: submitted[qid].strip()
+            qid: submitted[qid].strip() or None
             for qid in submitted
             if qid not in errors
         }
         if valid:
-            store.update(valid)
+            variable_answer_set_many(
+                identity=request.identity, values=valid, reviewed=True
+            )
         if errors:
             # Soft-gate: re-render in place (no PRG) with inline errors so the
             # litigant can fix and resubmit. Render from the stored answers
             # (not the raw submission), so a rejected value can't leak into the
             # summary while the form flags it. Other sections still render —
             # not a forward-only wizard.
-            return _render_topic_flow(request, corpus, store.all(), errors)
+            return _render_topic_flow(
+                request, corpus, topic_flow_answers(request, corpus), errors
+            )
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.
@@ -113,7 +121,9 @@ def topic_flow(request, court, topic, role):
             url = f"{url}#{anchor}"
         return redirect(url)
 
-    return _render_topic_flow(request, corpus, store.all())
+    return _render_topic_flow(
+        request, corpus, topic_flow_answers(request, corpus)
+    )
 
 
 def _render_topic_flow(request, corpus, answers, errors=None):

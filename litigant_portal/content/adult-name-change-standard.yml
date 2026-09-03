@@ -53,7 +53,7 @@ deadlines:
   - id: publication_wait
     label: '30-day publication waiting period ends'
     offset_days: 30
-    offset_from: publication_date
+    offset_from: name_change_publication_date
     description: 'Under North Dakota law the judge may not consider your petition until 30 days after the notice is published. After this date, check with the clerk about judge review.'
 
 resources:
@@ -128,14 +128,14 @@ sections:
       File in the district court for the county where you have lived for the past 6 months. Your driver's license, lease, or a utility bill usually shows this. The court locator link in the contacts at the end of this page can also help.
 
   - kind: fact_gather
-    # Pruned to the one fact the page actually uses (#621): publication_date
+    # Pruned to the one fact the page actually uses (#621): name_change_publication_date
     # drives the 30-day deadline and its calendar export. The name/county
     # fields only echoed back in the summary, so they come back when
     # docassemble prefill (#531) can reuse them downstream.
     id: publication_details
     heading: 'Your publication date'
     questions:
-      - id: publication_date
+      - id: name_change_publication_date
         label: 'Date your notice was published'
         type: date
         help_text: 'Leave blank until your notice runs in the newspaper. Then enter it here and your deadline updates. Found on the affidavit of publication from the paper.'

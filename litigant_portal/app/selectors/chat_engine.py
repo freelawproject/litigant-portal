@@ -1,3 +1,6 @@
+import json
+import re
+
 from django.db.models import OuterRef, QuerySet, Subquery, Sum
 
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
@@ -119,6 +122,9 @@ def chat_thread_export_markdown(*, thread: ChatThread) -> str:
     """Human-readable audit transcript of every message row."""
     export = chat_thread_export_data(thread=thread)
     messages = export["messages"]
+    artifacts_by_id = {
+        artifact["id"]: artifact for artifact in export["prompt_artifacts"]
+    }
     lines = [
         f"# Chat transcript {export['thread_id']}",
         "",
@@ -130,6 +136,7 @@ def chat_thread_export_markdown(*, thread: ChatThread) -> str:
         lines.append(f"- Deployed SHA: {_sha_label(messages[0]['git_sha'])}")
 
     previous_sha = messages[0]["git_sha"] if messages else None
+    active_prompt_artifact_id = None
     for msg in messages:
         if msg["git_sha"] != previous_sha:
             lines += [
@@ -137,6 +144,16 @@ def chat_thread_export_markdown(*, thread: ChatThread) -> str:
                 f"**Deployed SHA changed to {_sha_label(msg['git_sha'])}**",
             ]
             previous_sha = msg["git_sha"]
+        prompt_artifact_id = msg["prompt_artifact_id"]
+        if (
+            prompt_artifact_id is not None
+            and prompt_artifact_id != active_prompt_artifact_id
+        ):
+            lines.append("")
+            lines.extend(
+                _prompt_artifact_lines(artifacts_by_id[prompt_artifact_id])
+            )
+            active_prompt_artifact_id = prompt_artifact_id
         lines.append("")
         lines.extend(_message_lines(msg))
     return "\n".join(lines) + "\n"
@@ -145,6 +162,34 @@ def chat_thread_export_markdown(*, thread: ChatThread) -> str:
 def _sha_label(git_sha: str) -> str:
     """A blank git_sha means the message predates this feature (#801)."""
     return git_sha or "unknown"
+
+
+def _prompt_artifact_lines(artifact: dict) -> list[str]:
+    tool_schemas = json.dumps(
+        artifact["tool_schemas"], indent=2, ensure_ascii=False
+    )
+    return [
+        "## Prompt artifact",
+        "",
+        f"- ID: `{artifact['id']}`",
+        f"- Content hash: `{artifact['content_hash']}`",
+        "",
+        "### System prompt",
+        "",
+        *_fenced_block(artifact["system_prompt"], language="text"),
+        "",
+        "### Tool schemas",
+        "",
+        *_fenced_block(tool_schemas, language="json"),
+    ]
+
+
+def _fenced_block(content: str, *, language: str) -> list[str]:
+    longest_run = max(
+        (len(run) for run in re.findall(r"`+", content)), default=0
+    )
+    fence = "`" * max(3, longest_run + 1)
+    return [f"{fence}{language}", content, fence]
 
 
 def _message_lines(msg: dict) -> list[str]:

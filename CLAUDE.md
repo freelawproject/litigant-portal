@@ -27,7 +27,7 @@ The chat model is chosen in the admin settings UI (`BedrockModel` enum), default
 
 **`make lint`, `make test`, `make pre-commit`** — sandbox restrictions prevent Claude from running these Docker- and Postgres-backed targets. Mitch runs the full lint/test workflow as part of his own process. A single post-commit mention is plenty; don't re-prompt about it across the commit/PR steps.
 
-**DB-free fast tests** — when `.tox/fast` already exists, Claude can run a focused test directly with `.tox/fast/bin/pytest <path>`. Use that suite for a real RED→GREEN cycle on non-DB units: write the focused test, run it and confirm that it fails for the expected reason, implement the change, then rerun it to green. Tests marked `postgres` require `make test` and Docker. The fast marker filter is not a complete database-isolation boundary: unmarked tests may still use Django's database, so run only focused tests already known to be DB-free through this path.
+**DB-free fast tests** — when `.tox/fast` exists _and_ is current, Claude can run a focused test directly with `.tox/fast/bin/pytest <path>`. **Existence is not enough:** the env is built from `uv.lock`, and a stale one fails at import (`ModuleNotFoundError`) rather than reporting a test failure. After any dependency change, `tox -e fast --recreate`. Use that suite for a real RED→GREEN cycle on non-DB units: write the focused test, run it and confirm that it fails for the expected reason, implement the change, then rerun it to green. Tests marked `postgres` require `make test` and Docker. The fast marker filter is not a complete database-isolation boundary: unmarked tests may still use Django's database, so run only focused tests already known to be DB-free through this path.
 
 ### Local Development (Docker)
 
@@ -36,7 +36,10 @@ cp .env.example .env        # Add your AWS_BEARER_TOKEN_BEDROCK
 make docker                 # Start dev environment
 make docker-bash           # Shell into container
 make docker-down            # Stop containers
+make docker-up-build        # Rebuild the image, then start — after a dependency change
 ```
+
+**`make docker-down` does not rebuild.** It stops containers; the next `make docker` reuses the same image. When `uv.lock` or `pyproject.toml` has moved (a pull, a branch switch), use `make docker-up-build` — the Dockerfile installs dependencies in an early layer keyed on those two files, so nothing picks up a lockfile change without it. Symptom of skipping it is the same `ModuleNotFoundError` the stale tox env gives. `make docker-clean` is **not** the fix — it drops volumes and takes the Postgres data with them.
 
 **Dev URL:** `http://localhost` (or `http://portal.localhost`). Caddy runs on port 80 — **not** `:8000`. The `:8000` is the container-internal gunicorn/runserver port that Caddy proxies to (see `docker/caddy/Caddyfile`).
 
@@ -76,13 +79,35 @@ No auto-formatter for `.html` templates — djlint runs lint-only. **Load the gl
 
 ## Content style (user-facing copy)
 
-Rules for authoring user-facing content — corpus YAML (`litigant_portal/corpus/`), UI strings, and prompt layers that shape chat output:
+Rules for authoring user-facing content — corpus YAML, UI strings, and prompt layers that shape chat output.
+
+**There are currently two corpus trees, and both are live.** Know which one you are editing:
+
+| Tree                            | Read by                                  | Serves                                                                        |
+| ------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------- |
+| `litigant_portal/content/*.yml` | `app/topic_flow/registry.py`             | **The live public flow pages.** Flat, one file per `(court, topic, role)`     |
+| `litigant_portal/corpus/`       | `app/selectors/corpus.py`, `sync_corpus` | Database rows. Court-scoped tree plus a shared variable glossary and `forms/` |
+
+Both are hand-maintained and each is validated at startup by its own Django system check (`apps.py` registers `checks.corpus` and `topic_flow.checks`). Editing one does not update the other — a change to `corpus/` alone will not alter what the public page renders, and the failure is silent. Which tree retires, and when, is an open decision under #179.
+
+The rules below apply to whichever tree you are authoring in:
 
 - **No em-dashes.** Use a period, comma, colon, or parentheses instead. Em-dash-heavy prose reads as AI-generated and undermines user trust (legal review, #620). Dev-facing text (code comments, docs, commit messages) is exempt.
 - **Corpus info bodies: one line per paragraph.** The renderer pipes `body` through Django's `linebreaks`, so every newline becomes a `<br>` — hard-wrapped prose breaks mid-sentence on the page. Separate paragraphs with blank lines; never wrap a paragraph across source lines.
 - **Dash-prefixed lines** (`- item`) render as visual line-broken lists (not semantic `<ul>`) until #518 adds rich text to info bodies. Links in body prose are not supported yet (#518) — route them through the corpus `resources`/`contacts` sections instead.
 - **Never label resources or forms "official."** Courts reserve "official" for institutionally designated things — ND's own site uses it only for official county newspapers, the official record of the Court, and to disclaim that Self Help Center forms "aren't official court forms" (#646). Attribute instead of anointing: say whose page or form it is ("the North Dakota Legal Self Help Center's name-change page").
 - **Solve directly; escalate to legal aid sparingly.** LP's job is to answer the litigant's question and resolve their issue directly wherever it can (explain the process, the deadlines, how a step works, what to bring). Route to legal aid only when (a) we genuinely can't help — a case-specific legal _judgment_, the UPL boundary ("will this defense win for me") — or (b) the issue is serious enough to require it (illegal lockout, imminent set-out, safety). Don't tell users to "get a lawyer" or "call an attorney": whether legal aid then brings in an attorney is _their_ call, not ours. Our audience is self-represented on a phone precisely because an attorney isn't within reach, so a reflexive "see a lawyer" tells them the tool can't help them (#611).
+
+## Review requests and CODEOWNERS
+
+CODEOWNERS puts **every** owner on **every** PR, but the ruleset requires only **one** approval to land. So a PR showing several pending reviewers is the normal state, not drift.
+
+**Don't flag an unassigned PR for having outstanding reviewers.** Flag it only when:
+
+- Mitch is in the PR's **`assignees`** field — check `assignees`, _not_ `reviewRequests`. CODEOWNERS fills `reviewRequests` on every PR, so it carries no signal; `assignees` means the PR is his to move. Or
+- it has been **waiting on Mitch for more than a day** — his review is the one outstanding and nothing else is blocking it
+
+Everything else is noise. This applies to the morning briefing, board audits, and any PR sweep.
 
 ## Issue creation
 
@@ -175,7 +200,7 @@ The compact rules (board mechanics live at the org level; sizing history, anchor
 
 **Permissions.** Admin access is the `app.manage_site` and `app.manage_developers` permissions, carried by the `Admins` and `Developers` groups (provisioned by a `post_migrate` receiver in `signals.py`). Check them with `request.user.has_perm(...)` in views and `{% if perms.app.manage_site %}` in templates — don't wrap either in a selector. Page views use Django's `@permission_required(..., raise_exception=True)`; the JSON API keeps its own `manage_site_required` / `manage_developers_required` decorators, because the built-in renders an HTML 403 where those endpoints must return a JSON body. These are deliberately separate from the auto-generated `add/change/delete/view` permissions that gate Django admin. Full reference: [`docs/wiki/permissions.md`](docs/wiki/permissions.md).
 
-**`app/topic_flow/` is not a data-layer module.** It's the corpus engine (schema, registry, renderer, downloads) that reads YAML from `litigant_portal/content/`. The `topic_flow` entries under `models/`, `selectors/`, `services/`, and `views/` are the data layer for the `Topic` rows the corpus is attached to. Two different things sharing a name; always import both absolutely.
+**`app/topic_flow/` is not a data-layer module.** It's the corpus engine (schema, registry, renderer, downloads) that reads YAML from `litigant_portal/content/` — the tree that renders the public pages, not the `litigant_portal/corpus/` tree that syncs to the database (see Content style above). The `topic_flow` entries under `models/`, `selectors/`, `services/`, and `views/` are the data layer for the `Topic` rows the corpus is attached to. Two different things sharing a name; always import both absolutely.
 
 **By surface** — views, templates, JS, and the URL pattern lists:
 
@@ -295,6 +320,8 @@ Using Alpine.js **CSP build** (`@alpinejs/csp` v3.14.9). Local files, no CDN. Th
 ```
 
 ## AI Chat Feature
+
+**There is one chat.** Don't say "v1" or "v2" — the prompt-backed chat is gone and the model-backed one is simply _chat_. Some older issue titles still carry "v2 chat" (#668, #715, #755–#762); that's historical naming, not a live distinction.
 
 The portal runs on a general-purpose chat engine (threads, streaming, tool-calling loop, uploads) with all domain behavior packaged as agents. Agent authoring guide: [docs/ai-tooling/AGENT_DEV_GUIDE.md](docs/ai-tooling/AGENT_DEV_GUIDE.md) · uploads: [docs/ai-tooling/UPLOAD_SYSTEM.md](docs/ai-tooling/UPLOAD_SYSTEM.md).
 

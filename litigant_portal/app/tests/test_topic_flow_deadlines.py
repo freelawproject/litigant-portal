@@ -19,7 +19,7 @@ from litigant_portal.app.topic_flow.deadlines import (
 from litigant_portal.app.topic_flow.schema import Deadline
 
 
-def _deadline(offset_days=30, offset_from="publication_date"):
+def _deadline(offset_days=30, offset_from="name_change_publication_date"):
     return Deadline(
         id="d1", label="L", offset_days=offset_days, offset_from=offset_from
     )
@@ -28,20 +28,22 @@ def _deadline(offset_days=30, offset_from="publication_date"):
 def test_adds_offset_days_to_the_gathered_date():
     # The core contract: gathered date + offset_days = the computed deadline.
     result = compute_deadline(
-        _deadline(30), {"publication_date": "2026-01-01"}
+        _deadline(30), {"name_change_publication_date": "2026-01-01"}
     )
     assert result == date(2026, 1, 31)
 
 
 def test_zero_offset_returns_the_gathered_date_itself():
-    result = compute_deadline(_deadline(0), {"publication_date": "2026-01-01"})
+    result = compute_deadline(
+        _deadline(0), {"name_change_publication_date": "2026-01-01"}
+    )
     assert result == date(2026, 1, 1)
 
 
 def test_negative_offset_returns_an_earlier_date():
     # offset_days can point backward (e.g. "respond N days *before* the hearing").
     result = compute_deadline(
-        _deadline(-10), {"publication_date": "2026-01-01"}
+        _deadline(-10), {"name_change_publication_date": "2026-01-01"}
     )
     assert result == date(2025, 12, 22)
 
@@ -53,13 +55,18 @@ def test_absent_answer_returns_none():
 
 def test_empty_string_answer_returns_none():
     # A rendered-but-blank date field submits "" — still "no date yet".
-    assert compute_deadline(_deadline(), {"publication_date": ""}) is None
+    assert (
+        compute_deadline(_deadline(), {"name_change_publication_date": ""})
+        is None
+    )
 
 
 def test_unparseable_date_returns_none_without_raising():
     # Defensive: never let a malformed value 500 the page.
     assert (
-        compute_deadline(_deadline(), {"publication_date": "not-a-date"})
+        compute_deadline(
+            _deadline(), {"name_change_publication_date": "not-a-date"}
+        )
         is None
     )
 
@@ -76,7 +83,7 @@ def _named_deadline(id, label, offset_days=30, description=None):
         id=id,
         label=label,
         offset_days=offset_days,
-        offset_from="publication_date",
+        offset_from="name_change_publication_date",
         description=description,
     )
 
@@ -94,7 +101,7 @@ def test_resolve_computes_each_referenced_deadlines_date():
     (resolved,) = resolve_ics_deadlines(
         _section("pub_wait"),
         _corpus(deadline),
-        {"publication_date": "2026-02-01"},
+        {"name_change_publication_date": "2026-02-01"},
     )
     assert resolved["id"] == "pub_wait"
     assert resolved["label"] == "Publication wait"
