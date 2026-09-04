@@ -76,14 +76,16 @@ class AttachmentHydrationTests(TestCase):
             for i, uploads in enumerate(uploads_per_message)
         ]
 
-    def test_text_file_inlines_as_document_part(self):
+    def test_text_file_inlines_as_labeled_text_part(self):
         upload = self._upload("notes.txt", "text/plain", b"secret: BANANA-42")
         history = self._history([upload])
         hydrated = user_upload_llm_parts(history=history, cache={})
         parts = hydrated[0]
         self.assertEqual(parts[0], {"type": "text", "text": "message 0"})
-        self.assertEqual(parts[1]["type"], "file")
-        self.assertEqual(parts[1]["file"]["filename"], "notes.txt")
+        self.assertEqual(parts[1]["type"], "text")
+        self.assertIn('Attached file "notes.txt"', parts[1]["text"])
+        self.assertIn(str(upload.id), parts[1]["text"])
+        self.assertIn("secret: BANANA-42", parts[1]["text"])
 
     def test_image_inlines_as_image_part(self):
         upload = self._upload("photo.png", "image/png", b"\x89PNGfake")
@@ -192,8 +194,6 @@ class AttachmentHydrationTests(TestCase):
             self.assertEqual(hydrated[i][1]["type"], "file")
 
     def test_text_files_consume_document_slots(self):
-        # Text files are document blocks like any other doc: four PDFs
-        # exhaust the doc budget and age out the older text file.
         text = self._upload("notes.txt", "text/plain", b"the facts")
         pdfs = [
             self._upload(f"doc{i}.pdf", "application/pdf", make_pdf())

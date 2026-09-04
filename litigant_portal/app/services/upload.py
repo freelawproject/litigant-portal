@@ -267,19 +267,35 @@ def _file_part(upload: UserUpload, data: bytes) -> dict[str, Any]:
     }
 
 
+def _text_part(upload: UserUpload, data: bytes) -> dict[str, Any]:
+    """Text files ship as labeled plain text, not document blocks: the
+    model misattributes text/* file_data content to the user's own typing
+    and denies an attachment exists (both inline and via query_document)."""
+    return {
+        "type": "text",
+        "text": (
+            f'[Attached file "{upload.name}" ({upload.content_type}, '
+            f"upload_id={upload.id})]\n"
+            f"{_extract_text(upload.content_type, data) or ''}"
+        ),
+    }
+
+
 def user_upload_content_part(
     *, upload: UserUpload, data: bytes
 ) -> dict[str, Any] | None:
     """One llm content part, or None if the type has no native block.
 
-    Images ship as image parts; every document type ships as a native
-    Bedrock document block.
+    Images ship as image parts, text files as labeled text parts, and the
+    remaining document types as native Bedrock document blocks.
     """
     if _file_kind(upload.content_type) == "image":
         return {
             "type": "image_url",
             "image_url": {"url": _data_url(upload.content_type, data)},
         }
+    if upload.content_type in TEXT_TYPES:
+        return _text_part(upload, data)
     if upload.content_type in BEDROCK_DOC_TYPES:
         return _file_part(upload, data)
     return None

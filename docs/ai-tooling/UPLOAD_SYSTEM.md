@@ -49,11 +49,16 @@ fully inline or fully behind the tool.
 litellm content parts (`user_upload_content_part`):
 
 - **Images** → `image_url` data URLs.
-- **PDFs, office, and text files** → native Bedrock document blocks
+- **PDFs and office files** → native Bedrock document blocks
   (`BEDROCK_DOC_TYPES`) as `file` parts. Bedrock parses the document itself —
-  hydration never extracts text. (`_extract_text` — mammoth for docx,
-  openpyxl for xlsx — survives only to compute `text_chars` metadata and the
-  reader token gate.)
+  hydration never extracts text from them. (`_extract_text` — mammoth for
+  docx, openpyxl for xlsx — otherwise survives only to compute `text_chars`
+  metadata and the reader token gate.)
+- **Text files** (`TEXT_TYPES`) → one labeled text part (`_text_part`:
+  name + upload_id header, then the decoded content). They can't ride as
+  document blocks: models misattribute text/\* `file_data` content to the
+  user's own typing and deny an attachment exists — both inline and through
+  `query_document`.
 - File bytes are read once per stream request via a request-lifetime cache.
 
 Inlining is subject to **per-request budgets**: 4 documents, 8 images, 16 MB
