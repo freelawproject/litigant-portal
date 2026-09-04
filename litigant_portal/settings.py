@@ -259,9 +259,15 @@ ACCOUNT_LOGOUT_ON_GET = False  # Require POST for CSRF protection
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
-# Email backend (console for dev, configure SMTP for production)
-if DEBUG:
-    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+# Email (console mailer for dev, configure SMTP for production)
+MAILERS = {
+    "default": (
+        {"BACKEND": "django.core.mail.backends.console.EmailBackend"}
+        if DEBUG
+        # SMTP backend by default; host matches the old EMAIL_HOST default.
+        else {"OPTIONS": {"host": "localhost"}}
+    ),
+}
 
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/
