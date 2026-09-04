@@ -18,7 +18,6 @@ from litigant_portal.agents.tools.load_topic_flow import (
 from litigant_portal.app.models import (
     ChatThread,
     Form,
-    Site,
     Topic,
     TopicFlow,
     TopicFlowDeadline,
@@ -35,6 +34,7 @@ from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
     topic_flow_list,
 )
+from litigant_portal.app.services.site import site_update
 
 
 def _eviction_flow() -> TopicFlow:
@@ -240,13 +240,14 @@ class AssistantSystemPromptTests(TestCase):
         self.assertNotIn("Guided topic flows", prompt)
 
     def test_court_context_from_site_config(self):
-        site = Site.objects.get()
-        site.court_name = "Alpha District Court"
-        site.jurisdiction_level = "state"
-        site.state = "ND"
-        site.official_url = "https://alpha.test"
-        site.official_resources_url = "https://alpha.test/help"
-        site.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(
+                court_name="Alpha District Court",
+                jurisdiction_level="state",
+                state="ND",
+                official_url="https://alpha.test",
+                official_resources_url="https://alpha.test/help",
+            )
         prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
         self.assertIn("## Court context", prompt)
         self.assertIn("You are operating in Alpha District Court.", prompt)
@@ -258,9 +259,8 @@ class AssistantSystemPromptTests(TestCase):
         )
 
     def test_court_context_omits_blank_fields(self):
-        site = Site.objects.get()
-        site.court_name = "Alpha District Court"
-        site.save()
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(court_name="Alpha District Court")
         prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
         self.assertIn("You are operating in Alpha District Court.", prompt)
         self.assertNotIn("Jurisdiction level", prompt)
