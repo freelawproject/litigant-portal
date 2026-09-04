@@ -13,10 +13,10 @@
 #   docker compose -f deploy/qa-do/docker-compose.qa.yml \
 #     --env-file /opt/litigant-portal/.env up -d --no-build
 #
-# The box .env must provide: SECRET_KEY, POSTGRES_PASSWORD, OPENAI_API_KEY,
+# The box .env must provide: SECRET_KEY, POSTGRES_PASSWORD, AWS_BEARER_TOKEN_BEDROCK,
 # DOMAIN (scheme-prefixed, e.g. https://qa.litigantportal.com), DA_HOSTNAME
-# (BARE host, e.g. qa.litigantportal.com), ALLOWED_HOSTS, SITE_PASSWORD,
-# CHAT_MODEL. (Box checks #1/#2 confirmed present — Mitch, 2026-07-13.)
+# (BARE host, e.g. qa.litigantportal.com), ALLOWED_HOSTS, SITE_PASSWORD.
+# (Box checks #1/#2 confirmed present — Mitch, 2026-07-13.)
 
 # Pin the project name so it's stable regardless of which dir compose runs from.
 # It MUST match the box's currently-running stack, or `up` spins up a parallel
@@ -78,9 +78,7 @@ services:
       - GUNICORN_WORKERS=${GUNICORN_WORKERS:-3}
       - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
       - SITE_PASSWORD=${SITE_PASSWORD}
-      - CHAT_ENABLED=${CHAT_ENABLED:-true}
-      - CHAT_MODEL=${CHAT_MODEL:-openai/gpt-4o-mini}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK}
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health/']
       interval: 5s

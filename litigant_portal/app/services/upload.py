@@ -66,7 +66,6 @@ READER_MAX_TEXT_TOKENS = 150_000
 REQUEST_DOC_BUDGET = 4
 REQUEST_IMAGE_BUDGET = 8
 REQUEST_BYTE_BUDGET = 16 * 1024 * 1024
-REQUEST_TEXT_BUDGET = 120_000
 
 
 class UploadValidationError(Exception):
@@ -180,10 +179,6 @@ def _file_kind(content_type: str) -> str:
     return "other"
 
 
-def _is_bedrock(model: str) -> bool:
-    return model.startswith("bedrock/")
-
-
 def _is_small(upload: UserUpload) -> bool:
     """Apply small vs large thresholds by filetype."""
     if upload.size > INLINE_MAX_BYTES:
@@ -272,36 +267,38 @@ def _file_part(upload: UserUpload, data: bytes) -> dict[str, Any]:
     }
 
 
-def user_upload_content_part(
-    *, upload: UserUpload, data: bytes, model: str
-) -> dict[str, Any] | None:
-    """One llm content part, or None if the model can't consume the type.
+def _text_part(upload: UserUpload, data: bytes) -> dict[str, Any]:
+    """Text files ship as labeled plain text, not document blocks: the
+    model misattributes text/* file_data content to the user's own typing
+    and denies an attachment exists (both inline and via query_document)."""
+    return {
+        "type": "text",
+        "text": (
+            f'[Attached file "{upload.name}" ({upload.content_type}, '
+            f"upload_id={upload.id})]\n"
+            f"{_extract_text(upload.content_type, data) or ''}"
+        ),
+    }
 
-    Images and PDFs are native everywhere. Office and text files are
-    native document blocks on Bedrock and extracted text elsewhere.
+
+def user_upload_content_part(
+    *, upload: UserUpload, data: bytes
+) -> dict[str, Any] | None:
+    """One llm content part, or None if the type has no native block.
+
+    Images ship as image parts, text files as labeled text parts, and the
+    remaining document types as native Bedrock document blocks.
     """
-    kind = _file_kind(upload.content_type)
-    if kind == "image":
+    if _file_kind(upload.content_type) == "image":
         return {
             "type": "image_url",
             "image_url": {"url": _data_url(upload.content_type, data)},
         }
-    if kind == "pdf":
+    if upload.content_type in TEXT_TYPES:
+        return _text_part(upload, data)
+    if upload.content_type in BEDROCK_DOC_TYPES:
         return _file_part(upload, data)
-    if _is_bedrock(model) and upload.content_type in BEDROCK_DOC_TYPES:
-        return _file_part(upload, data)
-    if kind != "text":
-        return None
-    text = _extract_text(upload.content_type, data)
-    if text is None:
-        return None
-    return {
-        "type": "text",
-        "text": (
-            f'Attached file "{upload.name}" '
-            f"(upload_id={upload.id}):\n---\n{text}\n---"
-        ),
-    }
+    return None
 
 
 def _human_size(size: int) -> str:
@@ -350,7 +347,6 @@ def _hydrate_attachment(
     upload_id: str,
     uploads: dict[str, UserUpload],
     cache: dict,
-    model: str,
     budgets: dict[str, int],
 ) -> dict[str, Any]:
     """Inline one attachment as a content part, or degrade to a stub."""
@@ -373,11 +369,11 @@ def _hydrate_attachment(
         )
 
     part = user_upload_content_part(
-        upload=upload, data=_read_bytes(upload, cache), model=model
+        upload=upload, data=_read_bytes(upload, cache)
     )
     if part is None:
         return _attachment_stub(
-            upload, "this file type can't be read by the current model"
+            upload, "this file type can't be read by the assistant"
         )
 
     aged = _attachment_stub(
@@ -385,13 +381,6 @@ def _hydrate_attachment(
         "attached earlier and no longer inlined; "
         "use the query_document tool to re-read it",
     )
-    if part["type"] == "text":
-        charge = len(part["text"])
-        if charge > budgets["text"]:
-            return aged
-        budgets["text"] -= charge
-        return part
-
     slot = "images" if part["type"] == "image_url" else "docs"
     if budgets[slot] <= 0 or budgets["bytes"] < upload.size:
         return aged
@@ -401,7 +390,7 @@ def _hydrate_attachment(
 
 
 def user_upload_llm_parts(
-    *, history: list[dict[str, Any]], model: str, cache: dict
+    *, history: list[dict[str, Any]], cache: dict
 ) -> dict[int, list[dict[str, Any]]]:
     """Inject llm content parts for user messages that carry attachments."""
     ids = {
@@ -423,7 +412,6 @@ def user_upload_llm_parts(
         "docs": REQUEST_DOC_BUDGET,
         "images": REQUEST_IMAGE_BUDGET,
         "bytes": REQUEST_BYTE_BUDGET,
-        "text": REQUEST_TEXT_BUDGET,
     }
     hydrated: dict[int, list[dict[str, Any]]] = {}
     for i in reversed(range(len(history))):
@@ -433,9 +421,7 @@ def user_upload_llm_parts(
         parts = [{"type": "text", "text": msg.get("content", "")}]
         for upload_id in msg["attachments"]:
             parts.append(
-                _hydrate_attachment(
-                    str(upload_id), uploads, cache, model, budgets
-                )
+                _hydrate_attachment(str(upload_id), uploads, cache, budgets)
             )
         hydrated[i] = parts
     return hydrated

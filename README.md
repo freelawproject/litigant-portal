@@ -5,7 +5,7 @@ An access to justice portal that helps people navigate a legal case without an a
 ## Quick Start
 
 ```bash
-cp .env.example .env            # Add your OPENAI_API_KEY
+cp .env.example .env            # Add your AWS_BEARER_TOKEN_BEDROCK
 make docker                     # Start dev environment
 ```
 
@@ -51,8 +51,7 @@ Visit: http://localhost (Caddy serves on port 80).
 | `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves      |
 | `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                           |
 | `REDIS_URL`                                                                               | Redis connection URL                          |
-| `OPENAI_API_KEY` (or other provider key)                                                  | Chat provider credential                      |
-| `CHAT_MODEL`                                                                              | LiteLLM model id                              |
+| `AWS_BEARER_TOKEN_BEDROCK`                                                                | AWS Bedrock API key                           |
 
 ## Contributing
 

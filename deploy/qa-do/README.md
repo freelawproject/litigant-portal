@@ -25,8 +25,8 @@ and rolls it out on the box over SSH, then health-checks `/api/health/`.
 - **Secrets:** `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`, `QA_HOST`, `QA_USER`,
   `QA_SSH_KEY` (all already in the repo).
 - **Box `.env`** at `/opt/litigant-portal/.env` provides app config
-  (`SECRET_KEY`, `POSTGRES_PASSWORD`, `OPENAI_API_KEY`, `DOMAIN`, `DA_HOSTNAME`,
-  `ALLOWED_HOSTS`, `SITE_PASSWORD`, `CHAT_MODEL`).
+  (`SECRET_KEY`, `POSTGRES_PASSWORD`, `AWS_BEARER_TOKEN_BEDROCK`, `DOMAIN`, `DA_HOSTNAME`,
+  `ALLOWED_HOSTS`, `SITE_PASSWORD`).
 - **Postgres:** a standalone containerized pgvector instance with its own
   docker-managed volume, seeded by the `web-prod` entrypoint's `migrate` on boot.
   It is **not** shared with AWS — the box's `POSTGRES_PASSWORD` is its own

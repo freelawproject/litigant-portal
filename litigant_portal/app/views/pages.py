@@ -13,11 +13,11 @@ from django.views.generic import DetailView, UpdateView
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
 from litigant_portal.app.models.choices import (
+    DEFAULT_BEDROCK_MODEL,
+    DEFAULT_FAST_BEDROCK_MODEL,
     BedrockModel,
     JurisdictionLevel,
-    OpenAIModel,
     State,
-    get_default_model,
 )
 from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
@@ -210,22 +210,16 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
 @permission_required("app.manage_site", raise_exception=True)
 def admin(request: HttpRequest) -> HttpResponse:
     """Admin dashboard shell."""
-    openai_available = bool(os.environ.get("OPENAI_API_KEY"))
-    bedrock_available = bool(os.environ.get("AWS_BEARER_TOKEN_BEDROCK"))
-    model_choice_groups = []
-    if openai_available:
-        model_choice_groups.append(("OpenAI", OpenAIModel.choices))
-    if bedrock_available or not openai_available:
-        model_choice_groups.append(("AWS Bedrock", BedrockModel.choices))
-    all_model_labels = dict(OpenAIModel.choices) | dict(BedrockModel.choices)
     return render(
         request,
         "pages/admin/index.html",
         {
-            "openai_available": openai_available,
-            "bedrock_available": bedrock_available,
-            "model_choice_groups": model_choice_groups,
-            "default_model_label": all_model_labels[get_default_model()],
+            "bedrock_available": bool(
+                os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
+            ),
+            "model_choices": BedrockModel.choices,
+            "default_model_label": DEFAULT_BEDROCK_MODEL.label,
+            "default_fast_model_label": DEFAULT_FAST_BEDROCK_MODEL.label,
             "jurisdiction_choices": JurisdictionLevel.choices,
             "state_choices": State.choices,
         },
