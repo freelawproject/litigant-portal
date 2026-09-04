@@ -16,6 +16,8 @@ class BedrockModel(models.TextChoices):
 
 
 DEFAULT_BEDROCK_MODEL = BedrockModel.GPT_5_6_LUNA
+# The fast role defaults to the cheapest model, as get_default_model did.
+DEFAULT_FAST_BEDROCK_MODEL = BedrockModel.CLAUDE_HAIKU_4_5
 
 
 class JurisdictionLevel(models.TextChoices):

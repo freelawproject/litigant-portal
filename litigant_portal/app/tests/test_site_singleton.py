@@ -17,6 +17,7 @@ from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import Site, Topic
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
+    DEFAULT_FAST_BEDROCK_MODEL,
     BedrockModel,
 )
 from litigant_portal.app.models.site import SITE_ID
@@ -84,6 +85,13 @@ class SiteCacheTests(TestCase):
             site_update(assistant_model="")
         self.assertEqual(
             site_get_model(role="assistant"), DEFAULT_BEDROCK_MODEL
+        )
+
+    def test_site_get_model_fast_role_falls_back_to_the_cheap_default(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(fast_model="")
+        self.assertEqual(
+            site_get_model(role="fast"), DEFAULT_FAST_BEDROCK_MODEL
         )
 
     def test_site_get_model_prefers_the_configured_model(self):

@@ -92,7 +92,7 @@
               x-bind:value="siteFastModel"
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
-        <option value="">{% blocktrans %}Default ({{ default_model_label }}){% endblocktrans %}</option>
+        <option value="">{% blocktrans %}Default ({{ default_fast_model_label }}){% endblocktrans %}</option>
         {% for value, label in model_choices %}
           <option value="{{ value }}">{{ label }}</option>
         {% endfor %}

@@ -14,6 +14,7 @@ from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
+    DEFAULT_FAST_BEDROCK_MODEL,
     BedrockModel,
     JurisdictionLevel,
     State,
@@ -218,6 +219,7 @@ def admin(request: HttpRequest) -> HttpResponse:
             ),
             "model_choices": BedrockModel.choices,
             "default_model_label": DEFAULT_BEDROCK_MODEL.label,
+            "default_fast_model_label": DEFAULT_FAST_BEDROCK_MODEL.label,
             "jurisdiction_choices": JurisdictionLevel.choices,
             "state_choices": State.choices,
         },
