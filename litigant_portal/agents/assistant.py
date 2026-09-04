@@ -13,6 +13,16 @@ files appear directly in the conversation. A note reading [Attached file \
 tool with its upload_id to read or query it. Never guess at the contents \
 of a file you haven't seen."""
 
+COURT_PROMPT = """\
+## Court context
+
+{context}"""
+
+MULTI_COURT_CONTEXT = """\
+This portal is running in multi-court mode: the guided topic flows may \
+belong to different courts. Confirm which court and state the user's case \
+is in before relying on court-specific details."""
+
 TOPIC_FLOWS_PROMPT = """\
 ## Guided topic flows
 
@@ -26,10 +36,28 @@ flow is active. Available flows:
 
 {flows}"""
 
-PROMPT_TEMPLATE = """\
-{base}
 
-{topic_flows}"""
+def generate_court_prompt() -> str:
+    """The court-context section. A blank court name means the site
+    wasn't synced to one court, so the flows may span several."""
+    from litigant_portal.app.selectors.site import site_get
+
+    site = site_get()
+    if not site.court_name:
+        return COURT_PROMPT.format(context=MULTI_COURT_CONTEXT)
+    lines = [f"You are operating in {site.court_name}."]
+    if site.jurisdiction_level:
+        level = site.get_jurisdiction_level_display()
+        lines.append(f"- Jurisdiction level: {level}")
+    if site.state:
+        lines.append(f"- State: {site.get_state_display()}")
+    if site.official_url:
+        lines.append(f"- Court website: {site.official_url}")
+    if site.official_resources_url:
+        lines.append(
+            f"- Court self-help resources: {site.official_resources_url}"
+        )
+    return COURT_PROMPT.format(context="\n".join(lines))
 
 
 def generate_topic_flows_prompt() -> str:
@@ -84,7 +112,7 @@ class LitigantAssistant(Agent):
         chat_thread_state_merge(thread_id=thread_id, updates=clear_if_stale)
 
     def generate_system_prompt(self, *, thread_id) -> str:
-        """Each prompt piece injected into PROMPT_TEMPLATE.
+        """The non-empty prompt sections, blank-line separated.
 
         The active topic flow is deliberately absent: the model learns it
         from the LoadTopicFlow result in history, which only works while
@@ -92,7 +120,12 @@ class LitigantAssistant(Agent):
         we'll need to account for the active topic flow data being dropped from
         history.
         """
-        return PROMPT_TEMPLATE.format(
-            base=BASE_PROMPT,
-            topic_flows=generate_topic_flows_prompt(),
-        ).strip()
+        return "\n\n".join(
+            section
+            for section in (
+                BASE_PROMPT,
+                generate_court_prompt(),
+                generate_topic_flows_prompt(),
+            )
+            if section
+        )

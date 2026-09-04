@@ -34,6 +34,7 @@ from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
     topic_flow_list,
 )
+from litigant_portal.app.services.site import site_update
 
 
 def _eviction_flow() -> TopicFlow:
@@ -237,6 +238,41 @@ class AssistantSystemPromptTests(TestCase):
     def test_no_flow_section_when_no_flows_exist(self):
         prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
         self.assertNotIn("Guided topic flows", prompt)
+
+    def test_court_context_from_site_config(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(
+                court_name="Alpha District Court",
+                jurisdiction_level="state",
+                state="ND",
+                official_url="https://alpha.test",
+                official_resources_url="https://alpha.test/help",
+            )
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertIn("## Court context", prompt)
+        self.assertIn("You are operating in Alpha District Court.", prompt)
+        self.assertIn("- Jurisdiction level: State", prompt)
+        self.assertIn("- State: North Dakota", prompt)
+        self.assertIn("- Court website: https://alpha.test", prompt)
+        self.assertIn(
+            "- Court self-help resources: https://alpha.test/help", prompt
+        )
+
+    def test_court_context_omits_blank_fields(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(court_name="Alpha District Court")
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertIn("You are operating in Alpha District Court.", prompt)
+        self.assertNotIn("Jurisdiction level", prompt)
+        self.assertNotIn("- State:", prompt)
+        self.assertNotIn("Court website", prompt)
+        self.assertNotIn("self-help resources", prompt)
+
+    def test_blank_court_name_means_multi_court_mode(self):
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertIn("## Court context", prompt)
+        self.assertIn("multi-court mode", prompt)
+        self.assertNotIn("You are operating in", prompt)
 
     def test_prompt_ignores_the_active_flow(self):
         # The prompt depends only on the enabled-flow list, never on

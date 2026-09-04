@@ -13,7 +13,8 @@ class Command(BaseCommand):
             help="Court slug to deploy: its topics, flows, and site config. "
             "Defaults to the CORPUS_COURT setting. With neither set, every "
             "court's topics, flows, contacts, and resources sync, and "
-            "the site's court fields are left alone.",
+            "the site's court fields are left alone. A blank court name "
+            "is treated as multi-court mode.",
         )
         parser.add_argument(
             "--strict",
