@@ -50,3 +50,6 @@ jobs:
 
       - name: Run tox targets for ${{ matrix.python-version }}
         run: tox run -f py$(echo ${{ matrix.python-version }} | tr -d .)
+
+      - name: Test agent without Django
+        run: tox run -e agent

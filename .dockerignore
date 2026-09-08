@@ -10,6 +10,7 @@
 
 # Application code
 !litigant_portal/
+!lp_agent/
 
 # Docker files
 !docker/

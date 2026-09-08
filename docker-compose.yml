@@ -47,6 +47,7 @@ services:
       - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD}
     volumes:
       - ./litigant_portal:/app/litigant_portal
+      - ./lp_agent:/app/lp_agent
     stdin_open: true
     tty: true
     depends_on:

@@ -43,6 +43,7 @@ RUN TAILWIND_VERSION=${TAILWIND_VERSION} \
 # Stage 4: Application code
 # -----------------------------------------------------------------------------
 COPY litigant_portal litigant_portal
+COPY lp_agent lp_agent
 
 RUN /tmp/tailwindcss \
     -i /app/litigant_portal/app/src/main.css \

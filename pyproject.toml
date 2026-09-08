@@ -89,7 +89,7 @@ test = [
 manage = "litigant_portal.manage:main"
 
 [tool.setuptools.packages.find]
-include = [ "litigant_portal*" ]
+include = [ "litigant_portal*", "lp_agent*" ]
 
 
 [tool.setuptools.package-data]
@@ -104,6 +104,11 @@ litigant_portal = [
   "corpus/**/*.pdf",
   "prompts/**/*.json",
   "prompts/**/*.md",
+]
+lp_agent = [
+  "py.typed",
+  "README.md",
+  "pytest.ini"
 ]
 
 [tool.ruff]
@@ -150,7 +155,7 @@ DJANGO_SETTINGS_MODULE = "litigant_portal.settings"
 python_files = ["tests.py", "test_*.py"]
 python_classes = ["*Tests"]
 pythonpath = ["."]
-testpaths = ["litigant_portal"]
+testpaths = ["litigant_portal", "lp_agent/tests"]
 addopts = "-ra --strict-markers"
 markers = [
     "postgres: test requires a PostgreSQL database",
