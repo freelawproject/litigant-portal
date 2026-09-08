@@ -13,7 +13,6 @@ from litigant_portal.app.models import Site, Topic
 from litigant_portal.app.models.choices import (
     BedrockModel,
     JurisdictionLevel,
-    OpenAIModel,
     State,
 )
 from litigant_portal.app.selectors.site import site_get
@@ -85,11 +84,10 @@ def site_update_view(request: HttpRequest) -> JsonResponse:
             except ValidationError:
                 return JsonResponse({"error": _("Invalid URL")}, status=400)
         urls[field] = url
-    valid_models = set(OpenAIModel.values) | set(BedrockModel.values)
     ai_models = {}
     for field in ("fast_model", "assistant_model"):
         model = (request.POST.get(field) or "").strip()
-        if model and model not in valid_models:
+        if model and model not in BedrockModel.values:
             return JsonResponse({"error": _("Invalid model")}, status=400)
         ai_models[field] = model
     return JsonResponse(

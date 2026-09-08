@@ -59,7 +59,7 @@ class QueryDocument(Tool):
             )
 
         model = site_get_model(role="assistant")
-        part = user_upload_content_part(upload=upload, data=data, model=model)
+        part = user_upload_content_part(upload=upload, data=data)
         if part is None:
             return ToolOutput(
                 result=(

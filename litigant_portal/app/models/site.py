@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 
 from .base import BaseModel
-from .choices import AI_MODEL_CHOICES, JurisdictionLevel, State
+from .choices import BedrockModel, JurisdictionLevel, State
 
 SITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -23,13 +23,13 @@ class Site(BaseModel):
         max_length=128,
         blank=True,
         null=True,
-        choices=AI_MODEL_CHOICES,
+        choices=BedrockModel.choices,
     )
     assistant_model = models.CharField(
         max_length=128,
         blank=True,
         null=True,
-        choices=AI_MODEL_CHOICES,
+        choices=BedrockModel.choices,
     )
 
     class Meta:

@@ -42,8 +42,8 @@ dependencies = [
     "django-pydantic-field>=0.5.1",
     "gunicorn>=23.0",
     "heroicons>=2.0",
-    # AI Chat
-    "litellm>=1.50",
+    # AI Chat — 1.98 adds the bedrock_mantle/* model ids
+    "litellm>=1.98",
     "pydantic>=2.0",
     # Topic Flow corpus loading (litigant_portal/app/topic_flow)
     "pyyaml>=6.0",
