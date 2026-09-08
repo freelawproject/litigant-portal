@@ -242,14 +242,11 @@ def _messages_for_llm(
     system_prompt: str,
     history: list[dict[str, Any]],
     *,
-    model: str,
     attachment_cache: dict,
 ) -> list[dict[str, Any]]:
     """Prepend the (never-stored) system prompt and project to litellm shape,
     and inject attachment content parts or stubs."""
-    hydrated = user_upload_llm_parts(
-        history=history, model=model, cache=attachment_cache
-    )
+    hydrated = user_upload_llm_parts(history=history, cache=attachment_cache)
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt}
     ]
@@ -419,7 +416,6 @@ def chat_stream(
                     "messages": _messages_for_llm(
                         system_prompt,
                         history,
-                        model=model,
                         attachment_cache=attachment_cache,
                     ),
                     "stream": True,

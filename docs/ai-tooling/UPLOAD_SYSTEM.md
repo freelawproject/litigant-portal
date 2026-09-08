@@ -48,15 +48,21 @@ fully inline or fully behind the tool.
 `user_upload_llm_parts` maps each user message that carries attachments to
 litellm content parts (`user_upload_content_part`):
 
-- **Images** → `image_url` data URLs (native everywhere).
-- **PDFs** → `file` parts (native everywhere).
-- **Office / text files** → native document blocks on Bedrock
-  (`BEDROCK_DOC_TYPES`); extracted plain text elsewhere (`_extract_text`:
-  mammoth for docx, openpyxl for xlsx, utf-8 decode for text).
+- **Images** → `image_url` data URLs.
+- **PDFs and office files** → native Bedrock document blocks
+  (`BEDROCK_DOC_TYPES`) as `file` parts. Bedrock parses the document itself —
+  hydration never extracts text from them. (`_extract_text` — mammoth for
+  docx, openpyxl for xlsx — otherwise survives only to compute `text_chars`
+  metadata and the reader token gate.)
+- **Text files** (`TEXT_TYPES`) → one labeled text part (`_text_part`:
+  name + upload_id header, then the decoded content). They can't ride as
+  document blocks: models misattribute text/\* `file_data` content to the
+  user's own typing and deny an attachment exists — both inline and through
+  `query_document`.
 - File bytes are read once per stream request via a request-lifetime cache.
 
 Inlining is subject to **per-request budgets**: 4 documents, 8 images, 16 MB
-total bytes, 120k chars of extracted text.
+total bytes.
 
 ## 4. Large files: the reader subagent
 
@@ -88,7 +94,8 @@ the file, type, size, and `upload_id`, plus the reason:
 - **Aged out** — "attached earlier and no longer inlined; use the
   query_document tool to re-read it."
 - **Too large** — "too large to include inline; use the query_document tool."
-- **Unreadable type** — "this file type can't be read by the current model."
+- **Unreadable type** — "this file type can't be read by the assistant"
+  (rtf is the only allowed type without a native document block).
 - **Deleted** — "no longer available."
 
 So a thread can accumulate any number of attachments: recent ones are in
