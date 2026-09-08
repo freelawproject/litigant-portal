@@ -12,6 +12,11 @@ BASE_DIR = Path(__file__).resolve().parent
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
+# The new agent's development page also requires developer permission.
+LP_AGENT_DEV_ENABLED = (
+    os.environ.get("LP_AGENT_DEV_ENABLED", "false").lower() == "true"
+)
+
 # Deployment environment label. Distinguishes QA from prod (both run DEBUG=false).
 # Used by template context processor to gate non-prod-only UI (build-time chip).
 # Invalid values are kept as-is (fail-closed: non-prod UI won't match and stays hidden).

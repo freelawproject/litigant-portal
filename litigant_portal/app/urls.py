@@ -11,6 +11,9 @@ from litigant_portal.app.views import (
     admin as admin_views,
 )
 from litigant_portal.app.views import (
+    agent as agent_views,
+)
+from litigant_portal.app.views import (
     assistant,
     health,
     pages,
@@ -22,6 +25,7 @@ from litigant_portal.app.views import (
 app_patterns = [
     path("", pages.home, name="home"),
     path("chat/", pages.chat_view, name="chat"),
+    path("dev/agent/", agent_views.development_page, name="agent_development"),
     path("t/<slug:court>/<slug:topic>/", pages.deep_link, name="deep_link"),
     path(
         "t/<slug:court>/<slug:topic>/<slug:role>/",
