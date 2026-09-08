@@ -41,15 +41,23 @@ def test_configuration_is_fixed_with_documented_defaults(environment):
     assert not hasattr(agent, "set_runtime")
 
 
-@pytest.mark.parametrize("runtime", ["Direct", "Workers"])
-@pytest.mark.parametrize("policy", ["reject", "queue", "steer"])
-def test_valid_execution_is_explicitly_unimplemented(
+@pytest.mark.parametrize(
+    ("runtime", "policy"),
+    [
+        ("Workers", "reject"),
+        ("Workers", "queue"),
+        ("Workers", "steer"),
+        ("Direct", "queue"),
+        ("Direct", "steer"),
+    ],
+)
+def test_unsupported_execution_is_explicitly_unimplemented(
     environment, runtime, policy
 ):
     agent = LPAgent(
         environment=environment, runtime=runtime, interrupt_behavior=policy
     )
-    with pytest.raises(NotImplementedError, match=f"{runtime} execution"):
+    with pytest.raises(NotImplementedError):
         asyncio.run(agent.run(message="Hello"))
     with pytest.raises(NotImplementedError, match="Run recovery"):
         asyncio.run(agent.get_run("stored-run"))
@@ -146,11 +154,19 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
 
         sys.meta_path.insert(0, BlockHostImports())
         from lp_agent import LPAgent, RunLimits
+        from lp_agent.adapters.environment import create_environment
+        from lp_agent.tests.test_direct import ScriptedModel, environment_for
+        from lp_agent.types import ModelFinished, ModelTextDelta
         from lp_agent.types import RunRequest
 
         assert RunLimits().max_steps == 30
         request = RunRequest(message="hello")
         assert RunRequest.model_validate_json(request.model_dump_json()) == request
+        model = ScriptedModel([ModelTextDelta(delta="Hello"), ModelFinished(reason="stop")])
+        agent = LPAgent(environment=environment_for(model))
+        events = list(agent.stream(message="Hello"))
+        assert '"state":"completed"' in events[-1]
+        assert model.closed
         assert not (forbidden & {name.split(".")[0] for name in sys.modules})
         """
     )
@@ -168,24 +184,3 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
         text=True,
         timeout=30,
     )
-
-
-def test_portal_declares_host_inputs_and_workers_default():
-    from litigant_portal.agent import PortalAgent
-
-    parameters = inspect.signature(PortalAgent).parameters
-    assert parameters["runtime"].default == "Workers"
-    assert parameters["identity"].default is inspect.Parameter.empty
-    assert parameters["court"].default is None
-    assert parameters["topic"].default is None
-    assert parameters["identity"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert PortalAgent.run is LPAgent.run
-    assert PortalAgent.get_run is LPAgent.get_run
-    with pytest.raises(NotImplementedError, match="Django environment"):
-        PortalAgent(identity=object())
-    with pytest.raises(AgentValidationError):
-        PortalAgent(identity=object(), runtime="invalid")
-    with pytest.raises(AgentValidationError):
-        PortalAgent(identity=object(), court=" ")
-    with pytest.raises(AgentValidationError):
-        PortalAgent(identity=None)

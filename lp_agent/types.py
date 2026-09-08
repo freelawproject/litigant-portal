@@ -356,8 +356,17 @@ class ModelToolCall(ContractModel):
     call: ToolCall
 
 
+class ModelFinished(ContractModel):
+    """
+    Distinguish a finished response from a truncated or broken stream.
+    """
+
+    type: Literal["finished"] = "finished"
+    reason: Literal["stop", "length", "tool_calls", "content_filter", "other"]
+
+
 type ModelEvent = Annotated[
-    ModelTextDelta | ModelToolCall, Field(discriminator="type")
+    ModelTextDelta | ModelToolCall | ModelFinished, Field(discriminator="type")
 ]
 
 

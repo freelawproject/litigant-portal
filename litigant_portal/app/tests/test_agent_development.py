@@ -2,13 +2,16 @@
 Access gates and host configuration for the new agent development page.
 """
 
+import asyncio
+import json
+import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.test import SimpleTestCase, TestCase, override_settings
+from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from litigant_portal.app.models.choices import (
@@ -18,6 +21,8 @@ from litigant_portal.app.models.choices import (
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 from litigant_portal.app.selectors.agent import agent_scope_choices
 from litigant_portal.app.services.site import site_update
+from lp_agent.adapters.bedrock import MODEL_CHOICES
+from lp_agent.types import ModelFinished, ModelTextDelta
 
 
 @override_settings(LP_AGENT_DEV_ENABLED=True, SITE_PASSWORD="")
@@ -57,9 +62,7 @@ class AgentDevelopmentPageTests(TestCase):
         self.assertEqual(
             response.context["selected_model"], DEFAULT_BEDROCK_MODEL
         )
-        self.assertEqual(
-            response.context["model_choices"], BedrockModel.choices
-        )
+        self.assertEqual(response.context["model_choices"], MODEL_CHOICES)
         self.assertTrue(response.context["courts"])
         self.assertTrue(response.context["topics"])
 
@@ -120,3 +123,168 @@ class AgentScopeChoicesTests(SimpleTestCase):
     @override_settings(CORPUS_COURT="missing-court")
     def test_unknown_configured_court_exposes_no_choices(self):
         self.assertEqual(agent_scope_choices(), ([], []))
+
+
+@override_settings(
+    LP_AGENT_DEV_ENABLED=True, SITE_PASSWORD="", CORPUS_COURT=None
+)
+@pytest.mark.postgres
+class AgentDevelopmentStreamTests(TestCase):
+    def close_response(self, response):
+        """
+        Close the test client's wrapper so its connection guard runs.
+        """
+        if not response.closed:
+            response._iterator.close()
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.developer = get_user_model().objects.create_user(
+            username="stream-dev"
+        )
+        cls.developer.groups.add(Group.objects.get(name=DEVELOPERS_GROUP))
+        cls.other = get_user_model().objects.create_user(username="non-dev")
+
+    def setUp(self):
+        self.url = reverse("pages:agent_development_stream")
+        self.enterContext(
+            patch.dict(
+                os.environ, {"AWS_BEARER_TOKEN_BEDROCK": "test-only-key"}
+            )
+        )
+        self.client.force_login(self.developer)
+        _, topics = agent_scope_choices()
+        self.data = {
+            "message": "  Hello  ",
+            "court": topics[0]["court"],
+            "topic": topics[0]["slug"],
+            "model": BedrockModel.GPT_5_6_LUNA,
+            "max_active_seconds": "5",
+        }
+
+    def test_stream_requires_login_permission_flag_post_and_csrf(self):
+        self.assertEqual(Client().post(self.url, self.data).status_code, 302)
+        self.client.force_login(self.other)
+        self.assertEqual(
+            self.client.post(self.url, self.data).status_code, 403
+        )
+        self.client.force_login(self.developer)
+        with self.settings(LP_AGENT_DEV_ENABLED=False):
+            self.assertEqual(
+                self.client.post(self.url, self.data).status_code, 404
+            )
+        self.assertEqual(self.client.get(self.url).status_code, 405)
+        protected = Client(enforce_csrf_checks=True)
+        protected.force_login(self.developer)
+        self.assertEqual(protected.post(self.url, self.data).status_code, 403)
+
+    def test_invalid_inputs_never_reach_provider(self):
+        cases = [
+            {"message": "   "},
+            {"court": ""},
+            {"topic": "missing"},
+            {"model": "https://other.example/model"},
+            {"max_active_seconds": "nan"},
+            {"max_active_seconds": "0"},
+            {"interrupt_behavior": "steer"},
+        ]
+        with patch("litellm.acompletion") as provider:
+            for invalid in cases:
+                with self.subTest(invalid=invalid):
+                    response = self.client.post(self.url, self.data | invalid)
+                    self.assertEqual(response.status_code, 400)
+            with self.settings(CORPUS_COURT="unavailable"):
+                self.assertEqual(
+                    self.client.post(self.url, self.data).status_code, 400
+                )
+            provider.assert_not_called()
+
+    def test_http_stream_delivers_text_before_model_finishes(self):
+        continued = False
+        closed = False
+        requests = []
+
+        async def model_stream(client, request):
+            nonlocal continued, closed
+            requests.append((client.model, request))
+            try:
+                yield ModelTextDelta(delta="First")
+                # The provider cannot finish until the test consumes first text.
+                while not continued:
+                    await asyncio.sleep(0.001)
+                yield ModelTextDelta(delta=" second")
+                yield ModelFinished(reason="stop")
+            finally:
+                closed = True
+
+        with patch(
+            "lp_agent.adapters.bedrock.BedrockClient.stream",
+            model_stream,
+        ):
+            response = self.client.post(self.url, self.data)
+            self.assertFalse(response.is_async)
+            self.assertEqual(response["Cache-Control"], "no-store")
+            stream = iter(response.streaming_content)
+            try:
+                self.assertEqual(
+                    json.loads(next(stream))["payload"]["status"]["state"],
+                    "running",
+                )
+                self.assertEqual(
+                    json.loads(next(stream))["payload"]["delta"], "First"
+                )
+                self.assertFalse(closed)
+                continued = True
+                remaining = [json.loads(chunk) for chunk in stream]
+                self.assertEqual(
+                    remaining[-1]["payload"]["outcome"]["text"], "First second"
+                )
+            finally:
+                self.close_response(response)
+        self.assertTrue(closed)
+        self.assertEqual(requests[0][0], self.data["model"])
+        self.assertEqual(
+            requests[0][1].messages[-1].text, self.data["message"]
+        )
+        self.assertIn(self.data["court"], requests[0][1].messages[0].text)
+
+    def test_response_close_releases_unfinished_model(self):
+        closed = False
+
+        async def model_stream(client, request):
+            nonlocal closed
+            try:
+                yield ModelTextDelta(delta="Partial")
+                await asyncio.Event().wait()
+            finally:
+                closed = True
+
+        with patch(
+            "lp_agent.adapters.bedrock.BedrockClient.stream",
+            model_stream,
+        ):
+            response = self.client.post(self.url, self.data)
+            stream = iter(response.streaming_content)
+            next(stream)
+            next(stream)
+            self.close_response(response)
+        self.assertTrue(closed)
+
+    def test_model_error_is_shown_without_provider_exception_details(self):
+        async def model_stream(client, request):
+            yield ModelTextDelta(delta="Partial")
+            raise RuntimeError("private provider payload")
+
+        with patch(
+            "lp_agent.adapters.bedrock.BedrockClient.stream",
+            model_stream,
+        ):
+            response = self.client.post(self.url, self.data)
+            try:
+                chunks = [
+                    json.loads(chunk) for chunk in response.streaming_content
+                ]
+            finally:
+                self.close_response(response)
+        self.assertEqual(chunks[-1]["payload"]["outcome"]["state"], "failed")
+        self.assertNotIn("private provider payload", json.dumps(chunks))

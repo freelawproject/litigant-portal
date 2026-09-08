@@ -1,8 +1,8 @@
 """
-Async boundaries implemented by runtimes and host adapters in later PRs.
+Async boundaries implemented by package runtimes and service adapters.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Protocol
 
 from lp_agent.types import (
@@ -40,7 +40,7 @@ class RunHandle(Protocol):
 
     async def status(self) -> RunStatus: ...
 
-    def events(self) -> AsyncIterator[RunEvent]:
+    def events(self) -> AsyncGenerator[RunEvent]:
         """
         Observe live events; no public cursor replay is provided initially.
         """
@@ -129,9 +129,11 @@ class RunStore(Protocol):
 class ModelClient(Protocol):
     """
     Normalize provider streaming and assemble tool arguments here.
+
+    Streams support aclose() and emit ModelFinished on a finished response.
     """
 
-    def stream(self, request: ModelRequest) -> AsyncIterator[ModelEvent]: ...
+    def stream(self, request: ModelRequest) -> AsyncGenerator[ModelEvent]: ...
 
 
 class ScopeCatalog(Protocol):
