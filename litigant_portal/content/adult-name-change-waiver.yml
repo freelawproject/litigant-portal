@@ -112,6 +112,14 @@ sections:
 
       If you have a felony conviction, North Dakota law assumes a name-change request is made in bad faith. A judge may still grant it, but you would need to show by clear and convincing evidence that your request is made in good faith and not to defraud, mislead, injure anyone, or compromise public safety.
 
+  - kind: info
+    # Sets the expectation before the form below: NEVER_PREFILL renders its
+    # saved answers blank, which looks like a failed save without this (#803).
+    id: your_information_privacy
+    heading: 'How your information is used'
+    body: |
+      What you enter below is used to fill out your court forms. For your privacy on a shared or public computer, your saved answers are not shown back on this page.
+
   - kind: fact_gather
     # Restored (#803) for the docassemble prefill (#531). Stored but never
     # rendered back (NEVER_PREFILL in the renderer).
@@ -121,7 +129,7 @@ sections:
       - id: first_name
         label: 'First name'
         type: text
-        help_text: 'Your current legal name, as it appears on your ID. What you save here is used to fill out your forms. For your privacy on a shared computer, it is not shown back to you on this page.'
+        help_text: 'Your current legal name, as it appears on your ID.'
       - id: middle_name
         label: 'Middle name(s) (if any)'
         type: text
