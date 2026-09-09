@@ -44,7 +44,7 @@ dependencies = [
     "heroicons>=2.0",
     # AI Chat — 1.98 adds the bedrock_mantle/* model ids
     "litellm>=1.98",
-    "pydantic>=2.0",
+    "pydantic>=2.10.0",
     # Topic Flow corpus loading (litigant_portal/app/topic_flow)
     "pyyaml>=6.0",
     # Topic Flow file artifacts — .ics calendar + .vcf vCard export
@@ -89,7 +89,7 @@ test = [
 manage = "litigant_portal.manage:main"
 
 [tool.setuptools.packages.find]
-include = [ "litigant_portal*" ]
+include = [ "litigant_portal*", "lp_agent*" ]
 
 
 [tool.setuptools.package-data]
@@ -104,6 +104,11 @@ litigant_portal = [
   "corpus/**/*.pdf",
   "prompts/**/*.json",
   "prompts/**/*.md",
+]
+lp_agent = [
+  "py.typed",
+  "README.md",
+  "pytest.ini"
 ]
 
 [tool.ruff]
@@ -150,7 +155,7 @@ DJANGO_SETTINGS_MODULE = "litigant_portal.settings"
 python_files = ["tests.py", "test_*.py"]
 python_classes = ["*Tests"]
 pythonpath = ["."]
-testpaths = ["litigant_portal"]
+testpaths = ["litigant_portal", "lp_agent/tests"]
 addopts = "-ra --strict-markers"
 markers = [
     "postgres: test requires a PostgreSQL database",

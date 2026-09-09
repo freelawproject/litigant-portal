@@ -49,6 +49,8 @@ RUN /tmp/tailwindcss \
     -o /app/litigant_portal/app/static/css/main.built.css \
     --minify
 
+COPY lp_agent lp_agent
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --no-deps --python /opt/venv/bin/python -e .
 
