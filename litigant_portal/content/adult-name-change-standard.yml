@@ -128,10 +128,28 @@ sections:
       File in the district court for the county where you have lived for the past 6 months. Your driver's license, lease, or a utility bill usually shows this. The court locator link in the contacts at the end of this page can also help.
 
   - kind: fact_gather
-    # Pruned to the one fact the page actually uses (#621): name_change_publication_date
-    # drives the 30-day deadline and its calendar export. The name/county
-    # fields only echoed back in the summary, so they come back when
-    # docassemble prefill (#531) can reuse them downstream.
+    # Restored (#803) for the docassemble prefill (#531). Stored but never
+    # rendered back (_NEVER_PREFILL in the renderer).
+    id: your_information
+    heading: 'Your name and county'
+    questions:
+      - id: first_name
+        label: 'First name'
+        type: text
+        help_text: 'Your current legal name, as it appears on your ID. What you save here is used to fill out your forms. For your privacy on a shared computer, it is not shown back to you on this page.'
+      - id: middle_name
+        label: 'Middle name(s) (if any)'
+        type: text
+      - id: last_name
+        label: 'Last name'
+        type: text
+      - id: county
+        label: 'County'
+        type: text
+        help_text: 'The North Dakota county where you have lived for the past 6 months. This is the county you file in.'
+
+  - kind: fact_gather
+    # Its own section: the litigant fills this later, once the notice has run.
     id: publication_details
     heading: 'Your publication date'
     questions:

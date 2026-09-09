@@ -91,12 +91,16 @@ def _render_info(section, corpus, answers):
     )
 
 
-# name_change_publication_date is the one field left cached across sessions
-# on a shared terminal (#621 already pruned the riskier name/county
-# questions) (#638).
-# It's still stored for deadline computation — just never echoed back into
-# the form.
-_NEVER_PREFILL = {"name_change_publication_date"}
+# Stored for downstream use (deadline computation, docassemble prefill) but
+# never echoed back into the form or the recap, so a shared terminal can't
+# replay one litigant's answers to the next (#638, #803).
+_NEVER_PREFILL = {
+    "name_change_publication_date",
+    "first_name",
+    "middle_name",
+    "last_name",
+    "county",
+}
 
 
 @renderer("fact_gather")
