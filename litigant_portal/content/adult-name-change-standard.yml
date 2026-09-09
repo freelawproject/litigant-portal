@@ -187,6 +187,14 @@ sections:
     # plus docassemble's own `interview` route) — confirmed against the live
     # Share link.
     interview_url: 'https://qa.litigantportal.com/interview/interview?i=docassemble.playground1:petition-standard.yml'
+    # Glossary question id -> interview variable. The interview keeps its own
+    # names; only reviewed answers are sent.
+    interview_prefill:
+      first_name: current_first
+      middle_name: current_middle
+      last_name: current_last
+      county: residence_county
+      name_change_publication_date: publication_date
 
   - kind: info
     id: form_gotchas

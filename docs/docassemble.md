@@ -43,7 +43,25 @@ docassemble's real production home rides the CL infra move (#461); QA hosting is
 
 Two systems, two jobs, one contract — with a deliberate split of which facts each side owns:
 
-- **Topic Flow owns** a light fact set, named 1:1 to the interview's variables so a future prefill is lossless: `current_first` · `current_middle` · `current_last` · `requested_first` · `requested_middle` (· `requested_last`, standard track only) · `filing_county` · `publication_date`. Today it collects only what a page actually uses (#621); the rest return when prefill (#531) gives them a consumer.
-- **The interview owns** the full document fact set Topic Flow never collects (residence, residency-since, citizenship, criminal history, publication newspaper, track-specific fields). Asking those in the AI-free flow would duplicate the interview.
+- **Topic Flow owns** a light fact set, named for the glossary (`first_name`, `county`, `name_change_publication_date`), and hands it over on the way out.
+- **The interview owns** the full document fact set Topic Flow never collects (residence, residency-since, citizenship, criminal history, publication newspaper, track-specific fields). Asking those in the guided flow would duplicate the interview.
 
-Names stay structured first / middle / last, never a single free-text field — splitting a combined string back apart is lossy. **v1 is link-out + manual return, no prefill** (#543): the prefill seam (POSTing the answer set to start a session, PII out of the URL) is deferred v2 (#531), with the Briefcase (#177) as its natural carrier. Same ids, no rework, makes that future a drop-in.
+**The names are not 1:1, and the mapping is explicit.** Only 3 of the interview's 19 variables happen to share our glossary names, so each flow's packet section carries an `interview_prefill` map from question id to interview variable, next to `interview_url`:
+
+```yaml
+interview_prefill:
+  first_name: current_first
+  county: residence_county
+```
+
+The schema validates every key is a `fact_gather` question id of that flow and every value is a plain Python identifier (docassemble executes these as assignment statements, so they may only come from author-controlled YAML). A drift guard in the test suite parses the versioned interviews and fails when a mapped variable no longer exists there.
+
+Names stay structured first / middle / last, never a single free-text field — splitting a combined string back apart is lossy.
+
+Three rules the prefill runs on:
+
+- **Only reviewed answers are sent.** A preset variable skips its question, so docassemble never asks the litigant to confirm it and there is no write-back. Confirmation has to happen on our side first.
+- **A preset variable skips its validation too.** A value outside a field's declared choices is never caught and prints straight onto the court form, which is why the drift guard also compares choice value sets.
+- **`waiver_reasons` is never mapped.** It's a `checkboxes` field, so prefilling it needs a DADict object encoding; the interview re-asks that one question. It is also the sensitive one (domestic violence), which is no loss to leave uncollected.
+
+Sending the payload creates a session, so the handoff is a POST from a form, not a link, and it falls back to the plain unprefilled `interview_url` whenever no API key is configured or the API call fails. Deleting the session once its packet is downloaded is tracked on #805.
