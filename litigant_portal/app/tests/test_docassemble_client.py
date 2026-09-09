@@ -183,10 +183,72 @@ def test_a_failed_variables_post_raises_docassemble_error(monkeypatch):
     monkeypatch.setattr(
         requests,
         "request",
-        _Recorder(_Response({"session": "sess-1"}), _Response(status=400)),
+        _Recorder(
+            _Response({"session": "sess-1"}),
+            _Response(status=400),
+            _Response(status=204),
+        ),
     )
     with pytest.raises(DocassembleError):
         _create()
+
+
+# --- orphan cleanup ----------------------------------------------------------
+# A session that fails past creation already holds the litigant's answers, and
+# nothing will ever resume it (#805 covers only downloaded packets), so the
+# client deletes it on the way out.
+
+
+@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+def test_a_failed_variables_post_deletes_the_orphaned_session(monkeypatch):
+    recorder = _Recorder(
+        _Response({"session": "sess-1"}),
+        _Response(status=400),
+        _Response(status=204),
+    )
+    monkeypatch.setattr(requests, "request", recorder)
+    with pytest.raises(DocassembleError):
+        _create()
+    cleanup = recorder.calls[-1]
+    assert cleanup["method"] == "DELETE"
+    assert cleanup["url"] == "https://qa.example.gov/interview/api/session"
+    assert cleanup["params"] == {"i": INTERVIEW, "session": "sess-1"}
+
+
+@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+def test_a_failed_resume_url_deletes_the_orphaned_session(monkeypatch):
+    recorder = _Recorder(
+        _Response({"session": "sess-1"}),
+        _Response(status=204),
+        requests.Timeout("timed out"),
+        _Response(status=204),
+    )
+    monkeypatch.setattr(requests, "request", recorder)
+    with pytest.raises(DocassembleError):
+        _create()
+    assert recorder.calls[-1]["method"] == "DELETE"
+
+
+@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+def test_a_failed_cleanup_does_not_mask_the_original_error(monkeypatch):
+    monkeypatch.setattr(
+        requests,
+        "request",
+        _Recorder(
+            _Response({"session": "sess-1"}),
+            _Response(status=204),
+            _Response(status=500),
+            requests.ConnectionError("refused"),
+        ),
+    )
+    with pytest.raises(DocassembleError, match="resume_url"):
+        _create()
+
+
+@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+def test_the_happy_path_never_deletes(recorder):
+    _create()
+    assert not any(c["method"] == "DELETE" for c in recorder.calls)
 
 
 @override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
@@ -205,6 +267,7 @@ def test_a_resume_response_without_a_url_raises(monkeypatch):
             _Response({"session": "sess-1"}),
             _Response(status=204),
             _Response({}),
+            _Response(status=204),
         ),
     )
     with pytest.raises(DocassembleError):

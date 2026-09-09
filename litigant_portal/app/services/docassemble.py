@@ -45,8 +45,33 @@ def docassemble_session_create(*, interview_url: str, variables: dict) -> str:
         raise DocassembleError("DOCASSEMBLE_API_KEY is unset")
 
     session = _session_new(api_root, api_key, interview)
-    _variables_set(api_root, api_key, interview, session, variables)
-    return _public(_resume_url(api_root, api_key, interview, session))
+    try:
+        _variables_set(api_root, api_key, interview, session, variables)
+        return _public(_resume_url(api_root, api_key, interview, session))
+    except DocassembleError:
+        # The session may already hold the litigant's answers, and nothing
+        # will ever resume it (#805 covers only downloaded packets), so
+        # delete it rather than leave the data orphaned. Best effort: the
+        # caller acts on the original error either way.
+        _session_delete(api_root, api_key, interview, session)
+        raise
+
+
+def _session_delete(
+    api_root: str, api_key: str, interview: str, session: str
+) -> None:
+    try:
+        _call(
+            method="DELETE",
+            api_root=api_root,
+            path="session",
+            api_key=api_key,
+            params={"i": interview, "session": session},
+        )
+    except DocassembleError:
+        logger.warning(
+            "orphaned docassemble session could not be deleted", exc_info=True
+        )
 
 
 def _public(resume_url: str) -> str:
