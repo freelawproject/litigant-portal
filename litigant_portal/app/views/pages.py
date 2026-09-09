@@ -23,6 +23,7 @@ from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
+    NEVER_PREFILL,
     question_ids,
     render_section,
     submitted_section_anchor,
@@ -110,6 +111,19 @@ def topic_flow(request, court, topic, role):
             return _render_topic_flow(
                 request, corpus, topic_flow_answers(request, corpus), errors
             )
+        if valid:
+            # A NEVER_PREFILL field re-renders blank even after a successful
+            # save, so without a toast the save looks like it failed (#803).
+            if any(valid.get(qid) for qid in NEVER_PREFILL):
+                messages.success(
+                    request,
+                    _(
+                        "Saved. For your privacy, your answers are not "
+                        "shown on this page."
+                    ),
+                )
+            else:
+                messages.success(request, _("Saved."))
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.

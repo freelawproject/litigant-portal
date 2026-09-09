@@ -1,7 +1,7 @@
 """Drift guard: the name/county questions real content asks never echo back.
 
 The ND name-change flows collect them for the docassemble prefill, not to
-display them, and a content-side addition that misses ``_NEVER_PREFILL`` would
+display them, and a content-side addition that misses ``NEVER_PREFILL`` would
 only surface on a shared terminal. DB-free.
 """
 
@@ -9,7 +9,7 @@ import pytest
 
 from litigant_portal.app.topic_flow.loader import CorpusLoader
 from litigant_portal.app.topic_flow.registry import CONTENT_DIR
-from litigant_portal.app.topic_flow.renderer import _NEVER_PREFILL
+from litigant_portal.app.topic_flow.renderer import NEVER_PREFILL
 
 NAME_CHANGE_FLOWS = [
     "adult-name-change-standard.yml",
@@ -39,4 +39,4 @@ def test_name_change_flow_collects_the_identity_question(
 
 @pytest.mark.parametrize("question_id", IDENTITY_QUESTIONS)
 def test_identity_question_is_never_prefilled(question_id):
-    assert question_id in _NEVER_PREFILL
+    assert question_id in NEVER_PREFILL

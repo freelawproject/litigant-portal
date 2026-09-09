@@ -114,7 +114,7 @@ sections:
 
   - kind: fact_gather
     # Restored (#803) for the docassemble prefill (#531). Stored but never
-    # rendered back (_NEVER_PREFILL in the renderer).
+    # rendered back (NEVER_PREFILL in the renderer).
     id: your_information
     heading: 'Your name and county'
     questions:

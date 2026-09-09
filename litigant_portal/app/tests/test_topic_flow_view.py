@@ -788,6 +788,37 @@ def test_post_persists_stripped_value(client, monkeypatch, variables):
     assert _values().get("filing_county") == "Cass"
 
 
+@pytest.mark.django_db
+def test_post_save_flashes_a_saved_toast(client, monkeypatch, variables):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(URL, {"filing_county": "Cass"}, follow=True)
+    html = response.content.decode()
+    assert "Saved." in html
+    assert "For your privacy" not in html
+
+
+@pytest.mark.django_db
+def test_post_of_a_protected_answer_explains_the_privacy_blank(
+    client, monkeypatch, variables
+):
+    # A NEVER_PREFILL answer re-renders blank right after saving (#638), so
+    # the toast must say the save worked and why the field looks empty (#803).
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(
+        URL, {"name_change_publication_date": "2026-02-01"}, follow=True
+    )
+    assert "For your privacy" in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_post_with_errors_flashes_no_toast(client, monkeypatch, variables):
+    # The error re-render's feedback is the inline field errors; a "Saved."
+    # toast beside them would contradict the page.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    response = client.post(URL, {"name_change_publication_date": "not-a-date"})
+    assert "Saved." not in response.content.decode()
+
+
 # --- ics deadline rendering (#494, needs DB) --------------------------------
 # The ics output renders a personalized deadline computed from the stored
 # answer — fact_gather → AnswerStore → compute_deadline → on-page date, JS off.
