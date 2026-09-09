@@ -24,7 +24,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+    with:
+      ref: ${{ github.event.inputs.deploy_ref || github.sha }}
+
   build:
+    needs: tests
     runs-on: ubuntu-latest
     outputs:
       sha_short: ${{ steps.vars.outputs.sha_short }}
