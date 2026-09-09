@@ -9,6 +9,7 @@ class AppConfig(DjangoAppConfig):
     def ready(self):
         import litigant_portal.app.checks.corpus  # noqa: F401
         import litigant_portal.app.checks.prompts  # noqa: F401
+        import litigant_portal.app.checks.site_password  # noqa: F401
         import litigant_portal.app.topic_flow.checks  # noqa: F401
         from litigant_portal.app import signals
 

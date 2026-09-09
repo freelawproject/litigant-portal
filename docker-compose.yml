@@ -35,8 +35,10 @@ services:
       - POSTGRES_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379/0
       - ALLOWED_HOSTS=localhost,portal.localhost,127.0.0.1,0.0.0.0
+      # Empty by default: the gate is off in local dev by design. The
+      # site_password system check errors if it's blank anywhere else.
+      - SITE_PASSWORD=${SITE_PASSWORD:-}
       # AI Chat configuration
-      - SITE_PASSWORD=${SITE_PASSWORD}
       - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK}
       - SUPERUSER_EMAIL=${SUPERUSER_EMAIL}
       - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD}
