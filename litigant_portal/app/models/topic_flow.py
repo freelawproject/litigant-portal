@@ -2,6 +2,7 @@ import uuid
 
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from .base import BaseModel
 from .choices import TopicFlowFormConditionOperator, VariableDataType
@@ -137,6 +138,21 @@ class VariableAnswer(BaseModel):
     )
     value = models.JSONField(null=True, blank=True)
     reviewed = models.BooleanField(default=False)
+
+    @property
+    def display_value(self) -> str:
+        """The stored value rendered for reading.
+
+        ``value`` is jsonb, so a multi-choice answer arrives as a list and a
+        boolean as a bool. Handing either straight to a template prints a
+        Python repr at the litigant, so the shaping lives here rather than in
+        the template.
+        """
+        if isinstance(self.value, bool):
+            return _("Yes") if self.value else _("No")
+        if isinstance(self.value, list):
+            return ", ".join(str(item) for item in self.value)
+        return str(self.value)
 
     class Meta:
         constraints = [

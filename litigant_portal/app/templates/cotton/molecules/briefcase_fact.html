@@ -1,0 +1,8 @@
+{# One stored fact: its label over its value. Label falls back to the #}
+{# variable's name so a corpus entry with no label still reads. #}
+<div>
+  <dt class="text-2xs font-medium uppercase tracking-wide text-greyscale-500">
+    {{ answer.variable.label|default:answer.variable.name }}
+  </dt>
+  <dd class="text-sm text-greyscale-800 break-words">{{ answer.display_value }}</dd>
+</div>

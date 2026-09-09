@@ -11,7 +11,11 @@ from django.utils.translation import gettext_lazy as _
 from django.views.generic import DetailView, UpdateView
 
 from litigant_portal.app.forms import UserProfileForm
-from litigant_portal.app.models import UserProfile
+from litigant_portal.app.models import (
+    UserProfile,
+    Variable,
+    VariableAnswer,
+)
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
     DEFAULT_FAST_BEDROCK_MODEL,
@@ -19,7 +23,10 @@ from litigant_portal.app.models.choices import (
     JurisdictionLevel,
     State,
 )
-from litigant_portal.app.selectors.topic_flow import topic_list
+from litigant_portal.app.selectors.topic_flow import (
+    briefcase_groups,
+    topic_list,
+)
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
@@ -38,8 +45,18 @@ def home(request):
 
 
 def chat_view(request):
-    """Chat page"""
-    return render(request, "pages/chat/index.html")
+    """Chat page.
+
+    The briefcase renders server-side from the visitor's stored facts, so the
+    panel is populated on first paint rather than waiting on a fetch. The key
+    is always present, empty list included — the panel is a fixed part of the
+    frame and its empty state is a render, not an absence.
+    """
+    return render(
+        request,
+        "pages/chat/index.html",
+        {"briefcase_groups": briefcase_groups(identity=request.identity)},
+    )
 
 
 def deep_link(request, court, topic):
@@ -174,7 +191,48 @@ def accessibility(request):
 def style_guide(request):
     """Design tokens and component library"""
     topics = {t.slug: t for t in topic_list()}
-    return render(request, "pages/style_guide.html", {"topics": topics})
+    return render(
+        request,
+        "pages/style_guide.html",
+        {"topics": topics, "briefcase_groups": _briefcase_sample()},
+    )
+
+
+def _briefcase_sample() -> list[dict]:
+    """Unsaved sample facts for the style guide's briefcase entry.
+
+    Built in memory rather than queried so the page renders the same on a
+    fresh database, and so browsing the style guide never shows a real
+    visitor's answers.
+    """
+
+    def fact(name, label, value):
+        return VariableAnswer(
+            variable=Variable(name=name, label=label), value=value
+        )
+
+    return [
+        {
+            "title": "About you",
+            "answers": [
+                fact("tenant_first", "First name", "Jamie"),
+                fact("tenant_last", "Last name", "Rivera"),
+            ],
+        },
+        {
+            "title": "Your notice",
+            "answers": [
+                fact("received_date", "Date received", "2026-09-01"),
+                fact("notice_reason", "Reason given", ["Unpaid rent"]),
+            ],
+        },
+        {
+            "title": "",
+            "answers": [
+                fact("court_name", "Court", "Franklin County Municipal Court")
+            ],
+        },
+    ]
 
 
 class ProfileDetailView(LoginRequiredMixin, DetailView):
