@@ -59,7 +59,9 @@ def create_environment(
             _resolve(catalog, "catalog")
         )
     except ValidationError as exc:
-        raise AgentValidationError.from_validation_error(exc) from None
+        raise AgentValidationError.from_validation_error(
+            exc, models=(AccessContext, ScopeSelection)
+        ) from None
     scopes = StaticScopeCatalog(access, choices)
     model_client = BedrockClient(
         _resolve(model, "model"), api_key=_resolve(api_key, "api_key")

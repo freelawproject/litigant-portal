@@ -10,6 +10,7 @@ from lp_agent.types import (
     ChoiceQuestion,
     CompletedOutcome,
     FailedOutcome,
+    FunctionCallOutput,
     ModelMessage,
     ModelRequest,
     OutcomeEvent,
@@ -194,15 +195,13 @@ def test_contract_rejects_undeclared_provider_fields():
 
 def test_model_context_and_search_provenance_are_portable():
     call = ToolCall(
-        call_id="call-1", name="search", arguments={"query": "help"}
+        call_id="call-1", name="search", arguments='{"query":"help"}'
     )
     request = ModelRequest(
-        messages=(
-            ModelMessage(role="user", text="Help"),
-            ModelMessage(role="assistant", tool_calls=(call,)),
-            ModelMessage(
-                role="tool", text="Relevant text", tool_call_id="call-1"
-            ),
+        input=(
+            ModelMessage(role="user", content="Help"),
+            call,
+            FunctionCallOutput(call_id="call-1", output="Relevant text"),
         )
     )
     assert (
@@ -217,4 +216,4 @@ def test_model_context_and_search_provenance_are_portable():
     )
     assert SearchHit.model_validate_json(hit.model_dump_json()) == hit
     with pytest.raises(ValidationError):
-        ModelMessage(role="tool", text="Unmatched output")
+        ModelMessage(role="tool", content="Unmatched output")

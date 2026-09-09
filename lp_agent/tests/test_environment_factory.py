@@ -120,5 +120,5 @@ def test_catalog_rejects_ambiguous_courts_and_topics():
         create_environment(**(options | {"catalog": options["catalog"] * 2}))
     court = options["catalog"][0].model_dump()
     court["topics"] *= 2
-    with pytest.raises(AgentValidationError, match="topic IDs"):
+    with pytest.raises(AgentValidationError, match="input: Invalid value"):
         create_environment(**(options | {"catalog": [court]}))

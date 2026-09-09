@@ -17,6 +17,7 @@ unimplemented. Workers follows in PR3.
 | `interfaces.py`         | Async run-handle and host-service contracts                                    |
 | `environment.py`        | Live services and verified context, separate from serialized data              |
 | `errors.py`             | Validation, access, and busy errors before acceptance                          |
+| `utils/audit.py`        | Canonical instruction snapshots and their versioned SHA-256 fingerprints       |
 | `flows/`                | Scope preparation, model steps, prompts, state transitions, and outcomes       |
 | `runtimes/`             | Admission, owned Direct tasks, shutdown, and synchronous event streaming       |
 | `adapters/`             | Bedrock, supplied catalogue, environment assembly, and temporary memory stores |
@@ -96,9 +97,11 @@ requires an explicit API key. The key stays in live adapter configuration, outsi
 serializable run configuration, checkpoints, and events. LiteLLM loads only when
 the Bedrock adapter executes a request.
 
-`PortalAgent(identity=..., model=..., api_key=..., catalog=..., ...)` converts
-the verified Django identity's primary key to an opaque string and forwards these
-options to the factory. It inherits agent methods and defaults to `Workers`, which
+`PortalAgent(identity=..., model=..., api_key=..., catalog=..., ...)` requires a
+saved registered or anonymous `UserIdentity`, including a middleware lazy wrapper,
+before invoking any initialization callbacks. It converts that identity's primary
+key to an opaque string and forwards these options to the factory. It inherits
+agent methods and defaults to `Workers`, which
 is still unimplemented. The development view selects `Direct`, supplies the
 permitted catalogue and server credentials, and uses the Site assistant model as
 the page's default. Authentication and HTTP input validation remain in Django.
@@ -181,6 +184,8 @@ NDJSON bridge, live event buffering, and execution lifetime.
 unauthorized submissions and replies before acceptance. After acceptance,
 execution failures produce a `FailedOutcome` containing a caller-safe `PublicError`.
 Constructing data models directly uses Pydantic's `ValidationError`.
+Wrapped validation errors expose only known contract field paths and controlled
+messages. Unknown keys, dictionary keys, and submitted values are not echoed.
 
 ## Scope and services
 
@@ -218,6 +223,90 @@ The version-1 `RunCheckpoint` envelope contains run/conversation identifiers and
 JSON data. PR2 defines executor-state contents, accepted-input persistence, and
 atomic checkpoint commits. Persisted work survives replacement of the agent object.
 
+## Model data and instruction audits
+
+The model boundary uses our own Pydantic types matching a supported subset of the
+[OpenAI Responses format](https://developers.openai.com/api/docs/guides/function-calling).
+It does not import the OpenAI SDK or implement the complete Responses HTTP API.
+The Bedrock adapter uses LiteLLM’s asynchronous Responses interface. GPT models
+use native Responses; GLM uses LiteLLM’s chat translation, and the Haiku choice
+routes through Bedrock Converse using the
+[US inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-haiku-4-5.html).
+Model choices
+and credentials remain supplied by the host. Provider storage and response
+caching are disabled; native Responses requests include encrypted reasoning
+continuation data. Reasoning effort uses provider defaults.
+
+Translated requests reject reasoning continuation and message metadata that
+LiteLLM cannot preserve. Native Responses input retains those fields. The current
+engagement flow still accepts one independent message, without continuation.
+
+- `ModelRequest` contains resolved `instructions`, ordered `input` items, and
+  function `tools`. Model selection, credentials, and transport configuration
+  belong to the adapter. Put resolved system instructions in `instructions` so
+  there is one source for the instruction artifact.
+- `ModelMessage` uses `type="message"`, `role`, and `content`. The current subset
+  supports text inputs, assistant text/refusals, and assistant metadata including
+  IDs, status, annotations, log probabilities, and `phase`. Multimodal inputs and
+  provider-hosted tools are outside this contract. Unsupported fields/items fail
+  validation rather than being silently dropped.
+- `ToolCall` uses `type="function_call"`, `call_id`, `name`, and an unmodified JSON
+  argument **string**. `FunctionCallOutput` uses `type="function_call_output"`,
+  the same `call_id`, and an output string. PR2 parses and validates arguments
+  against the allowlisted tool before dispatch; preserving a string is not
+  permission to execute it.
+- `ReasoningItem` retains summary/content, encrypted continuation data, ID, and
+  status. `Conversation.items` defines ordered history for the persistence step;
+  the current flow retains input and output in its run checkpoint.
+  [Reasoning continuation items](https://developers.openai.com/api/docs/guides/reasoning)
+  and assistant metadata must survive persistence and subsequent model calls.
+- `ModelClient.stream()` yields `ModelTextDelta`, `ModelOutputItem`, and
+  `ModelFinished` events. Streams support `aclose()`.
+  Adapters assemble complete output items in provider order, including reasoning
+  and function calls. Deltas serve live display; assembled items become history
+  once, without duplicating the text. Item status remains authoritative: an
+  assembled item can be incomplete. A successful response needs completed
+  assistant output and a successful terminal signal; EOF alone is insufficient.
+  Reasoning data is not public text. The adapter closes the underlying native
+  HTTP response or translated provider stream, including on cancellation.
+
+Function tools serialize as `type`, `name`, `description`, `parameters`, and
+`strict`. Strict mode defaults to `true` and is always serialized. Parameters
+must describe an object. Strict schemas close every object with
+`additionalProperties: false` and list every property in `required`; represent
+optional values using a nullable type. The validators beside `ToolDefinition` in `types.py` check these structural rules
+through nested objects, arrays, alternatives, and local references. Example and
+default data are preserved, including nulls. An explicit `strict=False` permits
+open objects and optional properties. Adapters must check any additional schema
+restrictions of their target model and reject unsupported strict mode rather
+than silently disabling it.
+
+Absent optional API metadata is omitted during serialization. Tool defaults are
+explicit; existing unreleased `messages`, `text`, and `input_schema` model shapes
+have no compatibility aliases. Application run controls, scope, identity,
+confirmations, and browser events retain their own contracts. MCP will translate
+shared tool definitions into its own protocol through the same runner.
+
+`lp_agent.utils.audit.InstructionArtifact.from_request(request)` snapshots instructions and tool
+definitions without retaining references to the request's mutable schemas.
+`canonical_bytes()` produces UTF-8 JSON containing `format`, `instructions`, and
+`tools`; `content_hash()` returns its SHA-256 digest. Version
+`lp_agent.instructions.v1` fixes sorted object keys, compact separators, explicit
+defaults, finite numbers, exact string content, and preserved array order.
+Dictionary insertion order does not affect the fingerprint; tool order does.
+Changes to this serialization contract require a new format version and fixture.
+
+Current in-memory checkpoints retain the model request, ordered assembled output,
+terminal signal, and an instruction artifact containing `canonical_json` and
+`sha256`. The canonical JSON string round-trips to the artifact’s exact UTF-8
+bytes. Reasoning and output metadata stay in that internal checkpoint, outside
+browser events and ordinary logs. Durable restricted audit storage follows in
+the persistence step; these instance-local records do not survive restart.
+The fingerprint identifies canonical instructions and tools, not conversation
+input, model configuration, or every byte of an adapted provider request.
+The current chat engine's artifacts are unchanged, and old hash compatibility
+is not required before release. This step adds no audit database or migration.
+
 ## Execution policy
 
 Runtime and interruption policy are fixed at construction. `Direct` is the package
@@ -240,8 +329,9 @@ Step/time limits must be positive; zero restarts disables automatic recovery.
 
 ## Checks
 
-From the repository root, run `tox -e agent`. Its isolated environment installs only
-Pydantic and pytest, disables plugin autoload, and requires neither Django nor a
+From the repository root, run `tox -e agent`. Default `tox` and `make test` also run
+this environment. It installs only Pydantic (at least 2.10.0) and pytest,
+disables plugin autoload, and requires neither Django nor a
 database or provider credentials. With existing development dependencies, use:
 
 ```sh
@@ -259,4 +349,6 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c lp_agent/pytest.ini lp_agen
 The regular project suite includes both groups plus the Django wrapper and HTTP
 tests. Core checks cover blocked host/provider imports, configuration and callback
 validation, serialization, Direct flow behavior, submission/shutdown races, and
-stream cleanup. Provider tests use synthetic SDK responses and make no live calls.
+stream cleanup. Provider tests exercise LiteLLM's actual native and translated
+stream wrappers with controlled HTTP responses or completion streams, including
+signed thinking, terminal status, and cancellation. They make no live model calls.

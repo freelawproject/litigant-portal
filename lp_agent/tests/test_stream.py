@@ -5,7 +5,11 @@ from dataclasses import replace
 import pytest
 
 from lp_agent import AgentValidationError, LPAgent
-from lp_agent.tests.test_direct import ScriptedModel, environment_for
+from lp_agent.tests.test_direct import (
+    ScriptedModel,
+    answer_item,
+    environment_for,
+)
 from lp_agent.types import ModelFinished, ModelTextDelta, ScopeSelection
 
 
@@ -16,6 +20,7 @@ def test_stream_exhaustion_closes_model_agent_and_own_event_loop():
         async def stream(self, request):
             loops.append(asyncio.get_running_loop())
             yield ModelTextDelta(delta="Hello")
+            yield answer_item("Hello")
             yield ModelFinished(reason="stop")
 
     agent = LPAgent(environment=environment_for(Model()))

@@ -141,6 +141,8 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
             "django",
             "litigant_portal",
             "litellm",
+            "openai",
+            "anthropic",
             "celery",
             "redis",
             "boto3",
@@ -156,17 +158,32 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
         from lp_agent import LPAgent, RunLimits
         from lp_agent.adapters.environment import create_environment
         from lp_agent.tests.test_direct import ScriptedModel, environment_for
-        from lp_agent.types import ModelFinished, ModelTextDelta
-        from lp_agent.types import RunRequest
+        from lp_agent.types import ModelFinished, ModelOutputItem, ModelTextDelta
+        from lp_agent.utils.audit import InstructionArtifact
+        from lp_agent.types import ModelMessage, ModelRequest, RunRequest, ToolDefinition
 
         assert RunLimits().max_steps == 30
         request = RunRequest(message="hello")
         assert RunRequest.model_validate_json(request.model_dump_json()) == request
-        model = ScriptedModel([ModelTextDelta(delta="Hello"), ModelFinished(reason="stop")])
+        model = ScriptedModel([
+            ModelTextDelta(delta="Hello"),
+            ModelOutputItem(item=ModelMessage(role="assistant", content="Hello")),
+            ModelFinished(reason="stop"),
+        ])
         agent = LPAgent(environment=environment_for(model))
         events = list(agent.stream(message="Hello"))
         assert '"state":"completed"' in events[-1]
         assert model.closed
+        model_request = ModelRequest(
+            input=(ModelMessage(role="user", content="hello"),),
+            tools=(ToolDefinition(
+                name="lookup", description="Find guidance",
+                parameters={"type": "object", "properties": {},
+                            "required": [], "additionalProperties": False},
+            ),),
+        )
+        assert ModelRequest.model_validate_json(model_request.model_dump_json()) == model_request
+        assert len(InstructionArtifact.from_request(model_request).content_hash()) == 64
         assert not (forbidden & {name.split(".")[0] for name in sys.modules})
         """
     )

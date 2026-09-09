@@ -1,7 +1,8 @@
 """
-Provider- and transport-independent data exchanged with the agent.
+Agent contracts and Responses-compatible model data, without SDK dependencies.
 """
 
+import json
 from typing import Annotated, Literal, Self
 
 from pydantic import (
@@ -10,7 +11,9 @@ from pydantic import (
     ConfigDict,
     Field,
     JsonValue,
+    StrictBool,
     StrictInt,
+    model_serializer,
     model_validator,
 )
 
@@ -52,7 +55,7 @@ class RunLimits(ContractModel):
     """
 
     max_steps: Annotated[StrictInt, Field(gt=0)] = 30
-    max_active_seconds: Annotated[float, Field(gt=0, strict=True)] = 300
+    max_active_seconds: Annotated[float, Field(gt=0, strict=True)] = 300.0
     max_restarts: Annotated[StrictInt, Field(ge=0)] = 2
 
 
@@ -299,51 +302,253 @@ class RunCheckpoint(RunReference):
     data: dict[str, JsonValue]
 
 
-class ToolCall(ContractModel):
+class ResponsesModel(ContractModel):
     """
-    A normalized model-selected call with fully assembled arguments.
-    """
-
-    call_id: Identifier
-    name: Identifier
-    arguments: dict[str, JsonValue]
-
-
-class ModelMessage(ContractModel):
-    """
-    Model context independent of provider response classes.
+    Omit absent metadata while retaining nulls inside JSON content and schemas.
     """
 
-    role: Literal["system", "user", "assistant", "tool"]
-    text: str = ""
-    tool_calls: tuple[ToolCall, ...] = ()
-    tool_call_id: Identifier | None = None
+    @model_serializer(mode="wrap")
+    def serialize_present_fields(self, serialize):
+        """
+        Optional API fields are absent unless they have a value.
+        """
+        return {
+            key: value
+            for key, value in serialize(self).items()
+            if value is not None
+        }
+
+
+class InputText(ResponsesModel):
+    type: Literal["input_text"] = "input_text"
+    text: str
+
+
+class OutputText(ResponsesModel):
+    type: Literal["output_text"] = "output_text"
+    text: str
+    annotations: tuple[dict[str, JsonValue], ...] = ()
+    logprobs: tuple[dict[str, JsonValue], ...] | None = None
+
+
+class Refusal(ResponsesModel):
+    type: Literal["refusal"] = "refusal"
+    refusal: str
+
+
+type MessageContent = Annotated[
+    InputText | OutputText | Refusal, Field(discriminator="type")
+]
+type ModelItemStatus = Literal["in_progress", "completed", "incomplete"]
+
+
+class ModelMessage(ResponsesModel):
+    """
+    Text input or assistant output in the Responses message representation.
+    """
+
+    type: Literal["message"] = "message"
+    role: Literal["system", "developer", "user", "assistant"]
+    content: str | tuple[MessageContent, ...]
+    id: Identifier | None = None
+    status: ModelItemStatus | None = None
+    phase: Literal["commentary", "final_answer"] | None = None
 
     @model_validator(mode="after")
-    def valid_tool_message(self) -> Self:
+    def valid_message_role(self) -> Self:
         """
-        Associate tool results with calls made by assistant messages.
+        Keep assistant-only metadata and output content on assistant messages.
         """
-        if (self.role == "tool") != (self.tool_call_id is not None):
-            raise ValueError("tool_call_id is required only for tool messages")
-        if self.tool_calls and self.role != "assistant":
-            raise ValueError("only assistant messages may contain tool calls")
+        if self.role != "assistant":
+            if self.id is not None or self.phase is not None:
+                raise ValueError(
+                    "only assistant messages carry output metadata"
+                )
+            if not isinstance(self.content, str) and any(
+                not isinstance(part, InputText) for part in self.content
+            ):
+                raise ValueError("input messages require input text")
         return self
 
 
-class ToolDefinition(ContractModel):
+class ToolCall(ResponsesModel):
+    """
+    An assembled function call; PR2 parses and validates arguments for dispatch.
+    """
+
+    type: Literal["function_call"] = "function_call"
+    call_id: Identifier
+    name: Identifier
+    arguments: str
+    id: Identifier | None = None
+    status: ModelItemStatus | None = None
+
+
+class FunctionCallOutput(ResponsesModel):
+    type: Literal["function_call_output"] = "function_call_output"
+    call_id: Identifier
+    output: str
+    id: Identifier | None = None
+    status: ModelItemStatus | None = None
+
+
+class ReasoningSummary(ResponsesModel):
+    type: Literal["summary_text"] = "summary_text"
+    text: str
+
+
+class ReasoningText(ResponsesModel):
+    type: Literal["reasoning_text"] = "reasoning_text"
+    text: str
+
+
+class ReasoningItem(ResponsesModel):
+    """
+    Continuation data retained in model history, not emitted as public text.
+    """
+
+    type: Literal["reasoning"] = "reasoning"
+    id: Identifier
+    summary: tuple[ReasoningSummary, ...]
+    content: tuple[ReasoningText, ...] | None = None
+    encrypted_content: str | None = None
+    status: ModelItemStatus | None = None
+
+
+type ModelItem = Annotated[
+    ModelMessage | ToolCall | FunctionCallOutput | ReasoningItem,
+    Field(discriminator="type"),
+]
+
+
+def _resolve_schema_reference(parameters: dict, reference: str) -> dict:
+    """
+    Resolve a local JSON pointer without fetching external schema resources.
+    """
+    if not isinstance(reference, str) or not (
+        reference == "#" or reference.startswith("#/")
+    ):
+        raise ValueError("parameter schemas require local references")
+    target = parameters
+    tokens = reference[2:].split("/") if reference != "#" else ()
+    for token in tokens:
+        token = token.replace("~1", "/").replace("~0", "~")
+        if not isinstance(target, dict) or token not in target:
+            raise ValueError("schema reference does not resolve")
+        target = target[token]
+    if not isinstance(target, dict):
+        raise ValueError("schema references must resolve to objects")
+    return target
+
+
+def _validate_tool_parameters(parameters: dict, *, strict: bool) -> None:
+    """
+    Require finite JSON and closed, fully required objects in strict schemas.
+
+    Walk schema keywords, not example/default data. Provider adapters must
+    additionally check the schema features supported by their target model.
+    """
+    json.dumps(parameters, allow_nan=False)
+    root = parameters
+    root_references = set()
+    while "$ref" in root:
+        if id(root) in root_references:
+            raise ValueError("root reference must resolve to an object schema")
+        root_references.add(id(root))
+        root = _resolve_schema_reference(parameters, root["$ref"])
+    if root.get("type") != "object":
+        raise ValueError("function parameters must describe an object")
+    if not strict:
+        return
+
+    pending = [parameters]
+    visited = set()
+    while pending:
+        schema = pending.pop()
+        if not isinstance(schema, dict):
+            raise ValueError("schema nodes must be objects")
+        if id(schema) in visited:
+            continue
+        visited.add(id(schema))
+
+        if "$ref" in schema:
+            pending.append(
+                _resolve_schema_reference(parameters, schema["$ref"])
+            )
+
+        kind = schema.get("type")
+        is_object = kind == "object" or (
+            isinstance(kind, list) and "object" in kind
+        )
+        if is_object or "properties" in schema:
+            properties = schema.get("properties", {})
+            required = schema.get("required", [])
+            if (
+                not is_object
+                or not isinstance(properties, dict)
+                or not isinstance(required, list)
+                or not all(isinstance(name, str) for name in required)
+                or len(required) != len(properties)
+                or set(required) != set(properties)
+                or schema.get("additionalProperties") is not False
+                or "patternProperties" in schema
+            ):
+                raise ValueError(
+                    "strict objects must forbid extra properties and require every property"
+                )
+
+        for keyword in ("properties", "$defs"):
+            children = schema.get(keyword, {})
+            if not isinstance(children, dict):
+                raise ValueError("schema property definitions must be objects")
+            pending.extend(children.values())
+        if "items" in schema:
+            pending.append(schema["items"])
+        for keyword in ("anyOf", "oneOf", "allOf", "prefixItems"):
+            children = schema.get(keyword, [])
+            if not isinstance(children, list):
+                raise ValueError("schema alternatives must be arrays")
+            pending.extend(children)
+
+
+class ToolDefinition(ResponsesModel):
+    """
+    Responses function schema; adapters must not silently disable strict mode.
+    """
+
+    type: Literal["function"] = "function"
     name: Identifier
     description: NonBlankText
-    input_schema: dict[str, JsonValue]
+    parameters: dict[str, JsonValue]
+    strict: StrictBool = True
+
+    @model_validator(mode="after")
+    def valid_parameters(self) -> Self:
+        """
+        Check the common strict-schema requirements before adapter invocation.
+        """
+        _validate_tool_parameters(self.parameters, strict=self.strict)
+        return self
 
 
-class ModelRequest(ContractModel):
+class ModelRequest(ResponsesModel):
     """
-    One model operation; provider configuration belongs to its adapter.
+    Responses input; model selection, credentials, and transport stay in adapters.
     """
 
-    messages: tuple[ModelMessage, ...]
+    instructions: str = ""
+    input: tuple[ModelItem, ...]
     tools: tuple[ToolDefinition, ...] = ()
+
+    @model_validator(mode="after")
+    def unique_tools(self) -> Self:
+        """
+        Require unambiguous names for dispatch.
+        """
+        names = [tool.name for tool in self.tools]
+        if len(names) != len(set(names)):
+            raise ValueError("tool names must be unique")
+        return self
 
 
 class ModelTextDelta(ContractModel):
@@ -351,9 +556,31 @@ class ModelTextDelta(ContractModel):
     delta: str
 
 
-class ModelToolCall(ContractModel):
-    type: Literal["tool_call"] = "tool_call"
-    call: ToolCall
+class ModelOutputItem(ContractModel):
+    """
+    An assembled output item in provider order, alongside incremental text.
+    """
+
+    type: Literal["output_item"] = "output_item"
+    item: Annotated[
+        ModelMessage | ToolCall | ReasoningItem, Field(discriminator="type")
+    ]
+
+    @model_validator(mode="after")
+    def assistant_output_only(self) -> Self:
+        """
+        The model emits assistant output, not input content or tool results.
+        """
+        if isinstance(self.item, ModelMessage):
+            if self.item.role != "assistant":
+                raise ValueError(
+                    "model output messages must have the assistant role"
+                )
+            if not isinstance(self.item.content, str) and any(
+                isinstance(part, InputText) for part in self.item.content
+            ):
+                raise ValueError("model output cannot contain input text")
+        return self
 
 
 class ModelFinished(ContractModel):
@@ -366,7 +593,8 @@ class ModelFinished(ContractModel):
 
 
 type ModelEvent = Annotated[
-    ModelTextDelta | ModelToolCall | ModelFinished, Field(discriminator="type")
+    ModelTextDelta | ModelOutputItem | ModelFinished,
+    Field(discriminator="type"),
 ]
 
 
@@ -378,4 +606,4 @@ class Conversation(ContractModel):
     conversation_id: Identifier
     identity_id: Identifier
     scope: ScopeSelection
-    messages: tuple[ModelMessage, ...] = ()
+    items: tuple[ModelItem, ...] = ()

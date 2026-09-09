@@ -1,8 +1,11 @@
 import asyncio
+import hashlib
+import json
 from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
+from pydantic import TypeAdapter
 
 from lp_agent import AgentAccessError, AgentValidationError, LPAgent, RunLimits
 from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
@@ -11,9 +14,25 @@ from lp_agent.types import (
     AccessContext,
     Choice,
     ModelFinished,
+    ModelItem,
+    ModelMessage,
+    ModelOutputItem,
     ModelTextDelta,
+    OutputText,
+    ReasoningItem,
     ScopeSelection,
+    ToolCall,
 )
+
+
+def answer_item(text):
+    return ModelOutputItem(
+        item=ModelMessage(
+            role="assistant",
+            content=(OutputText(text=text),),
+            status="completed",
+        )
+    )
 
 
 class ScriptedModel:
@@ -82,6 +101,7 @@ def test_direct_result_without_observer_and_independent_submissions():
             [
                 ModelTextDelta(delta="Hello"),
                 ModelTextDelta(delta=" there"),
+                answer_item("Hello there"),
                 ModelFinished(reason="stop"),
             ]
         )
@@ -102,11 +122,114 @@ def test_direct_result_without_observer_and_independent_submissions():
             await second.result()
             assert first.conversation_id != second.conversation_id
         assert len(environment.scope_factory.bindings) == 1
-        assert model.requests[0].messages[-1].text == "  First question  "
-        assert len(model.requests[1].messages) == 2
-        assert model.requests[1].messages[-1].text == "Second question"
+        assert model.requests[0].input[-1].content == "  First question  "
+        assert len(model.requests[1].input) == 1
+        assert model.requests[1].input[-1].content == "Second question"
+        assert "court" in model.requests[0].instructions
         assert all(request.tools == () for request in model.requests)
         assert model.closed
+
+    asyncio.run(scenario())
+
+
+def test_checkpoint_retains_model_items_and_instruction_artifact_without_public_reasoning():
+    async def scenario():
+        reasoning = ReasoningItem(
+            id="rs_1", summary=(), encrypted_content="private continuation"
+        )
+        answer = ModelMessage(
+            role="assistant",
+            id="msg_1",
+            phase="final_answer",
+            status="completed",
+            content=(
+                OutputText(
+                    text="Hello",
+                    annotations=({"type": "citation", "source": "court"},),
+                ),
+            ),
+        )
+        model = ScriptedModel(
+            [
+                ModelOutputItem(item=reasoning),
+                ModelTextDelta(delta="Hello"),
+                ModelOutputItem(item=answer),
+                ModelFinished(reason="stop"),
+            ]
+        )
+        environment = environment_for(model)
+        async with LPAgent(environment=environment) as agent:
+            run = await agent.run(message="  Question  ")
+            assert (await run.result()).text == "Hello"
+            events = [event.model_dump_json() async for event in run.events()]
+        checkpoint = await environment.runs.checkpoint(
+            access=environment.access, run_id=run.run_id
+        )
+        data = checkpoint.data
+        assert data["model_request"] == model.requests[0].model_dump(
+            mode="json"
+        )
+        assert TypeAdapter(tuple[ModelItem, ...]).validate_python(
+            data["model_output"]
+        ) == (reasoning, answer)
+        assert data["model_finished"] == {"type": "finished", "reason": "stop"}
+        artifact = data["instruction_artifact"]
+        canonical = artifact["canonical_json"].encode("utf-8")
+        assert hashlib.sha256(canonical).hexdigest() == artifact["sha256"]
+        assert json.loads(canonical) == {
+            "format": "lp_agent.instructions.v1",
+            "instructions": model.requests[0].instructions,
+            "tools": [],
+        }
+        assert "private continuation" not in "".join(events)
+        data["model_output"].clear()
+        saved = await environment.runs.checkpoint(
+            access=environment.access, run_id=run.run_id
+        )
+        assert len(saved.data["model_output"]) == 2
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "item,code",
+    [
+        (
+            ModelMessage(
+                role="assistant", content="Partial", status="incomplete"
+            ),
+            "incomplete_response",
+        ),
+        (ReasoningItem(id="rs_1", summary=()), "incomplete_response"),
+        (
+            ToolCall(call_id="call_1", name="lookup", arguments="{}"),
+            "tools_unavailable",
+        ),
+    ],
+)
+def test_output_items_do_not_turn_incomplete_responses_or_tool_calls_into_success(
+    item, code
+):
+    async def scenario():
+        environment = environment_for(
+            ScriptedModel(
+                [
+                    ModelTextDelta(delta="Partial"),
+                    ModelOutputItem(item=item),
+                    ModelFinished(reason="stop"),
+                ]
+            )
+        )
+        async with LPAgent(environment=environment) as agent:
+            run = await agent.run(message="Question")
+            assert (await run.result()).error.code == code
+        checkpoint = await environment.runs.checkpoint(
+            access=environment.access, run_id=run.run_id
+        )
+        assert checkpoint.data["model_output"] == [
+            item.model_dump(mode="json")
+        ]
+        assert checkpoint.data["model_finished"]["reason"] == "stop"
 
     asyncio.run(scenario())
 
@@ -342,7 +465,11 @@ def test_close_waits_for_a_terminal_commit_already_in_progress():
         resume = asyncio.Event()
         environment = environment_for(
             ScriptedModel(
-                [ModelTextDelta(delta="Done"), ModelFinished(reason="stop")]
+                [
+                    ModelTextDelta(delta="Done"),
+                    answer_item("Done"),
+                    ModelFinished(reason="stop"),
+                ]
             )
         )
         commit = environment.runs.commit_checkpoint

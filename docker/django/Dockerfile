@@ -43,12 +43,13 @@ RUN TAILWIND_VERSION=${TAILWIND_VERSION} \
 # Stage 4: Application code
 # -----------------------------------------------------------------------------
 COPY litigant_portal litigant_portal
-COPY lp_agent lp_agent
 
 RUN /tmp/tailwindcss \
     -i /app/litigant_portal/app/src/main.css \
     -o /app/litigant_portal/app/static/css/main.built.css \
     --minify
+
+COPY lp_agent lp_agent
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv pip install --no-deps --python /opt/venv/bin/python -e .

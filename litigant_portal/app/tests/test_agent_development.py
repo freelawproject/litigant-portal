@@ -22,6 +22,7 @@ from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 from litigant_portal.app.selectors.agent import agent_scope_choices
 from litigant_portal.app.services.site import site_update
 from lp_agent.adapters.bedrock import MODEL_CHOICES
+from lp_agent.tests.test_direct import answer_item
 from lp_agent.types import ModelFinished, ModelTextDelta
 
 
@@ -188,7 +189,7 @@ class AgentDevelopmentStreamTests(TestCase):
             {"max_active_seconds": "0"},
             {"interrupt_behavior": "steer"},
         ]
-        with patch("litellm.acompletion") as provider:
+        with patch("litellm.aresponses") as provider:
             for invalid in cases:
                 with self.subTest(invalid=invalid):
                     response = self.client.post(self.url, self.data | invalid)
@@ -213,6 +214,7 @@ class AgentDevelopmentStreamTests(TestCase):
                 while not continued:
                     await asyncio.sleep(0.001)
                 yield ModelTextDelta(delta=" second")
+                yield answer_item("First second")
                 yield ModelFinished(reason="stop")
             finally:
                 closed = True
@@ -244,9 +246,9 @@ class AgentDevelopmentStreamTests(TestCase):
         self.assertTrue(closed)
         self.assertEqual(requests[0][0], self.data["model"])
         self.assertEqual(
-            requests[0][1].messages[-1].text, self.data["message"]
+            requests[0][1].input[-1].content, self.data["message"]
         )
-        self.assertIn(self.data["court"], requests[0][1].messages[0].text)
+        self.assertIn(self.data["court"], requests[0][1].instructions)
 
     def test_response_close_releases_unfinished_model(self):
         closed = False

@@ -6,7 +6,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from contextlib import aclosing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from lp_agent.environment import AgentEnvironment, ScopedEnvironment
 from lp_agent.errors import AgentAccessError, AgentValidationError
@@ -19,11 +19,15 @@ from lp_agent.types import (
     EventPayload,
     FailedOutcome,
     ModelFinished,
+    ModelItem,
     ModelMessage,
+    ModelOutputItem,
     ModelRequest,
     ModelTextDelta,
     OutcomeEvent,
+    OutputText,
     PublicError,
+    Refusal,
     RunCheckpoint,
     RunLimits,
     RunOutcome,
@@ -33,7 +37,9 @@ from lp_agent.types import (
     Scope,
     StatusEvent,
     TextEvent,
+    ToolCall,
 )
+from lp_agent.utils.audit import InstructionArtifact
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +71,20 @@ class EngagementFlow:
             request=request,
             configuration=self.configuration,
         )
+        model_request = ModelRequest(
+            instructions=system_prompt(scoped.scope),
+            input=(ModelMessage(role="user", content=request.message),),
+        )
         return Engagement(
             environment=self.environment,
             scoped=scoped,
             initial_status=status,
             request=request,
             limits=self.configuration.limits,
+            model_request=model_request,
+            instruction_artifact=InstructionArtifact.from_request(
+                model_request
+            ),
         )
 
     async def _bind_scope(self) -> ScopedEnvironment:
@@ -104,7 +118,7 @@ class EngagementFlow:
         return scoped
 
 
-@dataclass(frozen=True, kw_only=True)
+@dataclass(kw_only=True)
 class Engagement:
     """
     Own a prepared turn's model steps, state transitions, and safe outcomes.
@@ -115,6 +129,12 @@ class Engagement:
     initial_status: RunStatus
     request: RunRequest
     limits: RunLimits
+    model_request: ModelRequest = field(repr=False)
+    instruction_artifact: InstructionArtifact = field(repr=False)
+    output_items: list[ModelItem] = field(
+        default_factory=list, init=False, repr=False
+    )
+    model_finished: ModelFinished | None = field(default=None, init=False)
 
     @property
     def reference(self) -> dict[str, str]:
@@ -185,7 +205,27 @@ class Engagement:
             access=self.environment.access,
             checkpoint=RunCheckpoint(
                 **self.reference,
-                data={"request": self.request.model_dump(mode="json")},
+                data={
+                    "request": self.request.model_dump(mode="json"),
+                    "model_request": self.model_request.model_dump(
+                        mode="json"
+                    ),
+                    "model_output": [
+                        item.model_dump(mode="json")
+                        for item in self.output_items
+                    ],
+                    "model_finished": (
+                        self.model_finished.model_dump(mode="json")
+                        if self.model_finished is not None
+                        else None
+                    ),
+                    "instruction_artifact": {
+                        "canonical_json": self.instruction_artifact.canonical_bytes().decode(
+                            "utf-8"
+                        ),
+                        "sha256": self.instruction_artifact.content_hash(),
+                    },
+                },
             ),
             status=status,
             outcome=outcome,
@@ -195,29 +235,45 @@ class Engagement:
     async def _model_response(
         self, emit: Callable[[EventPayload], None]
     ) -> RunOutcome:
-        request = ModelRequest(
-            messages=(
-                ModelMessage(
-                    role="system", text=system_prompt(self.scoped.scope)
-                ),
-                ModelMessage(role="user", text=self.request.message),
-            ),
-        )
-        parts: list[str] = []
-        finished: ModelFinished | None = None
-        async with aclosing(self.scoped.model.stream(request)) as stream:
+        async with aclosing(
+            self.scoped.model.stream(self.model_request)
+        ) as stream:
             async for event in stream:
                 if isinstance(event, ModelTextDelta):
-                    parts.append(event.delta)
                     emit(TextEvent(delta=event.delta))
+                elif isinstance(event, ModelOutputItem):
+                    self.output_items.append(event.item.model_copy(deep=True))
                 elif isinstance(event, ModelFinished):
-                    finished = event
-                else:
-                    return self._failure(
-                        "tools_unavailable", "This run has no tools available."
-                    )
-        if finished is None or finished.reason != "stop":
+                    self.model_finished = event
+        if any(isinstance(item, ToolCall) for item in self.output_items):
+            return self._failure(
+                "tools_unavailable", "This run has no tools available."
+            )
+        messages = [
+            item
+            for item in self.output_items
+            if isinstance(item, ModelMessage)
+        ]
+        if (
+            self.model_finished is None
+            or self.model_finished.reason != "stop"
+            or not messages
+            or any(
+                item.status in {"incomplete", "in_progress"}
+                for item in self.output_items
+            )
+        ):
             return self._failure(
                 "incomplete_response", "The model did not finish its response."
             )
+        parts = []
+        for message in messages:
+            if isinstance(message.content, str):
+                parts.append(message.content)
+            else:
+                for part in message.content:
+                    if isinstance(part, OutputText):
+                        parts.append(part.text)
+                    elif isinstance(part, Refusal):
+                        parts.append(part.refusal)
         return CompletedOutcome(**self.reference, text="".join(parts))
