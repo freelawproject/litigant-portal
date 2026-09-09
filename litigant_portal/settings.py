@@ -359,3 +359,10 @@ CORPUS_COURT = os.environ.get("CORPUS_COURT") or None
 
 # Audit window: cleanup_sessions keeps chat activity this many days.
 AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "30"))
+
+# docassemble prefill. Without a key the packet button falls back to the
+# plain, unprefilled interview link. The base URL overrides the API root
+# derived from that link, so a dev bench answers for the QA URL the content
+# YAML carries.
+DOCASSEMBLE_BASE_URL = os.environ.get("DOCASSEMBLE_BASE_URL") or None
+DOCASSEMBLE_API_KEY = os.environ.get("DOCASSEMBLE_API_KEY") or None

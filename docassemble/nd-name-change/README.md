@@ -40,7 +40,7 @@ code block, not a bare `multi_user: True` key, which throws `DASourceError`
 Prereq: the bench is up. See [`docs/docassemble.md`](../../docs/docassemble.md).
 
 - Start the bench: `make docassemble-up`
-- Open `http://localhost:8100` and log in (fresh box default: `admin@example.com` / `password`)
+- Open `http://localhost:8100` and log in with the `DA_ADMIN_EMAIL` / `DA_ADMIN_PASSWORD` seeded on the bench's first boot (see [`docs/docassemble.md`](../../docs/docassemble.md))
 - Top-right menu → **Playground**
 - Upload the templates: in the Playground, open the **Templates** folder → upload
   `petition.pdf`, `declaration.pdf`, `notice.pdf`, `confidential-info.pdf`, and `order.pdf`

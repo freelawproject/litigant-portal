@@ -16,7 +16,7 @@ One page for the document-assembly side: authoring gotchas, the local bench, QA 
 
 `make docassemble-up` / `make docassemble-down` → http://localhost:8100. Deliberately outside LP's dev/prod compose profiles (~20 GB all-in-one image, opt-in; first pull takes minutes).
 
-- Default login `admin@admin.com` / `password` — a well-known docassemble default, change it immediately.
+- Login is whatever `DA_ADMIN_EMAIL` / `DA_ADMIN_PASSWORD` seeded on the first boot (`docker-compose.docassemble.yml`, values from `.env`). docassemble's stock default does not reliably work. Those variables, and `DA_ADMIN_API_KEY` for the prefill client, seed **only into an empty database**: set them before the first `make docassemble-up`, or `down -v` and boot again.
 - Port 8100 because LP's Caddy owns `:80` in dev; `DAHOSTNAME` must include the port or websockets and generated URLs break.
 - Playground → **Utilities → "Get list of fields from a PDF or DOCX file"** reads an AcroForm PDF and scaffolds the `fields:` block — no manual field hunting.
 - Playground work persists on named volumes across `down`/`up`.
