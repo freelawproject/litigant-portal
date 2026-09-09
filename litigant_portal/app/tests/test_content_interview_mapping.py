@@ -9,6 +9,7 @@ Skipped under ``make test``: the container image carries no interviews, only
 merges there.
 """
 
+import re
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -59,14 +60,21 @@ def _interview_path(interview_url):
     return matches[0] if len(matches) == 1 else None
 
 
+def _blocks(interview_path):
+    """Every mapping block in an interview, in file order."""
+    return [
+        block
+        for block in yaml.safe_load_all(
+            interview_path.read_text(encoding="utf-8")
+        )
+        if isinstance(block, dict)
+    ]
+
+
 def _fields(interview_path):
     """``{variable: field block}`` for every field the interview asks."""
     fields = {}
-    for block in yaml.safe_load_all(
-        interview_path.read_text(encoding="utf-8")
-    ):
-        if not isinstance(block, dict):
-            continue
+    for block in _blocks(interview_path):
         for entry in block.get("fields") or []:
             if not isinstance(entry, dict):
                 continue
@@ -91,7 +99,25 @@ def _mapped():
             yield path.name, question_id, variable, interview_path
 
 
+def _handoff_interviews():
+    """(content file, interview path) per interview a flow hands off to.
+
+    Every flow with an interview_url, mapped or not: the handoff creates a
+    session either way.
+    """
+    seen = {}
+    for path in iter_corpus_paths(CONTENT_DIR):
+        target = interview_target(CorpusLoader.load(path))
+        if target is None:
+            continue
+        interview_path = _interview_path(target[0])
+        if interview_path is not None:
+            seen.setdefault(interview_path, path.name)
+    return [(name, path) for path, name in seen.items()]
+
+
 MAPPED = list(_mapped())
+INTERVIEWS = _handoff_interviews()
 
 
 def test_the_nd_name_change_flows_are_actually_being_checked():
@@ -158,3 +184,39 @@ def test_mapped_choice_values_agree_with_the_interview():
             f"{set(question.choices) - allowed} that {interview_path.name} "
             f"does not accept for '{variable}'"
         )
+
+
+@pytest.mark.parametrize(
+    ("file_name", "interview_path"),
+    INTERVIEWS,
+    ids=[p.name for _f, p in INTERVIEWS],
+)
+def test_interview_enables_multi_user_from_an_initial_block(
+    file_name, interview_path
+):
+    # The one prerequisite with no fallback: without it the resume link cannot
+    # decrypt the session, so the litigant gets an error rather than a plain
+    # interview.
+    initial_code = "\n".join(
+        block.get("code") or ""
+        for block in _blocks(interview_path)
+        if block.get("initial")
+    )
+    assert re.search(r"multi_user\s*=\s*True", initial_code), (
+        f"{interview_path.name} (handed off from {file_name}) does not set "
+        "multi_user = True in an initial code block"
+    )
+
+
+@pytest.mark.parametrize(
+    ("file_name", "interview_path"),
+    INTERVIEWS,
+    ids=[p.name for _f, p in INTERVIEWS],
+)
+def test_interview_never_sets_multi_user_as_a_bare_key(
+    file_name, interview_path
+):
+    # A bare `multi_user: True` key throws DASourceError on load.
+    assert not any(
+        "multi_user" in block for block in _blocks(interview_path)
+    ), f"{interview_path.name} sets multi_user as a key, not as initial code"
