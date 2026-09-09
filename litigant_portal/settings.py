@@ -366,3 +366,6 @@ AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "30"))
 # YAML carries.
 DOCASSEMBLE_BASE_URL = os.environ.get("DOCASSEMBLE_BASE_URL") or None
 DOCASSEMBLE_API_KEY = os.environ.get("DOCASSEMBLE_API_KEY") or None
+# Set when LP reaches docassemble at an address litigants cannot, e.g. an
+# internal hostname: the resume link is rewritten onto this origin.
+DOCASSEMBLE_PUBLIC_URL = os.environ.get("DOCASSEMBLE_PUBLIC_URL") or None

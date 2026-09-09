@@ -295,12 +295,13 @@ def test_packet_form_with_url_renders_as_link(client, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_packet_section_renders_interview_link_when_set(client, monkeypatch):
-    # When the corpus sets interview_url, the packet emits the "Fill out your
-    # forms" handoff as an <a> to that url that opens in a new tab (#543). The
-    # {% if ctx.interview_url %} conditional is our code deciding whether the
-    # litigant sees a working docassemble link-out — behavioral, not markup.
-    interview = "https://da.example.gov/interview?i=name_change"
+def test_packet_section_posts_the_handoff_when_an_interview_is_set(
+    client, monkeypatch
+):
+    # The handoff is a POST to our own endpoint, not a link to docassemble:
+    # it creates a session, so a crawler or a reload must not fire it. The
+    # {% if ctx.interview_url %} conditional decides whether the litigant sees
+    # a working handoff at all.
     corpus = Corpus(
         metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
         sections=[
@@ -310,15 +311,18 @@ def test_packet_section_renders_interview_link_when_set(client, monkeypatch):
                 id="filing_packet",
                 heading="Your filing packet",
                 forms=["Petition for Name Change"],
-                interview_url=interview,
+                interview_url="https://da.example.gov/i?i=name_change",
             ),
         ],
     )
     monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
     flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
     assert re.search(
-        rf'<a[^>]*href="{re.escape(interview)}"[^>]*target="_blank"', flat
+        rf'<form[^>]*method="post"[^>]*action="{re.escape(URL)}interview/"',
+        flat,
     )
+    assert "csrfmiddlewaretoken" in flat
+    assert "Fill out your forms" in flat
 
 
 @pytest.mark.django_db

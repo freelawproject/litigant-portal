@@ -10,7 +10,7 @@ decrypt it.
 """
 
 import logging
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlunparse
 
 import requests
 from django.conf import settings
@@ -46,7 +46,25 @@ def docassemble_session_create(*, interview_url: str, variables: dict) -> str:
 
     session = _session_new(api_root, api_key, interview)
     _variables_set(api_root, api_key, interview, session, variables)
-    return _resume_url(api_root, api_key, interview, session)
+    return _public(_resume_url(api_root, api_key, interview, session))
+
+
+def _public(resume_url: str) -> str:
+    """Swap in the litigant-facing origin, keeping the path and query.
+
+    docassemble builds the launch URL from the host we called it on, which on
+    a deployment is an internal address no browser can reach. Unset means the
+    URL comes back as docassemble built it.
+    """
+    public = settings.DOCASSEMBLE_PUBLIC_URL
+    if not public:
+        return resume_url
+    origin = urlparse(public)
+    return urlunparse(
+        urlparse(resume_url)._replace(
+            scheme=origin.scheme, netloc=origin.netloc
+        )
+    )
 
 
 def _target(interview_url: str) -> tuple[str, str]:

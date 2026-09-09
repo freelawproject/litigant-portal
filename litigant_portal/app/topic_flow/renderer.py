@@ -216,6 +216,7 @@ def _render_resources(section, corpus, answers):
 
 @renderer("packet")
 def _render_packet(section, corpus, answers):
+    meta = corpus.metadata
     return RenderedSection(
         anchor_id=section.id,
         heading=section.heading,
@@ -225,6 +226,10 @@ def _render_packet(section, corpus, answers):
                 {"name": form.name, "url": form.url} for form in section.forms
             ],
             "interview_url": section.interview_url,
+            # URL parts, as in _render_ics: the template owns {% url %}.
+            "court": meta.court,
+            "topic": meta.topic,
+            "role": meta.role,
         },
     )
 

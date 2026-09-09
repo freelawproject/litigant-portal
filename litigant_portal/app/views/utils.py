@@ -22,6 +22,19 @@ def topic_flow_answers(request, corpus) -> dict:
     )
 
 
+def topic_flow_reviewed_answers(request, names: list[str]) -> dict:
+    """``{question_id: value}`` for confirmed answers only, for the prefill.
+
+    Same no-session guard as ``topic_flow_answers``: a fresh guest hands over
+    an empty payload rather than minting an identity row.
+    """
+    if not request.user.is_authenticated and not request.session.session_key:
+        return {}
+    return variable_answer_map(
+        identity=request.identity, names=names, reviewed_only=True
+    )
+
+
 def _perm_required(codename: str):
     """Build a JSON guard requiring ``codename``."""
 

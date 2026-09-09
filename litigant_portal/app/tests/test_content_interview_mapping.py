@@ -3,6 +3,10 @@
 A preset variable skips its question and its validation, so a stale name is
 dropped silently and a bad choice value prints onto a court form. Covers the
 flows whose interview is versioned under ``docassemble/``. DB-free.
+
+Skipped under ``make test``: the container image carries no interviews, only
+``litigant_portal/``. CI runs tox against a full checkout, so the guard gates
+merges there.
 """
 
 from pathlib import Path
@@ -19,6 +23,11 @@ from litigant_portal.app.topic_flow.registry import (
 )
 
 INTERVIEW_DIR = Path(__file__).resolve().parents[3] / "docassemble"
+
+pytestmark = pytest.mark.skipif(
+    not INTERVIEW_DIR.is_dir(),
+    reason=f"no interviews at {INTERVIEW_DIR} (container image)",
+)
 
 # Keys sitting beside a field's ``Label: variable`` entry, whose values can
 # themselves look like identifiers ("datatype: date").

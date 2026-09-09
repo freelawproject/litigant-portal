@@ -229,3 +229,32 @@ def test_a_bare_string_resume_response_is_accepted(monkeypatch):
 def test_an_empty_variables_dict_still_creates_a_session(recorder):
     assert _create(variables={}) == RESUME
     assert recorder.calls[1]["json"]["variables"] == {}
+
+
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="http://docassemble",
+    DOCASSEMBLE_PUBLIC_URL="https://qa.example.gov/interview",
+)
+def test_resume_url_is_rewritten_onto_the_public_origin(monkeypatch):
+    # docassemble builds the launch URL from the host we called it on, which
+    # on a deployment is internal and unreachable from a browser.
+    monkeypatch.setattr(
+        requests,
+        "request",
+        _Recorder(
+            _Response({"session": "sess-1"}),
+            _Response(status=204),
+            _Response({"url": "http://docassemble/launch?c=tok"}),
+        ),
+    )
+    assert _create() == "https://qa.example.gov/launch?c=tok"
+
+
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL=None,
+    DOCASSEMBLE_PUBLIC_URL=None,
+)
+def test_resume_url_is_left_alone_without_a_public_origin(recorder):
+    assert _create() == RESUME

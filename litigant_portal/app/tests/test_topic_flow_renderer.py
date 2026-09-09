@@ -292,6 +292,23 @@ def test_packet_with_interview_url_exposes_it_for_the_button():
     assert rendered.context["interview_url"] == url
 
 
+def test_packet_context_carries_the_handoff_url_parts():
+    section = PacketOutput(
+        kind="output",
+        output_type="packet",
+        id="forms",
+        heading="Your packet",
+        forms=["Petition"],
+        interview_url="https://da.example/interview?i=p",
+    )
+    context = render_section(section, _corpus(section), {}).context
+    assert (context["court"], context["topic"], context["role"]) == (
+        "c",
+        "t",
+        "r",
+    )
+
+
 # --- dispatch ---------------------------------------------------------------
 
 
