@@ -743,6 +743,71 @@ def test_blank_unprotected_field_still_clears_its_answer(
     assert _answers()["filing_county"].value is None
 
 
+# --- clearing a protected answer (needs DB) -----------------------------------
+# The page never shows a NEVER_PREFILL value, so erasing one takes an explicit
+# checkbox; without it there is no way to remove an unwanted stored answer
+# before it prefills onto a court form.
+
+
+@pytest.mark.django_db
+def test_checking_clear_erases_a_protected_answer(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(
+        URL,
+        {"first_name": "", "first_name__clear": "on", "filing_county": "Cass"},
+    )
+    assert _answers()["first_name"].value is None
+
+
+@pytest.mark.django_db
+def test_a_typed_value_wins_over_the_clear_checkbox(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(
+        URL,
+        {
+            "first_name": "Alex",
+            "first_name__clear": "on",
+            "filing_county": "Cass",
+        },
+    )
+    assert _answers()["first_name"].value == "Alex"
+
+
+@pytest.mark.django_db
+def test_clear_checkbox_renders_only_beside_a_saved_protected_answer(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    before = client.get(URL).content.decode()
+    assert 'name="first_name__clear"' not in before
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    after = client.get(URL).content.decode()
+    assert re.search(
+        r'<input[^>]*type="checkbox"[^>]*name="first_name__clear"', after
+    )
+    # The unprotected sibling shows its value, so it never needs the box.
+    assert 'name="filing_county__clear"' not in after
+
+
+@pytest.mark.django_db
+def test_clearing_erases_an_unreviewed_assistant_answer_too(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(
+        URL,
+        {"first_name": "", "first_name__clear": "on", "filing_county": "Cass"},
+    )
+    assert _answers()["first_name"].value is None
+
+
 # --- fact_gather POST validation (#525, needs DB) ---------------------------
 # The handler now validates against the corpus question defs before persisting:
 # empty `required` fields and `choice` answers outside the list are soft-gated

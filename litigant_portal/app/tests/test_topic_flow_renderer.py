@@ -110,6 +110,33 @@ def test_fact_gather_never_prefills_a_protected_question(question_id):
     assert q["value"] == ""
 
 
+@pytest.mark.parametrize("question_id", PROTECTED_IDS)
+def test_fact_gather_flags_a_stored_protected_answer_as_saved(question_id):
+    # The page refuses to echo the value, so "saved" is the only signal the
+    # litigant gets that an answer exists — and the clear checkbox rides on it.
+    section = _fg([Question(id=question_id, label="Protected")])
+    rendered = render_section(
+        section, _corpus(section), {question_id: "stored"}
+    )
+    (q,) = rendered.context["questions"]
+    assert q["saved"] is True
+
+
+def test_fact_gather_unanswered_protected_question_is_not_saved():
+    section = _fg([Question(id="first_name", label="First name")])
+    rendered = render_section(section, _corpus(section), {})
+    (q,) = rendered.context["questions"]
+    assert q["saved"] is False
+
+
+def test_fact_gather_a_plain_answered_question_is_not_flagged_saved():
+    # A plain field shows its value, so blank already means "erase it".
+    section = _fg([Question(id="pubcounty", label="County of publication")])
+    rendered = render_section(section, _corpus(section), {"pubcounty": "Cass"})
+    (q,) = rendered.context["questions"]
+    assert q["saved"] is False
+
+
 def test_fact_gather_carries_choice_metadata():
     section = _fg(
         [

@@ -114,6 +114,10 @@ def _render_fact_gather(section, corpus, answers):
             "choices": q.choices,
             "help_text": q.help_text,
             "value": "" if q.id in NEVER_PREFILL else answers.get(q.id, ""),
+            # The blanked-out fields need an explicit clear affordance: the
+            # litigant never sees the stored value, so a blank submission
+            # can't mean "erase it" (see the entry view's POST handler).
+            "saved": q.id in NEVER_PREFILL and q.id in answers,
             "errors": [],
             "autofocus": False,
         }

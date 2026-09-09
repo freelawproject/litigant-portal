@@ -94,13 +94,19 @@ def topic_flow(request, court, topic, role):
         # never lands in the store; valid siblings still save. A blank
         # optional field stores None, which clears the answer — except for a
         # NEVER_PREFILL field, which renders blank whatever is stored, so a
-        # blank submission there means "never shown", not "erase it".
+        # blank submission there means "never shown", not "erase it". Erasing
+        # one takes its explicit clear checkbox; a typed value wins over the
+        # checkbox, since replacing is the stronger intent.
         valid = {}
         for qid, raw in submitted.items():
             if qid in errors:
                 continue
             value = raw.strip() or None
-            if value is None and qid in NEVER_PREFILL:
+            if (
+                value is None
+                and qid in NEVER_PREFILL
+                and f"{qid}__clear" not in request.POST
+            ):
                 continue
             valid[qid] = value
         if valid:
