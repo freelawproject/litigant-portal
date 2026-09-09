@@ -656,6 +656,89 @@ def test_answers_survive_login(client, monkeypatch, variables):
     assert answer.reviewed
 
 
+# --- blank NEVER_PREFILL fields (needs DB) ----------------------------------
+# A protected field renders blank whatever is stored, so its blank submission
+# can't be read as "erase this" — the litigant never saw the value.
+
+
+def _identity_corpus():
+    """A corpus whose fact_gather pairs an optional protected question with a
+    plain one."""
+    return Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="your_information",
+                heading="Your name",
+                questions=[
+                    Question(id="first_name", label="First name"),
+                    Question(
+                        id="filing_county",
+                        label="County",
+                        type="choice",
+                        choices=["Cass", "Burleigh"],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def name_variable(variables):
+    Variable.objects.create(name="first_name", data_type=VariableDataType.TEXT)
+
+
+@pytest.mark.django_db
+def test_blank_protected_field_keeps_a_reviewed_answer(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(URL, {"first_name": "", "filing_county": "Burleigh"})
+    assert _values() == {"first_name": "Sandra", "filing_county": "Burleigh"}
+    assert _answers()["first_name"].reviewed
+
+
+@pytest.mark.django_db
+def test_blank_protected_field_keeps_an_unreviewed_answer_unreviewed(
+    client, monkeypatch, name_variable
+):
+    # The AI-written case: saving this section must neither destroy the
+    # assistant's answer nor confirm it on the litigant's behalf.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(URL, {"first_name": "", "filing_county": "Cass"})
+    answer = _answers()["first_name"]
+    assert answer.value == "Sandra"
+    assert not answer.reviewed
+
+
+@pytest.mark.django_db
+def test_typing_a_protected_field_overwrites_it_and_marks_it_reviewed(
+    client, monkeypatch, name_variable
+):
+    # Overwriting is the only correction available for a field the page can't
+    # show, so it has to work.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(URL, {"first_name": "Alex", "filing_county": "Cass"})
+    answer = _answers()["first_name"]
+    assert answer.value == "Alex"
+    assert answer.reviewed
+
+
+@pytest.mark.django_db
+def test_blank_unprotected_field_still_clears_its_answer(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(URL, {"first_name": "", "filing_county": ""})
+    assert _answers()["filing_county"].value is None
+
+
 # --- fact_gather POST validation (#525, needs DB) ---------------------------
 # The handler now validates against the corpus question defs before persisting:
 # empty `required` fields and `choice` answers outside the list are soft-gated

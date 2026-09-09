@@ -1,4 +1,4 @@
-"""Postgres tests: variable_answer_list/variable_answer_map read an identity's answers scoped to that identity and to the requested names."""
+"""Postgres tests: variable_answer_list/variable_answer_map read an identity's answers scoped to that identity, to the requested names, and (with reviewed_only) to confirmed answers."""
 
 import pytest
 from django.test import TestCase
@@ -151,5 +151,98 @@ class VariableAnswerMapTests(TestCase):
         )
         result = variable_answer_map(
             identity=self.identity, names=["old_county", "residence_county"]
+        )
+        self.assertEqual(result, {})
+
+    def test_includes_unreviewed_answers_by_default(self):
+        VariableAnswer.objects.create(
+            identity=self.identity,
+            variable=self.county,
+            value="Cass",
+            reviewed=False,
+        )
+        result = variable_answer_map(
+            identity=self.identity, names=["residence_county"]
+        )
+        self.assertEqual(result, {"residence_county": "Cass"})
+
+    def test_reviewed_only_includes_a_reviewed_answer(self):
+        VariableAnswer.objects.create(
+            identity=self.identity,
+            variable=self.county,
+            value="Cass",
+            reviewed=True,
+        )
+        result = variable_answer_map(
+            identity=self.identity,
+            names=["residence_county"],
+            reviewed_only=True,
+        )
+        self.assertEqual(result, {"residence_county": "Cass"})
+
+    def test_reviewed_only_excludes_an_unreviewed_answer(self):
+        VariableAnswer.objects.create(
+            identity=self.identity,
+            variable=self.county,
+            value="Cass",
+            reviewed=False,
+        )
+        result = variable_answer_map(
+            identity=self.identity,
+            names=["residence_county"],
+            reviewed_only=True,
+        )
+        self.assertEqual(result, {})
+
+    def test_reviewed_only_keeps_the_reviewed_answers_of_a_mixed_set(self):
+        VariableAnswer.objects.create(
+            identity=self.identity,
+            variable=self.county,
+            value="Cass",
+            reviewed=True,
+        )
+        VariableAnswer.objects.create(
+            identity=self.identity,
+            variable=self.city,
+            value="Fargo",
+            reviewed=False,
+        )
+        result = variable_answer_map(
+            identity=self.identity,
+            names=["residence_county", "residence_city"],
+            reviewed_only=True,
+        )
+        self.assertEqual(result, {"residence_county": "Cass"})
+
+    def test_reviewed_only_still_omits_a_cleared_answer(self):
+        VariableAnswer.objects.create(
+            identity=self.identity,
+            variable=self.county,
+            value=None,
+            reviewed=True,
+        )
+        result = variable_answer_map(
+            identity=self.identity,
+            names=["residence_county"],
+            reviewed_only=True,
+        )
+        self.assertEqual(result, {})
+
+    def test_reviewed_only_still_omits_out_of_schema_variables(self):
+        vestigial = Variable.objects.create(
+            name="old_county",
+            data_type=VariableDataType.TEXT,
+            in_schema=False,
+        )
+        VariableAnswer.objects.create(
+            identity=self.identity,
+            variable=vestigial,
+            value="Stark",
+            reviewed=True,
+        )
+        result = variable_answer_map(
+            identity=self.identity,
+            names=["old_county"],
+            reviewed_only=True,
         )
         self.assertEqual(result, {})
