@@ -12,6 +12,7 @@ Direct execution and Django adapters follow in PR2; Workers follows in PR3.
 | `interfaces.py`         | Async run-handle and host-service contracts                          |
 | `environment.py`        | Live services and verified context, separate from serialized data    |
 | `errors.py`             | Validation, access, and busy errors before acceptance                |
+| `utils/audit.py`        | Versioned canonical instruction bytes and their SHA-256 fingerprint  |
 | `litigant_portal.agent` | Host constructor and portal defaults                                 |
 
 ## Calling the agent
@@ -67,6 +68,8 @@ The host owns HTTP framing, browser rendering, and live-stream buffering.
 unauthorized submissions and replies before acceptance. After acceptance,
 execution failures produce a `FailedOutcome` containing a caller-safe `PublicError`.
 Constructing data models directly uses Pydantic's `ValidationError`.
+Wrapped validation errors expose only known contract field paths and controlled
+messages. Unknown keys, dictionary keys, and submitted values are not echoed.
 
 ## Scope and services
 
@@ -91,7 +94,7 @@ Relevance filtering and returned-context limits belong in procedural tool code;
 actual ingestion and retrieval arrive in their planned later PRs.
 
 Prompts, tools, discovery, and execution policy belong to `lp_agent`. Django model
-access, provider clients, storage connections, and credentials stay behind host
+access, provider clients, storage connections, and credentials stay behind integration
 adapters. Only contract models are serialized with `model_dump_json()` and restored
 with `model_validate_json()`; use Pydantic `TypeAdapter` for unions such as
 `RunOutcome`. Service environments are never checkpoint or event payloads.
@@ -99,6 +102,69 @@ with `model_validate_json()`; use Pydantic `TypeAdapter` for unions such as
 The version-1 `RunCheckpoint` envelope contains run/conversation identifiers and
 JSON data. PR2 defines executor-state contents, accepted-input persistence, and
 atomic checkpoint commits. Persisted work survives replacement of the agent object.
+
+## Model data and instruction audits
+
+The model boundary uses our own Pydantic types matching a supported subset of the
+[OpenAI Responses format](https://developers.openai.com/api/docs/guides/function-calling).
+It does not import the OpenAI SDK or implement the complete Responses HTTP API.
+Provider SDKs belong in adapters; selecting or replacing LiteLLM follows in PR2.
+
+- `ModelRequest` contains resolved `instructions`, ordered `input` items, and
+  function `tools`. Model selection, credentials, and transport configuration
+  belong to the adapter. Put resolved system instructions in `instructions` so
+  there is one source for the instruction artifact.
+- `ModelMessage` uses `type="message"`, `role`, and `content`. The current subset
+  supports text inputs, assistant text/refusals, and assistant metadata including
+  IDs, status, annotations, log probabilities, and `phase`. Multimodal inputs and
+  provider-hosted tools are outside this contract. Unsupported fields/items fail
+  validation rather than being silently dropped.
+- `ToolCall` uses `type="function_call"`, `call_id`, `name`, and an unmodified JSON
+  argument **string**. `FunctionCallOutput` uses `type="function_call_output"`,
+  the same `call_id`, and an output string. PR2 parses and validates arguments
+  against the allowlisted tool before dispatch; preserving a string is not
+  permission to execute it.
+- `ReasoningItem` retains summary/content, encrypted continuation data, ID, and
+  status. `Conversation.items` retains all input and output items in order.
+  [Reasoning continuation items](https://developers.openai.com/api/docs/guides/reasoning)
+  and assistant metadata must survive persistence and subsequent model calls.
+- `ModelClient.stream()` yields `ModelTextDelta` and `ModelOutputItem` events.
+  Adapters assemble complete output items in provider order, including reasoning
+  and function calls. Deltas serve live display; assembled items become history
+  once, without duplicating the text. Item status remains authoritative: an
+  assembled item can be incomplete. Reasoning data is not public text.
+
+Function tools serialize as `type`, `name`, `description`, `parameters`, and
+`strict`. Strict mode defaults to `true` and is always serialized. Parameters
+must describe an object. Strict schemas close every object with
+`additionalProperties: false` and list every property in `required`; represent
+optional values using a nullable type. The validators beside `ToolDefinition` in `types.py` check these structural rules
+through nested objects, arrays, alternatives, and local references. Example and
+default data are preserved, including nulls. An explicit `strict=False` permits
+open objects and optional properties. Adapters must check any additional schema
+restrictions of their target model and reject unsupported strict mode rather
+than silently disabling it.
+
+Absent optional API metadata is omitted during serialization. Tool defaults are
+explicit; existing unreleased `messages`, `text`, and `input_schema` model shapes
+have no compatibility aliases. Application run controls, scope, identity,
+confirmations, and browser events retain their own contracts. MCP will translate
+shared tool definitions into its own protocol through the same runner.
+
+`lp_agent.utils.audit.InstructionArtifact.from_request(request)` snapshots instructions and tool
+definitions without retaining references to the request's mutable schemas.
+`canonical_bytes()` produces UTF-8 JSON containing `format`, `instructions`, and
+`tools`; `content_hash()` returns its SHA-256 digest. Version
+`lp_agent.instructions.v1` fixes sorted object keys, compact separators, explicit
+defaults, finite numbers, exact string content, and preserved array order.
+Dictionary insertion order does not affect the fingerprint; tool order does.
+Changes to this serialization contract require a new format version and fixture.
+
+PR2 will persist canonical bytes and their digest in restricted audit storage.
+The fingerprint identifies canonical instructions and tools, not conversation
+input, model configuration, or every byte of an adapted provider request.
+The current chat engine's artifacts are unchanged, and old hash compatibility
+is not required before release. PR1 adds no audit database or migration.
 
 ## Execution policy
 
@@ -126,8 +192,9 @@ construction until PR2 supplies Django environment wiring. It inherits agent met
 
 ## Checks
 
-From the repository root, run `tox -e agent`. Its isolated environment installs only
-Pydantic and pytest, disables plugin autoload, and requires neither Django nor a
+From the repository root, run `tox -e agent`. Default `tox` and `make test` also run
+this environment. It installs only Pydantic (at least 2.10.0) and pytest,
+disables plugin autoload, and requires neither Django nor a
 database or provider credentials. With existing development dependencies, use:
 
 ```sh
@@ -137,3 +204,7 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c lp_agent/pytest.ini lp_agen
 The regular project suite also discovers these tests. Contract tests verify imports,
 validation, serialization, and explicit placeholders; runtime behavior is tested
 when implemented in PR2 and PR3.
+
+PR2 must validate the wrapper's saved registered/anonymous identity before
+initialization callbacks, then delegate configuration and environment setup to
+the base constructor once. The wrapper remains explicitly unimplemented in PR1.

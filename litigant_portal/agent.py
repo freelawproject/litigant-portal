@@ -43,7 +43,9 @@ class PortalAgent(LPAgent):
             )
             ScopeSelection(court=court, topic=topic)
         except ValidationError as exc:
-            raise AgentValidationError.from_validation_error(exc) from exc
+            raise AgentValidationError.from_validation_error(
+                exc, models=(AgentConfiguration, ScopeSelection)
+            ) from exc
         if identity is None:
             raise AgentValidationError("a host-verified identity is required")
         raise NotImplementedError(

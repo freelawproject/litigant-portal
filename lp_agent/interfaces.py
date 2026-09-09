@@ -128,7 +128,12 @@ class RunStore(Protocol):
 
 class ModelClient(Protocol):
     """
-    Normalize provider streaming and assemble tool arguments here.
+    Stream text deltas and assembled Responses output items in provider order.
+
+    Preserve reasoning, message metadata, and argument strings for history.
+    PR2 validates arguments before dispatch; adapters reject unsupported schema
+    features or strict mode instead of changing them silently. These events
+    are internal agent signals, not the Responses HTTP streaming protocol.
     """
 
     def stream(self, request: ModelRequest) -> AsyncIterator[ModelEvent]: ...

@@ -37,7 +37,9 @@ class LPAgent:
                 limits=RunLimits() if limits is None else limits,
             )
         except ValidationError as exc:
-            raise AgentValidationError.from_validation_error(exc) from exc
+            raise AgentValidationError.from_validation_error(
+                exc, models=(AgentConfiguration,)
+            ) from exc
         if not isinstance(environment, AgentEnvironment):
             raise AgentValidationError(
                 "environment must be an AgentEnvironment"
@@ -77,7 +79,9 @@ class LPAgent:
                 attachment_ids=attachment_ids,
             )
         except ValidationError as exc:
-            raise AgentValidationError.from_validation_error(exc) from exc
+            raise AgentValidationError.from_validation_error(
+                exc, models=(RunRequest,)
+            ) from exc
         raise NotImplementedError(
             f"{self.runtime} execution is not implemented yet."
         )

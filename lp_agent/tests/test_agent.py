@@ -133,6 +133,8 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
             "django",
             "litigant_portal",
             "litellm",
+            "openai",
+            "anthropic",
             "celery",
             "redis",
             "boto3",
@@ -146,11 +148,22 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
 
         sys.meta_path.insert(0, BlockHostImports())
         from lp_agent import LPAgent, RunLimits
-        from lp_agent.types import RunRequest
+        from lp_agent.utils.audit import InstructionArtifact
+        from lp_agent.types import ModelMessage, ModelRequest, RunRequest, ToolDefinition
 
         assert RunLimits().max_steps == 30
         request = RunRequest(message="hello")
         assert RunRequest.model_validate_json(request.model_dump_json()) == request
+        model_request = ModelRequest(
+            input=(ModelMessage(role="user", content="hello"),),
+            tools=(ToolDefinition(
+                name="lookup", description="Find guidance",
+                parameters={"type": "object", "properties": {},
+                            "required": [], "additionalProperties": False},
+            ),),
+        )
+        assert ModelRequest.model_validate_json(model_request.model_dump_json()) == model_request
+        assert len(InstructionArtifact.from_request(model_request).content_hash()) == 64
         assert not (forbidden & {name.split(".")[0] for name in sys.modules})
         """
     )
