@@ -11,27 +11,24 @@ def topic_flow_answers(request, corpus) -> dict:
     """``{question_id: value}`` for this visitor, for the page and downloads.
 
     Reads through the glossary, so a fact the assistant stored shows up
-    here too. Returns empty for a visitor with no session yet rather than
-    touching ``request.identity``, which would mint a session and an
-    identity row for every crawler hitting a flow page.
+    here too.
     """
-    if not request.user.is_authenticated and not request.session.session_key:
-        return {}
-    return variable_answer_map(
-        identity=request.identity, names=question_ids(corpus)
-    )
+    return _answer_map(request, question_ids(corpus))
 
 
 def topic_flow_reviewed_answers(request, names: list[str]) -> dict:
-    """``{question_id: value}`` for confirmed answers only, for the prefill.
+    """``{question_id: value}`` for confirmed answers only, for the prefill."""
+    return _answer_map(request, names, reviewed_only=True)
 
-    Same no-session guard as ``topic_flow_answers``: a fresh guest hands over
-    an empty payload rather than minting an identity row.
-    """
+
+def _answer_map(request, names, *, reviewed_only=False) -> dict:
+    # Returns empty for a visitor with no session yet rather than touching
+    # ``request.identity``, which would mint a session and an identity row
+    # for every crawler hitting a flow page.
     if not request.user.is_authenticated and not request.session.session_key:
         return {}
     return variable_answer_map(
-        identity=request.identity, names=names, reviewed_only=True
+        identity=request.identity, names=names, reviewed_only=reviewed_only
     )
 
 
