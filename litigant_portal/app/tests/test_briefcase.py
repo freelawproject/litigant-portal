@@ -179,6 +179,15 @@ class BriefcaseChatContextTests(TestCase):
             [a.variable.label for a in groups[0]["answers"]], ["Name"]
         )
 
+    def test_no_unrendered_template_syntax_reaches_the_page(self):
+        # Django's {# #} comment is single-line only, so a multi-line one is
+        # not a comment and renders as body text. That shipped once, straight
+        # into the briefcase panel.
+        content = self.client.get(reverse("pages:chat")).content.decode()
+
+        self.assertNotIn("{#", content)
+        self.assertNotIn("{%", content)
+
     def test_chat_page_exposes_empty_groups_for_a_fresh_visitor(self):
         # The panel is always rendered, so the context key must always exist:
         # a missing key and an empty list are different bugs in the template.

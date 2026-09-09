@@ -1,9 +1,12 @@
 {% load i18n %}
 
-{# show_agent_state: opt in to the developer disclosure. Off by default —
-   the partial's Alpine bindings only resolve inside x-data="chatApp", so
-   rendering it anywhere else (the style guide) would throw. #}
 <c-vars show_agent_state="" />
+
+{% comment %}
+  show_agent_state opts in to the developer disclosure at the bottom. Off by
+  default: the partial's Alpine bindings only resolve inside x-data="chatApp",
+  so rendering it anywhere else (the style guide) would throw.
+{% endcomment %}
 
 {# The briefcase body: the visitor's stored facts, grouped by interview page. #}
 {# Shared by the desktop column and the mobile drawer, so the two can't drift. #}
