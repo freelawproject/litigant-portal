@@ -15,7 +15,7 @@ from litigant_portal.agent import PortalAgent
 from litigant_portal.app.models import UserIdentity
 from lp_agent import AgentValidationError, LPAgent
 from lp_agent.adapters.environment import create_environment
-from lp_agent.tests.test_environment_factory import environment_options
+from lp_agent.tests.helpers import environment_options
 
 
 def test_portal_declares_host_inputs_and_workers_default():

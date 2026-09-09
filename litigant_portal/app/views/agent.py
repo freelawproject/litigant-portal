@@ -24,7 +24,6 @@ from litigant_portal.app.selectors.site import site_get_model
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
 from lp_agent.adapters.catalog import Court
-from lp_agent.types import Choice
 
 
 @login_required
@@ -36,15 +35,16 @@ def development_page(request: HttpRequest) -> HttpResponse:
     """
     if not settings.LP_AGENT_DEV_ENABLED:
         raise Http404
-    courts, topics = agent_scope_choices()
+    selected_model = site_get_model(role="assistant")
+    if selected_model not in dict(MODEL_CHOICES):
+        selected_model = None
     return render(
         request,
         "pages/agent/development.html",
         {
-            "courts": courts,
-            "topics": topics,
+            "courts": agent_scope_choices(),
             "model_choices": MODEL_CHOICES,
-            "selected_model": site_get_model(role="assistant"),
+            "selected_model": selected_model,
             "limits": RunLimits(),
         },
     )
@@ -56,32 +56,36 @@ class AgentMessageForm(forms.Form):
     """
 
     message = forms.CharField(strip=False)
-    court = forms.CharField()
-    topic = forms.CharField()
+    court = forms.ChoiceField(
+        error_messages={"invalid_choice": "Select an available court."}
+    )
+    topic = forms.ChoiceField(
+        error_messages={
+            "invalid_choice": "Select a topic available for this court."
+        }
+    )
     model = forms.ChoiceField(choices=MODEL_CHOICES)
     max_active_seconds = forms.FloatField(min_value=0.1)
     interrupt_behavior = forms.ChoiceField(
         choices=[("reject", "Reject while busy")], required=False
     )
 
-    def __init__(self, *args, topics, **kwargs):
+    def __init__(self, *args, catalog: tuple[Court, ...], **kwargs):
         super().__init__(*args, **kwargs)
-        self.topics = topics
+        self.fields["court"].choices = [
+            (court.choice_id, court.label) for court in catalog
+        ]
+        self.fields["topic"].choices = [
+            (topic.choice_id, topic.label)
+            for court in catalog
+            if court.choice_id == self["court"].value()
+            for topic in court.topics
+        ]
 
     def clean(self):
         data = super().clean()
         if not data.get("message", "").strip():
             self.add_error("message", "Enter a message.")
-        if (
-            data.get("court")
-            and data.get("topic")
-            and not any(
-                item["court"] == data["court"]
-                and item["slug"] == data["topic"]
-                for item in self.topics
-            )
-        ):
-            self.add_error("topic", "Select a topic available for this court.")
         return data
 
 
@@ -94,8 +98,8 @@ def development_stream(request: HttpRequest) -> HttpResponse:
     """
     if not settings.LP_AGENT_DEV_ENABLED:
         raise Http404
-    courts, topics = agent_scope_choices()
-    form = AgentMessageForm(request.POST, topics=topics)
+    catalog = agent_scope_choices()
+    form = AgentMessageForm(request.POST, catalog=catalog)
     if not form.is_valid():
         return JsonResponse({"errors": form.errors}, status=400)
     data = form.cleaned_data
@@ -106,18 +110,7 @@ def development_stream(request: HttpRequest) -> HttpResponse:
             topic=data["topic"],
             model=data["model"],
             api_key=os.environ.get("AWS_BEARER_TOKEN_BEDROCK", ""),
-            catalog=tuple(
-                Court(
-                    choice_id=court["slug"],
-                    label=court["name"],
-                    topics=tuple(
-                        Choice(choice_id=topic["slug"], label=topic["title"])
-                        for topic in topics
-                        if topic["court"] == court["slug"]
-                    ),
-                )
-                for court in courts
-            ),
+            catalog=catalog,
             runtime="Direct",
             limits=RunLimits(max_active_seconds=data["max_active_seconds"]),
         )

@@ -5,26 +5,9 @@ import pytest
 
 from lp_agent import AgentAccessError, AgentValidationError
 from lp_agent.adapters.bedrock import MODEL_CHOICES
-from lp_agent.adapters.catalog import Court
 from lp_agent.adapters.environment import create_environment
-from lp_agent.types import AccessContext, Choice, Scope
-
-
-def environment_options():
-    return {
-        "identity_id": "identity-1",
-        "court": "court",
-        "topic": "topic",
-        "model": MODEL_CHOICES[0][0],
-        "api_key": "test-only-key",
-        "catalog": (
-            Court(
-                choice_id="court",
-                label="Court",
-                topics=(Choice(choice_id="topic", label="Topic"),),
-            ),
-        ),
-    }
+from lp_agent.tests.helpers import environment_options
+from lp_agent.types import AccessContext, Scope
 
 
 def test_callbacks_resolve_once_at_initialization_and_are_not_retained():
@@ -60,6 +43,7 @@ def test_callbacks_resolve_once_at_initialization_and_are_not_retained():
         {"court": " "},
         {"topic": {}},
         {"model": "https://untrusted.example/model"},
+        {"model": "bedrock_mantle/anthropic.claude-haiku-4-5"},
         {"model": []},
         {"api_key": None},
         {"api_key": " "},

@@ -104,7 +104,8 @@ key to an opaque string and forwards these options to the factory. It inherits
 agent methods and defaults to `Workers`, which
 is still unimplemented. The development view selects `Direct`, supplies the
 permitted catalogue and server credentials, and uses the Site assistant model as
-the page's default. Authentication and HTTP input validation remain in Django.
+the page's default when supported. Otherwise the page requires an explicit model
+selection. Authentication and HTTP input validation remain in Django.
 
 ### Synchronous event streaming
 
@@ -130,56 +131,6 @@ Accepted runs emit the existing typed status/text/outcome envelopes. Submission
 failures inside the iterator use `{"error": "safe message"}`. Invalid submission
 data is rejected before constructing the iterator.
 
-## Remaining PR2 contract
-
-The following describes the complete interface that PR2 will implement:
-
-```python
-from lp_agent import LPAgent, RunLimits
-from lp_agent.types import ChoiceAnswer
-
-
-async def converse(environment, choose):
-    async with LPAgent(
-        environment=environment,
-        runtime="Direct",
-        interrupt_behavior="reject",
-        limits=RunLimits(),
-    ) as agent:
-        run = await agent.run(message="I need help", attachment_ids=())
-
-        async for event in run.events():
-            if event.payload.type == "question":
-                # The host presents the choices and obtains a user's selection.
-                selected_choice_id = await choose(event.payload.question)
-                answer = ChoiceAnswer(choice_id=selected_choice_id)
-                await run.respond(event.payload.question.question_id, answer)
-
-        return await run.result()
-```
-
-`run(message=..., conversation_id=None, attachment_ids=())` creates a conversation
-when its identifier is omitted. Otherwise it continues an authorized conversation.
-Identifiers are opaque nonempty strings; adapt host UUIDs with `str(id)`.
-Blank messages are invalid; valid messages retain their whitespace and content.
-
-`RunHandle` is a protocol, with read-only `run_id` and `conversation_id` properties:
-
-| Operation                                           | Contract                                                                    |
-| --------------------------------------------------- | --------------------------------------------------------------------------- |
-| `await run.status()`                                | Read saved state, including a pending question                              |
-| `run.events()`                                      | Iterate typed live events without awaiting the iterator itself              |
-| `await run.result()`                                | Wait for a completed, failed, or cancelled outcome                          |
-| `await run.respond(question_id, ChoiceAnswer(...))` | Validate the pending question and selected choice, then resume the same run |
-| `await run.cancel()`                                | Request cancellation; status/result report acknowledgement                  |
-| `await agent.get_run(run_id)`                       | Recover an authorized handle after reconstructing the agent                 |
-
-Waiting for input is nonterminal. Reconnecting callers recover saved status,
-questions, and final outcomes; there is initially no public event replay cursor.
-Events include an attempt number so consumers can distinguish restarted output.
-The host owns the HTTP response and browser rendering. The package owns the
-NDJSON bridge, live event buffering, and execution lifetime.
-
 `AgentValidationError`, `AgentAccessError`, and `AgentBusyError` reject invalid or
 unauthorized submissions and replies before acceptance. After acceptance,
 execution failures produce a `FailedOutcome` containing a caller-safe `PublicError`.
@@ -199,13 +150,9 @@ also supply either or both identifiers. Constructing this dataclass or `LPAgent`
 does not invoke services. The optional environment factory does invoke any
 supplied initialization callbacks, as described above.
 
-Normal execution requires both court and topic. A later PR2 step will resolve
-missing scope using fixed procedural questions and the host catalog, without a
-model call. Discovery preserves the
-original message and run ID while releasing execution resources between replies.
-Once scope is complete, the factory binds a `ScopedEnvironment` with the same
-identity, a full `Scope`, model access, and separate corpus/document searches.
-The instance binds once and automatically continues the original message.
+Normal execution requires both court and topic. The factory binds a
+`ScopedEnvironment` with the same identity, a full `Scope`, model access, and
+separate corpus/document searches. The instance binds once.
 
 Search adapters return ranked `SearchHit` values with relevance and provenance.
 They enforce bound identity/court/topic access and conversation attachment limits.
@@ -219,27 +166,19 @@ serialized with `model_dump_json()` and restored
 with `model_validate_json()`; use Pydantic `TypeAdapter` for unions such as
 `RunOutcome`. Service environments are never checkpoint or event payloads.
 
-The version-1 `RunCheckpoint` envelope contains run/conversation identifiers and
-JSON data. PR2 defines executor-state contents, accepted-input persistence, and
-atomic checkpoint commits. Persisted work survives replacement of the agent object.
-
 ## Model data and instruction audits
 
 The model boundary uses our own Pydantic types matching a supported subset of the
 [OpenAI Responses format](https://developers.openai.com/api/docs/guides/function-calling).
 It does not import the OpenAI SDK or implement the complete Responses HTTP API.
 The Bedrock adapter uses LiteLLM’s asynchronous Responses interface. GPT models
-use native Responses; GLM uses LiteLLM’s chat translation, and the Haiku choice
-routes through Bedrock Converse using the
-[US inference profile](https://docs.aws.amazon.com/bedrock/latest/userguide/model-card-anthropic-claude-haiku-4-5.html).
-Model choices
-and credentials remain supplied by the host. Provider storage and response
+use native Responses; GLM uses LiteLLM’s chat translation. Model choices and
+credentials remain supplied by the host. Provider storage and response
 caching are disabled; native Responses requests include encrypted reasoning
 continuation data. Reasoning effort uses provider defaults.
 
 Translated requests reject reasoning continuation and message metadata that
-LiteLLM cannot preserve. Native Responses input retains those fields. The current
-engagement flow still accepts one independent message, without continuation.
+LiteLLM cannot preserve. Native Responses input retains those fields.
 
 - `ModelRequest` contains resolved `instructions`, ordered `input` items, and
   function `tools`. Model selection, credentials, and transport configuration
@@ -267,8 +206,10 @@ engagement flow still accepts one independent message, without continuation.
   once, without duplicating the text. Item status remains authoritative: an
   assembled item can be incomplete. A successful response needs completed
   assistant output and a successful terminal signal; EOF alone is insufficient.
-  Reasoning data is not public text. The adapter closes the underlying native
-  HTTP response or translated provider stream, including on cancellation.
+  Reasoning data is not public text. Completed items received before a stream
+  failure remain in the failed run's checkpoint. Each model call owns its HTTP
+  client; the adapter closes both the response stream and client before returning,
+  including on failure, timeout, or cancellation.
 
 Function tools serialize as `type`, `name`, `description`, `parameters`, and
 `strict`. Strict mode defaults to `true` and is always serialized. Parameters
@@ -307,7 +248,38 @@ input, model configuration, or every byte of an adapted provider request.
 The current chat engine's artifacts are unchanged, and old hash compatibility
 is not required before release. This step adds no audit database or migration.
 
-## Execution policy
+## Remaining PR2 contract
+
+The full PR2 interface extends the current independent-response path with
+continuation, discovery, and recovery:
+
+`run(message=..., conversation_id=None, attachment_ids=())` creates a conversation
+when its identifier is omitted. Otherwise it continues an authorized conversation.
+Identifiers are opaque nonempty strings; adapt host UUIDs with `str(id)`.
+Blank messages are invalid; valid messages retain their whitespace and content.
+
+`RunHandle` is a protocol, with read-only `run_id` and `conversation_id` properties:
+
+| Operation                                           | Contract                                                                    |
+| --------------------------------------------------- | --------------------------------------------------------------------------- |
+| `await run.status()`                                | Read saved state, including a pending question                              |
+| `run.events()`                                      | Iterate typed live events without awaiting the iterator itself              |
+| `await run.result()`                                | Wait for a completed, failed, or cancelled outcome                          |
+| `await run.respond(question_id, ChoiceAnswer(...))` | Validate the pending question and selected choice, then resume the same run |
+| `await run.cancel()`                                | Request cancellation; status/result report acknowledgement                  |
+| `await agent.get_run(run_id)`                       | Recover an authorized handle after reconstructing the agent                 |
+
+Waiting for input is nonterminal. Reconnecting callers recover saved status,
+questions, and final outcomes; there is initially no public event replay cursor.
+Events include an attempt number so consumers can distinguish restarted output.
+
+Missing scope will use fixed procedural questions from the host catalogue,
+without a model call. Discovery preserves the original message and run ID,
+releases execution resources between replies, and resumes when scope is complete.
+Durable conversation and checkpoint storage will support authorized recovery after
+replacing the agent or restarting the process.
+
+### Execution policy
 
 Runtime and interruption policy are fixed at construction. `Direct` is the package
 default; `Workers` is the portal default. `await agent.serve_mcp()` is a separate
@@ -351,4 +323,6 @@ tests. Core checks cover blocked host/provider imports, configuration and callba
 validation, serialization, Direct flow behavior, submission/shutdown races, and
 stream cleanup. Provider tests exercise LiteLLM's actual native and translated
 stream wrappers with controlled HTTP responses or completion streams, including
-signed thinking, terminal status, and cancellation. They make no live model calls.
+reasoning metadata, terminal status, failure checkpoints, and cancellation.
+Local HTTP fixtures also check that repeated synchronous requests close client
+connections before their event loops are discarded. They make no live model calls.

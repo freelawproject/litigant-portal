@@ -157,7 +157,7 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
         sys.meta_path.insert(0, BlockHostImports())
         from lp_agent import LPAgent, RunLimits
         from lp_agent.adapters.environment import create_environment
-        from lp_agent.tests.test_direct import ScriptedModel, environment_for
+        from lp_agent.tests.helpers import ScriptedModel, environment_for
         from lp_agent.types import ModelFinished, ModelOutputItem, ModelTextDelta
         from lp_agent.utils.audit import InstructionArtifact
         from lp_agent.types import ModelMessage, ModelRequest, RunRequest, ToolDefinition

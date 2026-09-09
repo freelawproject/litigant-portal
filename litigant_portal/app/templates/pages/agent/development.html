@@ -29,20 +29,27 @@
             {% trans "Court" as court_label %}
             <c-molecules.form-field-select label="{{ court_label }}" name="court" id="agent-court" :required="True">
               <option value="">{% trans "Choose court" %}</option>
-              {% for court in courts %}<option value="{{ court.slug }}">{{ court.name }}</option>{% endfor %}
+              {% for court in courts %}<option value="{{ court.choice_id }}">{{ court.label }}</option>{% endfor %}
             </c-molecules.form-field-select>
             {% trans "Topic" as topic_label %}
             <c-molecules.form-field-select label="{{ topic_label }}" name="topic" id="agent-topic" :required="True">
               <option value="">{% trans "Choose topic" %}</option>
-              {% for topic in topics %}
-                <option value="{{ topic.slug }}" data-court="{{ topic.court }}">{{ topic.title }}</option>
+              {% for court in courts %}
+                {% for topic in court.topics %}
+                  <option value="{{ topic.choice_id }}" data-court="{{ court.choice_id }}">{{ topic.label }}</option>
+                {% endfor %}
               {% endfor %}
             </c-molecules.form-field-select>
           </fieldset>
 
           {% trans "Bedrock model" as model_label %}
-          {% trans "Defaults to the site's assistant model." as model_help %}
-          <c-molecules.form-field-select label="{{ model_label }}" name="model" id="agent-model" help_text="{{ model_help }}">
+          {% if selected_model %}
+            {% trans "Defaults to the site's assistant model." as model_help %}
+          {% else %}
+            {% trans "The site's assistant model is unavailable here. Choose a model before sending." as model_help %}
+          {% endif %}
+          <c-molecules.form-field-select label="{{ model_label }}" name="model" id="agent-model" help_text="{{ model_help }}" :required="True">
+            {% if not selected_model %}<option value="" selected>{% trans "Choose model" %}</option>{% endif %}
             {% for value, label in model_choices %}
               <option value="{{ value }}" {% if value == selected_model %}selected{% endif %}>{{ label }}</option>
             {% endfor %}

@@ -21,9 +21,11 @@ from litigant_portal.app.models.choices import (
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 from litigant_portal.app.selectors.agent import agent_scope_choices
 from litigant_portal.app.services.site import site_update
+from litigant_portal.app.views.agent import AgentMessageForm
 from lp_agent.adapters.bedrock import MODEL_CHOICES
-from lp_agent.tests.test_direct import answer_item
-from lp_agent.types import ModelFinished, ModelTextDelta
+from lp_agent.adapters.catalog import Court
+from lp_agent.tests.helpers import answer_item
+from lp_agent.types import Choice, ModelFinished, ModelTextDelta
 
 
 @override_settings(LP_AGENT_DEV_ENABLED=True, SITE_PASSWORD="")
@@ -64,8 +66,14 @@ class AgentDevelopmentPageTests(TestCase):
             response.context["selected_model"], DEFAULT_BEDROCK_MODEL
         )
         self.assertEqual(response.context["model_choices"], MODEL_CHOICES)
-        self.assertTrue(response.context["courts"])
-        self.assertTrue(response.context["topics"])
+        court = response.context["courts"][0]
+        self.assertTrue(court.topics)
+        topic = court.topics[0]
+        self.assertContains(
+            response,
+            f'<option value="{topic.choice_id}" data-court="{court.choice_id}">{topic.label}</option>',
+            html=True,
+        )
 
     def test_page_uses_the_configured_assistant_model(self):
         with self.captureOnCommitCallbacks(execute=True):
@@ -75,6 +83,24 @@ class AgentDevelopmentPageTests(TestCase):
         self.assertEqual(
             response.context["selected_model"], BedrockModel.GPT_5_6_SOL
         )
+
+    def test_unsupported_site_default_requires_explicit_model_selection(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(assistant_model=BedrockModel.CLAUDE_HAIKU_4_5)
+        self.client.force_login(self.developer)
+        response = self.client.get(self.url)
+        self.assertIsNone(response.context["selected_model"])
+        self.assertContains(response, "assistant model is unavailable here")
+        self.assertContains(
+            response,
+            '<option value="" selected>Choose model</option>',
+            html=True,
+        )
+        self.assertRegex(
+            response.content.decode(),
+            r'<select[^>]*id="agent-model"[^>]*required',
+        )
+        self.assertNotContains(response, BedrockModel.CLAUDE_HAIKU_4_5)
 
     def test_page_does_not_accept_message_submissions(self):
         self.client.force_login(self.developer)
@@ -108,22 +134,60 @@ class AgentScopeChoicesTests(SimpleTestCase):
 
     @override_settings(CORPUS_COURT=None)
     def test_multi_court_choices_preserve_valid_pairs(self):
-        courts, topics = agent_scope_choices()
-        self.assertEqual(len(courts), 2)
         self.assertEqual(
-            [(topic["court"], topic["slug"]) for topic in topics],
-            [("first-court", "first-topic"), ("second-court", "second-topic")],
+            agent_scope_choices(),
+            (
+                Court(
+                    choice_id="first-court",
+                    label="First court",
+                    topics=(Choice(choice_id="first-topic", label="First"),),
+                ),
+                Court(
+                    choice_id="second-court",
+                    label="Second court",
+                    topics=(Choice(choice_id="second-topic", label="Second"),),
+                ),
+            ),
         )
 
     @override_settings(CORPUS_COURT="second-court")
     def test_single_court_filters_both_selectors(self):
-        courts, topics = agent_scope_choices()
-        self.assertEqual([court["slug"] for court in courts], ["second-court"])
-        self.assertEqual([topic["slug"] for topic in topics], ["second-topic"])
+        courts = agent_scope_choices()
+        self.assertEqual(
+            [court.choice_id for court in courts], ["second-court"]
+        )
+        self.assertEqual(
+            [topic.choice_id for topic in courts[0].topics], ["second-topic"]
+        )
 
     @override_settings(CORPUS_COURT="missing-court")
     def test_unknown_configured_court_exposes_no_choices(self):
-        self.assertEqual(agent_scope_choices(), ([], []))
+        self.assertEqual(agent_scope_choices(), ())
+
+    @override_settings(CORPUS_COURT=None)
+    def test_form_accepts_only_topics_from_the_selected_court(self):
+        catalog = agent_scope_choices()
+        data = {
+            "message": "Hello",
+            "model": MODEL_CHOICES[0][0],
+            "max_active_seconds": "5",
+        }
+        for court in catalog:
+            form = AgentMessageForm(
+                data
+                | {
+                    "court": court.choice_id,
+                    "topic": court.topics[0].choice_id,
+                },
+                catalog=catalog,
+            )
+            self.assertTrue(form.is_valid(), form.errors)
+        form = AgentMessageForm(
+            data | {"court": "first-court", "topic": "second-topic"},
+            catalog=catalog,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertEqual(set(form.errors), {"topic"})
 
 
 @override_settings(
@@ -154,11 +218,11 @@ class AgentDevelopmentStreamTests(TestCase):
             )
         )
         self.client.force_login(self.developer)
-        _, topics = agent_scope_choices()
+        court = next(court for court in agent_scope_choices() if court.topics)
         self.data = {
             "message": "  Hello  ",
-            "court": topics[0]["court"],
-            "topic": topics[0]["slug"],
+            "court": court.choice_id,
+            "topic": court.topics[0].choice_id,
             "model": BedrockModel.GPT_5_6_LUNA,
             "max_active_seconds": "5",
         }
@@ -183,8 +247,11 @@ class AgentDevelopmentStreamTests(TestCase):
         cases = [
             {"message": "   "},
             {"court": ""},
+            {"court": "missing"},
             {"topic": "missing"},
+            {"model": ""},
             {"model": "https://other.example/model"},
+            {"model": BedrockModel.CLAUDE_HAIKU_4_5},
             {"max_active_seconds": "nan"},
             {"max_active_seconds": "0"},
             {"interrupt_behavior": "steer"},

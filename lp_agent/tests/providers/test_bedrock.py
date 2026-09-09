@@ -5,21 +5,23 @@ Responses normalization and SDK stream ownership, without live provider calls.
 import asyncio
 import json
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from queue import Queue
+from threading import Thread
 from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
 from litellm import CustomStreamWrapper
 from litellm.litellm_core_utils.litellm_logging import Logging
-from litellm.llms.bedrock.chat.invoke_handler import AWSEventStreamDecoder
 from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 from litellm.types.llms.openai import ResponsesAPIResponse
 from litellm.types.utils import ModelResponseStream
 
-from lp_agent import AgentValidationError, LPAgent
+from lp_agent import AgentValidationError, LPAgent, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES, BedrockClient
 from lp_agent.adapters.environment import create_environment
-from lp_agent.tests.test_environment_factory import environment_options
+from lp_agent.tests.helpers import environment_options
 from lp_agent.types import (
     ModelMessage,
     ModelOutputItem,
@@ -27,6 +29,22 @@ from lp_agent.types import (
     ReasoningItem,
     ToolDefinition,
 )
+
+GLM_MODEL = "bedrock_mantle/zai.glm-4.7-flash"
+
+
+@pytest.fixture
+def http_clients(monkeypatch):
+    clients = []
+    create = AsyncHTTPHandler.create_client
+
+    def create_client(handler, **kwargs):
+        client = create(handler, **kwargs)
+        clients.append(client)
+        return client
+
+    monkeypatch.setattr(AsyncHTTPHandler, "create_client", create_client)
+    return clients
 
 
 def message(text="Hello", **metadata):
@@ -152,6 +170,18 @@ def test_stream_preserves_complete_items_and_metadata_once_in_provider_order():
     assert result[-1].reason == "stop"
 
 
+def test_terminal_output_order_and_metadata_override_buffered_items():
+    result = collect(
+        done(message(status="in_progress")),
+        done(reasoning(), 1),
+        terminal([reasoning(), message(phase="final_answer")]),
+    )
+    assert [event.item.id for event in result[:-1]] == ["rs_1", "msg_1"]
+    assert result[1].item.status == "completed"
+    assert result[1].item.phase == "final_answer"
+    assert result[-1].reason == "stop"
+
+
 def test_native_request_preserves_instructions_and_continuation_and_closes():
     async def scenario():
         closed = False
@@ -243,7 +273,6 @@ def test_actual_function_call_is_preserved_as_an_item():
     assert result[-1].reason == "tool_calls"
 
 
-@pytest.mark.parametrize("model", [MODEL_CHOICES[3][0], MODEL_CHOICES[4][0]])
 @pytest.mark.parametrize(
     "item",
     [
@@ -251,8 +280,8 @@ def test_actual_function_call_is_preserved_as_an_item():
         ModelMessage(**message(phase="commentary")),
     ],
 )
-def test_translated_models_reject_unrepresentable_continuation_before_call(
-    model, item
+def test_translated_model_rejects_unrepresentable_continuation_before_call(
+    item,
 ):
     async def scenario():
         with patch("litellm.aresponses") as call:
@@ -262,7 +291,7 @@ def test_translated_models_reject_unrepresentable_continuation_before_call(
                 _ = [
                     event
                     async for event in BedrockClient(
-                        model, api_key="test-key"
+                        GLM_MODEL, api_key="test-key"
                     ).stream(ModelRequest(input=(item,)))
                 ]
             call.assert_not_called()
@@ -312,6 +341,8 @@ class NativeBody(httpx.AsyncByteStream):
 
     async def __aiter__(self):
         for value in self.values:
+            if isinstance(value, Exception):
+                raise value
             yield ("data: " + json.dumps(value) + "\n\n").encode()
         if self.stall:
             await asyncio.Event().wait()
@@ -320,9 +351,173 @@ class NativeBody(httpx.AsyncByteStream):
         self.closed = True
 
 
+@pytest.mark.parametrize("request_fails", [False, True])
+def test_http_client_closes_after_request_or_response_cleanup_failure(
+    request_fails, http_clients
+):
+    async def provider():
+        try:
+            yield terminal([message()])
+        finally:
+            raise RuntimeError("Response cleanup failed")
+
+    async def scenario():
+        call = (
+            AsyncMock(side_effect=RuntimeError("Request failed"))
+            if request_fails
+            else AsyncMock(return_value=provider())
+        )
+        with patch("litellm.aresponses", call), pytest.raises(RuntimeError):
+            _ = [
+                event
+                async for event in BedrockClient(
+                    MODEL_CHOICES[0][0], api_key="test-key"
+                ).stream(ModelRequest(input=()))
+            ]
+        assert http_clients and all(
+            client.is_closed for client in http_clients
+        )
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        httpx.ReadError("private provider payload"),
+        {"type": "error", "message": "private provider payload"},
+        terminal([], status="failed", kind="response.failed"),
+    ],
+)
+def test_stream_failure_retains_completed_items_in_checkpoint(
+    failure, http_clients, caplog
+):
+    body = NativeBody(
+        [done(reasoning()), text_event("Hello"), done(message(), 1), failure]
+    )
+    response = httpx.Response(
+        200,
+        stream=body,
+        request=httpx.Request("POST", "https://provider.invalid"),
+        headers={"content-type": "text/event-stream"},
+    )
+    environment = create_environment(**environment_options())
+    with patch.object(
+        AsyncHTTPHandler, "post", AsyncMock(return_value=response)
+    ):
+        output = [
+            json.loads(line)
+            for line in LPAgent(environment=environment).stream(
+                message="Hello"
+            )
+        ]
+    checkpoint = asyncio.run(
+        environment.runs.checkpoint(
+            access=environment.access, run_id=output[0]["run_id"]
+        )
+    )
+    assert checkpoint.data["model_output"] == [reasoning(), message()]
+    assert checkpoint.data["model_finished"] is None
+    assert output[-1]["payload"]["outcome"]["state"] == "failed"
+    assert "private provider payload" not in json.dumps(output) + caplog.text
+    assert "Private summary" not in json.dumps(output)
+    assert body.closed and response.is_closed
+    assert http_clients and all(client.is_closed for client in http_clients)
+
+
+@pytest.mark.parametrize("model", [MODEL_CHOICES[0][0], GLM_MODEL])
+def test_repeated_sync_requests_close_clients_and_connections(
+    model, http_clients
+):
+    disconnected = Queue()
+
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def do_POST(self):
+            self.rfile.read(int(self.headers["Content-Length"]))
+            values = [text_event("Hello"), terminal([message()])]
+            if model == GLM_MODEL:
+                values = [
+                    {
+                        "id": "chatcmpl-1",
+                        "object": "chat.completion.chunk",
+                        "created": 0,
+                        "model": "zai.glm-4.7-flash",
+                        "choices": [
+                            {
+                                "index": 0,
+                                "delta": delta,
+                                "finish_reason": finish,
+                            }
+                        ],
+                    }
+                    for delta, finish in [
+                        ({"content": "Hello"}, None),
+                        ({}, "stop"),
+                    ]
+                ]
+            body = "".join(
+                "data: " + json.dumps(value) + "\n\n" for value in values
+            )
+            body = (body + "data: [DONE]\n\n").encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def finish(self):
+            try:
+                super().finish()
+            finally:
+                disconnected.put(None)
+
+        def log_message(self, format, *args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    post = AsyncHTTPHandler.post
+    loops = []
+
+    async def local_post(handler, url, **kwargs):
+        loops.append(asyncio.get_running_loop())
+        return await post(
+            handler, f"http://127.0.0.1:{server.server_port}", **kwargs
+        )
+
+    try:
+        with patch.object(AsyncHTTPHandler, "post", local_post):
+            for _ in range(3):
+                environment = create_environment(
+                    **(environment_options() | {"model": model})
+                )
+                output = [
+                    json.loads(line)
+                    for line in LPAgent(environment=environment).stream(
+                        message="Hello"
+                    )
+                ]
+                assert output[-1]["payload"]["outcome"]["state"] == "completed"
+                assert http_clients and all(
+                    client.is_closed for client in http_clients
+                )
+                assert loops[-1].is_closed()
+                disconnected.get(timeout=2)
+        assert len(loops) == 3
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=2)
+
+
 @pytest.mark.parametrize("early", [False, True])
 @pytest.mark.parametrize("choice", [0, 1, 2])
-def test_real_native_litellm_stream_releases_http_response(early, choice):
+def test_real_native_litellm_stream_releases_http_response(
+    early, choice, http_clients
+):
     async def scenario():
         body = NativeBody(
             [text_event("Hello"), terminal([message()])], stall=early
@@ -350,17 +545,19 @@ def test_real_native_litellm_stream_releases_http_response(early, choice):
                 assert remaining[-1].reason == "stop"
             await stream.aclose()
         assert body.closed and http_response.is_closed
+        assert http_clients and all(
+            client.is_closed for client in http_clients
+        )
         assert "/responses" in str(post.call_args)
 
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("choice", [3, 4])
 @pytest.mark.parametrize(
     "finish", ["stop", "length", "content_filter", None, "unknown"]
 )
 def test_real_translated_litellm_stream_preserves_reasoning_and_finish(
-    choice, finish
+    finish, http_clients
 ):
     async def scenario():
         closed = False
@@ -368,30 +565,11 @@ def test_real_translated_litellm_stream_preserves_reasoning_and_finish(
         async def provider():
             nonlocal closed
             try:
-                if choice == 3:
-                    decoder = AWSEventStreamDecoder(
-                        model="anthropic.claude-haiku-4-5-20251001-v1:0"
-                    )
-                    for block in (
-                        {"text": "Private thinking"},
-                        {"signature": "signed-continuation"},
-                    ):
-                        yield decoder.converse_chunk_parser(
-                            {
-                                "contentBlockIndex": 0,
-                                "delta": {"reasoningContent": block},
-                            }
-                        )
-                else:
-                    yield ModelResponseStream(
-                        choices=[
-                            {
-                                "delta": {
-                                    "reasoning_content": "Private thinking"
-                                }
-                            }
-                        ]
-                    )
+                yield ModelResponseStream(
+                    choices=[
+                        {"delta": {"reasoning_content": "Private thinking"}}
+                    ]
+                )
                 yield ModelResponseStream(
                     choices=[{"delta": {"content": "Hello"}}]
                 )
@@ -418,7 +596,7 @@ def test_real_translated_litellm_stream_preserves_reasoning_and_finish(
         wrapper = CustomStreamWrapper(
             completion_stream=provider(),
             model="gpt-4o-mini",
-            custom_llm_provider="bedrock" if choice == 3 else "openai",
+            custom_llm_provider="openai",
             logging_obj=logging,
         )
         with patch(
@@ -427,7 +605,7 @@ def test_real_translated_litellm_stream_preserves_reasoning_and_finish(
             result = [
                 event
                 async for event in BedrockClient(
-                    MODEL_CHOICES[choice][0], api_key="test-key"
+                    GLM_MODEL, api_key="test-key"
                 ).stream(
                     ModelRequest(
                         instructions="Scope",
@@ -436,6 +614,9 @@ def test_real_translated_litellm_stream_preserves_reasoning_and_finish(
                 )
             ]
         assert closed
+        assert http_clients and all(
+            client.is_closed for client in http_clients
+        )
         assert result[-1].reason == (
             finish
             if finish in {"stop", "length", "content_filter"}
@@ -455,21 +636,15 @@ def test_real_translated_litellm_stream_preserves_reasoning_and_finish(
             if event.type == "text"
         )
         assert call.call_args.kwargs["api_key"] == "test-key"
-        if choice == 3:
-            assert (
-                json.loads(output[0].encrypted_content)[0]["signature"]
-                == "signed-continuation"
-            )
-            assert call.call_args.kwargs["model"].startswith(
-                "converse/us.anthropic.claude-haiku-4-5"
-            )
-            assert call.call_args.kwargs["custom_llm_provider"] == "bedrock"
 
     asyncio.run(scenario())
 
 
 @pytest.mark.parametrize("translated", [False, True])
-def test_agent_cancellation_closes_actual_litellm_wrappers(translated):
+@pytest.mark.parametrize("timeout", [False, True])
+def test_agent_cancellation_and_timeout_close_actual_litellm_wrappers(
+    translated, timeout, http_clients
+):
     async def scenario():
         closed = False
 
@@ -508,7 +683,7 @@ def test_agent_cancellation_closes_actual_litellm_wrappers(translated):
         environment = create_environment(
             **(
                 environment_options()
-                | {"model": MODEL_CHOICES[4 if translated else 0][0]}
+                | {"model": GLM_MODEL if translated else MODEL_CHOICES[0][0]}
             )
         )
         with (
@@ -517,18 +692,29 @@ def test_agent_cancellation_closes_actual_litellm_wrappers(translated):
             ),
             patch("litellm.acompletion", AsyncMock(return_value=wrapper)),
         ):
-            agent = LPAgent(environment=environment)
+            agent = LPAgent(
+                environment=environment,
+                limits=RunLimits(max_active_seconds=0.2 if timeout else 5),
+            )
             run = await agent.run(message="Hello")
             observer = run.events()
             await anext(observer)
             assert (
                 await asyncio.wait_for(anext(observer), timeout=2)
             ).payload.delta == "Hello"
+            if timeout:
+                outcome = await asyncio.wait_for(run.result(), timeout=2)
+                assert outcome.state == "failed"
+                assert outcome.error.code == "active_time_limit"
             await asyncio.wait_for(agent.aclose(), timeout=2)
-            assert (await run.result()).state == "cancelled"
+            if not timeout:
+                assert (await run.result()).state == "cancelled"
             await observer.aclose()
         assert (
             closed if translated else body.closed and http_response.is_closed
+        )
+        assert http_clients and all(
+            client.is_closed for client in http_clients
         )
         checkpoint = await environment.runs.checkpoint(
             access=environment.access, run_id=run.run_id

@@ -23,17 +23,8 @@ MODEL_CHOICES = (
     ("bedrock_mantle/openai.gpt-5.6-luna", "GPT-5.6 Luna"),
     ("bedrock_mantle/openai.gpt-5.6-terra", "GPT-5.6 Terra"),
     ("bedrock_mantle/openai.gpt-5.6-sol", "GPT-5.6 Sol"),
-    ("bedrock_mantle/anthropic.claude-haiku-4-5", "Claude Haiku 4.5"),
     ("bedrock_mantle/zai.glm-4.7-flash", "GLM 4.7 Flash"),
 )
-
-# The public choice stays stable; Haiku needs Converse, not Mantle's chat API.
-_TRANSLATED_MODELS = {
-    "bedrock_mantle/anthropic.claude-haiku-4-5": (
-        "bedrock/converse/us.anthropic.claude-haiku-4-5-20251001-v1:0"
-    ),
-    "bedrock_mantle/zai.glm-4.7-flash": "bedrock_mantle/zai.glm-4.7-flash",
-}
 
 
 def _data(value: BaseModel | dict) -> dict:
@@ -178,7 +169,7 @@ class BedrockClient:
             for item in request.input
         ):
             raise NotImplementedError("Tool calls are not connected yet.")
-        translated = self.model in _TRANSLATED_MODELS
+        translated = self.model == "bedrock_mantle/zai.glm-4.7-flash"
         if translated:
             for item in request.input:
                 if (
@@ -200,52 +191,67 @@ class BedrockClient:
                     )
         # Import the optional SDK only when this adapter executes a request.
         from litellm import aresponses
+        from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 
         options = (
             {} if translated else {"include": ["reasoning.encrypted_content"]}
         )
-        response = await aresponses(
-            model=_TRANSLATED_MODELS.get(self.model, self.model),
-            api_key=self._api_key.get_secret_value(),
-            instructions=request.instructions,
-            input=[item.model_dump(mode="json") for item in request.input],
-            stream=True,
-            store=False,
-            num_retries=0,
-            caching=False,
-            **options,
-        )
-        done = {}
+        client = AsyncHTTPHandler()
         try:
-            async for chunk in response:
-                event = _data(chunk)
-                kind = event["type"]
-                if kind in {
-                    "response.output_text.delta",
-                    "response.refusal.delta",
-                }:
-                    yield ModelTextDelta(delta=event["delta"])
-                elif kind == "response.output_item.done":
-                    done[event["output_index"]] = _item_data(
-                        event["item"], translated=translated
-                    )
-                elif kind in {
-                    "response.completed",
-                    "response.incomplete",
-                    "response.failed",
-                }:
-                    result = event["response"]
-                    items = _assembled_items(
-                        done, result.get("output", []), translated=translated
-                    )
-                    for item in items:
-                        yield item
+            response = await aresponses(
+                model=self.model,
+                api_key=self._api_key.get_secret_value(),
+                client=client,
+                instructions=request.instructions,
+                input=[item.model_dump(mode="json") for item in request.input],
+                stream=True,
+                store=False,
+                num_retries=0,
+                caching=False,
+                **options,
+            )
+            try:
+                done = {}
+                result = None
+                error = None
+                try:
+                    async for chunk in response:
+                        event = _data(chunk)
+                        kind = event["type"]
+                        if kind in {
+                            "response.output_text.delta",
+                            "response.refusal.delta",
+                        }:
+                            yield ModelTextDelta(delta=event["delta"])
+                        elif kind == "response.output_item.done":
+                            done[event["output_index"]] = _item_data(
+                                event["item"], translated=translated
+                            )
+                        elif kind in {
+                            "response.completed",
+                            "response.incomplete",
+                            "response.failed",
+                        }:
+                            result = event["response"]
+                            break
+                        elif kind == "error":
+                            raise RuntimeError("The model response failed.")
+                except Exception as exc:
+                    error = exc
+                # Preserve completed items on EOF or failure, without treating
+                # either as a successful response. Cancellation skips this path.
+                items = _assembled_items(
+                    done,
+                    result.get("output", []) if result is not None else [],
+                    translated=translated,
+                )
+                for item in items:
+                    yield item
+                if error is not None:
+                    raise error
+                if result is not None:
                     yield _finish(result, response, items)
-                    return
-                elif kind == "error":
-                    raise RuntimeError("The model response failed.")
-            # Keep completed items for diagnosis even when no terminal event arrives.
-            for item in _assembled_items(done, [], translated=translated):
-                yield item
+            finally:
+                await _close_stream(response)
         finally:
-            await _close_stream(response)
+            await client.close()

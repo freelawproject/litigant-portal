@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from lp_agent import AgentValidationError, LPAgent
-from lp_agent.tests.test_direct import (
+from lp_agent.tests.helpers import (
     ScriptedModel,
     answer_item,
     environment_for,
