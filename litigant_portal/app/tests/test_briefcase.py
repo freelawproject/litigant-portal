@@ -19,6 +19,7 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
+from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.topic_flow import briefcase_groups
 
 
@@ -198,10 +199,12 @@ class BriefcaseChatContextTests(TestCase):
 
 class DisplayValueTests(TestCase):
     """``VariableAnswer.display_value`` shapes jsonb for reading. No DB —
-    the property only touches the in-memory value."""
+    the property only touches in-memory objects."""
 
-    def _value(self, value):
-        return VariableAnswer(value=value).display_value
+    def _value(self, value, data_type=VariableDataType.TEXT):
+        return VariableAnswer(
+            variable=Variable(name="v", data_type=data_type), value=value
+        ).display_value
 
     def test_list_renders_as_a_comma_separated_string(self):
         # A multi-choice answer is stored as a list; str() would print
@@ -226,3 +229,33 @@ class DisplayValueTests(TestCase):
     def test_strings_and_numbers_pass_through(self):
         self.assertEqual(self._value("2026-09-01"), "2026-09-01")
         self.assertEqual(self._value(28), "28")
+
+    def test_dates_render_long_form_not_iso(self):
+        # The corpus stores an ISO string in jsonb; "2026-09-09" in front of a
+        # litigant is a machine's date. Shape matches the flow page's
+        # deadlines (format_long_date) so one date reads the same on both.
+        self.assertEqual(
+            self._value("2026-09-09", VariableDataType.DATE),
+            "Wednesday, September 9, 2026",
+        )
+
+    def test_an_unparseable_date_falls_back_to_the_stored_value(self):
+        # Never swallow a value we can't parse — the litigant still needs to
+        # see whatever is actually stored against their case.
+        self.assertEqual(
+            self._value("next Tuesday", VariableDataType.DATE),
+            "next Tuesday",
+        )
+
+    def test_a_text_variable_holding_a_date_string_is_left_alone(self):
+        # Formatting keys off the variable's declared type, not the shape of
+        # the string, so a case number that looks like a date stays intact.
+        self.assertEqual(
+            self._value("2026-09-09", VariableDataType.TEXT), "2026-09-09"
+        )
+
+    def test_an_answer_with_no_variable_still_renders(self):
+        self.assertEqual(VariableAnswer(value="Jamie").display_value, "Jamie")
+
+    def test_a_cleared_answer_renders_empty_not_none(self):
+        self.assertEqual(VariableAnswer(value=None).display_value, "")

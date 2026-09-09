@@ -21,6 +21,7 @@ consume, so what's downloaded can't drift from what's rendered on the page.
 
 from dataclasses import dataclass
 
+from litigant_portal.app.formatting import format_long_date
 from litigant_portal.app.topic_flow.contacts import resolve_vcf_contacts
 from litigant_portal.app.topic_flow.deadlines import resolve_ics_deadlines
 from litigant_portal.app.topic_flow.schema import FactGatherSection
@@ -225,19 +226,6 @@ def _render_packet(section, corpus, answers):
     )
 
 
-def _format_deadline_date(value):
-    """Human-readable deadline date, e.g. "Tuesday, March 3, 2026".
-
-    The day is interpolated as ``value.day`` rather than via strftime's ``%-d``.
-    ``%-d`` (no-leading-zero day) is a glibc/BSD extension, not standard C, so it
-    raises ``ValueError`` on platforms whose C library lacks it — notably Windows
-    — which would crash deadline rendering for a partner self-hosting LP there
-    (#526). Weekday/month stay on strftime: ``%A``/``%B`` are standard and
-    portable.
-    """
-    return f"{value.strftime('%A, %B')} {value.day}, {value.year}"
-
-
 def _deadline_display(resolved):
     """Add page-display date strings to a resolved deadline.
 
@@ -251,7 +239,7 @@ def _deadline_display(resolved):
     return {
         "label": resolved["label"],
         "description": resolved["description"],
-        "date_display": _format_deadline_date(computed) if computed else None,
+        "date_display": format_long_date(computed) if computed else None,
         "date_iso": computed.isoformat() if computed else None,
     }
 
