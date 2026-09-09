@@ -6,8 +6,11 @@
 	   file-issue build-image push-image
 
 # Guard for commands that require the Docker container to be running
-require-docker = docker compose exec -T django true 2>/dev/null || \
-  { echo "Django container isn't running — start it with: make docker"; exit 1; }
+# Surfaces docker's own stderr rather than swallowing it: a missing compose
+# plugin, a stale context and a stopped container all fail here, and only the
+# last one is fixed by `make docker` (see docs/wiki/container-runtime.md).
+require-docker = docker compose exec -T django true || \
+  { echo "Docker check failed (see the error above). If the container is stopped, start it with: make docker"; exit 1; }
 
 # Tailwind source + built output (the path base.html resolves via {% static %})
 CSS_SRC = litigant_portal/app/src/main.css
