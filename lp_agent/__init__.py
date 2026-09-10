@@ -6,6 +6,7 @@ from lp_agent.errors import (
     AgentAccessError,
     AgentBusyError,
     AgentError,
+    AgentStorageError,
     AgentValidationError,
 )
 from lp_agent.identity import AgentIdentity, ResourceScope
@@ -18,6 +19,7 @@ __all__ = [
     "AgentBusyError",
     "AgentError",
     "AgentIdentity",
+    "AgentStorageError",
     "AgentValidationError",
     "LPAgent",
     "ResourceScope",

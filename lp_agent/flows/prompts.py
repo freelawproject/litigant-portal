@@ -1,5 +1,9 @@
 """
-Engagement instructions, independent of host and provider configuration.
+Development placeholder instructions, independent of host and provider config.
+
+Full legal-information, audience, and grounding instructions belong in these
+package-owned prompt layers under Court and Topic Grounding and Safety
+Boundaries, before main-chat integration.
 """
 
 from lp_agent.types import Scope

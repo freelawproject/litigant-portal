@@ -1,10 +1,11 @@
 import asyncio
 import json
 from dataclasses import replace
+from unittest.mock import patch
 
 import pytest
 
-from lp_agent import AgentValidationError, LPAgent
+from lp_agent import AgentStorageError, AgentValidationError, LPAgent
 from lp_agent.tests.helpers import (
     ScriptedModel,
     answer_item,
@@ -119,3 +120,42 @@ def test_provider_failure_is_safe_and_releases_the_owned_loop(caplog):
     assert json.loads(events[-1])["payload"]["outcome"]["state"] == "failed"
     assert "private provider payload" not in "".join(events) + caplog.text
     assert loops[0].is_closed()
+
+
+@pytest.mark.parametrize("early_close", [False, True])
+def test_terminal_checkpoint_failure_is_safe_and_releases_the_loop(
+    early_close, caplog
+):
+    loops = []
+
+    class Model:
+        async def stream(self, request):
+            loops.append(asyncio.get_running_loop())
+            yield answer_item("Done")
+            yield ModelFinished(reason="stop")
+
+    environment = environment_for(Model())
+    commit = environment.runs.commit_checkpoint
+
+    async def failing_commit(**kwargs):
+        if kwargs["outcome"] is not None:
+            raise RuntimeError("private storage payload")
+        await commit(**kwargs)
+
+    with patch.object(environment.runs, "commit_checkpoint", failing_commit):
+        stream = LPAgent(environment=environment).stream(message="Hello")
+        first = json.loads(next(stream))
+        assert first["payload"]["status"]["state"] == "running"
+        if early_close:
+            with pytest.raises(
+                AgentStorageError, match="Unable to save the run state"
+            ):
+                stream.close()
+        else:
+            assert [json.loads(line) for line in stream] == [
+                {"error": "Unable to save the run state. Please try again."}
+            ]
+        assert list(stream) == []
+        stream.close()
+    assert loops[0].is_closed()
+    assert "private" not in caplog.text

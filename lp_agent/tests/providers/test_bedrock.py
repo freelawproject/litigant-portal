@@ -5,6 +5,7 @@ Responses normalization and SDK stream ownership, without live provider calls.
 import asyncio
 import json
 from contextlib import aclosing
+from copy import deepcopy
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from queue import Queue
@@ -181,6 +182,166 @@ def test_terminal_output_order_and_metadata_override_buffered_items():
     assert result[1].item.status == "completed"
     assert result[1].item.phase == "final_answer"
     assert result[-1].reason == "stop"
+
+
+@pytest.mark.parametrize("model", [MODEL_CHOICES[0][0], GLM_MODEL])
+@pytest.mark.parametrize("explicit_reasoning_type", [False, True])
+def test_unfamiliar_fields_are_ignored_once_without_changing_known_metadata(
+    model, explicit_reasoning_type, caplog
+):
+    expected = [
+        reasoning()
+        | {"content": [{"type": "reasoning_text", "text": "Private thought"}]},
+        message(phase="final_answer"),
+        message(
+            id="refusal-1",
+            content=[{"type": "refusal", "refusal": "Cannot answer"}],
+        ),
+        {
+            "type": "function_call",
+            "id": "tool-1",
+            "call_id": "call-1",
+            "name": "lookup",
+            "arguments": "{}",
+        },
+    ]
+    expected[1]["content"][0].update(
+        annotations=[{"type": "citation", "private-extension": "preserved"}],
+        logprobs=[{"token": "Hello", "private-extension": "preserved"}],
+    )
+    supplied = deepcopy(expected)
+    if model == GLM_MODEL:
+        supplied[0]["role"] = "assistant"
+        supplied[0]["content"][0].update(type="output_text", annotations=[])
+    if not explicit_reasoning_type:
+        # The contract supplies defaults for these unambiguous reasoning parts.
+        supplied[0]["summary"][0].pop("type")
+        supplied[0]["content"][0].pop("type")
+    for item in supplied:
+        item["private-unknown-field"] = "private provider value"
+        for key in ("content", "summary"):
+            for part in item.get(key, []):
+                part["private-unknown-field"] = "private provider value"
+
+    async def scenario():
+        with patch(
+            "litellm.aresponses",
+            AsyncMock(
+                return_value=events(
+                    *(
+                        done(item, index)
+                        for index, item in enumerate(supplied)
+                    ),
+                    terminal(supplied),
+                )
+            ),
+        ):
+            return [
+                event
+                async for event in BedrockClient(
+                    model, api_key="test-key"
+                ).stream(ModelRequest(input=()))
+            ]
+
+    result = asyncio.run(scenario())
+    assert [
+        event.item.model_dump(mode="json") for event in result[:-1]
+    ] == expected
+    assert result[-1].reason == "tool_calls"
+    warnings = [
+        record
+        for record in caplog.records
+        if record.name == "lp_agent.adapters.bedrock"
+    ]
+    assert len(warnings) == 1
+    assert warnings[0].levelname == "WARNING"
+    assert model in warnings[0].getMessage()
+    assert "private" not in caplog.text
+    # Provider tolerance must not relax the public model contract.
+    with pytest.raises(ValueError):
+        ModelOutputItem(item=supplied[1])
+
+
+@pytest.mark.parametrize("model", [MODEL_CHOICES[0][0], GLM_MODEL])
+@pytest.mark.parametrize(
+    "termination", ["complete", "error", "cancel", "timeout"]
+)
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        {"type": "private-unsupported-item"},
+        message(status="private-invalid-status"),
+        message(content=[{"type": "private-unsupported-content"}]),
+        message(id=[]),
+    ],
+)
+def test_invalid_output_retains_valid_items_and_original_interruption(
+    model, termination, invalid, http_clients, caplog
+):
+    async def scenario():
+        stalled = asyncio.Event()
+        closed = False
+        expected = [reasoning(), message(id="msg-after-invalid")]
+        supplied = [expected[0], invalid, expected[1]]
+
+        async def provider():
+            nonlocal closed
+            try:
+                for index, item in enumerate(supplied):
+                    yield done(item, index)
+                if termination == "complete":
+                    yield {
+                        "type": "response.completed",
+                        "response": {
+                            "status": "completed",
+                            "output": supplied,
+                        },
+                    }
+                elif termination == "error":
+                    raise RuntimeError("private provider failure")
+                else:
+                    stalled.set()
+                    await asyncio.Event().wait()
+            finally:
+                closed = True
+
+        environment = create_environment(
+            **(environment_options() | {"model": model})
+        )
+        with patch("litellm.aresponses", AsyncMock(return_value=provider())):
+            async with LPAgent(
+                environment=environment,
+                limits=RunLimits(
+                    max_active_seconds=0.1 if termination == "timeout" else 5
+                ),
+            ) as agent:
+                run = await agent.run(message="Hello")
+                if termination == "cancel":
+                    await asyncio.wait_for(stalled.wait(), timeout=1)
+                    await asyncio.wait_for(run.cancel(), timeout=1)
+                outcome = await asyncio.wait_for(run.result(), timeout=2)
+                public = "".join(
+                    [event.model_dump_json() async for event in run.events()]
+                )
+        if termination == "cancel":
+            assert outcome.state == "cancelled"
+        else:
+            assert outcome.state == "failed"
+            assert outcome.error.code == (
+                "active_time_limit"
+                if termination == "timeout"
+                else "model_failed"
+            )
+        checkpoint = await environment.runs.checkpoint(
+            access=environment.access, run_id=run.run_id
+        )
+        assert checkpoint.data["model_output"] == expected
+        assert checkpoint.data["model_finished"] is None
+        assert "private" not in public + caplog.text
+        assert closed
+
+    asyncio.run(scenario())
+    assert http_clients and all(client.is_closed for client in http_clients)
 
 
 def test_native_request_preserves_instructions_and_continuation_and_closes():
@@ -425,7 +586,12 @@ def test_stream_failure_retains_completed_items_in_checkpoint(
     failure, http_clients, caplog
 ):
     body, response = native_response(
-        [done(reasoning()), text_event("Hello"), done(message(), 1), failure]
+        [
+            done(reasoning() | {"private-extra": "private value"}),
+            text_event("Hello"),
+            done(message(), 1),
+            failure,
+        ]
     )
     environment = create_environment(**environment_options())
     with patch.object(
@@ -459,7 +625,10 @@ def test_interrupted_response_preserves_completed_items_in_checkpoint(
     async def scenario():
         expected = [reasoning(), message()] if completed_items else []
         body, response = native_response(
-            [done(item, index) for index, item in enumerate(expected)],
+            [
+                done(item | {"private-extra": "private value"}, index)
+                for index, item in enumerate(expected)
+            ],
             stall=True,
         )
         environment = create_environment(**environment_options())
@@ -501,6 +670,8 @@ def test_interrupted_response_preserves_completed_items_in_checkpoint(
             "Private summary",
             "opaque-continuation",
             "test-only-key",
+            "private-extra",
+            "private value",
         ):
             assert private not in public_events + caplog.text
 

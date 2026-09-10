@@ -1,16 +1,24 @@
 import asyncio
 import hashlib
 import json
+import traceback
 from dataclasses import replace
 from unittest.mock import patch
 
 import pytest
 from pydantic import TypeAdapter
 
-from lp_agent import AgentAccessError, AgentValidationError, LPAgent, RunLimits
+from lp_agent import (
+    AgentAccessError,
+    AgentStorageError,
+    AgentValidationError,
+    LPAgent,
+    RunLimits,
+)
 from lp_agent.tests.helpers import ScriptedModel, answer_item, environment_for
 from lp_agent.types import (
     AccessContext,
+    ChoiceAnswer,
     ModelFinished,
     ModelItem,
     ModelMessage,
@@ -115,6 +123,147 @@ def test_checkpoint_retains_model_items_and_instruction_artifact_without_public_
     asyncio.run(scenario())
 
 
+def test_reply_without_a_pending_question_does_not_disrupt_the_run():
+    async def scenario():
+        async with LPAgent(
+            environment=environment_for(
+                ScriptedModel(
+                    [answer_item("Done"), ModelFinished(reason="stop")]
+                )
+            )
+        ) as agent:
+            run = await agent.run(message="Hello")
+            with pytest.raises(
+                AgentValidationError,
+                match=r"^This run has no pending question\.$",
+            ):
+                await run.respond(
+                    "question-1", ChoiceAnswer(choice_id="answer-1")
+                )
+            assert (await run.result()).text == "Done"
+            assert (await run.status()).state == "completed"
+
+    asyncio.run(scenario())
+
+
+def test_second_event_reader_cannot_take_events_from_the_first():
+    async def scenario():
+        resume = asyncio.Event()
+
+        class WaitingModel:
+            async def stream(self, request):
+                await resume.wait()
+                yield ModelTextDelta(delta="Done")
+                yield answer_item("Done")
+                yield ModelFinished(reason="stop")
+
+        async with LPAgent(
+            environment=environment_for(WaitingModel())
+        ) as agent:
+            run = await agent.run(message="Hello")
+            first = run.events()
+            assert (await anext(first)).payload.status.state == "running"
+            second = run.events()
+            with pytest.raises(
+                AgentValidationError, match="already has an event observer"
+            ):
+                await anext(second)
+            resume.set()
+            events = [event async for event in first]
+            assert [event.payload.type for event in events] == [
+                "text",
+                "status",
+                "outcome",
+            ]
+            assert events[-1].payload.outcome.text == "Done"
+            assert (await run.result()).text == "Done"
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("stage", ["running", "completed"])
+@pytest.mark.parametrize("failure", [RuntimeError, TimeoutError])
+def test_checkpoint_failures_are_safe_for_every_async_caller(
+    stage, failure, caplog
+):
+    async def scenario():
+        model = ScriptedModel(
+            [answer_item("Done"), ModelFinished(reason="stop")]
+        )
+        environment = environment_for(model)
+        commit = environment.runs.commit_checkpoint
+        attempted = []
+
+        async def failing_commit(**kwargs):
+            attempted.append(kwargs["status"].state)
+            if kwargs["status"].state == stage:
+                raise failure("private checkpoint payload and credentials")
+            await commit(**kwargs)
+
+        agent = LPAgent(environment=environment)
+        with patch.object(
+            environment.runs, "commit_checkpoint", failing_commit
+        ):
+            run = await agent.run(message="private input")
+            for operation in (run.result, run.cancel, agent.aclose):
+                with pytest.raises(AgentStorageError) as error:
+                    await asyncio.wait_for(operation(), timeout=1)
+                assert (
+                    str(error.value)
+                    == "Unable to save the run state. Please try again."
+                )
+                assert "private" not in "".join(
+                    traceback.format_exception(error.value)
+                )
+            events = []
+            with pytest.raises(AgentStorageError):
+                async with asyncio.timeout(1):
+                    async for event in run.events():
+                        events.append(event)
+        expected = [] if stage == "running" else ["status"]
+        assert [event.payload.type for event in events] == expected
+        assert (await run.status()).state == (
+            "queued" if stage == "running" else "running"
+        )
+        assert (
+            await environment.runs.outcome(
+                access=environment.access, run_id=run.run_id
+            )
+            is None
+        )
+        assert attempted == (
+            ["running"] if stage == "running" else ["running", "completed"]
+        )
+        if stage == "running":
+            assert model.requests == []
+        else:
+            assert model.closed
+        assert asyncio.all_tasks() == {asyncio.current_task()}
+
+    asyncio.run(scenario())
+    assert "private" not in caplog.text
+    assert "Agent checkpoint failed" in caplog.text
+
+
+def test_checkpoint_construction_failure_is_also_sanitized(caplog):
+    async def scenario():
+        agent = LPAgent(environment=environment_for(ScriptedModel([])))
+        with patch(
+            "lp_agent.flows.engagement.RunCheckpoint",
+            side_effect=ValueError("private serialized prompt"),
+        ):
+            run = await agent.run(message="Hello")
+            try:
+                with pytest.raises(AgentStorageError):
+                    await run.result()
+            finally:
+                with pytest.raises(AgentStorageError):
+                    await agent.aclose()
+
+    asyncio.run(scenario())
+    assert "private" not in caplog.text
+
+
 @pytest.mark.parametrize(
     "item,code",
     [
@@ -193,6 +342,7 @@ def test_first_text_arrives_before_completion_and_closing_releases_model():
         ([ModelTextDelta(delta="Partial")], "incomplete_response"),
         ([ModelFinished(reason="length")], "incomplete_response"),
         ([RuntimeError("private prompt and credentials")], "model_failed"),
+        ([TimeoutError("private provider timeout")], "model_failed"),
     ],
 )
 def test_model_failures_are_terminal_and_safe(events, code, caplog):
@@ -230,6 +380,33 @@ def test_timeout_closes_a_model_that_never_finishes():
             outcome = await asyncio.wait_for(run.result(), timeout=1)
             assert outcome.error.code == "active_time_limit"
             assert closed.is_set()
+
+    asyncio.run(scenario())
+
+
+def test_active_time_budget_starts_after_the_running_checkpoint():
+    async def scenario():
+        class Model:
+            async def stream(self, request):
+                await asyncio.sleep(0)
+                yield answer_item("Done")
+                yield ModelFinished(reason="stop")
+
+        environment = environment_for(Model())
+        commit = environment.runs.commit_checkpoint
+
+        async def slow_commit(**kwargs):
+            if kwargs["status"].state == "running":
+                await asyncio.sleep(0.05)
+            await commit(**kwargs)
+
+        with patch.object(environment.runs, "commit_checkpoint", slow_commit):
+            async with LPAgent(
+                environment=environment,
+                limits=RunLimits(max_active_seconds=0.01),
+            ) as agent:
+                run = await agent.run(message="Hello")
+                assert (await run.result()).state == "completed"
 
     asyncio.run(scenario())
 
