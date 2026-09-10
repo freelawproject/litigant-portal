@@ -22,7 +22,7 @@ from lp_agent.types import (
 )
 
 if TYPE_CHECKING:
-    from lp_agent.environment import ScopedEnvironment
+    from lp_agent.identity import ResourceScope
 
 
 class RunHandle(Protocol):
@@ -145,4 +145,4 @@ class ScopeFactory(Protocol):
 
     async def bind(
         self, *, access: AccessContext, scope: Scope
-    ) -> "ScopedEnvironment": ...
+    ) -> "ResourceScope": ...

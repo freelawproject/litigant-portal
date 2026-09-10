@@ -16,7 +16,7 @@ from lp_agent.types import AccessContext, Scope, ScopeSelection
 
 
 @dataclass(frozen=True, kw_only=True)
-class ScopedEnvironment:
+class ResourceScope:
     """
     Services bound once to a verified identity, court, and topic.
     """
@@ -40,7 +40,7 @@ class ScopedEnvironment:
 
 
 @dataclass(frozen=True, kw_only=True)
-class AgentEnvironment:
+class AgentIdentity:
     """
     Host-verified context and services for scope discovery and execution.
     """

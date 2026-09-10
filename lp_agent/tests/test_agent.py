@@ -12,9 +12,9 @@ from pydantic import ValidationError
 from lp_agent import (
     AgentValidationError,
     LPAgent,
+    ResourceScope,
     RunHandle,
     RunLimits,
-    ScopedEnvironment,
 )
 from lp_agent.types import ScopeSelection
 
@@ -120,10 +120,10 @@ def test_environment_requires_validated_access_and_scope(environment):
         replace(environment, access="unverified")
     with pytest.raises(AgentValidationError, match="ScopeSelection"):
         replace(environment, scope={"court": "court"})
-    with pytest.raises(AgentValidationError, match="AgentEnvironment"):
+    with pytest.raises(AgentValidationError, match="AgentIdentity"):
         LPAgent(environment=object())
     with pytest.raises(AgentValidationError, match="full Scope"):
-        ScopedEnvironment(
+        ResourceScope(
             access=environment.access,
             scope=ScopeSelection(court="court"),
             model=environment.runs,

@@ -15,7 +15,7 @@ unimplemented. Workers follows in PR3.
 | `main.py`               | Public `LPAgent` facade and immutable execution configuration            |
 | `types.py`              | Serializable requests, events, outcomes, questions, and adapter data     |
 | `interfaces.py`         | Async run-handle and host-service contracts                              |
-| `environment.py`        | Live services and verified context, separate from serialized data        |
+| `identity.py`           | Live services and verified context, separate from serialized data        |
 | `errors.py`             | Validation, access, and busy errors before acceptance                    |
 | `utils/audit.py`        | Canonical instruction snapshots and their versioned SHA-256 fingerprints |
 | `flows/`                | Scope preparation, model steps, prompts, state transitions, and outcomes |
@@ -94,7 +94,7 @@ query application models, or discover credentials from environment variables.
 
 `judge` configures a future evaluation model. An explicit judge uses its own
 allowlisted Bedrock model with the same credentials. When omitted or resolved to
-`None`, `ScopedEnvironment` uses the primary model client without resolving the
+`None`, `ResourceScope` uses the primary model client without resolving the
 model callback again. No evaluation calls run yet.
 
 Pass `resource_root` as the directory containing `corpus/`; the factory captures
@@ -158,14 +158,14 @@ The host verifies both signed-in and anonymous identity and supplies an
 `AccessContext(identity_id=...)`. This value asserts host verification; it does
 not authenticate a caller. Service adapters enforce permissions on every operation.
 
-`AgentEnvironment` contains that context, conversation/run stores, a scope factory,
+`AgentIdentity` contains that context, conversation/run stores, a scope factory,
 and `ScopeSelection(court=None, topic=None)`. The selection can
 also supply either or both identifiers. Constructing this dataclass or `LPAgent`
 does not invoke services. The optional environment factory does invoke any
 supplied initialization callbacks, as described above.
 
 Normal execution requires both court and topic. The factory binds a
-`ScopedEnvironment` with the same identity, a full `Scope`, primary and judge
+`ResourceScope` with the same identity, a full `Scope`, primary and judge
 model clients, and a resource root. The instance binds once. An omitted judge
 defaults to the primary model, and the resource root may be absent when file
 retrieval is unused. Corpus retrieval is provided by the functions below.

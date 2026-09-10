@@ -10,8 +10,8 @@ from pydantic import SecretStr, ValidationError
 
 from lp_agent.adapters.bedrock import BedrockClient
 from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
-from lp_agent.environment import AgentEnvironment, ScopedEnvironment
 from lp_agent.errors import AgentAccessError, AgentValidationError
+from lp_agent.identity import AgentIdentity, ResourceScope
 from lp_agent.interfaces import ModelClient
 from lp_agent.types import AccessContext, Scope, ScopeSelection
 
@@ -42,7 +42,7 @@ def create_environment(
     judge: Option[str | None] = None,
     court: str | None = None,
     topic: str | None = None,
-) -> AgentEnvironment:
+) -> AgentIdentity:
     """
     Resolve supplied options once and build an instance-local Bedrock environment.
 
@@ -75,7 +75,7 @@ def create_environment(
         else None
     )
     conversations = MemoryConversationStore()
-    return AgentEnvironment(
+    return AgentIdentity(
         access=access,
         scope=scope,
         conversations=conversations,
@@ -105,10 +105,10 @@ class ModelScopeFactory:
 
     async def bind(
         self, *, access: AccessContext, scope: Scope
-    ) -> ScopedEnvironment:
+    ) -> ResourceScope:
         if access != self._access:
             raise AgentAccessError("Scope is unavailable to this identity.")
-        return ScopedEnvironment(
+        return ResourceScope(
             access=access,
             scope=scope,
             model=self._model,

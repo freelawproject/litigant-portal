@@ -8,9 +8,9 @@ from collections.abc import Callable
 from contextlib import aclosing
 from dataclasses import dataclass, field
 
-from lp_agent.environment import AgentEnvironment, ScopedEnvironment
 from lp_agent.errors import AgentAccessError, AgentValidationError
 from lp_agent.flows.prompts import system_prompt
+from lp_agent.identity import AgentIdentity, ResourceScope
 from lp_agent.types import (
     AgentConfiguration,
     CancelledOutcome,
@@ -50,11 +50,11 @@ class EngagementFlow:
     """
 
     def __init__(
-        self, environment: AgentEnvironment, configuration: AgentConfiguration
+        self, environment: AgentIdentity, configuration: AgentConfiguration
     ) -> None:
         self.environment = environment
         self.configuration = configuration
-        self._scoped: ScopedEnvironment | None = None
+        self._scoped: ResourceScope | None = None
 
     async def prepare(self, request: RunRequest) -> "Engagement":
         if request.conversation_id is not None or request.attachment_ids:
@@ -87,7 +87,7 @@ class EngagementFlow:
             ),
         )
 
-    async def _bind_scope(self) -> ScopedEnvironment:
+    async def _bind_scope(self) -> ResourceScope:
         if self._scoped is not None:
             return self._scoped
         selection = self.environment.scope
@@ -114,8 +114,8 @@ class Engagement:
     Own a prepared turn's model steps, state transitions, and safe outcomes.
     """
 
-    environment: AgentEnvironment
-    scoped: ScopedEnvironment
+    environment: AgentIdentity
+    scoped: ResourceScope
     initial_status: RunStatus
     request: RunRequest
     limits: RunLimits

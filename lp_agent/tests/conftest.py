@@ -1,6 +1,6 @@
 import pytest
 
-from lp_agent import AgentEnvironment
+from lp_agent import AgentIdentity
 from lp_agent.types import AccessContext, ScopeSelection
 
 
@@ -18,7 +18,7 @@ class UnusedService:
 @pytest.fixture
 def environment():
     service = UnusedService()
-    return AgentEnvironment(
+    return AgentIdentity(
         access=AccessContext(identity_id="test-identity"),
         scope=ScopeSelection(court="court", topic="topic"),
         conversations=service,

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from lp_agent.adapters.bedrock import MODEL_CHOICES
 from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
-from lp_agent.environment import AgentEnvironment, ScopedEnvironment
+from lp_agent.identity import AgentIdentity, ResourceScope
 from lp_agent.types import (
     AccessContext,
     ModelMessage,
@@ -58,7 +58,7 @@ class RecordingScopeFactory:
 
     async def bind(self, *, access, scope):
         self.bindings.append(scope)
-        return ScopedEnvironment(
+        return ResourceScope(
             access=access,
             scope=scope,
             model=self.model,
@@ -68,7 +68,7 @@ class RecordingScopeFactory:
 def environment_for(model):
     conversations = MemoryConversationStore()
     scopes = RecordingScopeFactory(model)
-    return AgentEnvironment(
+    return AgentIdentity(
         access=AccessContext(identity_id="user-1"),
         scope=ScopeSelection(court="court", topic="topic"),
         conversations=conversations,
