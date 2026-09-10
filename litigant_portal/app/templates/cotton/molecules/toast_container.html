@@ -3,7 +3,8 @@
 {% if messages %}
   <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
     {% for message in messages %}
-      <c-atoms.auto-dismiss>
+      {# 5s, not the atom's 1.5s default: flash messages are full sentences #}
+      <c-atoms.auto-dismiss timeout="5000">
       <c-atoms.alert variant="{{ message.variant }}" class="mb-2 shadow-lg">{{ message.text }}</c-atoms.alert>
       </c-atoms.auto-dismiss>
     {% endfor %}
