@@ -2,12 +2,14 @@
 
 Covers the guided-flow and assistant-flow scenarios on #804 with the
 docassemble client mocked. The client's own contract is tested in
-test_docassemble_client.py. The routing tests are DB-free; the rest read
-stored answers, so they need a database (``make test``).
+test_docassemble_client.py. The routing tests are DB-free; the rest need a
+database (``make test``), either for stored answers or because the session
+middleware touches it.
 """
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import Client
 from django.urls import resolve, reverse
 
 from litigant_portal.app.models import UserIdentity, Variable
@@ -246,13 +248,49 @@ def test_an_unexpected_client_error_is_not_swallowed(
         client.post(URL)
 
 
+# --- csrf fallback (needs DB) -----------------------------------------------
+
+
+@pytest.mark.django_db
+def test_csrf_failure_on_the_interview_falls_back_to_the_plain_link(
+    monkeypatch,
+):
+    _flow(monkeypatch)
+    response = Client(enforce_csrf_checks=True).post(URL)
+    assert response.status_code == 302
+    assert response["Location"] == INTERVIEW
+
+
+@pytest.mark.django_db
+def test_csrf_failure_on_an_unknown_flow_keeps_the_default_page(monkeypatch):
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: None)
+    response = Client(enforce_csrf_checks=True).post(URL)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_csrf_failure_on_a_flow_without_an_interview_keeps_the_default_page(
+    monkeypatch,
+):
+    _flow(monkeypatch, interview_url=None)
+    response = Client(enforce_csrf_checks=True).post(URL)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_csrf_failure_elsewhere_keeps_the_default_page(monkeypatch):
+    _flow(monkeypatch)
+    response = Client(enforce_csrf_checks=True).post(
+        FLOW_URL, {"first_name": "Sandra", "filing_county": ""}
+    )
+    assert response.status_code == 403
+
+
 # --- guards (needs DB) ------------------------------------------------------
 
 
 @pytest.mark.django_db
 def test_get_is_rejected(client, monkeypatch, docassemble, variables):
-    # Creating a session is a side effect, so a crawler or a reload must not
-    # be able to fire one.
     _flow(monkeypatch)
     assert client.get(URL).status_code == 405
     assert docassemble.calls == []
@@ -275,8 +313,6 @@ def test_a_flow_without_an_interview_returns_404(
 
 
 # --- assistant flow (needs DB) ----------------------------------------------
-# The trust boundary. An answer no human has confirmed must not reach a court
-# form, since prefilling a variable skips the question that would show it.
 
 
 @pytest.mark.django_db

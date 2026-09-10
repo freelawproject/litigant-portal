@@ -2,6 +2,8 @@ import logging
 
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
+from django.urls import Resolver404, resolve
+from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_POST
 
 from litigant_portal.app.services.docassemble import (
@@ -93,3 +95,31 @@ def topic_flow_interview(request, court, topic, role):
         )
         return redirect(interview_url)
     return redirect(resume_url)
+
+
+def csrf_failure(request, reason=""):
+    """CSRF failures on the interview handoff fall back to the plain link.
+
+    A litigant browsing with all cookies blocked never receives the CSRF
+    cookie ``topic_flow_interview``'s form depends on, so the POST 403s in
+    CsrfViewMiddleware before the view's own DocassembleError fallback ever
+    runs — leaving no path to the interview at all. That failure mode hits
+    privacy-hardened phones and locked-down shared/library machines hardest,
+    which is the audience the handoff (#804) is for. Reroute those hits to
+    the plain interview_url the view would have used; anything else keeps
+    Django's default CSRF failure page.
+
+    Wired app-wide via ``CSRF_FAILURE_VIEW`` since Django only supports one
+    such hook, but it only special-cases this one route.
+    """
+    try:
+        match = resolve(request.path)
+    except Resolver404:
+        match = None
+    if match and match.url_name == "topic_flow_interview":
+        kwargs = match.kwargs
+        corpus = registry.get(kwargs["court"], kwargs["topic"], kwargs["role"])
+        target = interview_target(corpus) if corpus else None
+        if target is not None:
+            return redirect(target[0])
+    return _django_csrf_failure(request, reason=reason)
