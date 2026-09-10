@@ -338,6 +338,7 @@ class NativeBody(httpx.AsyncByteStream):
     def __init__(self, values, *, stall=False):
         self.values = values
         self.stall = stall
+        self.stalled = asyncio.Event()
         self.closed = False
 
     async def __aiter__(self):
@@ -346,6 +347,7 @@ class NativeBody(httpx.AsyncByteStream):
                 raise value
             yield ("data: " + json.dumps(value) + "\n\n").encode()
         if self.stall:
+            self.stalled.set()
             await asyncio.Event().wait()
 
     async def aclose(self):
@@ -449,6 +451,62 @@ def test_stream_failure_retains_completed_items_in_checkpoint(
     assert http_clients and all(client.is_closed for client in http_clients)
 
 
+@pytest.mark.parametrize("termination", ["timeout", "cancel", "shutdown"])
+@pytest.mark.parametrize("completed_items", [False, True])
+def test_interrupted_response_preserves_completed_items_in_checkpoint(
+    termination, completed_items, http_clients, caplog
+):
+    async def scenario():
+        expected = [reasoning(), message()] if completed_items else []
+        body, response = native_response(
+            [done(item, index) for index, item in enumerate(expected)],
+            stall=True,
+        )
+        environment = create_environment(**environment_options())
+        with patch.object(
+            AsyncHTTPHandler, "post", AsyncMock(return_value=response)
+        ):
+            async with LPAgent(
+                environment=environment,
+                limits=RunLimits(
+                    max_active_seconds=1.0 if termination == "timeout" else 5
+                ),
+            ) as agent:
+                run = await agent.run(message="Hello")
+                await asyncio.wait_for(body.stalled.wait(), timeout=2)
+                if termination == "cancel":
+                    await asyncio.wait_for(run.cancel(), timeout=2)
+                elif termination == "shutdown":
+                    await asyncio.wait_for(agent.aclose(), timeout=2)
+                outcome = await asyncio.wait_for(run.result(), timeout=2)
+                if termination == "timeout":
+                    assert outcome.state == "failed"
+                    assert outcome.error.code == "active_time_limit"
+                else:
+                    assert outcome.state == "cancelled"
+                assert (await run.status()).state == outcome.state
+                public_events = "".join(
+                    [event.model_dump_json() async for event in run.events()]
+                )
+        checkpoint = await environment.runs.checkpoint(
+            access=environment.access, run_id=run.run_id
+        )
+        assert checkpoint.data["model_output"] == expected
+        assert checkpoint.data["model_finished"] is None
+        assert body.closed and response.is_closed
+        assert http_clients and all(
+            client.is_closed for client in http_clients
+        )
+        for private in (
+            "Private summary",
+            "opaque-continuation",
+            "test-only-key",
+        ):
+            assert private not in public_events + caplog.text
+
+    asyncio.run(scenario())
+
+
 @pytest.mark.parametrize("model", [MODEL_CHOICES[0][0], GLM_MODEL])
 def test_repeated_sync_requests_close_clients_and_connections(
     model, http_clients
@@ -544,7 +602,12 @@ def test_real_native_litellm_stream_releases_http_response(
 ):
     async def scenario():
         body, http_response = native_response(
-            [text_event("Hello"), terminal([message()])], stall=early
+            [
+                done(reasoning()),
+                text_event("Hello") | {"output_index": 1},
+                terminal([reasoning(), message()]),
+            ],
+            stall=early,
         )
         with patch.object(
             AsyncHTTPHandler, "post", AsyncMock(return_value=http_response)
@@ -562,6 +625,8 @@ def test_real_native_litellm_stream_releases_http_response(
                 if not early:
                     remaining = [event async for event in stream]
                     assert remaining[-1].reason == "stop"
+            with pytest.raises(StopAsyncIteration):
+                await anext(stream)
         assert body.closed and http_response.is_closed
         assert http_clients and all(
             client.is_closed for client in http_clients

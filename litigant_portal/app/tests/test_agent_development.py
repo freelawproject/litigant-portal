@@ -256,6 +256,8 @@ class AgentDevelopmentStreamTests(TestCase):
                 with self.subTest(invalid=invalid):
                     response = self.client.post(self.url, self.data | invalid)
                     self.assertEqual(response.status_code, 400)
+                    if model := invalid.get("model"):
+                        self.assertNotIn(model, response.content.decode())
             with self.settings(CORPUS_COURT="unavailable"):
                 self.assertEqual(
                     self.client.post(self.url, self.data).status_code, 400

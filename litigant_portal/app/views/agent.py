@@ -61,7 +61,12 @@ class AgentMessageForm(forms.Form):
             "invalid_choice": "Select a topic available for this court."
         }
     )
-    model = forms.ChoiceField(choices=MODEL_CHOICES)
+    model = forms.ChoiceField(
+        choices=MODEL_CHOICES,
+        error_messages={
+            "invalid_choice": "Select an available Bedrock model."
+        },
+    )
     max_active_seconds = forms.FloatField(min_value=0.1)
 
     def __init__(self, *args, courts: tuple[Court, ...], **kwargs):

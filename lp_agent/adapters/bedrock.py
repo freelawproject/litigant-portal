@@ -2,6 +2,7 @@
 Normalize LiteLLM's Bedrock stream without exposing provider objects to core.
 """
 
+import asyncio
 from collections.abc import AsyncGenerator
 
 from pydantic import BaseModel, SecretStr, TypeAdapter, ValidationError
@@ -236,10 +237,10 @@ class BedrockClient:
                             break
                         elif kind == "error":
                             raise RuntimeError("The model response failed.")
-                except Exception as exc:
+                except (Exception, asyncio.CancelledError) as exc:
                     error = exc
-                # Preserve completed items on EOF or failure, without treating
-                # either as a successful response. Cancellation skips this path.
+                # Preserve completed items before propagating failure or
+                # cancellation. GeneratorExit must bypass these yields.
                 items = _assembled_items(
                     done,
                     result.get("output", []) if result is not None else [],
