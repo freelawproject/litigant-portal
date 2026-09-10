@@ -19,6 +19,7 @@ from pydantic import ValidationError
 from litigant_portal.agent import PortalAgent
 from litigant_portal.app.selectors.agent import Court, agent_scope_choices
 from litigant_portal.app.selectors.site import site_get_model
+from litigant_portal.app.views.utils import manage_developers_required
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
 
@@ -89,7 +90,7 @@ class AgentMessageForm(forms.Form):
 
 
 @login_required
-@permission_required("app.manage_developers", raise_exception=True)
+@manage_developers_required
 @require_POST
 def development_stream(request: HttpRequest) -> HttpResponse:
     """

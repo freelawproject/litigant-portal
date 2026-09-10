@@ -69,7 +69,10 @@ class AgentDevelopmentPageTests(TestCase):
         topic = court.topics[0]
         self.assertContains(
             response,
-            f'<option value="{topic.choice_id}" data-court="{court.choice_id}">{topic.label}</option>',
+            f'<option value="{topic.choice_id}" '
+            f'data-court="{court.choice_id}" x-data="agentTopicOption" '
+            'x-bind:hidden="unavailable" x-bind:disabled="unavailable">'
+            f"{topic.label}</option>",
             html=True,
         )
 
@@ -224,11 +227,19 @@ class AgentDevelopmentStreamTests(TestCase):
         }
 
     def test_stream_requires_login_permission_flag_post_and_csrf(self):
-        self.assertEqual(Client().post(self.url, self.data).status_code, 302)
-        self.client.force_login(self.other)
-        self.assertEqual(
-            self.client.post(self.url, self.data).status_code, 403
+        agent = self.enterContext(
+            patch("litigant_portal.app.views.agent.PortalAgent")
         )
+        self.assertRedirects(
+            Client().post(self.url, self.data),
+            f"{reverse('account_login')}?next={self.url}",
+            fetch_redirect_response=False,
+        )
+        self.client.force_login(self.other)
+        response = self.client.post(self.url, self.data)
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response["Content-Type"], "application/json")
+        self.assertEqual(response.json(), {"error": "Forbidden"})
         self.client.force_login(self.developer)
         with self.settings(LP_AGENT_DEV_ENABLED=False):
             self.assertEqual(
@@ -238,6 +249,7 @@ class AgentDevelopmentStreamTests(TestCase):
         protected = Client(enforce_csrf_checks=True)
         protected.force_login(self.developer)
         self.assertEqual(protected.post(self.url, self.data).status_code, 403)
+        agent.assert_not_called()
 
     def test_invalid_inputs_never_construct_an_agent(self):
         cases = [
