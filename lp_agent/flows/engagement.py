@@ -97,16 +97,6 @@ class EngagementFlow:
             )
         scope = Scope(court=selection.court, topic=selection.topic)
         access = self.environment.access
-        courts = await self.environment.catalog.courts(access=access)
-        topics = await self.environment.catalog.topics(
-            access=access, court=scope.court
-        )
-        if scope.court not in {choice.choice_id for choice in courts} or (
-            scope.topic not in {choice.choice_id for choice in topics}
-        ):
-            raise AgentAccessError(
-                "The selected court and topic are unavailable."
-            )
         scoped = await self.environment.scope_factory.bind(
             access=access, scope=scope
         )

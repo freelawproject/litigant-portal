@@ -25,7 +25,7 @@
         <div class="space-y-5">
           <fieldset class="space-y-4" aria-describedby="scope-help">
             <legend class="text-sm font-medium text-greyscale-700 mb-2">{% trans "Scope" %}</legend>
-            <p id="scope-help" class="text-sm text-greyscale-600">{% trans "Select both a court and a topic. Asking the agent to discover them comes in a later step." %}</p>
+            <p id="scope-help" class="text-sm text-greyscale-600">{% trans "Select a court and topic for this response." %}</p>
             {% trans "Court" as court_label %}
             <c-molecules.form-field-select label="{{ court_label }}" name="court" id="agent-court" :required="True">
               <option value="">{% trans "Choose court" %}</option>
@@ -55,29 +55,11 @@
             {% endfor %}
           </c-molecules.form-field-select>
 
-          {% trans "When another message arrives" as interrupt_label %}
-          <fieldset disabled>
-            <c-molecules.form-field-select label="{{ interrupt_label }}" name="interrupt_behavior" id="agent-interrupt">
-              <option value="reject" selected>{% trans "Reject while busy" %}</option>
-              <option value="queue">{% trans "Queue for the next run" %}</option>
-              <option value="steer">{% trans "Steer the current run" %}</option>
-            </c-molecules.form-field-select>
-          </fieldset>
-          <p class="text-xs text-greyscale-500">{% trans "Queue and steer will be connected in a later step." %}</p>
-
-          <fieldset class="space-y-4">
-            <legend class="text-sm font-medium text-greyscale-700 mb-2">{% trans "Execution limits" %}</legend>
-            <div>
-              <label for="agent-max-steps" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Maximum model steps" %}</label>
-              <c-atoms.input type="number" name="max_steps" id="agent-max-steps" :value="limits.max_steps" min="1" step="1" :disabled="True" />
-              <p class="mt-1 text-xs text-greyscale-500">{% trans "This step makes one model call per submission." %}</p>
-            </div>
-            <div>
-              <label for="agent-max-seconds" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Maximum active seconds" %}</label>
-              <c-atoms.input type="number" name="max_active_seconds" id="agent-max-seconds" value="{{ limits.max_active_seconds|floatformat:'-1' }}" min="0.1" step="any" :required="True" aria_describedby="active-seconds-help" />
-              <p id="active-seconds-help" class="mt-1 text-xs text-greyscale-500">{% trans "Excludes time in the queue or waiting for a reply." %}</p>
-            </div>
-          </fieldset>
+          <div>
+            <label for="agent-max-seconds" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Maximum active seconds" %}</label>
+            <c-atoms.input type="number" name="max_active_seconds" id="agent-max-seconds" value="{{ limits.max_active_seconds|floatformat:'-1' }}" min="0.1" step="any" :required="True" aria_describedby="active-seconds-help" />
+            <p id="active-seconds-help" class="mt-1 text-xs text-greyscale-500">{% trans "Time limit for this response." %}</p>
+          </div>
         </div>
       </section>
 

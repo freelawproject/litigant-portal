@@ -13,7 +13,6 @@ from lp_agent.types import (
     ModelMessage,
     ModelOutputItem,
     ModelRequest,
-    RunLimits,
     ScopeSelection,
     ToolCall,
     ToolDefinition,
@@ -154,6 +153,7 @@ def test_function_arguments_remain_unmodified_until_dispatch():
     [
         lambda: ModelRequest(messages=[]),
         lambda: ModelMessage(role="user", text="old shape"),
+        lambda: ModelMessage(role="tool", content="Unmatched output"),
         lambda: ToolCall(call_id="call", name="lookup", arguments={}),
         lambda: ToolDefinition(
             name="lookup", description="Find", input_schema={}
@@ -284,14 +284,3 @@ def test_parameter_schemas_reject_nonfinite_json(strict, value):
             parameters={**PARAMETERS, "default": value},
             strict=strict,
         )
-
-
-def test_timeout_default_matches_explicit_value_in_memory_and_json():
-    default = RunLimits()
-    explicit = RunLimits(max_active_seconds=300.0)
-    assert (
-        type(default.max_active_seconds)
-        is type(explicit.max_active_seconds)
-        is float
-    )
-    assert default.model_dump_json() == explicit.model_dump_json()

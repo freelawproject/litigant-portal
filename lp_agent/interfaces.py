@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, Protocol
 from lp_agent.types import (
     AccessContext,
     AgentConfiguration,
-    Choice,
     ChoiceAnswer,
     Conversation,
     ModelEvent,
@@ -20,7 +19,6 @@ from lp_agent.types import (
     RunStatus,
     Scope,
     ScopeSelection,
-    SearchHit,
 )
 
 if TYPE_CHECKING:
@@ -138,34 +136,6 @@ class ModelClient(Protocol):
     """
 
     def stream(self, request: ModelRequest) -> AsyncGenerator[ModelEvent]: ...
-
-
-class ScopeCatalog(Protocol):
-    """
-    List valid host-authorized choices without invoking a model.
-    """
-
-    async def courts(
-        self, *, access: AccessContext, topic: str | None = None
-    ) -> tuple[Choice, ...]: ...
-
-    async def topics(
-        self, *, access: AccessContext, court: str
-    ) -> tuple[Choice, ...]: ...
-
-
-class ScopedSearch(Protocol):
-    """
-    Search within bound access/scope and enforce document attachments.
-    """
-
-    async def search(
-        self,
-        *,
-        query: str,
-        conversation_id: str,
-        attachment_ids: tuple[str, ...] = (),
-    ) -> tuple[SearchHit, ...]: ...
 
 
 class ScopeFactory(Protocol):

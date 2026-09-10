@@ -4,6 +4,7 @@ Responses normalization and SDK stream ownership, without live provider calls.
 
 import asyncio
 import json
+from contextlib import aclosing
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from queue import Queue
@@ -120,7 +121,7 @@ async def events(*values):
         yield value
 
 
-def collect(*values, request=None):
+def collect(*values):
     async def scenario():
         with patch(
             "litellm.aresponses", AsyncMock(return_value=events(*values))
@@ -129,7 +130,7 @@ def collect(*values, request=None):
                 event
                 async for event in BedrockClient(
                     MODEL_CHOICES[0][0], api_key="test-only-key"
-                ).stream(request or ModelRequest(input=()))
+                ).stream(ModelRequest(input=()))
             ]
 
     return asyncio.run(scenario())
@@ -351,6 +352,35 @@ class NativeBody(httpx.AsyncByteStream):
         self.closed = True
 
 
+def native_response(values, *, stall=False):
+    body = NativeBody(values, stall=stall)
+    response = httpx.Response(
+        200,
+        stream=body,
+        request=httpx.Request("POST", "https://provider.invalid"),
+        headers={"content-type": "text/event-stream"},
+    )
+    return body, response
+
+
+def translated_stream(stream):
+    logging = Logging(
+        model="gpt-4o-mini",
+        messages=[],
+        stream=True,
+        call_type="acompletion",
+        start_time=datetime.now(),
+        litellm_call_id="test-call",
+        function_id="test-function",
+    )
+    return CustomStreamWrapper(
+        completion_stream=stream,
+        model="gpt-4o-mini",
+        custom_llm_provider="openai",
+        logging_obj=logging,
+    )
+
+
 @pytest.mark.parametrize("request_fails", [False, True])
 def test_http_client_closes_after_request_or_response_cleanup_failure(
     request_fails, http_clients
@@ -392,14 +422,8 @@ def test_http_client_closes_after_request_or_response_cleanup_failure(
 def test_stream_failure_retains_completed_items_in_checkpoint(
     failure, http_clients, caplog
 ):
-    body = NativeBody(
+    body, response = native_response(
         [done(reasoning()), text_event("Hello"), done(message(), 1), failure]
-    )
-    response = httpx.Response(
-        200,
-        stream=body,
-        request=httpx.Request("POST", "https://provider.invalid"),
-        headers={"content-type": "text/event-stream"},
     )
     environment = create_environment(**environment_options())
     with patch.object(
@@ -519,14 +543,8 @@ def test_real_native_litellm_stream_releases_http_response(
     early, choice, http_clients
 ):
     async def scenario():
-        body = NativeBody(
+        body, http_response = native_response(
             [text_event("Hello"), terminal([message()])], stall=early
-        )
-        http_response = httpx.Response(
-            200,
-            stream=body,
-            request=httpx.Request("POST", "https://provider.invalid"),
-            headers={"content-type": "text/event-stream"},
         )
         with patch.object(
             AsyncHTTPHandler, "post", AsyncMock(return_value=http_response)
@@ -539,11 +557,11 @@ def test_real_native_litellm_stream_releases_http_response(
                     input=(ModelMessage(role="user", content="Hello"),),
                 )
             )
-            assert (await anext(stream)).delta == "Hello"
-            if not early:
-                remaining = [event async for event in stream]
-                assert remaining[-1].reason == "stop"
-            await stream.aclose()
+            async with aclosing(stream):
+                assert (await anext(stream)).delta == "Hello"
+                if not early:
+                    remaining = [event async for event in stream]
+                    assert remaining[-1].reason == "stop"
         assert body.closed and http_response.is_closed
         assert http_clients and all(
             client.is_closed for client in http_clients
@@ -584,21 +602,7 @@ def test_real_translated_litellm_stream_preserves_reasoning_and_finish(
             finally:
                 closed = True
 
-        logging = Logging(
-            model="gpt-4o-mini",
-            messages=[],
-            stream=True,
-            call_type="acompletion",
-            start_time=datetime.now(),
-            litellm_call_id="test-call",
-            function_id="test-function",
-        )
-        wrapper = CustomStreamWrapper(
-            completion_stream=provider(),
-            model="gpt-4o-mini",
-            custom_llm_provider="openai",
-            logging_obj=logging,
-        )
+        wrapper = translated_stream(provider())
         with patch(
             "litellm.acompletion", AsyncMock(return_value=wrapper)
         ) as call:
@@ -658,58 +662,44 @@ def test_agent_cancellation_and_timeout_close_actual_litellm_wrappers(
             finally:
                 closed = True
 
-        body = NativeBody([text_event("Hello")], stall=True)
-        http_response = httpx.Response(
-            200,
-            stream=body,
-            request=httpx.Request("POST", "https://provider.invalid"),
-            headers={"content-type": "text/event-stream"},
-        )
-        logging = Logging(
-            model="gpt-4o-mini",
-            messages=[],
-            stream=True,
-            call_type="acompletion",
-            start_time=datetime.now(),
-            litellm_call_id="test-call",
-            function_id="test-function",
-        )
-        wrapper = CustomStreamWrapper(
-            completion_stream=provider(),
-            model="gpt-4o-mini",
-            custom_llm_provider="openai",
-            logging_obj=logging,
-        )
+        if translated:
+            wrapper = translated_stream(provider())
+            provider_patch = patch(
+                "litellm.acompletion", AsyncMock(return_value=wrapper)
+            )
+        else:
+            body, http_response = native_response(
+                [text_event("Hello")], stall=True
+            )
+            provider_patch = patch.object(
+                AsyncHTTPHandler, "post", AsyncMock(return_value=http_response)
+            )
         environment = create_environment(
             **(
                 environment_options()
                 | {"model": GLM_MODEL if translated else MODEL_CHOICES[0][0]}
             )
         )
-        with (
-            patch.object(
-                AsyncHTTPHandler, "post", AsyncMock(return_value=http_response)
-            ),
-            patch("litellm.acompletion", AsyncMock(return_value=wrapper)),
-        ):
-            agent = LPAgent(
+        with provider_patch:
+            async with LPAgent(
                 environment=environment,
                 limits=RunLimits(max_active_seconds=0.2 if timeout else 5),
-            )
-            run = await agent.run(message="Hello")
-            observer = run.events()
-            await anext(observer)
-            assert (
-                await asyncio.wait_for(anext(observer), timeout=2)
-            ).payload.delta == "Hello"
-            if timeout:
-                outcome = await asyncio.wait_for(run.result(), timeout=2)
-                assert outcome.state == "failed"
-                assert outcome.error.code == "active_time_limit"
-            await asyncio.wait_for(agent.aclose(), timeout=2)
-            if not timeout:
-                assert (await run.result()).state == "cancelled"
-            await observer.aclose()
+            ) as agent:
+                run = await agent.run(message="Hello")
+                async with aclosing(run.events()) as observer:
+                    await anext(observer)
+                    assert (
+                        await asyncio.wait_for(anext(observer), timeout=2)
+                    ).payload.delta == "Hello"
+                    if timeout:
+                        outcome = await asyncio.wait_for(
+                            run.result(), timeout=2
+                        )
+                        assert outcome.state == "failed"
+                        assert outcome.error.code == "active_time_limit"
+                    await asyncio.wait_for(agent.aclose(), timeout=2)
+                    if not timeout:
+                        assert (await run.result()).state == "cancelled"
         assert (
             closed if translated else body.closed and http_response.is_closed
         )

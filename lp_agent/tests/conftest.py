@@ -1,7 +1,7 @@
 import pytest
 
 from lp_agent import AgentEnvironment
-from lp_agent.types import AccessContext
+from lp_agent.types import AccessContext, ScopeSelection
 
 
 class UnusedService:
@@ -10,7 +10,9 @@ class UnusedService:
     """
 
     def __getattr__(self, name):
-        raise AssertionError(f"PR1 must not invoke service method {name}")
+        raise AssertionError(
+            f"Validation must not invoke service method {name}"
+        )
 
 
 @pytest.fixture
@@ -18,8 +20,8 @@ def environment():
     service = UnusedService()
     return AgentEnvironment(
         access=AccessContext(identity_id="test-identity"),
+        scope=ScopeSelection(court="court", topic="topic"),
         conversations=service,
         runs=service,
-        catalog=service,
         scope_factory=service,
     )

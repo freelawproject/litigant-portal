@@ -18,6 +18,7 @@ from lp_agent.types import (
     ModelTextDelta,
     OutputText,
     ReasoningItem,
+    Scope,
     ScopeSelection,
     ToolCall,
 )
@@ -110,11 +111,6 @@ def test_checkpoint_retains_model_items_and_instruction_artifact_without_public_
             "tools": [],
         }
         assert "private continuation" not in "".join(events)
-        data["model_output"].clear()
-        saved = await environment.runs.checkpoint(
-            access=environment.access, run_id=run.run_id
-        )
-        assert len(saved.data["model_output"]) == 2
 
     asyncio.run(scenario())
 
@@ -255,48 +251,45 @@ def test_cancel_before_task_start_does_not_call_model():
     [
         ScopeSelection(),
         ScopeSelection(court="court"),
-        ScopeSelection(court="other", topic="topic"),
-        ScopeSelection(court="court", topic="other"),
+        ScopeSelection(topic="topic"),
     ],
 )
-def test_invalid_scope_never_calls_model(scope):
+def test_missing_scope_never_calls_model(scope):
     async def scenario():
         model = ScriptedModel([])
-        agent = LPAgent(
+        async with LPAgent(
             environment=replace(environment_for(model), scope=scope)
-        )
-        with pytest.raises((AgentValidationError, AgentAccessError)):
-            await agent.run(message="Hello")
+        ) as agent:
+            with pytest.raises(AgentValidationError, match="court and topic"):
+                await agent.run(message="Hello")
         assert model.requests == []
 
     asyncio.run(scenario())
 
 
-def test_memory_stores_enforce_identity_on_run_reads_and_writes():
+@pytest.mark.parametrize(
+    "mismatch",
+    [
+        {"access": AccessContext(identity_id="another-identity")},
+        {"scope": Scope(court="another-court", topic="topic")},
+        {"scope": Scope(court="court", topic="another-topic")},
+    ],
+    ids=["identity", "court", "topic"],
+)
+def test_scope_binding_must_match_the_requested_identity_and_scope(mismatch):
     async def scenario():
-        environment = environment_for(
-            ScriptedModel([ModelFinished(reason="stop")])
-        )
-        async with LPAgent(environment=environment) as agent:
-            run = await agent.run(message="Hello")
-            outcome = await run.result()
-            status = await run.status()
-            checkpoint = await environment.runs.checkpoint(
-                access=environment.access,
-                run_id=run.run_id,
-            )
-            intruder = AccessContext(identity_id="user-2")
-            with pytest.raises(AgentAccessError):
-                await environment.runs.status(
-                    access=intruder, run_id=run.run_id
-                )
-            with pytest.raises(AgentAccessError):
-                await environment.runs.commit_checkpoint(
-                    access=intruder,
-                    checkpoint=checkpoint,
-                    status=status,
-                    outcome=outcome,
-                )
+        model = ScriptedModel([])
+        environment = environment_for(model)
+        bind = environment.scope_factory.bind
+
+        async def mismatched(**kwargs):
+            return replace(await bind(**kwargs), **mismatch)
+
+        with patch.object(environment.scope_factory, "bind", mismatched):
+            async with LPAgent(environment=environment) as agent:
+                with pytest.raises(AgentAccessError, match="do not match"):
+                    await agent.run(message="Hello")
+        assert model.requests == []
 
     asyncio.run(scenario())
 

@@ -202,6 +202,15 @@ class SourceReference(ContractModel):
     locator: str | None = None
 
 
+class CorpusDocument(ContractModel):
+    """
+    Corpus content and provenance, without an artificial relevance score.
+    """
+
+    content: str
+    source: SourceReference
+
+
 class SearchHit(ContractModel):
     """
     Ranked content; scores use the search adapter's documented scale.

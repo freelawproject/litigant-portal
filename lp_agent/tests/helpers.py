@@ -2,13 +2,13 @@
 Shared model scripts and environment builders without host dependencies.
 """
 
+from pathlib import Path
+
 from lp_agent.adapters.bedrock import MODEL_CHOICES
-from lp_agent.adapters.catalog import Court
 from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
 from lp_agent.environment import AgentEnvironment, ScopedEnvironment
 from lp_agent.types import (
     AccessContext,
-    Choice,
     ModelMessage,
     ModelOutputItem,
     OutputText,
@@ -47,20 +47,14 @@ class ScriptedModel:
             self.closed = True
 
 
-class TestScopes:
+class RecordingScopeFactory:
     """
-    Supply fixed authorized scope and a controlled model to the executor.
+    Record scope bindings and supply a controlled model to the executor.
     """
 
     def __init__(self, model):
         self.model = model
         self.bindings = []
-
-    async def courts(self, *, access, topic=None):
-        return (Choice(choice_id="court", label="Court"),)
-
-    async def topics(self, *, access, court):
-        return (Choice(choice_id="topic", label="Topic"),)
 
     async def bind(self, *, access, scope):
         self.bindings.append(scope)
@@ -68,20 +62,17 @@ class TestScopes:
             access=access,
             scope=scope,
             model=self.model,
-            corpus=None,
-            documents=None,
         )
 
 
 def environment_for(model):
     conversations = MemoryConversationStore()
-    scopes = TestScopes(model)
+    scopes = RecordingScopeFactory(model)
     return AgentEnvironment(
         access=AccessContext(identity_id="user-1"),
         scope=ScopeSelection(court="court", topic="topic"),
         conversations=conversations,
         runs=MemoryRunStore(conversations),
-        catalog=scopes,
         scope_factory=scopes,
     )
 
@@ -93,11 +84,5 @@ def environment_options():
         "topic": "topic",
         "model": MODEL_CHOICES[0][0],
         "api_key": "test-only-key",
-        "catalog": (
-            Court(
-                choice_id="court",
-                label="Court",
-                topics=(Choice(choice_id="topic", label="Topic"),),
-            ),
-        ),
+        "resource_root": Path("unused-corpus"),
     }

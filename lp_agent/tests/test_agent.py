@@ -24,7 +24,7 @@ def test_configuration_is_fixed_with_documented_defaults(environment):
     assert agent.runtime == "Direct"
     assert agent.interrupt_behavior == "reject"
     assert agent.limits == RunLimits(
-        max_steps=30, max_active_seconds=300, max_restarts=2
+        max_steps=30, max_active_seconds=300.0, max_restarts=2
     )
     for name, value in [
         ("runtime", "Workers"),
@@ -59,8 +59,11 @@ def test_unsupported_execution_is_explicitly_unimplemented(
     )
     with pytest.raises(NotImplementedError):
         asyncio.run(agent.run(message="Hello"))
+
+
+def test_recovery_is_explicitly_unimplemented(environment):
     with pytest.raises(NotImplementedError, match="Run recovery"):
-        asyncio.run(agent.get_run("stored-run"))
+        asyncio.run(LPAgent(environment=environment).get_run("stored-run"))
 
 
 @pytest.mark.parametrize(
@@ -88,9 +91,16 @@ def test_constructor_rejects_invalid_configuration(environment, options):
         {"message": {"private": "do not echo this"}},
     ],
 )
-def test_submission_validation_precedes_runtime(environment, run_request):
+@pytest.mark.parametrize("method", ["run", "stream"])
+def test_submission_validation_precedes_runtime(
+    environment, run_request, method
+):
+    agent = LPAgent(environment=environment)
     with pytest.raises(AgentValidationError) as error:
-        asyncio.run(LPAgent(environment=environment).run(**run_request))
+        if method == "run":
+            asyncio.run(agent.run(**run_request))
+        else:
+            agent.stream(**run_request)
     assert "do not echo this" not in str(error.value)
 
 
@@ -117,8 +127,6 @@ def test_environment_requires_validated_access_and_scope(environment):
             access=environment.access,
             scope=ScopeSelection(court="court"),
             model=environment.runs,
-            corpus=environment.runs,
-            documents=environment.runs,
         )
 
 
@@ -146,7 +154,8 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
             "celery",
             "redis",
             "boto3",
-            "botocore"
+            "botocore",
+            "yaml",
         }
 
         class BlockHostImports(importlib.abc.MetaPathFinder):
@@ -157,6 +166,10 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
         sys.meta_path.insert(0, BlockHostImports())
         from lp_agent import LPAgent, RunLimits
         from lp_agent.adapters.environment import create_environment
+        from lp_agent.corpus.db_search import get_database_corpus
+        from lp_agent.corpus.file_search import get_file_based_corpus
+        from lp_agent.corpus.s3_search import get_s3_corpus
+        from lp_agent.corpus.vec_search import get_vector_corpus
         from lp_agent.tests.helpers import ScriptedModel, environment_for
         from lp_agent.types import ModelFinished, ModelOutputItem, ModelTextDelta
         from lp_agent.utils.audit import InstructionArtifact

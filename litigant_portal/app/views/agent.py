@@ -2,8 +2,6 @@
 Development UI and independent Direct runs for the new agent.
 """
 
-import os
-
 from django import forms
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
@@ -19,11 +17,10 @@ from django.views.decorators.http import require_GET, require_POST
 from pydantic import ValidationError
 
 from litigant_portal.agent import PortalAgent
-from litigant_portal.app.selectors.agent import agent_scope_choices
+from litigant_portal.app.selectors.agent import Court, agent_scope_choices
 from litigant_portal.app.selectors.site import site_get_model
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
-from lp_agent.adapters.catalog import Court
 
 
 @login_required
@@ -66,18 +63,15 @@ class AgentMessageForm(forms.Form):
     )
     model = forms.ChoiceField(choices=MODEL_CHOICES)
     max_active_seconds = forms.FloatField(min_value=0.1)
-    interrupt_behavior = forms.ChoiceField(
-        choices=[("reject", "Reject while busy")], required=False
-    )
 
-    def __init__(self, *args, catalog: tuple[Court, ...], **kwargs):
+    def __init__(self, *args, courts: tuple[Court, ...], **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["court"].choices = [
-            (court.choice_id, court.label) for court in catalog
+            (court.choice_id, court.label) for court in courts
         ]
         self.fields["topic"].choices = [
             (topic.choice_id, topic.label)
-            for court in catalog
+            for court in courts
             if court.choice_id == self["court"].value()
             for topic in court.topics
         ]
@@ -98,8 +92,7 @@ def development_stream(request: HttpRequest) -> HttpResponse:
     """
     if not settings.LP_AGENT_DEV_ENABLED:
         raise Http404
-    catalog = agent_scope_choices()
-    form = AgentMessageForm(request.POST, catalog=catalog)
+    form = AgentMessageForm(request.POST, courts=agent_scope_choices())
     if not form.is_valid():
         return JsonResponse({"errors": form.errors}, status=400)
     data = form.cleaned_data
@@ -109,8 +102,6 @@ def development_stream(request: HttpRequest) -> HttpResponse:
             court=data["court"],
             topic=data["topic"],
             model=data["model"],
-            api_key=os.environ.get("AWS_BEARER_TOKEN_BEDROCK", ""),
-            catalog=catalog,
             runtime="Direct",
             limits=RunLimits(max_active_seconds=data["max_active_seconds"]),
         )

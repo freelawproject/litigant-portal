@@ -4,16 +4,16 @@ Assemble development services from resolved values or initialization callbacks.
 
 import inspect
 from collections.abc import Callable
+from pathlib import Path
 
-from pydantic import SecretStr, TypeAdapter, ValidationError
+from pydantic import SecretStr, ValidationError
 
 from lp_agent.adapters.bedrock import BedrockClient
-from lp_agent.adapters.catalog import Court, StaticScopeCatalog
 from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
 from lp_agent.environment import AgentEnvironment, ScopedEnvironment
 from lp_agent.errors import AgentAccessError, AgentValidationError
 from lp_agent.interfaces import ModelClient
-from lp_agent.types import AccessContext, Scope, ScopeSelection, SearchHit
+from lp_agent.types import AccessContext, Scope, ScopeSelection
 
 type Option[T] = T | Callable[[], T]
 
@@ -38,33 +38,41 @@ def create_environment(
     identity_id: Option[str],
     model: Option[str],
     api_key: Option[str | SecretStr],
-    catalog: Option[tuple[Court, ...]],
-    court: Option[str | None] = None,
-    topic: Option[str | None] = None,
+    resource_root: Option[str | Path],
+    judge: Option[str | None] = None,
+    court: str | None = None,
+    topic: str | None = None,
 ) -> AgentEnvironment:
     """
     Resolve supplied options once and build an instance-local Bedrock environment.
 
-    Callbacks may perform initialization I/O. Authentication and selection of
-    permitted catalogue data remain the caller's responsibility.
+    Callbacks may perform initialization I/O; court and topic are plain keys.
+    Resource lookup waits until a flow requests corpus. An omitted judge uses
+    the primary model client.
     """
     try:
         access = AccessContext(
             identity_id=_resolve(identity_id, "identity_id")
         )
-        scope = ScopeSelection(
-            court=_resolve(court, "court"), topic=_resolve(topic, "topic")
-        )
-        choices = TypeAdapter(tuple[Court, ...]).validate_python(
-            _resolve(catalog, "catalog")
-        )
+        scope = ScopeSelection(court=court, topic=topic)
     except ValidationError as exc:
         raise AgentValidationError.from_validation_error(
             exc, models=(AccessContext, ScopeSelection)
         ) from None
-    scopes = StaticScopeCatalog(access, choices)
-    model_client = BedrockClient(
-        _resolve(model, "model"), api_key=_resolve(api_key, "api_key")
+    root = _resolve(resource_root, "resource_root")
+    if (
+        not isinstance(root, str | Path)
+        or not str(root).strip()
+        or "\0" in str(root)
+    ):
+        raise AgentValidationError("resource_root must be a nonempty path.")
+    key = _resolve(api_key, "api_key")
+    model_client = BedrockClient(_resolve(model, "model"), api_key=key)
+    judge_model = _resolve(judge, "judge")
+    judge_client = (
+        BedrockClient(judge_model, api_key=key)
+        if judge_model is not None
+        else None
     )
     conversations = MemoryConversationStore()
     return AgentEnvironment(
@@ -72,24 +80,10 @@ def create_environment(
         scope=scope,
         conversations=conversations,
         runs=MemoryRunStore(conversations),
-        catalog=scopes,
-        scope_factory=ModelScopeFactory(access, model_client),
+        scope_factory=ModelScopeFactory(
+            access, model_client, judge_client, Path(root).absolute()
+        ),
     )
-
-
-class UnavailableSearch:
-    """
-    Keep the search boundary explicit until retrieval is implemented.
-    """
-
-    async def search(
-        self,
-        *,
-        query: str,
-        conversation_id: str,
-        attachment_ids: tuple[str, ...] = (),
-    ) -> tuple[SearchHit, ...]:
-        raise NotImplementedError("Search is not connected yet.")
 
 
 class ModelScopeFactory:
@@ -97,9 +91,17 @@ class ModelScopeFactory:
     Bind the configured model to one verified identity and resolved scope.
     """
 
-    def __init__(self, access: AccessContext, model: ModelClient) -> None:
+    def __init__(
+        self,
+        access: AccessContext,
+        model: ModelClient,
+        judge: ModelClient | None,
+        resource_root: Path,
+    ) -> None:
         self._access = access
         self._model = model
+        self._judge = judge
+        self._resource_root = resource_root
 
     async def bind(
         self, *, access: AccessContext, scope: Scope
@@ -110,6 +112,6 @@ class ModelScopeFactory:
             access=access,
             scope=scope,
             model=self._model,
-            corpus=UnavailableSearch(),
-            documents=UnavailableSearch(),
+            judge=self._judge,
+            resource_root=self._resource_root,
         )

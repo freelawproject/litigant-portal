@@ -10,18 +10,19 @@ durable recovery, discovery, tools, queue, and steer are subsequent review steps
 unsupported operations raise explicitly. `get_run()` and `serve_mcp()` remain
 unimplemented. Workers follows in PR3.
 
-| Part                    | Responsibility                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| `main.py`               | Public `LPAgent` facade and immutable execution configuration                  |
-| `types.py`              | Serializable requests, events, outcomes, questions, and adapter data           |
-| `interfaces.py`         | Async run-handle and host-service contracts                                    |
-| `environment.py`        | Live services and verified context, separate from serialized data              |
-| `errors.py`             | Validation, access, and busy errors before acceptance                          |
-| `utils/audit.py`        | Canonical instruction snapshots and their versioned SHA-256 fingerprints       |
-| `flows/`                | Scope preparation, model steps, prompts, state transitions, and outcomes       |
-| `runtimes/`             | Admission, owned Direct tasks, shutdown, and synchronous event streaming       |
-| `adapters/`             | Bedrock, supplied catalogue, environment assembly, and temporary memory stores |
-| `litigant_portal.agent` | Thin identity translation and options forwarding for the Django caller         |
+| Part                    | Responsibility                                                           |
+| ----------------------- | ------------------------------------------------------------------------ |
+| `main.py`               | Public `LPAgent` facade and immutable execution configuration            |
+| `types.py`              | Serializable requests, events, outcomes, questions, and adapter data     |
+| `interfaces.py`         | Async run-handle and host-service contracts                              |
+| `environment.py`        | Live services and verified context, separate from serialized data        |
+| `errors.py`             | Validation, access, and busy errors before acceptance                    |
+| `utils/audit.py`        | Canonical instruction snapshots and their versioned SHA-256 fingerprints |
+| `flows/`                | Scope preparation, model steps, prompts, state transitions, and outcomes |
+| `runtimes/`             | Admission, owned Direct tasks, shutdown, and synchronous event streaming |
+| `adapters/`             | Bedrock, environment assembly, and temporary memory stores               |
+| `corpus/`               | Corpus retrieval functions called by task flows                          |
+| `litigant_portal.agent` | Thin identity translation and options forwarding for the Django caller   |
 
 Package implementations never import `litigant_portal`. Optional framework
 integrations belong inside `lp_agent` and accept caller-supplied bindings or data.
@@ -68,42 +69,55 @@ from lp_agent import LPAgent
 from lp_agent.adapters.environment import create_environment
 
 
-def configured_agent(identity_id, load_model, load_api_key, load_catalog):
+def configured_agent(identity_id, load_model, load_api_key, resource_root):
     return LPAgent(
         environment=create_environment(
             identity_id=identity_id,
-            court="court-id",
-            topic="topic-id",
+            court="north-dakota",
+            topic="adult-name-change",
             model=load_model,
             api_key=load_api_key,
-            catalog=load_catalog,
+            resource_root=resource_root,
         )
     )
 ```
 
-Each factory option accepts a value or a synchronous zero-argument callback.
-Callbacks run once during initialization and may perform I/O. Their resolved
-values are validated; callbacks are not retained or invoked during a run.
-Async callbacks are rejected. The factory does not read Django settings, query
-application models, or discover credentials from environment variables.
+`court` and `topic` are optional strings. The caller's UI or deployment defaults
+choose these keys; the agent owns their resource lookup. Neither argument accepts
+a callback, and there is no caller-supplied catalogue.
 
-The catalogue is a tuple of `lp_agent.adapters.catalog.Court` values. Each court
-has `choice_id`, `label`, and a tuple of topic `Choice` values. Equivalent plain
-dictionaries are also validated by the factory. IDs must be unique within their
-court or catalogue. The caller supplies only permitted choices.
+Identity, model, judge, API key, and resource root accept values or synchronous
+zero-argument callbacks. Callbacks run once during initialization and may perform I/O. Their
+resolved values are validated; callbacks are not retained or invoked during a
+run. Async callbacks are rejected. The factory does not read Django settings,
+query application models, or discover credentials from environment variables.
+
+`judge` configures a future evaluation model. An explicit judge uses its own
+allowlisted Bedrock model with the same credentials. When omitted or resolved to
+`None`, `ScopedEnvironment` uses the primary model client without resolving the
+model callback again. No evaluation calls run yet.
+
+Pass `resource_root` as the directory containing `corpus/`; the factory captures
+an absolute `Path` for later retrieval. Initialization and scope binding perform
+no corpus lookup. The directory and selected scope must exist when file retrieval
+is called, not when an agent is constructed.
 
 The adapter exports `lp_agent.adapters.bedrock.MODEL_CHOICES` for selectors and
 requires an explicit API key. The key stays in live adapter configuration, outside
 serializable run configuration, checkpoints, and events. LiteLLM loads only when
 the Bedrock adapter executes a request.
 
-`PortalAgent(identity=..., model=..., api_key=..., catalog=..., ...)` requires a
+`PortalAgent(identity=..., model=..., judge=None, court=None, topic=None, ...)` requires a
 saved registered or anonymous `UserIdentity`, including a middleware lazy wrapper,
 before invoking any initialization callbacks. It converts that identity's primary
-key to an opaque string and forwards these options to the factory. It inherits
-agent methods and defaults to `Workers`, which
-is still unimplemented. The development view selects `Direct`, supplies the
-permitted catalogue and server credentials, and uses the Site assistant model as
+key to an opaque string and forwards these options to the factory. The wrapper
+supplies `settings.BASE_DIR` as the resource root and wraps
+`settings.BEDROCK_API_KEY` in `SecretStr`. That setting reads the existing
+`AWS_BEARER_TOKEN_BEDROCK` environment variable. Identity stays an explicit
+constructor argument; the view passes `request.identity`. It inherits agent
+methods and defaults to `Workers`, which is still unimplemented.
+The development view selects `Direct`, supplies the
+selected court/topic keys, and uses the Site assistant model as
 the page's default when supported. Otherwise the page requires an explicit model
 selection. Authentication and HTTP input validation remain in Django.
 
@@ -144,20 +158,48 @@ The host verifies both signed-in and anonymous identity and supplies an
 `AccessContext(identity_id=...)`. This value asserts host verification; it does
 not authenticate a caller. Service adapters enforce permissions on every operation.
 
-`AgentEnvironment` contains that context, conversation/run stores, a scope catalog,
-a scope factory, and `ScopeSelection(court=None, topic=None)`. The selection can
+`AgentEnvironment` contains that context, conversation/run stores, a scope factory,
+and `ScopeSelection(court=None, topic=None)`. The selection can
 also supply either or both identifiers. Constructing this dataclass or `LPAgent`
 does not invoke services. The optional environment factory does invoke any
 supplied initialization callbacks, as described above.
 
 Normal execution requires both court and topic. The factory binds a
-`ScopedEnvironment` with the same identity, a full `Scope`, model access, and
-separate corpus/document searches. The instance binds once.
+`ScopedEnvironment` with the same identity, a full `Scope`, primary and judge
+model clients, and a resource root. The instance binds once. An omitted judge
+defaults to the primary model, and the resource root may be absent when file
+retrieval is unused. Corpus retrieval is provided by the functions below.
+Court/topic choices and their `Court` representation belong to the development
+page's selector, outside the package.
 
-Search adapters return ranked `SearchHit` values with relevance and provenance.
-They enforce bound identity/court/topic access and conversation attachment limits.
-Relevance filtering and returned-context limits belong in procedural tool code;
-actual ingestion and retrieval arrive in their planned later PRs.
+### Corpus retrieval
+
+The async functions in `lp_agent/corpus/` accept court/topic keys and are intended
+for calls from `lp_agent/flows/`:
+
+| Function                                                | Result                       | Current behavior             |
+| ------------------------------------------------------- | ---------------------------- | ---------------------------- |
+| `get_database_corpus(court, topic)`                     | `tuple[CorpusDocument, ...]` | Raises `NotImplementedError` |
+| `get_s3_corpus(court, topic)`                           | `tuple[CorpusDocument, ...]` | Raises `NotImplementedError` |
+| `get_vector_corpus(court, topic, *, query)`             | `tuple[SearchHit, ...]`      | Raises `NotImplementedError` |
+| `get_file_based_corpus(court, topic, *, resource_root)` | `tuple[CorpusDocument, ...]` | Reads existing YAML files    |
+
+`CorpusDocument` contains raw `content` and a `SourceReference`. The temporary file
+reader loads `corpus/courts/<court>/court.yml` and every `.yml`/`.yaml` file in
+`corpus/courts/<court>/topics/<topic>/`, requiring `topic.yml` to exist. It reads
+UTF-8 off the event loop, returns documents in path order, and uses paths relative
+to the resource root as source IDs and locators. Missing or unreadable corpus and
+paths escaping the selected scope raise `AgentValidationError`. It needs neither
+PyYAML nor Django and does not resolve legacy prompt directories.
+
+Flows are generic orchestration or task logic, possibly for a task such as name
+change. Court-specific YAML files are corpus data, not Python flow modules.
+Retrieval is not yet wired into model context; the current prompt still states
+that court documents are unavailable.
+
+Vector search will return ranked `SearchHit` values with relevance and provenance.
+Relevance filtering and returned-context limits belong in procedural tool code.
+Private-document retrieval and its authorization remain future work.
 
 Prompts, tools, and discovery belong to flows; runtimes decide how flows execute.
 Provider clients, storage connections, and optional Django model access belong to
@@ -273,9 +315,17 @@ Waiting for input is nonterminal. Reconnecting callers recover saved status,
 questions, and final outcomes; there is initially no public event replay cursor.
 Events include an attempt number so consumers can distinguish restarted output.
 
-Missing scope will use fixed procedural questions from the host catalogue,
-without a model call. Discovery preserves the original message and run ID,
-releases execution resources between replies, and resumes when scope is complete.
+Missing scope will use fixed procedural questions without a model call.
+Discovery execution and its choice source remain unimplemented. With only a
+court, ask for its topic; with
+only a topic, ask for a compatible court; with neither, ask court then topic.
+Use `ChoiceQuestion`, `ChoiceAnswer`, and `respond()` for these replies. Discovery
+preserves the original message and run ID, releases execution resources between
+replies, binds scope once, and automatically continues the original message.
+Missing scope remains valid at construction; executing discovery is PR2 step 4,
+after persistence in step 3. The current development page still requires both keys.
+The page exposes model, scope, message, and active-time controls. Disabled controls
+for future interruption policies and step limits are omitted.
 Durable conversation and checkpoint storage will support authorized recovery after
 replacing the agent or restarting the process.
 

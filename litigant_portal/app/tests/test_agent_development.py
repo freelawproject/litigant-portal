@@ -4,7 +4,6 @@ Access gates and host configuration for the new agent development page.
 
 import asyncio
 import json
-import os
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -19,11 +18,10 @@ from litigant_portal.app.models.choices import (
     BedrockModel,
 )
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
-from litigant_portal.app.selectors.agent import agent_scope_choices
+from litigant_portal.app.selectors.agent import Court, agent_scope_choices
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.views.agent import AgentMessageForm
 from lp_agent.adapters.bedrock import MODEL_CHOICES
-from lp_agent.adapters.catalog import Court
 from lp_agent.tests.helpers import answer_item
 from lp_agent.types import Choice, ModelFinished, ModelTextDelta
 
@@ -58,7 +56,7 @@ class AgentDevelopmentPageTests(TestCase):
         self.client.force_login(self.developer)
         self.assertEqual(self.client.get(self.url).status_code, 404)
 
-    def test_developer_sees_site_default_and_catalog_choices(self):
+    def test_developer_sees_site_default_and_scope_choices(self):
         self.client.force_login(self.developer)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
@@ -166,32 +164,35 @@ class AgentScopeChoicesTests(SimpleTestCase):
 
     @override_settings(CORPUS_COURT=None)
     def test_form_accepts_only_topics_from_the_selected_court(self):
-        catalog = agent_scope_choices()
+        courts = agent_scope_choices()
         data = {
             "message": "Hello",
             "model": MODEL_CHOICES[0][0],
             "max_active_seconds": "5",
         }
-        for court in catalog:
+        for court in courts:
             form = AgentMessageForm(
                 data
                 | {
                     "court": court.choice_id,
                     "topic": court.topics[0].choice_id,
                 },
-                catalog=catalog,
+                courts=courts,
             )
             self.assertTrue(form.is_valid(), form.errors)
         form = AgentMessageForm(
             data | {"court": "first-court", "topic": "second-topic"},
-            catalog=catalog,
+            courts=courts,
         )
         self.assertFalse(form.is_valid())
         self.assertEqual(set(form.errors), {"topic"})
 
 
 @override_settings(
-    LP_AGENT_DEV_ENABLED=True, SITE_PASSWORD="", CORPUS_COURT=None
+    LP_AGENT_DEV_ENABLED=True,
+    SITE_PASSWORD="",
+    CORPUS_COURT=None,
+    BEDROCK_API_KEY="test-only-key",
 )
 @pytest.mark.postgres
 class AgentDevelopmentStreamTests(TestCase):
@@ -212,11 +213,6 @@ class AgentDevelopmentStreamTests(TestCase):
 
     def setUp(self):
         self.url = reverse("pages:agent_development_stream")
-        self.enterContext(
-            patch.dict(
-                os.environ, {"AWS_BEARER_TOKEN_BEDROCK": "test-only-key"}
-            )
-        )
         self.client.force_login(self.developer)
         court = next(court for court in agent_scope_choices() if court.topics)
         self.data = {
@@ -243,7 +239,7 @@ class AgentDevelopmentStreamTests(TestCase):
         protected.force_login(self.developer)
         self.assertEqual(protected.post(self.url, self.data).status_code, 403)
 
-    def test_invalid_inputs_never_reach_provider(self):
+    def test_invalid_inputs_never_construct_an_agent(self):
         cases = [
             {"message": "   "},
             {"court": ""},
@@ -254,9 +250,8 @@ class AgentDevelopmentStreamTests(TestCase):
             {"model": BedrockModel.CLAUDE_HAIKU_4_5},
             {"max_active_seconds": "nan"},
             {"max_active_seconds": "0"},
-            {"interrupt_behavior": "steer"},
         ]
-        with patch("litellm.aresponses") as provider:
+        with patch("litigant_portal.app.views.agent.PortalAgent") as agent:
             for invalid in cases:
                 with self.subTest(invalid=invalid):
                     response = self.client.post(self.url, self.data | invalid)
@@ -265,21 +260,20 @@ class AgentDevelopmentStreamTests(TestCase):
                 self.assertEqual(
                     self.client.post(self.url, self.data).status_code, 400
                 )
-            provider.assert_not_called()
+            agent.assert_not_called()
 
     def test_http_stream_delivers_text_before_model_finishes(self):
-        continued = False
+        continue_response = asyncio.Event()
         closed = False
         requests = []
 
         async def model_stream(client, request):
-            nonlocal continued, closed
+            nonlocal closed
             requests.append((client.model, request))
             try:
                 yield ModelTextDelta(delta="First")
                 # The provider cannot finish until the test consumes first text.
-                while not continued:
-                    await asyncio.sleep(0.001)
+                await continue_response.wait()
                 yield ModelTextDelta(delta=" second")
                 yield answer_item("First second")
                 yield ModelFinished(reason="stop")
@@ -303,7 +297,7 @@ class AgentDevelopmentStreamTests(TestCase):
                     json.loads(next(stream))["payload"]["delta"], "First"
                 )
                 self.assertFalse(closed)
-                continued = True
+                continue_response.set()
                 remaining = [json.loads(chunk) for chunk in stream]
                 self.assertEqual(
                     remaining[-1]["payload"]["outcome"]["text"], "First second"
@@ -334,9 +328,11 @@ class AgentDevelopmentStreamTests(TestCase):
         ):
             response = self.client.post(self.url, self.data)
             stream = iter(response.streaming_content)
-            next(stream)
-            next(stream)
-            self.close_response(response)
+            try:
+                next(stream)
+                next(stream)
+            finally:
+                self.close_response(response)
         self.assertTrue(closed)
 
     def test_model_error_is_shown_without_provider_exception_details(self):

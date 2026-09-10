@@ -4,18 +4,18 @@ Host entry point translating verified identity into package-owned options.
 
 from __future__ import annotations
 
+from django.conf import settings
 from pydantic import SecretStr
 
 from litigant_portal.app.models import UserIdentity
 from lp_agent import AgentValidationError, LPAgent, RunLimits
-from lp_agent.adapters.catalog import Court
 from lp_agent.adapters.environment import Option, create_environment
 from lp_agent.types import InterruptBehavior, Runtime
 
 
 class PortalAgent(LPAgent):
     """
-    Translate the Django identity and forward explicitly supplied options.
+    Translate verified Django identity and supply host configuration.
     """
 
     def __init__(
@@ -23,10 +23,9 @@ class PortalAgent(LPAgent):
         *,
         identity: UserIdentity,
         model: Option[str],
-        api_key: Option[str | SecretStr],
-        catalog: Option[tuple[Court, ...]],
-        court: Option[str | None] = None,
-        topic: Option[str | None] = None,
+        judge: Option[str | None] = None,
+        court: str | None = None,
+        topic: str | None = None,
         runtime: Runtime = "Workers",
         interrupt_behavior: InterruptBehavior = "reject",
         limits: RunLimits | None = None,
@@ -43,8 +42,9 @@ class PortalAgent(LPAgent):
                 court=court,
                 topic=topic,
                 model=model,
-                api_key=api_key,
-                catalog=catalog,
+                judge=judge,
+                api_key=SecretStr(settings.BEDROCK_API_KEY),
+                resource_root=settings.BASE_DIR,
             ),
             runtime=runtime,
             interrupt_behavior=interrupt_behavior,

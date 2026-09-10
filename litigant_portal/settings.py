@@ -9,6 +9,7 @@ from django.core.management.utils import get_random_secret_key
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
+BEDROCK_API_KEY = os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "")
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
