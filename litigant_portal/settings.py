@@ -262,6 +262,7 @@ ACCOUNT_SIGNUP_FIELDS = [
 ]  # Required fields
 ACCOUNT_EMAIL_VERIFICATION = "none"  # Disable email verification for now
 ACCOUNT_LOGOUT_ON_GET = False  # Require POST for CSRF protection
+CSRF_FAILURE_VIEW = "litigant_portal.app.views.topic_flow.csrf_failure"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
@@ -365,3 +366,13 @@ CORPUS_COURT = os.environ.get("CORPUS_COURT") or None
 
 # Audit window: cleanup_sessions keeps chat activity this many days.
 AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "30"))
+
+# docassemble prefill. Without a key the packet button falls back to the
+# plain, unprefilled interview link. The base URL overrides the API root
+# derived from that link, so a dev bench answers for the QA URL the content
+# YAML carries.
+DOCASSEMBLE_BASE_URL = os.environ.get("DOCASSEMBLE_BASE_URL") or None
+DOCASSEMBLE_API_KEY = os.environ.get("DOCASSEMBLE_API_KEY") or None
+# Set when LP reaches docassemble at an address litigants cannot, e.g. an
+# internal hostname: the resume link is rewritten onto this origin.
+DOCASSEMBLE_PUBLIC_URL = os.environ.get("DOCASSEMBLE_PUBLIC_URL") or None

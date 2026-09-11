@@ -120,6 +120,46 @@ def test_packet_interview_url_optional_and_accepted():
     )
 
 
+def _packet(**extra):
+    return {
+        "kind": "output",
+        "output_type": "packet",
+        "id": "p",
+        "heading": "Your packet",
+        "forms": ["Petition for Name Change"],
+        **extra,
+    }
+
+
+def test_packet_prefill_mapping_defaults_to_empty():
+    assert PacketOutput.model_validate(_packet()).interview_prefill == {}
+
+
+def test_packet_prefill_mapping_is_carried_through():
+    mapping = {"first_name": "current_first"}
+    packet = PacketOutput.model_validate(
+        _packet(
+            interview_url="https://da.example/i", interview_prefill=mapping
+        )
+    )
+    assert packet.interview_prefill == mapping
+
+
+@pytest.mark.parametrize(
+    "variable",
+    ["current first", "current-first", "1st_name", "", "os.system"],
+    ids=["space", "hyphen", "leading-digit", "empty", "dotted-path"],
+)
+def test_interview_variable_must_be_a_plain_identifier(variable):
+    with pytest.raises(ValidationError):
+        PacketOutput.model_validate(
+            _packet(
+                interview_url="https://da.example/i",
+                interview_prefill={"first_name": variable},
+            )
+        )
+
+
 def test_packet_form_bare_string_coerces_to_unlinked_form():
     # Authoring shorthand: a plain string is the form name with no link, so
     # existing string-only corpora keep validating unchanged.

@@ -160,6 +160,13 @@ sections:
     # path is /interview/interview?i=... (prefix + docassemble's `interview`
     # route). Confirm the waiver Share link the same way the standard one was.
     interview_url: 'https://qa.litigantportal.com/interview/interview?i=docassemble.playground1:petition-waiver.yml'
+    # Glossary question id -> interview variable. No publication date on this
+    # track, and waiver_reasons is left for the interview to ask.
+    interview_prefill:
+      first_name: current_first
+      middle_name: current_middle
+      last_name: current_last
+      county: residence_county
 
   - kind: info
     id: publication_waiver

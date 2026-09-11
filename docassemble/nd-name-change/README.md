@@ -26,12 +26,21 @@ forms (Petition, Declaration, Notice, Confidential, Order), the waiver track 4
 §12 (objections); they fork at entry, matching the Topic Flow corpus's
 standard/waiver split — no in-interview branching.
 
+## `multi_user = True` (prefill prereq)
+
+Both interviews open with an `initial` code block setting `multi_user = True`.
+The Litigant Portal prefill handoff creates a session through the API and
+hands the litigant a one-time resume link; without this flag the session is
+encrypted per-browser and that link cannot decrypt it. It has to be an `initial`
+code block, not a bare `multi_user: True` key, which throws `DASourceError`
+.
+
 ## Test it locally
 
 Prereq: the bench is up. See [`docs/docassemble.md`](../../docs/docassemble.md).
 
 - Start the bench: `make docassemble-up`
-- Open `http://localhost:8100` and log in (fresh box default: `admin@example.com` / `password`)
+- Open `http://localhost:8100` and log in with the `DA_ADMIN_EMAIL` / `DA_ADMIN_PASSWORD` seeded on the bench's first boot (see [`docs/docassemble.md`](../../docs/docassemble.md))
 - Top-right menu → **Playground**
 - Upload the templates: in the Playground, open the **Templates** folder → upload
   `petition.pdf`, `declaration.pdf`, `notice.pdf`, `confidential-info.pdf`, and `order.pdf`

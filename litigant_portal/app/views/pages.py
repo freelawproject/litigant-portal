@@ -92,12 +92,23 @@ def topic_flow(request, court, topic, role):
         # re-render, and a padded date breaks date.fromisoformat in the
         # deadline compute. A blank required field or an out-of-list choice
         # never lands in the store; valid siblings still save. A blank
-        # optional field stores None, which clears the answer.
-        valid = {
-            qid: submitted[qid].strip() or None
-            for qid in submitted
-            if qid not in errors
-        }
+        # optional field stores None, which clears the answer — except for a
+        # NEVER_PREFILL field, which renders blank whatever is stored, so a
+        # blank submission there means "never shown", not "erase it". Erasing
+        # one takes its explicit clear checkbox; a typed value wins over the
+        # checkbox, since replacing is the stronger intent.
+        valid = {}
+        for qid, raw in submitted.items():
+            if qid in errors:
+                continue
+            value = raw.strip() or None
+            if (
+                value is None
+                and qid in NEVER_PREFILL
+                and f"{qid}__clear" not in request.POST
+            ):
+                continue
+            valid[qid] = value
         if valid:
             variable_answer_set_many(
                 identity=request.identity, values=valid, reviewed=True

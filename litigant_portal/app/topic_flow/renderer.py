@@ -114,6 +114,10 @@ def _render_fact_gather(section, corpus, answers):
             "choices": q.choices,
             "help_text": q.help_text,
             "value": "" if q.id in NEVER_PREFILL else answers.get(q.id, ""),
+            # The blanked-out fields need an explicit clear affordance: the
+            # litigant never sees the stored value, so a blank submission
+            # can't mean "erase it" (see the entry view's POST handler).
+            "saved": q.id in NEVER_PREFILL and q.id in answers,
             "errors": [],
             "autofocus": False,
         }
@@ -216,6 +220,7 @@ def _render_resources(section, corpus, answers):
 
 @renderer("packet")
 def _render_packet(section, corpus, answers):
+    meta = corpus.metadata
     return RenderedSection(
         anchor_id=section.id,
         heading=section.heading,
@@ -225,6 +230,10 @@ def _render_packet(section, corpus, answers):
                 {"name": form.name, "url": form.url} for form in section.forms
             ],
             "interview_url": section.interview_url,
+            # URL parts, as in _render_ics: the template owns {% url %}.
+            "court": meta.court,
+            "topic": meta.topic,
+            "role": meta.role,
         },
     )
 
