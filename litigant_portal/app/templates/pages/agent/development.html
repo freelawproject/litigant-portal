@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% load cotton i18n static %}
+
+{% block title %}
+  {% trans "Agent development" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block content %}
+  <div class="max-w-7xl mx-auto px-4 py-8 sm:px-6">
+    <div class="mb-6">
+      <p class="text-sm font-medium text-primary-700 mb-2">{% trans "Developer tools" %}</p>
+      <h1 class="text-2xl font-semibold text-greyscale-900">{% trans "Agent development" %}</h1>
+      <p class="mt-2 text-greyscale-600">{% trans "Configure a Direct run and inspect its conversation and events." %}</p>
+    </div>
+
+    <form id="agent-development-form"
+          x-data="agentDevelopment"
+          x-on:submit.prevent="send"
+          method="post"
+          action="{% url 'pages:agent_development_stream' %}"
+          class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {% csrf_token %}
+      <section aria-labelledby="configuration-heading"
+               class="bg-white rounded-xl border border-greyscale-200 p-5 sm:p-6">
+        <h2 id="configuration-heading" class="text-lg font-semibold text-greyscale-900 mb-5">{% trans "Configuration" %}</h2>
+        <div class="space-y-5">
+          <fieldset class="space-y-4" aria-describedby="scope-help">
+            <legend class="text-sm font-medium text-greyscale-700 mb-2">{% trans "Scope" %}</legend>
+            <p id="scope-help" class="text-sm text-greyscale-600">{% trans "Select a court and topic for this response." %}</p>
+            {% trans "Court" as court_label %}
+            <c-molecules.form-field-select label="{{ court_label }}" name="court" id="agent-court" :required="True" x-on:change="selectCourt" x-bind:disabled="running">
+              <option value="">{% trans "Choose court" %}</option>
+              {% for court in courts %}<option value="{{ court.choice_id }}">{{ court.label }}</option>{% endfor %}
+            </c-molecules.form-field-select>
+            {% trans "Topic" as topic_label %}
+            <c-molecules.form-field-select label="{{ topic_label }}" name="topic" id="agent-topic" :required="True" x-bind:disabled="running">
+              <option value="">{% trans "Choose topic" %}</option>
+              {% for court in courts %}
+                {% for topic in court.topics %}
+                  <option value="{{ topic.choice_id }}"
+                          data-court="{{ court.choice_id }}"
+                          x-data="agentTopicOption"
+                          x-bind:hidden="unavailable"
+                          x-bind:disabled="unavailable">{{ topic.label }}</option>
+                {% endfor %}
+              {% endfor %}
+            </c-molecules.form-field-select>
+          </fieldset>
+
+          {% trans "Bedrock model" as model_label %}
+          {% if selected_model %}
+            {% trans "Defaults to the site's assistant model." as model_help %}
+          {% else %}
+            {% trans "The site's assistant model is unavailable here. Choose a model before sending." as model_help %}
+          {% endif %}
+          <c-molecules.form-field-select label="{{ model_label }}" name="model" id="agent-model" help_text="{{ model_help }}" :required="True" x-bind:disabled="running">
+            {% if not selected_model %}<option value="" selected>{% trans "Choose model" %}</option>{% endif %}
+            {% for value, label in model_choices %}
+              <option value="{{ value }}" {% if value == selected_model %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </c-molecules.form-field-select>
+
+          <div>
+            <label for="agent-max-seconds" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Maximum active seconds" %}</label>
+            <c-atoms.input type="number" name="max_active_seconds" id="agent-max-seconds" value="{{ limits.max_active_seconds|floatformat:'-1' }}" min="0.1" step="any" :required="True" aria_describedby="active-seconds-help" x-bind:disabled="running" />
+            <p id="active-seconds-help" class="mt-1 text-xs text-greyscale-500">{% trans "Time limit for this response." %}</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="lg:col-span-2 space-y-6 min-w-0">
+        <section aria-labelledby="conversation-heading"
+                 class="bg-white rounded-xl border border-greyscale-200 p-5 sm:p-6">
+          <h2 id="conversation-heading" class="text-lg font-semibold text-greyscale-900 mb-4">{% trans "Conversation" %}</h2>
+          <p id="agent-status" role="status" x-text="status" class="text-sm text-greyscale-600 mb-4">{% trans "Ready" %}</p>
+          <div id="agent-conversation"
+               role="log"
+               aria-live="polite"
+               aria-labelledby="conversation-heading"
+               class="min-h-48 rounded-lg bg-greyscale-25 border border-greyscale-200 p-4 space-y-4 break-words">
+            <p x-show="conversationEmpty" class="text-sm text-greyscale-600">{% trans "No conversation started." %}</p>
+            <div x-show="started" x-cloak>
+              <strong>{% trans "You" %}</strong>
+              <p x-text="message" class="whitespace-pre-wrap"></p>
+            </div>
+            <div x-show="started" x-cloak>
+              <strong>{% trans "Assistant" %}</strong>
+              <p x-text="answer" class="whitespace-pre-wrap"></p>
+            </div>
+          </div>
+          <div class="mt-5">
+            <label for="agent-message" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Message" %}</label>
+            <textarea id="agent-message"
+                      name="message"
+                      rows="4"
+                      required
+                      x-bind:disabled="running"
+                      aria-describedby="agent-session-help"
+                      class="block w-full rounded-lg border border-greyscale-300 bg-white text-greyscale-900 p-3 focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+          </div>
+          <p id="agent-session-help" class="mt-3 text-sm text-greyscale-600">{% trans "Each Send starts an independent response. Messages are not saved or included in the next submission. Tools and document search are not connected yet." %}</p>
+          <p id="agent-error" role="alert" x-text="error" class="mt-3 text-sm text-greyscale-700"></p>
+          <noscript><p>{% trans "Enable JavaScript to view streaming responses on this development page." %}</p></noscript>
+          <div class="mt-4">
+            <c-atoms.button id="agent-send" type="submit" size="xl" :disabled="True" x-bind:disabled="sendDisabled" aria-describedby="agent-session-help">{% trans "Send" %}</c-atoms.button>
+          </div>
+        </section>
+
+        <section aria-labelledby="events-heading"
+                 class="bg-white rounded-xl border border-greyscale-200 p-5 sm:p-6">
+          <h2 id="events-heading" class="text-lg font-semibold text-greyscale-900 mb-4">{% trans "Events" %}</h2>
+          <div id="agent-events" class="min-h-24 rounded-lg bg-greyscale-25 border border-greyscale-200 p-4 overflow-x-auto">
+            <p x-show="eventsEmpty" class="text-sm text-greyscale-600">{% trans "No events yet." %}</p>
+            <template x-for="entry in events" x-bind:key="entry.id">
+              <pre x-text="entry.text" class="text-xs whitespace-pre-wrap break-all mb-3"></pre>
+            </template>
+          </div>
+        </section>
+      </div>
+    </form>
+  </div>
+{% endblock content %}
+
+{% block extra_js %}
+  <script src="{% static 'js/agent_development.js' %}"></script>
+{% endblock extra_js %}

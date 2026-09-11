@@ -12,9 +12,9 @@ from pydantic import ValidationError
 from lp_agent import (
     AgentValidationError,
     LPAgent,
+    ResourceScope,
     RunHandle,
     RunLimits,
-    ScopedEnvironment,
 )
 from lp_agent.types import ScopeSelection
 
@@ -24,7 +24,7 @@ def test_configuration_is_fixed_with_documented_defaults(environment):
     assert agent.runtime == "Direct"
     assert agent.interrupt_behavior == "reject"
     assert agent.limits == RunLimits(
-        max_steps=30, max_active_seconds=300, max_restarts=2
+        max_steps=30, max_active_seconds=300.0, max_restarts=2
     )
     for name, value in [
         ("runtime", "Workers"),
@@ -41,18 +41,29 @@ def test_configuration_is_fixed_with_documented_defaults(environment):
     assert not hasattr(agent, "set_runtime")
 
 
-@pytest.mark.parametrize("runtime", ["Direct", "Workers"])
-@pytest.mark.parametrize("policy", ["reject", "queue", "steer"])
-def test_valid_execution_is_explicitly_unimplemented(
+@pytest.mark.parametrize(
+    ("runtime", "policy"),
+    [
+        ("Workers", "reject"),
+        ("Workers", "queue"),
+        ("Workers", "steer"),
+        ("Direct", "queue"),
+        ("Direct", "steer"),
+    ],
+)
+def test_unsupported_execution_is_explicitly_unimplemented(
     environment, runtime, policy
 ):
     agent = LPAgent(
         environment=environment, runtime=runtime, interrupt_behavior=policy
     )
-    with pytest.raises(NotImplementedError, match=f"{runtime} execution"):
+    with pytest.raises(NotImplementedError):
         asyncio.run(agent.run(message="Hello"))
+
+
+def test_recovery_is_explicitly_unimplemented(environment):
     with pytest.raises(NotImplementedError, match="Run recovery"):
-        asyncio.run(agent.get_run("stored-run"))
+        asyncio.run(LPAgent(environment=environment).get_run("stored-run"))
 
 
 @pytest.mark.parametrize(
@@ -80,9 +91,16 @@ def test_constructor_rejects_invalid_configuration(environment, options):
         {"message": {"private": "do not echo this"}},
     ],
 )
-def test_submission_validation_precedes_runtime(environment, run_request):
+@pytest.mark.parametrize("method", ["run", "stream"])
+def test_submission_validation_precedes_runtime(
+    environment, run_request, method
+):
+    agent = LPAgent(environment=environment)
     with pytest.raises(AgentValidationError) as error:
-        asyncio.run(LPAgent(environment=environment).run(**run_request))
+        if method == "run":
+            asyncio.run(agent.run(**run_request))
+        else:
+            agent.stream(**run_request)
     assert "do not echo this" not in str(error.value)
 
 
@@ -102,15 +120,13 @@ def test_environment_requires_validated_access_and_scope(environment):
         replace(environment, access="unverified")
     with pytest.raises(AgentValidationError, match="ScopeSelection"):
         replace(environment, scope={"court": "court"})
-    with pytest.raises(AgentValidationError, match="AgentEnvironment"):
+    with pytest.raises(AgentValidationError, match="AgentIdentity"):
         LPAgent(environment=object())
     with pytest.raises(AgentValidationError, match="full Scope"):
-        ScopedEnvironment(
+        ResourceScope(
             access=environment.access,
             scope=ScopeSelection(court="court"),
             model=environment.runs,
-            corpus=environment.runs,
-            documents=environment.runs,
         )
 
 
@@ -138,7 +154,8 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
             "celery",
             "redis",
             "boto3",
-            "botocore"
+            "botocore",
+            "yaml",
         }
 
         class BlockHostImports(importlib.abc.MetaPathFinder):
@@ -148,12 +165,28 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
 
         sys.meta_path.insert(0, BlockHostImports())
         from lp_agent import LPAgent, RunLimits
+        from lp_agent.adapters.environment import create_environment
+        from lp_agent.corpus.db_search import get_database_corpus
+        from lp_agent.corpus.file_search import get_file_based_corpus
+        from lp_agent.corpus.s3_search import get_s3_corpus
+        from lp_agent.corpus.vec_search import get_vector_corpus
+        from lp_agent.tests.helpers import ScriptedModel, environment_for
+        from lp_agent.types import ModelFinished, ModelOutputItem, ModelTextDelta
         from lp_agent.utils.audit import InstructionArtifact
         from lp_agent.types import ModelMessage, ModelRequest, RunRequest, ToolDefinition
 
         assert RunLimits().max_steps == 30
         request = RunRequest(message="hello")
         assert RunRequest.model_validate_json(request.model_dump_json()) == request
+        model = ScriptedModel([
+            ModelTextDelta(delta="Hello"),
+            ModelOutputItem(item=ModelMessage(role="assistant", content="Hello")),
+            ModelFinished(reason="stop"),
+        ])
+        agent = LPAgent(environment=environment_for(model))
+        events = list(agent.stream(message="Hello"))
+        assert '"state":"completed"' in events[-1]
+        assert model.closed
         model_request = ModelRequest(
             input=(ModelMessage(role="user", content="hello"),),
             tools=(ToolDefinition(
@@ -181,24 +214,3 @@ def test_core_import_and_validation_without_host_dependencies(tmp_path):
         text=True,
         timeout=30,
     )
-
-
-def test_portal_declares_host_inputs_and_workers_default():
-    from litigant_portal.agent import PortalAgent
-
-    parameters = inspect.signature(PortalAgent).parameters
-    assert parameters["runtime"].default == "Workers"
-    assert parameters["identity"].default is inspect.Parameter.empty
-    assert parameters["court"].default is None
-    assert parameters["topic"].default is None
-    assert parameters["identity"].kind is inspect.Parameter.KEYWORD_ONLY
-    assert PortalAgent.run is LPAgent.run
-    assert PortalAgent.get_run is LPAgent.get_run
-    with pytest.raises(NotImplementedError, match="Django environment"):
-        PortalAgent(identity=object())
-    with pytest.raises(AgentValidationError):
-        PortalAgent(identity=object(), runtime="invalid")
-    with pytest.raises(AgentValidationError):
-        PortalAgent(identity=object(), court=" ")
-    with pytest.raises(AgentValidationError):
-        PortalAgent(identity=None)

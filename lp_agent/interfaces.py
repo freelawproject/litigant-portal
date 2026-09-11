@@ -1,14 +1,13 @@
 """
-Async boundaries implemented by runtimes and host adapters in later PRs.
+Async boundaries implemented by package runtimes and service adapters.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, Protocol
 
 from lp_agent.types import (
     AccessContext,
     AgentConfiguration,
-    Choice,
     ChoiceAnswer,
     Conversation,
     ModelEvent,
@@ -20,16 +19,19 @@ from lp_agent.types import (
     RunStatus,
     Scope,
     ScopeSelection,
-    SearchHit,
 )
 
 if TYPE_CHECKING:
-    from lp_agent.environment import ScopedEnvironment
+    from lp_agent.identity import ResourceScope
 
 
 class RunHandle(Protocol):
     """
     An authorized reference to work, independent of a request's lifetime.
+
+    Direct checkpoint failures raise AgentStorageError from result(), event
+    iteration, or cancellation. A terminal outcome is published only after
+    its checkpoint is saved; stored state may still be queued or running.
     """
 
     @property
@@ -40,7 +42,7 @@ class RunHandle(Protocol):
 
     async def status(self) -> RunStatus: ...
 
-    def events(self) -> AsyncIterator[RunEvent]:
+    def events(self) -> AsyncGenerator[RunEvent]:
         """
         Observe live events; no public cursor replay is provided initially.
         """
@@ -130,41 +132,14 @@ class ModelClient(Protocol):
     """
     Stream text deltas and assembled Responses output items in provider order.
 
+    Streams support aclose() and emit ModelFinished on a finished response.
     Preserve reasoning, message metadata, and argument strings for history.
     PR2 validates arguments before dispatch; adapters reject unsupported schema
     features or strict mode instead of changing them silently. These events
     are internal agent signals, not the Responses HTTP streaming protocol.
     """
 
-    def stream(self, request: ModelRequest) -> AsyncIterator[ModelEvent]: ...
-
-
-class ScopeCatalog(Protocol):
-    """
-    List valid host-authorized choices without invoking a model.
-    """
-
-    async def courts(
-        self, *, access: AccessContext, topic: str | None = None
-    ) -> tuple[Choice, ...]: ...
-
-    async def topics(
-        self, *, access: AccessContext, court: str
-    ) -> tuple[Choice, ...]: ...
-
-
-class ScopedSearch(Protocol):
-    """
-    Search within bound access/scope and enforce document attachments.
-    """
-
-    async def search(
-        self,
-        *,
-        query: str,
-        conversation_id: str,
-        attachment_ids: tuple[str, ...] = (),
-    ) -> tuple[SearchHit, ...]: ...
+    def stream(self, request: ModelRequest) -> AsyncGenerator[ModelEvent]: ...
 
 
 class ScopeFactory(Protocol):
@@ -174,4 +149,4 @@ class ScopeFactory(Protocol):
 
     async def bind(
         self, *, access: AccessContext, scope: Scope
-    ) -> "ScopedEnvironment": ...
+    ) -> "ResourceScope": ...

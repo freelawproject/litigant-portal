@@ -202,6 +202,15 @@ class SourceReference(ContractModel):
     locator: str | None = None
 
 
+class CorpusDocument(ContractModel):
+    """
+    Corpus content and provenance, without an artificial relevance score.
+    """
+
+    content: str
+    source: SourceReference
+
+
 class SearchHit(ContractModel):
     """
     Ranked content; scores use the search adapter's documented scale.
@@ -569,20 +578,32 @@ class ModelOutputItem(ContractModel):
     @model_validator(mode="after")
     def assistant_output_only(self) -> Self:
         """
-        The model cannot emit user messages or tool execution results.
+        The model emits assistant output, not input content or tool results.
         """
-        if (
-            isinstance(self.item, ModelMessage)
-            and self.item.role != "assistant"
-        ):
-            raise ValueError(
-                "model output messages must have the assistant role"
-            )
+        if isinstance(self.item, ModelMessage):
+            if self.item.role != "assistant":
+                raise ValueError(
+                    "model output messages must have the assistant role"
+                )
+            if not isinstance(self.item.content, str) and any(
+                isinstance(part, InputText) for part in self.item.content
+            ):
+                raise ValueError("model output cannot contain input text")
         return self
 
 
+class ModelFinished(ContractModel):
+    """
+    Distinguish a finished response from a truncated or broken stream.
+    """
+
+    type: Literal["finished"] = "finished"
+    reason: Literal["stop", "length", "tool_calls", "content_filter", "other"]
+
+
 type ModelEvent = Annotated[
-    ModelTextDelta | ModelOutputItem, Field(discriminator="type")
+    ModelTextDelta | ModelOutputItem | ModelFinished,
+    Field(discriminator="type"),
 ]
 
 

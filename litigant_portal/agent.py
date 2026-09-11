@@ -1,54 +1,52 @@
 """
-Host entry point for the new agent; Django adapter wiring follows in PR2.
+Host entry point translating verified identity into package-owned options.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from django.conf import settings
+from pydantic import SecretStr
 
-from pydantic import ValidationError
-
+from litigant_portal.app.models import UserIdentity
 from lp_agent import AgentValidationError, LPAgent, RunLimits
-from lp_agent.types import (
-    AgentConfiguration,
-    InterruptBehavior,
-    Runtime,
-    ScopeSelection,
-)
-
-if TYPE_CHECKING:
-    from litigant_portal.app.models import UserIdentity
+from lp_agent.adapters.environment import Option, create_environment
+from lp_agent.types import InterruptBehavior, Runtime
 
 
 class PortalAgent(LPAgent):
     """
-    Wire host-verified identity, application adapters, and portal defaults.
+    Translate verified Django identity and supply host configuration.
     """
 
     def __init__(
         self,
         *,
         identity: UserIdentity,
+        model: Option[str],
+        judge: Option[str | None] = None,
         court: str | None = None,
         topic: str | None = None,
         runtime: Runtime = "Workers",
         interrupt_behavior: InterruptBehavior = "reject",
         limits: RunLimits | None = None,
     ) -> None:
-        try:
-            AgentConfiguration(
-                runtime=runtime,
-                interrupt_behavior=interrupt_behavior,
-                limits=RunLimits() if limits is None else limits,
-            )
-            ScopeSelection(court=court, topic=topic)
-        except ValidationError as exc:
-            raise AgentValidationError.from_validation_error(
-                exc, models=(AgentConfiguration, ScopeSelection)
-            ) from exc
-        if identity is None:
+        if (
+            not isinstance(identity, UserIdentity)
+            or identity.pk is None
+            or identity._state.adding
+        ):
             raise AgentValidationError("a host-verified identity is required")
-        raise NotImplementedError(
-            "Django environment construction is not implemented; "
-            "PortalAgent adapter wiring follows in PR2."
+        super().__init__(
+            environment=create_environment(
+                identity_id=str(identity.pk),
+                court=court,
+                topic=topic,
+                model=model,
+                judge=judge,
+                api_key=SecretStr(settings.BEDROCK_API_KEY),
+                resource_root=settings.BASE_DIR,
+            ),
+            runtime=runtime,
+            interrupt_behavior=interrupt_behavior,
+            limits=limits,
         )
