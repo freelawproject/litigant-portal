@@ -148,20 +148,18 @@ This is macOS TCC, not file permissions — `containermanagerd` protects `~/Libr
 
 Granting your terminal Full Disk Access in System Settings → Privacy & Security also works, if you would rather stay in the shell.
 
-### "Django container isn't running" when it is
+### "Docker check failed" when the container is running
 
 `make test` and the other container targets share a guard:
 
 ```make
-require-docker = docker compose exec -T django true 2>/dev/null || \
-  { echo "Django container isn't running — start it with: make docker"; exit 1; }
+require-docker = err=$$(docker compose exec -T django true 2>&1) || \
+  { echo "$$err"; echo "Docker check failed (see the error above). If the container is stopped, start it with: make docker"; exit 1; }
 ```
 
-Anything that makes `docker compose exec` fail produces that message, a missing compose plugin included. Run the command yourself to see the real error:
+Anything that makes `docker compose exec` fail lands here, a missing compose plugin included — so the message names the stopped-container case without assuming it, and docker's own error prints directly above it.
 
-```sh
-docker compose exec -T django true; echo "exit=$?"
-```
+The output is held in `err` rather than passed straight through because `docker-compose.yml` interpolates `SITE_PASSWORD`, `SUPERUSER_EMAIL` and `SUPERUSER_PASSWORD`, none of which the documented `.env.example` setup defines. Compose warns about each one on stderr on every invocation, success included, so an unconditional pass-through would print three warnings before every guarded target.
 
 ### Different behavior between two terminal windows
 
