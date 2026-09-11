@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
+from pydantic import ValidationError
 
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
@@ -21,6 +22,7 @@ from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 from litigant_portal.app.selectors.agent import Court, agent_scope_choices
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.views.agent import AgentMessageForm
+from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
 from lp_agent.tests.helpers import answer_item
 from lp_agent.types import Choice, ModelFinished, ModelTextDelta
@@ -107,6 +109,21 @@ class AgentDevelopmentPageTests(TestCase):
         self.client.force_login(self.developer)
         response = self.client.post(self.url, {"message": "Hello"})
         self.assertEqual(response.status_code, 405)
+
+
+class AgentModelChoicesTests(SimpleTestCase):
+    def test_adapter_models_match_application_choices_with_explicit_exclusions(
+        self,
+    ):
+        unsupported = {BedrockModel.CLAUDE_HAIKU_4_5}
+        self.assertEqual(
+            dict(MODEL_CHOICES),
+            {
+                model: label
+                for model, label in BedrockModel.choices
+                if model not in unsupported
+            },
+        )
 
 
 class AgentScopeChoicesTests(SimpleTestCase):
@@ -275,6 +292,70 @@ class AgentDevelopmentStreamTests(TestCase):
                     self.client.post(self.url, self.data).status_code, 400
                 )
             agent.assert_not_called()
+
+    def test_missing_server_key_returns_503_and_logs_a_safe_warning(self):
+        with patch("litigant_portal.app.views.agent.PortalAgent") as agent:
+            for key in ("", " \n\t"):
+                with self.subTest(key=key), self.settings(BEDROCK_API_KEY=key):
+                    with self.assertLogs(
+                        "litigant_portal.app.views.agent", level="WARNING"
+                    ) as logs:
+                        response = self.client.post(self.url, self.data)
+                    self.assertEqual(response.status_code, 503)
+                    self.assertEqual(
+                        response.json(),
+                        {
+                            "error": "Agent service is unavailable. Please try again later."
+                        },
+                    )
+                    self.assertEqual(len(logs.records), 1)
+                    self.assertIn("Bedrock API key is missing", logs.output[0])
+            agent.assert_not_called()
+
+    @override_settings(BEDROCK_API_KEY="")
+    def test_invalid_input_still_returns_400_when_the_server_key_is_missing(
+        self,
+    ):
+        with patch("litigant_portal.app.views.agent.PortalAgent") as agent:
+            with self.assertNoLogs(
+                "litigant_portal.app.views.agent", level="WARNING"
+            ):
+                response = self.client.post(
+                    self.url, self.data | {"message": ""}
+                )
+            self.assertEqual(response.status_code, 400)
+            agent.assert_not_called()
+
+    def test_initialization_validation_errors_are_logged_without_private_details(
+        self,
+    ):
+        with self.assertRaises(ValidationError) as validation:
+            RunLimits(max_active_seconds="private invalid limit")
+        for failure in (
+            AgentValidationError("private initialization failure"),
+            validation.exception,
+        ):
+            with self.subTest(failure=type(failure).__name__):
+                with (
+                    patch(
+                        "litigant_portal.app.views.agent.PortalAgent",
+                        side_effect=failure,
+                    ),
+                    self.assertLogs(
+                        "litigant_portal.app.views.agent", level="WARNING"
+                    ) as logs,
+                ):
+                    response = self.client.post(self.url, self.data)
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(
+                    response.json(), {"error": "Invalid agent configuration."}
+                )
+                self.assertNotIn(
+                    "private", response.content.decode() + "".join(logs.output)
+                )
+                self.assertTrue(
+                    all(record.exc_info is None for record in logs.records)
+                )
 
     def test_http_stream_delivers_text_before_model_finishes(self):
         continue_response = asyncio.Event()

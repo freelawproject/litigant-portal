@@ -61,6 +61,16 @@ def test_info_renders_heading_and_body():
 
 # --- fact_gather ------------------------------------------------------------
 
+# Literal, not imported from the renderer: importing the set under test would
+# make these agree with a deletion from it.
+PROTECTED_IDS = [
+    "name_change_publication_date",
+    "first_name",
+    "middle_name",
+    "last_name",
+    "county",
+]
+
 
 def _fg(questions, heading=None, id="facts"):
     return FactGatherSection(
@@ -90,22 +100,11 @@ def test_fact_gather_unanswered_question_prefills_empty():
     assert q["value"] == ""
 
 
-def test_fact_gather_never_prefills_publication_date():
-    # #638: unlike other fields, name_change_publication_date must never echo a stored
-    # answer back into the form.
-    section = _fg(
-        [
-            Question(
-                id="name_change_publication_date",
-                label="Publication date",
-                type="date",
-            )
-        ]
-    )
+@pytest.mark.parametrize("question_id", PROTECTED_IDS)
+def test_fact_gather_never_prefills_a_protected_question(question_id):
+    section = _fg([Question(id=question_id, label="Protected")])
     rendered = render_section(
-        section,
-        _corpus(section),
-        {"name_change_publication_date": "2026-05-01"},
+        section, _corpus(section), {question_id: "stored"}
     )
     (q,) = rendered.context["questions"]
     assert q["value"] == ""
@@ -206,16 +205,11 @@ def test_summary_omits_unanswered_questions():
     ]
 
 
-def test_summary_never_prefills_publication_date():
-    # #638: the recap reads the same session-backed answers as the fact_gather
-    # form — a prior guest's name_change_publication_date can't leak in here either.
+@pytest.mark.parametrize("question_id", PROTECTED_IDS)
+def test_summary_never_recaps_a_protected_question(question_id):
     fg = _fg(
         [
-            Question(
-                id="name_change_publication_date",
-                label="Publication date",
-                type="date",
-            ),
+            Question(id=question_id, label="Protected"),
             Question(id="filing_county", label="County"),
         ]
     )
@@ -225,10 +219,7 @@ def test_summary_never_prefills_publication_date():
     rendered = render_section(
         summary,
         _corpus(fg, summary),
-        {
-            "name_change_publication_date": "2026-05-01",
-            "filing_county": "Cass",
-        },
+        {question_id: "stored", "filing_county": "Cass"},
     )
     assert rendered.context["items"] == [{"label": "County", "value": "Cass"}]
 

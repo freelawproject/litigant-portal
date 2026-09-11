@@ -28,6 +28,10 @@ if TYPE_CHECKING:
 class RunHandle(Protocol):
     """
     An authorized reference to work, independent of a request's lifetime.
+
+    Direct checkpoint failures raise AgentStorageError from result(), event
+    iteration, or cancellation. A terminal outcome is published only after
+    its checkpoint is saved; stored state may still be queued or running.
     """
 
     @property

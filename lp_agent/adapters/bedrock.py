@@ -3,6 +3,7 @@ Normalize LiteLLM's Bedrock stream without exposing provider objects to core.
 """
 
 import asyncio
+import logging
 from collections.abc import AsyncGenerator
 
 from pydantic import BaseModel, SecretStr, TypeAdapter, ValidationError
@@ -17,8 +18,13 @@ from lp_agent.types import (
     ModelTextDelta,
     OutputText,
     ReasoningItem,
+    ReasoningSummary,
+    ReasoningText,
+    Refusal,
     ToolCall,
 )
+
+logger = logging.getLogger(__name__)
 
 MODEL_CHOICES = (
     ("bedrock_mantle/openai.gpt-5.6-luna", "GPT-5.6 Luna"),
@@ -26,6 +32,51 @@ MODEL_CHOICES = (
     ("bedrock_mantle/openai.gpt-5.6-sol", "GPT-5.6 Sol"),
     ("bedrock_mantle/zai.glm-4.7-flash", "GLM 4.7 Flash"),
 )
+
+_OUTPUT_MODELS = {
+    model.model_fields["type"].default: model
+    for model in (
+        ModelMessage,
+        ToolCall,
+        ReasoningItem,
+        OutputText,
+        Refusal,
+        ReasoningSummary,
+        ReasoningText,
+    )
+}
+
+
+def _known_fields(
+    value: dict, model: type[BaseModel] | None = None
+) -> tuple[dict, int]:
+    """
+    Drop extra typed fields without traversing open metadata dictionaries.
+    """
+    if model is None:
+        model = _OUTPUT_MODELS.get(value.get("type"))
+    if model is None:
+        return value, 0
+    data = {
+        key: item for key, item in value.items() if key in model.model_fields
+    }
+    ignored = len(value) - len(data)
+    for key in ("content", "summary"):
+        if not isinstance(data.get(key), list | tuple):
+            continue
+        part_model = None
+        if model is ReasoningItem:
+            part_model = (
+                ReasoningSummary if key == "summary" else ReasoningText
+            )
+        parts = []
+        for part in data[key]:
+            if isinstance(part, dict):
+                part, count = _known_fields(part, part_model)
+                ignored += count
+            parts.append(part)
+        data[key] = parts
+    return data, ignored
 
 
 def _data(value: BaseModel | dict) -> dict:
@@ -61,26 +112,43 @@ def _item_data(value: BaseModel | dict, *, translated: bool) -> dict:
 
 
 def _assembled_items(
-    done: dict[int, dict], output: list, *, translated: bool
-) -> list[ModelOutputItem]:
+    done: dict[int, BaseModel | dict], output: list, *, translated: bool
+) -> tuple[list[ModelOutputItem], Exception | None, int]:
     """
-    Prefer terminal output order and metadata, without replaying done items.
+    Retain valid output in terminal order before reporting assembly failures.
     """
-    previous = {item["id"]: item for item in done.values() if item.get("id")}
+    previous = {}
+    for value in done.values():
+        try:
+            item = _data(value)
+        except (TypeError, ValueError):
+            # Validate malformed buffered items only if terminal output uses them.
+            continue
+        if isinstance(item.get("id"), str):
+            previous[item["id"]] = item
     items = []
     seen = set()
+    error = None
+    ignored = 0
     for value in output or [done[index] for index in sorted(done)]:
-        item = _item_data(value, translated=translated)
-        item_id = item.get("id")
-        if item_id:
-            if item_id in seen:
-                raise ValueError("Duplicate model output item.")
-            seen.add(item_id)
-            item = previous.get(item_id, {}) | item
-        if item.get("type") == "reasoning":
-            item.setdefault("summary", [])
-        items.append(ModelOutputItem(item=item))
-    return items
+        try:
+            item = _data(value)
+            item_id = item.get("id")
+            if isinstance(item_id, str):
+                if item_id in seen:
+                    raise ValueError("Duplicate model output item.")
+                seen.add(item_id)
+                item = previous.get(item_id, {}) | item
+            item = _item_data(item, translated=translated)
+            item, count = _known_fields(item)
+            ignored += count
+            if item.get("type") == "reasoning":
+                item.setdefault("summary", [])
+            items.append(ModelOutputItem(item=item))
+        except (TypeError, ValueError) as exc:
+            if error is None:
+                error = exc
+    return items, error, ignored
 
 
 def _finish(
@@ -225,9 +293,7 @@ class BedrockClient:
                         }:
                             yield ModelTextDelta(delta=event["delta"])
                         elif kind == "response.output_item.done":
-                            done[event["output_index"]] = _item_data(
-                                event["item"], translated=translated
-                            )
+                            done[event["output_index"]] = event["item"]
                         elif kind in {
                             "response.completed",
                             "response.incomplete",
@@ -241,15 +307,23 @@ class BedrockClient:
                     error = exc
                 # Preserve completed items before propagating failure or
                 # cancellation. GeneratorExit must bypass these yields.
-                items = _assembled_items(
+                items, assembly_error, ignored = _assembled_items(
                     done,
                     result.get("output", []) if result is not None else [],
                     translated=translated,
                 )
+                if ignored:
+                    logger.warning(
+                        "Ignored unfamiliar Bedrock metadata (model=%s, fields=%s)",
+                        self.model,
+                        ignored,
+                    )
                 for item in items:
                     yield item
                 if error is not None:
                     raise error
+                if assembly_error is not None:
+                    raise assembly_error
                 if result is not None:
                     yield _finish(result, response, items)
             finally:

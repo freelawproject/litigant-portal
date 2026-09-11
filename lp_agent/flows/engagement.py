@@ -8,7 +8,11 @@ from collections.abc import Callable
 from contextlib import aclosing
 from dataclasses import dataclass, field
 
-from lp_agent.errors import AgentAccessError, AgentValidationError
+from lp_agent.errors import (
+    AgentAccessError,
+    AgentStorageError,
+    AgentValidationError,
+)
 from lp_agent.flows.prompts import system_prompt
 from lp_agent.identity import AgentIdentity, ResourceScope
 from lp_agent.types import (
@@ -147,27 +151,39 @@ class Engagement:
         *,
         cancelled: bool = False,
     ) -> RunOutcome:
+        active_timeout = None
         try:
             await self._save("running", emit)
             if cancelled:
                 raise asyncio.CancelledError
-            async with asyncio.timeout(self.limits.max_active_seconds):
+            async with asyncio.timeout(
+                self.limits.max_active_seconds
+            ) as active_timeout:
                 outcome = await self._model_response(emit)
         except asyncio.CancelledError:
             outcome = CancelledOutcome(**self.reference)
-        except TimeoutError:
-            outcome = self._failure(
-                "active_time_limit", "The run reached its active time limit."
-            )
-        except Exception:
-            # Provider exceptions can contain prompts, output, and credentials.
-            logger.warning(
-                "Agent operation failed (run_id=%s)",
-                self.initial_status.run_id,
-            )
-            outcome = self._failure(
-                "model_failed", "The model response failed. Please try again."
-            )
+        except AgentStorageError:
+            raise
+        except Exception as exc:
+            if (
+                isinstance(exc, TimeoutError)
+                and active_timeout is not None
+                and active_timeout.expired()
+            ):
+                outcome = self._failure(
+                    "active_time_limit",
+                    "The run reached its active time limit.",
+                )
+            else:
+                # Provider exceptions can contain prompts, output, and credentials.
+                logger.warning(
+                    "Agent operation failed (run_id=%s)",
+                    self.initial_status.run_id,
+                )
+                outcome = self._failure(
+                    "model_failed",
+                    "The model response failed. Please try again.",
+                )
         return outcome
 
     async def finish(
@@ -190,36 +206,44 @@ class Engagement:
         emit: Callable[[EventPayload], None],
         outcome: RunOutcome | None = None,
     ) -> None:
-        status = RunStatus(**self.reference, state=state)
-        await self.environment.runs.commit_checkpoint(
-            access=self.environment.access,
-            checkpoint=RunCheckpoint(
-                **self.reference,
-                data={
-                    "request": self.request.model_dump(mode="json"),
-                    "model_request": self.model_request.model_dump(
-                        mode="json"
-                    ),
-                    "model_output": [
-                        item.model_dump(mode="json")
-                        for item in self.output_items
-                    ],
-                    "model_finished": (
-                        self.model_finished.model_dump(mode="json")
-                        if self.model_finished is not None
-                        else None
-                    ),
-                    "instruction_artifact": {
-                        "canonical_json": self.instruction_artifact.canonical_bytes().decode(
-                            "utf-8"
+        try:
+            status = RunStatus(**self.reference, state=state)
+            await self.environment.runs.commit_checkpoint(
+                access=self.environment.access,
+                checkpoint=RunCheckpoint(
+                    **self.reference,
+                    data={
+                        "request": self.request.model_dump(mode="json"),
+                        "model_request": self.model_request.model_dump(
+                            mode="json"
                         ),
-                        "sha256": self.instruction_artifact.content_hash(),
+                        "model_output": [
+                            item.model_dump(mode="json")
+                            for item in self.output_items
+                        ],
+                        "model_finished": (
+                            self.model_finished.model_dump(mode="json")
+                            if self.model_finished is not None
+                            else None
+                        ),
+                        "instruction_artifact": {
+                            "canonical_json": self.instruction_artifact.canonical_bytes().decode(
+                                "utf-8"
+                            ),
+                            "sha256": self.instruction_artifact.content_hash(),
+                        },
                     },
-                },
-            ),
-            status=status,
-            outcome=outcome,
-        )
+                ),
+                status=status,
+                outcome=outcome,
+            )
+        except Exception:
+            logger.warning(
+                "Agent checkpoint failed (run_id=%s, state=%s)",
+                self.initial_status.run_id,
+                state,
+            )
+            raise AgentStorageError() from None
         emit(StatusEvent(status=status))
 
     async def _model_response(

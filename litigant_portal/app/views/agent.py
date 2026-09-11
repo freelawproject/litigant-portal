@@ -2,6 +2,8 @@
 Development UI and independent Direct runs for the new agent.
 """
 
+import logging
+
 from django import forms
 from django.conf import settings
 from django.contrib.auth.decorators import login_required, permission_required
@@ -22,6 +24,8 @@ from litigant_portal.app.selectors.site import site_get_model
 from litigant_portal.app.views.utils import manage_developers_required
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
+
+logger = logging.getLogger(__name__)
 
 
 @login_required
@@ -101,6 +105,14 @@ def development_stream(request: HttpRequest) -> HttpResponse:
     form = AgentMessageForm(request.POST, courts=agent_scope_choices())
     if not form.is_valid():
         return JsonResponse({"errors": form.errors}, status=400)
+    if not settings.BEDROCK_API_KEY.strip():
+        logger.warning(
+            "Agent configuration unavailable: Bedrock API key is missing."
+        )
+        return JsonResponse(
+            {"error": "Agent service is unavailable. Please try again later."},
+            status=503,
+        )
     data = form.cleaned_data
     try:
         agent = PortalAgent(
@@ -112,6 +124,7 @@ def development_stream(request: HttpRequest) -> HttpResponse:
             limits=RunLimits(max_active_seconds=data["max_active_seconds"]),
         )
     except (AgentValidationError, ValidationError):
+        logger.warning("Agent initialization failed: invalid configuration.")
         return JsonResponse(
             {"error": "Invalid agent configuration."}, status=400
         )

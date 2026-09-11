@@ -14,6 +14,11 @@ queue/steer, Workers, and Model Context Protocol (`serve_mcp()`) are unimplement
 File-based corpus retrieval exists, but corpus content does not yet reach the
 model.
 
+The [current prompt](flows/prompts.py) is a development placeholder with basic
+honesty guidance. Full legal-information boundaries, plain-language guidance,
+and grounded content belong in these package-owned prompt layers under Court
+and Topic Grounding and Safety Boundaries, before main-chat integration.
+
 ## Calling the agent
 
 `LPAgent` defaults to Direct execution. Supply a host-verified identity ID, a model
@@ -69,6 +74,23 @@ Validation and access errors raise `AgentError` subclasses. Accepted model
 failures return a `FailedOutcome`; errors caught inside `stream()` become
 `{"error": "safe message"}` lines.
 
+Checkpoint failures raise `AgentStorageError` with a fixed safe message from
+async results, event iteration, cancellation, or agent closure. Stored state
+may still be queued or running: a terminal outcome is published only after its
+checkpoint is saved. Synchronous iteration encodes the safe error; explicit
+closure can raise it after cleanup.
+
+The Bedrock adapter ignores extra fields on recognized output items and content
+parts, while retaining supported metadata. Unknown item types and malformed
+known fields still fail, and other valid completed items remain in the
+checkpoint. Public input contracts remain strict.
+
+Operational warnings use standard Python logging. Ignored provider fields
+produce one warning per response with the model and field count; checkpoint
+failures include the run ID and state. These warnings omit prompts, response
+content, unknown field names, credentials, and raw exception text. Broader
+observability and restricted prompt/output auditing are separate work.
+
 ## Django development page
 
 Follow the [repository quick start](../README.md#quick-start), then open
@@ -87,6 +109,10 @@ defaults to Workers, which is unimplemented.
 The [development view](../litigant_portal/app/views/agent.py) shows the full call
 and passes `agent.stream(...)` to Django's `StreamingHttpResponse`. Django owns
 authentication, input validation, and HTTP response headers.
+
+A missing server Bedrock key returns HTTP 503 with a safe warning; invalid form
+submissions return HTTP 400. Sending captures the message and clears the input
+before streaming the response.
 
 ## Where things live
 

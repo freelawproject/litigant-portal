@@ -41,6 +41,7 @@ document.addEventListener('alpine:init', () => {
       const form = this.$root
       if (this.sendDisabled || !form.reportValidity()) return
       const data = new FormData(form)
+      form.elements.message.value = ''
       this.running = true
       this.started = true
       this.error = ''
