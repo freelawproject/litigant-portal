@@ -31,6 +31,13 @@ def main():
     )
     grading.add_argument("run", type=Path)
     grading.add_argument("--model")
+    grading.add_argument("--retry-failed", action="store_true")
+    grading.add_argument("--dry-run", action="store_true")
+    recover = commands.add_parser(
+        "recover", help="Revalidate saved judge responses without API calls."
+    )
+    recover.add_argument("run", type=Path)
+    recover.add_argument("--dry-run", action="store_true")
     report = commands.add_parser(
         "report", help="Rebuild or compare reports without API calls."
     )
@@ -66,6 +73,12 @@ def main():
             )
         report_runs([run.resolve() for run in args.runs], weights, args.output)
         return 0
+    if args.command == "recover":
+        run = args.run.resolve()
+        runner.recover_run(run, dry_run=args.dry_run)
+        if not args.dry_run:
+            report_runs([run])
+        return 0
     if args.command == "run":
         config = read_config(args.config).model_dump()
         for field in ("systems", "models", "cases", "repetitions", "slug"):
@@ -78,11 +91,17 @@ def main():
         if not args.no_judge:
             runner.judge_run(run)
     else:
-        require_key()
         run = args.run.resolve()
-        runner.judge_run(run, args.model)
+        runner.judge_run(
+            run,
+            args.model,
+            retry_failed=args.retry_failed,
+            dry_run=args.dry_run,
+        )
+        if args.dry_run:
+            return 0
     reports = report_runs([run])
-    return int(
+    incomplete = int(
         any(
             row["execution_failures"]
             or row["missing"]
@@ -90,6 +109,14 @@ def main():
             for row in reports[0]["systems"]
         )
     )
+    if incomplete:
+        print(
+            "Evaluation incomplete; see grading counts above. "
+            "Use 'recover RUN' for offline recovery, then "
+            "'judge RUN --retry-failed' for unresolved judgments.",
+            file=sys.stderr,
+        )
+    return incomplete
 
 
 def require_key():

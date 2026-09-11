@@ -24,6 +24,12 @@ make agent-eval ARGS='run --systems raw --models luna --cases nd-fee --repetitio
 make agent-eval ARGS='judge evals/YYYYMMDD_HHMMSS-initial-baseline'
 make agent-eval ARGS='judge evals/YYYYMMDD_HHMMSS-initial-baseline --model sol'
 
+# Recover saved judge responses without API calls, then retry only failures.
+make agent-eval ARGS='recover evals/RUN --dry-run'
+make agent-eval ARGS='recover evals/RUN'
+make agent-eval ARGS='judge evals/RUN --retry-failed --dry-run'
+make agent-eval ARGS='judge evals/RUN --retry-failed'
+
 # Offline: rebuild charts, compare compatible runs, or try different weights.
 make agent-eval ARGS='report evals/RUN_A evals/RUN_B'
 make agent-eval ARGS='report evals/RUN_A --facts-weight 0.8'
@@ -83,6 +89,12 @@ Each dimension uses 0–4 anchors. Support in the references suffices; displayed
 citations are not mandatory. Honest deferral is scored and reported separately
 from answering; correct answers in both changed variants demonstrate adherence.
 
+Judges cite numbered answer passages using `evidence_ids`; the harness resolves
+them to exact answer text. Explanations are separate. Unknown/duplicate IDs,
+missing facts or scores, and missing asserted values fail grading. Omissions and
+uncertainty use null values rather than invented amounts or eligibility results.
+The response protocol and schema are frozen per judgment batch.
+
 Charts show **weighted quality before gates**. A bright red point and the
 **Critical failure** legend flag any critical failure among that system/model's
 graded answers; labels show the count. Quality plots include variation bars.
@@ -110,6 +122,24 @@ Rejudging saves a new batch and preserves earlier answers and judgments. Reports
 use the latest batch, including incomplete grading. Reweighting/comparison writes
 a separate report; incompatible cases/references/rubrics cannot be pooled.
 Reports and Matplotlib PNGs can be rebuilt without API calls or running services.
+
+`recover` revalidates saved raw judge responses offline, including legacy quoted
+evidence with Markdown, punctuation, and capitalization differences. It preserves
+the original records and records recovered judgments in a new batch. Unrecoverable
+grades remain explicit; recovery itself exits successfully after reporting them.
+
+`judge --retry-failed` carries forward valid judgments and makes one call per
+unresolved saved answer. It uses the same judge model and never regenerates
+candidate answers. There are no automatic retry loops. Both commands support
+`--dry-run` without credentials, API calls, or output changes. A retry with nothing
+left to grade also makes no calls. The ordinary `judge` command still rejudges all
+completed answers. Copied/recovered judgments never duplicate paid-call costs.
+
+Live grading prints each result and ends with failure counts and reasons. Invalid
+judgments leave the batch incomplete and make `run`/`judge` exit nonzero; an
+answer's rubric critical failures do not. Reports show coverage and recovery
+provenance, retaining original and replacement judge costs separately from
+candidate costs.
 
 This internal suite has no automated tests or pre-commit test integration. Verify
 changes with a small live run, fixture/restoration checks, and inspection of saved

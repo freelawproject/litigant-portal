@@ -7,7 +7,7 @@ from collections import Counter
 from pathlib import Path
 from statistics import mean, median, pstdev
 
-from .judge import score
+from .judge import judgment_path, paid_calls, score
 from .schema import (
     DIMENSIONS,
     Grade,
@@ -62,6 +62,7 @@ def paired_success(rows: list[dict], cases: list[dict]) -> dict:
 
 
 def summarize(run: Path, weights: Weights | None = None) -> dict:
+    run = run.resolve()
     manifest = json.loads((run / "manifest.json").read_text())
     verify_references(run, manifest)
     weights = weights or Weights.model_validate(manifest["config"]["weights"])
@@ -74,10 +75,13 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
     for relative in manifest["attempts"]:
         row = json.loads((run / relative).read_text())
         judgment = None
+        calls = []
         if relative in batch["judgments"]:
-            judgment = json.loads(
-                (batch_path.parent / batch["judgments"][relative]).read_text()
+            path = judgment_path(
+                run, batch_path.parent, batch["judgments"][relative]
             )
+            judgment = json.loads(path.read_text())
+            _, calls = paid_calls(run, path)
         scored = None
         if judgment and judgment["status"] == "completed":
             scored = score(
@@ -114,6 +118,21 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                     if expected["critical"]
                 ),
                 "judge_status": judgment["status"] if judgment else "ungraded",
+                "judge_error": judgment.get("error") if judgment else None,
+                "judge_error_category": judgment.get(
+                    "error_category", judgment.get("error")
+                )
+                if judgment
+                else None,
+                "judge_format_version": judgment.get("judge_format_version", 1)
+                if judgment
+                else None,
+                "judgment_source": str(path.relative_to(run))
+                if judgment
+                else None,
+                "recovered_from": judgment.get("recovered_from")
+                if judgment
+                else None,
                 "cost_usd": cost_total(row["calls"]),
                 "known_cost_usd": sum(
                     call["cost_usd"]
@@ -133,9 +152,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 "input_tokens": token_total(row["calls"], "input_tokens"),
                 "output_tokens": token_total(row["calls"], "output_tokens"),
                 "call_count": len(row["calls"]),
-                "judge_cost_usd": cost_total(judgment["calls"])
-                if judgment
-                else None,
+                "judge_cost_usd": cost_total(calls) if judgment else None,
                 "elapsed_seconds": row.get("elapsed_seconds"),
                 "first_text_seconds": row.get("first_text_seconds"),
                 "corpus_load_observed": row.get("detail", {}).get(
@@ -281,19 +298,57 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                     }
                 )
     all_batches = []
+    paid_sources = set()
     for path in folders:
         content = json.loads(path.read_text())
         for name in content["judgments"].values():
-            all_batches.extend(
-                json.loads((path.parent / name).read_text())["calls"]
+            origin, calls = paid_calls(
+                run, judgment_path(run, path.parent, name)
             )
+            if origin not in paid_sources:
+                paid_sources.add(origin)
+                all_batches.extend(calls)
+    grading = Counter(row["judge_status"] for row in records)
+    grading_errors = Counter(
+        row["judge_error_category"] or row["judge_status"]
+        for row in records
+        if row["judge_status"] != "completed"
+    )
+    grading_status = batch.get("status", "ungraded")
+    if grading_status == "completed" and (
+        len(records) < manifest["planned_attempts"]
+        or any(
+            row["status"] == "completed" and row["judge_status"] != "completed"
+            for row in records
+        )
+    ):
+        grading_status = "incomplete"
     return {
-        "report_version": 2,
+        "report_version": 3,
         "run": run.name,
         "benchmark_id": manifest["benchmark_id"],
         "scoring_version": manifest["scoring_version"],
         "weights": weights.model_dump(),
         "judgment_batch": batch_path.parent.name if batch_path else None,
+        "grading": {
+            "status": grading_status,
+            "counts": dict(grading),
+            "errors": dict(grading_errors),
+            "recovered": sum(
+                bool(row["recovered_from"])
+                and row["judge_status"] == "completed"
+                for row in records
+            ),
+            "format_versions": sorted(
+                {
+                    row["judge_format_version"]
+                    for row in records
+                    if row["judge_format_version"] is not None
+                }
+            ),
+            "source_batch": batch.get("source_batch"),
+            "judge_contract_hash": batch.get("judge_contract_hash"),
+        },
         "judge_model": batch.get("config", {})
         .get("model_ids", {})
         .get(batch.get("config", {}).get("judge_model")),
@@ -577,6 +632,7 @@ def charts(reports: list[dict], output: Path):
             ax.set_xticks([])
         ax.legend(handles=[failure_legend], loc="lower right", frameon=False)
         ax.margins(x=0.4)
+        ax.set(xlim=(0, None), ylim=(0, None))
         ax.grid(alpha=0.15)
         save(fig, "cost-quality")
 
@@ -678,5 +734,17 @@ def report_runs(
         reports[0] if len(reports) == 1 else {"runs": reports},
     )
     charts(reports, output / "charts")
+    for report in reports:
+        totals = report["systems"]
+        print(
+            f"Results: {sum(row['recorded'] for row in totals)}/{sum(row['planned'] for row in totals)} answers recorded; "
+            f"{sum(row['graded'] for row in totals)} graded; "
+            f"{sum(row['ungraded'] + row['missing'] for row in totals)} ungraded/missing; "
+            f"{sum(row['execution_failures'] for row in totals)} candidate failures; "
+            f"{report['grading']['recovered']} recovered offline.",
+            flush=True,
+        )
+        for reason, count in report["grading"]["errors"].items():
+            print(f"  {count}: {reason}", flush=True)
     print(f"Report: {output / 'summary.json'}", flush=True)
     return reports

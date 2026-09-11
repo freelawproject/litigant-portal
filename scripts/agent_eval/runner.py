@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import uuid
+from collections import Counter
 from contextlib import nullcontext, suppress
 from datetime import UTC, datetime
 from pathlib import Path
@@ -24,8 +25,8 @@ from .schema import (
     HERE,
     ROOT,
     Case,
+    CitedGrade,
     Config,
-    Grade,
     fingerprint,
     read_cases,
     verify_references,
@@ -99,7 +100,9 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
     for folder in ("references", "fixtures"):
         shutil.copytree(HERE / folder, references / folder)
     shutil.copyfile(HERE / "rubric.md", references / "rubric.md")
-    write_json(references / "judge-schema.json", Grade.model_json_schema())
+    write_json(
+        references / "judge-schema.json", CitedGrade.model_json_schema()
+    )
     reference_hashes = {
         str(path.relative_to(references)): fingerprint(path.read_text())
         for path in sorted(references.rglob("*"))
@@ -245,9 +248,21 @@ def worker(run: Path, path: Path, grading: bool):
         with Observer(record["calls"], config, flush):
             if grading:
                 candidate = json.loads((run / record["candidate"]).read_text())
+                protocol_path = judge.judgment_path(
+                    run, run, record["judge_contract"]
+                )
+                protocol = json.loads(protocol_path.read_text())
+                if fingerprint(protocol) != record["judge_contract_hash"]:
+                    raise ValueError("Saved judge contract changed.")
+                record["answer_passages"] = judge.answer_passages(
+                    candidate["answer"]
+                )
+                flush()
                 record.update(
                     asyncio.run(
-                        judge.evaluate(candidate, config, run, capture)
+                        judge.evaluate(
+                            candidate, config, run, protocol, capture
+                        )
                     )
                 )
             else:
@@ -284,7 +299,9 @@ def worker(run: Path, path: Path, grading: bool):
             ]
     except Exception as exc:
         record.update(
-            status="error", error=safe(f"{type(exc).__name__}: {exc}")[:2000]
+            status="error",
+            error=safe(f"{type(exc).__name__}: {exc}")[:2000],
+            error_category=getattr(exc, "category", type(exc).__name__),
         )
     finally:
         flush()
@@ -368,14 +385,23 @@ def run_suite(config: Config, output: Path) -> Path:
     return run
 
 
-def judge_run(run: Path, model: str | None = None) -> Path:
-    manifest = json.loads((run / "manifest.json").read_text())
-    verify_references(run, manifest)
-    config = Config.model_validate(manifest["config"])
-    if model:
-        config = Config.model_validate(
-            {**config.model_dump(), "judge_model": model}
-        )
+def latest_judgments(run: Path) -> tuple[Path | None, dict, dict[str, Path]]:
+    paths = sorted((run / "judgments").glob("*/batch.json"))
+    if not paths:
+        return None, {}, {}
+    path = paths[-1]
+    batch = json.loads(path.read_text())
+    return (
+        path.parent,
+        batch,
+        {
+            candidate: judge.judgment_path(run, path.parent, name)
+            for candidate, name in batch["judgments"].items()
+        },
+    )
+
+
+def new_batch(run: Path, config: Config, mode: str, source: Path | None):
     folder = run / "judgments" / f"{stamp()}-{uuid.uuid4().hex[:6]}"
     folder.mkdir(parents=True)
     write_json(folder / "source.json", source_state())
@@ -383,12 +409,202 @@ def judge_run(run: Path, model: str | None = None) -> Path:
         "config": config.model_dump(),
         "judgments": {},
         "status": "running",
+        "mode": mode,
+        "source_batch": source.name if source else None,
     }
-    try:
-        for candidate_path in manifest["attempts"]:
-            candidate = json.loads((run / candidate_path).read_text())
-            if candidate["status"] != "completed":
+    # Publish the batch only once its carried-forward results are recorded.
+    # An interrupted setup must not hide the previous batch's valid grades.
+    return folder, batch
+
+
+def finish_batch(folder: Path, batch: dict, *, interrupted=False):
+    rows = [
+        json.loads((folder / name).read_text())
+        for name in batch["judgments"].values()
+    ]
+    counts = Counter(row["status"] for row in rows)
+    errors = Counter(
+        row.get("error_category", row.get("error", "Missing result"))
+        for row in rows
+        if row["status"] != "completed"
+    )
+    batch["counts"] = dict(counts)
+    batch["errors"] = dict(errors)
+    batch["status"] = (
+        "interrupted"
+        if interrupted
+        else ("incomplete" if errors else "completed")
+    )
+    write_json(folder / "batch.json", batch)
+    print(
+        f"Judgments: {counts['completed']} accepted; {sum(errors.values())} unresolved.",
+        flush=True,
+    )
+    for reason, count in errors.items():
+        print(f"  {count}: {reason}", flush=True)
+
+
+def recover_run(run: Path, *, dry_run=False) -> Path | None:
+    """
+    Revalidate saved responses and preserve original artifacts and paid calls.
+    """
+    run = run.resolve()
+    manifest = json.loads((run / "manifest.json").read_text())
+    verify_references(run, manifest)
+    source, previous, paths = latest_judgments(run)
+    if source is None:
+        raise ValueError("There are no saved judgments to recover.")
+    config = Config.model_validate(previous["config"])
+    prepared = {}
+    counts = Counter()
+    for candidate_path in manifest["attempts"]:
+        candidate = json.loads((run / candidate_path).read_text())
+        if candidate["status"] != "completed":
+            continue
+        original = paths.get(candidate_path)
+        row = (
+            json.loads(original.read_text())
+            if original
+            else {
+                "candidate": candidate_path,
+                "status": "error",
+                "calls": [],
+                "config": config.model_dump(),
+            }
+        )
+        try:
+            if not row.get("raw_judge_text"):
+                raise ValueError(
+                    "No saved judge response; a judge call is needed."
+                )
+            if row.get("answer_passages") is not None and row[
+                "answer_passages"
+            ] != judge.answer_passages(candidate["answer"]):
+                raise ValueError(
+                    "Saved answer no longer matches the judged passages."
+                )
+            result = judge.parse_response(
+                row["raw_judge_text"],
+                candidate,
+                config.weights,
+                row.get("judge_format_version", 1),
+            )
+        except ValueError as exc:
+            row = {
+                **row,
+                "status": "error",
+                "error": f"{type(exc).__name__}: {exc}",
+                "error_category": getattr(exc, "category", type(exc).__name__),
+            }
+            row.pop("grade", None)
+            row.pop("score", None)
+            counts["unresolved"] += 1
+        else:
+            if (
+                row["status"] == "completed"
+                and row["score"] == result["score"]
+            ):
+                counts["retained"] += 1
+                prepared[candidate_path] = (original, None)
                 continue
+            row = {
+                **row,
+                **result,
+                "status": "completed",
+                "recovery": "offline",
+            }
+            row.pop("error", None)
+            row.pop("error_category", None)
+            counts["recovered"] += 1
+        if original:
+            origin, _ = judge.paid_calls(run, original)
+            row.update(
+                calls=[],
+                calls_source=str(origin.relative_to(run)),
+                recovered_from=str(original.relative_to(run)),
+            )
+        prepared[candidate_path] = (original, row)
+    print(
+        f"Recovery: {counts['retained']} retained; {counts['recovered']} recovered; "
+        f"{counts['unresolved']} need judging. No API calls.",
+        flush=True,
+    )
+    if dry_run:
+        return None
+    folder, batch = new_batch(run, config, "recover", source)
+    batch["recovery_counts"] = dict(counts)
+    for candidate_path, (original, row) in prepared.items():
+        if row is None:
+            target = original
+        else:
+            relative = Path(candidate_path)
+            target = folder / f"{relative.parent.name}-{relative.stem}.json"
+            write_json(target, row)
+        batch["judgments"][candidate_path] = os.path.relpath(target, folder)
+    finish_batch(folder, batch)
+    return folder
+
+
+def judge_run(
+    run: Path, model: str | None = None, *, retry_failed=False, dry_run=False
+) -> Path | None:
+    run = run.resolve()
+    manifest = json.loads((run / "manifest.json").read_text())
+    verify_references(run, manifest)
+    source, previous, paths = latest_judgments(run)
+    config = Config.model_validate(
+        previous["config"] if retry_failed and previous else manifest["config"]
+    )
+    if retry_failed and source is None:
+        raise ValueError("There is no judgment batch to retry.")
+    original_model = config.model_ids[config.judge_model]
+    if model:
+        config = Config.model_validate(
+            {**config.model_dump(), "judge_model": model}
+        )
+    if retry_failed and config.model_ids[config.judge_model] != original_model:
+        raise ValueError(
+            "Retry must use the same judge model; use full judging to change models."
+        )
+    jobs, retained = [], {}
+    for candidate_path in manifest["attempts"]:
+        candidate = json.loads((run / candidate_path).read_text())
+        if candidate["status"] != "completed":
+            continue
+        prior = paths.get(candidate_path)
+        if (
+            retry_failed
+            and prior
+            and json.loads(prior.read_text())["status"] == "completed"
+        ):
+            retained[candidate_path] = prior
+        else:
+            jobs.append((candidate_path, candidate))
+    print(
+        f"Judging plan: {len(jobs)} API calls; {len(retained)} judgments retained; "
+        "0 candidate answers regenerated.",
+        flush=True,
+    )
+    if dry_run or not jobs:
+        return source
+    if not os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "").strip():
+        raise ValueError("Set AWS_BEARER_TOKEN_BEDROCK locally for judging.")
+    folder, batch = new_batch(
+        run, config, "retry_failed" if retry_failed else "judge", source
+    )
+    protocol = judge.contract(run)
+    write_json(folder / "judge-contract.json", protocol)
+    batch["judge_contract_hash"] = fingerprint(protocol)
+    batch["planned_calls"] = len(jobs)
+    batch["retained"] = len(retained)
+    batch["judgments"] = {
+        key: os.path.relpath(path, folder) for key, path in retained.items()
+    }
+    interrupted = True
+    try:
+        # Publish pending records before the first call, so retries of an
+        # interrupted batch cannot accidentally omit its unstarted work.
+        for candidate_path, _ in jobs:
             relative = Path(candidate_path)
             target = folder / f"{relative.parent.name}-{relative.stem}.json"
             write_json(
@@ -398,13 +614,29 @@ def judge_run(run: Path, model: str | None = None) -> Path:
                     "status": "running",
                     "calls": [],
                     "config": config.model_dump(),
+                    "judge_format_version": judge.FORMAT_VERSION,
+                    "judge_contract": str(
+                        (folder / "judge-contract.json").relative_to(run)
+                    ),
+                    "judge_contract_hash": batch["judge_contract_hash"],
+                    "replaces": str(paths[candidate_path].relative_to(run))
+                    if candidate_path in paths
+                    else None,
                 },
             )
             batch["judgments"][candidate_path] = target.name
-            write_json(folder / "batch.json", batch)
-            print(f"Judging {candidate_path}", flush=True)
-            execute_worker(run, target, config.timeout_seconds, grading=True)
-        batch["status"] = "completed"
-    finally:
         write_json(folder / "batch.json", batch)
+        for i, (candidate_path, _) in enumerate(jobs, 1):
+            target = folder / batch["judgments"][candidate_path]
+            print(f"Judging [{i}/{len(jobs)}] {candidate_path}", flush=True)
+            execute_worker(run, target, config.timeout_seconds, grading=True)
+            row = json.loads(target.read_text())
+            print(
+                f"  {row['status']}"
+                + (f": {row['error']}" if row.get("error") else ""),
+                flush=True,
+            )
+        interrupted = False
+    finally:
+        finish_batch(folder, batch, interrupted=interrupted)
     return folder

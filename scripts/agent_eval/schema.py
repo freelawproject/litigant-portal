@@ -18,6 +18,15 @@ DIMENSIONS = FACT_DIMENSIONS + QUALITY_DIMENSIONS
 SLUG = r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
 type Slug = Annotated[str, Field(pattern=SLUG)]
 type System = Literal["raw", "old", "new"]
+type FactStatus = Literal["supported", "contradicted", "omitted", "uncertain"]
+type FailureCategory = Literal[
+    "citation",
+    "hard_fact",
+    "legal_direction",
+    "missed_escalation",
+    "unsupported_claim",
+]
+type PassageID = Annotated[int, Field(gt=0, strict=True)]
 
 
 class Schema(BaseModel):
@@ -117,27 +126,20 @@ class Dimension(Schema):
 
 class Assessment(Schema):
     fact_id: str
-    status: Literal["supported", "contradicted", "omitted", "uncertain"]
+    status: FactStatus
     evidence: str
     value: float | bool | None = None
+    explanation: str = ""
 
 
 class DealBreaker(Schema):
-    category: Literal[
-        "citation",
-        "hard_fact",
-        "legal_direction",
-        "missed_escalation",
-        "unsupported_claim",
-    ]
+    category: FailureCategory
     evidence: str
     explanation: str = Field(min_length=1)
 
 
-class Grade(Schema):
+class Scorecard(Schema):
     dimensions: dict[str, Dimension]
-    facts: list[Assessment]
-    deal_breakers: list[DealBreaker]
     answer_outcome: Literal["answered", "partial", "deferred"]
     source_attribution: Literal["supported", "absent", "unsupported"]
 
@@ -146,6 +148,30 @@ class Grade(Schema):
         if set(self.dimensions) != set(DIMENSIONS):
             raise ValueError("Judge must score all seven dimensions.")
         return self
+
+
+class Grade(Scorecard):
+    facts: list[Assessment]
+    deal_breakers: list[DealBreaker]
+
+
+class CitedAssessment(Schema):
+    fact_id: str
+    status: FactStatus
+    evidence_ids: list[PassageID]
+    explanation: str = Field(min_length=1)
+    value: float | bool | None
+
+
+class CitedDealBreaker(Schema):
+    category: FailureCategory
+    evidence_ids: list[PassageID]
+    explanation: str = Field(min_length=1)
+
+
+class CitedGrade(Scorecard):
+    facts: list[CitedAssessment]
+    deal_breakers: list[CitedDealBreaker]
 
 
 def fingerprint(value) -> str:
