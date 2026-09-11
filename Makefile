@@ -35,6 +35,10 @@ test-v: ## Run tests — verbose output
 pre-commit: ## Lint then test — stops if lint fails/fixes anything
 	$(MAKE) lint && $(MAKE) test
 
+.PHONY: agent-eval
+agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'report ...')
+	uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
+
 css: ## Build Tailwind CSS (one-time)
 	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT)
 
