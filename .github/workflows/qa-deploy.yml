@@ -1,0 +1,129 @@
+name: Deploy to QA (EKS)
+
+on:
+  push:
+    branches:
+      - qa
+  workflow_dispatch:
+    inputs:
+      deploy_ref:
+        description: 'Branch or tag to build and deploy to QA'
+        required: true
+        default: 'qa'
+
+env:
+  AWS_REGION: us-west-2
+  EKS_CLUSTER_NAME: courtlistener
+  EKS_NAMESPACE: qa-litigant
+
+permissions:
+  contents: read
+
+concurrency:
+  group: litigant-qa-deploy
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
+    with:
+      ref: ${{ github.event.inputs.deploy_ref || github.sha }}
+
+  build:
+    needs: tests
+    runs-on: ubuntu-latest
+    outputs:
+      sha_short: ${{ steps.vars.outputs.sha_short }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.inputs.deploy_ref || github.sha }}
+      - name: Set shortcode
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and Push
+        run: make push-image -e VERSION=${{ steps.vars.outputs.sha_short }}
+
+  setup-deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create Kubeconfig with AWS CLI
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Update Environment Variables
+        env:
+          LITIGANT_ENV: litigant-env
+        run: kubectl annotate es $LITIGANT_ENV force-sync=$(date +%s) --overwrite -n ${{ env.EKS_NAMESPACE }} && kubectl wait es -n ${{ env.EKS_NAMESPACE }} --for=jsonpath="{.status.conditions[?(@.reason=='SecretSynced')].status}"=True --timeout=30s $LITIGANT_ENV
+
+      - name: Reap Stale Temporary Pods
+        run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} -l app=litigant-deploy-temp --ignore-not-found --timeout=60s
+
+      - name: Launch Temporary Pod
+        run: |
+          kubectl run temp-pod-${{ needs.build.outputs.sha_short }} -n ${{ env.EKS_NAMESPACE }} --labels=app=litigant-deploy-temp --image=freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod --restart Never --pod-running-timeout=120s --overrides='
+          {
+              "spec": {
+              "containers": [{
+                  "name": "temp-pod",
+                  "image": "freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod",
+                  "command": ["/bin/sh", "-c", "trap : TERM INT; sleep 3600 & wait"],
+                  "envFrom": [{
+                  "secretRef": {
+                      "name": "litigant-env"
+                  }
+                  }]
+              }]
+              }
+          }'
+      - name: Wait for Temporary Pod to Start
+        run: kubectl wait pods -n ${{ env.EKS_NAMESPACE }} --for condition=Ready --timeout=90s temp-pod-${{ needs.build.outputs.sha_short }}
+
+      - name: Collect Static Assets
+        run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- ./manage.py collectstatic --noinput --clear
+      - name: Handle Collectstatic Error
+        if: failure()
+        run: |
+          echo "collectstatic failed--aborting deploy"
+          exit 1
+
+      - name: Apply Migrations
+        run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- ./manage.py migrate --noinput
+      - name: Handle Migration Error
+        if: failure()
+        run: |
+          echo "Migrations failed. Open a shell into pod temp-pod-${{ needs.build.outputs.sha_short }} to investigate."
+          echo "It stops running after an hour but is kept around for debugging; the next deploy reaps it."
+          exit 1
+
+      - name: Delete Temporary Pod
+        run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }}
+
+  deploy-web:
+    needs: [build, setup-deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Create Kubeconfig with AWS CLI
+        run: aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Rollout litigant-web
+        run: kubectl set image -n ${{ env.EKS_NAMESPACE }} deployment/litigant-web web=freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod
+      - name: Watch litigant-web rollout status
+        run: kubectl rollout status -n ${{ env.EKS_NAMESPACE }} deployment/litigant-web

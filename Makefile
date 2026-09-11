@@ -1,5 +1,5 @@
 .PHONY: help build css clean install migrate test test-v collectstatic lint fmt-check fmt \
-       file-issue \
+       file-issue build-image push-image \
        messages compilemessages \
        docker-build docker-dev docker-prod docker-rebuild docker-down docker-logs docker-shell docker-migrate docker-clean
 
@@ -65,6 +65,19 @@ fmt: ## Format all templates with prettier-plugin-django-cotton
 
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
 	@python3 scripts/file_issue.py $(FILE)
+
+REPO ?= freelawproject/litigant-portal
+DOCKER_TAG_PROD = $(VERSION)-prod
+
+build-image: ## Build the prod portal image (requires VERSION=...)
+	docker build -t $(REPO):$(DOCKER_TAG_PROD) --file Dockerfile .
+
+push-image: build-image ## Build then push the prod portal image (amd64 only)
+	@if [ "$$(uname -m)" != "x86_64" ]; then \
+		echo "Refusing to push: only amd64 builds may be pushed (the server/EKS runs amd64; an arm64 image would crash-loop there)."; \
+		exit 1; \
+	fi
+	docker push $(REPO):$(DOCKER_TAG_PROD)
 
 messages: ## Extract translation strings (all languages)
 	SECRET_KEY=dev .venv/bin/python manage.py makemessages -a --no-location
