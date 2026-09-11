@@ -1,15 +1,12 @@
 name: Deploy to QA (EKS)
 
 on:
-  push:
-    branches:
-      - qa
   workflow_dispatch:
     inputs:
       deploy_ref:
         description: 'Branch or tag to build and deploy to QA'
         required: true
-        default: 'qa'
+        default: 'main'
 
 env:
   AWS_REGION: us-west-2
