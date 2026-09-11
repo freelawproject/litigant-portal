@@ -52,20 +52,24 @@ def topic_flow_find(*, topic_slug: str, flow_slug: str) -> TopicFlow | None:
     )
 
 
-def variable_answer_list(*, identity) -> list[VariableAnswer]:
+def variable_answer_list(
+    *, identity, answered_only: bool = False
+) -> list[VariableAnswer]:
     """An identity's answers, ordered by variable name.
 
     Answers to variables the corpus no longer names (``in_schema=False``)
     are left out: sync keeps those rows so a migration can move them, but
     no form references them, so no surface should show them.
+
+    ``answered_only`` drops cleared answers (``value`` None), matching
+    ``variable_answer_map``: a cleared fact is not a fact.
     """
-    return list(
-        VariableAnswer.objects.filter(
-            identity=identity, variable__in_schema=True
-        )
-        .select_related("variable")
-        .order_by("variable__name")
+    answers = VariableAnswer.objects.filter(
+        identity=identity, variable__in_schema=True
     )
+    if answered_only:
+        answers = answers.filter(value__isnull=False)
+    return list(answers.select_related("variable").order_by("variable__name"))
 
 
 def variable_answer_map(*, identity, names: list[str]) -> dict:
@@ -86,7 +90,7 @@ def variable_answer_map(*, identity, names: list[str]) -> dict:
     )
 
 
-def briefcase_groups(*, identity) -> list[dict]:
+def variable_answer_groups(*, identity) -> list[dict]:
     """An identity's answers, grouped for reading by interview page.
 
     Grouping comes from each answered variable's own placement
@@ -104,27 +108,25 @@ def briefcase_groups(*, identity) -> list[dict]:
     matching ``variable_answer_map``: a cleared fact is not a fact, and no
     surface should show a variable the corpus no longer names.
     """
-    answers = list(
-        VariableAnswer.objects.filter(
-            identity=identity, variable__in_schema=True, value__isnull=False
-        )
-        .select_related("variable")
-        .order_by("variable__name")
-    )
+    answers = variable_answer_list(identity=identity, answered_only=True)
     if not answers:
         return []
 
     answer_by_variable = {a.variable_id: a for a in answers}
     placements = (
         TopicFlowInterviewVariable.objects.filter(
-            variable_id__in=answer_by_variable
+            variable_id__in=answer_by_variable, page__flow__enabled=True
         )
         .select_related("page")
         .order_by(
             "page__flow__topic__order",
+            "page__flow__topic__created_at",
             "page__flow__order",
+            "page__flow__created_at",
             "page__order",
+            "page__created_at",
             "order",
+            "created_at",
         )
     )
 

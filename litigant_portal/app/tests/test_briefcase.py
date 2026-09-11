@@ -7,7 +7,7 @@ grouping is the only one available without a model change.
 """
 
 import pytest
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from litigant_portal.app.models import (
@@ -20,7 +20,8 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.models.choices import VariableDataType
-from litigant_portal.app.selectors.topic_flow import briefcase_groups
+from litigant_portal.app.selectors.topic_flow import variable_answer_groups
+from litigant_portal.app.views.pages import _briefcase_sample
 
 
 def _place(page, variable, order):
@@ -35,7 +36,7 @@ class BriefcaseGroupsTests(TestCase):
         self.identity = UserIdentity.objects.create(session_key="s1")
         self.topic = Topic.objects.create(slug="eviction", order=0)
         self.flow = TopicFlow.objects.create(
-            topic=self.topic, slug="tenant", order=0
+            topic=self.topic, slug="tenant", order=0, enabled=True
         )
         self.about_you = TopicFlowInterviewPage.objects.create(
             flow=self.flow, title="About you", order=0
@@ -59,7 +60,7 @@ class BriefcaseGroupsTests(TestCase):
         _place(self.about_you, tenant_name, 0)
         _place(self.your_notice, received, 0)
 
-        groups = briefcase_groups(identity=self.identity)
+        groups = variable_answer_groups(identity=self.identity)
 
         self.assertEqual(
             [g["title"] for g in groups], ["About you", "Your notice"]
@@ -72,7 +73,7 @@ class BriefcaseGroupsTests(TestCase):
         _place(self.about_you, first, 0)
         _place(self.about_you, last, 1)
 
-        groups = briefcase_groups(identity=self.identity)
+        groups = variable_answer_groups(identity=self.identity)
 
         self.assertEqual(
             [a.variable.name for a in groups[0]["answers"]],
@@ -84,7 +85,7 @@ class BriefcaseGroupsTests(TestCase):
         _place(self.about_you, placed, 0)
         self._answer("court_name", "Franklin County Municipal Court")
 
-        groups = briefcase_groups(identity=self.identity)
+        groups = variable_answer_groups(identity=self.identity)
 
         self.assertEqual(groups[-1]["title"], "")
         self.assertEqual(
@@ -95,7 +96,7 @@ class BriefcaseGroupsTests(TestCase):
         placed = self._answer("tenant_name", "Jamie")
         _place(self.about_you, placed, 0)
 
-        groups = briefcase_groups(identity=self.identity)
+        groups = variable_answer_groups(identity=self.identity)
 
         self.assertEqual([g["title"] for g in groups], ["About you"])
 
@@ -107,7 +108,7 @@ class BriefcaseGroupsTests(TestCase):
         _place(self.about_you, kept, 0)
         _place(self.about_you, cleared, 1)
 
-        groups = briefcase_groups(identity=self.identity)
+        groups = variable_answer_groups(identity=self.identity)
 
         self.assertEqual(
             [a.variable.name for a in groups[0]["answers"]], ["tenant_name"]
@@ -122,7 +123,7 @@ class BriefcaseGroupsTests(TestCase):
         )
         _place(self.about_you, stale, 1)
 
-        groups = briefcase_groups(identity=self.identity)
+        groups = variable_answer_groups(identity=self.identity)
 
         self.assertEqual(
             [a.variable.name for a in groups[0]["answers"]], ["tenant_name"]
@@ -136,10 +137,27 @@ class BriefcaseGroupsTests(TestCase):
         )
         _place(self.about_you, theirs, 0)
 
-        self.assertEqual(briefcase_groups(identity=self.identity), [])
+        self.assertEqual(variable_answer_groups(identity=self.identity), [])
 
     def test_identity_with_no_answers_gets_no_groups(self):
-        self.assertEqual(briefcase_groups(identity=self.identity), [])
+        self.assertEqual(variable_answer_groups(identity=self.identity), [])
+
+    def test_a_disabled_flows_page_is_not_used_for_grouping(self):
+        # enabled defaults to False, so a draft flow is the normal state of a
+        # half-authored one. Its page title heading a real litigant's
+        # briefcase would leak unpublished corpus at them.
+        draft = TopicFlow.objects.create(
+            topic=self.topic, slug="landlord", order=1, enabled=False
+        )
+        draft_page = TopicFlowInterviewPage.objects.create(
+            flow=draft, title="Draft page", order=0
+        )
+        answered = self._answer("tenant_name", "Jamie")
+        _place(draft_page, answered, 0)
+
+        groups = variable_answer_groups(identity=self.identity)
+
+        self.assertEqual([g["title"] for g in groups], [""])
 
     def test_empty_page_is_not_rendered_as_a_group(self):
         # "Your notice" places nothing this identity answered, so it must not
@@ -149,7 +167,7 @@ class BriefcaseGroupsTests(TestCase):
         unanswered = Variable.objects.create(name="hearing_date")
         _place(self.your_notice, unanswered, 0)
 
-        groups = briefcase_groups(identity=self.identity)
+        groups = variable_answer_groups(identity=self.identity)
 
         self.assertEqual([g["title"] for g in groups], ["About you"])
 
@@ -157,12 +175,16 @@ class BriefcaseGroupsTests(TestCase):
 @pytest.mark.postgres
 class BriefcaseChatContextTests(TestCase):
     def test_chat_page_exposes_the_visitors_groups(self):
-        response = self.client.get(reverse("pages:chat"))
-        identity = UserIdentity.objects.get(
+        # Seed the identity the middleware will resolve, rather than letting a
+        # GET mint one: an anonymous first paint no longer creates a row.
+        self.client.session.save()
+        identity = UserIdentity.objects.create(
             session_key=self.client.session.session_key
         )
         topic = Topic.objects.create(slug="eviction", order=0)
-        flow = TopicFlow.objects.create(topic=topic, slug="tenant", order=0)
+        flow = TopicFlow.objects.create(
+            topic=topic, slug="tenant", order=0, enabled=True
+        )
         page = TopicFlowInterviewPage.objects.create(
             flow=flow, title="About you", order=0
         )
@@ -189,6 +211,14 @@ class BriefcaseChatContextTests(TestCase):
         self.assertNotIn("{#", content)
         self.assertNotIn("{%", content)
 
+    def test_chat_page_for_a_first_time_visitor_creates_no_identity(self):
+        # Reading through request.identity mints a session and a UserIdentity
+        # row, so an unguarded read banks one per anonymous hit, crawlers
+        # included. views/utils.topic_flow_answers already guards this.
+        self.client.get(reverse("pages:chat"))
+
+        self.assertEqual(UserIdentity.objects.count(), 0)
+
     def test_chat_page_exposes_empty_groups_for_a_fresh_visitor(self):
         # The panel is always rendered, so the context key must always exist:
         # a missing key and an empty list are different bugs in the template.
@@ -197,9 +227,10 @@ class BriefcaseChatContextTests(TestCase):
         self.assertEqual(response.context["briefcase_groups"], [])
 
 
-class DisplayValueTests(TestCase):
+class DisplayValueTests(SimpleTestCase):
     """``VariableAnswer.display_value`` shapes jsonb for reading. No DB —
-    the property only touches in-memory objects."""
+    the property only touches in-memory objects, so SimpleTestCase keeps it
+    out of the suite's database path."""
 
     def _value(self, value, data_type=VariableDataType.TEXT):
         return VariableAnswer(
@@ -259,3 +290,27 @@ class DisplayValueTests(TestCase):
 
     def test_a_cleared_answer_renders_empty_not_none(self):
         self.assertEqual(VariableAnswer(value=None).display_value, "")
+
+
+class BriefcaseSampleTests(SimpleTestCase):
+    """The style guide's in-memory sample. No DB: it builds unsaved rows."""
+
+    def _fact(self, name):
+        return next(
+            answer
+            for group in _briefcase_sample()
+            for answer in group["answers"]
+            if answer.variable.name == name
+        )
+
+    def test_the_date_fact_renders_in_the_apps_date_format(self):
+        # Without a data_type the variable defaults to TEXT, so the sample
+        # shows a raw ISO string where a real briefcase shows a long date, and
+        # the style guide then documents output the panel never produces.
+        self.assertEqual(
+            self._fact("received_date").display_value,
+            "Tuesday, September 1, 2026",
+        )
+
+    def test_a_plain_text_fact_is_untouched(self):
+        self.assertEqual(self._fact("tenant_first").display_value, "Jamie")

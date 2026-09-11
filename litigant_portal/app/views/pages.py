@@ -22,11 +22,9 @@ from litigant_portal.app.models.choices import (
     BedrockModel,
     JurisdictionLevel,
     State,
+    VariableDataType,
 )
-from litigant_portal.app.selectors.topic_flow import (
-    briefcase_groups,
-    topic_list,
-)
+from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
@@ -35,7 +33,10 @@ from litigant_portal.app.topic_flow.renderer import (
     submitted_section_anchor,
 )
 from litigant_portal.app.topic_flow.validation import validate_answers
-from litigant_portal.app.views.utils import topic_flow_answers
+from litigant_portal.app.views.utils import (
+    briefcase_answers,
+    topic_flow_answers,
+)
 
 
 def home(request):
@@ -55,7 +56,7 @@ def chat_view(request):
     return render(
         request,
         "pages/chat/index.html",
-        {"briefcase_groups": briefcase_groups(identity=request.identity)},
+        {"briefcase_groups": briefcase_answers(request)},
     )
 
 
@@ -206,9 +207,10 @@ def _briefcase_sample() -> list[dict]:
     visitor's answers.
     """
 
-    def fact(name, label, value):
+    def fact(name, label, value, data_type=VariableDataType.TEXT):
         return VariableAnswer(
-            variable=Variable(name=name, label=label), value=value
+            variable=Variable(name=name, label=label, data_type=data_type),
+            value=value,
         )
 
     return [
@@ -222,7 +224,12 @@ def _briefcase_sample() -> list[dict]:
         {
             "title": "Your notice",
             "answers": [
-                fact("received_date", "Date received", "2026-09-01"),
+                fact(
+                    "received_date",
+                    "Date received",
+                    "2026-09-01",
+                    VariableDataType.DATE,
+                ),
                 fact("notice_reason", "Reason given", ["Unpaid rent"]),
             ],
         },
