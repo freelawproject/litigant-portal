@@ -5,11 +5,6 @@ on:
   push:
     branches:
       - main
-  workflow_call:
-    inputs:
-      ref:
-        required: false
-        type: string
 
 jobs:
   build:
@@ -37,8 +32,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref || github.sha }}
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
