@@ -1,0 +1,42 @@
+{% load i18n %}
+
+<c-vars show_agent_state="" />
+
+{% comment %}
+  show_agent_state opts in to the developer disclosure at the bottom. Off by
+  default: the partial's Alpine bindings only resolve inside x-data="chatApp",
+  so rendering it anywhere else (the style guide) would throw.
+{% endcomment %}
+
+{# The briefcase body: the visitor's stored facts, grouped by interview page. #}
+{# Shared by the desktop column and the mobile drawer, so the two can't drift. #}
+{# Always renders — an empty briefcase is an empty state, never a missing panel. #}
+<div class="flex-1 overflow-y-auto min-h-0">
+  {% if groups %}
+    <div class="p-4 space-y-5">
+      {% for group in groups %}
+        <div>
+          {% if group.title %}
+            <h3 class="text-2xs font-bold uppercase tracking-widest text-greyscale-700 mb-2">{{ group.title }}</h3>
+          {% endif %}
+          <dl class="space-y-2.5">
+            {% for answer in group.answers %}
+              <c-molecules.briefcase-fact :answer="answer" />
+            {% endfor %}
+          </dl>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="p-4 text-sm text-greyscale-600">
+      {% trans "Nothing saved yet. As you answer questions, the details you give will collect here so you can check them later." %}
+    </p>
+  {% endif %}
+
+  {% if show_agent_state and perms.app.manage_developers %}
+    <details class="mt-2 border-t border-greyscale-200">
+      <summary class="px-4 py-2 text-xs text-greyscale-600 cursor-pointer">{% trans "Agent state" %}</summary>
+      {% include "pages/chat/partials/_agent_state.html" %}
+    </details>
+  {% endif %}
+</div>

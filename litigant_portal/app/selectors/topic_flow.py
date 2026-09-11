@@ -1,7 +1,12 @@
 from django.core.cache import cache
 
 from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
-from litigant_portal.app.models import Topic, TopicFlow, VariableAnswer
+from litigant_portal.app.models import (
+    Topic,
+    TopicFlow,
+    TopicFlowInterviewVariable,
+    VariableAnswer,
+)
 
 
 def topic_list() -> list[Topic]:
@@ -47,20 +52,24 @@ def topic_flow_find(*, topic_slug: str, flow_slug: str) -> TopicFlow | None:
     )
 
 
-def variable_answer_list(*, identity) -> list[VariableAnswer]:
+def variable_answer_list(
+    *, identity, answered_only: bool = False
+) -> list[VariableAnswer]:
     """An identity's answers, ordered by variable name.
 
     Answers to variables the corpus no longer names (``in_schema=False``)
     are left out: sync keeps those rows so a migration can move them, but
     no form references them, so no surface should show them.
+
+    ``answered_only`` drops cleared answers (``value`` None), matching
+    ``variable_answer_map``: a cleared fact is not a fact.
     """
-    return list(
-        VariableAnswer.objects.filter(
-            identity=identity, variable__in_schema=True
-        )
-        .select_related("variable")
-        .order_by("variable__name")
+    answers = VariableAnswer.objects.filter(
+        identity=identity, variable__in_schema=True
     )
+    if answered_only:
+        answers = answers.filter(value__isnull=False)
+    return list(answers.select_related("variable").order_by("variable__name"))
 
 
 def variable_answer_map(*, identity, names: list[str]) -> dict:
@@ -79,3 +88,65 @@ def variable_answer_map(*, identity, names: list[str]) -> dict:
             value__isnull=False,
         ).values_list("variable__name", "value")
     )
+
+
+def variable_answer_groups(*, identity) -> list[dict]:
+    """An identity's answers, grouped for reading by interview page.
+
+    Grouping comes from each answered variable's own placement
+    (``TopicFlowInterviewVariable``), not from an active flow: the chat page
+    resolves no flow server-side, so placement is the only grouping available
+    without a model change. A variable placed on more than one page is grouped
+    under the first placement in (topic, flow, page, placement) order, which
+    keeps the grouping stable across requests.
+
+    Pages that place nothing this identity answered are skipped rather than
+    rendered as empty headings, and answers with no placement collect in a
+    final untitled group.
+
+    Cleared answers (``value`` None) and out-of-schema variables are left out,
+    matching ``variable_answer_map``: a cleared fact is not a fact, and no
+    surface should show a variable the corpus no longer names.
+    """
+    answers = variable_answer_list(identity=identity, answered_only=True)
+    if not answers:
+        return []
+
+    answer_by_variable = {a.variable_id: a for a in answers}
+    placements = (
+        TopicFlowInterviewVariable.objects.filter(
+            variable_id__in=answer_by_variable, page__flow__enabled=True
+        )
+        .select_related("page")
+        .order_by(
+            "page__flow__topic__order",
+            "page__flow__topic__created_at",
+            "page__flow__order",
+            "page__flow__created_at",
+            "page__order",
+            "page__created_at",
+            "order",
+            "created_at",
+        )
+    )
+
+    # Walking placements in that order builds both the page sequence and the
+    # sequence within each page, so neither needs a second sort.
+    grouped: dict = {}
+    placed: set = set()
+    for placement in placements:
+        if placement.variable_id in placed:
+            continue
+        placed.add(placement.variable_id)
+        grouped.setdefault(placement.page, []).append(
+            answer_by_variable[placement.variable_id]
+        )
+
+    groups = [
+        {"title": page.title, "answers": page_answers}
+        for page, page_answers in grouped.items()
+    ]
+    unplaced = [a for a in answers if a.variable_id not in placed]
+    if unplaced:
+        groups.append({"title": "", "answers": unplaced})
+    return groups
