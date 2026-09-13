@@ -94,9 +94,9 @@ class AdminHeaderRegressionTests(TestCase):
 
 @pytest.mark.postgres
 class AgentStateGatingTests(TestCase):
-    """The Briefcase agent-state aside is only present in the response body
-    for users holding `manage_developers` — server-side gated, not just
-    CSS/Alpine-hidden."""
+    """The Briefcase panel itself is for everyone; the raw agent-state dump
+    inside it is only present in the response body for users holding
+    `manage_developers` — server-side gated, not just CSS/Alpine-hidden."""
 
     def setUp(self):
         self.client = Client()
@@ -110,18 +110,18 @@ class AgentStateGatingTests(TestCase):
             username="regular", email="regular@example.com", password="pw"
         )
 
-    def test_anonymous_user_does_not_see_agent_state(self):
+    def test_anonymous_user_sees_the_briefcase_but_not_agent_state(self):
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
+        self.assertRegex(content, BRIEFCASE_CHROME_RE)
         self.assertNotIn(AGENT_STATE_MARKER, content)
-        self.assertNotRegex(content, BRIEFCASE_CHROME_RE)
 
-    def test_non_developer_does_not_see_agent_state(self):
+    def test_non_developer_sees_the_briefcase_but_not_agent_state(self):
         self.client.login(username="regular", password="pw")
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
+        self.assertRegex(content, BRIEFCASE_CHROME_RE)
         self.assertNotIn(AGENT_STATE_MARKER, content)
-        self.assertNotRegex(content, BRIEFCASE_CHROME_RE)
 
     def test_developer_sees_agent_state(self):
         self.client.login(username="dev", password="pw")

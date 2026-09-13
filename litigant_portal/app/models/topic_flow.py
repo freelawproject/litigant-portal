@@ -1,7 +1,13 @@
 import uuid
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import formats
+from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.translation import gettext_lazy as _
+
+from litigant_portal.app.formatting import format_long_date
 
 from .base import BaseModel
 from .choices import TopicFlowFormConditionOperator, VariableDataType
@@ -137,6 +143,48 @@ class VariableAnswer(BaseModel):
     )
     value = models.JSONField(null=True, blank=True)
     reviewed = models.BooleanField(default=False)
+
+    @property
+    def display_value(self) -> str:
+        """The stored value rendered for reading.
+
+        ``value`` is jsonb, so a multi-choice answer arrives as a list, a
+        boolean as a bool, and a date as an ISO string. Handing any of those
+        straight to a template shows the litigant a Python repr or a raw
+        `2026-09-09`, so the shaping lives here rather than in the template.
+        """
+        if isinstance(self.value, bool):
+            return _("Yes") if self.value else _("No")
+        if isinstance(self.value, list):
+            return ", ".join(str(item) for item in self.value)
+        if self.value is None:
+            return ""
+        return self._formatted_date() or str(self.value)
+
+    def _formatted_date(self) -> str | None:
+        """Long-form date for a date or datetime variable.
+
+        None when the variable isn't temporal, isn't reachable, or the stored
+        value doesn't parse — an unparseable date still has to render as
+        whatever is stored rather than disappear.
+        """
+        try:
+            data_type = self.variable.data_type
+        except ObjectDoesNotExist:
+            return None
+
+        raw = str(self.value)
+        if data_type == VariableDataType.DATE:
+            parsed = parse_date(raw)
+            # Same shape the flow page's deadlines use, so a litigant sees one
+            # date format across both surfaces.
+            return format_long_date(parsed) if parsed else None
+        if data_type == VariableDataType.DATETIME:
+            parsed = parse_datetime(raw)
+            if parsed is None:
+                return None
+            return formats.date_format(parsed, "DATETIME_FORMAT")
+        return None
 
     class Meta:
         constraints = [

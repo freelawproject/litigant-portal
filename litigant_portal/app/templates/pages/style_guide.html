@@ -106,6 +106,10 @@
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Topic Card</a>
             </li>
             <li>
+              <a href="#briefcase-fact"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Briefcase Fact</a>
+            </li>
+            <li>
               <a href="#form-errors"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Errors</a>
             </li>
@@ -152,6 +156,10 @@
             <li>
               <a href="#footer"
                  class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Footer</a>
+            </li>
+            <li>
+              <a href="#briefcase-panel"
+                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Briefcase Panel</a>
             </li>
             <li>
               <a href="#fallback-resources"
@@ -859,6 +867,22 @@
               <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" />
             </div>
           </section>
+          <section id="briefcase-fact" class="mb-12" aria-labelledby="briefcase-fact-heading">
+            <h3 id="briefcase-fact-heading" class="mb-4">Briefcase Fact</h3>
+            <p class="text-greyscale-600 mb-6">
+              One stored fact as a label over its value, for the briefcase
+              panel. Pass a <code>VariableAnswer</code> via the
+              <code>:answer</code> prop. The label falls back to the
+              variable's name, and the value comes from
+              <code>display_value</code>, so lists and booleans read as words
+              rather than Python literals.
+            </p>
+            <dl class="space-y-2.5 max-w-xs mb-6">
+              {% for answer in briefcase_groups.0.answers %}
+                <c-molecules.briefcase-fact :answer="answer" />
+              {% endfor %}
+            </dl>
+          </section>
           <section id="form-errors" class="mb-12" aria-labelledby="form-errors-heading">
             <h3 id="form-errors-heading" class="mb-4">Form Errors</h3>
             <p class="text-greyscale-600 mb-6">
@@ -1072,6 +1096,31 @@
             <p class="text-greyscale-600 mb-6">Site footer with navigation.</p>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
               <c-organisms.footer />
+            </div>
+          </section>
+          <section id="briefcase-panel" class="mb-12" aria-labelledby="briefcase-panel-heading">
+            <h3 id="briefcase-panel-heading" class="mb-4">Briefcase Panel</h3>
+            <p class="text-greyscale-600 mb-6">
+              The chat page's right-hand panel: the visitor's stored facts,
+              grouped by interview page. Pass the grouped list via the
+              <code>:groups</code> prop, as built by
+              <code>variable_answer_groups()</code>. Groups with no title render
+              their facts without a heading, which is where unplaced answers
+              land. Used in both the desktop column and the mobile drawer, so
+              the two cannot drift.
+            </p>
+            <p class="text-sm text-greyscale-500 mb-4">
+              Always renders. With no facts it shows its empty state rather
+              than collapsing, because the panel is a fixed part of the chat
+              frame. A raw agent-state disclosure appears at the bottom for
+              users holding <code>manage_developers</code>.
+            </p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
+              <c-organisms.briefcase-panel :groups="briefcase_groups" />
+            </div>
+            <p class="text-sm text-greyscale-500 mb-2">Empty state:</p>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
+              <c-organisms.briefcase-panel />
             </div>
           </section>
           <section id="fallback-resources"

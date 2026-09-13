@@ -6,8 +6,14 @@
 	   file-issue build-image push-image
 
 # Guard for commands that require the Docker container to be running
-require-docker = docker compose exec -T django true 2>/dev/null || \
-  { echo "Django container isn't running — start it with: make docker"; exit 1; }
+# Holds docker's own stderr rather than swallowing it, and prints it only when
+# the check fails: a missing compose plugin, a stale context and a stopped
+# container all fail here, and only the last one is fixed by `make docker`
+# (see docs/wiki/container-runtime.md). It is held rather than passed straight
+# through because compose warns about every unset variable it interpolates,
+# on the success path too.
+require-docker = err=$$(docker compose exec -T django true 2>&1) || \
+  { echo "$$err"; echo "Docker check failed (see the error above). If the container is stopped, start it with: make docker"; exit 1; }
 
 # Tailwind source + built output (the path base.html resolves via {% static %})
 CSS_SRC = litigant_portal/app/src/main.css
@@ -34,6 +40,10 @@ test-v: ## Run tests — verbose output
 
 pre-commit: ## Lint then test — stops if lint fails/fixes anything
 	$(MAKE) lint && $(MAKE) test
+
+.PHONY: agent-eval
+agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'report ...')
+	uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
 
 css: ## Build Tailwind CSS (one-time)
 	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT)

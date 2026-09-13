@@ -30,6 +30,7 @@ services:
     environment:
       - DEBUG=true
       - DEPLOYMENT_ENV=dev
+      - LP_AGENT_DEV_ENABLED=true
       - SECRET_KEY=dev
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=postgres

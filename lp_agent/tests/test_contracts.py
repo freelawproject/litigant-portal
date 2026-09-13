@@ -9,10 +9,8 @@ from lp_agent.types import (
     ChoiceAnswer,
     ChoiceQuestion,
     CompletedOutcome,
+    CorpusDocument,
     FailedOutcome,
-    FunctionCallOutput,
-    ModelMessage,
-    ModelRequest,
     OutcomeEvent,
     PublicError,
     QuestionEvent,
@@ -29,7 +27,6 @@ from lp_agent.types import (
     SourceReference,
     StatusEvent,
     TextEvent,
-    ToolCall,
     ToolEvent,
 )
 
@@ -73,6 +70,13 @@ def test_invalid_budgets_are_rejected(limits):
 
 def test_disabling_restarts_and_fractional_time_are_supported():
     assert RunLimits(max_restarts=0, max_active_seconds=0.5).max_restarts == 0
+
+
+def test_timeout_default_matches_explicit_value_in_memory_and_json():
+    default = RunLimits()
+    explicit = RunLimits(max_active_seconds=300.0)
+    assert type(default.max_active_seconds) is float
+    assert default.model_dump_json() == explicit.model_dump_json()
 
 
 def test_partial_scope_is_distinct_from_execution_scope():
@@ -193,27 +197,27 @@ def test_contract_rejects_undeclared_provider_fields():
         RunRequest(message="Hello", provider_response={"id": "raw"})
 
 
-def test_model_context_and_search_provenance_are_portable():
-    call = ToolCall(
-        call_id="call-1", name="search", arguments='{"query":"help"}'
-    )
-    request = ModelRequest(
-        input=(
-            ModelMessage(role="user", content="Help"),
-            call,
-            FunctionCallOutput(call_id="call-1", output="Relevant text"),
-        )
-    )
-    assert (
-        ModelRequest.model_validate_json(request.model_dump_json()) == request
-    )
+@pytest.mark.parametrize("kind", ["corpus", "document"])
+def test_search_hits_preserve_scores_and_provenance(kind):
     hit = SearchHit(
         content="Relevant text",
         score=2.5,
         source=SourceReference(
-            source_id="source-1", kind="corpus", title="Example court guide"
+            source_id="source-1", kind=kind, title="Example guide"
         ),
     )
     assert SearchHit.model_validate_json(hit.model_dump_json()) == hit
-    with pytest.raises(ValidationError):
-        ModelMessage(role="tool", content="Unmatched output")
+
+
+def test_corpus_documents_preserve_content_and_provenance_without_scores():
+    document = CorpusDocument(
+        content="Court guidance",
+        source=SourceReference(
+            source_id="source-1", kind="corpus", title="Example court guide"
+        ),
+    )
+    assert (
+        CorpusDocument.model_validate_json(document.model_dump_json())
+        == document
+    )
+    assert "score" not in document.model_dump()

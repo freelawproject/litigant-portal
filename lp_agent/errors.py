@@ -1,5 +1,5 @@
 """
-Errors raised before a run or input is accepted.
+Caller-safe validation, access, and operational errors.
 """
 
 from typing import Self
@@ -59,6 +59,15 @@ class AgentError(Exception):
     """
     Base exception for the public agent interface.
     """
+
+
+class AgentStorageError(AgentError):
+    """
+    A checkpoint could not be saved; no terminal outcome is guaranteed.
+    """
+
+    def __init__(self) -> None:
+        super().__init__("Unable to save the run state. Please try again.")
 
 
 class AgentValidationError(AgentError, ValueError):

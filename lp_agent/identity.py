@@ -3,21 +3,20 @@ Live service dependencies, separate from serializable contracts.
 """
 
 from dataclasses import dataclass, field
+from pathlib import Path
 
 from lp_agent.errors import AgentValidationError
 from lp_agent.interfaces import (
     ConversationStore,
     ModelClient,
     RunStore,
-    ScopeCatalog,
-    ScopedSearch,
     ScopeFactory,
 )
 from lp_agent.types import AccessContext, Scope, ScopeSelection
 
 
 @dataclass(frozen=True, kw_only=True)
-class ScopedEnvironment:
+class ResourceScope:
     """
     Services bound once to a verified identity, court, and topic.
     """
@@ -25,8 +24,8 @@ class ScopedEnvironment:
     access: AccessContext
     scope: Scope
     model: ModelClient
-    corpus: ScopedSearch
-    documents: ScopedSearch
+    judge: ModelClient | None = None
+    resource_root: Path | None = None
 
     def __post_init__(self) -> None:
         """
@@ -36,10 +35,12 @@ class ScopedEnvironment:
             raise AgentValidationError("access must be an AccessContext")
         if not isinstance(self.scope, Scope):
             raise AgentValidationError("scoped services require a full Scope")
+        if self.judge is None:
+            object.__setattr__(self, "judge", self.model)
 
 
 @dataclass(frozen=True, kw_only=True)
-class AgentEnvironment:
+class AgentIdentity:
     """
     Host-verified context and services for scope discovery and execution.
     """
@@ -47,7 +48,6 @@ class AgentEnvironment:
     access: AccessContext
     conversations: ConversationStore
     runs: RunStore
-    catalog: ScopeCatalog
     scope_factory: ScopeFactory
     scope: ScopeSelection = field(default_factory=ScopeSelection)
 

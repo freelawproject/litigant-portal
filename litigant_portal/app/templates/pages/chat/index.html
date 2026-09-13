@@ -85,15 +85,13 @@
             {% trans "New chat" %}
           </button>
           {# Briefcase drawer trigger — appears once the right panel collapses #}
-          {% if perms.app.manage_developers %}
-            <button type="button"
-                    x-on:click="openBriefcase"
-                    aria-label='{% trans "Briefcase" %}'
-                    title="{% trans "Briefcase" %}"
-                    class="lg:hidden flex-shrink-0 -mr-1 inline-flex items-center justify-center w-8 h-8 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
-              <c-atoms.icon name="briefcase" class="w-4.5 h-4.5" />
-            </button>
-          {% endif %}
+          <button type="button"
+                  x-on:click="openBriefcase"
+                  aria-label='{% trans "Briefcase" %}'
+                  title="{% trans "Briefcase" %}"
+                  class="lg:hidden flex-shrink-0 -mr-1 inline-flex items-center justify-center w-8 h-8 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+            <c-atoms.icon name="briefcase" class="w-4.5 h-4.5" />
+          </button>
         </div>
       </div>
       {# Messages #}
@@ -268,15 +266,13 @@
         </form>
       </div>
     </section>
-    {# Right panel — briefcase (live agent state for now; collapses into the briefcase drawer below lg) #}
-    {% if perms.app.manage_developers %}
-      <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-l border-greyscale-200 min-h-0">
-        <c-atoms.eyebrow icon="briefcase"
-                         label='{% trans "Briefcase" %}'
-                         class="px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0" />
-        {% include "pages/chat/partials/_agent_state.html" %}
-      </aside>
-    {% endif %}
+    {# Right panel — the briefcase (collapses into the briefcase drawer below lg) #}
+    <aside class="hidden lg:flex w-[clamp(280px,20vw,384px)] flex-shrink-0 flex-col border-l border-greyscale-200 min-h-0">
+      <c-atoms.eyebrow icon="briefcase"
+                       label='{% trans "Briefcase" %}'
+                       class="px-4 pt-4 pb-3 border-b border-greyscale-200 flex-shrink-0" />
+      <c-organisms.briefcase-panel :groups="briefcase_groups" show_agent_state />
+    </aside>
     {# History drawer — the collapsed left panel. A slide-over on tablet, full takeover on phones. #}
     <div x-show="historyOpen"
          x-cloak
@@ -324,34 +320,32 @@
          x-transition.opacity
          x-on:click="closeBriefcase"
          class="lg:hidden absolute inset-0 z-30 bg-greyscale-900/30 backdrop-blur-sm"></div>
-    {% if perms.app.manage_developers %}
-      <aside x-show="briefcaseOpen"
-             x-cloak
-             x-on:keydown.escape.window="closeBriefcase"
-             x-transition:enter="transition-transform duration-300 ease-out"
-             x-transition:enter-start="translate-x-full"
-             x-transition:enter-end="translate-x-0"
-             x-transition:leave="transition-transform duration-200 ease-in"
-             x-transition:leave-start="translate-x-0"
-             x-transition:leave-end="translate-x-full"
-             role="dialog"
-             aria-modal="true"
-             aria-label='{% trans "Briefcase" %}'
-             class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
-        <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
-          <c-atoms.eyebrow icon="briefcase"
-                           label='{% trans "Briefcase" %}'
-                           class="min-w-0" />
-          <button type="button"
-                  x-on:click="closeBriefcase"
-                  aria-label='{% trans "Close" %}'
-                  class="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
-            <c-atoms.icon name="x-mark" class="w-4 h-4" />
-          </button>
-        </div>
-        {% include "pages/chat/partials/_agent_state.html" %}
-      </aside>
-    {% endif %}
+    <aside x-show="briefcaseOpen"
+           x-cloak
+           x-on:keydown.escape.window="closeBriefcase"
+           x-transition:enter="transition-transform duration-300 ease-out"
+           x-transition:enter-start="translate-x-full"
+           x-transition:enter-end="translate-x-0"
+           x-transition:leave="transition-transform duration-200 ease-in"
+           x-transition:leave-start="translate-x-0"
+           x-transition:leave-end="translate-x-full"
+           role="dialog"
+           aria-modal="true"
+           aria-label='{% trans "Briefcase" %}'
+           class="lg:hidden absolute inset-y-0 right-0 z-40 w-full sm:w-80 flex flex-col bg-greyscale-25 sm:border-l border-greyscale-200 sm:shadow-2xl">
+      <div class="flex items-center justify-between gap-2 pl-4 pr-3 py-2.5 border-b border-greyscale-200 flex-shrink-0">
+        <c-atoms.eyebrow icon="briefcase"
+                         label='{% trans "Briefcase" %}'
+                         class="min-w-0" />
+        <button type="button"
+                x-on:click="closeBriefcase"
+                aria-label='{% trans "Close" %}'
+                class="flex-shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md text-greyscale-500 hover:bg-greyscale-100 hover:text-greyscale-700 cursor-pointer transition-colors">
+          <c-atoms.icon name="x-mark" class="w-4 h-4" />
+        </button>
+      </div>
+      <c-organisms.briefcase-panel :groups="briefcase_groups" show_agent_state />
+    </aside>
     {# Delete confirmation modal #}
     <div x-show="confirmingDelete"
          x-cloak
