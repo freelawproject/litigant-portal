@@ -72,12 +72,18 @@ def _create(**kwargs):
     )
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_returns_the_resume_url(recorder):
     assert _create() == RESUME
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_calls_the_three_endpoints_in_order(recorder):
     _create()
     assert [(c["method"], c["url"]) for c in recorder.calls] == [
@@ -87,13 +93,19 @@ def test_calls_the_three_endpoints_in_order(recorder):
     ]
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_new_session_asks_for_the_interview_from_the_launch_url(recorder):
     _create()
     assert recorder.calls[0]["params"] == {"i": INTERVIEW}
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_variables_post_carries_the_session_and_skips_evaluation(recorder):
     _create()
     assert recorder.calls[1]["json"] == {
@@ -104,7 +116,10 @@ def test_variables_post_carries_the_session_and_skips_evaluation(recorder):
     }
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_resume_url_is_requested_one_time_and_expiring(recorder):
     _create()
     payload = recorder.calls[2]["json"]
@@ -112,14 +127,20 @@ def test_resume_url_is_requested_one_time_and_expiring(recorder):
     assert 0 < payload["expire"] <= 3600
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_api_key_travels_in_a_header_on_every_call(recorder):
     _create()
     assert all(c["headers"]["X-API-Key"] == "k" for c in recorder.calls)
     assert not any("k" in c["url"] for c in recorder.calls)
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_no_answer_value_reaches_a_url(recorder):
     # The whole point of POSTing the payload: PII stays out of URLs, which
     # land in access logs, browser history and Referer headers.
@@ -130,7 +151,10 @@ def test_no_answer_value_reaches_a_url(recorder):
             assert value not in str(call.get("params") or "")
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_every_call_sets_a_timeout(recorder):
     _create()
     assert all(c["timeout"] for c in recorder.calls)
@@ -155,6 +179,18 @@ def test_missing_api_key_raises_without_calling_out(recorder):
 
 
 @override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+def test_a_key_without_a_base_url_raises_without_calling_out(recorder):
+    # Falling back to the host the corpus names would POST the key and the
+    # litigant's answers to whatever that host is (QA, for both live corpora).
+    with pytest.raises(DocassembleError):
+        _create()
+    assert recorder.calls == []
+
+
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_launch_url_without_an_interview_reference_raises(recorder):
     with pytest.raises(DocassembleError):
         _create(interview_url="https://qa.example.gov/interview/interview")
@@ -171,14 +207,20 @@ def test_launch_url_without_an_interview_reference_raises(recorder):
     ],
     ids=["forbidden", "server-error", "timeout", "connection-refused"],
 )
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_a_failed_first_call_raises_docassemble_error(monkeypatch, failure):
     monkeypatch.setattr(requests, "request", _Recorder(failure))
     with pytest.raises(DocassembleError):
         _create()
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_a_failed_variables_post_raises_docassemble_error(monkeypatch):
     monkeypatch.setattr(
         requests,
@@ -199,7 +241,10 @@ def test_a_failed_variables_post_raises_docassemble_error(monkeypatch):
 # client deletes it on the way out.
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_a_failed_variables_post_deletes_the_orphaned_session(monkeypatch):
     recorder = _Recorder(
         _Response({"session": "sess-1"}),
@@ -215,7 +260,10 @@ def test_a_failed_variables_post_deletes_the_orphaned_session(monkeypatch):
     assert cleanup["params"] == {"i": INTERVIEW, "session": "sess-1"}
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_a_failed_resume_url_deletes_the_orphaned_session(monkeypatch):
     recorder = _Recorder(
         _Response({"session": "sess-1"}),
@@ -229,7 +277,10 @@ def test_a_failed_resume_url_deletes_the_orphaned_session(monkeypatch):
     assert recorder.calls[-1]["method"] == "DELETE"
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_a_failed_cleanup_does_not_mask_the_original_error(monkeypatch):
     monkeypatch.setattr(
         requests,
@@ -245,20 +296,29 @@ def test_a_failed_cleanup_does_not_mask_the_original_error(monkeypatch):
         _create()
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_the_happy_path_never_deletes(recorder):
     _create()
     assert not any(c["method"] == "DELETE" for c in recorder.calls)
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_a_session_response_without_a_session_raises(monkeypatch):
     monkeypatch.setattr(requests, "request", _Recorder(_Response({})))
     with pytest.raises(DocassembleError):
         _create()
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_a_resume_response_without_a_url_raises(monkeypatch):
     monkeypatch.setattr(
         requests,
@@ -274,7 +334,10 @@ def test_a_resume_response_without_a_url_raises(monkeypatch):
         _create()
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_a_bare_string_resume_response_is_accepted(monkeypatch):
     monkeypatch.setattr(
         requests,
@@ -288,7 +351,10 @@ def test_a_bare_string_resume_response_is_accepted(monkeypatch):
     assert _create() == RESUME
 
 
-@override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
+@override_settings(
+    DOCASSEMBLE_API_KEY="k",
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
+)
 def test_an_empty_variables_dict_still_creates_a_session(recorder):
     assert _create(variables={}) == RESUME
     assert recorder.calls[1]["json"]["variables"] == {}
@@ -316,7 +382,7 @@ def test_resume_url_is_rewritten_onto_the_public_origin(monkeypatch):
 
 @override_settings(
     DOCASSEMBLE_API_KEY="k",
-    DOCASSEMBLE_BASE_URL=None,
+    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
     DOCASSEMBLE_PUBLIC_URL=None,
 )
 def test_resume_url_is_left_alone_without_a_public_origin(recorder):

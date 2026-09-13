@@ -98,11 +98,17 @@ def _target(interview_url: str) -> tuple[str, str]:
     references = parse_qs(parts.query).get("i", [])
     if not references:
         raise DocassembleError(f"No ?i= interview in {interview_url!r}")
-    # The API sits beside the launch route, so drop that last segment: QA's
-    # /interview/interview leaves the /interview/ path prefix in place.
-    root = settings.DOCASSEMBLE_BASE_URL or (
-        f"{parts.scheme}://{parts.netloc}{parts.path.rsplit('/', 1)[0]}"
-    )
+    root = settings.DOCASSEMBLE_BASE_URL
+    if not root and settings.DOCASSEMBLE_API_KEY:
+        # Falling back to the host the corpus names would POST the key and
+        # the litigant's answers to whatever host that is.
+        raise DocassembleError(
+            "DOCASSEMBLE_API_KEY is set but DOCASSEMBLE_BASE_URL is not"
+        )
+    if not root:
+        # The API sits beside the launch route, so drop that last segment:
+        # QA's /interview/interview leaves the /interview/ path prefix.
+        root = f"{parts.scheme}://{parts.netloc}{parts.path.rsplit('/', 1)[0]}"
     return root.rstrip("/"), references[0]
 
 
