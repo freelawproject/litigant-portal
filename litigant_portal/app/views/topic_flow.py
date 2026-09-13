@@ -80,6 +80,11 @@ def topic_flow_interview(request, court, topic, role):
         mapping=mapping,
         answers=topic_flow_reviewed_answers(request, list(mapping)),
     )
+    if not variables:
+        # Nothing to prefill: a session would cost three API calls and an
+        # unencrypted multi_user session holding nothing, for the same
+        # experience the plain link gives.
+        return redirect(interview_url)
     try:
         resume_url = docassemble_session_create(
             interview_url=interview_url, variables=variables

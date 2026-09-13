@@ -353,15 +353,6 @@ def test_a_bare_string_resume_response_is_accepted(monkeypatch):
 
 @override_settings(
     DOCASSEMBLE_API_KEY="k",
-    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
-)
-def test_an_empty_variables_dict_still_creates_a_session(recorder):
-    assert _create(variables={}) == RESUME
-    assert recorder.calls[1]["json"]["variables"] == {}
-
-
-@override_settings(
-    DOCASSEMBLE_API_KEY="k",
     DOCASSEMBLE_BASE_URL="http://docassemble",
     DOCASSEMBLE_PUBLIC_URL="https://qa.example.gov/interview",
 )

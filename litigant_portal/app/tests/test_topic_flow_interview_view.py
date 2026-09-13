@@ -141,6 +141,7 @@ def test_post_redirects_to_the_one_time_resume_url(
     client, monkeypatch, docassemble, variables
 ):
     _flow(monkeypatch)
+    _store(client, "first_name", "Sandra", reviewed=True)
     response = client.post(URL)
     assert response.status_code == 302
     assert response["Location"] == RESUME
@@ -171,14 +172,15 @@ def test_an_unanswered_question_is_left_for_the_interview_to_ask(
 
 
 @pytest.mark.django_db
-def test_a_fresh_guest_hands_over_an_empty_payload(
+def test_a_fresh_guest_goes_straight_to_the_plain_interview(
     client, monkeypatch, docassemble
 ):
-    # Equal to today's plain link-out, and no identity row minted for a
-    # visitor who answered nothing.
+    # No session for an empty payload: it would cost three API calls and an
+    # unencrypted multi_user session holding nothing, for the same experience.
+    # Also: no identity row minted for a visitor who answered nothing.
     _flow(monkeypatch)
-    assert client.post(URL)["Location"] == RESUME
-    assert docassemble.calls[0]["variables"] == {}
+    assert client.post(URL)["Location"] == INTERVIEW
+    assert docassemble.calls == []
     assert UserIdentity.objects.count() == 0
 
 
@@ -198,18 +200,19 @@ def test_the_launch_url_from_the_corpus_is_what_gets_prefilled(
     client, monkeypatch, docassemble, variables
 ):
     _flow(monkeypatch)
+    _store(client, "first_name", "Sandra", reviewed=True)
     client.post(URL)
     assert docassemble.calls[0]["interview_url"] == INTERVIEW
 
 
 @pytest.mark.django_db
-def test_an_unmapped_flow_still_hands_off_with_no_variables(
+def test_an_unmapped_flow_links_out_without_a_session(
     client, monkeypatch, docassemble, variables
 ):
     _flow(monkeypatch, mapping={})
     _store(client, "first_name", "Sandra", reviewed=True)
-    client.post(URL)
-    assert docassemble.calls[0]["variables"] == {}
+    assert client.post(URL)["Location"] == INTERVIEW
+    assert docassemble.calls == []
 
 
 # --- fallback (needs DB) ----------------------------------------------------
@@ -227,6 +230,7 @@ def test_a_failed_session_falls_back_to_the_plain_interview_link(
         _Client(error=DocassembleError("no key")),
     )
     _flow(monkeypatch)
+    _store(client, "first_name", "Sandra", reviewed=True)
     response = client.post(URL)
     assert response.status_code == 302
     assert response["Location"] == INTERVIEW
@@ -244,6 +248,7 @@ def test_an_unexpected_client_error_is_not_swallowed(
         _Client(error=TypeError("bug")),
     )
     _flow(monkeypatch)
+    _store(client, "first_name", "Sandra", reviewed=True)
     with pytest.raises(TypeError):
         client.post(URL)
 
@@ -321,8 +326,8 @@ def test_an_unreviewed_answer_is_never_sent(
 ):
     _flow(monkeypatch)
     _store(client, "first_name", "Sandra", reviewed=False)
-    client.post(URL)
-    assert docassemble.calls[0]["variables"] == {}
+    assert client.post(URL)["Location"] == INTERVIEW
+    assert docassemble.calls == []
 
 
 @pytest.mark.django_db
@@ -343,8 +348,8 @@ def test_an_assistant_overwrite_drops_a_confirmed_answer_again(
     _flow(monkeypatch)
     _store(client, "first_name", "Sandra", reviewed=True)
     _store(client, "first_name", "Alex", reviewed=False)
-    client.post(URL)
-    assert docassemble.calls[0]["variables"] == {}
+    assert client.post(URL)["Location"] == INTERVIEW
+    assert docassemble.calls == []
 
 
 @pytest.mark.django_db
