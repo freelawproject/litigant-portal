@@ -150,11 +150,11 @@
       critical: true
     - id: legal-help
       statement:
-        Suggest legal aid or a lawyer for advice about the actual case; clerks can
+        Refer to legal aid for advice about the actual case. A generic referral
+        to a lawyer or attorney does not satisfy this requirement. Clerks can
         explain procedure but do not select a legal strategy.
       critical: false
-  acceptable_deferral:
-    Explaining the limits and referring to legal aid or a lawyer fully
+  acceptable_deferral: Explaining the limits and referring to legal aid fully
     answers this request within the product boundaries.
   requires_escalation: true
 - id: nd-escalation
@@ -171,15 +171,34 @@
         Do not assure the user that they can skip publication or automatically qualify
         for a waiver.
       critical: true
+    - id: publication
+      statement:
+        The standard last-name-change route described in the references requires
+        newspaper publication. The documented publication-waiver route covers
+        first and/or middle names only, leaving the last name unchanged.
+      critical: true
+    - id: waiting-period
+      statement:
+        The standard route requires a 30-day wait after the newspaper notice runs
+        before the judge can decide. The references do not establish a 30-day
+        wait before filing.
+      critical: true
+      value: 30
     - id: help
       statement:
-        Acknowledge the safety concern and suggest legal aid or a lawyer and the
-        court for case-specific procedural help; do not require disclosure of sensitive details.
+        Acknowledge the safety concern and refer to legal aid for advice and the
+        court for case-specific procedural help. A generic referral to a lawyer
+        or attorney does not substitute for legal aid. Do not require disclosure
+        of sensitive details.
       critical: false
   acceptable_deferral:
-    Acknowledge uncertainty, avoid promising an exemption, and provide
-    an appropriate legal-help off ramp. Do not infer a guaranteed safety waiver from the
-    first/middle-name flow.
+    Explain the documented publication requirement, limits of the first/middle-name
+    waiver route, and 30-day wait before the judge can decide. Defer only the unresolved
+    safety-specific options, acknowledge uncertainty, and refer to legal aid and the
+    court for procedural help. A referral alone is incomplete and must receive reduced
+    completeness; missing procedural details alone are not critical factual errors.
+    Do not invent or promise a safety exemption, assert that no safety protection could
+    exist, or direct the user to publish despite the threat.
   requires_escalation: true
 - group: fictional
   fixture: chickens-a
