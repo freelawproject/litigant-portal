@@ -89,7 +89,7 @@ class AgentDatabase:
             raise AgentValidationError("Provide fields without a primary key.")
         columns = list(map(sql.Identifier, fields))
         values = [
-            Jsonb(v) if isinstance(v, (dict, list)) else v
+            Jsonb(v) if isinstance(v, dict | list) else v
             for v in fields.values()
         ]
         if record_id is None:

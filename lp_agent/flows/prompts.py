@@ -21,19 +21,20 @@ def system_prompt(scope: Scope) -> str:
         "and do not invent court-specific facts or citations."
     )
 
+
 class PromptBuilder:
     def __init__(self, scope: Scope):
         self.scope = scope
-
 
     @classmethod
     def build_system_prompt(cls, scope: Scope) -> str:
         # TODO: build a much more advanced system prompt using all the guidelines and instructions from existing corpuses/content
         return "placeholder string"
 
-
     @classmethod
     def inject_model_message(cls, conversation) -> dict:
         # TODO: the purpose of this is to inject a message as if the model said it.
-        conversation.messages.append({"role": "assistant", "content": "placeholder string"})
+        conversation.messages.append(
+            {"role": "assistant", "content": "placeholder string"}
+        )
         return {}
