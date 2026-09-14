@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 from pydantic import JsonValue
 
-from lp_agent.errors import AgentAccessError, AgentValidationError
 from lp_agent.types import (
     CorpusDocument,
     DatabaseCorpus,
@@ -38,91 +37,15 @@ async def get_database_corpus(
     silently upgrade a running conversation. Withdrawals take effect on reads.
     The consuming flow assembles prompts and adds this material to ModelRequest.
     """
-    from psycopg.types.json import Jsonb
-
-    conn = db.connection
-    async with conn.transaction():
-        run = await db.run(run_id)
-        conversation = await db.conversation(str(run["conversation_id"]))
-        if (court, topic) != (
-            conversation["court"],
-            conversation["topic"],
-        ) or conversation["matter_id"] is None:
-            raise AgentValidationError(
-                "Bind this run to a matter with the requested court and topic."
-            )
-        scope = await (
-            await conn.execute(
-                """
-            SELECT ct.id FROM public.agent_court_topic ct
-            JOIN public.agent_court c ON c.id = ct.court_id
-            JOIN public.agent_topic t ON t.id = ct.topic_id
-            WHERE ct.id = %s AND ct.enabled AND c.enabled AND t.enabled
-        """,
-                (conversation["court_topic_id"],),
-            )
-        ).fetchone()
-        if scope is None:
-            raise AgentAccessError("Court/topic is unavailable.")
-        # One statement gives the manifest, configuration and policy the same
-        # PostgreSQL snapshot, including when called inside an outer transaction.
-        await conn.execute(
-            """
-            WITH selection AS (
-                SELECT r.id,
-                    jsonb_build_object('court', to_jsonb(court), 'topic', to_jsonb(topic),
-                        'settings', court.config || ct.config) AS config,
-                    u.recall_limits || jsonb_build_object('enabled', coalesce(u.recall_enabled, true)) AS recall,
-                    jsonb_build_object(
-                        'documents', coalesce((
-                            SELECT jsonb_object_agg(base_id::text, id::text) FROM (
-                                SELECT DISTINCT ON (base.id) base.id AS base_id, d.id
-                                FROM public.agent_corpus_document cd
-                                JOIN public.agent_document base ON base.id = cd.document_id
-                                JOIN public.agent_document d ON d.key = base.key AND d.owner_court_id = base.owner_court_id
-                                WHERE cd.court_topic_id = ct.id AND cd.enabled AND d.state = 'published'
-                                    AND d.storage_state = 'available' AND d.deleted_at IS NULL
-                                ORDER BY base.id, d.version DESC
-                            ) documents
-                        ), '{}'::jsonb),
-                        'procedures', coalesce((
-                            SELECT jsonb_object_agg(base_id::text, id::text) FROM (
-                                SELECT DISTINCT ON (base.id) base.id AS base_id, p.id
-                                FROM public.agent_procedure base JOIN public.agent_procedure p
-                                    ON p.court_topic_id = base.court_topic_id AND p.slug = base.slug
-                                WHERE base.court_topic_id = ct.id AND base.version = 1 AND p.state = 'published'
-                                ORDER BY base.id, p.version DESC
-                            ) procedures
-                        ), '{}'::jsonb),
-                        'prompts', coalesce((
-                            SELECT jsonb_object_agg(base.id::text, latest.id::text)
-                            FROM public.agent_prompt base JOIN (
-                                SELECT DISTINCT ON (key) id, key, metadata FROM public.agent_prompt
-                                WHERE key = ANY(%s) AND state = 'published' ORDER BY key, version DESC
-                            ) latest USING (key)
-                            WHERE base.version = 1 AND latest.metadata @> %s
-                        ), '{}'::jsonb)
-                    ) AS manifest
-                FROM public.agent_run r JOIN public.agent_conversation c ON c.id = r.conversation_id
-                JOIN public.agent_user u ON u.user_id = c.user_id
-                JOIN public.agent_court_topic ct ON ct.id = c.court_topic_id
-                JOIN public.agent_court court ON court.id = ct.court_id
-                JOIN public.agent_topic topic ON topic.id = ct.topic_id
-                WHERE r.id = %s AND r.context_selected_at IS NULL
-            )
-            UPDATE public.agent_run r SET context_court_topic_id = %s, context_format_version = 2,
-                context_selected_at = now(), resolved_config = s.config, recall_policy_snapshot = s.recall,
-                manifest = s.manifest, manifest_sha256 = encode(sha256(convert_to(s.manifest::text, 'UTF8')), 'hex')
-            FROM selection s WHERE r.id = s.id AND r.context_selected_at IS NULL
-        """,
-            (
-                list(prompt_keys),
-                Jsonb(prompt_metadata or {}),
-                run_id,
-                scope["id"],
-            ),
+    async with db.transaction():
+        run = await db.pin_run_context(
+            court,
+            topic,
+            run_id=run_id,
+            prompt_keys=prompt_keys,
+            prompt_metadata=prompt_metadata,
         )
-        run = await db.run(run_id)
+        conn = db.connection
         manifest = run["manifest"]
         procedures = await (
             await conn.execute(
@@ -155,7 +78,10 @@ async def get_database_corpus(
                     WHERE cd.court_topic_id = %s AND cd.enabled AND base.key = d.key AND base.owner_court_id = d.owner_court_id)
             ORDER BY d.key
         """,
-                (list(manifest["documents"].values()), scope["id"]),
+                (
+                    list(manifest["documents"].values()),
+                    run["context_court_topic_id"],
+                ),
             )
         ).fetchall()
         prompts = await (
@@ -166,7 +92,7 @@ async def get_database_corpus(
         ).fetchall()
         return DatabaseCorpus(
             scope=Scope(court=court, topic=topic),
-            court_topic_id=str(scope["id"]),
+            court_topic_id=str(run["context_court_topic_id"]),
             config=run["resolved_config"],
             manifest=manifest,
             procedures=tuple(row["procedure"] for row in procedures),

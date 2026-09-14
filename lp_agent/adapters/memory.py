@@ -122,7 +122,7 @@ class MemoryRunStore:
         checkpoint: RunCheckpoint,
         status: RunStatus,
         outcome: RunOutcome | None = None,
-    ) -> None:
+    ) -> RunCheckpoint:
         current = await self.status(access=access, run_id=status.run_id)
         for reference in (checkpoint, status, outcome):
             if reference is not None and (
@@ -136,3 +136,4 @@ class MemoryRunStore:
         self._statuses[status.run_id] = status
         if outcome is not None:
             self._outcomes[status.run_id] = outcome
+        return checkpoint.model_copy(deep=True)

@@ -309,8 +309,8 @@ class RunCheckpoint(RunReference):
 
     version: Literal[1] = 1
     data: dict[str, JsonValue]
-    # Database updates carry the version returned by checkpoint(). None means
-    # the first write; this is independent of the checkpoint payload format.
+    # Carry the storage version returned by checkpoint() or commit_checkpoint().
+    # None is an initial DB write or an unversioned store, not a payload version.
     storage_version: Annotated[int, Field(ge=0)] | None = None
 
 

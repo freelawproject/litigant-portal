@@ -8,17 +8,20 @@ from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from hashlib import sha256
 from pathlib import Path
+from secrets import token_urlsafe
 from uuid import uuid4
 
 import pytest
 from django.conf import settings
 from jsonschema import ValidationError as SchemaValidationError
 from psycopg import AsyncConnection, Connection, sql
-from psycopg.conninfo import make_conninfo
+from psycopg.conninfo import conninfo_to_dict, make_conninfo
 from psycopg.errors import CheckViolation, InsufficientPrivilege
-from psycopg.rows import DictRow, dict_row
+from psycopg.rows import dict_row, tuple_row
 from pydantic import ValidationError
 
+from lp_agent import LPAgent
+from lp_agent.adapters.connections import agent_connection, lookup_connection
 from lp_agent.adapters.db import (
     AgentDatabase,
     DatabaseConversationStore,
@@ -26,7 +29,13 @@ from lp_agent.adapters.db import (
 )
 from lp_agent.corpus.db_search import get_database_corpus
 from lp_agent.errors import AgentAccessError, AgentValidationError
+from lp_agent.identity import AgentIdentity
 from lp_agent.interfaces import ConversationStore, RunStore
+from lp_agent.tests.helpers import (
+    RecordingScopeFactory,
+    ScriptedModel,
+    answer_item,
+)
 from lp_agent.tools.agent_search import SEARCH_TOOLS, AgentSearch
 from lp_agent.types import (
     AccessContext,
@@ -34,6 +43,7 @@ from lp_agent.types import (
     AgentSearchQuery,
     AgentSourceQuery,
     CompletedOutcome,
+    ModelFinished,
     RunCheckpoint,
     RunRequest,
     RunStatus,
@@ -43,9 +53,9 @@ from lp_agent.utils.audit import InstructionArtifact
 
 
 @pytest.fixture(scope="module")
-def dsn() -> Iterator[str]:
+def database_dsns() -> Iterator[dict[str, str]]:
     """
-    Install the experimental schema in a temporary database on the test server.
+    Install a temporary database and dedicated writer and lookup login roles.
     """
     config = settings.DATABASES["default"]
     server = make_conninfo(
@@ -57,6 +67,8 @@ def dsn() -> Iterator[str]:
     )
     name = "test_agent_" + uuid4().hex
     test_dsn = make_conninfo(server, dbname=name)
+    dsns = {"admin": test_dsn}
+    roles = []
     fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "agent_db"
     with Connection.connect(
         server, dbname="postgres", autocommit=True
@@ -72,13 +84,44 @@ def dsn() -> Iterator[str]:
                     "agent_search.sql",
                 ):
                     connection.execute((fixtures / filename).read_bytes())
-            yield test_dsn
+                for permission in ("crud", "lookup"):
+                    role = "test_agent_" + permission + "_" + uuid4().hex
+                    password = token_urlsafe(32)
+                    roles.append(role)
+                    connection.execute(
+                        sql.SQL(
+                            "CREATE ROLE {} LOGIN INHERIT NOSUPERUSER NOCREATEDB "
+                            "NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD {} IN ROLE {}"
+                        ).format(
+                            sql.Identifier(role),
+                            sql.Literal(password),
+                            sql.Identifier("agent_dev_" + permission),
+                        )
+                    )
+                    dsns[permission] = make_conninfo(
+                        test_dsn, user=role, password=password
+                    )
+            yield dsns
         finally:
             admin.execute(
                 sql.SQL("DROP DATABASE {} WITH (FORCE)").format(
                     sql.Identifier(name)
                 )
             )
+            for role in roles:
+                admin.execute(
+                    sql.SQL("DROP ROLE IF EXISTS {}").format(
+                        sql.Identifier(role)
+                    )
+                )
+
+
+@pytest.fixture(scope="module")
+def dsn(database_dsns: dict[str, str]) -> str:
+    """
+    Supply only the writer login to ordinary database surface tests.
+    """
+    return database_dsns["crud"]
 
 
 @asynccontextmanager
@@ -88,10 +131,7 @@ async def database(
     """
     Use a real connection and commit inside the fixture's temporary database.
     """
-    async with await AsyncConnection[DictRow].connect(
-        dsn, row_factory=dict_row, autocommit=True
-    ) as conn:
-        await conn.execute("SET ROLE agent_dev_crud")
+    async with agent_connection(dsn) as conn:
         db = AgentDatabase(
             conn, AccessContext(identity_id=identity or uuid4().hex)
         )
@@ -495,7 +535,13 @@ def test_owned_records_and_store_contracts(dsn: str) -> None:
 def test_message_ordering_retries_and_checkpoint_conflicts(dsn: str) -> None:
     async def scenario() -> None:
         async with database(dsn) as db:
-            ids = await fixture_scope(db, material=False)
+            ids = await fixture_scope(db)
+            await db.pin_run_context(
+                ids["court"], ids["topic"], run_id=ids["run"]
+            )
+            procedure = await db.follow_procedure(
+                ids["matter"], ids["procedure"]
+            )
             initial = RunCheckpoint(
                 run_id=ids["run"],
                 conversation_id=ids["conversation"],
@@ -506,21 +552,39 @@ def test_message_ordering_retries_and_checkpoint_conflicts(dsn: str) -> None:
                 conversation_id=ids["conversation"],
                 state="running",
             )
-            await db.commit_checkpoint(initial, status)
+            saved = await db.commit_checkpoint(initial, status)
             store: RunStore = DatabaseRunStore(db.connection)
             checkpoint = await store.checkpoint(
                 access=db.access, run_id=ids["run"]
             )
-            assert checkpoint is not None
+            assert checkpoint == saved and saved.storage_version == 1
 
             async def writer(number: int) -> bool:
                 async with database(dsn, db.access.identity_id) as writer_db:
                     try:
-                        async with writer_db.connection.transaction():
+                        async with writer_db.transaction():
                             await writer_db.append_item(
                                 ids["conversation"],
                                 key=str(number),
                                 payload={"text": str(number)},
+                            )
+                            step = await writer_db.save_step(
+                                ids["run"],
+                                key=str(number),
+                                kind="check",
+                                input={"writer": number},
+                            )
+                            await writer_db.record_fact(
+                                ids["definition"],
+                                True,
+                                matter_id=ids["matter"],
+                            )
+                            await writer_db.set_phase_progress(
+                                str(procedure["id"]),
+                                ids["phase"],
+                                str(step["id"]),
+                                "active",
+                                {"writer": number},
                             )
                             await writer_db.commit_checkpoint(
                                 checkpoint.model_copy(
@@ -538,6 +602,23 @@ def test_message_ordering_retries_and_checkpoint_conflicts(dsn: str) -> None:
             ]
             items = await db.conversation_items(ids["conversation"])
             assert len(items) == 1 and items[0]["sequence"] == 1
+            assert len(await db.facts(ids["matter"])) == 1
+            steps = await (
+                await db.connection.execute(
+                    "SELECT * FROM public.agent_run_step WHERE run_id = %s",
+                    (ids["run"],),
+                )
+            ).fetchall()
+            assert len(steps) == 1
+            assert steps[0]["operation_key"] == items[0]["deduplication_key"]
+            progress = await (
+                await db.connection.execute(
+                    "SELECT * FROM public.agent_phase_progress WHERE matter_procedure_id = %s",
+                    (procedure["id"],),
+                )
+            ).fetchall()
+            assert len(progress) == 1
+            assert progress[0]["last_run_step_id"] == steps[0]["id"]
             repeated = await db.append_item(
                 ids["conversation"],
                 key=items[0]["deduplication_key"],
@@ -621,7 +702,9 @@ def test_document_index_replacement_rolls_back(dsn: str) -> None:
 
 
 @pytest.mark.postgres
-def test_stored_search_permissions_facts_and_progress(dsn: str) -> None:
+def test_stored_search_permissions_facts_and_progress(
+    dsn: str, database_dsns: dict[str, str]
+) -> None:
     async def scenario() -> None:
         async with database(dsn) as db:
             ids = await fixture_scope(db)
@@ -707,14 +790,13 @@ def test_stored_search_permissions_facts_and_progress(dsn: str) -> None:
                 "active",
                 {"reason": "Fixture"},
             )
-            search = AgentSearch(
-                db.connection,
-                access=db.access,
-                run_id=ids["run"],
-                host_policy={},
-            )
-            await db.connection.execute("SET ROLE agent_dev_lookup")
-            try:
+            async with lookup_connection(database_dsns["lookup"]) as conn:
+                search = AgentSearch(
+                    conn,
+                    access=db.access,
+                    run_id=ids["run"],
+                    host_policy={},
+                )
                 for category in (
                     "court_corpus",
                     "user_documents",
@@ -759,19 +841,23 @@ def test_stored_search_permissions_facts_and_progress(dsn: str) -> None:
                         category="court_corpus", query="evidence", limit=10
                     )
                 )
-                with pytest.raises(InsufficientPrivilege):
-                    async with db.connection.transaction():
-                        await db.connection.execute(
-                            "SELECT * FROM public.agent_prompt"
+                await conn.execute("RESET ROLE")
+                for role in ("agent_dev_crud", "agent_dev_reader"):
+                    with pytest.raises(InsufficientPrivilege):
+                        await conn.execute(
+                            sql.SQL("SET ROLE {}").format(sql.Identifier(role))
                         )
                 with pytest.raises(InsufficientPrivilege):
-                    async with db.connection.transaction():
-                        await db.connection.execute(
+                    async with conn.transaction():
+                        await conn.execute("SELECT * FROM public.agent_prompt")
+                with pytest.raises(InsufficientPrivilege):
+                    async with conn.transaction():
+                        await conn.execute(
                             "SELECT public.agent_lookup_context(%s, %s, '{}')",
                             (db.access.identity_id, ids["run"]),
                         )
                 denied = AgentSearch(
-                    db.connection,
+                    conn,
                     access=AccessContext(identity_id="wrong-owner"),
                     run_id=ids["run"],
                     host_policy={},
@@ -785,7 +871,7 @@ def test_stored_search_permissions_facts_and_progress(dsn: str) -> None:
                     == ()
                 )
                 restricted = AgentSearch(
-                    db.connection,
+                    conn,
                     access=db.access,
                     run_id=ids["run"],
                     host_policy={"enabled": False},
@@ -798,8 +884,157 @@ def test_stored_search_permissions_facts_and_progress(dsn: str) -> None:
                     )
                     == ()
                 )
-            finally:
-                await db.connection.execute("SET ROLE agent_dev_crud")
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.postgres
+def test_connection_configuration_and_cleanup(
+    dsn: str, database_dsns: dict[str, str]
+) -> None:
+    async def scenario() -> None:
+        for factory, connection_dsn in (
+            (agent_connection, dsn),
+            (lookup_connection, database_dsns["lookup"]),
+        ):
+            async with factory(connection_dsn) as conn:
+                assert conn.autocommit and conn.row_factory is dict_row
+                assert await (
+                    await conn.execute("SELECT 1 AS value")
+                ).fetchone() == {"value": 1}
+            assert conn.closed
+            with pytest.raises(RuntimeError, match="Synthetic failure"):
+                async with factory(connection_dsn) as conn:
+                    raise RuntimeError("Synthetic failure")
+            assert conn.closed
+
+        access = AccessContext(identity_id="configuration-test")
+        for autocommit, row_factory in ((False, dict_row), (True, tuple_row)):
+            async with await AsyncConnection.connect(
+                dsn, autocommit=autocommit, row_factory=row_factory
+            ) as conn:
+                for construct in (
+                    lambda: AgentDatabase(conn, access),
+                    lambda: DatabaseConversationStore(conn),
+                    lambda: DatabaseRunStore(conn),
+                    lambda: AgentSearch(
+                        conn,
+                        access=access,
+                        run_id=str(uuid4()),
+                        host_policy={},
+                    ),
+                ):
+                    with pytest.raises(AgentValidationError, match="dict_row"):
+                        construct()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.postgres
+def test_lookup_rejects_privileged_logins_and_closes_connections(
+    database_dsns: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    opened = []
+    connect = AsyncConnection.connect
+
+    async def recording_connect(*args, **kwargs):
+        connection = await connect(*args, **kwargs)
+        opened.append(connection)
+        return connection
+
+    monkeypatch.setattr(AsyncConnection, "connect", recording_connect)
+
+    async def scenario() -> None:
+        for connection_dsn in (
+            database_dsns["crud"],
+            database_dsns["admin"],
+            make_conninfo(
+                database_dsns["admin"], options="-c role=agent_dev_lookup"
+            ),
+        ):
+            with pytest.raises(AgentValidationError, match="dedicated login"):
+                async with lookup_connection(connection_dsn):
+                    pytest.fail("Privileged lookup login was accepted")
+        assert len(opened) == 3 and all(conn.closed for conn in opened)
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize(
+    "grant,revoke",
+    [
+        (
+            "GRANT SELECT ON public.agent_prompt TO {}",
+            "REVOKE SELECT ON public.agent_prompt FROM {}",
+        ),
+        (
+            "GRANT EXECUTE ON FUNCTION public.agent_lookup_context(text, uuid, jsonb) TO {}",
+            "REVOKE EXECUTE ON FUNCTION public.agent_lookup_context(text, uuid, jsonb) FROM {}",
+        ),
+        (
+            "GRANT agent_dev_crud TO {} WITH INHERIT FALSE",
+            "REVOKE agent_dev_crud FROM {}",
+        ),
+    ],
+)
+def test_lookup_rejects_extra_privileges(
+    database_dsns: dict[str, str], grant: str, revoke: str
+) -> None:
+    login = sql.Identifier(conninfo_to_dict(database_dsns["lookup"])["user"])
+
+    async def scenario() -> None:
+        with pytest.raises(AgentValidationError, match="dedicated login"):
+            async with lookup_connection(database_dsns["lookup"]):
+                pytest.fail("Extra lookup privileges were accepted")
+
+    with Connection.connect(database_dsns["admin"], autocommit=True) as admin:
+        admin.execute(sql.SQL(grant).format(login))
+        try:
+            asyncio.run(scenario())
+        finally:
+            admin.execute(sql.SQL(revoke).format(login))
+
+
+@pytest.mark.postgres
+@pytest.mark.parametrize("terminal", ["completed", "failed", "cancelled"])
+def test_database_stores_persist_terminal_outcomes(
+    dsn: str, terminal: str
+) -> None:
+    async def scenario() -> None:
+        async with database(dsn) as db:
+            ids = await fixture_scope(db, material=False)
+            model = ScriptedModel(
+                [RuntimeError("Synthetic model failure")]
+                if terminal == "failed"
+                else [answer_item("Done"), ModelFinished(reason="stop")]
+            )
+            environment = AgentIdentity(
+                access=db.access,
+                scope=ScopeSelection(court=ids["court"], topic=ids["topic"]),
+                conversations=DatabaseConversationStore(db.connection),
+                runs=DatabaseRunStore(db.connection),
+                scope_factory=RecordingScopeFactory(model),
+            )
+            async with LPAgent(environment=environment) as agent:
+                run = await agent.run(message="Synthetic question")
+                if terminal == "cancelled":
+                    await run.cancel()
+                outcome = await run.result()
+                assert outcome.state == terminal
+                assert (await run.status()).state == terminal
+                events = [event async for event in run.events()]
+                assert events[-1].payload.outcome == outcome
+            assert (
+                await environment.runs.outcome(
+                    access=db.access, run_id=run.run_id
+                )
+                == outcome
+            )
+            checkpoint = await environment.runs.checkpoint(
+                access=db.access, run_id=run.run_id
+            )
+            assert checkpoint is not None and checkpoint.storage_version == 2
 
     asyncio.run(scenario())
 

@@ -1,8 +1,8 @@
 """
 Trusted operations on the experimental agent tables.
 
-Pass a psycopg AsyncConnection opened with dict_row and autocommit=True.
-The caller owns its lifetime and can group operations with conn.transaction().
+Use agent_connection() with host-supplied writer credentials. The caller owns
+its lifetime and can group operations with db.transaction().
 Catalog writes require a host-authorized author; private operations use the
 verified AccessContext. This adapter is never exposed as a model tool.
 """
@@ -14,11 +14,12 @@ from typing import LiteralString
 from uuid import UUID, uuid4
 
 from jsonschema import Draft202012Validator
-from psycopg import AsyncConnection, sql
+from psycopg import AsyncConnection, AsyncTransaction, sql
 from psycopg.rows import DictRow
 from psycopg.types.json import Jsonb
 from pydantic import JsonValue, TypeAdapter
 
+from lp_agent.adapters.connections import validate_connection
 from lp_agent.errors import AgentAccessError, AgentValidationError
 from lp_agent.types import (
     AccessContext,
@@ -59,8 +60,18 @@ class AgentDatabase:
     def __init__(
         self, connection: AsyncConnection[DictRow], access: AccessContext
     ):
+        validate_connection(connection)
         self.connection = connection
         self.access = access
+
+    def transaction(self) -> AsyncTransaction:
+        """
+        Group related writes and their checkpoint in one commit or rollback.
+
+        Let errors escape this block to roll back the whole unit of work.
+        Nested adapter transactions use savepoints on this same connection.
+        """
+        return self.connection.transaction()
 
     async def _one(
         self, query: LiteralString | sql.Composed, params: Sequence[object]
@@ -211,6 +222,105 @@ class AgentDatabase:
             ),
             (record_id,),
         )
+
+    async def pin_run_context(
+        self,
+        court: str,
+        topic: str,
+        *,
+        run_id: str,
+        prompt_keys: Sequence[str] = (),
+        prompt_metadata: dict[str, JsonValue] | None = None,
+    ) -> DictRow:
+        """
+        Validate scope and select a run's initial published revisions once.
+
+        The manifest, configuration and recall policy share one SQL snapshot.
+        Return the owned run with its original selection on subsequent calls.
+        """
+        conn = self.connection
+        async with self.transaction():
+            run = await self.run(run_id)
+            conversation = await self.conversation(str(run["conversation_id"]))
+            if (court, topic) != (
+                conversation["court"],
+                conversation["topic"],
+            ) or conversation["matter_id"] is None:
+                raise AgentValidationError(
+                    "Bind this run to a matter with the requested court and topic."
+                )
+            scope = await (
+                await conn.execute(
+                    """
+                SELECT ct.id FROM public.agent_court_topic ct
+                JOIN public.agent_court c ON c.id = ct.court_id
+                JOIN public.agent_topic t ON t.id = ct.topic_id
+                WHERE ct.id = %s AND ct.enabled AND c.enabled AND t.enabled
+            """,
+                    (conversation["court_topic_id"],),
+                )
+            ).fetchone()
+            if scope is None:
+                raise AgentAccessError("Court/topic is unavailable.")
+            # One statement gives the manifest, configuration and policy the same
+            # PostgreSQL snapshot, including when called inside an outer transaction.
+            await conn.execute(
+                """
+                WITH selection AS (
+                    SELECT r.id,
+                        jsonb_build_object('court', to_jsonb(court), 'topic', to_jsonb(topic),
+                            'settings', court.config || ct.config) AS config,
+                        u.recall_limits || jsonb_build_object('enabled', coalesce(u.recall_enabled, true)) AS recall,
+                        jsonb_build_object(
+                            'documents', coalesce((
+                                SELECT jsonb_object_agg(base_id::text, id::text) FROM (
+                                    SELECT DISTINCT ON (base.id) base.id AS base_id, d.id
+                                    FROM public.agent_corpus_document cd
+                                    JOIN public.agent_document base ON base.id = cd.document_id
+                                    JOIN public.agent_document d ON d.key = base.key AND d.owner_court_id = base.owner_court_id
+                                    WHERE cd.court_topic_id = ct.id AND cd.enabled AND d.state = 'published'
+                                        AND d.storage_state = 'available' AND d.deleted_at IS NULL
+                                    ORDER BY base.id, d.version DESC
+                                ) documents
+                            ), '{}'::jsonb),
+                            'procedures', coalesce((
+                                SELECT jsonb_object_agg(base_id::text, id::text) FROM (
+                                    SELECT DISTINCT ON (base.id) base.id AS base_id, p.id
+                                    FROM public.agent_procedure base JOIN public.agent_procedure p
+                                        ON p.court_topic_id = base.court_topic_id AND p.slug = base.slug
+                                    WHERE base.court_topic_id = ct.id AND base.version = 1 AND p.state = 'published'
+                                    ORDER BY base.id, p.version DESC
+                                ) procedures
+                            ), '{}'::jsonb),
+                            'prompts', coalesce((
+                                SELECT jsonb_object_agg(base.id::text, latest.id::text)
+                                FROM public.agent_prompt base JOIN (
+                                    SELECT DISTINCT ON (key) id, key, metadata FROM public.agent_prompt
+                                    WHERE key = ANY(%s) AND state = 'published' ORDER BY key, version DESC
+                                ) latest USING (key)
+                                WHERE base.version = 1 AND latest.metadata @> %s
+                            ), '{}'::jsonb)
+                        ) AS manifest
+                    FROM public.agent_run r JOIN public.agent_conversation c ON c.id = r.conversation_id
+                    JOIN public.agent_user u ON u.user_id = c.user_id
+                    JOIN public.agent_court_topic ct ON ct.id = c.court_topic_id
+                    JOIN public.agent_court court ON court.id = ct.court_id
+                    JOIN public.agent_topic topic ON topic.id = ct.topic_id
+                    WHERE r.id = %s AND r.context_selected_at IS NULL
+                )
+                UPDATE public.agent_run r SET context_court_topic_id = %s, context_format_version = 2,
+                    context_selected_at = now(), resolved_config = s.config, recall_policy_snapshot = s.recall,
+                    manifest = s.manifest, manifest_sha256 = encode(sha256(convert_to(s.manifest::text, 'UTF8')), 'hex')
+                FROM selection s WHERE r.id = s.id AND r.context_selected_at IS NULL
+            """,
+                (
+                    list(prompt_keys),
+                    Jsonb(prompt_metadata or {}),
+                    run_id,
+                    scope["id"],
+                ),
+            )
+            return await self.run(run_id)
 
     async def prompt_fragments(
         self, keys: Sequence[str], metadata: dict[str, JsonValue] | None = None
@@ -567,13 +677,14 @@ class AgentDatabase:
         checkpoint: RunCheckpoint,
         status: RunStatus,
         outcome: RunOutcome | None = None,
-    ) -> None:
+    ) -> RunCheckpoint:
         """
         Atomically update run state; an unversioned checkpoint is an initial write.
 
-        Carry storage_version from checkpoint() on later writes. Wrap this and
-        item/step/fact/progress writes in one connection.transaction() to commit
-        them together. A stale version rolls that transaction back.
+        Return the saved checkpoint with the version for the next write. Wrap
+        this and item/step/fact/progress writes in one db.transaction(); only
+        use the returned version after that outer transaction commits.
+        Let a stale-version error escape the block to roll back all its writes.
         """
         for reference in (status, outcome):
             if reference is not None and (
@@ -599,14 +710,14 @@ class AgentDatabase:
                 raise AgentValidationError(
                     "Run state changed; reload the checkpoint before writing."
                 )
-            await self.connection.execute(
+            saved = await self._one(
                 """
                 UPDATE public.agent_run SET state = %s, pending_question = %s,
                     outcome = %s, finished_at = CASE WHEN %s THEN now() ELSE NULL END,
                     checkpoint_sequence = checkpoint_sequence + 1, lock_version = lock_version + 1,
                     checkpoint_format_version = %s, checkpoint_attempt = attempt,
                     checkpoint_conversation_sequence = %s, checkpoint_data = %s
-                WHERE id = %s
+                WHERE id = %s RETURNING lock_version
             """,
                 (
                     status.state,
@@ -622,6 +733,9 @@ class AgentDatabase:
                     Jsonb(checkpoint.data),
                     checkpoint.run_id,
                 ),
+            )
+            return checkpoint.model_copy(
+                update={"storage_version": saved["lock_version"]}, deep=True
             )
 
     async def document(self, document_id: str) -> DictRow:
@@ -874,6 +988,7 @@ class DatabaseConversationStore:
     """
 
     def __init__(self, connection: AsyncConnection[DictRow]):
+        validate_connection(connection)
         self.connection = connection
 
     async def create(
@@ -906,10 +1021,11 @@ class DatabaseConversationStore:
 
 class DatabaseRunStore:
     """
-    Adapt persisted runs; checkpoint() supplies the version for the next write.
+    Adapt persisted runs; checkpoint reads and commits return storage versions.
     """
 
     def __init__(self, connection: AsyncConnection[DictRow]):
+        validate_connection(connection)
         self.connection = connection
 
     async def create(
@@ -967,7 +1083,7 @@ class DatabaseRunStore:
         checkpoint: RunCheckpoint,
         status: RunStatus,
         outcome: RunOutcome | None = None,
-    ) -> None:
-        await AgentDatabase(self.connection, access).commit_checkpoint(
+    ) -> RunCheckpoint:
+        return await AgentDatabase(self.connection, access).commit_checkpoint(
             checkpoint, status, outcome
         )
