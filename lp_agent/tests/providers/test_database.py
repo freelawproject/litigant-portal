@@ -1,18 +1,20 @@
 """
-PostgreSQL behavior checks, run by var/scripts/exercise_agent_surfaces.py.
+PostgreSQL behavior checks using a temporary database and repository fixtures.
 """
 
 import asyncio
 import json
-import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from hashlib import sha256
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from django.conf import settings
 from jsonschema import ValidationError as SchemaValidationError
-from psycopg import AsyncConnection
+from psycopg import AsyncConnection, Connection, sql
+from psycopg.conninfo import make_conninfo
 from psycopg.errors import CheckViolation, InsufficientPrivilege
 from psycopg.rows import DictRow, dict_row
 from pydantic import ValidationError
@@ -39,15 +41,44 @@ from lp_agent.types import (
 )
 from lp_agent.utils.audit import InstructionArtifact
 
-pytestmark = pytest.mark.postgres
 
-
-@pytest.fixture
-def dsn() -> str:
-    value = os.environ.get("LP_AGENT_TEST_DSN")
-    if value is None:
-        pytest.skip("Run var/scripts/exercise_agent_surfaces.py")
-    return value
+@pytest.fixture(scope="module")
+def dsn() -> Iterator[str]:
+    """
+    Install the experimental schema in a temporary database on the test server.
+    """
+    config = settings.DATABASES["default"]
+    server = make_conninfo(
+        host=config["HOST"],
+        port=config["PORT"],
+        user=config["USER"],
+        password=config["PASSWORD"],
+        connect_timeout=5,
+    )
+    name = "test_agent_" + uuid4().hex
+    test_dsn = make_conninfo(server, dbname=name)
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "agent_db"
+    with Connection.connect(
+        server, dbname="postgres", autocommit=True
+    ) as admin:
+        admin.execute(
+            sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name))
+        )
+        try:
+            with Connection.connect(test_dsn) as connection:
+                for filename in (
+                    "agent_tables.sql",
+                    "agent_constraints.sql",
+                    "agent_search.sql",
+                ):
+                    connection.execute((fixtures / filename).read_bytes())
+            yield test_dsn
+        finally:
+            admin.execute(
+                sql.SQL("DROP DATABASE {} WITH (FORCE)").format(
+                    sql.Identifier(name)
+                )
+            )
 
 
 @asynccontextmanager
@@ -55,7 +86,7 @@ async def database(
     dsn: str, identity: str | None = None
 ) -> AsyncIterator[AgentDatabase]:
     """
-    Use a real connection and commit inside the exercise's disposable database.
+    Use a real connection and commit inside the fixture's temporary database.
     """
     async with await AsyncConnection[DictRow].connect(
         dsn, row_factory=dict_row, autocommit=True
@@ -231,6 +262,7 @@ async def fixture_scope(
     return ids
 
 
+@pytest.mark.postgres
 def test_context_pins_revisions_and_honors_withdrawal(dsn: str) -> None:
     async def scenario() -> None:
         async with database(dsn) as db:
@@ -355,6 +387,7 @@ def test_context_pins_revisions_and_honors_withdrawal(dsn: str) -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.postgres
 def test_empty_unknown_and_disabled_scope(dsn: str) -> None:
     async def scenario() -> None:
         async with database(dsn) as db:
@@ -382,6 +415,7 @@ def test_empty_unknown_and_disabled_scope(dsn: str) -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.postgres
 def test_owned_records_and_store_contracts(dsn: str) -> None:
     async def scenario() -> None:
         async with database(dsn) as db:
@@ -457,6 +491,7 @@ def test_owned_records_and_store_contracts(dsn: str) -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.postgres
 def test_message_ordering_retries_and_checkpoint_conflicts(dsn: str) -> None:
     async def scenario() -> None:
         async with database(dsn) as db:
@@ -547,6 +582,7 @@ def test_message_ordering_retries_and_checkpoint_conflicts(dsn: str) -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.postgres
 def test_document_index_replacement_rolls_back(dsn: str) -> None:
     async def scenario() -> None:
         async with database(dsn) as db:
@@ -584,6 +620,7 @@ def test_document_index_replacement_rolls_back(dsn: str) -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.postgres
 def test_stored_search_permissions_facts_and_progress(dsn: str) -> None:
     async def scenario() -> None:
         async with database(dsn) as db:

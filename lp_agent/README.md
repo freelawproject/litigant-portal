@@ -145,8 +145,21 @@ or provider credentials. Default `tox` and `make test` also run this environment
 With LiteLLM and pytest installed, run the provider checks separately:
 
 ```sh
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c lp_agent/pytest.ini lp_agent/tests/providers
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c lp_agent/pytest.ini lp_agent/tests/providers/test_bedrock.py
 ```
 
 Provider checks use controlled responses and make no live model calls. The full
 project suite also covers the Django wrapper and HTTP integration.
+
+Database surface tests run through the project configuration in `make test` and
+`make pre-commit`. To run just those tests with the Docker stack running:
+
+```sh
+docker compose exec -T django tox -e py313 -- -c pyproject.toml lp_agent/tests/providers/test_database.py -q
+```
+
+The tests create a temporary database on the configured PostgreSQL service,
+install the [experimental SQL fixtures](tests/fixtures/agent_db/), and drop the
+database during teardown. Setup errors fail the tests. No local installation of
+the agent schema is required. `tox -e fast` excludes the six PostgreSQL cases
+while retaining argument-validation coverage.
