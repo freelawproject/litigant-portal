@@ -1,0 +1,162 @@
+# Civil Traffic (Scottsdale, AZ), single flow. Content synthesized from the
+# Arizona resource bundle (Scottsdale Municipal Information, ACJA 7-205 admin
+# orders AO 2008-78 / 2008-97, user stories) and the SME decision tree
+# (AZ Civil Traffic Decision Tree, Sept 14 V3). LEGAL REVIEW REQUIRED.
+#
+# TEMPORARY SHAPE (agreed): the path choice and the photo-enforcement / criminal
+# branches are plain section copy for now. The captured `traffic_path` var and
+# section-level `when` gating are not built yet (#514 value lists, #751 var
+# namespace, #892 welcome section). Deep interactive routing from the V3 tree
+# (citation-photo OCR, CORE-API lookup, live violation-code validation, the
+# criminal branch engine) is interview/app work, tracked separately, not corpus.
+#
+# Content rules applied: no em-dashes, sentence case, attribute-don't-anoint,
+# solve-directly. Pre-screen eligibility here is informational only; the binding
+# eligibility check is the defensive-driving school's (ACJA 7-205 F.22.d.1.b).
+
+name: 'Responding to a Civil Traffic Ticket'
+enabled: true
+order: 0
+
+sections:
+  - heading: 'Responding to a civil traffic ticket in Scottsdale'
+    content: |
+      A civil traffic ticket is not a crime, but ignoring it has real consequences: added fees, a default judgment, and a hold that can block renewing your vehicle registration or your license. This tool explains your options and your deadlines so you can decide what to do.
+
+      Your court date (arraignment) is the day you must decide how to handle your case. You can act any time before it, and most options can be done online, by phone, by email, or by fax without coming to court. Everything below must be done on or before that date.
+
+      Nothing on this page is legal advice. It explains the process and the options people in your situation have.
+
+  - heading: 'Your three options'
+    content: |
+      There are three basic ways to resolve a civil traffic ticket. You pick one:
+
+      - Attend defensive driving school. For an eligible ticket, finishing the class dismisses the citation with no points added.
+      - Pay the fine. You agree you are responsible and the case ends.
+      - Request a hearing. You tell the court you are not responsible and ask a judge to decide.
+
+      If you already missed your court date and have a hold on your license or registration, see the last section on this page instead.
+
+      Before you pay or request a hearing, it is worth checking defensive driving school first, because it is the only option that keeps the ticket off your record.
+
+  - heading: 'Option 1: Attend defensive driving school'
+    content: |
+      Arizona calls this diversion: you finish a certified class instead of paying the fine, and the citation is not entered on your Motor Vehicle Division record, so no points are added. It resolves one citation.
+
+      Whether it is available to you depends on a few rules (eligibility is set by Arizona law, A.R.S. section 28-3392, and the final check is done by the school, not the court):
+
+      - You can use defensive driving school only once every 12 months. The 12 months is measured from the date of one violation to the date of the next, not from the date you took a class. So your violation date matters.
+      - It is for eligible moving violations. Tickets tied to a crash that caused a serious injury or death are not eligible.
+      - If you held a commercial driver license, eligibility can be narrower even if you were driving a personal vehicle. Check with the court before you rely on it.
+      - Your license generally needs to be an Arizona license. Ask the school if yours is from another state.
+
+      Deadline: you must complete the class at least 7 days before your court date. If you get an extension, the class must be finished at least 7 days before the new date.
+
+      Extensions: a first, one-time extension is usually available when you sign up. A second extension requires a written motion to the judge.
+
+      How to sign up: you register directly with a certified school you choose from the list, not through the court. Cost is the school's fee plus state fees and a court diversion fee. The total is set by the amount in effect on your violation date. TODO(source): confirm the current state fee and state surcharge amounts and Scottsdale's court diversion fee (the state posts a per-court total).
+
+  - heading: 'Option 2: Pay the fine'
+    content: |
+      Paying the fine means you agree you are responsible, and the case is over. You can pay online at AZCourtPay, by phone, or in person.
+
+      Depending on the charge, the court notifies the Motor Vehicle Division, which may add points to your driving record. If you want to avoid that and your ticket is eligible, look at defensive driving school above before you pay.
+
+      If you cannot pay the full amount at once, ask the court about the Compliance Assistance Program, which sets up a payment plan. You arrange it with a clerk; you do not have to pay everything at once to keep your case in good standing.
+
+  - heading: 'Option 3: Request a hearing'
+    content: |
+      Requesting a hearing means you are telling the court you are not responsible and asking a judge to decide. You request it in person or in writing, and the court sets a hearing date.
+
+      The hearing is your chance to offer evidence: your own testimony, witnesses, statements, diagrams, photographs, or anything else relevant to your case. Anything you submit as evidence is kept by the court through the appeal period, so bring copies you can leave behind, printed or on a CD, rather than the only copy on your phone.
+
+      On the day: go directly into the courtroom listed on your notice at the time listed, take a seat, and wait for your name. Do not take a number or wait in the lobby. Remove hats and sunglasses, silence your phone, and note that scheduled matters may be heard before walk-ins.
+
+      The judge decides using a standard called preponderance of the evidence: if the state shows it is more likely than not that the violation happened, you are found responsible. If you are found responsible, all fines and fees are due by the end of that day.
+
+      Two things to know before you choose a hearing. Once the hearing starts you give up the defensive driving school option, so if your ticket is eligible and you would rather take the class, tell the hearing officer when your case is called. And if you are found or plead responsible for a red-light violation (including a flashing red signal), the Motor Vehicle Division will order you to complete Traffic Survival School at your own cost.
+
+  - heading: 'If your ticket is for no proof of insurance or registration'
+    content: |
+      If you were cited for having no proof of insurance or registration and you can now show that you were covered or registered on the date of the ticket, send that proof to the court. The court may dismiss or reduce the charge. In Scottsdale you can email it to court@scottsdaleaz.gov, or bring it in person, at or before your court date.
+
+  - heading: 'If your ticket came from a camera (photo enforcement)'
+    content: |
+      Scottsdale uses cameras for red-light and speed enforcement. What you first receive is a Notice of Violation, which is not a summons to appear. A notice at that stage cannot be resolved with defensive driving school.
+
+      Once the citation is filed as a complaint with the court, your options are the same as any civil traffic ticket, and that includes defensive driving school if your ticket is eligible. A camera case has a few extras:
+
+      - You can view the photos and video online at ViolationInfo.com using the notice number and PIN on your notice.
+      - Your notice lists a 30-day acknowledgement date and a 60-day court date.
+      - If you were not the driver, you can file a declaration of non-driver with a clear copy of the actual driver's license or photo identification, returned at least 7 days before your court date.
+      - For a red-light charge, if you are found responsible or pay the fine, the Motor Vehicle Division requires you to complete Traffic Survival School.
+      - If you are never served, the court dismisses the case on day 120.
+
+  - heading: 'If your citation is criminal, not civil'
+    content: |
+      This tool covers civil traffic citations. Some traffic matters are criminal, which carry higher stakes and different rights, including the right to an attorney. If your citation is criminal, this tool is not the right place, and it is worth speaking with a lawyer or legal aid rather than handling it here.
+
+      One in-between case: some criminal speeding charges can still be resolved with defensive driving school, but only with the judge's permission. If you think that applies to you, ask the court directly rather than assuming it is or is not available.
+
+      # TODO(app/interview): the civil-vs-criminal determination and the section 28-701.02 carveout are routing logic (V3 tree "Criminal End"), handled in the interview/assistant, not this corpus section. Add referral contacts (legal aid, bar association, the court) when the referral list is confirmed.
+
+  - heading: 'If you already missed your court date'
+    content: |
+      If a ticket went unpaid and no hearing was requested by the court date, the court can enter a default judgment, which can add a fee on top of the original fine. The court then notifies the Motor Vehicle Division, which can place a hold that blocks your vehicle registration renewal, and in some cases move toward a license suspension.
+
+      If you found out about this because your registration would not renew, the hold is the symptom, not the cause. The unresolved court case is the cause, so the court is where the fix starts, not the Motor Vehicle Division.
+
+      Defensive driving school is no longer available once a case is in default. Here is the sequence to recover:
+
+      - Contact the court named on your original citation. If you cannot identify the court, the court where you were cited can point you to the case.
+      - Ask the court for the total amount you owe. That number depends on added fees and whether the case has moved to collections, so ask the court directly rather than assuming the original fine.
+      - In Scottsdale, a defaulted case may move to a collections program (FARE), which can add fees and a percentage, garnish wages, block re-registering your vehicle in Arizona, and intercept a state tax refund or lottery winnings. Resolving the case with the court is what stops that.
+      - If you cannot pay in full, ask the court about the Compliance Assistance Program payment plan rather than assuming full payment is your only option.
+      - Once the court matter is resolved, the court notifies the Motor Vehicle Division and the hold is released. There is usually a gap before the Motor Vehicle Division lifts the hold, so confirm with them that the release went through.
+
+      # TODO(SME confirm, #799): the exact default -> sanction -> MVD-hold vs. license-suspension sequence, collections routing, and clearance timing are not yet confirmed with the court. Keep these provisional ("confirm with your court") until verified.
+
+  # TODO(stub sections named by the V3 tree, content not yet authored):
+  #   - Payment Options: the detailed pay/plan walkthrough (AZCourtPay, CAP terms).
+  #   - How to Contest: the step-by-step request-a-hearing procedure.
+  #   - Ineligible Violation Codes: needs the eligible/ineligible code map from
+  #     A.R.S. 28-3392(A) plus court confirmation (no consolidated list in the bundle).
+
+interview:
+  - title: 'Your ticket'
+    variables:
+      - traffic_violation_date
+      - traffic_arraignment_date
+  - title: 'How do you want to handle it?'
+    description: 'This sets which deadlines and steps matter to you.'
+    variables:
+      - traffic_path # defensive_driving | pay | hearing  (TODO: value-list, #514)
+  - title: 'A few details for the defensive driving pre-check'
+    description: 'Informational only. The school does the binding eligibility check.'
+    variables:
+      - traffic_prior_violation_date # for the 12-month violation-to-violation rule
+      - traffic_license_state
+      - traffic_serious_injury_involved
+
+deadlines:
+  - label: 'Deadline to decide (your court date)'
+    description: 'You must pay, register for defensive driving school, or request a hearing on or before this date. Missing it puts the case into default and can lead to a hold on your license or registration.'
+    offset_days: 0
+    offset_from: traffic_arraignment_date
+  - label: 'Defensive driving school must be completed'
+    description: 'If you chose defensive driving school, the class must be finished at least 7 days before your court date. If you were granted an extension, it is 7 days before the new date.'
+    offset_days: -7
+    offset_from: traffic_arraignment_date
+  # TODO(PE branch, gate on camera ticket once section-`when` exists):
+  #   30-day acknowledgement and 60-day court date from the notice date;
+  #   120-day dismissal-if-never-served.
+
+links:
+  - name: 'Find and register for a defensive driving school (azdrive.com)'
+    url: 'https://www.azdrive.com'
+  - name: 'Pay an Arizona court citation online (AZCourtPay)'
+    url: 'https://www.azcourtpay.com'
+  - name: 'View your photo-enforcement violation (ViolationInfo.com)'
+    url: 'https://www.violationinfo.com'
+  - name: 'Scottsdale City Court videos'
+    url: 'https://www.scottsdaleaz.gov/court/court-videos'

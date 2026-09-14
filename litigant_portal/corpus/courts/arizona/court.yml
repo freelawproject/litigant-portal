@@ -1,0 +1,45 @@
+# Scottsdale (AZ) court-level content, scoped to the site data models (court
+# fields on Site, Contact, Resource). Sources: corpus-sources/Arizona Court
+# Resources (Scottsdale Municipal Information: PE Options, How Will My Case
+# Proceed, Civil Traffic Hearing Information, Canned responses - Live Help,
+# Courtroom Etiquette) and the ACJA 7-205 admin orders. LEGAL REVIEW REQUIRED.
+
+name: 'Scottsdale, Arizona'
+court_name: 'Scottsdale City Court'
+jurisdiction_level: municipal
+state: AZ
+official_url: 'https://www.scottsdaleaz.gov/court'
+official_resources_url: 'https://www.scottsdaleaz.gov/court' # TODO(confirm): direct civil-traffic options page if one exists
+
+contacts:
+  - name: 'Scottsdale City Court'
+    phone: '(480) 312-2442'
+    url: 'https://www.scottsdaleaz.gov/court'
+    note: '3700 North 75th Street, Scottsdale (court #0751). Fax (480) 312-2764. Email court@scottsdaleaz.gov. Walk-in hours Monday to Friday 8:30 to 11:30 and 1:30 to 4:30. Handles arraignments, payments, hearings, and payment-plan (Compliance Assistance Program) requests.'
+  - name: 'Scottsdale Police Department Photo Enforcement Unit'
+    phone: '(480) 312-7014'
+    note: '7601 E. McKellips Road, Bldg A, Scottsdale. Email photoenforce@scottsdaleaz.gov. Questions about a camera (photo-enforcement) citation. Focus on Safety program support: (844) 749-5996.'
+  - name: 'Certified defensive driving schools (statewide list)'
+    phone: '(888) 334-5565'
+    url: 'https://www.azdrive.com'
+    note: 'The automated line and site list Arizona Supreme Court certified schools you register with directly. Use court #0751 when registering for a Scottsdale citation. The court cannot favor one school over another.'
+  - name: 'Arizona Motor Vehicle Division (Traffic Survival School)'
+    phone: '(602) 255-0072'
+    url: 'https://azdot.gov'
+    note: 'Traffic Survival School (TSS) is ordered by MVD, separate from defensive driving school. Required for a red-light violation if you are found or plead responsible.'
+  # TODO(source): an Arizona legal-aid / self-help contact (e.g. AZLawHelp, Community Legal Services) is not in the bundle; confirm before adding.
+
+resources:
+  - label: 'Pay an Arizona court citation online (AZCourtPay)'
+    url: 'https://www.azcourtpay.com'
+    note: 'Pay the fine online. Payment plans (Scottsdale Compliance Assistance Program) are arranged with a clerk, not here.'
+  - label: 'Find and register for a defensive driving school (azdrive.com)'
+    url: 'https://www.azdrive.com'
+    note: 'Certified schools you can filter by location, language, and schedule. You register directly, not through the court.'
+  - label: 'View your photo-enforcement violation (ViolationInfo.com)'
+    url: 'https://www.violationinfo.com'
+    note: 'For camera citations: view the photos and video and resolve the notice online using the notice number and PIN.'
+  - label: 'Scottsdale City Court videos'
+    url: 'https://www.scottsdaleaz.gov/court/court-videos'
+    note: 'Short videos from the court explaining how a case proceeds.'
+  # TODO(source): AZCourts defensive-driving program page (ARS 28-3392 / ACJA 7-205) for the eligible-violation list and per-court total cost, which the AOC posts per court. FAQs.pdf in the bundle is image-only (unread).

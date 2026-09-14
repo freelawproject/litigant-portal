@@ -1,0 +1,14 @@
+# Civil Traffic topic metadata (Topic model fields). The folder name is the
+# topic slug. DRAFT — Scottsdale City Court, general civil traffic with a
+# photo-enforcement branch. Source: corpus-sources/Arizona Court Resources.
+
+title: 'Civil Traffic'
+subtitle: 'Responding to a civil traffic ticket: pay, defensive driving, or a hearing'
+description: 'Civil traffic citations, defensive driving eligibility, hearings, and deadlines'
+icon: 'truck' # TODO(confirm): pick a valid Heroicon in the icon atom set (truck / map / document)
+meta_description: 'Learn how to respond to a civil traffic ticket in Scottsdale: paying the fine, attending defensive driving school, or requesting a hearing, plus your deadlines. General legal information for self-represented litigants.'
+prompts:
+  - 'I got a traffic ticket and need to know my options'
+  - 'Can I take defensive driving school to keep this off my record?'
+  - 'I missed my court date on a traffic ticket, what happens now?'
+order: 0
