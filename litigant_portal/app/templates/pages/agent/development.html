@@ -159,7 +159,10 @@
                     class="block w-full max-h-32 resize-none overflow-y-auto rounded-lg border border-greyscale-300 bg-white text-greyscale-900 p-3 focus:outline-none focus:ring-2 focus:ring-primary-600 disabled:bg-greyscale-50"></textarea>
           <p id="agent-message-help" class="mt-2 text-xs text-greyscale-500">{% trans "Enter to send · Shift+Enter for a new line" %}</p>
         </div>
-        <p id="agent-error" role="alert" x-show="error" x-text="error" x-cloak class="mt-3 text-sm text-red-700"></p>
+        <div id="agent-error" role="alert" x-show="error" x-cloak class="mt-3 text-sm text-red-700">
+          <p x-text="error"></p>
+          <p x-show="failureDetails" x-text="failureDetails" class="mt-1 break-words text-xs"></p>
+        </div>
         <noscript><p>{% trans "Enable JavaScript to view streaming responses on this development page." %}</p></noscript>
         <p id="agent-session-help" class="mt-3 text-xs text-greyscale-500">{% trans "Your conversation and preparation progress are saved." %}</p>
         <div class="mt-4 flex items-center justify-between gap-3">

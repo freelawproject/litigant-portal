@@ -24,6 +24,7 @@ from litigant_portal.app.services.site import site_update
 from litigant_portal.app.views.agent import AgentMessageForm
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
+from lp_agent.errors import ModelProviderError
 from lp_agent.flows.new_engagement import message_text
 from lp_agent.tests.fixtures.preparation import load_preparation_fixture
 from lp_agent.tests.helpers import answer_item
@@ -485,6 +486,50 @@ class AgentDevelopmentStreamTests(TestCase):
             return [json.loads(chunk) for chunk in response.streaming_content]
         finally:
             self.close_response(response)
+
+    def test_provider_failure_codes_and_safe_messages_reach_the_page(self):
+        for kind in ("timeout", "unavailable"):
+            with self.subTest(kind=kind):
+
+                async def model_stream(client, request, kind=kind):
+                    raise ModelProviderError(
+                        kind=kind,
+                        model=MODEL_CHOICES[0][0],
+                        stage="stream",
+                        exception_class="ProviderError",
+                        status_code=408 if kind == "timeout" else 503,
+                        elapsed_seconds=1.25,
+                        request_id="provider-request-123",
+                    )
+                    yield
+
+                with (
+                    patch(
+                        "lp_agent.adapters.bedrock.BedrockClient.stream",
+                        model_stream,
+                    ),
+                    self.assertLogs("lp_agent.flows.engagement") as logs,
+                ):
+                    chunks = self.consume(
+                        self.client.post(self.url, self.data)
+                    )
+                outcome = chunks[-1]["payload"]["outcome"]
+                self.assertEqual(outcome["state"], "failed")
+                self.assertEqual(outcome["error"]["code"], f"model_{kind}")
+                self.assertEqual(set(outcome["error"]), {"code", "message"})
+                self.assertIn(outcome["run_id"], logs.output[0])
+                self.assertNotIn("provider-request-123", json.dumps(chunks))
+                saved = self.client.get(
+                    reverse(
+                        "pages:agent_development_conversation",
+                        kwargs={"conversation_id": outcome["conversation_id"]},
+                    )
+                )
+                self.assertEqual(saved.status_code, 200)
+                self.assertEqual(
+                    saved.json()["messages"][-1]["text"],
+                    outcome["error"]["message"],
+                )
 
     def test_static_scope_selection_preserves_original_question_and_reloads(
         self,

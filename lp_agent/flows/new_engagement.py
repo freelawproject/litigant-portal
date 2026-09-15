@@ -11,7 +11,7 @@ from uuid import UUID
 
 from pydantic import JsonValue
 
-from lp_agent.errors import AgentValidationError
+from lp_agent.errors import AgentValidationError, ModelProviderError
 from lp_agent.flows.engagement import Engagement, EngagementFlow
 from lp_agent.flows.judge import AgentJudge, JudgeFinding, JudgeVerdict
 from lp_agent.flows.procedure import ProcedureState
@@ -372,7 +372,9 @@ class PreparedEngagement(Engagement):
                 self.operation_count += 1
                 try:
                     verdict = await AgentJudge.review(judge, judge_request)
-                except Exception:
+                except Exception as exc:
+                    if isinstance(exc, ModelProviderError):
+                        self._log_provider_failure(exc)
                     async with self._transaction():
                         await self.session.save_step(
                             key=f"judge:{index}",

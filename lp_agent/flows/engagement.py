@@ -15,6 +15,7 @@ from lp_agent.errors import (
     AgentAccessError,
     AgentStorageError,
     AgentValidationError,
+    ModelProviderError,
 )
 from lp_agent.flows.prompts import system_prompt
 from lp_agent.identity import AgentIdentity, ResourceScope
@@ -186,6 +187,9 @@ class Engagement:
             outcome = CancelledOutcome(**self.reference)
         except AgentStorageError:
             raise
+        except ModelProviderError as exc:
+            self._log_provider_failure(exc)
+            outcome = self._failure(exc.code, str(exc))
         except Exception as exc:
             if (
                 isinstance(exc, TimeoutError)
@@ -199,14 +203,32 @@ class Engagement:
             else:
                 # Provider exceptions can contain prompts, output, and credentials.
                 logger.warning(
-                    "Agent operation failed (run_id=%s)",
+                    "Agent operation failed (run_id=%s, exception_class=%s)",
                     self.initial_status.run_id,
+                    type(exc).__name__,
                 )
                 outcome = self._failure(
                     "model_failed",
                     "The model response failed. Please try again.",
                 )
         return outcome
+
+    def _log_provider_failure(self, error: ModelProviderError) -> None:
+        """
+        Log safe adapter diagnostics for either the assistant or the judge.
+        """
+        logger.warning(
+            "Agent model failed (run_id=%s, model=%s, stage=%s, "
+            "exception_class=%s, status_code=%s, elapsed_seconds=%.3f, "
+            "provider_request_id=%s)",
+            self.initial_status.run_id,
+            error.model,
+            error.stage,
+            error.exception_class,
+            error.status_code,
+            error.elapsed_seconds,
+            error.request_id,
+        )
 
     async def finish(
         self, outcome: RunOutcome, emit: Callable[[EventPayload], None]

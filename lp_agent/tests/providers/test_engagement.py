@@ -32,6 +32,7 @@ from lp_agent.errors import (
     AgentAccessError,
     AgentStorageError,
     AgentValidationError,
+    ModelProviderError,
 )
 from lp_agent.identity import AgentIdentity
 from lp_agent.interfaces import ModelClient
@@ -1175,9 +1176,11 @@ def test_judge_corrections_are_private_and_do_not_repeat_tools(
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("failure", ["malformed", "exception", "cancel"])
+@pytest.mark.parametrize(
+    "failure", ["malformed", "exception", "provider", "cancel"]
+)
 def test_judge_failure_never_releases_candidate_and_closes_connections(
-    dsn, failure
+    dsn, failure, caplog
 ):
     from lp_agent.types import TextEvent
 
@@ -1189,6 +1192,16 @@ def test_judge_failure_never_releases_candidate_and_closes_connections(
                 entered.set()
                 if failure == "exception":
                     raise RuntimeError("Private provider diagnostics")
+                if failure == "provider":
+                    raise ModelProviderError(
+                        kind="unavailable",
+                        model=MODEL_CHOICES[1][0],
+                        stage="stream",
+                        exception_class="MidStreamFallbackError",
+                        status_code=500,
+                        elapsed_seconds=66.5,
+                        request_id="judge-request-123",
+                    )
                 if failure == "cancel":
                     await asyncio.Event().wait()
                 yield ModelOutputItem(
@@ -1221,6 +1234,12 @@ def test_judge_failure_never_releases_candidate_and_closes_connections(
                 assert outcome.state == "cancelled"
             else:
                 assert outcome.error.code == "judge_failed"
+            if failure == "provider":
+                assert f"run_id={run.run_id}" in caplog.text
+                assert MODEL_CHOICES[1][0] in caplog.text
+                assert "status_code=500" in caplog.text
+                assert "judge-request-123" in caplog.text
+            assert "Private" not in caplog.text
             assert (await run.status()).state == outcome.state
         assert all(connection.closed for connection in connections.opened)
 

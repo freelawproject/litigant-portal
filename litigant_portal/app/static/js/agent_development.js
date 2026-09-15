@@ -6,6 +6,8 @@ document.addEventListener('alpine:init', () => {
     conversationId: '',
     status: '',
     error: '',
+    errorCode: '',
+    runId: '',
     messages: [],
     events: [],
     progress: {},
@@ -37,6 +39,14 @@ document.addEventListener('alpine:init', () => {
     },
     get eventsPaused() {
       return !this.eventsView.following
+    },
+    get failureDetails() {
+      return [
+        this.errorCode,
+        this.runId ? `${gettext('Run ID')}: ${this.runId}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')
     },
     get progressSummary() {
       if (!this.progress.procedure) return ''
@@ -290,6 +300,8 @@ document.addEventListener('alpine:init', () => {
       this.events = []
       this.progress = {}
       this.error = ''
+      this.errorCode = ''
+      this.runId = ''
       this.status = gettext('Ready')
       this.resetPanel('conversation')
       this.resetPanel('events')
@@ -317,6 +329,8 @@ document.addEventListener('alpine:init', () => {
       this.updateMessage()
       this.running = true
       this.error = ''
+      this.errorCode = ''
+      this.runId = ''
       this.status = gettext('Starting')
       this.messages.push(
         this.messageEntry({
@@ -348,6 +362,7 @@ document.addEventListener('alpine:init', () => {
         })
         this.queueScroll()
         if (event.error) throw new Error(event.error)
+        if (event.run_id) this.runId = event.run_id
         if (event.conversation_id) this.setConversation(event.conversation_id)
         const payload = event.payload
         if (payload.type === 'text')
@@ -373,6 +388,7 @@ document.addEventListener('alpine:init', () => {
           }
           if (payload.outcome.state === 'failed') {
             this.error = payload.outcome.error.message
+            this.errorCode = payload.outcome.error.code
             this.messages[answerIndex].text = this.error
             this.messages[answerIndex].sources = []
           }
@@ -417,10 +433,13 @@ document.addEventListener('alpine:init', () => {
             : decoder.decode(value, { stream: true })
           const lines = pending.split('\n')
           pending = lines.pop()
-          for (const line of lines) if (line.trim()) receive(line)
-          if (done) break
+          for (const line of lines) {
+            if (line.trim()) receive(line)
+            if (completed) break
+          }
+          if (done || completed) break
         }
-        if (pending.trim()) receive(pending)
+        if (!completed && pending.trim()) receive(pending)
         if (!completed)
           throw new Error(
             gettext('The connection ended before the response finished.')
@@ -432,6 +451,9 @@ document.addEventListener('alpine:init', () => {
         this.messages[answerIndex].text = this.error
         this.messages[answerIndex].sources = []
       } finally {
+        this.running = false
+        this.messages[answerIndex].waiting = false
+        this.queueScroll()
         if (reader) {
           try {
             await reader.cancel()
@@ -440,9 +462,6 @@ document.addEventListener('alpine:init', () => {
           }
           reader.releaseLock()
         }
-        this.running = false
-        this.messages[answerIndex].waiting = false
-        this.queueScroll()
         await this.$nextTick()
         form.elements.message.focus({ preventScroll: true })
       }
