@@ -17,6 +17,7 @@ from litigant_portal.app.topic_flow.schema import (
     Corpus,
     FactGatherSection,
     IcsOutput,
+    PacketOutput,
     ResourcesOutput,
     VcfOutput,
 )
@@ -120,6 +121,18 @@ def _cross_reference_problems(corpus: Corpus) -> list[str]:
                     problems.append(
                         f"output {section.id!r} references unknown "
                         f"contact {ref!r}"
+                    )
+        elif isinstance(section, PacketOutput):
+            if section.interview_prefill and not section.interview_url:
+                problems.append(
+                    f"output {section.id!r} has interview_prefill but no "
+                    "interview_url to send it to"
+                )
+            for ref in section.interview_prefill:
+                if ref not in question_ids:
+                    problems.append(
+                        f"output {section.id!r} prefills {ref!r}, which is "
+                        "not a fact_gather question id"
                     )
         elif isinstance(section, ResourcesOutput):
             for ref in section.resource_ids:

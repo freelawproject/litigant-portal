@@ -1,9 +1,8 @@
 {% load i18n %}
 
 {# Packet section body: the forms the corpus says this flow needs. When the #}
-{# corpus sets interview_url, a warm link-out to a docassemble interview that #}
-{# fills these forms (v1: link-out + manual return, no prefill — #543). Unset #}
-{# => plain form list, so existing corpora are unaffected. #}
+{# corpus sets interview_url, a warm handoff to a docassemble interview that #}
+{# fills these forms. Unset => plain form list. #}
 <ul class="list-disc space-y-1 pl-5 text-greyscale-700">
   {% for form in ctx.forms %}
   <li>
@@ -18,16 +17,21 @@
 
 {% if ctx.interview_url %}
 <div class="mt-4 space-y-3">
-  <c-atoms.button
-    href="{{ ctx.interview_url }}"
-    variant="primary"
+  {# A POST: it creates a docassemble session and redirects onto a one-time #}
+  {# link, so it can't be a GET a crawler or a reload would fire. #}
+  <form
+    method="post"
+    action="{% url 'pages:topic_flow_interview' court=ctx.court topic=ctx.topic role=ctx.role %}"
     target="_blank"
     rel="noopener"
   >
-    <c-atoms.icon name="pencil-square" class="w-4 h-4" />
-    {% trans "Fill out your forms" %}
-    <span class="sr-only">{% trans "(opens in a new tab)" %}</span>
-  </c-atoms.button>
+    {% csrf_token %}
+    <c-atoms.button type="submit" variant="primary">
+      <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+      {% trans "Fill out your forms" %}
+      <span class="sr-only">{% trans "(opens in a new tab)" %}</span>
+    </c-atoms.button>
+  </form>
   <p class="text-sm text-greyscale-700">
     {% trans "Save your completed packet somewhere easy to find. You'll need to print and sign these forms and bring them with you to court (or mail them in, depending on your court's process)." %}
   </p>

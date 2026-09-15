@@ -158,6 +158,52 @@ def test_duplicate_resource_id_detected(tmp_path):
     assert any("duplicate resource id: 'dup'" in p for p in exc.value.problems)
 
 
+def _packet(**extra):
+    return {
+        "kind": "output",
+        "output_type": "packet",
+        "id": "packet",
+        "heading": "H",
+        "forms": ["Petition"],
+        **extra,
+    }
+
+
+def test_prefill_key_must_reference_a_question(tmp_path):
+    data = copy.deepcopy(VALID)
+    data["sections"].append(
+        _packet(
+            interview_url="https://da.example/i",
+            interview_prefill={"ghost": "current_first"},
+        )
+    )
+    path = _write(tmp_path, data)
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(path)
+    assert any(
+        "prefills 'ghost'" in p and "fact_gather question id" in p
+        for p in exc.value.problems
+    )
+
+
+def test_prefill_without_an_interview_url_is_rejected(tmp_path):
+    data = copy.deepcopy(VALID)
+    data["sections"].append(
+        _packet(interview_prefill={"pubdate": "publication_date"})
+    )
+    path = _write(tmp_path, data)
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(path)
+    assert any("no interview_url" in p for p in exc.value.problems)
+
+
+def test_packet_without_a_prefill_mapping_still_loads(tmp_path):
+    data = copy.deepcopy(VALID)
+    data["sections"].append(_packet(interview_url="https://da.example/i"))
+    corpus = CorpusLoader.load(_write(tmp_path, data))
+    assert corpus.sections[-1].interview_prefill == {}
+
+
 def test_problems_aggregate_into_one_error(tmp_path):
     data = copy.deepcopy(VALID)
     data["deadlines"] = [

@@ -26,6 +26,9 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 # then alphanumeric / underscore / hyphen. Mirrors the chat/prompts slug rule.
 Slug = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")]
 
+# docassemble executes these as assignment statements, so identifiers only.
+InterviewVariable = Annotated[str, Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")]
+
 
 class _Base(BaseModel):
     # Reject unknown keys so an author's typo fails loudly instead of silently
@@ -154,8 +157,13 @@ class PacketOutput(_Base):
     forms: list[PacketFormEntry] = Field(min_length=1)
     # Optional warm handoff to a docassemble interview that fills these forms.
     # Unset (None) => the packet renders as a plain form list, so existing
-    # corpora are unaffected. v1 is link-out + manual return, no prefill (#543).
+    # corpora are unaffected.
     interview_url: str | None = None
+    # ``{fact_gather question id: interview variable}``; the loader checks
+    # each key resolves. Empty => the interview asks everything.
+    interview_prefill: dict[Slug, InterviewVariable] = Field(
+        default_factory=dict
+    )
 
 
 class ResourcesOutput(_Base):
