@@ -24,6 +24,7 @@ class JurisdictionLevel(models.TextChoices):
     STATE = "state"
     COUNTY = "county"
     DISTRICT = "district"
+    MUNICIPAL = "municipal"
     FEDERAL = "federal"
     TRIBAL = "tribal"
 
