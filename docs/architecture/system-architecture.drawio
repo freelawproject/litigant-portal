@@ -1,0 +1,117 @@
+<mxfile host="app.diagrams.net" agent="LP architecture compare" version="24.7.17" type="device">
+  <diagram id="lp-arch-technical" name="LP architecture (technical / trust boundary)">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ===== Group / boundary boxes (drawn first so nodes sit on top) ===== -->
+
+        <!-- Public edge (plain boundary, not an AWS service) -->
+        <mxCell id="g_edge" value="Public edge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#333333;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="150" width="190" height="300" as="geometry" />
+        </mxCell>
+
+        <!-- Isolation boundary: VPC-style AWS4 group -->
+        <mxCell id="g_vpc" value="EKS isolation boundary (VPC)" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc2;strokeColor=#8C4FFF;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#8C4FFF;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="290" y="60" width="470" height="540" as="geometry" />
+        </mxCell>
+
+        <!-- Per-court instance: AWS4 security-group style box, nested inside the VPC -->
+        <mxCell id="g_instance" value="Per-court instance on EKS" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#00A4A6;fillColor=#E6F6F7;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#147EBA;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="320" y="130" width="410" height="450" as="geometry" />
+        </mxCell>
+
+        <!-- External services (plain boundary) -->
+        <mxCell id="g_external" value="External services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7E6;strokeColor=#D86613;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#D86613;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="830" y="180" width="240" height="320" as="geometry" />
+        </mxCell>
+
+        <!-- Delivery (plain boundary) -->
+        <mxCell id="g_delivery" value="Delivery" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F7FF;strokeColor=#147EBA;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#147EBA;fontSize=13;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="640" width="410" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Nodes ===== -->
+
+        <!-- Public edge nodes -->
+        <mxCell id="browser" value="Litigant browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="90" y="210" width="110" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ingress" value="Ingress&#10;TLS + access gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="90" y="330" width="110" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- EKS cluster badge -->
+        <mxCell id="eks" value="EKS cluster" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eks;" vertex="1" parent="1">
+          <mxGeometry x="350" y="168" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- Django app: generic server -->
+        <mxCell id="app" value="Django app&#10;(flow + AI assistant + agent tooling)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="298" y="279" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- docassemble: generic server (own container) -->
+        <mxCell id="da" value="docassemble&#10;(own container)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="298" y="409" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Postgres + pgvector: Aurora (Postgres-compatible) -->
+        <mxCell id="pg" value="Postgres + pgvector" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;" vertex="1" parent="1">
+          <mxGeometry x="600" y="272" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- Redis: ElastiCache -->
+        <mxCell id="redis" value="Redis (ElastiCache)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elasticache;" vertex="1" parent="1">
+          <mxGeometry x="600" y="402" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- Bedrock -->
+        <mxCell id="bedrock" value="AWS Bedrock&#10;(via LiteLLM)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" vertex="1" parent="1">
+          <mxGeometry x="910" y="238" width="48" height="48" as="geometry" />
+        </mxCell>
+
+        <!-- Third-party links -->
+        <mxCell id="partners" value="Third-party links&#10;azdrive / AZCourtPay / MVD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D86613;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="880" y="380" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- CI/CD -->
+        <mxCell id="cicd" value="CI/CD build &#8594; EKS&#10;(prod on merge-to-main; QA manual-only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="390" y="680" width="270" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Edges ===== -->
+        <mxCell id="e_browser_ingress" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;fontSize=10;" edge="1" parent="1" source="browser" target="ingress">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_ingress_app" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="ingress" target="app">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="app" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_redis" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="app" target="redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_da" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="app" target="da">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_da_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="da" target="pg">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_app_bedrock" value="LLM" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#01A88D;fontSize=10;" edge="1" parent="1" source="app" target="bedrock">
+          <mxGeometry x="-0.55" relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="e_app_partners" value="links" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#D86613;fontSize=10;" edge="1" parent="1" source="app" target="partners">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cicd_app" value="deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#147EBA;fontSize=10;" edge="1" parent="1" source="cicd" target="app">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
