@@ -15,11 +15,6 @@ LP_AGENT_LOOKUP_DSN = os.environ.get("LP_AGENT_LOOKUP_DSN", "")
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
-# The new agent's development page also requires developer permission.
-LP_AGENT_DEV_ENABLED = (
-    os.environ.get("LP_AGENT_DEV_ENABLED", "false").lower() == "true"
-)
-
 # Deployment environment label. Distinguishes QA from prod (both run DEBUG=false).
 # Used by template context processor to gate non-prod-only UI (build-time chip).
 # Invalid values are kept as-is (fail-closed: non-prod UI won't match and stays hidden).
@@ -30,6 +25,18 @@ if DEPLOYMENT_ENV not in {"dev", "qa", "prod"}:
         "non-prod UI gates may not behave as expected.",
         DEPLOYMENT_ENV,
     )
+
+# Temporary QA PoC defaults live in the application, using the deployment's
+# existing environment label. Explicit settings override both defaults.
+_AGENT_QA_DEFAULT = "true" if DEPLOYMENT_ENV == "qa" else "false"
+LP_AGENT_USE_DJANGO_DB = (
+    os.environ.get("LP_AGENT_USE_DJANGO_DB", _AGENT_QA_DEFAULT).lower()
+    == "true"
+)
+# The new agent's development page also requires developer permission.
+LP_AGENT_DEV_ENABLED = (
+    os.environ.get("LP_AGENT_DEV_ENABLED", _AGENT_QA_DEFAULT).lower() == "true"
+)
 
 # Captured at module import — approximates container/process start time. Shown
 # in the dev/QA header so testers can disambiguate deploys by the minute.

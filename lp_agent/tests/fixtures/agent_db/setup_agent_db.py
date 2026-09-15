@@ -17,8 +17,8 @@ import sys
 from pathlib import Path
 
 # Temporary setup helper for the experimental agent database schema.
-SQL_DIR = Path(__file__).resolve().parent
-ROOT = SQL_DIR.parents[3]
+ROOT = Path(__file__).resolve().parents[4]
+SQL_DIR = ROOT / "litigant_portal/app/migrations/agent_sql_0019"
 SQL_FILES = ("agent_tables.sql", "agent_constraints.sql", "agent_search.sql")
 MARKER = "lp-agent-local-v2:"
 PREVIOUS_INSTALLATION = (

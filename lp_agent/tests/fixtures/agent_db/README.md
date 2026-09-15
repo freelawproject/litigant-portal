@@ -1,8 +1,10 @@
-# Experimental agent schema fixtures
+# Experimental agent schema and database fixtures
 
-These SQL files define the experimental `agent_` schema used by the PostgreSQL
-surface tests. They remain separate from application migrations and seed data
-pending team review.
+The frozen SQL in
+[`litigant_portal/app/migrations/agent_sql_0019/`](../../../../litigant_portal/app/migrations/agent_sql_0019/)
+defines the experimental `agent_` schema. Django migration `0019_agent_schema`
+installs it; the PostgreSQL surface tests and legacy local installer read the
+same bundle. Keep it immutable and use subsequent migrations for schema changes.
 
 The database test fixture applies these files in order, in one transaction:
 
@@ -21,7 +23,12 @@ credentials, connect as those logins, and drop them during teardown.
 Run the tests through the project configuration with `make test` or
 `make pre-commit`. No schema installation is needed before running the tests.
 
-For a local experiment, the temporary installer reads this same SQL bundle:
+Normal local and QA startup runs `manage migrate --noinput` and
+`manage sync_corpus --strict`, which also publishes the real agent corpus.
+The [QA PoC guide](../../../../docs/qa-agent-poc.md) describes credentials and data.
+
+The legacy installer remains available for an isolated local experiment and
+read-only inspection:
 
 ```sh
 python3 lp_agent/tests/fixtures/agent_db/setup_agent_db.py
@@ -32,9 +39,11 @@ It starts only the local Compose PostgreSQL service and installs into
 `litigant_portal.public`. An unchanged rerun keeps existing data; a changed
 bundle is rejected. `--recreate-empty` only replaces a recognized installation
 when every agent table is empty. It refuses unknown objects and external
-dependencies and uses no cascading drops. Migrations and seed data are separate.
+dependencies and uses no cascading drops. Do not use its rebuild option on a
+database already managed by migration `0019`; use Django migrations there.
 
-The installer creates no login credentials. For local integration, open an
+The shared dev/QA database option needs no additional login credentials. To test
+the dedicated-login path with `LP_AGENT_USE_DJANGO_DB=false`, open an
 administrator session with `docker compose exec postgres psql -U postgres -d
 litigant_portal`, then create separate logins and set their passwords interactively:
 

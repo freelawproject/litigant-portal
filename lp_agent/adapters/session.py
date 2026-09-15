@@ -28,12 +28,43 @@ if TYPE_CHECKING:
     from psycopg.rows import DictRow
 
 
+def django_database_dsn() -> str:
+    """
+    Reuse the configured application database without sharing its connection.
+    """
+    from django.conf import settings
+    from psycopg.conninfo import make_conninfo
+
+    config = settings.DATABASES["default"]
+    return make_conninfo(
+        dbname=config["NAME"],
+        user=config["USER"],
+        password=config["PASSWORD"],
+        host=config["HOST"],
+        port=config["PORT"],
+    )
+
+
 def default_connection_options() -> Mapping[str, object]:
     """
     Read host configuration lazily; credentials never enter serialized run data.
     """
     from django.conf import settings
 
+    from lp_agent.errors import AgentValidationError
+
+    if settings.LP_AGENT_USE_DJANGO_DB:
+        if settings.DEPLOYMENT_ENV not in {"dev", "qa"}:
+            raise AgentValidationError(
+                "LP_AGENT_USE_DJANGO_DB is only available in dev and QA."
+            )
+        dsn = django_database_dsn()
+        return {
+            "writer": dsn,
+            "lookup": dsn,
+            "court": settings.CORPUS_COURT,
+            "shared_database": True,
+        }
     return {
         "writer": settings.LP_AGENT_WRITER_DSN,
         "lookup": settings.LP_AGENT_LOOKUP_DSN,
@@ -72,12 +103,17 @@ class DatabaseConnections:
         from lp_agent.errors import AgentValidationError
 
         try:
-            dsn = self._options().get("lookup" if lookup else "writer")
+            options = self._options()
+            dsn = options.get("lookup" if lookup else "writer")
             if not isinstance(dsn, str) or not dsn.strip():
                 raise AgentValidationError(
                     "Agent database credentials are not configured."
                 )
-            factory = lookup_connection if lookup else agent_connection
+            factory = (
+                lookup_connection
+                if lookup and not options.get("shared_database", False)
+                else agent_connection
+            )
             async with factory(dsn) as connection:
                 yield connection
         except Error:

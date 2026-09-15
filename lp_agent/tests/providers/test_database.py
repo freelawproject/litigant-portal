@@ -7,7 +7,7 @@ import json
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from hashlib import sha256
-from pathlib import Path
+from importlib.resources import files
 from secrets import token_urlsafe
 from uuid import uuid4
 
@@ -69,7 +69,9 @@ def database_dsns() -> Iterator[dict[str, str]]:
     test_dsn = make_conninfo(server, dbname=name)
     dsns = {"admin": test_dsn}
     roles = []
-    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "agent_db"
+    fixtures = files("litigant_portal").joinpath(
+        "app/migrations/agent_sql_0019"
+    )
     with Connection.connect(
         server, dbname="postgres", autocommit=True
     ) as admin:
