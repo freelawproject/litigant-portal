@@ -9,9 +9,9 @@ configuration, topic guidance, procedures, and source material before answering.
 It can answer a question without selecting a procedure, or guide preparation
 while saving facts, their evidence, and progress in the existing `agent_` tables.
 
-## Local development and demonstration
+## Local development
 
-Follow the [demo setup and rehearsal](demo/README.md), then open `/dev/agent/`.
+Open `/dev/agent/` to exercise the database-backed flow.
 The page requires developer permission, `LP_AGENT_DEV_ENABLED=true`, a server-held
 `BEDROCK_API_KEY`, and these server-side database settings:
 
@@ -19,10 +19,9 @@ The page requires developer permission, `LP_AGENT_DEV_ENABLED=true`, a server-he
 - `LP_AGENT_LOOKUP_DSN`: a separate login inheriting only `agent_dev_lookup`.
 
 The [experimental SQL fixture guide](tests/fixtures/agent_db/) explains setup.
-The demo seeder loads all four existing repository procedures: North Dakota
-standard and publication-waiver name changes, and Franklin County tenant and
-landlord eviction preparation. It publishes new prompt revisions when their
-text changes; it does not overwrite earlier revisions or published procedures.
+The development database must contain published court/topic prompts and corpus
+material. Test fixtures load the repository's four preparation procedures into
+isolated test databases; runtime code does not seed data.
 
 Leave court or topic blank to choose through chat. Static numbered questions
 select the court first, then its topic, without calling a model. The original
@@ -80,8 +79,8 @@ close it explicitly when stopping early. Do not reuse that agent afterward.
 and one evidence/state snapshot. Court material is evidence, including its
 citation IDs; embedded legacy UI instructions do not control the agent.
 Missing evidence calls for an explicit gap and a supplied court contact.
-Conflicting sources must be disclosed. Unrelated requests receive a legal-help
-redirect, including requests presented as a demonstration.
+Conflicting sources must be disclosed. The system prompt defines the assistant's
+legal-system purpose, and the judge rejects answers outside that purpose.
 
 The [judge](flows/judge.py) reviews each candidate against that same evidence and
 saved state. It checks relevance, supported claims and citations, legal-help
@@ -138,9 +137,6 @@ They use controlled model responses. Type-check the production package with:
 docker compose exec -T django .tox/py313/bin/mypy --disable-error-code import-untyped --exclude '/tests/' lp_agent
 ```
 
-[Live observations and reproduction commands](demo/README.md) are separate from
-controlled tests. They compare the same model with and without supplied corpus;
-they are not a comparison against the complete ChatGPT.com product.
 Attachments, form filling, filing, interrupted-run recovery, Workers, queue/steer,
 and `serve_mcp()` remain unimplemented. Production chat migration and corpus
 legal review remain separate work.

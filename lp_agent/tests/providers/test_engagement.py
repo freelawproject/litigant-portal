@@ -28,7 +28,6 @@ from lp_agent.adapters.session import (
     LazyConversationStore,
     LazyRunStore,
 )
-from lp_agent.demo.seed import seed_demo
 from lp_agent.errors import (
     AgentAccessError,
     AgentStorageError,
@@ -36,6 +35,7 @@ from lp_agent.errors import (
 )
 from lp_agent.identity import AgentIdentity
 from lp_agent.interfaces import ModelClient
+from lp_agent.tests.fixtures.preparation import load_preparation_fixture
 from lp_agent.tests.helpers import PassingJudge
 from lp_agent.tests.providers.test_database import database, fixture_scope
 from lp_agent.tests.providers.test_database import (
@@ -58,10 +58,10 @@ pytestmark = pytest.mark.postgres
 
 
 @pytest.fixture(name="dsn", scope="module")
-def demo_database(database_dsns: dict[str, str]) -> Iterator[str]:  # noqa: F811
+def preparation_database(database_dsns: dict[str, str]) -> Iterator[str]:  # noqa: F811
     async def seed(value: str) -> None:
         async with database(value) as db:
-            await seed_demo(db, settings.BASE_DIR)
+            await load_preparation_fixture(db, settings.BASE_DIR)
 
     with override_settings(
         LP_AGENT_WRITER_DSN=database_dsns["crud"],
@@ -168,28 +168,6 @@ async def turn(
         )
         assert checkpoint is not None
         return checkpoint
-
-
-def test_seed_all_four_and_repeat_without_replacing_published_rows(
-    dsn: str,
-) -> None:
-    async def scenario() -> None:
-        async with database(dsn) as db:
-            before = await (
-                await db.connection.execute(
-                    "SELECT id FROM agent_procedure ORDER BY id"
-                )
-            ).fetchall()
-            await seed_demo(db, settings.BASE_DIR)
-            after = await (
-                await db.connection.execute(
-                    "SELECT id FROM agent_procedure ORDER BY id"
-                )
-            ).fetchall()
-            assert len(before) == 4
-            assert before == after
-
-    asyncio.run(scenario())
 
 
 @pytest.mark.parametrize(
@@ -1240,44 +1218,43 @@ def test_partial_scope_static_replies_and_invalid_choice_preserve_question(
     asyncio.run(scenario())
 
 
-def test_seed_publishes_prompt_revision_without_rewriting_previous(dsn):
-    from lp_agent.demo import seed
+def test_off_topic_draft_is_corrected_before_any_answer_text_is_released(dsn):
+    from lp_agent.types import TextEvent
 
     async def scenario():
-        async with database(dsn) as db:
-            before = await (
-                await db.connection.execute(
-                    "SELECT * FROM agent_prompt WHERE key = 'agent.base' ORDER BY version DESC LIMIT 1"
-                )
-            ).fetchone()
-            with patch.object(
-                seed,
-                "BASE",
-                before["body"] + "\nA revised instruction for this test.",
-            ):
-                await seed_demo(db, settings.BASE_DIR)
-                after = await (
-                    await db.connection.execute(
-                        "SELECT * FROM agent_prompt WHERE key = 'agent.base' ORDER BY version DESC LIMIT 1"
-                    )
-                ).fetchone()
-                assert after["version"] == before["version"] + 1
-                assert after["previous_version_id"] == before["id"]
-                assert after["state"] == "published"
-                await seed_demo(db, settings.BASE_DIR)
-                unchanged = await (
-                    await db.connection.execute(
-                        "SELECT id FROM agent_prompt WHERE key = 'agent.base' ORDER BY version DESC LIMIT 1"
-                    )
-                ).fetchone()
-                assert unchanged["id"] == after["id"]
-            prior = await (
-                await db.connection.execute(
-                    "SELECT body FROM agent_prompt WHERE id = %s",
-                    (before["id"],),
-                )
-            ).fetchone()
-            assert prior["body"] == before["body"]
-            await seed_demo(db, settings.BASE_DIR)
+        draft = "Here is an unrelated weather forecast."
+        correction = "I can help you understand court procedures. What do you need help with?"
+        model = Turns(draft, correction)
+        judge = Turns(
+            json.dumps(
+                {
+                    "approved": False,
+                    "findings": [
+                        {
+                            "code": "off_topic",
+                            "message": "Stay within the assistant's legal-system purpose.",
+                        }
+                    ],
+                }
+            ),
+            '{"approved": true, "findings": []}',
+        )
+        env = environment(dsn, model, uuid4().hex, judge=judge)
+        async with LPAgent(environment=env) as agent:
+            run = await agent.run(message="What help can you offer?")
+            events = [event async for event in run.events()]
+            outcome = await run.result()
+        assert outcome.state == "completed"
+        assert [
+            event.payload.delta
+            for event in events
+            if isinstance(event.payload, TextEvent)
+        ] == [correction]
+        assert model.requests[1].tools == ()
+        assert "legal-system purpose" in model.requests[1].instructions
+        assert (
+            json.loads(judge.requests[0].input[0].content)["candidate"]
+            == draft
+        )
 
     asyncio.run(scenario())

@@ -3,6 +3,7 @@ Development UI and persisted Direct conversations for the new agent.
 """
 
 import logging
+from hashlib import sha256
 
 from asgiref.sync import async_to_sync
 from django import forms
@@ -16,6 +17,7 @@ from django.http import (
     StreamingHttpResponse,
 )
 from django.shortcuts import render
+from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_GET, require_POST
 from pydantic import ValidationError
 
@@ -36,6 +38,7 @@ UNSUPPORTED_TOOL_MODEL = "bedrock_mantle/zai.glm-4.7-flash"
 
 @login_required
 @permission_required("app.manage_developers", raise_exception=True)
+@never_cache
 @require_GET
 def development_page(request: HttpRequest) -> HttpResponse:
     """
@@ -65,6 +68,11 @@ def development_page(request: HttpRequest) -> HttpResponse:
             "model_choices": MODEL_CHOICES,
             "selected_model": selected_model,
             "limits": RunLimits(),
+            "agent_script_version": sha256(
+                (
+                    settings.BASE_DIR / "app/static/js/agent_development.js"
+                ).read_bytes()
+            ).hexdigest()[:12],
         },
         status=503 if service_error else 200,
     )

@@ -24,8 +24,8 @@ from litigant_portal.app.services.site import site_update
 from litigant_portal.app.views.agent import AgentMessageForm
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
-from lp_agent.demo.seed import seed_demo
 from lp_agent.flows.new_engagement import message_text
+from lp_agent.tests.fixtures.preparation import load_preparation_fixture
 from lp_agent.tests.helpers import answer_item
 from lp_agent.tests.providers.test_database import database
 from lp_agent.tests.providers.test_database import (
@@ -38,7 +38,7 @@ from lp_agent.types import ModelFinished, ModelMessage, ModelTextDelta
 def agent_database(database_dsns):  # noqa: F811
     async def seed():
         async with database(database_dsns["crud"]) as db:
-            await seed_demo(db, settings.BASE_DIR)
+            await load_preparation_fixture(db, settings.BASE_DIR)
 
     with override_settings(
         LP_AGENT_WRITER_DSN=database_dsns["crud"],
@@ -83,6 +83,10 @@ class AgentDevelopmentPageTests(TestCase):
         self.client.force_login(self.developer)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertRegex(
+            response.content.decode(), r"agent_development\.js\?v=[0-9a-f]{12}"
+        )
         self.assertEqual(
             response.context["selected_model"], DEFAULT_BEDROCK_MODEL
         )
