@@ -1,113 +1,154 @@
 <mxfile host="app.diagrams.net" agent="LP architecture compare" version="24.7.17" type="device">
-  <diagram id="lp-arch-technical" name="LP architecture (technical / trust boundary)">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="826" math="0" shadow="0">
+  <diagram id="lp-arch-today" name="LP architecture — today (technical / trust boundary)">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="1010" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
 
         <!-- ===== Group / boundary boxes (drawn first so nodes sit on top) ===== -->
 
-        <!-- Public edge (plain boundary, not an AWS service) -->
         <mxCell id="g_edge" value="Public edge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#333333;fontSize=13;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="40" y="150" width="190" height="300" as="geometry" />
+          <mxGeometry x="40" y="200" width="210" height="330" as="geometry" />
         </mxCell>
 
-        <!-- Isolation boundary: VPC-style AWS4 group -->
-        <mxCell id="g_vpc" value="Per-court AWS account" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc2;strokeColor=#8C4FFF;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#8C4FFF;dashed=0;" vertex="1" parent="1">
-          <mxGeometry x="290" y="60" width="470" height="540" as="geometry" />
+        <mxCell id="g_aws" value="FLP AWS account (us-west-2)" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#232F3E;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="300" y="60" width="730" height="660" as="geometry" />
         </mxCell>
 
-        <!-- Per-court instance: AWS4 security-group style box, nested inside the VPC -->
-        <mxCell id="g_instance" value="Per-court instance on EKS" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#00A4A6;fillColor=#E6F6F7;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#147EBA;dashed=0;" vertex="1" parent="1">
-          <mxGeometry x="320" y="130" width="410" height="450" as="geometry" />
+        <mxCell id="g_cluster" value="Shared FLP EKS cluster&#10;cluster name: courtlistener" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_security_group;grStroke=0;strokeColor=#ED7100;fillColor=#FDF3EA;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#C25E00;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="330" y="130" width="400" height="560" as="geometry" />
         </mxCell>
 
-        <!-- External services (plain boundary) -->
+        <mxCell id="g_ns" value="namespace: litigant (prod)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6F6F7;strokeColor=#00A4A6;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#147EBA;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="352" y="190" width="356" height="390" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g_managed" value="Managed AWS services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F4FF;strokeColor=#8C4FFF;dashed=1;verticalAlign=top;align=left;spacingLeft=10;spacingTop=8;fontColor=#8C4FFF;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="760" y="130" width="245" height="560" as="geometry" />
+        </mxCell>
+
         <mxCell id="g_external" value="External services" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7E6;strokeColor=#D86613;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#D86613;fontSize=13;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="830" y="180" width="240" height="320" as="geometry" />
+          <mxGeometry x="1090" y="180" width="360" height="400" as="geometry" />
         </mxCell>
 
-        <!-- Delivery (plain boundary) -->
         <mxCell id="g_delivery" value="Delivery" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F7FF;strokeColor=#147EBA;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#147EBA;fontSize=13;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="320" y="640" width="410" height="140" as="geometry" />
+          <mxGeometry x="300" y="770" width="1150" height="190" as="geometry" />
         </mxCell>
 
         <!-- ===== Nodes ===== -->
 
-        <!-- Public edge nodes -->
         <mxCell id="browser" value="Litigant browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="90" y="210" width="110" height="60" as="geometry" />
+          <mxGeometry x="85" y="250" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="ingress" value="Ingress&#10;TLS + access gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=12;" vertex="1" parent="1">
-          <mxGeometry x="90" y="330" width="110" height="60" as="geometry" />
-        </mxCell>
-
-        <!-- EKS cluster badge -->
-        <mxCell id="eks" value="EKS cluster" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#ED7100;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eks;" vertex="1" parent="1">
-          <mxGeometry x="350" y="168" width="48" height="48" as="geometry" />
+        <mxCell id="ingress" value="Ingress&#10;TLS termination + site-wide access gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="70" y="400" width="150" height="90" as="geometry" />
         </mxCell>
 
-        <!-- Django app: generic server -->
-        <mxCell id="app" value="Django app&#10;(flow + AI assistant + agent tooling)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
-          <mxGeometry x="298" y="279" width="160" height="60" as="geometry" />
+        <mxCell id="app" value="Django app — our code&#10;(Litigant Portal + Topic Flows + AI assistant + agent tooling)&#10;deployment: litigant-web" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="370" y="240" width="320" height="95" as="geometry" />
         </mxCell>
 
-        <!-- docassemble: generic server (own container) -->
-        <mxCell id="da" value="docassemble&#10;(own container)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
-          <mxGeometry x="298" y="409" width="160" height="60" as="geometry" />
+        <mxCell id="da" value="docassemble — guided interviews + document assembly&#10;the stock jhpyle/docassemble image, pulled and configured&#10;not our code · own container, own database" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#666666;fontColor=#333333;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="435" width="320" height="110" as="geometry" />
         </mxCell>
 
-        <!-- Postgres + pgvector: Aurora (Postgres-compatible) -->
-        <mxCell id="pg" value="Postgres + pgvector" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;" vertex="1" parent="1">
-          <mxGeometry x="600" y="272" width="48" height="48" as="geometry" />
+        <mxCell id="note_qa" value="QA is the same shape in this same cluster: namespace qa-litigant, same litigant-web deployment and docassemble container, deployed by manual dispatch only." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#00A4A6;dashed=1;fontColor=#147EBA;fontSize=10;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="352" y="600" width="356" height="70" as="geometry" />
         </mxCell>
 
-        <!-- Redis: ElastiCache -->
-        <mxCell id="redis" value="Redis (ElastiCache)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elasticache;" vertex="1" parent="1">
-          <mxGeometry x="600" y="402" width="48" height="48" as="geometry" />
+        <mxCell id="secrets" value="AWS Secrets Manager&#10;app config + credentials, synced in by External Secrets" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.secrets_manager;labelWidth=205;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="858" y="185" width="48" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="pg" value="Postgres + pgvector (AWS-managed)&#10;app data, corpus rows, chat threads, sessions" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;labelWidth=205;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="858" y="320" width="48" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="redis" value="Redis (Amazon ElastiCache)&#10;Django cache only — sessions live in Postgres" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elasticache;labelWidth=205;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="858" y="450" width="48" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="Amazon S3 — two buckets&#10;private: litigant uploads · public: static + media" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.s3;labelWidth=205;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="858" y="575" width="48" height="48" as="geometry" />
         </mxCell>
 
-        <!-- Bedrock -->
-        <mxCell id="bedrock" value="AWS Bedrock&#10;(via LiteLLM)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;" vertex="1" parent="1">
-          <mxGeometry x="910" y="238" width="48" height="48" as="geometry" />
+        <mxCell id="bedrock" value="AWS Bedrock&#10;LLM inference for the AI assistant" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#01A88D;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=10;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.bedrock;labelWidth=210;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1246" y="235" width="48" height="48" as="geometry" />
+        </mxCell>
+        <mxCell id="partners" value="Third-party court + state services&#10;payments, driving schools, motor-vehicle dept&#10;(e.g. AZCourtPay, azdrive, AZ MVD)&#10;the litigant leaves the portal — no API integration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D86613;fontColor=#232F3E;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="400" width="320" height="115" as="geometry" />
         </mxCell>
 
-        <!-- Third-party links -->
-        <mxCell id="partners" value="Third-party links&#10;azdrive / AZCourtPay / MVD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D86613;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="880" y="380" width="150" height="60" as="geometry" />
+        <mxCell id="cicd" value="GitHub Actions&#10;tests → build image → push to Docker Hub&#10;(freelawproject/litigant-portal:&lt;sha&gt;-prod) → deploy to EKS&#10;prod: auto on merge to main · QA: manual dispatch only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;fontColor=#232F3E;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="330" y="820" width="330" height="110" as="geometry" />
         </mxCell>
-
-        <!-- CI/CD -->
-        <mxCell id="cicd" value="CI/CD build &#8594; EKS&#10;(prod on merge-to-main; QA manual-only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
-          <mxGeometry x="390" y="680" width="270" height="60" as="geometry" />
+        <mxCell id="corpus" value="Court corpus (YAML, in the repo)&#10;the court's topics, sections, forms and contacts&#10;ships inside the image, read at runtime" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;fontColor=#232F3E;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="690" y="820" width="320" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="devbox" value="Dev only — not a court instance&#10;local: docker compose (Caddy, Postgres, Redis, docassemble)&#10;shared dev + demo host: a DigitalOcean droplet at dev.litigantportal.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;dashed=1;fontColor=#555555;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="820" width="380" height="110" as="geometry" />
         </mxCell>
 
         <!-- ===== Edges ===== -->
-        <mxCell id="e_browser_ingress" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;fontSize=10;" edge="1" parent="1" source="browser" target="ingress">
+
+        <mxCell id="e_browser_ingress" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;fontSize=10;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="browser" target="ingress">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_ingress_app" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="ingress" target="app">
+
+        <mxCell id="e_ingress_app" value="all other paths" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;fontSize=11;exitX=1;exitY=0.25;entryX=0;entryY=0.5;verticalAlign=bottom;" edge="1" parent="1" source="ingress" target="app">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="292" y="422" /><mxPoint x="292" y="287" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_ingress_da" value="/interview/*" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;fontSize=11;exitX=1;exitY=0.75;entryX=0;entryY=0.5;verticalAlign=bottom;" edge="1" parent="1" source="ingress" target="da">
+          <mxGeometry x="0.75" relative="1" as="geometry">
+            <mxPoint y="-4" as="offset" />
+            <Array as="points"><mxPoint x="292" y="467" /><mxPoint x="292" y="490" /></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="e_app_da" value="API — create session,&#10;push guided answers" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;fontSize=10;exitX=0.3;exitY=1;entryX=0.3;entryY=0;" edge="1" parent="1" source="app" target="da">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_app_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="app" target="pg">
-          <mxGeometry relative="1" as="geometry" />
+
+        <mxCell id="e_secrets_app" value="config at startup" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#DD344C;fontSize=10;exitX=0;exitY=0.5;entryX=0.75;entryY=0;verticalAlign=bottom;" edge="1" parent="1" source="secrets" target="app">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="610" y="209" /></Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e_app_redis" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="app" target="redis">
-          <mxGeometry relative="1" as="geometry" />
+
+        <mxCell id="e_app_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;exitX=1;exitY=0.25;entryX=0;entryY=0.5;" edge="1" parent="1" source="app" target="pg">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="752" y="264" /><mxPoint x="752" y="344" /></Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e_app_da" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="app" target="da">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e_app_redis" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="app" target="redis">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="744" y="287" /><mxPoint x="744" y="474" /></Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e_da_pg" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;" edge="1" parent="1" source="da" target="pg">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e_app_s3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;fontSize=10;exitX=1;exitY=0.75;entryX=0;entryY=0.5;verticalAlign=bottom;" edge="1" parent="1" source="app" target="s3">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="736" y="311" /><mxPoint x="736" y="599" /></Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e_app_bedrock" value="LLM" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#01A88D;fontSize=10;" edge="1" parent="1" source="app" target="bedrock">
-          <mxGeometry x="-0.55" relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
+
+        <mxCell id="e_app_bedrock" value="LiteLLM&#10;(a library inside the Django app)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#01A88D;fontSize=10;exitX=0.9;exitY=0;entryX=0.5;entryY=0;verticalAlign=bottom;" edge="1" parent="1" source="app" target="bedrock">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="658" y="110" /><mxPoint x="1270" y="110" /></Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e_app_partners" value="links" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#D86613;fontSize=10;" edge="1" parent="1" source="app" target="partners">
-          <mxGeometry relative="1" as="geometry" />
+
+        <mxCell id="e_app_partners" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#D86613;fontSize=10;exitX=1;exitY=0.95;entryX=0.5;entryY=1;verticalAlign=bottom;" edge="1" parent="1" source="app" target="partners">
+          <mxGeometry x="0.25" relative="1" as="geometry">
+            <mxPoint y="-6" as="offset" />
+            <Array as="points"><mxPoint x="1055" y="330" /><mxPoint x="1055" y="745" /><mxPoint x="1270" y="745" /></Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e_cicd_app" value="deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#147EBA;fontSize=10;" edge="1" parent="1" source="cicd" target="app">
+
+        <mxCell id="e_cicd_app" value="deploy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#147EBA;fontSize=10;exitX=0;exitY=0.5;entryX=0;entryY=0.85;verticalAlign=bottom;" edge="1" parent="1" source="cicd" target="app">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="272" y="875" /><mxPoint x="272" y="321" /></Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e_corpus_cicd" value="built into the image" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#147EBA;fontSize=10;exitX=0;exitY=0.5;entryX=1;entryY=0.5;verticalAlign=bottom;" edge="1" parent="1" source="corpus" target="cicd">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 
