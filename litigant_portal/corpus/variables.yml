@@ -197,3 +197,44 @@ variables:
     label: 'Date you served the Notice to Leave'
     data_type: date
     help_text: 'The day you handed the notice to your tenant, left it at the property, or sent it by certified mail.'
+
+  # Arizona civil traffic. Scoped to the topic: an arraignment date and a
+  # citation date mean something only inside a traffic case.
+
+  - name: traffic_violation_date
+    label: 'Date of the violation'
+    data_type: date
+    help_text: 'The date the ticket was issued, printed on the citation. For a camera (photo enforcement) ticket, use the date of the violation shown on the notice, not the date it arrived in the mail.'
+
+  - name: traffic_arraignment_date
+    label: 'Your court date'
+    data_type: date
+    help_text: 'Printed on your citation, sometimes labelled the arraignment or appearance date. This is the day everything is measured against: you must pay, register for defensive driving school, or request a hearing on or before it. Not sure? Call the court with your citation number.'
+
+  - name: traffic_path
+    label: 'How do you want to handle the ticket?'
+    data_type: choice
+    required: true
+    choices:
+      - value: defensive_driving
+        label: 'Take defensive driving school'
+      - value: pay
+        label: 'Pay the ticket'
+      - value: hearing
+        label: 'Request a hearing to contest it'
+    help_text: 'You can change your mind before your court date, but each option has its own deadline. Paying a civil traffic ticket is an admission of responsibility.'
+
+  - name: traffic_prior_violation_date
+    label: 'Date of your last defensive driving school violation'
+    data_type: date
+    help_text: 'If you have used defensive driving school before, enter the violation date of that earlier ticket, not the date you took the class. Arizona measures the 12-month window from one violation date to the other. Leave blank if you have never used it.'
+
+  - name: traffic_license_state
+    label: 'State that issued your driver licence'
+    data_type: text
+    help_text: 'The two-letter state code on your licence, for example AZ or CA. An out-of-state licence does not by itself rule out defensive driving school in Arizona.'
+
+  - name: traffic_serious_injury_involved
+    label: 'Did the violation involve a serious injury or a death?'
+    data_type: boolean
+    help_text: 'Answer yes if anyone was seriously injured or killed. This makes a citation ineligible for defensive driving school. The school makes the binding check; this question only sets expectations.'

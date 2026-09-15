@@ -14,7 +14,7 @@
     },
     "jurisdiction_level": {
       "type": "string",
-      "enum": ["state", "county", "district", "federal", "tribal"],
+      "enum": ["state", "county", "district", "municipal", "federal", "tribal"],
       "description": "Court's jurisdictional scope. Used to pick the layout/UX register without forcing the deeper jurisdiction-nesting decision yet."
     },
     "state": {
