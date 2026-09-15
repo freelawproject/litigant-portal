@@ -17,7 +17,13 @@ def agent_corpus_sync(*, court=None, strict=False):
     """
     Publish through deployment credentials after normal Django corpus sync.
     """
-    selected_court = settings.CORPUS_COURT if court is None else court
+    qa_shared = (
+        settings.DEPLOYMENT_ENV == "qa" and settings.LP_AGENT_USE_DJANGO_DB
+    )
+    # QA exercises every real agent scope; explicit manual imports stay scoped.
+    selected_court = (
+        settings.CORPUS_COURT if court is None and not qa_shared else court
+    )
 
     async def publish():
         async with agent_connection(django_database_dsn()) as connection:

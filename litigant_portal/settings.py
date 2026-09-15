@@ -29,6 +29,14 @@ if DEPLOYMENT_ENV not in {"dev", "qa", "prod"}:
 # Temporary QA PoC defaults live in the application, using the deployment's
 # existing environment label. Explicit settings override both defaults.
 _AGENT_QA_DEFAULT = "true" if DEPLOYMENT_ENV == "qa" else "false"
+if DEPLOYMENT_ENV == "qa":
+    # The QA deployment runs in us-west-2; Mantle otherwise defaults to us-east-1.
+    os.environ.setdefault(
+        "BEDROCK_MANTLE_REGION",
+        os.environ.get("AWS_REGION_NAME")
+        or os.environ.get("AWS_REGION")
+        or "us-west-2",
+    )
 LP_AGENT_USE_DJANGO_DB = (
     os.environ.get("LP_AGENT_USE_DJANGO_DB", _AGENT_QA_DEFAULT).lower()
     == "true"

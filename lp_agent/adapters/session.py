@@ -62,7 +62,9 @@ def default_connection_options() -> Mapping[str, object]:
         return {
             "writer": dsn,
             "lookup": dsn,
-            "court": settings.CORPUS_COURT,
+            "court": None
+            if settings.DEPLOYMENT_ENV == "qa"
+            else settings.CORPUS_COURT,
             "shared_database": True,
         }
     return {

@@ -27,7 +27,7 @@ def remove_unused_vectors(apps, schema_editor):
             "SELECT obj_description(to_regclass('public.agent_user'), 'pg_class')"
         )
         marker = cursor.fetchone()[0]
-        if marker == schema.MARKER:
+        if marker in {schema.MARKER, schema.QA_MARKER}:
             return
         if marker != schema.LEGACY_MARKER:
             raise RuntimeError(
