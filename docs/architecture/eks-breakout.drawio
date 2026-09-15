@@ -1,6 +1,6 @@
 <mxfile host="app.diagrams.net" agent="LP EKS breakout" version="24.7.17" type="device">
   <diagram id="lp-eks-breakout" name="LP EKS breakout (per-court namespace)">
-    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="820" math="0" shadow="0">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="740" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -8,8 +8,8 @@
         <!-- ===== Group / boundary boxes (drawn first so nodes sit on top) ===== -->
 
         <!-- Per-court namespace boundary (the zoom-in of "Per-court instance on EKS") -->
-        <mxCell id="g_ns" value="Per-court AWS account &#183; EKS today (Fargate open) &#183; #858 / #859" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F7FF;strokeColor=#326CE5;dashed=1;verticalAlign=top;align=left;spacingLeft=14;spacingTop=8;fontColor=#326CE5;fontSize=14;fontStyle=1;" vertex="1" parent="1">
-          <mxGeometry x="300" y="70" width="560" height="660" as="geometry" />
+        <mxCell id="g_ns" value="FLP AWS account &#183; shared EKS cluster (name: courtlistener) &#183; namespace: litigant (prod)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F7FF;strokeColor=#326CE5;dashed=1;verticalAlign=top;align=left;spacingLeft=14;spacingTop=8;fontColor=#326CE5;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="70" width="560" height="590" as="geometry" />
         </mxCell>
 
         <!-- Managed data, outside the namespace, inside the VPC -->
@@ -26,31 +26,31 @@
 
         <!-- Ingress fronted by an AWS Application Load Balancer (AWS4 product icon) -->
         <mxCell id="alb" value="Ingress (ALB)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.application_load_balancer;verticalLabelPosition=bottom;verticalAlign=top;align=center;" vertex="1" parent="1">
-          <mxGeometry x="528" y="104" width="64" height="64" as="geometry" />
+          <mxGeometry x="568" y="104" width="64" height="64" as="geometry" />
         </mxCell>
 
         <!-- Kubernetes Service in front of litigant-web -->
         <mxCell id="svc" value="Service" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#2875E2;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;shape=mxgraph.kubernetes.icon2;prIcon=svc;" vertex="1" parent="1">
-          <mxGeometry x="536" y="214" width="48" height="48" as="geometry" />
+          <mxGeometry x="576" y="214" width="48" height="48" as="geometry" />
         </mxCell>
 
         <!-- litigant-web Deployment: our workload (blue box) -->
-        <mxCell id="web" value="litigant-web Deployment&#10;Django: flow + AI assistant + tooling&#10;image: freelawproject/litigant-portal:&lt;sha&gt;-prod" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
-          <mxGeometry x="430" y="306" width="260" height="88" as="geometry" />
+        <mxCell id="web" value="litigant-web Deployment&#10;Django app: Litigant Portal + Topic Flows + AI assistant + agent tooling&#10;image: freelawproject/litigant-portal:&lt;sha&gt;-prod" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="470" y="306" width="260" height="88" as="geometry" />
         </mxCell>
         <!-- small K8s Deployment badge on the web box -->
         <mxCell id="web_badge" value="" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;aspect=fixed;fillColor=#2875E2;strokeColor=#ffffff;shape=mxgraph.kubernetes.icon2;prIcon=deploy;" vertex="1" parent="1">
-          <mxGeometry x="438" y="313" width="26" height="26" as="geometry" />
+          <mxGeometry x="478" y="313" width="26" height="26" as="geometry" />
         </mxCell>
 
         <!-- Migration Job: ephemeral temp pod (K8s Job icon) -->
-        <mxCell id="mig" value="Migration Job (temp pod)&#10;collectstatic + migrate&#10;deleted after" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#2875E2;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;shape=mxgraph.kubernetes.icon2;prIcon=job;" vertex="1" parent="1">
-          <mxGeometry x="330" y="320" width="48" height="48" as="geometry" />
+        <mxCell id="mig" value="Migration Job (temp pod)&#10;collectstatic + migrate, deleted after" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#2875E2;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;shape=mxgraph.kubernetes.icon2;prIcon=job;labelWidth=140;" vertex="1" parent="1">
+          <mxGeometry x="345" y="318" width="48" height="48" as="geometry" />
         </mxCell>
 
-        <!-- docassemble Deployment: our workload (blue box), not on EKS yet -->
-        <mxCell id="da" value="docassemble Deployment&#10;(planned &#8212; #550)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="430" y="440" width="260" height="70" as="geometry" />
+        <!-- docassemble Deployment: third-party image we pull and configure (dashed grey) -->
+        <mxCell id="da" value="docassemble Deployment&#10;stock jhpyle/docassemble image, pulled and configured&#10;own container, own database" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#666666;fontColor=#333333;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="440" width="260" height="78" as="geometry" />
         </mxCell>
 
         <!-- ExternalSecret CRD (no native stencil; labeled box tied to Secrets Manager color) -->
@@ -59,8 +59,8 @@
         </mxCell>
 
         <!-- Native K8s Secret consumed by the pods -->
-        <mxCell id="secret" value="Secret&#10;(litigant-env)" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#2875E2;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;shape=mxgraph.kubernetes.icon2;prIcon=secret;" vertex="1" parent="1">
-          <mxGeometry x="612" y="570" width="48" height="48" as="geometry" />
+        <mxCell id="secret" value="Secret (litigant-env)" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#2875E2;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;shape=mxgraph.kubernetes.icon2;prIcon=secret;labelWidth=130;" vertex="1" parent="1">
+          <mxGeometry x="652" y="570" width="48" height="48" as="geometry" />
         </mxCell>
 
         <!-- AWS Secrets Manager (AWS4 resourceIcon), outside the namespace -->
@@ -69,12 +69,12 @@
         </mxCell>
 
         <!-- Postgres + pgvector (AWS4 Aurora resourceIcon) -->
-        <mxCell id="pg" value="Postgres + pgvector" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.aurora;" vertex="1" parent="1">
+        <mxCell id="pg" value="Postgres + pgvector (AWS-managed)" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.rds;labelWidth=185;whiteSpace=wrap;" vertex="1" parent="1">
           <mxGeometry x="1012" y="350" width="48" height="48" as="geometry" />
         </mxCell>
 
         <!-- Redis (AWS4 ElastiCache resourceIcon) -->
-        <mxCell id="redis" value="Redis" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elasticache;" vertex="1" parent="1">
+        <mxCell id="redis" value="Redis&#10;cache only — sessions are in Postgres" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#2E27AD;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.elasticache;labelWidth=185;whiteSpace=wrap;" vertex="1" parent="1">
           <mxGeometry x="1012" y="454" width="48" height="48" as="geometry" />
         </mxCell>
 
@@ -93,7 +93,7 @@
 
         <!-- migration job runs before the web rollout -->
         <mxCell id="e_mig_web" value="runs before rollout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;dashed=1;strokeColor=#B85C00;fontColor=#B85C00;fontSize=10;" edge="1" parent="1" source="mig" target="web">
-          <mxGeometry x="-0.4" relative="1" as="geometry"><mxPoint y="-14" as="offset" /></mxGeometry>
+          <mxGeometry relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
         </mxCell>
 
         <!-- litigant-web <-> docassemble -->
@@ -102,22 +102,28 @@
         </mxCell>
 
         <!-- secrets sync chain: Secrets Manager -> ExternalSecret -> Secret -> pods -->
-        <mxCell id="e_sm_es" value="synced by External Secrets Operator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#DD344C;fontColor=#A3283A;fontSize=10;" edge="1" parent="1" source="sm" target="es">
+        <mxCell id="e_sm_es" value="synced by the&#10;External Secrets Operator" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#DD344C;fontColor=#A3283A;fontSize=10;" edge="1" parent="1" source="sm" target="es">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_es_secret" value="operator writes Secret" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#DD344C;fontColor=#A3283A;fontSize=10;" edge="1" parent="1" source="es" target="secret">
+        <mxCell id="e_es_secret" value="writes Secret" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#DD344C;fontColor=#A3283A;fontSize=10;" edge="1" parent="1" source="es" target="secret">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="e_secret_web" value="mounted as env" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#DD344C;fontColor=#A3283A;fontSize=10;" edge="1" parent="1" source="secret" target="web">
-          <mxGeometry relative="1" as="geometry"><mxPoint x="46" y="0" as="offset" /></mxGeometry>
+        <mxCell id="e_secret_web" value="mounted as env" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#DD344C;fontColor=#A3283A;fontSize=10;exitX=1;exitY=0.5;entryX=1;entryY=0.75;verticalAlign=bottom;" edge="1" parent="1" source="secret" target="web">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="750" y="594" /><mxPoint x="750" y="372" /></Array>
+          </mxGeometry>
         </mxCell>
 
         <!-- data plane: litigant-web -> Postgres, litigant-web -> Redis -->
-        <mxCell id="e_web_pg" value="SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#2E27AD;fontColor=#2E27AD;fontSize=10;" edge="1" parent="1" source="web" target="pg">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e_web_pg" value="SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#2E27AD;fontColor=#2E27AD;fontSize=10;exitX=1;exitY=0.3;entryX=0;entryY=0.5;verticalAlign=bottom;" edge="1" parent="1" source="web" target="pg">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="900" y="332" /><mxPoint x="900" y="374" /></Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="e_web_redis" value="cache / sessions" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#2E27AD;fontColor=#2E27AD;fontSize=10;" edge="1" parent="1" source="web" target="redis">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="e_web_redis" value="cache" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#2E27AD;fontColor=#2E27AD;fontSize=10;exitX=1;exitY=0.7;entryX=0;entryY=0.5;verticalAlign=bottom;" edge="1" parent="1" source="web" target="redis">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="878" y="368" /><mxPoint x="878" y="478" /></Array>
+          </mxGeometry>
         </mxCell>
 
       </root>
