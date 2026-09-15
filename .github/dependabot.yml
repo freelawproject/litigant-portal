@@ -20,9 +20,20 @@ updates:
     commit-message:
       prefix: build(deps)
 
-  # Python dependencies: pyproject.toml + uv.lock.
+  # Python dependencies. Two uv projects: the app at the root, and the agent
+  # evaluation harness under scripts/, which pins its own deps (litellm,
+  # matplotlib, pydantic, PyYAML) and would otherwise go stale unwatched.
+  #
+  # Deliberately no `ignore` block. Filtering out semver-patch would have cut
+  # the noise, but `ignore` applies to security updates as well as version
+  # updates and takes no `applies-to` key to scope it (that key exists only on
+  # `groups`) — so ignoring patches would silently drop patch-level security
+  # fixes too. Grouping already solves the noise: every update lands as one PR
+  # a month, so dropping patches saved almost nothing and cost real coverage.
   - package-ecosystem: uv
-    directory: /
+    directories:
+      - /
+      - /scripts/agent_eval
     schedule:
       interval: monthly
     open-pull-requests-limit: 5
@@ -30,11 +41,6 @@ updates:
       python:
         patterns:
           - '*'
-    ignore:
-      # Patch bumps across the whole dependency tree are more noise than signal;
-      # a security advisory still comes through regardless of this filter.
-      - dependency-name: '*'
-        update-types: ['version-update:semver-patch']
     commit-message:
       prefix: build(deps)
 
