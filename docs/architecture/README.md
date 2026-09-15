@@ -24,8 +24,10 @@ System architecture for the Litigant Portal, authored in **draw.io** (diagrams.n
 
 C4 **Container** level, a technical / trust-boundary view for a new dev or a court's tech resource: the public edge (ingress + access gate), the per-court EKS instance as the isolation boundary (Django app, docassemble, Postgres + pgvector, Redis), the external boundary (AWS Bedrock via LiteLLM; third-party links), and delivery (CI/CD → EKS). AWS-managed services use AWS4 stencils; our own code (Django, docassemble) is a plain box.
 
-Component-level zoom-ins per node are follow-on work.
+Component-level zoom-ins per node are follow-on work — the first is [`eks-breakout.drawio`](eks-breakout.drawio) (a court's instance internals).
+
+**Isolation model.** Each court runs in its own **AWS account** — pure data segmentation, per-court billing, independent version rollout, and fork-and-leave portability. The decision and rationale live in issue **#859** (the thread); the per-court instance work is tracked in **#858**. How the account-level "how" lands (EKS vs. ECS Fargate) is still open in #859.
 
 ## Why draw.io, not mermaid
 
-Evaluated mermaid (#896). It can't produce this: mermaid's `architecture-beta` has AWS icons but a fixed, messy layout; a `flowchart` with the **ELK** layout composes cleanly and keeps edge labels, but the ELK renderer does **not** support icon shapes (icons render only under the default dagre renderer), so you get clean-layout *or* icons, never both. draw.io gives clean layout + AWS4 icons + edge labels together, self-contained (stencils ship with draw.io, no icon-pack bundle to vendor). The cost is manual layout and noisier SVG diffs, mitigated by the uncompressed `.drawio` source (clean diffs) plus the regenerated `.drawio.svg` (free GitHub/Obsidian render).
+Evaluated mermaid (#896). It can't produce this: mermaid's `architecture-beta` has AWS icons but a fixed, messy layout; a `flowchart` with the **ELK** layout composes cleanly and keeps edge labels, but the ELK renderer does **not** support icon shapes (icons render only under the default dagre renderer), so you get clean-layout _or_ icons, never both. draw.io gives clean layout + AWS4 icons + edge labels together, self-contained (stencils ship with draw.io, no icon-pack bundle to vendor). The cost is manual layout and noisier SVG diffs, mitigated by the uncompressed `.drawio` source (clean diffs) plus the regenerated `.drawio.svg` (free GitHub/Obsidian render).

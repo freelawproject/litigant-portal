@@ -13,7 +13,7 @@
         </mxCell>
 
         <!-- Isolation boundary: VPC-style AWS4 group -->
-        <mxCell id="g_vpc" value="EKS isolation boundary (VPC)" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc2;strokeColor=#8C4FFF;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#8C4FFF;dashed=0;" vertex="1" parent="1">
+        <mxCell id="g_vpc" value="Per-court AWS account" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_vpc2;strokeColor=#8C4FFF;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#8C4FFF;dashed=0;" vertex="1" parent="1">
           <mxGeometry x="290" y="60" width="470" height="540" as="geometry" />
         </mxCell>
 
