@@ -8,6 +8,7 @@ from typing import Literal, Self
 
 from pydantic import StrictBool, model_validator
 
+from lp_agent.flows.prompts import EVIDENCE_GAP_POLICY
 from lp_agent.interfaces import ModelClient
 from lp_agent.types import (
     ContractModel,
@@ -56,8 +57,7 @@ clarification questions. Tell the assistant how to correct an off-topic answer.
 Reject court-specific claims absent from the supplied evidence, unresolved source
 conflicts presented as settled, or invented rules, contacts, links, fees, and deadlines.
 Substantive procedural claims must cite a supplied source whose CONTENT supports
-the claim. Merely using a real source ID is insufficient. Missing-evidence answers
-should acknowledge the gap and identify an available appropriate court contact.
+the claim. Merely using a real source ID is insufficient.
 Do not require citations for greetings, questions, redirects, or saved user facts.
 Reject personal legal strategy recommendations, guarantees, attorney claims, invented
 user facts, and claims that a filing or court action occurred when only preparation
@@ -66,6 +66,13 @@ Reject an answer that says it selected, saved, completed, or confirmed something
 that the recorded tool results and current state do not support.
 Do not penalize concise wording or demand information beyond the actual question.
 Review only using supplied evidence; do not substitute your own legal recollection.
+Review the CURRENT candidate. Previous drafts and findings are diagnostic context,
+not evidence or binding instructions. Check whether the prior problems were fixed
+and whether the revision introduced new ones. Do not reject the current answer for
+claims removed from it. Do not reverse an earlier correction unless the evidence
+shows it was mistaken; explain that mistake and give a consistent correction.
+Following earlier feedback does not excuse an unsupported claim. Before rejecting,
+check that the requested correction is supported by the evidence and this policy.
 For each failure provide a short concrete correction in findings. Codes are:
 off_topic, unsupported_claim, citation_mismatch, legal_advice, state_mismatch.
 """.strip()
@@ -79,6 +86,8 @@ class AgentJudge:
         """
         return ModelRequest(
             instructions=JUDGE_INSTRUCTIONS
+            + "\n\n"
+            + EVIDENCE_GAP_POLICY
             + "\nJSON SCHEMA\n"
             + json.dumps(JudgeVerdict.model_json_schema()),
             input=(

@@ -1054,7 +1054,7 @@ def test_judge_corrections_are_private_and_do_not_repeat_tools(
     dsn, reject_count
 ):
     from lp_agent.adapters.conversations import conversation_snapshot
-    from lp_agent.types import TextEvent
+    from lp_agent.types import ReasoningItem, TextEvent
 
     async def scenario():
         identity = uuid4().hex
@@ -1077,7 +1077,17 @@ def test_judge_corrections_are_private_and_do_not_repeat_tools(
         ]
         model = Turns(
             [select("tenant")],
-            *drafts,
+            *[
+                [
+                    ReasoningItem(
+                        id=f"rejected-reasoning-{index}",
+                        encrypted_content="private rejected reasoning",
+                        summary=(),
+                    ),
+                    ModelMessage(role="assistant", content=draft),
+                ]
+                for index, draft in enumerate(drafts)
+            ],
             "Preparation selected. What date did you receive the papers?",
         )
         env = environment(dsn, model, identity, judge=judge)
@@ -1087,6 +1097,33 @@ def test_judge_corrections_are_private_and_do_not_repeat_tools(
             outcome = await run.result()
         assert len(judge.requests) == min(reject_count + 1, 3)
         assert all(request.tools == () for request in model.requests[2:])
+        for index, request in enumerate(judge.requests):
+            reviewed = json.loads(request.input[0].content)
+            assert (
+                "private rejected reasoning" not in request.model_dump_json()
+            )
+            assert reviewed["previous_reviews"] == [
+                {
+                    "candidate": draft,
+                    "findings": json.loads(rejected)["findings"],
+                }
+                for draft in drafts[:index]
+            ]
+        for index, request in enumerate(model.requests[2:], start=1):
+            assert (
+                "private rejected reasoning" not in request.model_dump_json()
+            )
+            correction = request.input[-1]
+            assert isinstance(correction, ModelMessage)
+            assert correction.role == "developer"
+            assert all(draft in correction.content for draft in drafts[:index])
+            assert "Describe preparation only" in correction.content
+            assert not any(
+                isinstance(item, ModelMessage)
+                and item.role == "assistant"
+                and item.content in drafts
+                for item in request.input
+            )
         text = "".join(
             event.payload.delta
             for event in events
@@ -1103,7 +1140,11 @@ def test_judge_corrections_are_private_and_do_not_repeat_tools(
             assert text == outcome.text
         snapshot = await conversation_snapshot(env.access, run.conversation_id)
         assert not any(draft in json.dumps(snapshot) for draft in drafts)
+        assert "private rejected reasoning" not in json.dumps(snapshot)
         assert snapshot["progress"]["procedure"] == "tenant"
+        if reject_count == 3:
+            assert snapshot["messages"][-1]["text"] == outcome.error.message
+            assert snapshot["messages"][-1]["sources"] == []
         async with database(dsn, identity) as db:
             steps = await (
                 await db.connection.execute(
@@ -1114,6 +1155,7 @@ def test_judge_corrections_are_private_and_do_not_repeat_tools(
             assert sum(step["kind"] == "tool" for step in steps) == 1
             audit = json.dumps(steps)
             assert all(draft in audit for draft in drafts)
+            assert "private rejected reasoning" in audit
         checked = json.loads(judge.requests[0].input[0].content)
         assert checked["material"]["progress"]["procedure"] == "tenant"
         assert checked["material"]["sources"]
@@ -1127,6 +1169,8 @@ def test_judge_corrections_are_private_and_do_not_repeat_tools(
         assert not any(
             draft in str(followup.requests[0].input) for draft in drafts
         )
+        if reject_count == 3:
+            assert outcome.error.message not in str(followup.requests[0].input)
 
     asyncio.run(scenario())
 
@@ -1251,7 +1295,7 @@ def test_off_topic_draft_is_corrected_before_any_answer_text_is_released(dsn):
             if isinstance(event.payload, TextEvent)
         ] == [correction]
         assert model.requests[1].tools == ()
-        assert "legal-system purpose" in model.requests[1].instructions
+        assert "legal-system purpose" in model.requests[1].input[-1].content
         assert (
             json.loads(judge.requests[0].input[0].content)["candidate"]
             == draft

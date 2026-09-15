@@ -26,7 +26,7 @@ async def conversation_snapshot(
     access: AccessContext, conversation_id: str
 ) -> dict:
     """
-    Return only the owner's accepted visible messages and current preparation state.
+    Return the owner's visible messages, safe run failures, and preparation state.
     """
     from lp_agent.adapters.db import AgentDatabase
 
@@ -55,7 +55,7 @@ async def conversation_snapshot(
             rows = await (
                 await connection.execute(
                     """
-                SELECT i.id, i.payload, r.outcome
+                SELECT i.id, i.run_id, i.payload, r.outcome
                 FROM agent_conversation_item i LEFT JOIN agent_run r ON r.id = i.run_id
                 WHERE i.conversation_id = %s AND i.visibility = 'user'
                     AND i.context_state = 'accepted' AND i.redacted_at IS NULL
@@ -93,6 +93,17 @@ async def conversation_snapshot(
                         "sources": sources,
                     }
                 )
+                if role == "user" and outcome.get("state") == "failed":
+                    # Display the public failure without making it accepted model
+                    # history or exposing any of the rejected candidate answers.
+                    messages.append(
+                        {
+                            "id": f"failure:{row['run_id']}",
+                            "role": "assistant",
+                            "text": outcome["error"]["message"],
+                            "sources": [],
+                        }
+                    )
             return {
                 "conversation_id": conversation_id,
                 "scope": {

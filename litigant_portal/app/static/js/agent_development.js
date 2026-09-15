@@ -189,8 +189,11 @@ document.addEventListener('alpine:init', () => {
               payload.outcome.sources
             )
           }
-          if (payload.outcome.state === 'failed')
+          if (payload.outcome.state === 'failed') {
             this.error = payload.outcome.error.message
+            this.messages[answerIndex].text = this.error
+            this.messages[answerIndex].sources = []
+          }
         }
       }
       try {
@@ -244,6 +247,8 @@ document.addEventListener('alpine:init', () => {
         this.status = gettext('Failed')
         this.error =
           failure.message || gettext('Unable to complete the response.')
+        this.messages[answerIndex].text = this.error
+        this.messages[answerIndex].sources = []
       } finally {
         if (reader) {
           try {

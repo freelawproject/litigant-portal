@@ -462,6 +462,23 @@ class AgentDevelopmentStreamTests(TestCase):
                 self.close_response(response)
         self.assertEqual(chunks[-1]["payload"]["outcome"]["state"], "failed")
         self.assertNotIn("private provider payload", json.dumps(chunks))
+        saved = self.client.get(
+            reverse(
+                "pages:agent_development_conversation",
+                kwargs={"conversation_id": chunks[-1]["conversation_id"]},
+            )
+        )
+        self.assertEqual(saved.status_code, 200)
+        messages = saved.json()["messages"]
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[-1]["role"], "assistant")
+        self.assertEqual(
+            messages[-1]["text"],
+            chunks[-1]["payload"]["outcome"]["error"]["message"],
+        )
+        self.assertEqual(messages[-1]["sources"], [])
+        self.assertNotIn("private provider payload", json.dumps(messages))
+        self.assertNotIn("Partial", json.dumps(messages))
 
     def consume(self, response):
         try:
