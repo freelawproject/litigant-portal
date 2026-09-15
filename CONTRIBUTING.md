@@ -11,6 +11,26 @@ Litigant Portal is an open-source access-to-justice project by [Free Law Project
 - **Ticket-specific acceptance criteria live on the issue**, on top of the repo-wide bar in [docs/wiki/definition-of-done.md](docs/wiki/definition-of-done.md). If you spot adjacent problems along the way, file them as new issues rather than growing the PR.
 - **Priority and size** are assigned by the team during grooming — leave them off when filing.
 
+### Review: the assignee is the baton
+
+CODEOWNERS and review requests say who _may_ review a PR. The **assignee** says whose turn it is right now. One person holds the PR at a time, and every hand-off is explicit:
+
+1. A dev pushes a branch and opens the PR. Review requests go out automatically; the filer may also ask someone directly.
+2. **Whoever takes the review assigns themselves.** If the filer asked someone directly, the filer assigns that dev instead. Until someone is assigned, the review is unclaimed.
+3. The reviewer reviews, then requests changes or approves.
+4. **The PR goes back to the filer** — reassign it to them.
+5. The filer makes the changes and **assigns it back to the reviewer**. Repeat from step 3 until the review is settled.
+6. The PR ends clean with the **original filer as assignee**. With CI passing, **the filer merges their own PR.**
+
+Two things that are easy to get wrong:
+
+- **Approving is not the end of your turn.** Hand the PR back by reassigning it. An approved PR still sitting with the reviewer reads as unfinished work.
+- **Don't merge someone else's PR.** Reviewing is the reviewer's job; merging is the filer's. A PR you approved is not yours to land.
+
+A PR with no assignee is waiting for a reviewer to claim it — a normal state right after opening, not drift.
+
+Note the contrast with issues, which are **claimed** rather than handed off: you assign yourself an issue when you start work on it. PR assignment is a turn indicator, not ownership.
+
 ## How work is tracked
 
 Work is tracked on the [Sprint (Litigant Portal)](https://github.com/orgs/freelawproject/projects/75) board, which is public — anyone can read it without being a member.
