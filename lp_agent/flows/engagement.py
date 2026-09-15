@@ -7,6 +7,9 @@ import logging
 from collections.abc import Callable
 from contextlib import aclosing
 from dataclasses import dataclass, field
+from typing import TypedDict
+
+from pydantic import JsonValue
 
 from lp_agent.errors import (
     AgentAccessError,
@@ -15,6 +18,7 @@ from lp_agent.errors import (
 )
 from lp_agent.flows.prompts import system_prompt
 from lp_agent.identity import AgentIdentity, ResourceScope
+from lp_agent.interfaces import RunStore
 from lp_agent.types import (
     AgentConfiguration,
     CancelledOutcome,
@@ -46,6 +50,11 @@ from lp_agent.types import (
 from lp_agent.utils.audit import InstructionArtifact
 
 logger = logging.getLogger(__name__)
+
+
+class RunReference(TypedDict):
+    run_id: str
+    conversation_id: str
 
 
 class EngagementFlow:
@@ -131,11 +140,20 @@ class Engagement:
     model_finished: ModelFinished | None = field(default=None, init=False)
 
     @property
-    def reference(self) -> dict[str, str]:
+    def reference(self) -> RunReference:
         return {
             "run_id": self.initial_status.run_id,
             "conversation_id": self.initial_status.conversation_id,
         }
+
+    @property
+    def checkpoint_store(self) -> RunStore:
+        return self.environment.runs
+
+    async def aclose(self) -> None:
+        """
+        Release services owned by this run after execution and terminal persistence.
+        """
 
     async def status(self) -> RunStatus:
         return await self.environment.runs.status(
@@ -208,31 +226,20 @@ class Engagement:
     ) -> None:
         try:
             status = RunStatus(**self.reference, state=state)
-            await self.environment.runs.commit_checkpoint(
+            previous = await self.checkpoint_store.checkpoint(
+                access=self.environment.access,
+                run_id=self.initial_status.run_id,
+            )
+            await self.checkpoint_store.commit_checkpoint(
                 access=self.environment.access,
                 checkpoint=RunCheckpoint(
                     **self.reference,
-                    data={
-                        "request": self.request.model_dump(mode="json"),
-                        "model_request": self.model_request.model_dump(
-                            mode="json"
-                        ),
-                        "model_output": [
-                            item.model_dump(mode="json")
-                            for item in self.output_items
-                        ],
-                        "model_finished": (
-                            self.model_finished.model_dump(mode="json")
-                            if self.model_finished is not None
-                            else None
-                        ),
-                        "instruction_artifact": {
-                            "canonical_json": self.instruction_artifact.canonical_bytes().decode(
-                                "utf-8"
-                            ),
-                            "sha256": self.instruction_artifact.content_hash(),
-                        },
-                    },
+                    storage_version=(
+                        previous.storage_version
+                        if previous is not None
+                        else None
+                    ),
+                    data=self._checkpoint_data(),
                 ),
                 status=status,
                 outcome=outcome,
@@ -245,6 +252,24 @@ class Engagement:
             )
             raise AgentStorageError() from None
         emit(StatusEvent(status=status))
+
+    def _checkpoint_data(self) -> dict[str, JsonValue]:
+        return {
+            "request": self.request.model_dump(mode="json"),
+            "model_request": self.model_request.model_dump(mode="json"),
+            "model_output": [
+                item.model_dump(mode="json") for item in self.output_items
+            ],
+            "model_finished": self.model_finished.model_dump(mode="json")
+            if self.model_finished
+            else None,
+            "instruction_artifact": {
+                "canonical_json": self.instruction_artifact.canonical_bytes().decode(
+                    "utf-8"
+                ),
+                "sha256": self.instruction_artifact.content_hash(),
+            },
+        }
 
     async def _model_response(
         self, emit: Callable[[EventPayload], None]

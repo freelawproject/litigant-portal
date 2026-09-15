@@ -6,6 +6,7 @@ import asyncio
 import json
 from contextlib import aclosing
 from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from queue import Queue
@@ -23,12 +24,15 @@ from litellm.types.utils import ModelResponseStream
 from lp_agent import AgentValidationError, LPAgent, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES, BedrockClient
 from lp_agent.adapters.environment import create_environment
+from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
 from lp_agent.tests.helpers import environment_options
 from lp_agent.types import (
+    FunctionCallOutput,
     ModelMessage,
     ModelOutputItem,
     ModelRequest,
     ReasoningItem,
+    ToolCall,
     ToolDefinition,
 )
 
@@ -47,6 +51,29 @@ def http_clients(monkeypatch):
 
     monkeypatch.setattr(AsyncHTTPHandler, "create_client", create_client)
     return clients
+
+
+def provider_environment(**options):
+    """
+    Exercise provider lifecycle with injected memory stores and no preparation service.
+    """
+    environment = create_environment(**options)
+    factory = environment.scope_factory
+
+    class ProviderScope:
+        async def bind(self, *, access, scope):
+            return replace(
+                await factory.bind(access=access, scope=scope),
+                preparation=None,
+            )
+
+    conversations = MemoryConversationStore()
+    return replace(
+        environment,
+        conversations=conversations,
+        runs=MemoryRunStore(conversations),
+        scope_factory=ProviderScope(),
+    )
 
 
 def message(text="Hello", **metadata):
@@ -305,7 +332,7 @@ def test_invalid_output_retains_valid_items_and_original_interruption(
             finally:
                 closed = True
 
-        environment = create_environment(
+        environment = provider_environment(
             **(environment_options() | {"model": model})
         )
         with patch("litellm.aresponses", AsyncMock(return_value=provider())):
@@ -461,7 +488,7 @@ def test_translated_model_rejects_unrepresentable_continuation_before_call(
     asyncio.run(scenario())
 
 
-def test_tools_remain_explicitly_unavailable_before_call():
+def test_translated_model_rejects_tools_before_call():
     async def scenario():
         request = ModelRequest(
             input=(),
@@ -479,11 +506,13 @@ def test_tools_remain_explicitly_unavailable_before_call():
             ),
         )
         with patch("litellm.aresponses") as call:
-            with pytest.raises(NotImplementedError, match="Tool calls"):
+            with pytest.raises(
+                AgentValidationError, match="native Bedrock model"
+            ):
                 _ = [
                     event
                     async for event in BedrockClient(
-                        MODEL_CHOICES[0][0], api_key="test-key"
+                        GLM_MODEL, api_key="test-key"
                     ).stream(request)
                 ]
             call.assert_not_called()
@@ -593,7 +622,7 @@ def test_stream_failure_retains_completed_items_in_checkpoint(
             failure,
         ]
     )
-    environment = create_environment(**environment_options())
+    environment = provider_environment(**environment_options())
     with patch.object(
         AsyncHTTPHandler, "post", AsyncMock(return_value=response)
     ):
@@ -631,7 +660,7 @@ def test_interrupted_response_preserves_completed_items_in_checkpoint(
             ],
             stall=True,
         )
-        environment = create_environment(**environment_options())
+        environment = provider_environment(**environment_options())
         with patch.object(
             AsyncHTTPHandler, "post", AsyncMock(return_value=response)
         ):
@@ -744,7 +773,7 @@ def test_repeated_sync_requests_close_clients_and_connections(
     try:
         with patch.object(AsyncHTTPHandler, "post", local_post):
             for _ in range(3):
-                environment = create_environment(
+                environment = provider_environment(
                     **(environment_options() | {"model": model})
                 )
                 output = [
@@ -910,7 +939,7 @@ def test_agent_cancellation_and_timeout_close_actual_litellm_wrappers(
             provider_patch = patch.object(
                 AsyncHTTPHandler, "post", AsyncMock(return_value=http_response)
             )
-        environment = create_environment(
+        environment = provider_environment(
             **(
                 environment_options()
                 | {"model": GLM_MODEL if translated else MODEL_CHOICES[0][0]}
@@ -953,7 +982,7 @@ def test_agent_cancellation_and_timeout_close_actual_litellm_wrappers(
 
 def test_supplied_key_reaches_provider_but_not_run_data_or_events(monkeypatch):
     monkeypatch.setenv("AWS_BEARER_TOKEN_BEDROCK", "unused-environment-key")
-    environment = create_environment(**environment_options())
+    environment = provider_environment(**environment_options())
     call = AsyncMock(
         return_value=events(
             text_event("Hello"), terminal([reasoning(), message()])
@@ -977,3 +1006,44 @@ def test_supplied_key_reaches_provider_but_not_run_data_or_events(monkeypatch):
     assert "test-only-key" not in serialized and "api_key" not in serialized
     assert "Private summary" not in json.dumps(output)
     assert "opaque-continuation" in checkpoint.model_dump_json()
+
+
+def test_native_tool_definitions_and_results_are_forwarded_without_losing_metadata():
+    async def scenario():
+        tool = ToolDefinition(
+            name="lookup",
+            description="Lookup",
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": False,
+            },
+        )
+        request = ModelRequest(
+            tools=(tool,),
+            input=(
+                ReasoningItem(**reasoning()),
+                ToolCall(call_id="lookup-1", name="lookup", arguments="{}"),
+                FunctionCallOutput(
+                    call_id="lookup-1", output='{"found":true}'
+                ),
+            ),
+        )
+        with patch(
+            "litellm.aresponses",
+            new=AsyncMock(return_value=events(terminal([message()]))),
+        ) as call:
+            output = [
+                event
+                async for event in BedrockClient(
+                    MODEL_CHOICES[0][0], api_key="test-key"
+                ).stream(request)
+            ]
+        assert call.call_args.kwargs["tools"] == [tool.model_dump(mode="json")]
+        assert call.call_args.kwargs["input"] == [
+            item.model_dump(mode="json") for item in request.input
+        ]
+        assert output[-1].reason == "stop"
+
+    asyncio.run(scenario())

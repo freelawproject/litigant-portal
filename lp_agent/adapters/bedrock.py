@@ -5,6 +5,7 @@ Normalize LiteLLM's Bedrock stream without exposing provider objects to core.
 import asyncio
 import logging
 from collections.abc import AsyncGenerator
+from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, SecretStr, TypeAdapter, ValidationError
 
@@ -144,7 +145,7 @@ def _assembled_items(
             ignored += count
             if item.get("type") == "reasoning":
                 item.setdefault("summary", [])
-            items.append(ModelOutputItem(item=item))
+            items.append(ModelOutputItem.model_validate({"item": item}))
         except (TypeError, ValueError) as exc:
             if error is None:
                 error = exc
@@ -174,10 +175,11 @@ def _finish(
     if status == "incomplete":
         reason = (response.get("incomplete_details") or {}).get("reason")
         return ModelFinished(
-            reason={
-                "max_output_tokens": "length",
-                "content_filter": "content_filter",
-            }.get(reason, "other")
+            reason="length"
+            if reason == "max_output_tokens"
+            else "content_filter"
+            if reason == "content_filter"
+            else "other"
         )
     if status != "completed":
         return ModelFinished(reason="other")
@@ -193,6 +195,17 @@ def _finish(
     )
 
 
+@runtime_checkable
+class _AsyncCloseable(Protocol):
+    async def aclose(self) -> None: ...
+
+
+@runtime_checkable
+class _NativeResponseStream(Protocol):
+    stream_iterator: _AsyncCloseable
+    response: _AsyncCloseable
+
+
 async def _close_stream(stream: object) -> None:
     """
     Close the resource owned by native or translated LiteLLM Responses streams.
@@ -203,13 +216,15 @@ async def _close_stream(stream: object) -> None:
     underlying = getattr(stream, "litellm_custom_stream_wrapper", None)
     if underlying is not None:
         await underlying.aclose()
-    elif hasattr(stream, "response"):
+    elif isinstance(stream, _NativeResponseStream):
         try:
             await stream.stream_iterator.aclose()
         finally:
             await stream.response.aclose()
-    else:
+    elif isinstance(stream, _AsyncCloseable):
         await stream.aclose()
+    else:
+        raise TypeError("Unrecognized provider stream resource.")
 
 
 class BedrockClient:
@@ -233,16 +248,18 @@ class BedrockClient:
     async def stream(
         self, request: ModelRequest
     ) -> AsyncGenerator[ModelEvent]:
-        if request.tools or any(
-            not isinstance(item, ModelMessage | ReasoningItem)
-            for item in request.input
-        ):
-            raise NotImplementedError("Tool calls are not connected yet.")
         translated = self.model == "bedrock_mantle/zai.glm-4.7-flash"
         if translated:
+            if request.tools or any(
+                not isinstance(item, ModelMessage | ReasoningItem)
+                for item in request.input
+            ):
+                raise AgentValidationError(
+                    "Select a native Bedrock model for guided conversations."
+                )
             for item in request.input:
                 if (
-                    isinstance(item, ReasoningItem)
+                    not isinstance(item, ModelMessage)
                     or item.id is not None
                     or item.status is not None
                     or item.phase is not None
@@ -262,9 +279,13 @@ class BedrockClient:
         from litellm import aresponses
         from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 
-        options = (
+        options: dict[str, object] = (
             {} if translated else {"include": ["reasoning.encrypted_content"]}
         )
+        if request.tools:
+            options["tools"] = [
+                tool.model_dump(mode="json") for tool in request.tools
+            ]
         client = AsyncHTTPHandler()
         try:
             response = await aresponses(
@@ -318,8 +339,8 @@ class BedrockClient:
                         self.model,
                         ignored,
                     )
-                for item in items:
-                    yield item
+                for output_item in items:
+                    yield output_item
                 if error is not None:
                     raise error
                 if assembly_error is not None:

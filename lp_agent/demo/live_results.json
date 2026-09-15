@@ -1,0 +1,1013 @@
+{
+  "recorded_at": "2026-09-14T03:01:21.755784+00:00",
+  "model": "bedrock_mantle/openai.gpt-5.6-luna",
+  "all_flows_complete": true,
+  "flows": [
+    {
+      "court": "north-dakota",
+      "topic": "adult-name-change",
+      "procedure": "standard",
+      "complete": true,
+      "turns": [
+        {
+          "message": "I am an adult in North Dakota changing my own first and last name in a standalone petition unrelated to divorce. Please guide me through standard name-change preparation with publication.",
+          "outcome": {
+            "run_id": "d6d7c578-f997-48ce-954f-be0ab706c4f9",
+            "conversation_id": "39ab906a-6f24-456b-844c-2df00d14bb21",
+            "state": "completed",
+            "text": "I’ll help you prepare a North Dakota adult name-change petition using the **standard publication track**.\n\nBecause you are changing your last name, your packet includes:\n\n- Petition\n- Declaration\n- Notice of Petition for Name Change\n- Confidential Information Form\n- Proposed Order\n\nThe filing fee is **$160**. Publication in the official newspaper for your county is required, and the judge generally cannot consider the petition until **30 days after publication**. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n\n**First action item:** Before filing, call the Clerk of District Court for the county where you have lived for the past six months and ask:\n\n> “Does the judge require a criminal history background check before I file, or after I file?”\n\nThe timing varies by judge, and a background check can take several weeks. Use the North Dakota court locator: https://www.ndcourts.gov/court-locations\n\nThe Petition and proposed Order generally become part of the public court record and show your current legal name and requested name. The Confidential Information Form is sealed. Leave the case number blank because the clerk assigns it, and do not sign the proposed Order because only the judge signs it. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n\nWe’ll prepare one fact at a time. **What is your current legal first name?**",
+            "sources": [
+              {
+                "source_id": "68571ed7-eb72-4719-b206-ab8eab6d59a0",
+                "kind": "corpus",
+                "title": "Adult Name Change (Publication Required)",
+                "locator": "/t/north-dakota/adult-name-change/standard/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "standard",
+            "current_phase": "your-current-legal-name",
+            "complete": false,
+            "percent_complete": 0,
+            "saved_fact_count": 0
+          }
+        },
+        {
+          "message": "These are fictional facts for this demonstration. Save the supplied values: {\"first_name\": \"Demo value\", \"middle_name\": \"Demo value\", \"last_name\": \"Demo value\", \"name_change_requested_first\": \"Demo value\", \"name_change_requested_middle\": \"Demo value\", \"name_change_requested_last\": \"Demo value\", \"street_address\": \"Demo value\", \"city\": \"Demo value\", \"county\": \"Demo value\", \"zip_code\": \"Demo value\", \"name_change_residence_since\": \"Demo value\", \"name_change_citizenship\": \"citizen\", \"name_change_criminal_history\": \"none\", \"name_change_conviction_charge\": \"Demo value\", \"name_change_conviction_class\": \"Demo value\", \"name_change_conviction_court\": \"Demo value\", \"name_change_conviction_year\": 0, \"name_change_publication_date\": \"2026-10-01\", \"name_change_publication_newspaper\": \"Demo value\", \"name_change_publication_county\": \"Demo value\", \"name_change_fee_waiver_needed\": true, \"date_of_birth\": \"2026-10-01\", \"place_of_birth\": \"Demo value\", \"name_change_residency_years\": 0, \"name_change_residency_months\": 0, \"phone_number\": \"Demo value\"}",
+          "outcome": {
+            "run_id": "d07de18a-ef0b-4ffa-8dd0-ff4ad59aa016",
+            "conversation_id": "39ab906a-6f24-456b-844c-2df00d14bb21",
+            "state": "completed",
+            "text": "I saved the fictional values you supplied. The preparation now has the information needed for the first five steps, and the packet includes the fee-waiver forms because you indicated that you need to request a waiver.\n\nThe standard filing fee is **$160**. If you cannot pay it, the fee-waiver request is filed at the same time as the name-change documents. A judge or judicial referee decides whether to grant the waiver. The waiver does not cover certified-copy fees, transcript fees, copy fees, or service costs. [source:nd-fee-waiver-petition]\n\n**Please confirm:** Do you want to ask the court to waive the $160 filing fee?",
+            "sources": [
+              {
+                "source_id": "nd-fee-waiver-petition",
+                "kind": "corpus",
+                "title": "Petition for Fee Waiver",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "standard",
+            "current_phase": "the-filing-fee",
+            "complete": false,
+            "percent_complete": 62,
+            "saved_fact_count": 26
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "b10862d5-4d62-40fd-9544-1139edf10bf7",
+            "conversation_id": "39ab906a-6f24-456b-844c-2df00d14bb21",
+            "state": "completed",
+            "text": "## Preparation summary\n\nYou selected the **North Dakota standard adult name-change track**, for a standalone petition involving a last-name change and newspaper publication.\n\nSaved fictional facts:\n\n- Current legal name: Demo value Demo value Demo value\n- Requested name: Demo value Demo value Demo value\n- Address: Demo value, Demo value, Demo value County, ND Demo value\n- County residence since: Demo value\n- Citizenship: U.S. citizen\n- Criminal history: No convictions reported\n- Publication newspaper: Demo value\n- Publication county: Demo value\n- Publication date: October 1, 2026\n- Date of birth: October 1, 2026\n- Place of birth: Demo value\n- North Dakota residency entered as: 0 years and 0 months\n- Fee waiver request: Yes\n- Phone number: Demo value\n\nThe packet is:\n\n1. Petition for Name Change\n2. Declaration in Support of Petition\n3. Notice of Petition for Name Change\n4. Confidential Information Form\n5. Proposed Order for Name Change\n6. Fee-waiver forms\n\n## Important items to review before filing\n\n- North Dakota requires residence in the filing county for at least six months. Your saved residency duration is **0 years and 0 months**, so that entry needs correction if it is meant to represent actual facts. [source:nd-name-change-petition]\n- The publication date is ordinarily left blank until the notice actually runs. The publication affidavit or declaration provides the date for the court materials. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n- The case number remains blank until the clerk assigns it.\n- Only the judge signs the Proposed Order.\n- The Confidential Information Form is sealed. The Petition and proposed Order generally become public records and show the current legal name and requested name. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n- Before filing, call the county Clerk of District Court to ask whether the judge requires a criminal-history background check before filing or after filing. Timing varies by judge.\n- A hearing is not presumptively required, but the judge may decide that one is necessary.\n- If the Order is granted, request at least three certified copies. Each certified copy needs the Confidential Information Form attached for later records updates. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n\nAvailable forms and preparation resources are listed above in the guided steps section. The preparation process does not file documents, publish the notice, request a waiver decision, or guarantee that the judge will grant the petition.\n\n**Please confirm that this summary is correct and that you are ready for the preparation handoff.**",
+            "sources": [
+              {
+                "source_id": "68571ed7-eb72-4719-b206-ab8eab6d59a0",
+                "kind": "corpus",
+                "title": "Adult Name Change (Publication Required)",
+                "locator": "/t/north-dakota/adult-name-change/standard/"
+              },
+              {
+                "source_id": "nd-name-change-petition",
+                "kind": "corpus",
+                "title": "Petition for Name Change",
+                "locator": "/t/north-dakota/adult-name-change/standard/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "standard",
+            "current_phase": "review",
+            "complete": false,
+            "percent_complete": 88,
+            "saved_fact_count": 26
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "c2455910-d61a-4c1f-82f4-523cfc6a9053",
+            "conversation_id": "39ab906a-6f24-456b-844c-2df00d14bb21",
+            "state": "completed",
+            "text": "Preparation is complete for the **North Dakota Adult Name Change, Standard Publication Required** track.\n\nThis means the preparation interview is finished. It does not mean that forms were filled, filed, published, or approved.\n\n### Handoff checklist\n\n1. Review the official North Dakota guidance and forms:  \n   https://www.ndcourts.gov/legal-self-help/name-change-adult\n\n2. Download the packet:\n   - [Notice of Petition for Name Change](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Notice-of-name-change-adult.pdf)\n   - [Petition for Name Change](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf)\n   - [Declaration](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf)\n   - [Confidential Information Form](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf)\n   - [Proposed Order](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf)\n   - [Filing-fee waiver forms](https://www.ndcourts.gov/legal-self-help/fee-waiver)\n\n3. Before filing, contact the county Clerk of District Court and ask whether the judge requires a criminal-history background check before filing or after filing. Use the court locator:  \n   https://www.ndcourts.gov/court-locations\n\n4. Confirm that the county-residence entry shows at least six months. The saved demonstration value says **0 years and 0 months**, which would not satisfy the stated residence requirement if it were an actual value. [source:nd-name-change-petition]\n\n5. Leave the case number blank. Do not sign the Proposed Order. The judge signs that document.\n\n6. Arrange publication in the official newspaper for the filing county. The judge generally may not consider the petition until 30 days after publication. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n\n7. File the name-change documents and fee-waiver request with the Clerk of District Court. The filing fee is $160 unless the court grants the waiver.\n\nAfter an Order is granted, request at least three certified copies. Keep the Confidential Information Form attached to each certified copy for records updates. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]",
+            "sources": [
+              {
+                "source_id": "68571ed7-eb72-4719-b206-ab8eab6d59a0",
+                "kind": "corpus",
+                "title": "Adult Name Change (Publication Required)",
+                "locator": "/t/north-dakota/adult-name-change/standard/"
+              },
+              {
+                "source_id": "nd-name-change-petition",
+                "kind": "corpus",
+                "title": "Petition for Name Change",
+                "locator": "/t/north-dakota/adult-name-change/standard/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "standard",
+            "current_phase": null,
+            "complete": true,
+            "percent_complete": 100,
+            "saved_fact_count": 26
+          }
+        }
+      ],
+      "final_progress": {
+        "procedure": "standard",
+        "title": "Adult Name Change (Publication Required)",
+        "phases": [
+          {
+            "key": "your-current-legal-name",
+            "title": "Your current legal name",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "the-name-you-want",
+            "title": "The name you want",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "where-you-live",
+            "title": "Where you live",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "a-few-details-the-petition-requires",
+            "title": "A few details the Petition requires",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "publication-of-your-notice",
+            "title": "Publication of your notice",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "the-filing-fee",
+            "title": "The filing fee",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          },
+          {
+            "key": "a-few-more-details-for-the-rest-of-your-packet",
+            "title": "A few more details for the rest of your packet",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "review",
+            "title": "Review preparation and next steps",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          }
+        ],
+        "facts": {
+          "city": "Demo value",
+          "county": "Demo value",
+          "zip_code": "Demo value",
+          "last_name": "Demo value",
+          "first_name": "Demo value",
+          "middle_name": "Demo value",
+          "phone_number": "Demo value",
+          "date_of_birth": "2026-10-01",
+          "place_of_birth": "Demo value",
+          "street_address": "Demo value",
+          "name_change_citizenship": "citizen",
+          "name_change_requested_last": "Demo value",
+          "name_change_conviction_year": 0,
+          "name_change_requested_first": "Demo value",
+          "name_change_residence_since": "Demo value",
+          "name_change_residency_years": 0,
+          "name_change_conviction_class": "Demo value",
+          "name_change_conviction_court": "Demo value",
+          "name_change_criminal_history": "none",
+          "name_change_publication_date": "2026-10-01",
+          "name_change_requested_middle": "Demo value",
+          "name_change_residency_months": 0,
+          "name_change_conviction_charge": "Demo value",
+          "name_change_fee_waiver_needed": true,
+          "name_change_publication_county": "Demo value",
+          "name_change_publication_newspaper": "Demo value"
+        },
+        "current_phase": null,
+        "complete": true,
+        "percent_complete": 100,
+        "packet": [
+          "nd-name-change-petition",
+          "nd-name-change-declaration",
+          "nd-name-change-notice",
+          "nd-name-change-confidential-info",
+          "nd-name-change-order",
+          "nd-fee-waiver-petition"
+        ],
+        "resources": [
+          {
+            "label": "Preparation guide and forms",
+            "name": "",
+            "url": "/t/north-dakota/adult-name-change/standard/"
+          },
+          {
+            "label": "Notice of Petition for Name Change",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Notice-of-name-change-adult.pdf"
+          },
+          {
+            "label": "Petition for Name Change",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf"
+          },
+          {
+            "label": "Declaration in Support of Petition",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf"
+          },
+          {
+            "label": "Confidential Information Form",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf"
+          },
+          {
+            "label": "Proposed Order for Name Change",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf"
+          },
+          {
+            "label": "North Dakota name-change guidance and forms",
+            "name": "",
+            "url": "https://www.ndcourts.gov/legal-self-help/name-change-adult"
+          },
+          {
+            "label": "North Dakota Century Code Chapter 32-28",
+            "name": "",
+            "url": "https://ndlegis.gov/cencode/t32c28.html"
+          },
+          {
+            "label": "Filing-fee waiver forms",
+            "name": "",
+            "url": "https://www.ndcourts.gov/legal-self-help/fee-waiver"
+          },
+          {
+            "label": "Criminal history record check (edo.cjis.gov)",
+            "name": "",
+            "url": "https://www.edo.cjis.gov"
+          },
+          {
+            "label": "North Dakota Free Legal Answers",
+            "name": "",
+            "url": "https://nd.freelegalanswers.org"
+          }
+        ]
+      }
+    },
+    {
+      "court": "north-dakota",
+      "topic": "adult-name-change",
+      "procedure": "waiver",
+      "complete": true,
+      "turns": [
+        {
+          "message": "I am an adult in North Dakota changing only my first and middle names in a standalone petition unrelated to divorce. I want to request a waiver of publication. Please guide me through that preparation.",
+          "outcome": {
+            "run_id": "9adad616-b030-45dd-8258-e08010289cef",
+            "conversation_id": "74bd7030-1405-4c01-9a74-027b52fa88c3",
+            "state": "completed",
+            "text": "I’ll guide you through North Dakota’s adult name-change publication-waiver preparation.\n\nBecause you are changing only your first and middle names, the waiver track uses four forms:\n\n- Petition for Name Change\n- Declaration in Support of Petition\n- Confidential Information Form\n- Proposed Order\n\nThe filing fee is $160. You may ask the court to waive the fee separately if you cannot afford it. A judge decides whether to waive publication, so publication is not guaranteed to be waived. If the waiver is granted, there is no 30-day publication waiting period. [source:6550c6b4-93d9-4897-ac35-8023c3b47ce2]\n\nBefore filing, call the clerk for the North Dakota county where you have lived for the past six months. Ask whether the judge requires a criminal-history background check before filing or after filing. Timing varies by judge, and the check can take weeks. [source:6550c6b4-93d9-4897-ac35-8023c3b47ce2]\n\nThe Petition and proposed Order generally become part of the public court record. The Confidential Information Form is sealed. Leave the case number blank because the clerk assigns it, and do not sign the proposed Order because only the judge signs it. [source:nd-name-change-petition-waiver] [source:nd-name-change-confidential-info] [source:nd-name-change-order]\n\nTo begin, what is your current legal first name?",
+            "sources": [
+              {
+                "source_id": "6550c6b4-93d9-4897-ac35-8023c3b47ce2",
+                "kind": "corpus",
+                "title": "Adult Name Change (Publication Waiver)",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-name-change-confidential-info",
+                "kind": "corpus",
+                "title": "Confidential Information Form",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-name-change-order",
+                "kind": "corpus",
+                "title": "Proposed Order for Name Change",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-name-change-petition-waiver",
+                "kind": "corpus",
+                "title": "Petition for Name Change",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "waiver",
+            "current_phase": "your-current-legal-name",
+            "complete": false,
+            "percent_complete": 0,
+            "saved_fact_count": 0
+          }
+        },
+        {
+          "message": "These are fictional facts for this demonstration. Save the supplied values: {\"first_name\": \"Demo value\", \"middle_name\": \"Demo value\", \"last_name\": \"Demo value\", \"name_change_requested_first\": \"Demo value\", \"name_change_requested_middle\": \"Demo value\", \"name_change_requested_last\": \"Demo value\", \"street_address\": \"Demo value\", \"city\": \"Demo value\", \"county\": \"Demo value\", \"zip_code\": \"Demo value\", \"name_change_residence_since\": \"Demo value\", \"name_change_citizenship\": \"citizen\", \"name_change_criminal_history\": \"none\", \"name_change_conviction_charge\": \"Demo value\", \"name_change_conviction_class\": \"Demo value\", \"name_change_conviction_court\": \"Demo value\", \"name_change_conviction_year\": 0, \"name_change_waiver_first_or_middle\": false, \"name_change_waiver_domestic_violence\": false, \"name_change_fee_waiver_needed\": true, \"date_of_birth\": \"2026-10-01\", \"place_of_birth\": \"Demo value\", \"name_change_residency_years\": 0, \"name_change_residency_months\": 0, \"phone_number\": \"Demo value\"}",
+          "outcome": {
+            "run_id": "ecb22798-f6f1-4ca9-b289-2a7c6a5a3fe0",
+            "conversation_id": "74bd7030-1405-4c01-9a74-027b52fa88c3",
+            "state": "completed",
+            "text": "I saved the fictional values you supplied. The preparation is now at **“Why you are asking the court to waive publication.”**\n\nYour message says you are changing only your first and middle names, but the supplied value for `name_change_waiver_first_or_middle` is `false`. This checkbox identifies the reason for requesting publication waiver, so I need to clarify it:\n\n**For this demonstration, should I record that you are requesting waiver because you are changing only your first and/or middle names?**",
+            "sources": []
+          },
+          "progress": {
+            "procedure": "waiver",
+            "current_phase": "why-you-are-asking-the-court-to-waive-publication",
+            "complete": false,
+            "percent_complete": 50,
+            "saved_fact_count": 25
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "72cec039-458f-4988-ad90-6b69d3214066",
+            "conversation_id": "74bd7030-1405-4c01-9a74-027b52fa88c3",
+            "state": "completed",
+            "text": "The publication-waiver step is complete. The next step is the **filing fee**.\n\nNorth Dakota’s filing fee is **$160**. Your saved fact says you want to request a fee waiver. If you cannot afford the fee, the fee-waiver packet includes:\n\n- Petition for Waiver of Filing Fees\n- Financial Declaration\n- Proposed Order Waiving Filing Fees\n\nFile those forms at the same time as your name-change documents. A judge or judicial referee decides whether the fee is waived. The waiver does not cover certified-copy fees, transcript fees, copy fees, or service costs. [source:6550c6b4-93d9-4897-ac35-8023c3b47ce2] [source:nd-fee-waiver-petition]\n\n**Do you confirm that you want to request a waiver of the $160 filing fee?**",
+            "sources": [
+              {
+                "source_id": "6550c6b4-93d9-4897-ac35-8023c3b47ce2",
+                "kind": "corpus",
+                "title": "Adult Name Change (Publication Waiver)",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-fee-waiver-petition",
+                "kind": "corpus",
+                "title": "Petition for Fee Waiver",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "waiver",
+            "current_phase": "the-filing-fee",
+            "complete": false,
+            "percent_complete": 62,
+            "saved_fact_count": 25
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "14a22ac1-6c4d-4016-a96b-99d929cad035",
+            "conversation_id": "74bd7030-1405-4c01-9a74-027b52fa88c3",
+            "state": "completed",
+            "text": "Preparation is ready for final review. This is preparation only. No forms have been filled, filed, published, waived, or approved.\n\n### Saved fictional facts\n\n- Current legal name: **Demo value Demo value Demo value**\n- Requested name: **Demo value Demo value Demo value**\n- Address: **Demo value, Demo value, Demo value, Demo value**\n- County: **Demo value**\n- Lived in the county since: **Demo value**\n- Citizenship: **U.S. citizen**\n- Criminal history: **No convictions**\n- Date of birth: **2026-10-01**\n- Place of birth: **Demo value**\n- North Dakota residency: **0 years and 0 months**\n- Phone number: **Demo value**\n- Requesting a filing-fee waiver: **Yes**\n- Domestic-violence publication-waiver reason: **No**\n- First-or-middle-only publication-waiver checkbox: **False as saved**\n\nThere is one item to check before final confirmation: your original description says you are changing only your first and middle names, but the saved checkbox for that waiver reason is still `false`. The requested name also has a saved last name of “Demo value,” so the saved data does not clearly show that the last name is unchanged.\n\n### Preparation handoff\n\nYour waiver-track packet includes:\n\n1. Petition for Name Change  \n2. Declaration in Support of Petition  \n3. Confidential Information Form  \n4. Proposed Order for Name Change  \n5. Fee-waiver forms, because you requested a filing-fee waiver  \n\nA judge decides whether to waive publication. If granted, there is no 30-day publication waiting period. Call the clerk in the filing county before filing to ask whether the judge requires a criminal-history background check before filing or afterward. [source:6550c6b4-93d9-4897-ac35-8023c3b47ce2]\n\nLeave the case number blank. Do not sign the Proposed Order. The Confidential Information Form is sealed, and a copy must be attached to each certified copy of the Order for later North Dakota Vital Records updates. [source:nd-name-change-petition-waiver] [source:nd-name-change-confidential-info] [source:nd-name-change-order]\n\nAvailable resources:\n\n- [Preparation guide and forms](/t/north-dakota/adult-name-change/waiver/)\n- [Petition for Name Change](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf)\n- [Declaration](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf)\n- [Confidential Information Form](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf)\n- [Proposed Order](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf)\n- [Fee-waiver forms](https://www.ndcourts.gov/legal-self-help/fee-waiver)\n- [North Dakota court locator](https://www.ndcourts.gov/court-locations)\n\n**Do you confirm this summary and the saved facts, including the `false` first-or-middle-only waiver checkbox and the saved requested last name?**",
+            "sources": [
+              {
+                "source_id": "6550c6b4-93d9-4897-ac35-8023c3b47ce2",
+                "kind": "corpus",
+                "title": "Adult Name Change (Publication Waiver)",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-name-change-confidential-info",
+                "kind": "corpus",
+                "title": "Confidential Information Form",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-name-change-order",
+                "kind": "corpus",
+                "title": "Proposed Order for Name Change",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-name-change-petition-waiver",
+                "kind": "corpus",
+                "title": "Petition for Name Change",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "waiver",
+            "current_phase": "review",
+            "complete": false,
+            "percent_complete": 88,
+            "saved_fact_count": 25
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "683efde7-36e1-428d-a08c-5a98b3234858",
+            "conversation_id": "74bd7030-1405-4c01-9a74-027b52fa88c3",
+            "state": "completed",
+            "text": "Your preparation for the **North Dakota Adult Name Change, Publication Waiver track** is complete.\n\nThis means preparation is complete only. No forms have been filled out, filed, published, waived, or approved.\n\n### Packet\n\n- Petition for Name Change\n- Declaration in Support of Petition\n- Confidential Information Form\n- Proposed Order for Name Change\n- Filing-fee waiver packet, because you requested a waiver of the $160 fee\n\n### Before filing\n\n1. Call the clerk for the district court in your county and ask whether the judge requires a criminal-history background check before filing or after filing. Timing varies by judge, and the check can take weeks. [source:6550c6b4-93d9-4897-ac35-8023c3b47ce2]\n2. Complete and sign the Petition, Declaration, and Confidential Information Form as required.\n3. Leave the case number blank. The clerk assigns it.\n4. Do not sign the Proposed Order. Only the judge signs it.\n5. File the name-change packet and fee-waiver forms together.\n6. The judge decides whether publication will be waived. If waiver is denied, publication and the 30-day waiting period may still be required. [source:6550c6b4-93d9-4897-ac35-8023c3b47ce2]\n\nThe Petition and proposed Order generally become public court records. The Confidential Information Form is sealed. Keep copies. If the Order is granted, request at least three certified copies, and make sure the Confidential Information Form is attached to each one for later Vital Records updates. [source:nd-name-change-confidential-info] [source:nd-name-change-order]\n\n### Resources\n\n- [Preparation guide and forms](/t/north-dakota/adult-name-change/waiver/)\n- [Petition for Name Change](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf)\n- [Declaration](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf)\n- [Confidential Information Form](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf)\n- [Proposed Order](https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf)\n- [Fee-waiver forms](https://www.ndcourts.gov/legal-self-help/fee-waiver)\n- [North Dakota court locator](https://www.ndcourts.gov/court-locations)\n\nAfter an Order is granted, the usual records-update sequence is Social Security Administration first, then North Dakota driver’s license or ID, passport if relevant, and other accounts and records.",
+            "sources": [
+              {
+                "source_id": "6550c6b4-93d9-4897-ac35-8023c3b47ce2",
+                "kind": "corpus",
+                "title": "Adult Name Change (Publication Waiver)",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-name-change-confidential-info",
+                "kind": "corpus",
+                "title": "Confidential Information Form",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              },
+              {
+                "source_id": "nd-name-change-order",
+                "kind": "corpus",
+                "title": "Proposed Order for Name Change",
+                "locator": "/t/north-dakota/adult-name-change/waiver/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "waiver",
+            "current_phase": null,
+            "complete": true,
+            "percent_complete": 100,
+            "saved_fact_count": 25
+          }
+        }
+      ],
+      "final_progress": {
+        "procedure": "waiver",
+        "title": "Adult Name Change (Publication Waiver)",
+        "phases": [
+          {
+            "key": "your-current-legal-name",
+            "title": "Your current legal name",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "the-name-you-want",
+            "title": "The name you want",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "where-you-live",
+            "title": "Where you live",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "a-few-details-the-petition-requires",
+            "title": "A few details the Petition requires",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "why-you-are-asking-the-court-to-waive-publication",
+            "title": "Why you are asking the court to waive publication",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          },
+          {
+            "key": "the-filing-fee",
+            "title": "The filing fee",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          },
+          {
+            "key": "a-few-more-details-for-the-rest-of-your-packet",
+            "title": "A few more details for the rest of your packet",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": false
+          },
+          {
+            "key": "review",
+            "title": "Review preparation and next steps",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          }
+        ],
+        "facts": {
+          "city": "Demo value",
+          "county": "Demo value",
+          "zip_code": "Demo value",
+          "last_name": "Demo value",
+          "first_name": "Demo value",
+          "middle_name": "Demo value",
+          "phone_number": "Demo value",
+          "date_of_birth": "2026-10-01",
+          "place_of_birth": "Demo value",
+          "street_address": "Demo value",
+          "name_change_citizenship": "citizen",
+          "name_change_requested_last": "Demo value",
+          "name_change_conviction_year": 0,
+          "name_change_requested_first": "Demo value",
+          "name_change_residence_since": "Demo value",
+          "name_change_residency_years": 0,
+          "name_change_conviction_class": "Demo value",
+          "name_change_conviction_court": "Demo value",
+          "name_change_criminal_history": "none",
+          "name_change_requested_middle": "Demo value",
+          "name_change_residency_months": 0,
+          "name_change_conviction_charge": "Demo value",
+          "name_change_fee_waiver_needed": true,
+          "name_change_waiver_first_or_middle": false,
+          "name_change_waiver_domestic_violence": false
+        },
+        "current_phase": null,
+        "complete": true,
+        "percent_complete": 100,
+        "packet": [
+          "nd-name-change-petition-waiver",
+          "nd-name-change-declaration-waiver",
+          "nd-name-change-confidential-info",
+          "nd-name-change-order",
+          "nd-fee-waiver-petition"
+        ],
+        "resources": [
+          {
+            "label": "Preparation guide and forms",
+            "name": "",
+            "url": "/t/north-dakota/adult-name-change/waiver/"
+          },
+          {
+            "label": "Petition for Name Change",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf"
+          },
+          {
+            "label": "Declaration in Support of Petition",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf"
+          },
+          {
+            "label": "Confidential Information Form",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf"
+          },
+          {
+            "label": "Proposed Order for Name Change",
+            "name": "",
+            "url": "https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf"
+          },
+          {
+            "label": "North Dakota name-change guidance and forms",
+            "name": "",
+            "url": "https://www.ndcourts.gov/legal-self-help/name-change-adult"
+          },
+          {
+            "label": "North Dakota Century Code Chapter 32-28",
+            "name": "",
+            "url": "https://ndlegis.gov/cencode/t32c28.html"
+          },
+          {
+            "label": "Filing-fee waiver forms",
+            "name": "",
+            "url": "https://www.ndcourts.gov/legal-self-help/fee-waiver"
+          },
+          {
+            "label": "Criminal history record check (edo.cjis.gov)",
+            "name": "",
+            "url": "https://www.edo.cjis.gov"
+          },
+          {
+            "label": "North Dakota Free Legal Answers",
+            "name": "",
+            "url": "https://nd.freelegalanswers.org"
+          }
+        ]
+      }
+    },
+    {
+      "court": "franklin-county-oh",
+      "topic": "eviction",
+      "procedure": "tenant",
+      "complete": true,
+      "turns": [
+        {
+          "message": "I rent a home in Franklin County, Ohio and have received eviction papers. Please guide me through eviction preparation as a tenant.",
+          "outcome": {
+            "run_id": "1ffb0662-b86e-4364-b2f6-2d3a0c88a6c0",
+            "conversation_id": "3c891d19-37f1-4d7a-97e6-ac42e90d1d0d",
+            "state": "completed",
+            "text": "I’ll guide you through preparation one step at a time. First, we need the key dates.\n\nThe date you received the summons and complaint starts the 28-day deadline to file a written Answer to any money claim, such as back rent, utilities, or damages. Your eviction hearing date is listed on the Summons in Forcible Entry and Detainer. You must attend the hearing, even if you plan to move out. [source:3da68840-d621-4433-8cea-c35f20ed6f7e]\n\n**What date did you receive the eviction court papers?**  \nIf you are unsure, you can call the Franklin County Municipal Court Clerk at **(614) 645-8186** with your case number and ask for the service date.",
+            "sources": [
+              {
+                "source_id": "3da68840-d621-4433-8cea-c35f20ed6f7e",
+                "kind": "corpus",
+                "title": "Responding to an Eviction (Tenant)",
+                "locator": "/t/franklin-county-oh/eviction/tenant/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "tenant",
+            "current_phase": "your-key-dates",
+            "complete": false,
+            "percent_complete": 0,
+            "saved_fact_count": 0
+          }
+        },
+        {
+          "message": "These are fictional facts for this demonstration. Save the supplied values: {\"eviction_papers_received_date\": \"2026-10-01\", \"eviction_hearing_date\": \"2026-10-01\"}",
+          "outcome": {
+            "run_id": "92749bbd-a749-4cdf-8c7c-21d2dc1359df",
+            "conversation_id": "3c891d19-37f1-4d7a-97e6-ac42e90d1d0d",
+            "state": "completed",
+            "text": "I saved these demonstration dates:\n\n- **Court papers received:** October 1, 2026\n- **Eviction hearing:** October 1, 2026\n\nThe hearing date should be treated as urgent. Attend the hearing and check in with the bailiff. If the complaint includes a money claim, the written Answer deadline is 28 days after you received the papers. The Answer is separate from attending the eviction hearing. [source:3da68840-d621-4433-8cea-c35f20ed6f7e]\n\n**Please confirm that both dates are correct.**",
+            "sources": [
+              {
+                "source_id": "3da68840-d621-4433-8cea-c35f20ed6f7e",
+                "kind": "corpus",
+                "title": "Responding to an Eviction (Tenant)",
+                "locator": "/t/franklin-county-oh/eviction/tenant/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "tenant",
+            "current_phase": "your-key-dates",
+            "complete": false,
+            "percent_complete": 0,
+            "saved_fact_count": 2
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "7f2b8b71-562d-4102-9eed-b9f0810c325d",
+            "conversation_id": "3c891d19-37f1-4d7a-97e6-ac42e90d1d0d",
+            "state": "completed",
+            "text": "## Preparation handoff\n\nSaved facts:\n\n- **Role:** Tenant\n- **Court:** Franklin County Municipal Court, Ohio\n- **Court papers received:** October 1, 2026\n- **Hearing date:** October 1, 2026\n\n### Important actions\n\n1. **Attend the hearing and check in with the bailiff.** A properly served tenant who does not appear can lose by default.\n2. **Read the complaint carefully.** Check whether it has:\n   - a first cause of action for possession, and\n   - a second cause of action seeking money for rent, utilities, or damages.\n3. **If there is a money claim, file a written Answer within 28 days after receiving the papers.** Filing an Answer costs nothing. A counterclaim may have a fee, but you can ask about a fee-waiver affidavit. [source:3da68840-d621-4433-8cea-c35f20ed6f7e]\n4. **Gather your evidence:**\n   - lease\n   - rent receipts, bank records, or money-order stubs\n   - texts, emails, and letters\n   - the Notice to Leave and court papers\n   - photos or videos of conditions, if relevant\n   - repair receipts, if relevant\n   - photo ID, pen, and notepad\n5. **Consider possible issues**, including lack of a proper Notice to Leave, payment, rent accepted after notice, retaliation, or rent deposited with the clerk because of serious conditions. Bad conditions alone are usually not a defense to unpaid rent. [source:3da68840-d621-4433-8cea-c35f20ed6f7e]\n\n### Help and forms\n\n- **FCMC Self Help Center:** (614) 645-7381\n- **FCMC Clerk:** (614) 645-8186\n- **LASCO legal aid:** 1-888-246-4420, https://www.lasco.org\n- **Court civil forms:** https://www.fcmcclerk.com/forms/civil\n- **LASCO housing guides:** https://www.lasco.org/housing\n\nOnly a court can order you removed. A landlord may not change the locks, shut off utilities, or put your belongings outside without a court order. If that is happening, contact local law enforcement and legal aid immediately, and keep receipts for resulting costs. [source:3da68840-d621-4433-8cea-c35f20ed6f7e]\n\nThis preparation does not file an Answer, confirm a filing, or change your hearing. It is only a preparation handoff.\n\n**Please confirm that this preparation summary and handoff are correct.**",
+            "sources": [
+              {
+                "source_id": "3da68840-d621-4433-8cea-c35f20ed6f7e",
+                "kind": "corpus",
+                "title": "Responding to an Eviction (Tenant)",
+                "locator": "/t/franklin-county-oh/eviction/tenant/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "tenant",
+            "current_phase": "review",
+            "complete": false,
+            "percent_complete": 50,
+            "saved_fact_count": 2
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "8fc235d9-ac9b-41dc-8fcf-5b754137489c",
+            "conversation_id": "3c891d19-37f1-4d7a-97e6-ac42e90d1d0d",
+            "state": "completed",
+            "text": "Tenant eviction preparation is complete.\n\nSaved facts:\n\n- **Court:** Franklin County Municipal Court, Ohio\n- **Court papers received:** October 1, 2026\n- **Hearing date:** October 1, 2026\n\nThe preparation covered the hearing, the possible 28-day Answer deadline for a money claim, evidence to gather, possible defenses, and available court and legal-aid resources.\n\nThis preparation did **not** file an Answer, confirm a filing, or change the hearing date. Use the official resources:\n\n- [Franklin County Municipal Court civil forms](https://www.fcmcclerk.com/forms/civil)\n- [Franklin County Municipal Court eviction FAQ](https://www.fcmcclerk.com/faq/civil/evictions)\n- [LASCO housing guides](https://www.lasco.org/housing)\n\nFor help, call the **Self Help Center at (614) 645-7381**, the **Clerk at (614) 645-8186**, or **LASCO at 1-888-246-4420**.",
+            "sources": []
+          },
+          "progress": {
+            "procedure": "tenant",
+            "current_phase": null,
+            "complete": true,
+            "percent_complete": 100,
+            "saved_fact_count": 2
+          }
+        }
+      ],
+      "final_progress": {
+        "procedure": "tenant",
+        "title": "Responding to an Eviction (Tenant)",
+        "phases": [
+          {
+            "key": "your-key-dates",
+            "title": "Your key dates",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          },
+          {
+            "key": "review",
+            "title": "Review preparation and next steps",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          }
+        ],
+        "facts": {
+          "eviction_hearing_date": "2026-10-01",
+          "eviction_papers_received_date": "2026-10-01"
+        },
+        "current_phase": null,
+        "complete": true,
+        "percent_complete": 100,
+        "packet": [],
+        "resources": [
+          {
+            "label": "Preparation guide and forms",
+            "name": "",
+            "url": "/t/franklin-county-oh/eviction/tenant/"
+          },
+          {
+            "label": "Ohio Revised Code Chapter 1923 (eviction law)",
+            "name": "",
+            "url": "https://codes.ohio.gov/ohio-revised-code/chapter-1923"
+          },
+          {
+            "label": "Franklin County Municipal Court Clerk eviction FAQ",
+            "name": "",
+            "url": "https://www.fcmcclerk.com/faq/civil/evictions"
+          },
+          {
+            "label": "Franklin County Municipal Court civil forms",
+            "name": "",
+            "url": "https://www.fcmcclerk.com/forms/civil"
+          },
+          {
+            "label": "LASCO tenant guides on eviction",
+            "name": "",
+            "url": "https://www.lasco.org/housing"
+          }
+        ]
+      }
+    },
+    {
+      "court": "franklin-county-oh",
+      "topic": "eviction",
+      "procedure": "landlord",
+      "complete": true,
+      "turns": [
+        {
+          "message": "I am a landlord in Franklin County, Ohio. Please guide me through landlord eviction preparation.",
+          "outcome": {
+            "run_id": "ae2245fc-478b-47f6-94b8-7b90f682ab25",
+            "conversation_id": "c8457b1c-7158-401f-b903-aa832e842715",
+            "state": "completed",
+            "text": "I can guide you through preparing to file an eviction in Franklin County Municipal Court.\n\nBefore filing, you generally must serve the tenant with a written, signed Notice to Leave. It may be delivered in person, left at the residence, or sent by certified mail. At least three days must pass after service before you file. The notice is not a court order. [source:ebdea108-44d7-4c5b-949a-477bc10fe72a]\n\nWe will first record the notice date, then review filing documents, service, hearing preparation, and next steps. I will not calculate a filing date for you, but I can explain the timing rule and identify what to confirm with the clerk.\n\n**What date did you serve the Notice to Leave on the tenant?** Please give the date, or say “I have not served it yet.”",
+            "sources": [
+              {
+                "source_id": "ebdea108-44d7-4c5b-949a-477bc10fe72a",
+                "kind": "corpus",
+                "title": "Filing an Eviction (Landlord)",
+                "locator": "/t/franklin-county-oh/eviction/landlord/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "landlord",
+            "current_phase": "your-notice-date",
+            "complete": false,
+            "percent_complete": 0,
+            "saved_fact_count": 0
+          }
+        },
+        {
+          "message": "These are fictional facts for this demonstration. Save the supplied values: {\"eviction_notice_served_date\": \"2026-10-01\"}",
+          "outcome": {
+            "run_id": "a3cd703b-3215-4747-ad9a-b52ced1b63d4",
+            "conversation_id": "c8457b1c-7158-401f-b903-aa832e842715",
+            "state": "completed",
+            "text": "I saved the fictional notice-service date as **October 1, 2026**.\n\nAt least three days must pass after serving the Notice to Leave before you file the eviction case. Confirm the timing with the Franklin County Municipal Court Clerk if you are unsure how the days count. [source:545c68d3-9ebb-4bc0-8388-c0616ec0c958]\n\nWhen you are ready to continue, please confirm that this notice date and timing rule are correct.",
+            "sources": [
+              {
+                "source_id": "545c68d3-9ebb-4bc0-8388-c0616ec0c958",
+                "kind": "corpus",
+                "title": "Your notice date",
+                "locator": "/t/franklin-county-oh/eviction/landlord/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "landlord",
+            "current_phase": "your-notice-date",
+            "complete": false,
+            "percent_complete": 0,
+            "saved_fact_count": 1
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "37da9cb5-d6ba-45dc-a96b-9a142bb570c7",
+            "conversation_id": "c8457b1c-7158-401f-b903-aa832e842715",
+            "state": "completed",
+            "text": "## Preparation handoff\n\nSaved fact:\n\n- **Notice to Leave served:** October 1, 2026\n\n### Before filing\n\n- The notice must be written, signed, and properly delivered.\n- At least three days must pass after service before filing.\n- Do not change locks, shut off utilities, or remove belongings without a court order.\n- If the property is owned by a corporation, LLC, or trust, an attorney must represent the entity. The Columbus Bar Association Lawyer Referral Service is **(614) 221-0754**. [source:ebdea108-44d7-4c5b-949a-477bc10fe72a]\n\n### Filing preparation\n\nPrepare:\n\n- Eviction Complaint\n- Original Notice to Leave and a copy\n- Written lease, if the claim is based on one\n- Additional complaint and attachment copies for each tenant\n- Complete tenant names and addresses, including unit number and ZIP code\n- Records supporting the eviction, such as the lease, notice delivery information, rent ledger, and communications\n\nMost complaints have:\n\n1. A possession claim for the eviction itself\n2. An optional money claim for rent, utilities, or property damage\n\nThe filing cost depends on the claims and current court fee schedule. Confirm the current amount with the Clerk at **(614) 645-8186** before filing. [source:ebdea108-44d7-4c5b-949a-477bc10fe72a]\n\n### After filing\n\nThe tenant must receive the summons and complaint at least seven days before the hearing. Hearings are usually scheduled 14 to 21 days after filing. If you include a money claim, the tenant has 28 days after service to file an Answer to that claim. [source:3da68840-d621-4433-8cea-c35f20ed6f7e]\n\nBoth parties should appear at the hearing. If you prevail, you may request a Writ of Restitution. The Service Bailiff’s Office schedules the set out, and the writ must be carried out within 10 days after it issues. [source:ebdea108-44d7-4c5b-949a-477bc10fe72a]\n\nHelpful contacts:\n\n- **Clerk:** (614) 645-8186\n- **Self Help Center:** (614) 645-7381\n- **Lawyer Referral Service:** (614) 221-0754\n- **Service Bailiff’s Office:** (614) 645-7780\n\nThis preparation does not file a complaint, create a deadline calculation, or guarantee an outcome.\n\nPlease confirm that you have reviewed this handoff and want to finish the preparation step.",
+            "sources": [
+              {
+                "source_id": "3da68840-d621-4433-8cea-c35f20ed6f7e",
+                "kind": "corpus",
+                "title": "Responding to an Eviction (Tenant)",
+                "locator": "/t/franklin-county-oh/eviction/tenant/"
+              },
+              {
+                "source_id": "ebdea108-44d7-4c5b-949a-477bc10fe72a",
+                "kind": "corpus",
+                "title": "Filing an Eviction (Landlord)",
+                "locator": "/t/franklin-county-oh/eviction/landlord/"
+              }
+            ]
+          },
+          "progress": {
+            "procedure": "landlord",
+            "current_phase": "review",
+            "complete": false,
+            "percent_complete": 50,
+            "saved_fact_count": 1
+          }
+        },
+        {
+          "message": "Yes, I confirm the saved facts are correct and I understand this preparation step. Continue to the next step or provide the preparation handoff.",
+          "outcome": {
+            "run_id": "406d9741-5e0f-41ad-98c1-6e8c65c0118c",
+            "conversation_id": "c8457b1c-7158-401f-b903-aa832e842715",
+            "state": "completed",
+            "text": "Your **landlord eviction preparation is complete**.\n\nSaved fact:\n\n- **Notice to Leave served:** October 1, 2026\n\nThe preparation covered:\n\n- The three-day notice rule\n- Documents to prepare\n- Possession and optional money claims\n- Service and hearing timing\n- The tenant’s 28-day Answer period for a money claim\n- Hearing preparation\n- Writ of Restitution and set-out procedures\n- Relevant court contacts\n\nNo complaint was filed, and no court deadline was calculated or created.\n\nResources:\n\n- [Preparation guide and forms](/t/franklin-county-oh/eviction/landlord/)\n- [Ohio Revised Code Chapter 1923](https://codes.ohio.gov/ohio-revised-code/chapter-1923)\n- [Franklin County Municipal Court eviction FAQ](https://www.fcmcclerk.com/faq/civil/evictions)\n- [Franklin County Municipal Court civil forms](https://www.fcmcclerk.com/forms/civil)\n- [LASCO housing guides](https://www.lasco.org/housing)",
+            "sources": []
+          },
+          "progress": {
+            "procedure": "landlord",
+            "current_phase": null,
+            "complete": true,
+            "percent_complete": 100,
+            "saved_fact_count": 1
+          }
+        }
+      ],
+      "final_progress": {
+        "procedure": "landlord",
+        "title": "Filing an Eviction (Landlord)",
+        "phases": [
+          {
+            "key": "your-notice-date",
+            "title": "Your notice date",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          },
+          {
+            "key": "review",
+            "title": "Review preparation and next steps",
+            "state": "completed",
+            "missing": [],
+            "acknowledgement_required": true
+          }
+        ],
+        "facts": {
+          "eviction_notice_served_date": "2026-10-01"
+        },
+        "current_phase": null,
+        "complete": true,
+        "percent_complete": 100,
+        "packet": [],
+        "resources": [
+          {
+            "label": "Preparation guide and forms",
+            "name": "",
+            "url": "/t/franklin-county-oh/eviction/landlord/"
+          },
+          {
+            "label": "Ohio Revised Code Chapter 1923 (eviction law)",
+            "name": "",
+            "url": "https://codes.ohio.gov/ohio-revised-code/chapter-1923"
+          },
+          {
+            "label": "Franklin County Municipal Court Clerk eviction FAQ",
+            "name": "",
+            "url": "https://www.fcmcclerk.com/faq/civil/evictions"
+          },
+          {
+            "label": "Franklin County Municipal Court civil forms",
+            "name": "",
+            "url": "https://www.fcmcclerk.com/forms/civil"
+          },
+          {
+            "label": "LASCO tenant guides on eviction",
+            "name": "",
+            "url": "https://www.lasco.org/housing"
+          }
+        ]
+      }
+    }
+  ],
+  "questions": [
+    {
+      "question": "What is the filing fee for an adult name change in North Dakota?",
+      "grounded": {
+        "run_id": "ac995608-0ab5-430e-98c9-eb68f1a144af",
+        "conversation_id": "b2e7069f-6275-4e59-af4b-0116bfd46b44",
+        "state": "completed",
+        "text": "The filing fee for an adult name-change petition in North Dakota is **$160**. If you cannot afford it, you may ask the court to waive the fee by filing fee-waiver forms at the same time as your name-change documents. The judge decides whether to grant the waiver. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n\n",
+        "sources": [
+          {
+            "source_id": "68571ed7-eb72-4719-b206-ab8eab6d59a0",
+            "kind": "corpus",
+            "title": "Adult Name Change (Publication Required)",
+            "locator": "/t/north-dakota/adult-name-change/standard/"
+          }
+        ]
+      },
+      "selected_procedure": null,
+      "without_corpus": "The filing fee for an adult name-change petition in North Dakota is generally **$80**. Additional costs may apply, such as **newspaper publication** and certified copies of the court order. Fee waivers may be available if you cannot afford the filing fee; check with the district court clerk in your county."
+    },
+    {
+      "question": "How recent must the criminal-history check be when I file for an adult name change in North Dakota?",
+      "grounded": {
+        "run_id": "8e7ef59e-a18c-402c-8d67-532733abdee2",
+        "conversation_id": "c2340012-4c8f-4686-8305-5e06eb8623bf",
+        "state": "completed",
+        "text": "North Dakota’s adult name-change materials do not state how recent a criminal-history check must be when you file. The timing also varies by judge. Before requesting one, call the Clerk of District Court for the county where you will file and ask:\n\n> “Does the judge require a criminal-history background check before I file, and how recent must the check be?”\n\nThe county clerk can also tell you whether the check is required before filing or after filing. You can find the clerk through the [North Dakota court locator](https://www.ndcourts.gov/court-locations). The court materials state that a required check can take several weeks and that you pay its cost. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]",
+        "sources": [
+          {
+            "source_id": "68571ed7-eb72-4719-b206-ab8eab6d59a0",
+            "kind": "corpus",
+            "title": "Adult Name Change (Publication Required)",
+            "locator": "/t/north-dakota/adult-name-change/standard/"
+          }
+        ]
+      },
+      "selected_procedure": null,
+      "without_corpus": "In North Dakota, the criminal-history check for an adult name-change petition must generally be **conducted within 30 days before you file the petition**. It should be submitted with the petition.\n\nThis requirement is under **N.D.C.C. § 32-28-02**. Because court procedures can change, confirm the timing with the district court clerk or the North Dakota Legal Self Help Center before filing."
+    },
+    {
+      "question": "Will the North Dakota court always hold a hearing for an adult name change?",
+      "grounded": {
+        "run_id": "d2ec00d2-d843-4aae-89ca-7bbe594d5e5f",
+        "conversation_id": "10f1cf92-bb44-4d79-87d4-c3eb61aaf492",
+        "state": "completed",
+        "text": "No. North Dakota does **not** presumptively require a hearing for an adult name change. However, the judge may decide that a hearing is needed. If one is scheduled, the Clerk of District Court will send you the date, time, and location. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n\nA hearing is separate from the possible criminal-history background check. Before filing, call the clerk in the county where you have lived for the past six months and ask whether the judge requires that check before or after filing.",
+        "sources": [
+          {
+            "source_id": "68571ed7-eb72-4719-b206-ab8eab6d59a0",
+            "kind": "corpus",
+            "title": "Adult Name Change (Publication Required)",
+            "locator": "/t/north-dakota/adult-name-change/standard/"
+          }
+        ]
+      },
+      "selected_procedure": null,
+      "without_corpus": "No. A North Dakota court does **not necessarily hold a hearing** for every adult name-change petition. The judge may decide the petition based on the filed documents, but may schedule a hearing if more information is needed, if there is an objection, or if local court procedures require it.\n\nCheck the notice from the clerk or judge carefully. If a hearing is scheduled, you generally must attend unless the court specifically excuses you. North Dakota’s name-change procedures are governed primarily by **N.D.C.C. §§ 32-28-01 through 32-28-03**, and practices can vary by district."
+    },
+    {
+      "question": "I lived in two North Dakota counties during the last 12 months. Where must I publish my adult name-change notice?",
+      "grounded": {
+        "run_id": "24a44267-2ff6-468a-b052-cbd244d6b18a",
+        "conversation_id": "d3e61ad4-3838-4808-9bdc-1f1e27aa526c",
+        "state": "completed",
+        "text": "For the standard adult name-change track, publish the notice in the **official newspaper of the North Dakota county where you currently reside and are filing**. You must have lived in that county for at least the past six months. You do not generally publish in both counties.\n\nThe notice form identifies the newspaper as the official newspaper in the county where you reside. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n\nIf your move means you have not lived in your current county for six months, call the **Clerk of District Court** before filing. North Dakota’s materials say to file in the county where you have lived for the past six months. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]",
+        "sources": [
+          {
+            "source_id": "68571ed7-eb72-4719-b206-ab8eab6d59a0",
+            "kind": "corpus",
+            "title": "Adult Name Change (Publication Required)",
+            "locator": "/t/north-dakota/adult-name-change/standard/"
+          }
+        ]
+      },
+      "selected_procedure": null,
+      "without_corpus": "For an adult name change in North Dakota, the notice generally must be published **once a week for four consecutive weeks in a legal newspaper in the county where you currently reside and file the application**. Living in another North Dakota county during the prior 12 months does **not ordinarily require publication in both counties**.\n\nYou should confirm the filing county and an approved legal newspaper with the district court clerk, especially if you recently moved or have not established residency there. Publication may be waived or restricted in certain protected-person circumstances."
+    },
+    {
+      "question": "Does Burleigh County offer a same-day adult name-change service for an extra $25?",
+      "grounded": {
+        "run_id": "45a7c09f-8ebc-4d4c-9ba6-8008bc02f593",
+        "conversation_id": "547d30ef-1088-4f08-a3a3-1a5ec58e91cc",
+        "state": "completed",
+        "text": "I could not verify that Burleigh County offers a same-day adult name-change service for an extra $25. The North Dakota court material lists a **$160 filing fee**, but it does not list a same-day service or an additional $25 fee. [source:68571ed7-eb72-4719-b206-ab8eab6d59a0]\n\nCall the **Burleigh County Clerk of District Court** to confirm whether the local clerk offers any expedited processing and whether an additional fee applies. The North Dakota court locator is available here: https://www.ndcourts.gov/court-locations\n\nAlso, a judge may require a criminal-history background check, and timing varies by judge. The court advises asking the clerk whether that check is required before or after filing.",
+        "sources": [
+          {
+            "source_id": "68571ed7-eb72-4719-b206-ab8eab6d59a0",
+            "kind": "corpus",
+            "title": "Adult Name Change (Publication Required)",
+            "locator": "/t/north-dakota/adult-name-change/standard/"
+          }
+        ]
+      },
+      "selected_procedure": null,
+      "without_corpus": "Burleigh County does **not appear to publish a same-day adult name-change service or a $25 expedited fee**. An adult name change in North Dakota generally requires a petition filed with the District Court, and the timeline may involve court review, a hearing, and other requirements—so the completed change usually cannot be guaranteed the same day.\n\nFor the current fee and whether a filing can be reviewed immediately, contact the **Burleigh County Clerk of District Court** before going in: **701-355-1350**. Be sure to ask whether the $25 charge you heard about applies to a particular document, such as a certified copy, rather than to expedited processing."
+    }
+  ]
+}

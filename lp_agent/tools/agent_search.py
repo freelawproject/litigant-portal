@@ -2,11 +2,9 @@
 Model-callable search through the four restricted PostgreSQL lookup functions.
 """
 
+from typing import TYPE_CHECKING
 from uuid import UUID
 
-from psycopg import AsyncConnection, Error
-from psycopg.rows import DictRow
-from psycopg.types.json import Jsonb
 from pydantic import JsonValue, TypeAdapter, ValidationError
 
 from lp_agent.errors import AgentError, AgentValidationError
@@ -16,6 +14,10 @@ from lp_agent.types import (
     AgentSourceQuery,
     ToolDefinition,
 )
+
+if TYPE_CHECKING:
+    from psycopg import AsyncConnection
+    from psycopg.rows import DictRow
 
 SEARCH_TOOLS = (
     ToolDefinition(
@@ -43,7 +45,7 @@ class AgentSearch:
 
     def __init__(
         self,
-        connection: AsyncConnection[DictRow],
+        connection: "AsyncConnection[DictRow]",
         *,
         access: AccessContext,
         run_id: str,
@@ -62,6 +64,8 @@ class AgentSearch:
         """
         Search one allowed category using a fixed parameterized function call.
         """
+        from psycopg.types.json import Jsonb
+
         async with self.connection.transaction():
             if query.category == "court_corpus":
                 cursor = await self.connection.execute(
@@ -99,6 +103,8 @@ class AgentSearch:
         """
         Recheck access and fetch an excerpt; this does not download the file.
         """
+        from psycopg.types.json import Jsonb
+
         try:
             source_id = UUID(query.source_id)
         except ValueError:
@@ -136,6 +142,8 @@ class AgentSearch:
         """
         Validate model arguments and keep database diagnostics out of tool output.
         """
+        from psycopg import Error
+
         try:
             if name == "agent_search":
                 return await self.search(
