@@ -30,6 +30,24 @@ def token_total(calls: list[dict], kind: str) -> int | None:
     return sum(call[kind] for call in calls)
 
 
+def candidate_error(record: dict) -> dict | None:
+    """
+    Recover the agent's public failure reason, including from older run records.
+    """
+    if record["status"] not in {"error", "interrupted"}:
+        return None
+    for event in reversed(record.get("events", [])):
+        payload = event.get("payload", event)
+        if payload.get("type") == "outcome":
+            error = payload.get("outcome", {}).get("error")
+            if error:
+                return error
+    return {
+        "code": record.get("error_category", record["status"]),
+        "message": record.get("error", f"Candidate {record['status']}."),
+    }
+
+
 def paired_success(rows: list[dict], cases: list[dict]) -> dict:
     """
     Count correct answers to both versions only when their answer keys differ.
@@ -74,6 +92,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
     records = []
     for relative in manifest["attempts"]:
         row = json.loads((run / relative).read_text())
+        failure = candidate_error(row)
         judgment = None
         calls = []
         if relative in batch["judgments"]:
@@ -102,6 +121,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 "system": row["system"],
                 "model": row["model"],
                 "status": row["status"],
+                "candidate_error": failure,
                 "overall": overall,
                 "quality": quality,
                 "score": scored,
@@ -117,7 +137,9 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                     for expected in row["case"]["facts"]
                     if expected["critical"]
                 ),
-                "judge_status": judgment["status"] if judgment else "ungraded",
+                "judge_status": judgment["status"]
+                if judgment
+                else ("not_applicable" if failure else "ungraded"),
                 "judge_error": judgment.get("error") if judgment else None,
                 "judge_error_category": judgment.get(
                     "error_category", judgment.get("error")
@@ -308,10 +330,11 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
             if origin not in paid_sources:
                 paid_sources.add(origin)
                 all_batches.extend(calls)
-    grading = Counter(row["judge_status"] for row in records)
+    candidates = [row for row in records if row["status"] == "completed"]
+    grading = Counter(row["judge_status"] for row in candidates)
     grading_errors = Counter(
         row["judge_error_category"] or row["judge_status"]
-        for row in records
+        for row in candidates
         if row["judge_status"] != "completed"
     )
     grading_status = batch.get("status", "ungraded")
@@ -330,6 +353,13 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
         "scoring_version": manifest["scoring_version"],
         "weights": weights.model_dump(),
         "judgment_batch": batch_path.parent.name if batch_path else None,
+        "candidate_errors": dict(
+            Counter(
+                row["candidate_error"]["code"]
+                for row in records
+                if row["candidate_error"]
+            )
+        ),
         "grading": {
             "status": grading_status,
             "counts": dict(grading),
@@ -737,14 +767,16 @@ def report_runs(
     for report in reports:
         totals = report["systems"]
         print(
-            f"Results: {sum(row['recorded'] for row in totals)}/{sum(row['planned'] for row in totals)} answers recorded; "
+            f"Results: {sum(row['recorded'] for row in totals)}/{sum(row['planned'] for row in totals)} attempts recorded; "
             f"{sum(row['graded'] for row in totals)} graded; "
             f"{sum(row['ungraded'] + row['missing'] for row in totals)} ungraded/missing; "
             f"{sum(row['execution_failures'] for row in totals)} candidate failures; "
             f"{report['grading']['recovered']} recovered offline.",
             flush=True,
         )
+        for reason, count in report["candidate_errors"].items():
+            print(f"  {count} candidate failures: {reason}", flush=True)
         for reason, count in report["grading"]["errors"].items():
-            print(f"  {count}: {reason}", flush=True)
+            print(f"  {count} grading failures: {reason}", flush=True)
     print(f"Report: {output / 'summary.json'}", flush=True)
     return reports

@@ -166,6 +166,12 @@ class Stream:
         self.observe(value)
         return value
 
+    async def aclose(self):
+        """
+        Expose closing directly so runtime protocol checks recognize the wrapper.
+        """
+        await close_stream(self.source)
+
 
 class Observer:
     """
@@ -268,6 +274,21 @@ class Observer:
 
 
 async def close_stream(stream):
+    """
+    Close native Responses resources, translated streams, and ordinary iterators.
+    """
+    underlying = getattr(stream, "litellm_custom_stream_wrapper", None)
+    if underlying is not None:
+        await close_stream(underlying)
+        return
+    iterator = getattr(stream, "stream_iterator", None)
+    response = getattr(stream, "response", None)
+    if iterator is not None and response is not None:
+        try:
+            await close_stream(iterator)
+        finally:
+            await close_stream(response)
+        return
     close = getattr(stream, "aclose", None) or getattr(stream, "close", None)
     if close:
         result = close()

@@ -13,7 +13,7 @@ It does not install evaluation dependencies into the application environment or
 Docker image.
 
 ```bash
-# Full matrix: 3 systems × 2 models × 14 cases × 3 attempts = 252 attempts.
+# Run the systems, models, cases, and repetitions selected in config.yml.
 make agent-eval
 
 # Small live run, including the separate Sol judge.
@@ -39,6 +39,9 @@ The CLI is `python -m scripts.agent_eval` in the evaluation environment, run
 from the repository root. Edit [config.yml](config.yml) for the systems, model
 aliases, judge, repetitions, cases, timeout, seed, weights, and pricing overrides.
 Judge and candidate models may overlap. Credentials never belong in this file.
+The new agent also performs its own answer review, using the candidate model as
+its internal judge. These calls count toward system cost and latency. The separate
+evaluation judge scores the final answer; `--no-judge` disables only that scoring.
 
 Orchestration, raw calls, judging, and charts run locally. Export
 `AWS_BEARER_TOKEN_BEDROCK` locally for raw calls and judging. Raw-only runs,
@@ -68,8 +71,19 @@ with provenance and draft review status. It is not independently verified law.
 The fictional chicken-law variants change the fee and procedural order while
 retaining identical questions. Both include the 200-square-feet-per-chicken
 boundary. Fixtures enter through normal corpus files and an evaluation database
-flow. The new agent currently does not retrieve this content; the benchmark does
-not insert it into the candidate prompt. Raw receives no corpus.
+flow for the legacy system. For the new agent, the worker publishes each frozen
+guide into the `agent_` catalog before its cases run. It uses court `eval-ohio`
+and separate topics `eval-chicken-displacement-a` and `eval-chicken-displacement-b`
+so both variants can coexist without mixing their rules. The normal agent flow
+loads that topic's published material. Raw receives no corpus.
+
+These clearly labeled fictional scopes remain in the local development database.
+Repeated runs reuse identical revisions; changed guides create new revisions.
+Setup modifies only evaluator-owned fixture rows and leaves real court material
+and the existing base prompt alone. The new agent requires its usual writer and
+lookup DSNs, a published base prompt, and the real-case corpus already loaded.
+Each run saves `corpora/chickens-*-agent.json` with the actual scope, guidance,
+hash, and revision IDs, alongside its frozen source fixtures.
 
 Legacy runs temporarily change site settings and may enable the fictional flow;
 other development requests can see those changes while the run is active. The
@@ -94,6 +108,12 @@ them to exact answer text. Explanations are separate. Unknown/duplicate IDs,
 missing facts or scores, and missing asserted values fail grading. Omissions and
 uncertainty use null values rather than invented amounts or eligibility results.
 The response protocol and schema are frozen per judgment batch.
+
+For database citations, the evaluator also receives the cited source content saved
+in the application's review request for that exact final answer. Internal verdicts
+and rejected drafts are excluded. This lets it resolve source IDs and form excerpts;
+the frozen references and expected facts still control scoring, including the
+complete fictional canon.
 
 Charts show **weighted quality before gates**. A bright red point and the
 **Critical failure** legend flag any critical failure among that system/model's
@@ -127,6 +147,9 @@ Reports and Matplotlib PNGs can be rebuilt without API calls or running services
 evidence with Markdown, punctuation, and capitalization differences. It preserves
 the original records and records recovered judgments in a new batch. Unrecoverable
 grades remain explicit; recovery itself exits successfully after reporting them.
+An omitted nullable `value` is read as `null`; asserted numeric/boolean facts
+still require an extracted value. This recovers harmless missing-null fields
+without filling in answers from the expected facts or changing the assessment.
 
 `judge --retry-failed` carries forward valid judgments and makes one call per
 unresolved saved answer. It uses the same judge model and never regenerates
@@ -141,6 +164,18 @@ answer's rubric critical failures do not. Reports show coverage and recovery
 provenance, retaining original and replacement judge costs separately from
 candidate costs.
 
-This internal suite has no automated tests or pre-commit test integration. Verify
-changes with a small live run, fixture/restoration checks, and inspection of saved
-JSON and charts. Inspect judge evidence before treating any run as a baseline.
+Candidate failures are reported separately from missing judgments. For example,
+`response_rejected` means the agent exhausted its internal correction attempts
+without releasing an answer. Those attempts retain their failure scores; neither
+`recover` nor `judge --retry-failed` reruns them. The report reads saved outcome
+events to show this reason even for older records with a generic runtime error.
+
+Run the evaluator regression tests without provider calls:
+
+```bash
+uv run --project scripts/agent_eval --locked python -m unittest discover -s scripts/agent_eval -t .
+```
+
+These checks are separate from the application test suite. Verify database and
+evaluation changes with a small live run, fixture/restoration checks, and inspection
+of saved JSON and charts. Inspect judge evidence before treating any run as a baseline.

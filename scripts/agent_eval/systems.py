@@ -5,7 +5,6 @@ Thin adapters around the raw provider and unchanged application entry points.
 import asyncio
 import json
 import os
-from pathlib import Path
 
 from .provider import close_stream, data
 
@@ -144,19 +143,17 @@ def old(case, model: str, identity, emit) -> dict:
 async def new(
     case, model: str, identity, emit, resource_root: str | None
 ) -> dict:
-    from django.test.utils import override_settings
-
     from litigant_portal.agent import PortalAgent
 
-    options = {"BASE_DIR": Path(resource_root)} if resource_root else {}
-    with override_settings(**options):
-        agent = PortalAgent(
-            identity=identity,
-            model=model,
-            court=case.court,
-            topic=case.topic,
-            runtime="Direct",
-        )
+    from .agent_corpus import scope
+
+    selected = scope(case)
+    agent = PortalAgent(
+        identity=identity,
+        model=model,
+        **selected,
+        runtime="Direct",
+    )
     async with agent:
         handle = await agent.run(message=case.question)
         async for event in handle.events():
@@ -169,7 +166,7 @@ async def new(
         outcome = await handle.result()
         if outcome.state != "completed":
             raise RuntimeError(f"Agent ended in state {outcome.state}.")
-        return {"outcome": outcome.model_dump(mode="json")}
+        return {"outcome": outcome.model_dump(mode="json"), "scope": selected}
 
 
 def invoke(system, case, model, identity, emit, resource_root=None):
