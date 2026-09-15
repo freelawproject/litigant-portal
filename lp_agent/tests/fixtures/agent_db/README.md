@@ -5,6 +5,8 @@ The frozen SQL in
 defines the experimental `agent_` schema. Django migration `0019_agent_schema`
 installs it; the PostgreSQL surface tests and legacy local installer read the
 same bundle. Keep it immutable and use subsequent migrations for schema changes.
+Migration `0020_defer_agent_vectors` upgrades installations of the earlier
+pre-release snapshot, which included unused pgvector storage.
 
 The database test fixture applies these files in order, in one transaction:
 
@@ -13,8 +15,9 @@ The database test fixture applies these files in order, in one transaction:
 3. `agent_search.sql`: stored lookup functions and restricted database roles.
 
 The tests use a temporary database on the configured PostgreSQL server and drop
-it during teardown. The existing Docker and CI PostgreSQL services provide
-pgvector and administrator access for database and role creation. SQL setup
+it during teardown. The schema does not require pgvector. Docker and CI provide
+administrator access for database and role creation, plus pgvector availability
+for the separate legacy-upgrade tests. SQL setup
 creates the three non-login agent roles if absent and validates existing roles.
 Those permission groups are shared with local development and retained after
 testing. Tests create separate writer and lookup logins with temporary

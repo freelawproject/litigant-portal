@@ -8,12 +8,21 @@ Publication failures stop startup and fail the rollout.
 
 ## Database and credentials
 
-The database needs PostgreSQL with pgvector and a migration login permitted to
-install the extension and create the three non-login agent permission groups.
+The database needs PostgreSQL and the agent permission groups; pgvector is not
+required. An administrator must complete the
+[one-time database setup](qa-agent-database-setup.md) before the first deployment.
+That setup covers role creation and the temporary
+permissions needed to transfer ownership of the search functions. Subsequent
+deployments use the existing application login.
 The SQL snapshot is packaged with the application. An existing manual installation
 is adopted only when its fingerprint and table/function inventory match.
 Migration reversal retains agent tables and data; reapplying recognizes them.
 Future schema changes need subsequent migrations.
+
+The pre-release `0019` snapshot omits the unused embedding column and its vector
+validation. Migration `0020_defer_agent_vectors` updates installations of the
+earlier snapshot, preserving agent records and refusing to discard nonempty
+embeddings. It leaves any administrator-installed extension in place.
 
 For this PoC, application settings default `LP_AGENT_DEV_ENABLED` and
 `LP_AGENT_USE_DJANGO_DB` to true when the deployment supplies `DEPLOYMENT_ENV=qa`.
