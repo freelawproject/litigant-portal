@@ -109,6 +109,8 @@ CODEOWNERS puts **every** owner on **every** PR, but the ruleset requires only *
 
 Everything else is noise. This applies to the morning briefing, board audits, and any PR sweep.
 
+The review hand-off itself — who holds the PR at each step, and who merges — is contributor-facing and lives in [CONTRIBUTING.md](CONTRIBUTING.md#review-the-assignee-is-the-baton). Don't restate it here.
+
 ## Issue creation
 
 See [`docs/wiki/issue-conventions.md`](docs/wiki/issue-conventions.md) for the full label color scheme and template rationale.
