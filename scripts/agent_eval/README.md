@@ -147,6 +147,9 @@ Reports and Matplotlib PNGs can be rebuilt without API calls or running services
 evidence with Markdown, punctuation, and capitalization differences. It preserves
 the original records and records recovered judgments in a new batch. Unrecoverable
 grades remain explicit; recovery itself exits successfully after reporting them.
+An omitted nullable `value` is read as `null`; asserted numeric/boolean facts
+still require an extracted value. This recovers harmless missing-null fields
+without filling in answers from the expected facts or changing the assessment.
 
 `judge --retry-failed` carries forward valid judgments and makes one call per
 unresolved saved answer. It uses the same judge model and never regenerates
@@ -161,10 +164,16 @@ answer's rubric critical failures do not. Reports show coverage and recovery
 provenance, retaining original and replacement judge costs separately from
 candidate costs.
 
-Run the focused stream lifecycle and citation regression tests without provider calls:
+Candidate failures are reported separately from missing judgments. For example,
+`response_rejected` means the agent exhausted its internal correction attempts
+without releasing an answer. Those attempts retain their failure scores; neither
+`recover` nor `judge --retry-failed` reruns them. The report reads saved outcome
+events to show this reason even for older records with a generic runtime error.
+
+Run the evaluator regression tests without provider calls:
 
 ```bash
-uv run --project scripts/agent_eval --locked python -m unittest scripts.agent_eval.test_provider scripts.agent_eval.test_judge
+uv run --project scripts/agent_eval --locked python -m unittest discover -s scripts/agent_eval -t .
 ```
 
 These checks are separate from the application test suite. Verify database and

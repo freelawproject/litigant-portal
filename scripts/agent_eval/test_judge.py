@@ -5,7 +5,8 @@ Keep evaluator citation support tied to captured material for the final answer.
 import json
 import unittest
 
-from .judge import cited_sources
+from .judge import FORMAT_VERSION, InvalidGrade, cited_sources, parse_response
+from .schema import DIMENSIONS, Weights
 
 
 def review_call(answer, sources, **context):
@@ -102,3 +103,93 @@ class CitedSourceTests(unittest.TestCase):
         self.assertEqual(
             cited_sources({"answer": answer, "calls": [call]}), []
         )
+
+
+class CitedValueTests(unittest.TestCase):
+    def setUp(self):
+        self.candidate = {
+            "answer": "Ask the clerk about the procedure.",
+            "case": {
+                "id": "example",
+                "group": "real",
+                "court": "example",
+                "topic": "example",
+                "question": "What is the procedure?",
+                "references": ["example.yml"],
+                "facts": [{"id": "procedure", "statement": "Explain it."}],
+                "acceptable_deferral": "Ask the clerk.",
+            },
+        }
+        self.response = {
+            "dimensions": {
+                name: {"score": 3, "explanation": "Example assessment."}
+                for name in DIMENSIONS
+            },
+            "answer_outcome": "partial",
+            "source_attribution": "absent",
+            "facts": [
+                {
+                    "fact_id": "procedure",
+                    "status": "omitted",
+                    "evidence_ids": [],
+                    "explanation": "The answer omits the required procedure.",
+                }
+            ],
+            "deal_breakers": [],
+        }
+
+    def parse(self):
+        return parse_response(
+            json.dumps(self.response),
+            self.candidate,
+            Weights(),
+            FORMAT_VERSION,
+        )
+
+    def test_missing_nullable_value_preserves_omission(self):
+        fact = self.parse()["grade"]["facts"][0]
+        self.assertIsNone(fact["value"])
+        self.assertEqual(fact["status"], "omitted")
+        self.assertEqual(fact["evidence"], "")
+
+    def test_nonnumeric_supported_fact_may_omit_value(self):
+        self.response["facts"][0].update(status="supported", evidence_ids=[1])
+        self.assertIsNone(self.parse()["grade"]["facts"][0]["value"])
+
+    def test_unasserted_numeric_fact_does_not_copy_answer_key(self):
+        self.candidate["case"]["facts"][0]["value"] = 30
+        for status in ("omitted", "uncertain"):
+            with self.subTest(status=status):
+                self.response["facts"][0]["status"] = status
+                self.assertIsNone(self.parse()["grade"]["facts"][0]["value"])
+
+    def test_asserted_numeric_or_boolean_fact_still_requires_value(self):
+        for expected in (30, True):
+            for status in ("supported", "contradicted"):
+                with self.subTest(expected=expected, status=status):
+                    self.candidate["case"]["facts"][0]["value"] = expected
+                    self.response["facts"][0].update(
+                        status=status, evidence_ids=[1]
+                    )
+                    with self.assertRaises(InvalidGrade) as raised:
+                        self.parse()
+                    self.assertEqual(
+                        raised.exception.category, "missing_value"
+                    )
+
+    def test_explicit_value_on_omitted_fact_is_still_rejected(self):
+        self.response["facts"][0]["value"] = 0
+        with self.assertRaises(InvalidGrade) as raised:
+            self.parse()
+        self.assertEqual(raised.exception.category, "unexpected_value")
+
+    def test_false_and_zero_are_not_treated_as_missing(self):
+        for value in (False, 0):
+            with self.subTest(value=value):
+                self.candidate["case"]["facts"][0]["value"] = value
+                self.response["facts"][0].update(
+                    status="supported", evidence_ids=[1], value=value
+                )
+                self.assertIsNotNone(
+                    self.parse()["grade"]["facts"][0]["value"]
+                )

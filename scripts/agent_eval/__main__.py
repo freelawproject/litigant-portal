@@ -101,19 +101,33 @@ def main():
         if args.dry_run:
             return 0
     reports = report_runs([run])
+    needs_judging = any(
+        row["ungraded"] and not getattr(args, "no_judge", False)
+        for row in reports[0]["systems"]
+    )
+    candidate_failures = any(
+        row["execution_failures"] for row in reports[0]["systems"]
+    )
     incomplete = int(
-        any(
-            row["execution_failures"]
-            or row["missing"]
-            or (row["ungraded"] and not getattr(args, "no_judge", False))
-            for row in reports[0]["systems"]
-        )
+        candidate_failures
+        or needs_judging
+        or any(row["missing"] for row in reports[0]["systems"])
     )
     if incomplete:
         print(
-            "Evaluation incomplete; see grading counts above. "
+            "Evaluation finished with failures; see counts above.",
+            file=sys.stderr,
+        )
+    if needs_judging:
+        print(
             "Use 'recover RUN' for offline recovery, then "
             "'judge RUN --retry-failed' for unresolved judgments.",
+            file=sys.stderr,
+        )
+    if candidate_failures:
+        print(
+            "Candidate failures remain recorded benchmark results. "
+            "Recovery and judge retries do not regenerate candidate answers.",
             file=sys.stderr,
         )
     return incomplete

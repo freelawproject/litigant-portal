@@ -160,7 +160,8 @@ class CitedAssessment(Schema):
     status: FactStatus
     evidence_ids: list[PassageID]
     explanation: str = Field(min_length=1)
-    value: float | bool | None
+    # Case-level validation still requires values for asserted numeric facts.
+    value: float | bool | None = None
 
 
 class CitedDealBreaker(Schema):
