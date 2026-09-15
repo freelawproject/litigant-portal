@@ -12,16 +12,22 @@ while saving facts, their evidence, and progress in the existing `agent_` tables
 ## Local development
 
 Open `/dev/agent/` to exercise the database-backed flow.
-The page requires developer permission, `LP_AGENT_DEV_ENABLED=true`, a server-held
-`BEDROCK_API_KEY`, and these server-side database settings:
+The page requires developer permission, `LP_AGENT_DEV_ENABLED=true`, and a
+server-held `BEDROCK_API_KEY`. Local Compose enables `LP_AGENT_USE_DJANGO_DB=true`;
+application settings also default both agent flags to true for `DEPLOYMENT_ENV=qa`.
+The agent opens its own connections with Django's credentials and bypasses the
+restricted-lookup login check for this PoC. This option is limited to dev and QA.
+Explicit flag values override the QA defaults. With shared credentials disabled,
+configure separate server-side database settings:
 
 - `LP_AGENT_WRITER_DSN`: a login inheriting `agent_dev_crud`.
 - `LP_AGENT_LOOKUP_DSN`: a separate login inheriting only `agent_dev_lookup`.
 
-The [experimental SQL fixture guide](tests/fixtures/agent_db/) explains setup.
-The development database must contain published court/topic prompts and corpus
-material. Test fixtures load the repository's four preparation procedures into
-isolated test databases; runtime code does not seed data.
+Normal startup now runs the agent schema migration and publishes real repository
+material through `manage sync_corpus --strict`. Unchanged imports keep their IDs;
+changed material gets new published revisions. Evaluation fixtures and sample
+conversations are excluded. See the [QA PoC setup](../docs/qa-agent-poc.md) and
+[database fixture guide](tests/fixtures/agent_db/) for the schema and test setup.
 
 Leave court or topic blank to choose through chat. Static numbered questions
 select the court first, then its topic, without calling a model. The original

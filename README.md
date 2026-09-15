@@ -28,7 +28,7 @@ Visit: http://localhost (Caddy serves on port 80).
 - **Reactivity:** Alpine.js (CSP build)
 - **AI:** LiteLLM (provider-agnostic chat engine)
 - **Document assembly:** docassemble (path-routed add-on service)
-- **Database:** PostgreSQL (pgvector)
+- **Database:** PostgreSQL
 - **Caching:** Redis
 
 ## Production
@@ -39,7 +39,7 @@ Visit: http://localhost (Caddy serves on port 80).
 
 **Runtime dependencies:**
 
-- **PostgreSQL** with the **pgvector** extension.
+- **PostgreSQL**
 - **Redis**
 
 **Required environment** (see `.env.example`):

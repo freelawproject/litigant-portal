@@ -31,6 +31,7 @@ services:
       - DEBUG=true
       - DEPLOYMENT_ENV=dev
       - LP_AGENT_DEV_ENABLED=true
+      - LP_AGENT_USE_DJANGO_DB=${LP_AGENT_USE_DJANGO_DB:-true}
       - LP_AGENT_WRITER_DSN=${LP_AGENT_WRITER_DSN:-}
       - LP_AGENT_LOOKUP_DSN=${LP_AGENT_LOOKUP_DSN:-}
       - SECRET_KEY=dev

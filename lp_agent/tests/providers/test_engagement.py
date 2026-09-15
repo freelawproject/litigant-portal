@@ -65,6 +65,7 @@ def preparation_database(database_dsns: dict[str, str]) -> Iterator[str]:  # noq
             await load_preparation_fixture(db, settings.BASE_DIR)
 
     with override_settings(
+        LP_AGENT_USE_DJANGO_DB=False,
         LP_AGENT_WRITER_DSN=database_dsns["crud"],
         LP_AGENT_LOOKUP_DSN=database_dsns["lookup"],
         CORPUS_COURT=None,

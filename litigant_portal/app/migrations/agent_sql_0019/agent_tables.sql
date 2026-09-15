@@ -1,5 +1,4 @@
--- Experimental local schema. Run through setup_agent_db.py, not a migration.
-CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;
+-- Experimental agent schema installed by migration 0019_agent_schema.
 
 CREATE TABLE public.agent_user (
     user_id text PRIMARY KEY CHECK (btrim(user_id) <> ''),
@@ -120,7 +119,6 @@ CREATE TABLE public.agent_document_chunk (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(), document_id uuid NOT NULL,
     ordinal integer NOT NULL CHECK (ordinal > 0), body text NOT NULL,
     locator jsonb NOT NULL, text_sha256 text NOT NULL CHECK (text_sha256 ~ '^[0-9a-f]{64}$'),
-    embedding public.vector,
     search_vector tsvector GENERATED ALWAYS AS (to_tsvector('english'::regconfig, body)) STORED,
     UNIQUE (document_id, ordinal)
 );
