@@ -30,7 +30,6 @@ class ResourceScope:
     model: ModelClient
     judge: ModelClient | None = None
     resource_root: Path | None = None
-    preparation: "PreparationService | None" = None
 
     def __post_init__(self) -> None:
         """
@@ -55,6 +54,7 @@ class AgentIdentity:
     runs: RunStore
     scope_factory: ScopeFactory
     scope: ScopeSelection = field(default_factory=ScopeSelection)
+    preparation: "PreparationService | None" = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """

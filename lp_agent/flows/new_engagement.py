@@ -4,17 +4,16 @@ Corpus-grounded questions and conversation-driven preparation through scoped ser
 
 import json
 import re
-from collections.abc import Callable
-from contextlib import aclosing
+from collections.abc import AsyncIterator, Callable
+from contextlib import aclosing, asynccontextmanager
 from dataclasses import dataclass, field
 from uuid import UUID
 
 from pydantic import JsonValue
 
 from lp_agent.errors import AgentValidationError
-from lp_agent.flows.checks import AgentChecker
 from lp_agent.flows.engagement import Engagement, EngagementFlow
-from lp_agent.flows.judge import AgentJudge
+from lp_agent.flows.judge import AgentJudge, JudgeFinding, JudgeVerdict
 from lp_agent.flows.procedure import ProcedureState
 from lp_agent.flows.prompts import PromptBuilder
 from lp_agent.interfaces import RunStore
@@ -61,8 +60,8 @@ class NewEngagementFlow(EngagementFlow):
     """
 
     async def prepare(self, request: RunRequest) -> Engagement:
-        scoped = await self._bind_scope()
-        if scoped.preparation is None:
+        service = self.environment.preparation
+        if service is None:
             return await super().prepare(request)
         if request.attachment_ids:
             raise AgentValidationError(
@@ -75,21 +74,26 @@ class NewEngagementFlow(EngagementFlow):
                 raise AgentValidationError(
                     "Conversation is unavailable."
                 ) from None
-        session = await scoped.preparation.open()
+        session = await service.open(self.environment.scope)
         try:
             async with session.transaction():
                 context = await session.prepare(request, self.configuration)
                 state = ProcedureState(session, context)
                 await state.refresh()
-                context_item = PromptBuilder.inject_model_message(
-                    state.snapshot()
-                )
-                await session.save_context(context_item)
-                model_request = ModelRequest(
-                    instructions=PromptBuilder.build_system_prompt(
+                scoped = None
+                instructions = ""
+                if context.static_reply is None:
+                    assert context.corpus is not None
+                    scoped = await self._bind_scope(context.corpus.scope)
+                    if not getattr(scoped.model, "supports_tools", True):
+                        raise AgentValidationError(
+                            "Select a native Bedrock model for guided conversations."
+                        )
+                    instructions = PromptBuilder.build_system_prompt(
                         context.corpus, state.procedure, state.snapshot()
-                    ),
-                    input=(context_item, *context.history),
+                    )
+                model_request = ModelRequest(
+                    instructions=instructions, input=context.history
                 )
                 return PreparedEngagement(
                     environment=self.environment,
@@ -120,6 +124,22 @@ class PreparedEngagement(Engagement):
     context: PreparedContext = field(repr=False)
     procedure_state: ProcedureState = field(repr=False)
     operation_count: int = field(default=0, init=False)
+    candidate_attempt: int = field(default=0, init=False)
+    _last_progress: dict | None = field(default=None, init=False, repr=False)
+    _accepted_items: tuple[ModelItem, ...] = field(
+        default=(), init=False, repr=False
+    )
+    _accepted_step: str | None = field(default=None, init=False, repr=False)
+
+    @asynccontextmanager
+    async def _transaction(self) -> AsyncIterator[None]:
+        previous_version = self._storage_version
+        try:
+            async with self.session.transaction():
+                yield
+        except BaseException:
+            self._storage_version = previous_version
+            raise
 
     @property
     def checkpoint_store(self) -> RunStore:
@@ -135,23 +155,50 @@ class PreparedEngagement(Engagement):
             if self.procedure_state.procedure
             else None,
             "model_identifier": self.context.model_identifier,
+            "judge_identifier": self.context.judge_identifier,
             "progress": self.procedure_state.snapshot().model_dump(
                 mode="json"
             ),
             "operation_count": self.operation_count,
+            "candidate_attempt": self.candidate_attempt,
+            "scope": self.context.scope.model_dump(mode="json"),
+            "triage": self.context.triage.model_dump(mode="json")
+            if self.context.triage
+            else None,
         }
 
-    def _progress_event(self) -> ToolEvent:
-        return ToolEvent(
-            call_id=f"preparation:{self.initial_status.run_id}:{self.operation_count}",
-            name="preparation_progress",
-            state="completed",
-            data=self.procedure_state.snapshot().model_dump(mode="json"),
+    def _emit_progress(self, emit: Callable[[EventPayload], None]) -> None:
+        if self.procedure_state.procedure is None:
+            return
+        progress = self.procedure_state.snapshot().model_dump(mode="json")
+        if progress == self._last_progress:
+            return
+        self._last_progress = progress
+        emit(
+            ToolEvent(
+                call_id=f"preparation:{self.initial_status.run_id}:{self.operation_count}",
+                name="preparation_progress",
+                state="completed",
+                data=progress,
+            )
         )
 
     async def _model_response(
         self, emit: Callable[[EventPayload], None]
     ) -> RunOutcome:
+        emit(
+            ToolEvent(
+                call_id=f"scope:{self.initial_status.run_id}",
+                name="scope_selection",
+                state="completed",
+                data=self.context.scope.model_dump(mode="json"),
+            )
+        )
+        if self.context.static_reply is not None:
+            return CompletedOutcome(
+                **self.reference, text=self.context.static_reply
+            )
+        assert self.scoped is not None and self.context.corpus is not None
         state = self.procedure_state
         prior_phase = (
             self.context.previous.progress.current_phase
@@ -160,25 +207,40 @@ class PreparedEngagement(Engagement):
         )
         preparation_tools = EngagementTools(
             state,
-            self.request.message,
+            self.context.message,
             prior_phase.key
             if prior_phase and self.context.previous_completed
             else None,
         )
-        emit(self._progress_event())
+        self._emit_progress(emit)
         history = list(self.model_request.input)
+        correction = ""
         while self.operation_count < self.limits.max_steps:
             self.operation_count += 1
             index = self.operation_count
             self.model_request = ModelRequest(
                 instructions=PromptBuilder.build_system_prompt(
                     self.context.corpus, state.procedure, state.snapshot()
-                ),
+                )
+                + correction,
                 input=tuple(history),
-                tools=(*SEARCH_TOOLS, *preparation_tools.definitions()),
+                tools=(*SEARCH_TOOLS, *preparation_tools.definitions())
+                if not correction
+                else (),
             )
             self.instruction_artifact = InstructionArtifact.from_request(
                 self.model_request
+            )
+            emit(
+                ToolEvent(
+                    call_id=f"model:{index}",
+                    name="model_response",
+                    state="started",
+                    data={
+                        "candidate_attempt": self.candidate_attempt + 1,
+                        "model": self.context.model_identifier,
+                    },
+                )
             )
             items: list[ModelItem] = []
             self.model_finished = None
@@ -198,6 +260,7 @@ class PreparedEngagement(Engagement):
                 self.model_finished is None
                 or self.model_finished.reason not in ("stop", "tool_calls")
                 or (self.model_finished.reason == "tool_calls" and not calls)
+                or (correction and calls)
                 or any(
                     item.status in ("incomplete", "in_progress")
                     for item in items
@@ -207,7 +270,7 @@ class PreparedEngagement(Engagement):
                     "incomplete_response",
                     "The model did not finish its response.",
                 )
-            async with self.session.transaction():
+            async with self._transaction():
                 step_id = await self.session.save_step(
                     key=f"model:{index}",
                     kind="model",
@@ -215,12 +278,20 @@ class PreparedEngagement(Engagement):
                     output=[item.model_dump(mode="json") for item in items],
                     instructions=self.instruction_artifact,
                 )
-                await self.session.save_model_items(
-                    tuple(items), step_id, visible=not calls
-                )
-                await state.persist(step_id)
+                if calls:
+                    await self.session.save_model_items(
+                        tuple(items), step_id, visible=False
+                    )
                 await self._save("running", lambda event: None)
             history.extend(items)
+            emit(
+                ToolEvent(
+                    call_id=f"model:{index}",
+                    name="model_response",
+                    state="completed",
+                    data={"model": self.context.model_identifier},
+                )
+            )
             if calls:
                 for call in calls:
                     if self.operation_count >= self.limits.max_steps:
@@ -243,48 +314,127 @@ class PreparedEngagement(Engagement):
                 return self._failure(
                     "empty_response", "The model returned no answer."
                 )
+            self.candidate_attempt += 1
             cited = set(re.findall(r"\[source:([^\]]+)\]", text))
             available = source_references(self.context.corpus)
-            if cited - available.keys():
-                return self._failure(
-                    "invalid_source",
-                    "The response cited an unavailable source. Please try again.",
-                )
-            findings = AgentChecker.upl_findings(text)
-            judge = AgentJudge.check_upl(
-                run_id=self.initial_status.run_id, findings=findings
+            judge_request = AgentJudge.request(
+                {
+                    "question": self.context.message,
+                    "conversation": [
+                        item.model_dump(mode="json")
+                        for item in self.context.history
+                        if isinstance(item, ModelMessage)
+                    ],
+                    "tool_results": [
+                        item.model_dump(mode="json")
+                        for item in history
+                        if isinstance(item, FunctionCallOutput)
+                    ],
+                    "material": PromptBuilder.context(
+                        self.context.corpus, state.procedure, state.snapshot()
+                    ),
+                },
+                text,
             )
-            async with self.session.transaction():
-                await self.session.save_step(
-                    key=f"check:{index}",
-                    kind="check",
-                    input={"model_step": step_id},
-                    output={
-                        "upl_findings": list(findings),
-                        "mode": "observational",
-                    },
+            judge = self.scoped.judge or self.scoped.model
+            judge_data: dict[str, JsonValue] = {
+                "candidate_attempt": self.candidate_attempt,
+                "correction_limit": 2,
+                "model": getattr(judge, "model", "injected-judge"),
+                "mode": "deterministic"
+                if cited - available.keys()
+                else "model",
+            }
+            emit(
+                ToolEvent(
+                    call_id=f"judge:{index}",
+                    name="judge_and_retry",
+                    state="started",
+                    data=judge_data,
                 )
+            )
+            if cited - available.keys():
+                verdict = JudgeVerdict(
+                    approved=False,
+                    findings=(
+                        JudgeFinding(
+                            code="citation_mismatch",
+                            message="Replace unavailable source IDs with supplied sources whose content supports the claim, or acknowledge the evidence gap.",
+                        ),
+                    ),
+                )
+            else:
+                if self.operation_count >= self.limits.max_steps:
+                    return self._failure(
+                        "step_limit", "The run reached its step limit."
+                    )
+                self.operation_count += 1
+                try:
+                    verdict = await AgentJudge.review(judge, judge_request)
+                except Exception:
+                    async with self._transaction():
+                        await self.session.save_step(
+                            key=f"judge:{index}",
+                            kind="judge",
+                            input=judge_request.model_dump(mode="json"),
+                            output={**judge_data, "status": "failed"},
+                            instructions=InstructionArtifact.from_request(
+                                judge_request
+                            ),
+                        )
+                    emit(
+                        ToolEvent(
+                            call_id=f"judge:{index}",
+                            name="judge_and_retry",
+                            state="failed",
+                            data={**judge_data, "status": "failed"},
+                        )
+                    )
+                    return self._failure(
+                        "judge_failed",
+                        "The answer check could not finish. Please try again.",
+                    )
+            judge_data.update(verdict.model_dump(mode="json"))
+            judge_data["status"] = (
+                "approved" if verdict.approved else "rejected"
+            )
+            async with self._transaction():
                 await self.session.save_step(
                     key=f"judge:{index}",
                     kind="judge",
-                    input={"model_step": step_id},
-                    output=judge,
+                    input=judge_request.model_dump(mode="json"),
+                    output=judge_data,
+                    instructions=InstructionArtifact.from_request(
+                        judge_request
+                    ),
                 )
                 await self._save("running", lambda event: None)
             emit(
                 ToolEvent(
                     call_id=f"judge:{index}",
                     name="judge_and_retry",
-                    state="skipped",
-                    data=judge,
+                    state="completed",
+                    data=judge_data,
                 )
             )
-            emit(TextEvent(delta=text))
-            emit(self._progress_event())
-            return CompletedOutcome(
-                **self.reference,
-                text=text,
-                sources=tuple(available[key] for key in sorted(cited)),
+            if verdict.approved:
+                self._accepted_items, self._accepted_step = (
+                    tuple(items),
+                    step_id,
+                )
+                return CompletedOutcome(
+                    **self.reference,
+                    text=text,
+                    sources=tuple(available[key] for key in sorted(cited)),
+                )
+            if self.candidate_attempt == 3:
+                return self._failure(
+                    "response_rejected",
+                    "I couldn’t verify the answer after two corrections. Please try rephrasing your question.",
+                )
+            correction = (
+                "\n\nFRAMEWORK CORRECTION: The previous candidate was rejected. Rewrite the answer using the supplied evidence and current saved state. Do not call tools or repeat prior actions. Address these findings:\n"
+                + verdict.model_dump_json()
             )
         return self._failure("step_limit", "The run reached its step limit.")
 
@@ -301,7 +451,7 @@ class PreparedEngagement(Engagement):
         failed = False
         result: JsonValue
         try:
-            async with self.session.transaction():
+            async with self._transaction():
                 if call.name not in {
                     tool.name for tool in self.model_request.tools
                 }:
@@ -319,7 +469,7 @@ class PreparedEngagement(Engagement):
             state.procedure = selected_before
             tools.acknowledgement_phase = acknowledgement_before
             result = {"error": str(error)}
-            async with self.session.transaction():
+            async with self._transaction():
                 await state.refresh()
                 output = await self._save_tool(call, result)
         emit(
@@ -330,7 +480,7 @@ class PreparedEngagement(Engagement):
                 data=result,
             )
         )
-        emit(self._progress_event())
+        self._emit_progress(emit)
         return output
 
     async def _save_tool(
@@ -356,9 +506,19 @@ class PreparedEngagement(Engagement):
         self, outcome: RunOutcome, emit: Callable[[EventPayload], None]
     ) -> None:
         events: list[EventPayload] = []
-        async with self.session.transaction():
-            if outcome.state != "completed":
+        async with self._transaction():
+            if outcome.state == "completed":
+                if self.context.static_reply is not None:
+                    await self.session.save_static_response(outcome.text)
+                else:
+                    assert self._accepted_step is not None
+                    await self.session.save_model_items(
+                        self._accepted_items, self._accepted_step, visible=True
+                    )
+            else:
                 await self.session.discard_response()
             await super().finish(outcome, events.append)
+        if outcome.state == "completed":
+            emit(TextEvent(delta=outcome.text))
         for event in events:
             emit(event)

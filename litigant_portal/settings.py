@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 BEDROCK_API_KEY = os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "")
+LP_AGENT_WRITER_DSN = os.environ.get("LP_AGENT_WRITER_DSN", "")
+LP_AGENT_LOOKUP_DSN = os.environ.get("LP_AGENT_LOOKUP_DSN", "")
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 

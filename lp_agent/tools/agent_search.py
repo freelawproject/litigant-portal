@@ -37,7 +37,8 @@ class AgentSearch:
     """
     Bind trusted context to a lookup-role connection before exposing the tools.
 
-    The connection must use dict_row and the restricted database lookup role.
+    Use lookup_connection() to verify the dedicated restricted login; manually
+    supplied connections must have the same privileges and configuration.
     The host authenticates access and supplies its current recall policy. These
     values never come from model arguments. Other search sources can be added
     here when implemented; the database path always uses stored functions.
@@ -51,6 +52,9 @@ class AgentSearch:
         run_id: str,
         host_policy: dict[str, JsonValue],
     ):
+        from lp_agent.adapters.connections import validate_connection
+
+        validate_connection(connection)
         self.connection = connection
         self.access = access
         self.run_id = UUID(run_id)

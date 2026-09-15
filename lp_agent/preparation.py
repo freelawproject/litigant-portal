@@ -2,6 +2,7 @@
 Typed preparation material and scoped services, independent of database drivers.
 """
 
+import json
 from contextlib import AbstractAsyncContextManager
 from typing import Literal, Protocol
 
@@ -10,12 +11,13 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 from lp_agent.interfaces import RunStore
 from lp_agent.types import (
     AgentConfiguration,
+    Choice,
     DatabaseCorpus,
     FunctionCallOutput,
     ModelItem,
-    ModelMessage,
     RunRequest,
     RunStatus,
+    ScopeSelection,
     SourceReference,
 )
 from lp_agent.utils.audit import InstructionArtifact
@@ -142,18 +144,35 @@ class PreparationCheckpoint(Material):
     model_identifier: str
     procedure_revision: str | None = None
     progress: PreparationSnapshot = Field(default_factory=PreparationSnapshot)
+    triage: "TriageState | None" = None
+
+
+class CourtChoice(Choice):
+    topics: tuple[Choice, ...]
+
+
+class TriageState(Material):
+    field: Literal["court", "topic"]
+    choices: tuple[Choice, ...]
+    message: str
+    user_item_id: str
 
 
 class PreparedContext(Material):
     status: RunStatus
-    corpus: DatabaseCorpus
+    scope: ScopeSelection
+    message: str
+    corpus: DatabaseCorpus | None
     procedures: tuple[ProcedureMaterial, ...]
     selected: ProcedureMaterial | None
     history: tuple[ModelItem, ...]
     user_item_id: str
     model_identifier: str
+    judge_identifier: str | None = None
     previous: PreparationCheckpoint | None = None
     previous_completed: bool = False
+    static_reply: str | None = None
+    triage: TriageState | None = None
 
 
 def source_references(corpus: DatabaseCorpus) -> dict[str, SourceReference]:
@@ -164,6 +183,29 @@ def source_references(corpus: DatabaseCorpus) -> dict[str, SourceReference]:
         document.source.source_id: document.source
         for document in corpus.documents
     }
+    settings = corpus.config.get("settings", {})
+    locator = (
+        settings.get("official_resources_url")
+        if isinstance(settings, dict)
+        else None
+    )
+    sources[f"court:{corpus.court_topic_id}"] = SourceReference(
+        source_id=f"court:{corpus.court_topic_id}",
+        kind="corpus",
+        title="Court configuration and contacts",
+        locator=locator if isinstance(locator, str) else None,
+    )
+    for prompt in corpus.prompts:
+        if prompt.key == "agent.base":
+            continue
+        sources[prompt.id] = SourceReference(
+            source_id=prompt.id,
+            kind="corpus",
+            title="Court guidance"
+            if prompt.key.startswith("agent.court.")
+            else "Topic guidance",
+            locator=locator if isinstance(locator, str) else None,
+        )
     for row in corpus.procedures:
         procedure = ProcedureMaterial.model_validate(row)
         for source_id, title in (
@@ -192,6 +234,44 @@ def source_references(corpus: DatabaseCorpus) -> dict[str, SourceReference]:
                 locator=locator,
             )
     return sources
+
+
+def source_material(corpus: DatabaseCorpus) -> list[dict[str, JsonValue]]:
+    """
+    Associate citation identifiers with the actual evidence supplied to both models.
+    """
+    bodies: dict[str, list[str]] = {}
+    for document in corpus.documents:
+        bodies.setdefault(document.source.source_id, []).append(
+            document.content
+        )
+    bodies[f"court:{corpus.court_topic_id}"] = [
+        json.dumps(corpus.config, ensure_ascii=False)
+    ]
+    for prompt in corpus.prompts:
+        if prompt.key != "agent.base":
+            bodies[prompt.id] = [prompt.body]
+    for row in corpus.procedures:
+        bodies[str(row["id"])] = [str(row.get("guidance", ""))]
+        phases = row.get("phases", [])
+        for phase in phases if isinstance(phases, list) else ():
+            if isinstance(phase, dict):
+                bodies[str(phase["id"])] = [
+                    json.dumps(phase, ensure_ascii=False)
+                ]
+        metadata = row.get("metadata", {})
+        if isinstance(metadata, dict):
+            forms = metadata.get("form_sources", [])
+            for form in forms if isinstance(forms, list) else ():
+                if isinstance(form, dict):
+                    bodies[str(form["slug"])] = [str(form.get("text", ""))]
+    return [
+        {
+            **source.model_dump(mode="json"),
+            "content": "\n\n".join(bodies.get(key, [])),
+        }
+        for key, source in source_references(corpus).items()
+    ]
 
 
 class PreparationSession(Protocol):
@@ -249,7 +329,7 @@ class PreparationSession(Protocol):
         self, output: FunctionCallOutput, step_id: str
     ) -> None: ...
 
-    async def save_context(self, item: ModelMessage) -> None: ...
+    async def save_static_response(self, text: str) -> None: ...
 
     async def search(self, name: str, arguments: str) -> JsonValue: ...
 
@@ -260,7 +340,7 @@ class PreparationSession(Protocol):
 
 class PreparationService(Protocol):
     """
-    Open a run's services after identity, court, and topic have been bound.
+    Open an owned run before static court and topic selection when needed.
     """
 
-    async def open(self) -> PreparationSession: ...
+    async def open(self, scope: ScopeSelection) -> PreparationSession: ...

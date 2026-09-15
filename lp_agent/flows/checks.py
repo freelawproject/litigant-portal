@@ -2,8 +2,6 @@
 Deterministic preparation checks and limited, observational wording checks.
 """
 
-import re
-
 from pydantic import JsonValue
 
 from lp_agent.preparation import PhaseMaterial, PhaseProgress
@@ -13,25 +11,6 @@ class AgentChecker:
     """
     Check data requirements, never infer legal completion from prose.
     """
-
-    @staticmethod
-    def upl_findings(output: str) -> list[str]:
-        """
-        Flag a few obvious claims; this is not a legal-advice classifier.
-        """
-        patterns = {
-            "attorney_claim": r"\bI am your (?:lawyer|attorney)\b",
-            "guaranteed_outcome": r"\b(?:you will definitely win|guarantee (?:you|your))\b",
-        }
-        return [
-            key
-            for key, pattern in patterns.items()
-            if re.search(pattern, output, re.I)
-        ]
-
-    @classmethod
-    def check_upl(cls, output: str) -> bool:
-        return bool(output.strip()) and not cls.upl_findings(output)
 
     @staticmethod
     def phase_requirements(

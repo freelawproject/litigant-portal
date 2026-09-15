@@ -3,7 +3,7 @@ Preparation persistence on the existing trusted and restricted database surfaces
 """
 
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import UTC, datetime
 
 from psycopg import AsyncConnection, Error
@@ -18,6 +18,11 @@ from lp_agent.errors import (
     AgentStorageError,
     AgentValidationError,
 )
+from lp_agent.flows.triage import (
+    question_text,
+    scope_question,
+    selected_choice,
+)
 from lp_agent.preparation import (
     FactAssertion,
     FactDefinition,
@@ -27,6 +32,7 @@ from lp_agent.preparation import (
     PreparedContext,
     ProcedureMaterial,
     StoredPreparation,
+    TriageState,
 )
 from lp_agent.tools.agent_search import AgentSearch
 from lp_agent.types import (
@@ -38,7 +44,6 @@ from lp_agent.types import (
     OutputText,
     Refusal,
     RunRequest,
-    Scope,
     ScopeSelection,
 )
 from lp_agent.utils.audit import InstructionArtifact
@@ -55,13 +60,17 @@ class DatabasePreparationSession:
         *,
         connections: DatabaseConnections,
         access: AccessContext,
-        scope: Scope,
+        scope: ScopeSelection,
         model_identifier: str,
+        stack: AsyncExitStack,
+        judge_identifier: str | None = None,
     ) -> None:
+        self._stack = stack
         self._db = AgentDatabase(connection, access)
         self._connections = connections
         self._scope = scope
         self._model_identifier = model_identifier
+        self._judge_identifier = judge_identifier
         self._lookup: AsyncConnection[DictRow] | None = None
         self._context: PreparedContext | None = None
         self._matter_id: str | None = None
@@ -83,7 +92,7 @@ class DatabasePreparationSession:
     @asynccontextmanager
     async def transaction(self) -> AsyncIterator[None]:
         try:
-            async with self._db.connection.transaction():
+            async with self._db.transaction():
                 yield
         except Error:
             raise AgentStorageError() from None
@@ -92,28 +101,41 @@ class DatabasePreparationSession:
         self, request: RunRequest, configuration: AgentConfiguration
     ) -> PreparedContext:
         db = self._db
-        selection = ScopeSelection(
-            court=self._scope.court, topic=self._scope.topic
-        )
+        selection = self._scope
+        if self._connections.court is not None and selection.court not in (
+            None,
+            self._connections.court,
+        ):
+            raise AgentAccessError("Court is unavailable in this deployment.")
         conversation = (
             await db.conversation(request.conversation_id)
             if request.conversation_id
             else await db.create_conversation(selection)
         )
-        if (conversation["court"], conversation["topic"]) != (
-            selection.court,
-            selection.topic,
-        ):
-            raise AgentAccessError(
-                "Start a new conversation to change court or topic."
-            )
-        if conversation["state"] != "active":
-            raise AgentAccessError("This conversation is closed.")
         conversation_id = str(conversation["id"])
         await db.connection.execute(
             "SELECT id FROM public.agent_conversation WHERE id = %s FOR UPDATE",
             (conversation_id,),
         )
+        conversation = await db.conversation(conversation_id)
+        if conversation["state"] != "active":
+            raise AgentAccessError("This conversation is closed.")
+        for key in ("court", "topic"):
+            supplied, bound = getattr(selection, key), conversation[key]
+            if supplied and bound and supplied != bound:
+                raise AgentAccessError(
+                    "Start a new conversation to change court or topic."
+                )
+        await db.bind_scope(conversation_id, selection)
+        conversation = await db.conversation(conversation_id)
+        selection = ScopeSelection(
+            court=conversation["court"], topic=conversation["topic"]
+        )
+        if self._connections.court and selection.court not in (
+            None,
+            self._connections.court,
+        ):
+            raise AgentAccessError("Court is unavailable in this deployment.")
         active = await (
             await db.connection.execute(
                 "SELECT id FROM public.agent_run WHERE conversation_id = %s AND state IN ('queued', 'running', 'waiting_for_input') LIMIT 1",
@@ -142,68 +164,121 @@ class DatabasePreparationSession:
                     raise AgentValidationError(
                         "The model changed. Start a new conversation."
                     )
-        if conversation["matter_id"] is None:
-            matter = await db.create_matter(
-                str(conversation["court_topic_id"]), self._scope.topic
-            )
-            self._matter_id = str(matter["id"])
-            await db.bind_matter(conversation_id, self._matter_id)
-        else:
-            self._matter_id = str(conversation["matter_id"])
+        triage = previous.triage if previous else None
+        if triage and getattr(selection, triage.field) is None:
+            courts = await db.scope_choices(self._connections.court)
+            field, choices = scope_question(selection, courts)
+            choice = selected_choice(request.message, triage.choices)
+            if field == triage.field and choice in {
+                item.choice_id for item in choices
+            }:
+                selection = selection.model_copy(update={field: choice})
+                await db.bind_scope(conversation_id, selection)
+                conversation = await db.conversation(conversation_id)
         status = await self.runs.create(
             access=db.access,
             conversation_id=conversation_id,
             request=request,
             configuration=configuration,
         )
-        corpus = await get_database_corpus(
-            self._scope.court,
-            self._scope.topic,
-            db=db,
-            run_id=status.run_id,
-            prompt_keys=(
-                "agent.base",
-                f"agent.court.{self._scope.court}",
-                f"agent.topic.{self._scope.topic}",
-            ),
-        )
-        if not corpus.procedures and not corpus.documents:
-            raise AgentValidationError(
-                "This court and topic have no available published material."
-            )
-        expected_prompts = {
-            "agent.base",
-            f"agent.court.{self._scope.court}",
-            f"agent.topic.{self._scope.topic}",
-        }
-        if not expected_prompts.issubset(
-            {prompt.key for prompt in corpus.prompts}
-        ):
-            raise AgentValidationError(
-                "Agent prompt material is unavailable. Load the demo content."
-            )
-        procedures = tuple(
-            ProcedureMaterial.model_validate(row) for row in corpus.procedures
-        )
-        selected = None
-        if previous and previous.procedure_revision:
-            selected = next(
-                (p for p in procedures if p.id == previous.procedure_revision),
-                None,
-            )
-            if selected is None:
-                raise AgentValidationError(
-                    "The procedure changed. Start a new conversation."
-                )
         user = await db.append_item(
             conversation_id,
-            key=f"user:{status.run_id}",
+            key=f"scope-choice:{status.run_id}"
+            if triage
+            else f"user:{status.run_id}",
             run_id=status.run_id,
             payload=ModelMessage(
                 role="user", content=request.message
             ).model_dump(mode="json"),
             search_text=request.message,
         )
+        message = triage.message if triage else request.message
+        user_item_id = triage.user_item_id if triage else str(user["id"])
+        static_reply = None
+        corpus = None
+        procedures: tuple[ProcedureMaterial, ...] = ()
+        selected = None
+        if selection.court is None or selection.topic is None:
+            field, choices = scope_question(
+                selection, await db.scope_choices(self._connections.court)
+            )
+            triage = TriageState(
+                field=field,
+                choices=choices,
+                message=message,
+                user_item_id=user_item_id,
+            )
+            static_reply = question_text(field, choices)
+        else:
+            triage = None
+            self._scope = selection
+            if conversation["matter_id"] is None:
+                matter = await db.create_matter(
+                    str(conversation["court_topic_id"]), selection.topic
+                )
+                self._matter_id = str(matter["id"])
+                await db.bind_matter(conversation_id, self._matter_id)
+            else:
+                self._matter_id = str(conversation["matter_id"])
+            keys = (
+                "agent.base",
+                f"agent.court.{selection.court}",
+                f"agent.topic.{selection.topic}",
+            )
+            corpus = await get_database_corpus(
+                selection.court,
+                selection.topic,
+                db=db,
+                run_id=status.run_id,
+                prompt_keys=keys,
+            )
+            if not corpus.procedures and not corpus.documents:
+                settings = corpus.config.get("settings", {})
+                contacts = (
+                    settings.get("contacts", [])
+                    if isinstance(settings, dict)
+                    else []
+                )
+                contact_text = (
+                    "\n".join(
+                        f"{contact.get('name', 'Court contact')}: {contact.get('url', '')}"
+                        for contact in contacts
+                        if isinstance(contact, dict)
+                    )
+                    if isinstance(contacts, list)
+                    else ""
+                )
+                static_reply = (
+                    "I don’t have published material for this court and topic, so I can’t verify its procedures. "
+                    + (
+                        "You can ask:\n" + contact_text
+                        if contact_text
+                        else "Contact the court clerk for procedural information."
+                    )
+                )
+            elif not set(keys).issubset(
+                {prompt.key for prompt in corpus.prompts}
+            ):
+                raise AgentValidationError(
+                    "Agent prompt material is unavailable. Load the demo content."
+                )
+            procedures = tuple(
+                ProcedureMaterial.model_validate(row)
+                for row in corpus.procedures
+            )
+            if previous and previous.procedure_revision:
+                selected = next(
+                    (
+                        p
+                        for p in procedures
+                        if p.id == previous.procedure_revision
+                    ),
+                    None,
+                )
+                if selected is None:
+                    raise AgentValidationError(
+                        "The procedure changed. Start a new conversation."
+                    )
         history: list[ModelItem] = []
         after = 0
         while True:
@@ -215,22 +290,28 @@ class DatabasePreparationSession:
                 for row in rows
                 if row["context_state"] == "accepted"
                 and row["origin"] != "framework"
+                and not row["deduplication_key"].startswith("scope-choice:")
             )
             if len(rows) < 500:
                 break
             after = rows[-1]["sequence"]
         self._context = PreparedContext(
             status=status,
+            scope=selection,
+            message=message,
             corpus=corpus,
             procedures=procedures,
             selected=selected,
             history=tuple(history),
-            user_item_id=str(user["id"]),
+            user_item_id=user_item_id,
             model_identifier=self._model_identifier,
+            judge_identifier=self._judge_identifier,
             previous=previous,
             previous_completed=bool(
                 previous_row and previous_row["state"] == "completed"
             ),
+            static_reply=static_reply,
+            triage=triage,
         )
         return self._context
 
@@ -239,6 +320,7 @@ class DatabasePreparationSession:
     ) -> StoredPreparation:
         db = self._db
         # The manifest maps stable procedure families to this run's revisions.
+        assert self.context.corpus is not None
         families = TypeAdapter(dict[str, str]).validate_python(
             self.context.corpus.manifest["procedures"]
         )
@@ -430,20 +512,23 @@ class DatabasePreparationSession:
             visibility="internal",
         )
 
-    async def save_context(self, item: ModelMessage) -> None:
+    async def save_static_response(self, text: str) -> None:
         await self._db.append_item(
             self.context.status.conversation_id,
-            key=f"context:{self.context.status.run_id}",
+            key=f"static:{self.context.status.run_id}",
             run_id=self.context.status.run_id,
-            payload=item.model_dump(mode="json"),
-            kind="context",
+            payload=ModelMessage(role="assistant", content=text).model_dump(
+                mode="json"
+            ),
             origin="framework",
-            visibility="internal",
+            visibility="user",
         )
 
     async def search(self, name: str, arguments: str) -> JsonValue:
         if self._lookup is None:
-            self._lookup = await self._connections.connect(lookup=True)
+            self._lookup = await self._stack.enter_async_context(
+                self._connections.connection(lookup=True)
+            )
         search = AgentSearch(
             self._lookup,
             access=self._db.access,
@@ -462,8 +547,4 @@ class DatabasePreparationSession:
         )
 
     async def aclose(self) -> None:
-        try:
-            if self._lookup is not None:
-                await self._lookup.close()
-        finally:
-            await self._db.connection.close()
+        await self._stack.aclose()

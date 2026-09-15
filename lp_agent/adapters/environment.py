@@ -88,13 +88,14 @@ def create_environment(
         scope=scope,
         conversations=LazyConversationStore(connections),
         runs=LazyRunStore(connections),
+        preparation=DatabasePreparationService(
+            connections, access, model_identifier, judge_model
+        ),
         scope_factory=ModelScopeFactory(
             access,
             model_client,
             judge_client,
             Path(root).absolute(),
-            connections=connections,
-            model_identifier=model_identifier,
         ),
     )
 
@@ -110,16 +111,11 @@ class ModelScopeFactory:
         model: ModelClient,
         judge: ModelClient | None,
         resource_root: Path,
-        *,
-        connections: DatabaseConnections | None = None,
-        model_identifier: str = "injected-model",
     ) -> None:
         self._access = access
         self._model = model
         self._judge = judge
         self._resource_root = resource_root
-        self._connections = connections
-        self._model_identifier = model_identifier
 
     async def bind(
         self, *, access: AccessContext, scope: Scope
@@ -132,11 +128,4 @@ class ModelScopeFactory:
             model=self._model,
             judge=self._judge,
             resource_root=self._resource_root,
-            preparation=(
-                DatabasePreparationService(
-                    self._connections, access, scope, self._model_identifier
-                )
-                if self._connections is not None
-                else None
-            ),
         )

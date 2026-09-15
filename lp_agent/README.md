@@ -1,54 +1,53 @@
 # Litigant portal agent
 
-`lp_agent` owns the agent interface, behavior, and execution. Call it through
-`LPAgent` or the Django `PortalAgent` wrapper. It is separate from the existing
-chat engine.
+`lp_agent` owns the experimental agent interface, behavior, and execution.
+The Django [`PortalAgent`](../litigant_portal/agent.py) wrapper supplies verified
+identity and server configuration. The existing production chat is separate.
 
-Direct execution streams the existing status, text, tool, question, and outcome
-contracts. Preparation snapshots are typed internally and carried in
-`ToolEvent.data`; the public event union is unchanged.
+The database-backed [engagement flow](flows/new_engagement.py) loads a court's
+configuration, topic guidance, procedures, and source material before answering.
+It can answer a question without selecting a procedure, or guide preparation
+while saving facts, their evidence, and progress in the existing `agent_` tables.
 
-The existing `create_environment` factory assembles the database-backed
-[preparation flow](flows/new_engagement.py) without additional caller arguments.
-It loads published court/topic material before a procedure is selected, answers
-questions from that material, and offers guided preparation. The model's
-`select_procedure` tool records a choice grounded in the user's message; ambiguous
-intent calls for clarification. Facts, evidence, corrections, and preparation
-progress are persisted in the existing `agent_` tables.
+## Local development and demonstration
 
-Sequential submissions continue an owned conversation across agent instances
-using the existing `conversation_id` argument. The selected procedure is stored
-conversation state. Court, topic, and model remain fixed for a conversation.
+Follow the [demo setup and rehearsal](demo/README.md), then open `/dev/agent/`.
+The page requires developer permission, `LP_AGENT_DEV_ENABLED=true`, a server-held
+`BEDROCK_API_KEY`, and these server-side database settings:
 
-Attachments, interrupted-run recovery, automatic scope discovery, queue/steer,
-Workers, and Model Context Protocol (`serve_mcp()`) remain unimplemented. Judge
-and correction-retry hooks are explicit logging stubs for the demo; they do not
-provide semantic legal review or regenerate an answer.
+- `LP_AGENT_WRITER_DSN`: a login inheriting `agent_dev_crud`.
+- `LP_AGENT_LOOKUP_DSN`: a separate login inheriting only `agent_dev_lookup`.
+
+The [experimental SQL fixture guide](tests/fixtures/agent_db/) explains setup.
+The demo seeder loads all four existing repository procedures: North Dakota
+standard and publication-waiver name changes, and Franklin County tenant and
+landlord eviction preparation. It publishes new prompt revisions when their
+text changes; it does not overwrite earlier revisions or published procedures.
+
+Leave court or topic blank to choose through chat. Static numbered questions
+select the court first, then its topic, without calling a model. The original
+question is retained. All choices come from the enabled database catalog and
+respect `CORPUS_COURT` when the deployment restricts access to one court.
+
+The page retains the conversation across submissions and reloads through its
+URL. It shows accepted messages, source links, preparation progress, and events.
+Use **New conversation** to change bound scope, procedure, or assistant model.
+A separate judge model is optional; the default is the assistant model.
+GLM is available as a judge but cannot be the preparation assistant because its
+adapter does not support native tools.
 
 ## Calling the agent
 
-`LPAgent` defaults to Direct execution. Supply a host-verified identity ID, a model
-from [`MODEL_CHOICES`](adapters/bedrock.py), and a server-held Bedrock API key.
-Both court and topic are required to run. `resource_root` is the directory
-containing `corpus/` (`litigant_portal/` in this checkout).
-
-The factory builds a Bedrock environment with lazy database services. It reads
-Django's configured default database parameters only when a connection is needed,
-then opens its own psycopg async connection using the existing development roles.
-Each run owns a connection; status and store calls use separate short-lived
-connections. No synchronous Django connection or ORM model is used for agent data.
-
-For custom services, assemble an [`AgentIdentity`](identity.py) from the
-[service contracts](interfaces.py). A scope can supply the typed
-[preparation service](preparation.py); scopes without it retain the existing
-single-response behavior. Database failures never fall back to memory.
+`LPAgent` defaults to Direct execution. `PortalAgent` currently defaults to the
+unimplemented Workers runtime, so pass `runtime="Direct"` to that wrapper.
+`resource_root` is the directory containing `corpus/` (`litigant_portal/` here).
 
 ```python
 from lp_agent import LPAgent
 from lp_agent.adapters.environment import create_environment
 
 
-async def first_response(identity_id, model, api_key, resource_root):
+async def prepare(identity_id, model, api_key, resource_root):
     environment = create_environment(
         identity_id=identity_id,
         model=model,
@@ -58,169 +57,90 @@ async def first_response(identity_id, model, api_key, resource_root):
         topic="adult-name-change",
     )
     async with LPAgent(environment=environment) as agent:
-        run = await agent.run(message="What is the filing fee?")
-        async for event in run.events():
+        first = await agent.run(message="What is the filing fee?")
+        print(await first.result())
+        following = await agent.run(
+            message="Help me prepare a standard name change with publication.",
+            conversation_id=first.conversation_id,
+        )
+        async for event in following.events():
             print(event.model_dump_json())
-        return await run.result()
+        return await following.result()
 ```
 
-A run supports one event consumer. `result()` returns a completed, failed, or
-cancelled outcome and also works without consuming events. `await run.cancel()`
-cancels the run. The async context manager, or `await agent.aclose()`, cancels and
-joins outstanding runs when the owner exits.
+A run has one event consumer. `result()` also works without consuming events.
+`await run.cancel()` cancels a run; exiting the agent's async context cancels and
+joins outstanding work. Synchronous `agent.stream(message=..., conversation_id=...)`
+yields NDJSON and owns its agent and event loop. Use it as a context manager or
+close it explicitly when stopping early. Do not reuse that agent afterward.
 
-For synchronous callers, give a fresh agent a configured environment.
-`stream()` yields newline-delimited JSON (NDJSON) and owns that agent:
+## Answer checks and preparation
 
-```python
-def stream_response(environment):
-    agent = LPAgent(environment=environment)
-    with agent.stream(message="Hello") as events:
-        for line in events:
-            print(line, end="")
-```
+[PromptBuilder](flows/prompts.py) assembles instructions from published prompts
+and one evidence/state snapshot. Court material is evidence, including its
+citation IDs; embedded legacy UI instructions do not control the agent.
+Missing evidence calls for an explicit gap and a supplied court contact.
+Conflicting sources must be disclosed. Unrelated requests receive a legal-help
+redirect, including requests presented as a demonstration.
 
-The stream closes the run, event loop, and agent on exhaustion or error. Use its
-context manager or call `close()` when stopping early. The agent cannot then be
-reused; use `run()` in async code and never mix the two interfaces on one instance.
+The [judge](flows/judge.py) reviews each candidate against that same evidence and
+saved state. It checks relevance, supported claims and citations, legal-help
+boundaries, and whether claimed actions actually occurred. A source ID alone is
+insufficient. Invalid IDs are also rejected deterministically.
 
-Validation and access errors raise `AgentError` subclasses. Accepted model
-failures return a `FailedOutcome`; errors caught inside `stream()` become
-`{"error": "safe message"}` lines.
+There are at most three candidates: the original and two corrections. Correction
+turns cannot call tools or repeat earlier effects. Status/tool events stream
+immediately; answer text is released only after approval and its terminal
+checkpoint commit. Judge errors, malformed verdicts, cancellation, or a third
+rejection release no candidate. Rejected drafts remain in internal step audit,
+outside the visible conversation and subsequent model history.
 
-Checkpoint failures raise `AgentStorageError` with a fixed safe message from
-async results, event iteration, cancellation, or agent closure. Stored state
-may still be queued or running: a terminal outcome is published only after its
-checkpoint is saved. Synchronous iteration encodes the safe error; explicit
-closure can raise it after cleanup.
+Facts require exact evidence from the user's current message and schema-valid
+values. Changes retain provenance and reopen review. Optional phases and final
+confirmation require a separate acknowledgement. Completion is a preparation
+handoff with resource links, not filled forms, filing, or a court decision.
+Automated review is not attorney review or a guarantee of legal correctness.
 
-The Bedrock adapter ignores extra fields on recognized output items and content
-parts, while retaining supported metadata. Unknown item types and malformed
-known fields still fail, and other valid completed items remain in the
-checkpoint. Public input contracts remain strict.
+## Persistence and service boundaries
 
-Operational warnings use standard Python logging. Ignored provider fields
-produce one warning per response with the model and field count; checkpoint
-failures include the run ID and state. These warnings omit prompts, response
-content, unknown field names, credentials, and raw exception text. Broader
-observability and restricted prompt/output auditing are separate work.
+[`create_environment`](adapters/environment.py) keeps the public caller signature
+and supplies lazy database services. Each run owns async connections through
+[`agent_connection` and `lookup_connection`](adapters/connections.py). Independent
+runs use independent connections. Lookup validates the session login; switching
+a privileged login with `SET ROLE` does not satisfy the restricted-login contract.
 
-## Django development page
+[`AgentDatabase.transaction()`](adapters/db.py) groups effects, audit, and checkpoints.
+`RunStore.commit_checkpoint()` returns a detached saved checkpoint; callers carry
+its `storage_version` into the next write. Initial writes use `None`.
+`Engagement` carries the returned version, restoring its prior version on rollback.
+[`get_database_corpus()`](corpus/db_search.py) delegates selection and revision
+pinning to `AgentDatabase.pin_run_context()` and loads the pinned published material.
 
-Follow the [repository quick start](../README.md#quick-start), then open
-`/dev/agent/`. The page makes real Bedrock calls and requires:
+Database failures never fall back to memory. Validation/access errors raise safe
+`AgentError` subclasses; accepted model failures produce failed outcomes.
+Checkpoint failures raise `AgentStorageError`, and a terminal outcome is published
+only after persistence succeeds. NDJSON encodes safe errors without provider details.
 
-- `LP_AGENT_DEV_ENABLED=true` (already enabled by local Docker Compose).
-- A logged-in user with the `app.manage_developers` permission.
-- `AWS_BEARER_TOKEN_BEDROCK` configured on the server.
-- A selected model, court, and topic.
+For injected services, [`AgentIdentity`](identity.py) owns the optional typed
+[preparation service](preparation.py). Omitting it retains the earlier isolated
+single-response flow. [Core contracts](types.py), [runtime](runtimes/direct.py),
+[tools](tools/engagement.py), and [HTTP integration](../litigant_portal/app/views/agent.py)
+contain the detailed contracts.
 
-With the experimental [SQL bundle](tests/fixtures/agent_db/) already installed in
-the local database, load the existing repository content through the package:
+## Validation and remaining work
 
-```sh
-docker compose exec -T django python -m lp_agent.demo.seed --settings litigant_portal.settings --resource-root /app/litigant_portal
-```
-
-The schema is separate from Django migrations. Seeding requires `DEBUG=true` and
-`DEPLOYMENT_ENV=dev`. It is repeatable and refuses to replace changed published
-content. The returned phase count reports newly inserted phases.
-
-The demo covers North Dakota adult name change (standard publication and
-publication waiver) and Franklin County, Ohio eviction (tenant and landlord).
-The seeder reads the existing procedures, variables, forms, public metadata, and
-prompt fragments. It does not create new legal guidance. Use a native Bedrock
-model; the translated GLM adapter rejects preparation tools.
-
-The development page is unchanged and submits independent conversations. Its
-multi-turn interaction and progress display are deferred to another PR. Exercise
-continuation with the existing Python API:
-
-```python
-async with LPAgent(environment=environment) as agent:
-    first = await agent.run(message="Please help me prepare a standard adult name change with publication.")
-    print(await first.result())
-    following = await agent.run(
-        message="My current legal name is Alex Example.",
-        conversation_id=first.conversation_id,
-    )
-    print(await following.result())
-```
-
-Required facts advance preparation deterministically. Optional steps and the
-final summary require a separate acknowledgement; changed facts reopen review.
-Completion means a preparation handoff with resource links. Saved facts are not
-transferred into forms, and no form is filled or filed. Tool events include
-`preparation_progress` snapshots and the explicitly skipped judge/retry check.
-
-[`PortalAgent`](../litigant_portal/agent.py) takes the saved, host-verified
-`request.identity` and the selected model/scope. It supplies the API key and
-resource root from Django settings. **Pass `runtime="Direct"`**: the wrapper
-defaults to Workers, which is unimplemented.
-
-The [development view](../litigant_portal/app/views/agent.py) shows the full call
-and passes `agent.stream(...)` to Django's `StreamingHttpResponse`. Django owns
-authentication, input validation, and HTTP response headers.
-
-A missing server Bedrock key returns HTTP 503 with a safe warning; invalid form
-submissions return HTTP 400. Sending captures the message and clears the input
-before streaming the response.
-
-## Where things live
-
-Package implementations never import `litigant_portal`. Flows own prompts and
-model behavior; runtimes decide how flows execute.
-
-| Part                                                                                               | Responsibility                                                                 |
-| -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [`main.py`](main.py)                                                                               | Public facade and execution configuration                                      |
-| [`types.py`](types.py)                                                                             | Serializable requests, model data, events, and outcomes                        |
-| [`interfaces.py`](interfaces.py), [`identity.py`](identity.py), [`preparation.py`](preparation.py) | Run handles, scoped services, typed preparation material, and verified context |
-| [`errors.py`](errors.py)                                                                           | Caller-safe error contracts                                                    |
-| [`flows/`](flows/)                                                                                 | Scope preparation, model steps, prompts, and outcomes                          |
-| [`runtimes/`](runtimes/)                                                                           | Direct tasks, event delivery, streaming, and shutdown                          |
-| [`adapters/`](adapters/)                                                                           | Environment factory, Bedrock, memory stores, and lazy database sessions        |
-| [`corpus/`](corpus/)                                                                               | File retrieval and published database corpus selection                         |
-| [`tools/`](tools/)                                                                                 | Restricted search, evidence-backed fact updates, and acknowledgement           |
-| [`demo/`](demo/)                                                                                   | Repeatable seeding of existing repository content                              |
-| [`utils/audit.py`](utils/audit.py)                                                                 | Canonical instruction snapshots and fingerprints                               |
-
-## Checks
-
-From the repository root, run the isolated core checks:
-
-```sh
-tox -e agent
-```
-
-These cover contracts, Direct execution, and cleanup without Django, a database,
-or provider credentials. Default `tox` and `make test` also run this environment.
-
-With LiteLLM and pytest installed, run the provider checks separately:
-
-```sh
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c lp_agent/pytest.ini lp_agent/tests/providers/test_bedrock.py
-```
-
-Provider checks use controlled responses and make no live model calls. The full
-project suite also covers the Django wrapper and HTTP integration.
-
-Database surface tests run through the project configuration in `make test` and
-`make pre-commit`. To run just those tests with the Docker stack running:
-
-```sh
-docker compose exec -T django tox -e py313 -- -c pyproject.toml lp_agent/tests/providers/test_database.py lp_agent/tests/providers/test_engagement.py -q
-```
-
-The tests create a temporary database on the configured PostgreSQL service,
-install the [experimental SQL fixtures](tests/fixtures/agent_db/), and drop the
-database during teardown. Setup errors fail the tests. No local installation of
-the agent schema is required. `tox -e fast` excludes the PostgreSQL-marked cases
-while retaining argument-validation coverage.
-
-Type-check the production package (the project does not install Django, PyYAML,
-or jsonschema typing stubs):
+Run `make pre-commit` for formatting, the full project suite, database fixtures,
+and the isolated `tox -e agent` suite. Database tests create temporary databases
+and dedicated logins from the committed SQL bundle; no local seed is needed.
+They use controlled model responses. Type-check the production package with:
 
 ```sh
 docker compose exec -T django .tox/py313/bin/mypy --disable-error-code import-untyped --exclude '/tests/' lp_agent
 ```
+
+[Live observations and reproduction commands](demo/README.md) are separate from
+controlled tests. They compare the same model with and without supplied corpus;
+they are not a comparison against the complete ChatGPT.com product.
+Attachments, form filling, filing, interrupted-run recovery, Workers, queue/steer,
+and `serve_mcp()` remain unimplemented. Production chat migration and corpus
+legal review remain separate work.

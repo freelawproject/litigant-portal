@@ -58,21 +58,12 @@ def provider_environment(**options):
     Exercise provider lifecycle with injected memory stores and no preparation service.
     """
     environment = create_environment(**options)
-    factory = environment.scope_factory
-
-    class ProviderScope:
-        async def bind(self, *, access, scope):
-            return replace(
-                await factory.bind(access=access, scope=scope),
-                preparation=None,
-            )
-
     conversations = MemoryConversationStore()
     return replace(
         environment,
         conversations=conversations,
         runs=MemoryRunStore(conversations),
-        scope_factory=ProviderScope(),
+        preparation=None,
     )
 
 

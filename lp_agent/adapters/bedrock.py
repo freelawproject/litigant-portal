@@ -245,6 +245,13 @@ class BedrockClient:
         if not self._api_key.get_secret_value().strip():
             raise AgentValidationError("A Bedrock API key is required.")
 
+    @property
+    def supports_tools(self) -> bool:
+        """
+        Native Responses models preserve preparation tool calls and history.
+        """
+        return self.model != "bedrock_mantle/zai.glm-4.7-flash"
+
     async def stream(
         self, request: ModelRequest
     ) -> AsyncGenerator[ModelEvent]:

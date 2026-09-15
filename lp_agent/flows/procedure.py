@@ -118,6 +118,8 @@ class ProcedureState:
         )
 
     def resources(self) -> tuple[tuple[str, ...], tuple[ResourceLink, ...]]:
+        if self.context.corpus is None:
+            return (), ()
         settings = CorpusSettings.model_validate(
             self.context.corpus.config.get("settings", {})
         )

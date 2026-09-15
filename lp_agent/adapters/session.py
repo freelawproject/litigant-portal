@@ -6,7 +6,7 @@ connection; preparation runs keep a dedicated connection for atomic effects.
 """
 
 from collections.abc import AsyncIterator, Callable, Mapping
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import TYPE_CHECKING
 
 from lp_agent.errors import AgentStorageError
@@ -30,22 +30,20 @@ if TYPE_CHECKING:
 
 def default_connection_options() -> Mapping[str, object]:
     """
-    Read normalized default configuration without opening a Django connection.
+    Read host configuration lazily; credentials never enter serialized run data.
     """
-    from django.db import connections
+    from django.conf import settings
 
-    options = dict(connections["default"].get_connection_params())
-    # A synchronous cursor class cannot be used by an AsyncConnection.
-    options.pop("cursor_factory", None)
-    # Django's adapters customize ORM value conversion. Agent rows use the
-    # driver's own adapters and dict_row.
-    options.pop("context", None)
-    return options
+    return {
+        "writer": settings.LP_AGENT_WRITER_DSN,
+        "lookup": settings.LP_AGENT_LOOKUP_DSN,
+        "court": settings.CORPUS_COURT,
+    }
 
 
 class DatabaseConnections:
     """
-    Create separately owned trusted and restricted connections on the caller's loop.
+    Own short-lived connections through the shared writer and lookup factories.
     """
 
     def __init__(
@@ -56,53 +54,34 @@ class DatabaseConnections:
     ) -> None:
         self._options = options
 
-    async def connect(
-        self, *, lookup: bool = False
-    ) -> "AsyncConnection[DictRow]":
-        from psycopg import AsyncConnection
-        from psycopg.conninfo import make_conninfo
-        from psycopg.rows import DictRow, dict_row
-
-        try:
-            options = dict(self._options())
-            conninfo = options.pop("conninfo", "")
-            threshold = options.pop("prepare_threshold", None)
-            if not isinstance(conninfo, str) or not (
-                threshold is None or type(threshold) is int
-            ):
-                raise ValueError("Invalid connection configuration.")
-            options.setdefault("connect_timeout", 5)
-            parameters: dict[str, str | int | None] = {}
-            for key, value in options.items():
-                if not isinstance(value, str | int) and value is not None:
-                    raise ValueError("Invalid connection parameter.")
-                parameters[key] = value
-            connection = await AsyncConnection[DictRow].connect(
-                make_conninfo(conninfo, **parameters),
-                autocommit=True,
-                row_factory=dict_row,
-                prepare_threshold=threshold,
-            )
-            try:
-                await connection.execute(
-                    "SET ROLE agent_dev_lookup"
-                    if lookup
-                    else "SET ROLE agent_dev_crud"
-                )
-                return connection
-            except BaseException:
-                await connection.close()
-                raise
-        except Exception:
-            raise AgentStorageError() from None
+    @property
+    def court(self) -> str | None:
+        value = self._options().get("court")
+        return value if isinstance(value, str) else None
 
     @asynccontextmanager
-    async def connection(self) -> AsyncIterator["AsyncConnection[DictRow]"]:
-        connection = await self.connect()
+    async def connection(
+        self, *, lookup: bool = False
+    ) -> AsyncIterator["AsyncConnection[DictRow]"]:
+        from psycopg import Error
+
+        from lp_agent.adapters.connections import (
+            agent_connection,
+            lookup_connection,
+        )
+        from lp_agent.errors import AgentValidationError
+
         try:
-            yield connection
-        finally:
-            await connection.close()
+            dsn = self._options().get("lookup" if lookup else "writer")
+            if not isinstance(dsn, str) or not dsn.strip():
+                raise AgentValidationError(
+                    "Agent database credentials are not configured."
+                )
+            factory = lookup_connection if lookup else agent_connection
+            async with factory(dsn) as connection:
+                yield connection
+        except Error:
+            raise AgentStorageError() from None
 
 
 class LazyConversationStore:
@@ -205,11 +184,11 @@ class LazyRunStore:
         checkpoint: RunCheckpoint,
         status: RunStatus,
         outcome: RunOutcome | None = None,
-    ) -> None:
+    ) -> RunCheckpoint:
         from lp_agent.adapters.db import DatabaseRunStore
 
         async with self.connections.connection() as connection:
-            await DatabaseRunStore(connection).commit_checkpoint(
+            return await DatabaseRunStore(connection).commit_checkpoint(
                 access=access,
                 checkpoint=checkpoint,
                 status=status,
@@ -219,28 +198,38 @@ class LazyRunStore:
 
 class DatabasePreparationService:
     """
-    Bind access and provider configuration without retrieving corpus eagerly.
+    Open a persisted turn before its optional court/topic selection is complete.
     """
 
     def __init__(
         self,
         connections: DatabaseConnections,
         access: AccessContext,
-        scope: Scope,
         model_identifier: str,
+        judge_identifier: str | None = None,
     ) -> None:
         self.connections = connections
         self.access = access
-        self.scope = scope
         self.model_identifier = model_identifier
+        self.judge_identifier = judge_identifier
 
-    async def open(self) -> PreparationSession:
+    async def open(self, scope: ScopeSelection) -> PreparationSession:
         from lp_agent.adapters.preparation import DatabasePreparationSession
 
-        return DatabasePreparationSession(
-            await self.connections.connect(),
-            connections=self.connections,
-            access=self.access,
-            scope=self.scope,
-            model_identifier=self.model_identifier,
-        )
+        stack = AsyncExitStack()
+        try:
+            connection = await stack.enter_async_context(
+                self.connections.connection()
+            )
+            return DatabasePreparationSession(
+                connection,
+                connections=self.connections,
+                access=self.access,
+                scope=scope,
+                model_identifier=self.model_identifier,
+                judge_identifier=self.judge_identifier,
+                stack=stack,
+            )
+        except BaseException:
+            await stack.aclose()
+            raise

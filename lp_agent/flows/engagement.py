@@ -100,15 +100,18 @@ class EngagementFlow:
             ),
         )
 
-    async def _bind_scope(self) -> ResourceScope:
-        if self._scoped is not None:
+    async def _bind_scope(self, scope: Scope | None = None) -> ResourceScope:
+        if self._scoped is not None and (
+            scope is None or self._scoped.scope == scope
+        ):
             return self._scoped
         selection = self.environment.scope
-        if selection.court is None or selection.topic is None:
-            raise AgentValidationError(
-                "Select a court and topic before sending."
-            )
-        scope = Scope(court=selection.court, topic=selection.topic)
+        if scope is None:
+            if selection.court is None or selection.topic is None:
+                raise AgentValidationError(
+                    "Select a court and topic before sending."
+                )
+            scope = Scope(court=selection.court, topic=selection.topic)
         access = self.environment.access
         scoped = await self.environment.scope_factory.bind(
             access=access, scope=scope
@@ -128,7 +131,7 @@ class Engagement:
     """
 
     environment: AgentIdentity
-    scoped: ResourceScope
+    scoped: ResourceScope | None
     initial_status: RunStatus
     request: RunRequest
     limits: RunLimits
@@ -138,6 +141,7 @@ class Engagement:
         default_factory=list, init=False, repr=False
     )
     model_finished: ModelFinished | None = field(default=None, init=False)
+    _storage_version: int | None = field(default=None, init=False, repr=False)
 
     @property
     def reference(self) -> RunReference:
@@ -226,24 +230,17 @@ class Engagement:
     ) -> None:
         try:
             status = RunStatus(**self.reference, state=state)
-            previous = await self.checkpoint_store.checkpoint(
-                access=self.environment.access,
-                run_id=self.initial_status.run_id,
-            )
-            await self.checkpoint_store.commit_checkpoint(
+            saved = await self.checkpoint_store.commit_checkpoint(
                 access=self.environment.access,
                 checkpoint=RunCheckpoint(
                     **self.reference,
-                    storage_version=(
-                        previous.storage_version
-                        if previous is not None
-                        else None
-                    ),
+                    storage_version=self._storage_version,
                     data=self._checkpoint_data(),
                 ),
                 status=status,
                 outcome=outcome,
             )
+            self._storage_version = saved.storage_version
         except Exception:
             logger.warning(
                 "Agent checkpoint failed (run_id=%s, state=%s)",
@@ -274,6 +271,7 @@ class Engagement:
     async def _model_response(
         self, emit: Callable[[EventPayload], None]
     ) -> RunOutcome:
+        assert self.scoped is not None
         async with aclosing(
             self.scoped.model.stream(self.model_request)
         ) as stream:

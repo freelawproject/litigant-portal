@@ -6,6 +6,7 @@ import asyncio
 import inspect
 import json
 from collections.abc import AsyncGenerator, Iterator
+from contextlib import asynccontextmanager
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -23,6 +24,7 @@ from lp_agent.adapters.environment import ModelScopeFactory, create_environment
 from lp_agent.adapters.preparation import DatabasePreparationSession
 from lp_agent.adapters.session import (
     DatabaseConnections,
+    DatabasePreparationService,
     LazyConversationStore,
     LazyRunStore,
 )
@@ -34,8 +36,11 @@ from lp_agent.errors import (
 )
 from lp_agent.identity import AgentIdentity
 from lp_agent.interfaces import ModelClient
+from lp_agent.tests.helpers import PassingJudge
 from lp_agent.tests.providers.test_database import database, fixture_scope
-from lp_agent.tests.providers.test_database import dsn as database_dsn
+from lp_agent.tests.providers.test_database import (
+    database_dsns as database_dsns,  # noqa: F401
+)
 from lp_agent.types import (
     AccessContext,
     ModelEvent,
@@ -53,14 +58,18 @@ pytestmark = pytest.mark.postgres
 
 
 @pytest.fixture(name="dsn", scope="module")
-def demo_database() -> Iterator[str]:
+def demo_database(database_dsns: dict[str, str]) -> Iterator[str]:  # noqa: F811
     async def seed(value: str) -> None:
         async with database(value) as db:
             await seed_demo(db, settings.BASE_DIR)
 
-    for value in database_dsn.__wrapped__():
-        asyncio.run(seed(value))
-        yield value
+    with override_settings(
+        LP_AGENT_WRITER_DSN=database_dsns["crud"],
+        LP_AGENT_LOOKUP_DSN=database_dsns["lookup"],
+        CORPUS_COURT=None,
+    ):
+        asyncio.run(seed(database_dsns["crud"]))
+        yield database_dsns["crud"]
 
 
 class Turns:
@@ -103,15 +112,16 @@ def select(slug: str) -> ToolCall:
 
 class TrackedConnections(DatabaseConnections):
     def __init__(self, dsn: str) -> None:
-        super().__init__(lambda: {"conninfo": dsn})
+        super().__init__(
+            lambda: {"writer": dsn, "lookup": settings.LP_AGENT_LOOKUP_DSN}
+        )
         self.opened: list[AsyncConnection[DictRow]] = []
 
-    async def connect(
-        self, *, lookup: bool = False
-    ) -> AsyncConnection[DictRow]:
-        connection = await super().connect(lookup=lookup)
-        self.opened.append(connection)
-        return connection
+    @asynccontextmanager
+    async def connection(self, *, lookup: bool = False):
+        async with super().connection(lookup=lookup) as connection:
+            self.opened.append(connection)
+            yield connection
 
 
 def environment(
@@ -123,21 +133,25 @@ def environment(
     *,
     connections: DatabaseConnections | None = None,
     model_identifier: str = MODEL_CHOICES[0][0],
+    judge: ModelClient | None = None,
 ) -> AgentIdentity:
     access = AccessContext(identity_id=identity)
-    connections = connections or DatabaseConnections(lambda: {"conninfo": dsn})
+    connections = connections or DatabaseConnections(
+        lambda: {"writer": dsn, "lookup": settings.LP_AGENT_LOOKUP_DSN}
+    )
     return AgentIdentity(
         access=access,
         scope=ScopeSelection(court=court, topic=topic),
         conversations=LazyConversationStore(connections),
         runs=LazyRunStore(connections),
+        preparation=DatabasePreparationService(
+            connections, access, model_identifier
+        ),
         scope_factory=ModelScopeFactory(
             access,
             model,
-            None,
+            judge or PassingJudge(),
             settings.BASE_DIR,
-            connections=connections,
-            model_identifier=model_identifier,
         ),
     )
 
@@ -226,7 +240,7 @@ def test_grounded_question_without_procedure_and_durable_owned_followup(
                     (saved.run_id,),
                 )
             ).fetchall()
-            assert rows[0]["output"]["status"] == "skipped"
+            assert rows[0]["output"]["status"] == "approved"
 
     asyncio.run(scenario())
 
@@ -642,13 +656,13 @@ def test_real_search_failed_history_and_native_reasoning_continuation(
                     limit=3,
                 )
             ],
-            "Bad citation [source:unavailable].",
+            *["Bad citation [source:unavailable]."] * 3,
         )
         async with LPAgent(
             environment=environment(dsn, model, identity)
         ) as agent:
             run = await agent.run(message="What is a notice?")
-            assert (await run.result()).error.code == "invalid_source"
+            assert (await run.result()).error.code == "response_rejected"
         result = json.loads(model.requests[1].input[-1].output)
         assert result and all(
             row["category"] == "court_corpus" for row in result
@@ -796,7 +810,7 @@ def test_tool_checkpoint_failure_rolls_back_effects_and_closes_connections(
         async def fail(self, *, checkpoint, **kwargs):
             if checkpoint.data["progress"]["facts"]:
                 raise RuntimeError("Private storage diagnostics")
-            await original(self, checkpoint=checkpoint, **kwargs)
+            return await original(self, checkpoint=checkpoint, **kwargs)
 
         env = environment(dsn, model, identity, connections=connections)
         agent = LPAgent(environment=env)
@@ -833,8 +847,8 @@ def test_missing_scope_and_changed_model_do_not_leave_orphan_runs(
         async with LPAgent(
             environment=environment(dsn, model, identity, court=None)
         ) as agent:
-            with pytest.raises(AgentValidationError, match="Select a court"):
-                await agent.run(message="Hello")
+            run = await agent.run(message="Hello")
+            assert "Choose the court" in (await run.result()).text
         assert model.requests == []
         saved = await turn(environment(dsn, Turns("Answer"), identity), "Help")
         async with LPAgent(
@@ -860,7 +874,7 @@ def test_missing_scope_and_changed_model_do_not_leave_orphan_runs(
                     (identity,),
                 )
             ).fetchone()
-            assert row["count"] == 1
+            assert row["count"] == 2
 
     asyncio.run(scenario())
 
@@ -902,6 +916,7 @@ def test_unchanged_portal_agent_call_uses_package_database_services(
         "runs",
         "scope_factory",
         "scope",
+        "preparation",
     )
     # Exercise the real factory, lazy configuration reader, and async connection.
     # Opening a synchronous Django connection during the run must fail this test.
@@ -923,7 +938,11 @@ def test_unchanged_portal_agent_call_uses_package_database_services(
         patch.object(
             BedrockClient,
             "stream",
-            lambda self, request: model.stream(request),
+            lambda self, request: (
+                Turns('{"approved": true, "findings": []}')
+                if request.instructions.startswith("You review candidate")
+                else model
+            ).stream(request),
         ),
     ):
         agent = PortalAgent(
@@ -961,13 +980,17 @@ def test_empty_corpus_or_missing_prompts_do_not_create_a_run(
                 dsn, model, identity, scope["court"], scope["topic"]
             )
         ) as agent:
-            with pytest.raises(
-                AgentValidationError,
-                match="prompt material"
-                if material
-                else "no available published material",
-            ):
-                await agent.run(message="Help")
+            if material:
+                with pytest.raises(
+                    AgentValidationError, match="prompt material"
+                ):
+                    await agent.run(message="Help")
+            else:
+                run = await agent.run(message="Help")
+                assert (
+                    "don’t have published material"
+                    in (await run.result()).text
+                )
         assert model.requests == []
         async with database(dsn, identity) as db:
             row = await (
@@ -976,7 +999,7 @@ def test_empty_corpus_or_missing_prompts_do_not_create_a_run(
                     (identity,),
                 )
             ).fetchone()
-            assert row["count"] == 0
+            assert row["count"] == (0 if material else 1)
 
     asyncio.run(scenario())
 
@@ -997,7 +1020,7 @@ def test_supplied_form_excerpt_is_a_valid_citation(dsn: str) -> None:
             assert outcome.sources[0].locator.startswith(
                 "https://www.ndcourts.gov/"
             )
-        assert "citation_sources" in model.requests[0].instructions
+        assert "sources" in model.requests[0].instructions
 
     asyncio.run(scenario())
 
@@ -1044,5 +1067,217 @@ def test_unavailable_acknowledgement_evidence_reopens_the_phase(
             saved.data["progress"]["current_phase"]["key"] == "your-key-dates"
         )
         assert not saved.data["progress"]["complete"]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("reject_count", [1, 2, 3])
+def test_judge_corrections_are_private_and_do_not_repeat_tools(
+    dsn, reject_count
+):
+    from lp_agent.adapters.conversations import conversation_snapshot
+    from lp_agent.types import TextEvent
+
+    async def scenario():
+        identity = uuid4().hex
+        rejected = json.dumps(
+            {
+                "approved": False,
+                "findings": [
+                    {
+                        "code": "state_mismatch",
+                        "message": "Describe preparation only; nothing was filed.",
+                    }
+                ],
+            }
+        )
+        approved = '{"approved": true, "findings": []}'
+        judge = Turns(*([rejected] * reject_count), approved)
+        drafts = [
+            f"Rejected draft {i}: I filed your case."
+            for i in range(reject_count)
+        ]
+        model = Turns(
+            [select("tenant")],
+            *drafts,
+            "Preparation selected. What date did you receive the papers?",
+        )
+        env = environment(dsn, model, identity, judge=judge)
+        async with LPAgent(environment=env) as agent:
+            run = await agent.run(message="Prepare tenant")
+            events = [event async for event in run.events()]
+            outcome = await run.result()
+        assert len(judge.requests) == min(reject_count + 1, 3)
+        assert all(request.tools == () for request in model.requests[2:])
+        text = "".join(
+            event.payload.delta
+            for event in events
+            if isinstance(event.payload, TextEvent)
+        )
+        assert not any(draft in text for draft in drafts)
+        assert outcome.state == (
+            "failed" if reject_count == 3 else "completed"
+        )
+        if reject_count == 3:
+            assert outcome.error.code == "response_rejected"
+            assert text == ""
+        else:
+            assert text == outcome.text
+        snapshot = await conversation_snapshot(env.access, run.conversation_id)
+        assert not any(draft in json.dumps(snapshot) for draft in drafts)
+        assert snapshot["progress"]["procedure"] == "tenant"
+        async with database(dsn, identity) as db:
+            steps = await (
+                await db.connection.execute(
+                    "SELECT kind, input, output FROM agent_run_step WHERE run_id = %s",
+                    (run.run_id,),
+                )
+            ).fetchall()
+            assert sum(step["kind"] == "tool" for step in steps) == 1
+            audit = json.dumps(steps)
+            assert all(draft in audit for draft in drafts)
+        checked = json.loads(judge.requests[0].input[0].content)
+        assert checked["material"]["progress"]["procedure"] == "tenant"
+        assert checked["material"]["sources"]
+        assert all(request.tools == () for request in judge.requests)
+        followup = Turns("Continue preparing.")
+        await turn(
+            environment(dsn, followup, identity),
+            "What next?",
+            run.conversation_id,
+        )
+        assert not any(
+            draft in str(followup.requests[0].input) for draft in drafts
+        )
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("failure", ["malformed", "exception", "cancel"])
+def test_judge_failure_never_releases_candidate_and_closes_connections(
+    dsn, failure
+):
+    from lp_agent.types import TextEvent
+
+    async def scenario():
+        entered = asyncio.Event()
+
+        class FailingJudge:
+            async def stream(self, request):
+                entered.set()
+                if failure == "exception":
+                    raise RuntimeError("Private provider diagnostics")
+                if failure == "cancel":
+                    await asyncio.Event().wait()
+                yield ModelOutputItem(
+                    item=ModelMessage(
+                        role="assistant", content="not valid JSON"
+                    )
+                )
+                yield ModelFinished(reason="stop")
+
+        connections = TrackedConnections(dsn)
+        env = environment(
+            dsn,
+            Turns("Private unchecked candidate"),
+            uuid4().hex,
+            connections=connections,
+            judge=FailingJudge(),
+        )
+        async with LPAgent(environment=env) as agent:
+            run = await agent.run(message="What help is available?")
+            await asyncio.wait_for(entered.wait(), 5)
+            if failure == "cancel":
+                await run.cancel()
+            outcome = await run.result()
+            events = [event async for event in run.events()]
+            assert not any(
+                isinstance(event.payload, TextEvent) for event in events
+            )
+            assert "Private" not in outcome.model_dump_json()
+            if failure == "cancel":
+                assert outcome.state == "cancelled"
+            else:
+                assert outcome.error.code == "judge_failed"
+            assert (await run.status()).state == outcome.state
+        assert all(connection.closed for connection in connections.opened)
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "court,topic,answers",
+    [
+        (None, None, ["franklin-county-oh", "eviction"]),
+        ("franklin-county-oh", None, ["eviction"]),
+        (None, "eviction", ["franklin-county-oh"]),
+    ],
+)
+def test_partial_scope_static_replies_and_invalid_choice_preserve_question(
+    dsn, court, topic, answers
+):
+    async def scenario():
+        model, judge = Turns("I can help with eviction."), PassingJudge()
+        env = environment(dsn, model, uuid4().hex, court, topic, judge=judge)
+        async with LPAgent(environment=env) as agent:
+            first = await agent.run(message="What eviction help is available?")
+            assert (await first.result()).state == "completed"
+            invalid = await agent.run(
+                message="99", conversation_id=first.conversation_id
+            )
+            assert (await invalid.result()).text == (await first.result()).text
+            for answer in answers:
+                assert model.requests == judge.requests == []
+                run = await agent.run(
+                    message=answer, conversation_id=first.conversation_id
+                )
+                assert (await run.result()).state == "completed"
+        assert len(model.requests) == len(judge.requests) == 1
+        assert [item.content for item in model.requests[0].input] == [
+            "What eviction help is available?"
+        ]
+
+    asyncio.run(scenario())
+
+
+def test_seed_publishes_prompt_revision_without_rewriting_previous(dsn):
+    from lp_agent.demo import seed
+
+    async def scenario():
+        async with database(dsn) as db:
+            before = await (
+                await db.connection.execute(
+                    "SELECT * FROM agent_prompt WHERE key = 'agent.base' ORDER BY version DESC LIMIT 1"
+                )
+            ).fetchone()
+            with patch.object(
+                seed,
+                "BASE",
+                before["body"] + "\nA revised instruction for this test.",
+            ):
+                await seed_demo(db, settings.BASE_DIR)
+                after = await (
+                    await db.connection.execute(
+                        "SELECT * FROM agent_prompt WHERE key = 'agent.base' ORDER BY version DESC LIMIT 1"
+                    )
+                ).fetchone()
+                assert after["version"] == before["version"] + 1
+                assert after["previous_version_id"] == before["id"]
+                assert after["state"] == "published"
+                await seed_demo(db, settings.BASE_DIR)
+                unchanged = await (
+                    await db.connection.execute(
+                        "SELECT id FROM agent_prompt WHERE key = 'agent.base' ORDER BY version DESC LIMIT 1"
+                    )
+                ).fetchone()
+                assert unchanged["id"] == after["id"]
+            prior = await (
+                await db.connection.execute(
+                    "SELECT body FROM agent_prompt WHERE id = %s",
+                    (before["id"],),
+                )
+            ).fetchone()
+            assert prior["body"] == before["body"]
+            await seed_demo(db, settings.BASE_DIR)
 
     asyncio.run(scenario())

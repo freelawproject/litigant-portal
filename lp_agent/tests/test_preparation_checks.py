@@ -1,9 +1,8 @@
 """
-Preparation requirements preserve missing values, conditional questions, and stubs.
+Preparation requirements preserve missing values and conditional questions.
 """
 
 from lp_agent.flows.checks import AgentChecker
-from lp_agent.flows.judge import AgentJudge
 from lp_agent.preparation import PhaseMaterial, PhaseProgress
 
 
@@ -40,7 +39,7 @@ def test_false_zero_and_optional_values_are_not_missing():
     )
 
 
-def test_completion_uses_phase_state_and_stub_never_reports_pass():
+def test_completion_uses_phase_state():
     assert AgentChecker.check_finished(()) == (False, 0)
     assert AgentChecker.check_finished(
         tuple(
@@ -54,16 +53,3 @@ def test_completion_uses_phase_state_and_stub_never_reports_pass():
             for state in ("completed", "active")
         )
     ) == (False, 50)
-    result = AgentJudge.check_upl(
-        run_id="test-run", findings=["attorney_claim"]
-    )
-    assert result["status"] == "skipped"
-    assert result["would_retry"]
-    assert AgentJudge.check_upl(
-        run_id="test-run", findings=["attorney_claim"], check_counter=3
-    )["would_stop"]
-    assert "attorney_claim" in AgentChecker.upl_findings("I am your lawyer.")
-    assert (
-        AgentChecker.upl_findings("The court publishes these instructions.")
-        == []
-    )
