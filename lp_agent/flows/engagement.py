@@ -129,6 +129,7 @@ class Engagement:
         default_factory=list, init=False, repr=False
     )
     model_finished: ModelFinished | None = field(default=None, init=False)
+    _storage_version: int | None = field(default=None, init=False, repr=False)
 
     @property
     def reference(self) -> dict[str, str]:
@@ -208,10 +209,11 @@ class Engagement:
     ) -> None:
         try:
             status = RunStatus(**self.reference, state=state)
-            await self.environment.runs.commit_checkpoint(
+            saved = await self.environment.runs.commit_checkpoint(
                 access=self.environment.access,
                 checkpoint=RunCheckpoint(
                     **self.reference,
+                    storage_version=self._storage_version,
                     data={
                         "request": self.request.model_dump(mode="json"),
                         "model_request": self.model_request.model_dump(
@@ -237,6 +239,7 @@ class Engagement:
                 status=status,
                 outcome=outcome,
             )
+            self._storage_version = saved.storage_version
         except Exception:
             logger.warning(
                 "Agent checkpoint failed (run_id=%s, state=%s)",

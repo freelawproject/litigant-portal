@@ -140,7 +140,7 @@ def test_terminal_checkpoint_failure_is_safe_and_releases_the_loop(
     async def failing_commit(**kwargs):
         if kwargs["outcome"] is not None:
             raise RuntimeError("private storage payload")
-        await commit(**kwargs)
+        return await commit(**kwargs)
 
     with patch.object(environment.runs, "commit_checkpoint", failing_commit):
         stream = LPAgent(environment=environment).stream(message="Hello")

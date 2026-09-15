@@ -10,7 +10,6 @@ from threading import get_ident
 import pytest
 
 from lp_agent import AgentValidationError
-from lp_agent.corpus.db_search import get_database_corpus
 from lp_agent.corpus.file_search import get_file_based_corpus
 from lp_agent.corpus.s3_search import get_s3_corpus
 from lp_agent.corpus.vec_search import get_vector_corpus
@@ -38,7 +37,6 @@ def corpus_root(tmp_path):
 @pytest.mark.parametrize(
     "retrieve,options,message",
     [
-        (get_database_corpus, {}, "Database corpus retrieval"),
         (get_s3_corpus, {}, "S3 corpus retrieval"),
         (get_vector_corpus, {"query": "help"}, "Vector corpus search"),
     ],
