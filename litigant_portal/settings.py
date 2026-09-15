@@ -267,6 +267,10 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
+if DEPLOYMENT_ENV == "qa":
+    AUTHENTICATION_BACKENDS.append(
+        "litigant_portal.app.qa_access.QADeveloperBackend"
+    )
 
 SITE_ID = 1
 
@@ -348,27 +352,25 @@ CSP_CONNECT_SRC = ("'self'", *ASSET_ORIGINS, *PRIVATE_MEDIA_ORIGINS)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Production security settings
-# https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-if not DEBUG:
-    # HTTPS/SSL
-    SECURE_SSL_REDIRECT = True
-    SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+# QA uses HTTPS behind the proxy even when its environment enables DEBUG.
+if not DEBUG or DEPLOYMENT_ENV == "qa":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
-    # HSTS (HTTP Strict Transport Security)
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-
-    # Secure cookies
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-
-    # Trust origins that match ALLOWED_HOSTS over HTTPS
     CSRF_TRUSTED_ORIGINS = [
         f"https://{host}" for host in ALLOWED_HOSTS if host != "*"
     ]
+    if DEPLOYMENT_ENV == "qa":
+        CSRF_TRUSTED_ORIGINS.append("https://qa.litigantportal.com")
+
+# Production security settings
+# https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
     # Additional security headers
     SECURE_CONTENT_TYPE_NOSNIFF = True
