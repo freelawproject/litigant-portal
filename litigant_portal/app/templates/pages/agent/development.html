@@ -7,29 +7,39 @@
 {% endblock title %}
 
 {% block content %}
-  <div class="max-w-7xl mx-auto px-4 py-8 sm:px-6">
+  <div class="max-w-5xl mx-auto px-4 py-6 sm:px-6 sm:py-8">
     <div class="mb-6">
       <p class="text-sm font-medium text-primary-700 mb-2">{% trans "Developer tools" %}</p>
       <h1 class="text-2xl font-semibold text-greyscale-900">{% trans "Agent development" %}</h1>
-      <p class="mt-2 text-greyscale-600">{% trans "Configure a Direct run and inspect its conversation and events." %}</p>
-      {% if service_error %}<p role="alert">{{ service_error }}</p>{% endif %}
+      <p class="mt-2 text-greyscale-600">{% trans "Try a conversation, adjust the settings, and explore the agent's responses." %}</p>
+      {% if service_error %}<p role="alert" class="mt-3 text-red-700">{{ service_error }}</p>{% endif %}
     </div>
 
     <form id="agent-development-form"
           x-data="agentDevelopment"
           data-conversation-url="{% url 'pages:agent_development_conversation' conversation_id='00000000-0000-0000-0000-000000000000' %}"
           x-on:submit.prevent="send"
+          x-on:resize.window="resizePanels"
+          novalidate
           method="post"
           action="{% url 'pages:agent_development_stream' %}"
-          class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          class="space-y-5">
       {% csrf_token %}
-      <section aria-labelledby="configuration-heading"
-               class="bg-white rounded-xl border border-greyscale-200 p-5 sm:p-6">
-        <h2 id="configuration-heading" class="text-lg font-semibold text-greyscale-900 mb-5">{% trans "Configuration" %}</h2>
-        <div class="space-y-5">
-          <fieldset class="space-y-4" aria-describedby="scope-help">
+      <details x-ref="configuration" class="group bg-white rounded-xl border border-greyscale-200">
+        <summary class="list-none cursor-pointer rounded-xl p-4 sm:px-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 [&::-webkit-details-marker]:hidden">
+          <h2 id="configuration-heading" class="flex items-center gap-3 text-base">
+            <c-atoms.icon name="adjustments-horizontal" class="w-5 h-5 shrink-0 text-greyscale-500" />
+            <span class="min-w-0 flex-1">
+              <span class="block font-semibold text-greyscale-900">{% trans "Configuration" %}</span>
+              <span x-text="configurationSummary" class="block mt-1 text-sm font-normal text-greyscale-600">{% trans "Choose scope and models, or start chatting with the defaults." %}</span>
+            </span>
+            <c-atoms.icon name="chevron-down" class="w-4 h-4 shrink-0 text-greyscale-500 transition-transform group-open:rotate-180" />
+          </h2>
+        </summary>
+        <div x-on:change="updateConfigurationSummary" class="border-t border-greyscale-200 p-5 sm:p-6 space-y-5">
+          <fieldset class="grid grid-cols-1 sm:grid-cols-2 gap-4" aria-describedby="scope-help">
             <legend class="text-sm font-medium text-greyscale-700 mb-2">{% trans "Scope" %}</legend>
-            <p id="scope-help" class="text-sm text-greyscale-600">{% trans "Leave either selection blank to choose through chat." %}</p>
+            <p id="scope-help" class="sm:col-span-2 text-sm text-greyscale-600">{% trans "Leave either selection blank to choose through chat." %}</p>
             {% trans "Court" as court_label %}
             <c-molecules.form-field-select label="{{ court_label }}" name="court" id="agent-court" x-on:change="selectCourt" x-bind:disabled="configurationLocked">
               <option value="">{% trans "Choose court" %}</option>
@@ -50,87 +60,163 @@
             </c-molecules.form-field-select>
           </fieldset>
 
-          {% trans "Bedrock model" as model_label %}
-          {% if selected_model %}
-            {% trans "Defaults to the site's assistant model." as model_help %}
-          {% else %}
-            {% trans "The site's assistant model is unavailable here. Choose a model before sending." as model_help %}
-          {% endif %}
-          <c-molecules.form-field-select label="{{ model_label }}" name="model" id="agent-model" help_text="{{ model_help }}" :required="True" x-bind:disabled="configurationLocked">
-            {% if not selected_model %}<option value="" selected>{% trans "Choose model" %}</option>{% endif %}
-            {% for value, label in model_choices %}
-              <option value="{{ value }}" {% if value == selected_model %}selected{% endif %} {% if value == unsupported_tool_model %}disabled{% endif %}>{{ label }}{% if value == unsupported_tool_model %} — {% trans "preparation tools unavailable" %}{% endif %}</option>
-            {% endfor %}
-          </c-molecules.form-field-select>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {% trans "Assistant model" as model_label %}
+            {% if selected_model %}
+              {% trans "Defaults to the site's assistant model." as model_help %}
+            {% else %}
+              {% trans "The site's assistant model is unavailable here. Choose a model before sending." as model_help %}
+            {% endif %}
+            <c-molecules.form-field-select label="{{ model_label }}" name="model" id="agent-model" help_text="{{ model_help }}" :required="True" x-bind:disabled="configurationLocked">
+              {% if not selected_model %}<option value="" selected>{% trans "Choose model" %}</option>{% endif %}
+              {% for value, label in model_choices %}
+                <option value="{{ value }}" {% if value == selected_model %}selected{% endif %} {% if value == unsupported_tool_model %}disabled{% endif %}>{{ label }}{% if value == unsupported_tool_model %} — {% trans "preparation tools unavailable" %}{% endif %}</option>
+              {% endfor %}
+            </c-molecules.form-field-select>
 
-          {% trans "Judge model" as judge_label %}
-          <c-molecules.form-field-select label="{{ judge_label }}" name="judge" id="agent-judge" x-bind:disabled="running">
-            <option value="">{% trans "Same as assistant" %}</option>
-            {% for value, label in model_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
-          </c-molecules.form-field-select>
+            {% trans "Judge model" as judge_label %}
+            <c-molecules.form-field-select label="{{ judge_label }}" name="judge" id="agent-judge" x-bind:disabled="running">
+              <option value="">{% trans "Same as assistant" %}</option>
+              {% for value, label in model_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+            </c-molecules.form-field-select>
 
-          <div>
-            <label for="agent-max-seconds" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Maximum active seconds" %}</label>
-            <c-atoms.input type="number" name="max_active_seconds" id="agent-max-seconds" value="{{ limits.max_active_seconds|floatformat:'-1' }}" min="0.1" step="any" :required="True" aria_describedby="active-seconds-help" x-bind:disabled="running" />
-            <p id="active-seconds-help" class="mt-1 text-xs text-greyscale-500">{% trans "Time limit for this response." %}</p>
+            <div>
+              <label for="agent-max-seconds" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Maximum active seconds" %}</label>
+              <c-atoms.input type="number" name="max_active_seconds" id="agent-max-seconds" value="{{ limits.max_active_seconds|floatformat:'-1' }}" min="0.1" step="any" :required="True" aria_describedby="active-seconds-help" x-bind:disabled="running" />
+              <p id="active-seconds-help" class="mt-1 text-xs text-greyscale-500">{% trans "Time limit for this response." %}</p>
+            </div>
+          </div>
+          <p x-show="configurationLocked" x-cloak class="text-sm text-greyscale-600">{% trans "Start a new conversation to change court, topic, procedure, or assistant model. Judge and time limit can change between responses." %}</p>
+        </div>
+      </details>
+
+      <section aria-labelledby="conversation-heading"
+               class="min-w-0 bg-white rounded-xl border border-greyscale-200 p-4 sm:p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <h2 id="conversation-heading" class="text-lg font-semibold text-greyscale-900">{% trans "Conversation" %}</h2>
+          <div class="flex items-center gap-2 rounded-full bg-greyscale-100 px-3 py-1 text-sm text-greyscale-700">
+            <c-atoms.icon name="arrow-path" x-show="running" x-cloak class="w-4 h-4 motion-safe:animate-spin" />
+            <span id="agent-status" role="status" x-text="status">{% trans "Ready" %}</span>
           </div>
         </div>
-      </section>
-
-      <div class="lg:col-span-2 space-y-6 min-w-0">
-        <section aria-labelledby="conversation-heading"
-                 class="bg-white rounded-xl border border-greyscale-200 p-5 sm:p-6">
-          <h2 id="conversation-heading" class="text-lg font-semibold text-greyscale-900 mb-4">{% trans "Conversation" %}</h2>
-          <p id="agent-status" role="status" x-text="status" class="text-sm text-greyscale-600 mb-4">{% trans "Ready" %}</p>
-          <div id="agent-conversation"
-               role="log"
-               aria-live="polite"
-               aria-labelledby="conversation-heading"
-               class="min-h-48 rounded-lg bg-greyscale-25 border border-greyscale-200 p-4 space-y-4 break-words">
-            <p x-show="conversationEmpty" class="text-sm text-greyscale-600">{% trans "No conversation started." %}</p>
-            <template x-for="entry in messages" x-bind:key="entry.id">
-              <div>
-                <strong x-text="entry.label"></strong>
-                <p x-text="entry.text" class="whitespace-pre-wrap"></p>
-                <ul class="text-sm mt-2 space-y-1">
+        <div id="agent-conversation"
+             x-ref="conversation"
+             data-panel="conversation"
+             x-on:scroll="trackScroll"
+             role="log"
+             tabindex="0"
+             aria-live="polite"
+             x-bind:aria-busy="running"
+             aria-labelledby="conversation-heading"
+             class="min-h-48 max-h-[min(60dvh,40rem)] overflow-y-auto overscroll-contain [overflow-anchor:none] rounded-lg bg-greyscale-25 border border-greyscale-200 p-4 sm:p-5 space-y-5 break-words focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600">
+          <div x-show="conversationEmpty" class="py-7 text-center text-greyscale-600">
+            <c-atoms.icon name="chat-bubble-left-right" class="w-7 h-7 mb-2 text-greyscale-400" />
+            <p class="font-medium text-greyscale-700">{% trans "Start a conversation" %}</p>
+            <p class="mt-1 text-sm">{% trans "Ask a question, or open Configuration to try different settings." %}</p>
+          </div>
+          <template x-for="entry in messages" x-bind:key="entry.id">
+            <div class="flex flex-col gap-1.5" x-bind:class="entry.alignmentClass">
+              <strong x-text="entry.label" class="text-xs font-medium text-greyscale-600"></strong>
+              <div class="min-w-0 max-w-full sm:max-w-[90%] rounded-xl px-4 py-3 text-sm sm:text-base [overflow-wrap:anywhere]" x-bind:class="entry.bubbleClass">
+                <p x-show="entry.isUser" x-text="entry.text" class="whitespace-pre-wrap"></p>
+                <div x-show="entry.isAssistant" x-html="entry.html"></div>
+                <p x-show="entry.pending" class="text-sm text-greyscale-500">{% trans "Preparing a response…" %}</p>
+                <ul x-show="entry.hasSources" class="text-sm mt-3 pt-3 border-t border-greyscale-200 space-y-1">
                   <template x-for="source in entry.sources" x-bind:key="source.source_id">
                     <li><a x-bind:href="source.url" x-text="source.title" class="text-primary-700 underline" target="_blank" rel="noopener noreferrer"></a></li>
                   </template>
                 </ul>
               </div>
-            </template>
+            </div>
+          </template>
+        </div>
+        <div class="flex items-center justify-between gap-2 mt-1 min-h-10">
+          <div>
+            <c-atoms.button variant="ghost" size="sm" x-show="conversationPaused" x-cloak data-panel="conversation" x-on:click="jumpToLatest">
+              <c-atoms.icon name="arrow-down" class="w-4 h-4" />
+              {% trans "Jump to latest" %}
+            </c-atoms.button>
           </div>
-          <p x-text="progressSummary" class="mt-3 text-sm text-greyscale-600" role="status"></p>
-          <div class="mt-5">
-            <label for="agent-message" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Message" %}</label>
-            <textarea id="agent-message"
-                      name="message"
-                      rows="4"
-                      required
-                      x-bind:disabled="running"
-                      aria-describedby="agent-session-help"
-                      class="block w-full rounded-lg border border-greyscale-300 bg-white text-greyscale-900 p-3 focus:outline-none focus:ring-2 focus:ring-primary-600"></textarea>
+          <div class="flex items-center justify-end gap-2">
+            <span x-text="conversationView.feedback" role="status" class="text-xs text-greyscale-600"></span>
+            {% trans "Copy all conversation" as copy_conversation_label %}
+            <c-atoms.button variant="ghost" size="icon" aria_label="{{ copy_conversation_label }}" title="{{ copy_conversation_label }}" data-panel="conversation" x-on:click="copyPanel" x-bind:disabled="conversationEmpty">
+              <c-atoms.icon name="document-duplicate" class="w-4 h-4" />
+            </c-atoms.button>
           </div>
-          <p id="agent-session-help" class="mt-3 text-sm text-greyscale-600">{% trans "Your conversation and preparation progress are saved. Start a new conversation to change court, topic, procedure, or assistant model." %}</p>
-          <p id="agent-error" role="alert" x-text="error" class="mt-3 text-sm text-greyscale-700"></p>
-          <noscript><p>{% trans "Enable JavaScript to view streaming responses on this development page." %}</p></noscript>
-          <div class="mt-4">
-            <c-atoms.button type="button" x-on:click="newConversation" x-bind:disabled="running">{% trans "New conversation" %}</c-atoms.button>
-            <c-atoms.button id="agent-send" type="submit" size="xl" :disabled="True" x-bind:disabled="sendDisabled" aria-describedby="agent-session-help">{% trans "Send" %}</c-atoms.button>
-          </div>
-        </section>
+        </div>
+        <p x-show="progressSummary" x-text="progressSummary" x-cloak class="mt-1 text-sm text-greyscale-600" role="status"></p>
+        <div class="mt-4">
+          <label for="agent-message" class="block text-sm font-medium text-greyscale-700 mb-1.5">{% trans "Message" %}</label>
+          <textarea id="agent-message"
+                    name="message"
+                    rows="2"
+                    required
+                    x-on:input="updateMessage"
+                    x-on:keydown="handleMessageKeydown"
+                    x-bind:disabled="running"
+                    aria-describedby="agent-message-help agent-session-help"
+                    class="block w-full max-h-32 resize-none overflow-y-auto rounded-lg border border-greyscale-300 bg-white text-greyscale-900 p-3 focus:outline-none focus:ring-2 focus:ring-primary-600 disabled:bg-greyscale-50"></textarea>
+          <p id="agent-message-help" class="mt-2 text-xs text-greyscale-500">{% trans "Enter to send · Shift+Enter for a new line" %}</p>
+        </div>
+        <p id="agent-error" role="alert" x-show="error" x-text="error" x-cloak class="mt-3 text-sm text-red-700"></p>
+        <noscript><p>{% trans "Enable JavaScript to view streaming responses on this development page." %}</p></noscript>
+        <p id="agent-session-help" class="mt-3 text-xs text-greyscale-500">{% trans "Your conversation and preparation progress are saved." %}</p>
+        <div class="mt-4 flex items-center justify-between gap-3">
+          <c-atoms.button id="agent-send" type="submit" :disabled="True" x-bind:disabled="sendDisabled" aria-describedby="agent-message-help">
+            <c-atoms.icon name="arrow-up" class="w-4 h-4" />
+            {% trans "Send" %}
+          </c-atoms.button>
+          <c-atoms.button variant="outline" x-on:click="newConversation" x-bind:disabled="running">
+            <c-atoms.icon name="plus" class="w-4 h-4" />
+            {% trans "New conversation" %}
+          </c-atoms.button>
+        </div>
+      </section>
 
-        <section aria-labelledby="events-heading"
-                 class="bg-white rounded-xl border border-greyscale-200 p-5 sm:p-6">
-          <h2 id="events-heading" class="text-lg font-semibold text-greyscale-900 mb-4">{% trans "Events" %}</h2>
-          <div id="agent-events" class="min-h-24 rounded-lg bg-greyscale-25 border border-greyscale-200 p-4 overflow-x-auto">
+      <details x-ref="eventsDisclosure" x-on:toggle="eventsToggled" class="group min-w-0 bg-white rounded-xl border border-greyscale-200">
+        <summary class="list-none cursor-pointer rounded-xl p-4 sm:px-6 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 [&::-webkit-details-marker]:hidden">
+          <h2 id="events-heading" class="flex items-center gap-3 text-base">
+            <c-atoms.icon name="code-bracket" class="w-5 h-5 shrink-0 text-greyscale-500" />
+            <span class="flex-1">
+              <span class="font-semibold text-greyscale-900">{% trans "Events" %}</span>
+              <span x-text="events.length" class="ml-1 rounded-full bg-greyscale-100 px-2 py-0.5 text-xs font-normal text-greyscale-600">0</span>
+              <span class="block mt-1 text-sm font-normal text-greyscale-600">{% trans "Latest response's events" %}</span>
+            </span>
+            <c-atoms.icon name="chevron-down" class="w-4 h-4 shrink-0 text-greyscale-500 transition-transform group-open:rotate-180" />
+          </h2>
+        </summary>
+        <div class="border-t border-greyscale-200 p-4 sm:p-6">
+          <div id="agent-events"
+               x-ref="events"
+               data-panel="events"
+               x-on:scroll="trackScroll"
+               role="region"
+               tabindex="0"
+               aria-labelledby="events-heading"
+               class="h-80 max-h-[45dvh] sm:max-h-none overflow-auto overscroll-contain [overflow-anchor:none] rounded-lg bg-greyscale-25 border border-greyscale-200 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-600">
             <p x-show="eventsEmpty" class="text-sm text-greyscale-600">{% trans "No events yet." %}</p>
             <template x-for="entry in events" x-bind:key="entry.id">
               <pre x-text="entry.text" class="text-xs whitespace-pre-wrap break-all mb-3"></pre>
             </template>
           </div>
-        </section>
-      </div>
+          <div class="flex items-center justify-between gap-2 mt-1 min-h-10">
+            <div>
+              <c-atoms.button variant="ghost" size="sm" x-show="eventsPaused" x-cloak data-panel="events" x-on:click="jumpToLatest">
+                <c-atoms.icon name="arrow-down" class="w-4 h-4" />
+                {% trans "Jump to latest" %}
+              </c-atoms.button>
+            </div>
+            <div class="flex items-center justify-end gap-2">
+              <span x-text="eventsView.feedback" role="status" class="text-xs text-greyscale-600"></span>
+              {% trans "Copy all events" as copy_events_label %}
+              <c-atoms.button variant="ghost" size="icon" aria_label="{{ copy_events_label }}" title="{{ copy_events_label }}" data-panel="events" x-on:click="copyPanel" x-bind:disabled="eventsEmpty">
+                <c-atoms.icon name="document-duplicate" class="w-4 h-4" />
+              </c-atoms.button>
+            </div>
+          </div>
+        </div>
+      </details>
     </form>
   </div>
 {% endblock content %}
