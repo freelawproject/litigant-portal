@@ -2,7 +2,7 @@
 Caller-safe validation, access, and operational errors.
 """
 
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import BaseModel, ValidationError
 
@@ -68,6 +68,37 @@ class AgentStorageError(AgentError):
 
     def __init__(self) -> None:
         super().__init__("Unable to save the run state. Please try again.")
+
+
+class ModelProviderError(AgentError, RuntimeError):
+    """
+    Internal provider failure containing only safe, normalized diagnostics.
+    """
+
+    def __init__(
+        self,
+        *,
+        kind: Literal["failed", "unavailable", "timeout"],
+        model: str,
+        stage: Literal["request", "stream", "normalize", "cleanup"],
+        exception_class: str,
+        status_code: int | None,
+        elapsed_seconds: float,
+        request_id: str | None,
+    ) -> None:
+        messages = {
+            "failed": "The model response failed. Please try again.",
+            "unavailable": "The model service is temporarily unavailable. Please try again.",
+            "timeout": "The model service timed out. Please try again.",
+        }
+        super().__init__(messages[kind])
+        self.code = f"model_{kind}"
+        self.model = model
+        self.stage = stage
+        self.exception_class = exception_class
+        self.status_code = status_code
+        self.elapsed_seconds = elapsed_seconds
+        self.request_id = request_id
 
 
 class AgentValidationError(AgentError, ValueError):

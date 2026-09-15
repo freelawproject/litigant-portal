@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
-from litellm import CustomStreamWrapper
+from litellm import APIError, CustomStreamWrapper, Timeout
 from litellm.litellm_core_utils.litellm_logging import Logging
 from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 from litellm.types.llms.openai import ResponsesAPIResponse
@@ -25,6 +25,7 @@ from lp_agent import AgentValidationError, LPAgent, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES, BedrockClient
 from lp_agent.adapters.environment import create_environment
 from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
+from lp_agent.errors import ModelProviderError
 from lp_agent.tests.helpers import environment_options
 from lp_agent.types import (
     FunctionCallOutput,
@@ -580,18 +581,200 @@ def test_http_client_closes_after_request_or_response_cleanup_failure(
             if request_fails
             else AsyncMock(return_value=provider())
         )
-        with patch("litellm.aresponses", call), pytest.raises(RuntimeError):
+        with (
+            patch("litellm.aresponses", call),
+            pytest.raises(ModelProviderError) as failure,
+        ):
             _ = [
                 event
                 async for event in BedrockClient(
                     MODEL_CHOICES[0][0], api_key="test-key"
                 ).stream(ModelRequest(input=()))
             ]
+        assert failure.value.stage == (
+            "request" if request_fails else "cleanup"
+        )
+        assert failure.value.exception_class == "RuntimeError"
         assert http_clients and all(
             client.is_closed for client in http_clients
         )
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    "provider_code,status,code,exception_class",
+    [
+        ("server_error", 500, "model_unavailable", "MidStreamFallbackError"),
+        (
+            "rate_limit_exceeded",
+            429,
+            "model_unavailable",
+            "MidStreamFallbackError",
+        ),
+        ("invalid_request_error", 400, "model_failed", "APIError"),
+    ],
+)
+def test_sdk_stream_errors_have_safe_diagnostics_without_retry(
+    provider_code, status, code, exception_class, http_clients, caplog
+):
+    body, response = native_response(
+        [
+            done(reasoning()),
+            {
+                "type": "error",
+                "error": {
+                    "type": provider_code,
+                    "code": provider_code,
+                    "message": "private prompt, generated answer and credentials",
+                },
+            },
+        ]
+    )
+    response.headers["x-amzn-requestid"] = "provider-request-123"
+    response.headers["private-header"] = "private header payload"
+    environment = provider_environment(**environment_options())
+    call = AsyncMock(return_value=response)
+    with patch.object(AsyncHTTPHandler, "post", call):
+        output = [
+            json.loads(line)
+            for line in LPAgent(environment=environment).stream(
+                message="Hello"
+            )
+        ]
+    outcome = output[-1]["payload"]["outcome"]
+    assert outcome["state"] == "failed"
+    assert outcome["error"]["code"] == code
+    assert call.await_count == 1
+    logs = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "lp_agent.flows.engagement"
+    ]
+    assert len(logs) == 1
+    for field in (
+        f"run_id={outcome['run_id']}",
+        f"model={MODEL_CHOICES[0][0]}",
+        "stage=stream",
+        f"exception_class={exception_class}",
+        f"status_code={status}",
+        "elapsed_seconds=",
+        "provider_request_id=provider-request-123",
+    ):
+        assert field in logs[0]
+    assert "private" not in json.dumps(output) + caplog.text
+    assert "test-only-key" not in json.dumps(output) + caplog.text
+    assert "Private summary" not in json.dumps(output) + caplog.text
+    assert "opaque-continuation" not in json.dumps(output) + caplog.text
+    assert "provider-request-123" not in json.dumps(output)
+    assert body.closed and response.is_closed
+    assert http_clients and all(client.is_closed for client in http_clients)
+
+
+@pytest.mark.parametrize("stage", ["request", "stream"])
+@pytest.mark.parametrize(
+    "failure,code,status,request_id",
+    [
+        (httpx.ReadTimeout("private timeout"), "model_timeout", None, None),
+        (
+            Timeout(
+                "private timeout",
+                MODEL_CHOICES[0][0],
+                "bedrock_mantle",
+                headers={
+                    "x-amzn-requestid": "timeout-request-123",
+                    "Authorization": "private credentials",
+                },
+            ),
+            "model_timeout",
+            408,
+            "timeout-request-123",
+        ),
+        (
+            APIError(
+                401, "private rejection", "bedrock_mantle", MODEL_CHOICES[0][0]
+            ),
+            "model_failed",
+            401,
+            None,
+        ),
+    ],
+)
+def test_provider_timeouts_and_rejections_are_normalized(
+    stage, failure, code, status, request_id, http_clients, caplog
+):
+    failure.request_id = "private\ninjected log line"
+    call = (
+        AsyncMock(side_effect=failure)
+        if stage == "request"
+        else AsyncMock(return_value=events(failure))
+    )
+    environment = provider_environment(**environment_options())
+    with patch("litellm.aresponses", call):
+        output = [
+            json.loads(line)
+            for line in LPAgent(environment=environment).stream(
+                message="Hello"
+            )
+        ]
+    outcome = output[-1]["payload"]["outcome"]
+    assert outcome["error"]["code"] == code
+    assert f"stage={stage}" in caplog.text
+    assert f"status_code={status}" in caplog.text
+    assert f"provider_request_id={request_id}" in caplog.text
+    assert "private" not in json.dumps(output) + caplog.text
+    assert call.await_count == 1
+    assert call.call_args.kwargs["num_retries"] == 0
+    assert http_clients and all(client.is_closed for client in http_clients)
+
+
+@pytest.mark.parametrize("termination", ["error", "timeout", "cancel"])
+def test_cleanup_failure_does_not_replace_primary_failure_or_cancellation(
+    termination, http_clients, caplog
+):
+    async def scenario():
+        waiting = asyncio.Event()
+
+        async def provider():
+            waiting.set()
+            await asyncio.Event().wait()
+            yield
+
+        environment = provider_environment(**environment_options())
+        # Separate stream close failures from errors raised while reading it.
+        stream = events(httpx.ReadTimeout("private timeout"))
+        if termination != "error":
+            stream = provider()
+        with (
+            patch("litellm.aresponses", AsyncMock(return_value=stream)),
+            patch(
+                "lp_agent.adapters.bedrock._close_stream",
+                AsyncMock(side_effect=RuntimeError("private cleanup payload")),
+            ),
+        ):
+            async with LPAgent(
+                environment=environment,
+                limits=RunLimits(
+                    max_active_seconds=0.1 if termination == "timeout" else 5
+                ),
+            ) as agent:
+                run = await agent.run(message="Hello")
+                if termination == "cancel":
+                    await asyncio.wait_for(waiting.wait(), timeout=1)
+                    await run.cancel()
+                outcome = await asyncio.wait_for(run.result(), timeout=1)
+        if termination == "cancel":
+            assert outcome.state == "cancelled"
+        else:
+            assert outcome.error.code == (
+                "model_timeout"
+                if termination == "error"
+                else "active_time_limit"
+            )
+        assert "private" not in caplog.text
+
+    asyncio.run(scenario())
+    assert http_clients and all(client.is_closed for client in http_clients)
 
 
 @pytest.mark.parametrize(
