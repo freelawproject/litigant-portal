@@ -79,11 +79,46 @@
         <mxCell id="cicd" value="GitHub Actions&#10;tests → build image → push to Docker Hub&#10;(freelawproject/litigant-portal:&lt;sha&gt;-prod) → deploy to EKS&#10;prod: auto on merge to main · QA: manual dispatch only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;fontColor=#232F3E;fontSize=10;" vertex="1" parent="1">
           <mxGeometry x="330" y="820" width="330" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="corpus" value="Court corpus (YAML, in the repo)&#10;the court's topics, sections, forms and contacts&#10;ships inside the image, read at runtime" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#147EBA;fontColor=#232F3E;fontSize=10;" vertex="1" parent="1">
+        <mxCell id="corpus" value="Court corpus (YAML, in the repo)&#10;the court's topics, sections, forms and contacts&#10;ships inside the image, read at runtime" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF6EC;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=10;" vertex="1" parent="1">
           <mxGeometry x="690" y="820" width="320" height="110" as="geometry" />
         </mxCell>
         <mxCell id="devbox" value="Dev only — not a court instance&#10;local: docker compose (Caddy, Postgres, Redis, docassemble)&#10;shared dev + demo host: a DigitalOcean droplet at dev.litigantportal.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;dashed=1;fontColor=#555555;fontSize=10;" vertex="1" parent="1">
           <mxGeometry x="1040" y="820" width="380" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ===== Legend ===== -->
+        <mxCell id="g_legend" value="Legend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#333333;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="570" width="210" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s0" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="54" y="608" width="24" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t0" value="our code" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="84" y="604" width="158" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#EAF6EC;strokeColor=#2E7D32;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="54" y="639" width="24" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t1" value="court-authored content" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="84" y="635" width="158" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#666666;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="54" y="670" width="24" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t2" value="third-party, pulled + configured" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="84" y="666" width="158" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s3" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#F7F4FF;strokeColor=#8C4FFF;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="54" y="701" width="24" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t3" value="AWS-managed service" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="84" y="697" width="158" height="22" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s4" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFF7E6;strokeColor=#D86613;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="54" y="732" width="24" height="15" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t4" value="external — off-site" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="84" y="728" width="158" height="22" as="geometry" />
         </mxCell>
 
         <!-- ===== Edges ===== -->
