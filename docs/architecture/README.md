@@ -47,17 +47,17 @@ let `labelWidth` handle the rest, so the text reflows when it is edited.
 
 ## What `system-architecture.drawio` shows — today
 
-C4 **Container** level, a technical / trust-boundary view for a new dev or a court's tech resource. Every node carries what it *does*, not just what it is:
+C4 **Container** level, a technical / trust-boundary view for a new dev or a court's tech resource. Every node carries what it _does_, not just what it is:
 
 - **Public edge** — the litigant's browser, and the ingress that terminates TLS and holds the site-wide access gate. The ingress splits by path: `/interview/*` goes to docassemble, everything else to Django.
-- **FLP AWS account → shared EKS cluster → namespace `litigant`** — this is the part people get wrong. There is no per-court account today. The cluster's *name* is `courtlistener` (that's the value of `EKS_CLUSTER_NAME` in `deploy.yml`, not a mislabel) — the portal is a tenant in it. Prod is the `litigant` namespace; QA is a second namespace, `qa-litigant`, in that same cluster, deployed by manual dispatch only.
+- **FLP AWS account → shared EKS cluster → namespace `litigant`** — this is the part people get wrong. There is no per-court account today. The cluster's _name_ is `courtlistener` (that's the value of `EKS_CLUSTER_NAME` in `deploy.yml`, not a mislabel) — the portal is a tenant in it. Prod is the `litigant` namespace; QA is a second namespace, `qa-litigant`, in that same cluster, deployed by manual dispatch only.
 - **The two workloads in the namespace** — the Django app (`litigant-web`), which is our code, and docassemble, which is **not**: it's the stock `jhpyle/docassemble` image, pulled and configured, running in its own container with its own database. That's why no arrow connects it to the app's Postgres. The diagram styles it as a dashed grey box for exactly that reason.
 - **Managed AWS services** — Secrets Manager (app config + credentials, synced in by External Secrets), Postgres + pgvector (app data, corpus rows, chat threads, **and sessions** — Django's session backend is the database, not Redis), Redis/ElastiCache (Django's cache only), and S3 (a private bucket for litigant uploads, a public one for static + media).
-- **External services** — AWS Bedrock for LLM inference, reached through LiteLLM, which is a *library inside the Django app*, not a service of its own. Third-party court and state services are **outbound links the litigant follows off-site** — there is no API integration with them.
+- **External services** — AWS Bedrock for LLM inference, reached through LiteLLM, which is a _library inside the Django app_, not a service of its own. Third-party court and state services are **outbound links the litigant follows off-site** — there is no API integration with them.
 - **Delivery** — GitHub Actions runs tests, builds the image, pushes it to **Docker Hub** (`freelawproject/litigant-portal:<sha>-prod`), then deploys to EKS. Prod deploys automatically on merge to main; QA is manual-dispatch only. The court corpus is YAML in this repo and ships **inside the image**, read at runtime.
 - **Dev is not a court instance** — locally it's `docker compose`; the shared dev/demo host is a DigitalOcean droplet at `dev.litigantportal.com`. Neither is part of the deployed topology.
 
-AWS-managed services use AWS4 stencils; our own code is a solid blue box; third-party software we merely pull and configure is a dashed grey box.
+The diagram carries its own legend, bottom left: solid blue is our code, green is court-authored content, dashed grey is third-party software we merely pull and configure, purple is an AWS-managed service (drawn with its AWS4 stencil), and orange is external — the litigant leaves the portal.
 
 ## What `target-isolation.drawio` shows — the #859 target
 
