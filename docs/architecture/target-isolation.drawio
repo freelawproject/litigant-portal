@@ -1,0 +1,61 @@
+<mxfile host="app.diagrams.net" agent="LP architecture compare" version="24.7.17" type="device">
+  <diagram id="lp-target-isolation" name="LP isolation model — target (#859)">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="780" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="banner" value="Target state (#859) — this is NOT how it runs today.&#10;Today the portal is one namespace in FLP's shared courtlistener EKS cluster. For what actually runs, see system-architecture.drawio." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF4F4;strokeColor=#DD344C;fontColor=#8B1A28;fontSize=12;fontStyle=1;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="60" y="40" width="1180" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Court A -->
+        <mxCell id="acct_a" value="Court A — its own AWS account" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#232F3E;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="60" y="150" width="360" height="370" as="geometry" />
+        </mxCell>
+        <mxCell id="inst_a" value="Instance on EKS&#10;Django app (litigant-web)&#10;+ docassemble container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="90" y="215" width="300" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="data_a" value="Managed data — this court only&#10;Postgres + pgvector · Redis&#10;S3 (private + public) · Secrets Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F4FF;strokeColor=#8C4FFF;fontColor=#4B2E83;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="90" y="365" width="300" height="115" as="geometry" />
+        </mxCell>
+
+        <!-- Court B -->
+        <mxCell id="acct_b" value="Court B — its own AWS account" style="sketch=0;outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=12;fontStyle=1;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud_alt;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;spacingTop=6;fontColor=#232F3E;dashed=0;" vertex="1" parent="1">
+          <mxGeometry x="450" y="150" width="360" height="370" as="geometry" />
+        </mxCell>
+        <mxCell id="inst_b" value="Instance on EKS&#10;Django app (litigant-web)&#10;+ docassemble container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="480" y="215" width="300" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="data_b" value="Managed data — this court only&#10;Postgres + pgvector · Redis&#10;S3 (private + public) · Secrets Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F4FF;strokeColor=#8C4FFF;fontColor=#4B2E83;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="480" y="365" width="300" height="115" as="geometry" />
+        </mxCell>
+
+        <!-- Court N -->
+        <mxCell id="acct_n" value="Court N — one account per court" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#232F3E;dashed=1;verticalAlign=top;align=left;spacingLeft=14;spacingTop=8;fontColor=#232F3E;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="840" y="150" width="360" height="370" as="geometry" />
+        </mxCell>
+        <mxCell id="inst_n" value="Instance on EKS&#10;Django app (litigant-web)&#10;+ docassemble container" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="870" y="215" width="300" height="105" as="geometry" />
+        </mxCell>
+        <mxCell id="data_n" value="Managed data — this court only&#10;Postgres + pgvector · Redis&#10;S3 (private + public) · Secrets Manager" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#8C4FFF;fontColor=#4B2E83;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="870" y="365" width="300" height="115" as="geometry" />
+        </mxCell>
+
+        <!-- Bottom row -->
+        <mxCell id="why" value="Why one account per court&#10;· pure data segmentation — no shared database, no shared bucket&#10;· per-court billing, straight off the AWS invoice&#10;· independent version rollout — one court upgrades without the others&#10;· fork-and-leave portability — a court can take its instance and go" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F0F7FF;strokeColor=#147EBA;fontColor=#12325F;fontSize=11;verticalAlign=top;align=left;spacingLeft=14;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="560" width="380" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="shared" value="Shared across every account&#10;· AWS Bedrock — LLM inference, via LiteLLM in each Django app&#10;· the portal image — one Docker Hub tag, deployed to every court&#10;&#10;A shared docassemble is the one proposed exception, and the&#10;thing to re-argue against this model." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFF7E6;strokeColor=#D86613;fontColor=#7A3A05;fontSize=11;verticalAlign=top;align=left;spacingLeft=14;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="460" y="560" width="380" height="170" as="geometry" />
+        </mxCell>
+
+        <mxCell id="open" value="Still open&#10;· whether each account runs EKS or ECS Fargate — #859&#10;· the per-court instance work itself — #858&#10;· how docassemble is hosted for QA and the court instances — #888&#10;· DEPLOYMENT_ENV validates against {dev, qa, prod}; four court instances do not fit that set" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#666666;fontColor=#333333;fontSize=11;verticalAlign=top;align=left;spacingLeft=14;spacingTop=10;" vertex="1" parent="1">
+          <mxGeometry x="860" y="560" width="380" height="170" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
