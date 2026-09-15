@@ -1,5 +1,3 @@
-import litellm
-
 from litigant_portal.agents.base import Field, Tool, ToolOutput
 
 READER_SYSTEM_PROMPT = (
@@ -81,7 +79,13 @@ class QueryDocument(Tool):
         )
 
     def ask(self, name: str, part: dict, model: str) -> tuple[str, float]:
-        """One reader call; returns the answer and what it cost."""
+        """
+        One reader call; returns the answer and what it cost.
+        """
+        # Django model imports reach this tool during collectstatic. Defer
+        # LiteLLM's memory overhead until a document reader call needs it.
+        import litellm
+
         response = litellm.completion(
             model=model,
             messages=[
