@@ -245,6 +245,44 @@ def answer_passages(answer: str) -> list[dict]:
     ]
 
 
+def cited_sources(record: dict) -> list[dict]:
+    """
+    Resolve citations from captured source material for this exact final answer.
+
+    Internal reviews contain the pinned corpus supplied by the application.
+    Pass only cited documents, never the internal verdict or rejected drafts.
+    Older records and raw answers may have no such source registry.
+    """
+    cited = set(re.findall(r"\[source:([^\]]+)\]", record["answer"]))
+    if not cited:
+        return []
+    for call in reversed(record.get("calls", [])):
+        request = call.get("request", {})
+        if not (request.get("instructions") or "").startswith(
+            "You review candidate answers"
+        ):
+            continue
+        try:
+            review = json.loads(request["input"][0]["content"])
+        except (KeyError, IndexError, TypeError, json.JSONDecodeError):
+            continue
+        if (
+            not isinstance(review, dict)
+            or review.get("candidate") != record["answer"]
+        ):
+            continue
+        return [
+            {
+                key: source[key]
+                for key in ("source_id", "kind", "title", "locator", "content")
+                if key in source
+            }
+            for source in review.get("material", {}).get("sources", [])
+            if source.get("source_id") in cited and source.get("content")
+        ]
+    return []
+
+
 def contract(run: Path) -> dict:
     """
     Freeze the original scoring rubric with the current response protocol.
@@ -345,6 +383,7 @@ async def evaluate(
         "answer_passages": answer_passages(record["answer"]),
         "fictional": case.group == "fictional",
         "references": references,
+        "cited_sources": cited_sources(record),
         "expected_facts": [fact.model_dump() for fact in case.facts],
         "acceptable_deferral": case.acceptable_deferral,
         "requires_escalation": case.requires_escalation,

@@ -328,6 +328,12 @@ def serve(run: Path, payload: dict, wire):
                     root = corpus.fixture_root(run, variant)
                     if "old" in config.systems:
                         corpus.install_fixture(root)
+                    if "new" in config.systems:
+                        from .agent_corpus import install_fixture
+
+                        path = run / "corpora" / f"{variant}-agent.json"
+                        write_json(path, install_fixture(root, variant))
+                        publish(path)
                     for path in sorted(root.rglob("*.yml")):
                         publish(path)
                 if "old" in config.systems:
