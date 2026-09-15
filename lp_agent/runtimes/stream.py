@@ -15,6 +15,13 @@ from lp_agent.types import RunEvent
 logger = logging.getLogger(__name__)
 
 
+async def _await_result[T](awaitable: Awaitable[T]) -> T:
+    """
+    Adapt any supported awaitable to the coroutine required by asyncio.Runner.
+    """
+    return await awaitable
+
+
 class EventStream(Iterator[str]):
     """
     Own one agent and event loop until exhaustion or explicit closure.
@@ -46,7 +53,7 @@ class EventStream(Iterator[str]):
             raise StopIteration
         try:
             if self._events is None:
-                run = self._runner.run(self._submit())
+                run = self._runner.run(_await_result(self._submit()))
                 self._events = run.events()
             event = self._runner.run(anext(self._events))
             return event.model_dump_json() + "\n"
@@ -74,7 +81,7 @@ class EventStream(Iterator[str]):
                 self._runner.run(self._events.aclose())
         finally:
             try:
-                self._runner.run(self._close_agent())
+                self._runner.run(_await_result(self._close_agent()))
             finally:
                 self._runner.close()
 

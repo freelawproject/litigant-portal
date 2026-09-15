@@ -145,4 +145,7 @@ class DirectRun:
             await self._engagement.finish(outcome, self._emit)
             return outcome
         finally:
-            self._events.put_nowait(None)
+            try:
+                await self._engagement.aclose()
+            finally:
+                self._events.put_nowait(None)

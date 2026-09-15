@@ -32,7 +32,7 @@ def _safe_location(location: tuple, schema: dict) -> str:
     Follow declared properties and sequence indices, never dictionary keys.
     """
     definitions = schema.get("$defs", {})
-    path = []
+    path: list[str] = []
     for segment in location:
         seen = set()
         while "$ref" in schema:

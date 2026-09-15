@@ -9,6 +9,7 @@ from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
 from lp_agent.identity import AgentIdentity, ResourceScope
 from lp_agent.types import (
     AccessContext,
+    ModelFinished,
     ModelMessage,
     ModelOutputItem,
     OutputText,
@@ -86,3 +87,17 @@ def environment_options():
         "api_key": "test-only-key",
         "resource_root": Path("unused-corpus"),
     }
+
+
+class PassingJudge:
+    """
+    Supply a controlled passing review for tests focused on other behavior.
+    """
+
+    def __init__(self):
+        self.requests = []
+
+    async def stream(self, request):
+        self.requests.append(request)
+        yield answer_item('{"approved": true, "findings": []}')
+        yield ModelFinished(reason="stop")

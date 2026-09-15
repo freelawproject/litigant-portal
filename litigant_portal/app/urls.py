@@ -31,6 +31,11 @@ app_patterns = [
         agent_views.development_stream,
         name="agent_development_stream",
     ),
+    path(
+        "dev/agent/conversations/<uuid:conversation_id>/",
+        agent_views.development_conversation,
+        name="agent_development_conversation",
+    ),
     path("t/<slug:court>/<slug:topic>/", pages.deep_link, name="deep_link"),
     path(
         "t/<slug:court>/<slug:topic>/<slug:role>/",

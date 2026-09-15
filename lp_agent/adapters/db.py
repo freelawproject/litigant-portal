@@ -7,7 +7,8 @@ Catalog writes require a host-authorized author; private operations use the
 verified AccessContext. This adapter is never exposed as a model tool.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncIterator, Mapping, Sequence
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import LiteralString
@@ -64,14 +65,16 @@ class AgentDatabase:
         self.connection = connection
         self.access = access
 
-    def transaction(self) -> AsyncTransaction:
+    @asynccontextmanager
+    async def transaction(self) -> AsyncIterator[AsyncTransaction]:
         """
         Group related writes and their checkpoint in one commit or rollback.
 
         Let errors escape this block to roll back the whole unit of work.
         Nested adapter transactions use savepoints on this same connection.
         """
-        return self.connection.transaction()
+        async with self.connection.transaction() as transaction:
+            yield transaction
 
     async def _one(
         self, query: LiteralString | sql.Composed, params: Sequence[object]
@@ -342,6 +345,42 @@ class AgentDatabase:
                 )
             ).fetchall()
         return tuple(PromptFragment.model_validate(row) for row in rows)
+
+    async def scope_choices(self, court: str | None = None):
+        """
+        List enabled court/topic pairs for host selection and static triage.
+        """
+        from lp_agent.preparation import CourtChoice
+        from lp_agent.types import Choice
+
+        rows = await (
+            await self.connection.execute(
+                """
+            SELECT c.slug AS court, c.name, t.slug AS topic, t.title
+            FROM public.agent_court c
+            JOIN public.agent_court_topic ct ON ct.court_id = c.id
+            JOIN public.agent_topic t ON t.id = ct.topic_id
+            WHERE c.enabled AND ct.enabled AND t.enabled
+                AND (%s::text IS NULL OR c.slug = %s)
+            ORDER BY c.name, t.title
+            """,
+                (court, court),
+            )
+        ).fetchall()
+        return tuple(
+            CourtChoice(
+                choice_id=slug,
+                label=name,
+                topics=tuple(
+                    Choice(choice_id=row["topic"], label=row["title"])
+                    for row in rows
+                    if row["court"] == slug
+                ),
+            )
+            for slug, name in dict.fromkeys(
+                (row["court"], row["name"]) for row in rows
+            )
+        )
 
     async def create_matter(self, court_topic_id: str, title: str) -> DictRow:
         """

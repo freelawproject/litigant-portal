@@ -7,6 +7,9 @@ import logging
 from collections.abc import Callable
 from contextlib import aclosing
 from dataclasses import dataclass, field
+from typing import TypedDict
+
+from pydantic import JsonValue
 
 from lp_agent.errors import (
     AgentAccessError,
@@ -15,6 +18,7 @@ from lp_agent.errors import (
 )
 from lp_agent.flows.prompts import system_prompt
 from lp_agent.identity import AgentIdentity, ResourceScope
+from lp_agent.interfaces import RunStore
 from lp_agent.types import (
     AgentConfiguration,
     CancelledOutcome,
@@ -46,6 +50,11 @@ from lp_agent.types import (
 from lp_agent.utils.audit import InstructionArtifact
 
 logger = logging.getLogger(__name__)
+
+
+class RunReference(TypedDict):
+    run_id: str
+    conversation_id: str
 
 
 class EngagementFlow:
@@ -91,15 +100,18 @@ class EngagementFlow:
             ),
         )
 
-    async def _bind_scope(self) -> ResourceScope:
-        if self._scoped is not None:
+    async def _bind_scope(self, scope: Scope | None = None) -> ResourceScope:
+        if self._scoped is not None and (
+            scope is None or self._scoped.scope == scope
+        ):
             return self._scoped
         selection = self.environment.scope
-        if selection.court is None or selection.topic is None:
-            raise AgentValidationError(
-                "Select a court and topic before sending."
-            )
-        scope = Scope(court=selection.court, topic=selection.topic)
+        if scope is None:
+            if selection.court is None or selection.topic is None:
+                raise AgentValidationError(
+                    "Select a court and topic before sending."
+                )
+            scope = Scope(court=selection.court, topic=selection.topic)
         access = self.environment.access
         scoped = await self.environment.scope_factory.bind(
             access=access, scope=scope
@@ -119,7 +131,7 @@ class Engagement:
     """
 
     environment: AgentIdentity
-    scoped: ResourceScope
+    scoped: ResourceScope | None
     initial_status: RunStatus
     request: RunRequest
     limits: RunLimits
@@ -132,11 +144,20 @@ class Engagement:
     _storage_version: int | None = field(default=None, init=False, repr=False)
 
     @property
-    def reference(self) -> dict[str, str]:
+    def reference(self) -> RunReference:
         return {
             "run_id": self.initial_status.run_id,
             "conversation_id": self.initial_status.conversation_id,
         }
+
+    @property
+    def checkpoint_store(self) -> RunStore:
+        return self.environment.runs
+
+    async def aclose(self) -> None:
+        """
+        Release services owned by this run after execution and terminal persistence.
+        """
 
     async def status(self) -> RunStatus:
         return await self.environment.runs.status(
@@ -209,32 +230,12 @@ class Engagement:
     ) -> None:
         try:
             status = RunStatus(**self.reference, state=state)
-            saved = await self.environment.runs.commit_checkpoint(
+            saved = await self.checkpoint_store.commit_checkpoint(
                 access=self.environment.access,
                 checkpoint=RunCheckpoint(
                     **self.reference,
                     storage_version=self._storage_version,
-                    data={
-                        "request": self.request.model_dump(mode="json"),
-                        "model_request": self.model_request.model_dump(
-                            mode="json"
-                        ),
-                        "model_output": [
-                            item.model_dump(mode="json")
-                            for item in self.output_items
-                        ],
-                        "model_finished": (
-                            self.model_finished.model_dump(mode="json")
-                            if self.model_finished is not None
-                            else None
-                        ),
-                        "instruction_artifact": {
-                            "canonical_json": self.instruction_artifact.canonical_bytes().decode(
-                                "utf-8"
-                            ),
-                            "sha256": self.instruction_artifact.content_hash(),
-                        },
-                    },
+                    data=self._checkpoint_data(),
                 ),
                 status=status,
                 outcome=outcome,
@@ -249,9 +250,28 @@ class Engagement:
             raise AgentStorageError() from None
         emit(StatusEvent(status=status))
 
+    def _checkpoint_data(self) -> dict[str, JsonValue]:
+        return {
+            "request": self.request.model_dump(mode="json"),
+            "model_request": self.model_request.model_dump(mode="json"),
+            "model_output": [
+                item.model_dump(mode="json") for item in self.output_items
+            ],
+            "model_finished": self.model_finished.model_dump(mode="json")
+            if self.model_finished
+            else None,
+            "instruction_artifact": {
+                "canonical_json": self.instruction_artifact.canonical_bytes().decode(
+                    "utf-8"
+                ),
+                "sha256": self.instruction_artifact.content_hash(),
+            },
+        }
+
     async def _model_response(
         self, emit: Callable[[EventPayload], None]
     ) -> RunOutcome:
+        assert self.scoped is not None
         async with aclosing(
             self.scoped.model.stream(self.model_request)
         ) as stream:

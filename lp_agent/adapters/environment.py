@@ -9,7 +9,12 @@ from pathlib import Path
 from pydantic import SecretStr, ValidationError
 
 from lp_agent.adapters.bedrock import BedrockClient
-from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
+from lp_agent.adapters.session import (
+    DatabaseConnections,
+    DatabasePreparationService,
+    LazyConversationStore,
+    LazyRunStore,
+)
 from lp_agent.errors import AgentAccessError, AgentValidationError
 from lp_agent.identity import AgentIdentity, ResourceScope
 from lp_agent.interfaces import ModelClient
@@ -67,21 +72,30 @@ def create_environment(
     ):
         raise AgentValidationError("resource_root must be a nonempty path.")
     key = _resolve(api_key, "api_key")
-    model_client = BedrockClient(_resolve(model, "model"), api_key=key)
+    if not isinstance(key, str | SecretStr):
+        raise AgentValidationError("A Bedrock API key is required.")
+    model_identifier = _resolve(model, "model")
+    model_client = BedrockClient(model_identifier, api_key=key)
     judge_model = _resolve(judge, "judge")
     judge_client = (
         BedrockClient(judge_model, api_key=key)
         if judge_model is not None
         else None
     )
-    conversations = MemoryConversationStore()
+    connections = DatabaseConnections()
     return AgentIdentity(
         access=access,
         scope=scope,
-        conversations=conversations,
-        runs=MemoryRunStore(conversations),
+        conversations=LazyConversationStore(connections),
+        runs=LazyRunStore(connections),
+        preparation=DatabasePreparationService(
+            connections, access, model_identifier, judge_model
+        ),
         scope_factory=ModelScopeFactory(
-            access, model_client, judge_client, Path(root).absolute()
+            access,
+            model_client,
+            judge_client,
+            Path(root).absolute(),
         ),
     )
 

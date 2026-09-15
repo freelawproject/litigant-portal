@@ -4,6 +4,7 @@ Live service dependencies, separate from serializable contracts.
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from lp_agent.errors import AgentValidationError
 from lp_agent.interfaces import (
@@ -13,6 +14,9 @@ from lp_agent.interfaces import (
     ScopeFactory,
 )
 from lp_agent.types import AccessContext, Scope, ScopeSelection
+
+if TYPE_CHECKING:
+    from lp_agent.preparation import PreparationService
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -50,6 +54,7 @@ class AgentIdentity:
     runs: RunStore
     scope_factory: ScopeFactory
     scope: ScopeSelection = field(default_factory=ScopeSelection)
+    preparation: "PreparationService | None" = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """

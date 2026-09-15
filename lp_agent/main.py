@@ -5,7 +5,7 @@ The public agent facade and immutable execution configuration.
 from pydantic import TypeAdapter, ValidationError
 
 from lp_agent.errors import AgentValidationError
-from lp_agent.flows.engagement import EngagementFlow
+from lp_agent.flows.new_engagement import NewEngagementFlow
 from lp_agent.identity import AgentIdentity
 from lp_agent.interfaces import RunHandle
 from lp_agent.runtimes.direct import DirectRuntime
@@ -47,7 +47,7 @@ class LPAgent:
             raise AgentValidationError("environment must be an AgentIdentity")
         self._environment = environment
         self._execution = (
-            DirectRuntime(EngagementFlow(environment, self._configuration))
+            DirectRuntime(NewEngagementFlow(environment, self._configuration))
             if runtime == "Direct"
             else None
         )

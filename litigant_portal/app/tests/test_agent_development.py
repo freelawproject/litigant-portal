@@ -4,10 +4,10 @@ Access gates and host configuration for the new agent development page.
 
 import asyncio
 import json
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.test import Client, SimpleTestCase, TestCase, override_settings
@@ -19,17 +19,38 @@ from litigant_portal.app.models.choices import (
     BedrockModel,
 )
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
-from litigant_portal.app.selectors.agent import Court, agent_scope_choices
+from litigant_portal.app.selectors.agent import agent_scope_choices
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.views.agent import AgentMessageForm
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
+from lp_agent.flows.new_engagement import message_text
+from lp_agent.tests.fixtures.preparation import load_preparation_fixture
 from lp_agent.tests.helpers import answer_item
-from lp_agent.types import Choice, ModelFinished, ModelTextDelta
+from lp_agent.tests.providers.test_database import database
+from lp_agent.tests.providers.test_database import (
+    database_dsns as database_dsns,  # noqa: F401
+)
+from lp_agent.types import ModelFinished, ModelMessage, ModelTextDelta
+
+
+@pytest.fixture(scope="module")
+def agent_database(database_dsns):  # noqa: F811
+    async def seed():
+        async with database(database_dsns["crud"]) as db:
+            await load_preparation_fixture(db, settings.BASE_DIR)
+
+    with override_settings(
+        LP_AGENT_WRITER_DSN=database_dsns["crud"],
+        LP_AGENT_LOOKUP_DSN=database_dsns["lookup"],
+    ):
+        asyncio.run(seed())
+        yield
 
 
 @override_settings(LP_AGENT_DEV_ENABLED=True, SITE_PASSWORD="")
 @pytest.mark.postgres
+@pytest.mark.usefixtures("agent_database")
 class AgentDevelopmentPageTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -62,6 +83,10 @@ class AgentDevelopmentPageTests(TestCase):
         self.client.force_login(self.developer)
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
+        self.assertIn("no-store", response["Cache-Control"])
+        self.assertRegex(
+            response.content.decode(), r"agent_development\.js\?v=[0-9a-f]{12}"
+        )
         self.assertEqual(
             response.context["selected_model"], DEFAULT_BEDROCK_MODEL
         )
@@ -126,56 +151,33 @@ class AgentModelChoicesTests(SimpleTestCase):
         )
 
 
+@pytest.mark.postgres
+@pytest.mark.usefixtures("agent_database")
 class AgentScopeChoicesTests(SimpleTestCase):
-    def setUp(self):
-        courts = {
-            "first-court": SimpleNamespace(name="First court"),
-            "second-court": SimpleNamespace(name="Second court"),
-        }
-        topics = {
-            ("first-court", "first-topic"): SimpleNamespace(title="First"),
-            ("second-court", "second-topic"): SimpleNamespace(title="Second"),
-            ("unknown-court", "orphan-topic"): SimpleNamespace(title="Orphan"),
-        }
-        self.enterContext(
-            patch(
-                "litigant_portal.app.selectors.agent.corpus_load_courts",
-                return_value=courts,
-            )
-        )
-        self.enterContext(
-            patch(
-                "litigant_portal.app.selectors.agent.corpus_load_topics",
-                return_value=topics,
-            )
-        )
-
     @override_settings(CORPUS_COURT=None)
     def test_multi_court_choices_preserve_valid_pairs(self):
+        courts = agent_scope_choices()
         self.assertEqual(
-            agent_scope_choices(),
-            (
-                Court(
-                    choice_id="first-court",
-                    label="First court",
-                    topics=(Choice(choice_id="first-topic", label="First"),),
-                ),
-                Court(
-                    choice_id="second-court",
-                    label="Second court",
-                    topics=(Choice(choice_id="second-topic", label="Second"),),
-                ),
-            ),
+            {
+                (court.choice_id, topic.choice_id)
+                for court in courts
+                for topic in court.topics
+            },
+            {
+                ("north-dakota", "adult-name-change"),
+                ("franklin-county-oh", "eviction"),
+            },
         )
 
-    @override_settings(CORPUS_COURT="second-court")
+    @override_settings(CORPUS_COURT="north-dakota")
     def test_single_court_filters_both_selectors(self):
         courts = agent_scope_choices()
         self.assertEqual(
-            [court.choice_id for court in courts], ["second-court"]
+            [court.choice_id for court in courts], ["north-dakota"]
         )
         self.assertEqual(
-            [topic.choice_id for topic in courts[0].topics], ["second-topic"]
+            [topic.choice_id for topic in courts[0].topics],
+            ["adult-name-change"],
         )
 
     @override_settings(CORPUS_COURT="missing-court")
@@ -183,25 +185,23 @@ class AgentScopeChoicesTests(SimpleTestCase):
         self.assertEqual(agent_scope_choices(), ())
 
     @override_settings(CORPUS_COURT=None)
-    def test_form_accepts_only_topics_from_the_selected_court(self):
+    def test_form_accepts_partial_scopes_and_rejects_wrong_pairs(self):
         courts = agent_scope_choices()
         data = {
             "message": "Hello",
             "model": MODEL_CHOICES[0][0],
             "max_active_seconds": "5",
         }
-        for court in courts:
-            form = AgentMessageForm(
-                data
-                | {
-                    "court": court.choice_id,
-                    "topic": court.topics[0].choice_id,
-                },
-                courts=courts,
-            )
+        for scope in (
+            {},
+            {"court": "north-dakota"},
+            {"topic": "adult-name-change"},
+            {"court": "north-dakota", "topic": "adult-name-change"},
+        ):
+            form = AgentMessageForm(data | scope, courts=courts)
             self.assertTrue(form.is_valid(), form.errors)
         form = AgentMessageForm(
-            data | {"court": "first-court", "topic": "second-topic"},
+            data | {"court": "north-dakota", "topic": "eviction"},
             courts=courts,
         )
         self.assertFalse(form.is_valid())
@@ -215,6 +215,7 @@ class AgentScopeChoicesTests(SimpleTestCase):
     BEDROCK_API_KEY="test-only-key",
 )
 @pytest.mark.postgres
+@pytest.mark.usefixtures("agent_database")
 class AgentDevelopmentStreamTests(TestCase):
     def close_response(self, response):
         """
@@ -271,7 +272,6 @@ class AgentDevelopmentStreamTests(TestCase):
     def test_invalid_inputs_never_construct_an_agent(self):
         cases = [
             {"message": "   "},
-            {"court": ""},
             {"court": "missing"},
             {"topic": "missing"},
             {"model": ""},
@@ -357,17 +357,21 @@ class AgentDevelopmentStreamTests(TestCase):
                     all(record.exc_info is None for record in logs.records)
                 )
 
-    def test_http_stream_delivers_text_before_model_finishes(self):
+    def test_http_stream_delivers_status_before_checked_answer(self):
         continue_response = asyncio.Event()
         closed = False
         requests = []
 
         async def model_stream(client, request):
             nonlocal closed
+            if request.instructions.startswith("You review candidate"):
+                yield answer_item('{"approved": true, "findings": []}')
+                yield ModelFinished(reason="stop")
+                return
             requests.append((client.model, request))
             try:
                 yield ModelTextDelta(delta="First")
-                # The provider cannot finish until the test consumes first text.
+                # The provider waits while the client receives progress events.
                 await continue_response.wait()
                 yield ModelTextDelta(delta=" second")
                 yield answer_item("First second")
@@ -388,9 +392,14 @@ class AgentDevelopmentStreamTests(TestCase):
                     json.loads(next(stream))["payload"]["status"]["state"],
                     "running",
                 )
-                self.assertEqual(
-                    json.loads(next(stream))["payload"]["delta"], "First"
-                )
+                while True:
+                    payload = json.loads(next(stream))["payload"]
+                    self.assertNotEqual(payload["type"], "text")
+                    if (
+                        payload["type"] == "tool"
+                        and payload["name"] == "model_response"
+                    ):
+                        break
                 self.assertFalse(closed)
                 continue_response.set()
                 remaining = [json.loads(chunk) for chunk in stream]
@@ -424,8 +433,13 @@ class AgentDevelopmentStreamTests(TestCase):
             response = self.client.post(self.url, self.data)
             stream = iter(response.streaming_content)
             try:
-                next(stream)
-                next(stream)
+                while True:
+                    payload = json.loads(next(stream))["payload"]
+                    if (
+                        payload["type"] == "tool"
+                        and payload["name"] == "model_response"
+                    ):
+                        break
             finally:
                 self.close_response(response)
         self.assertTrue(closed)
@@ -448,3 +462,90 @@ class AgentDevelopmentStreamTests(TestCase):
                 self.close_response(response)
         self.assertEqual(chunks[-1]["payload"]["outcome"]["state"], "failed")
         self.assertNotIn("private provider payload", json.dumps(chunks))
+        saved = self.client.get(
+            reverse(
+                "pages:agent_development_conversation",
+                kwargs={"conversation_id": chunks[-1]["conversation_id"]},
+            )
+        )
+        self.assertEqual(saved.status_code, 200)
+        messages = saved.json()["messages"]
+        self.assertEqual(len(messages), 2)
+        self.assertEqual(messages[-1]["role"], "assistant")
+        self.assertEqual(
+            messages[-1]["text"],
+            chunks[-1]["payload"]["outcome"]["error"]["message"],
+        )
+        self.assertEqual(messages[-1]["sources"], [])
+        self.assertNotIn("private provider payload", json.dumps(messages))
+        self.assertNotIn("Partial", json.dumps(messages))
+
+    def consume(self, response):
+        try:
+            return [json.loads(chunk) for chunk in response.streaming_content]
+        finally:
+            self.close_response(response)
+
+    def test_static_scope_selection_preserves_original_question_and_reloads(
+        self,
+    ):
+        requests = []
+
+        async def model_stream(client, request):
+            if request.instructions.startswith("You review candidate"):
+                yield answer_item('{"approved": true, "findings": []}')
+            else:
+                requests.append(request)
+                yield answer_item("I can help with this court matter.")
+            yield ModelFinished(reason="stop")
+
+        with patch(
+            "lp_agent.adapters.bedrock.BedrockClient.stream", model_stream
+        ):
+            data = self.data | {
+                "court": "",
+                "topic": "",
+                "message": "What help is available?",
+            }
+            chunks = self.consume(self.client.post(self.url, data))
+            conversation_id = chunks[-1]["conversation_id"]
+            self.assertIn(
+                "Choose the court", chunks[-1]["payload"]["outcome"]["text"]
+            )
+            self.assertEqual(requests, [])
+            data |= {"conversation_id": conversation_id, "message": "1"}
+            chunks = self.consume(self.client.post(self.url, data))
+            self.assertIn(
+                "Choose the topic", chunks[-1]["payload"]["outcome"]["text"]
+            )
+            self.assertEqual(requests, [])
+            chunks = self.consume(self.client.post(self.url, data))
+            self.assertEqual(
+                chunks[-1]["payload"]["outcome"]["state"], "completed"
+            )
+            self.assertEqual(
+                requests[0].input[-1].content, "What help is available?"
+            )
+            url = reverse(
+                "pages:agent_development_conversation",
+                kwargs={"conversation_id": conversation_id},
+            )
+            saved = self.client.get(url)
+            self.assertEqual(saved.status_code, 200)
+            self.assertEqual(len(saved.json()["messages"]), 6)
+            self.assertTrue(saved.json()["scope"]["court"])
+            chunks = self.consume(
+                self.client.post(self.url, data | {"message": "What next?"})
+            )
+            self.assertEqual(chunks[-1]["conversation_id"], conversation_id)
+            self.assertTrue(
+                any(
+                    isinstance(item, ModelMessage)
+                    and message_text(item)
+                    == "I can help with this court matter."
+                    for item in requests[-1].input
+                )
+            )
+        self.other.groups.add(Group.objects.get(name=DEVELOPERS_GROUP))
+        self.client.force_login(self.other)
+        self.assertEqual(self.client.get(url).status_code, 404)
