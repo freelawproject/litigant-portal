@@ -29,6 +29,15 @@ Slug = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")]
 # docassemble executes these as assignment statements, so identifiers only.
 InterviewVariable = Annotated[str, Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")]
 
+# A docassemble interview reference (``docassemble.<package>:<file>.yml``),
+# the ``?i=`` value. Never a URL: where it is sent comes from settings (#879).
+InterviewReference = Annotated[
+    str,
+    Field(
+        pattern=r"^docassemble\.[A-Za-z][A-Za-z0-9]*:[A-Za-z0-9_\-./]+\.yml$"
+    ),
+]
+
 
 class _Base(BaseModel):
     # Reject unknown keys so an author's typo fails loudly instead of silently
@@ -158,7 +167,7 @@ class PacketOutput(_Base):
     # Optional warm handoff to a docassemble interview that fills these forms.
     # Unset (None) => the packet renders as a plain form list, so existing
     # corpora are unaffected.
-    interview_url: str | None = None
+    interview_reference: InterviewReference | None = None
     # ``{fact_gather question id: interview variable}``; the loader checks
     # each key resolves. Empty => the interview asks everything.
     interview_prefill: dict[Slug, InterviewVariable] = Field(

@@ -99,25 +99,49 @@ def test_optional_lists_and_question_defaults():
     assert question.required is False
 
 
-def test_packet_interview_url_optional_and_accepted():
-    """interview_url defaults to None — the link-out is graceful when an author
-    omits it, so existing packet corpora are unaffected — and is carried through
-    when provided (the #543 docassemble handoff seam)."""
-    base = {
-        "kind": "output",
-        "output_type": "packet",
-        "id": "p",
-        "heading": "Your packet",
-        "forms": ["Petition for Name Change"],
-    }
-    assert PacketOutput.model_validate(base).interview_url is None
-    url = "https://da.example/interview?i=docassemble.playground"
-    assert (
-        PacketOutput.model_validate(
-            {**base, "interview_url": url}
-        ).interview_url
-        == url
+def test_packet_interview_reference_defaults_to_none():
+    # The handoff is opt-in: existing packet corpora are unaffected.
+    assert PacketOutput.model_validate(_packet()).interview_reference is None
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "docassemble.ndnamechange:petition-standard.yml",
+        "docassemble.playground1:petition-waiver.yml",
+        "docassemble.pkg:data/questions/petition.yml",
+    ],
+    ids=["package", "playground", "explicit-path"],
+)
+def test_a_well_formed_interview_reference_is_accepted(reference):
+    packet = PacketOutput.model_validate(
+        _packet(interview_reference=reference)
     )
+    assert packet.interview_reference == reference
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "https://da.example/interview?i=docassemble.pkg:petition.yml",
+        "petition-standard.yml",
+        "docassemble.pkg:petition",
+        "pkg:petition.yml",
+        "",
+    ],
+    ids=[
+        "full-url",
+        "bare-filename",
+        "no-yml",
+        "no-docassemble-prefix",
+        "empty",
+    ],
+)
+def test_a_malformed_interview_reference_is_rejected(reference):
+    # A URL here is the pre-#879 shape: content deciding where the key and the
+    # answers go. The loader must refuse it, not quietly carry it.
+    with pytest.raises(ValidationError):
+        PacketOutput.model_validate(_packet(interview_reference=reference))
 
 
 def _packet(**extra):
@@ -139,7 +163,8 @@ def test_packet_prefill_mapping_is_carried_through():
     mapping = {"first_name": "current_first"}
     packet = PacketOutput.model_validate(
         _packet(
-            interview_url="https://da.example/i", interview_prefill=mapping
+            interview_reference="docassemble.pkg:i.yml",
+            interview_prefill=mapping,
         )
     )
     assert packet.interview_prefill == mapping
@@ -154,7 +179,7 @@ def test_interview_variable_must_be_a_plain_identifier(variable):
     with pytest.raises(ValidationError):
         PacketOutput.model_validate(
             _packet(
-                interview_url="https://da.example/i",
+                interview_reference="docassemble.pkg:i.yml",
                 interview_prefill={"first_name": variable},
             )
         )

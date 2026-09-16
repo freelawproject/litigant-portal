@@ -46,13 +46,18 @@ Two systems, two jobs, one contract — with a deliberate split of which facts e
 - **Topic Flow owns** a light fact set, named for the glossary (`first_name`, `county`, `name_change_publication_date`), and hands it over on the way out.
 - **The interview owns** the full document fact set Topic Flow never collects (residence, residency-since, citizenship, criminal history, publication newspaper, track-specific fields). Asking those in the guided flow would duplicate the interview.
 
-**The names are not 1:1, and the mapping is explicit.** Only 3 of the interview's 19 variables happen to share our glossary names, so each flow's packet section carries an `interview_prefill` map from question id to interview variable, next to `interview_url`:
+**The corpus names the interview; the environment names the host (#879).** A flow's packet section carries `interview_reference`, a docassemble package reference the loader validates (`docassemble.<package>:<file>.yml`, never a URL). Where it is sent comes from settings alone: `DOCASSEMBLE_BASE_URL` is the API root LP calls (and the default launch base), `DOCASSEMBLE_PUBLIC_URL` the litigant-facing base when those differ, `DOCASSEMBLE_API_KEY` turns prefill on. With neither URL set, the packet renders without the interview button and the registry logs which flows are affected. This keeps author-controlled content from ever deciding where the API key and the litigant's answers go.
+
+**The names are not 1:1, and the mapping is explicit.** Only 3 of the interview's 19 variables happen to share our glossary names, so each flow's packet section carries an `interview_prefill` map from question id to interview variable, next to `interview_reference`:
 
 ```yaml
+interview_reference: 'docassemble.ndnamechange:data/questions/petition-standard.yml'
 interview_prefill:
   first_name: current_first
   county: residence_county
 ```
+
+**Always write the full `data/questions/` path in the reference.** docassemble's API accepts the short alias (`docassemble.pkg:file.yml`) and creates a session under it, but the browser-side launch canonicalizes to the `data/questions/` path and then cannot find that session — the litigant lands on "Unable to locate interview session" and an empty, unprefilled interview. Learned the hard way on #879.
 
 The schema validates every key is a `fact_gather` question id of that flow and every value is a plain Python identifier (docassemble executes these as assignment statements, so they may only come from author-controlled YAML). A drift guard in the test suite parses the versioned interviews and fails when a mapped variable no longer exists there.
 
@@ -64,4 +69,14 @@ Three rules the prefill runs on:
 - **A preset variable skips its validation too.** A value outside a field's declared choices is never caught and prints straight onto the court form, which is why the drift guard also compares choice value sets.
 - **`waiver_reasons` is never mapped.** It's a `checkboxes` field, so prefilling it needs a DADict object encoding; the interview re-asks that one question. It is also the sensitive one (domestic violence), which is no loss to leave uncollected.
 
-Sending the payload creates a session, so the handoff is a POST from a form, not a link, and it falls back to the plain unprefilled `interview_url` whenever no API key is configured or the API call fails. Deleting the session once its packet is downloaded is tracked on #805.
+Sending the payload creates a session, so the handoff is a POST from a form, not a link, and it falls back to the plain unprefilled launch URL (built from the same settings) whenever no API key is configured or the API call fails. Deleting the session once its packet is downloaded is tracked on #805.
+
+## Serving the handoff: the interviews must be installed as a package
+
+The corpus references name the `docassemble.ndnamechange` package, so a Playground upload alone no longer resolves them: the interviews must be installed as that package on whichever docassemble serves the handoff (bench or QA). From the Playground it takes a minute:
+
+1. Upload the interviews to **Sources** and the PDFs to **Templates** (the "Test it locally" steps in [`docassemble/nd-name-change/README.md`](../docassemble/nd-name-change/README.md)).
+2. **Folders → Packages** → add a package named `ndnamechange`, attach both interview files and the five PDF templates.
+3. Click **Install**. The server now resolves `docassemble.ndnamechange:petition-standard.yml` for every user, and the LP handoff works.
+
+Re-run the Install after changing an interview: the Playground copy and the installed package are separate copies.

@@ -312,7 +312,7 @@ def test_packet_section_posts_the_handoff_when_an_interview_is_set(
                 id="filing_packet",
                 heading="Your filing packet",
                 forms=["Petition for Name Change"],
-                interview_url="https://da.example.gov/i?i=name_change",
+                interview_reference="docassemble.test:name_change.yml",
             ),
         ],
     )
@@ -328,7 +328,7 @@ def test_packet_section_posts_the_handoff_when_an_interview_is_set(
 
 @pytest.mark.django_db
 def test_packet_section_omits_interview_link_when_unset(client, monkeypatch):
-    # interview_url unset is the default for existing corpora — the else side of
+    # The reference unset is the default for existing corpora — the else side of
     # the same conditional: the packet renders a plain form list and the "Fill
     # out your forms" handoff never appears. Guards against a regression that
     # would surface a dead/empty-href link-out for corpora that never opted in.
@@ -366,7 +366,7 @@ def test_packet_section_omits_the_handoff_without_docassemble_configured(
                 id="filing_packet",
                 heading="Your filing packet",
                 forms=["Petition for Name Change"],
-                interview_url="https://da.example.gov/i?i=name_change",
+                interview_reference="docassemble.test:name_change.yml",
             ),
         ],
     )

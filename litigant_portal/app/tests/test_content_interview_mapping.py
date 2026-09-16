@@ -98,7 +98,7 @@ def _mapped():
 def _handoff_interviews():
     """(content file, interview path) per interview a flow hands off to.
 
-    Every flow with an interview_url, mapped or not: the handoff creates a
+    Every flow with an interview reference, mapped or not: the handoff creates a
     session either way.
     """
     seen = {}
