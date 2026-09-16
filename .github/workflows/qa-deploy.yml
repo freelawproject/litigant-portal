@@ -7,6 +7,11 @@ on:
         description: 'Branch or tag to build and deploy to QA'
         required: true
         default: 'main'
+      reset_db:
+        description: 'Drop every table and rebuild the database from the deployed branch'
+        type: boolean
+        required: false
+        default: true
 
 env:
   AWS_REGION: us-west-2
@@ -95,6 +100,22 @@ jobs:
           echo "collectstatic failed--aborting deploy"
           exit 1
 
+      - name: Reset Database
+        if: ${{ inputs.reset_db }}
+        run: |
+          kubectl exec -i -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage shell <<'PY'
+          from django.db import connection, transaction
+
+          cursor = connection.cursor()
+          cursor.execute("SET lock_timeout = 30000")
+          cursor.execute("SELECT tablename FROM pg_tables WHERE schemaname = current_schema()")
+          tables = [row[0] for row in cursor.fetchall()]
+          with transaction.atomic():
+              for table in tables:
+                  cursor.execute("DROP TABLE IF EXISTS " + connection.ops.quote_name(table) + " CASCADE")
+          print("Dropped", len(tables), "tables")
+          PY
+
       - name: Apply Migrations
         run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage migrate --noinput
       - name: Handle Migration Error
@@ -103,6 +124,12 @@ jobs:
           echo "Migrations failed. Open a shell into pod temp-pod-${{ needs.build.outputs.sha_short }} to investigate."
           echo "It stops running after an hour but is kept around for debugging; the next deploy reaps it."
           exit 1
+
+      - name: Sync Corpus
+        run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage sync_corpus --strict
+
+      - name: Bootstrap Superuser
+        run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage bootstrap_superuser
 
       - name: Delete Temporary Pod
         run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }}
