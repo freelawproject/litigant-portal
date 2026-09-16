@@ -9,6 +9,12 @@ FIXTURE = Path(__file__).resolve().parents[2] / "content" / "_test_fixture.yml"
 VALID = FIXTURE.read_text(encoding="utf-8")
 # Schema-invalid: empty sections list.
 BAD = "metadata: {court: c, topic: t, role: r, title: T}\nsections: []\n"
+# The fixture with its packet opting into the interview handoff.
+HANDOFF = VALID.replace(
+    "id: filing_packet",
+    "id: filing_packet\n"
+    "    interview_url: 'https://da.example/interview?i=pkg:p.yml'",
+)
 FIXTURE_KEY = ("test-court", "test_topic", "petitioner")
 
 
@@ -83,6 +89,35 @@ def test_check_passes_for_distinct_keys(tmp_path, monkeypatch):
         checks, "iter_corpus_paths", lambda _dir: [first, second]
     )
     assert checks.check_corpora(None) == []
+
+
+def test_load_warns_when_a_handoff_has_no_docassemble(
+    tmp_path, settings, caplog
+):
+    # The packet button hides in this state (#879); the log line is what makes
+    # a misconfigured deployment noticeable before someone misses the button.
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    (tmp_path / "flow.yml").write_text(HANDOFF)
+    with caplog.at_level("WARNING"):
+        CorpusRegistry(content_dir=tmp_path).load()
+    assert any(
+        "test-court/test_topic/petitioner" in record.message
+        for record in caplog.records
+    )
+
+
+def test_load_stays_quiet_when_docassemble_is_configured(
+    tmp_path, settings, caplog
+):
+    settings.DOCASSEMBLE_BASE_URL = "http://localhost:8100"
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    (tmp_path / "flow.yml").write_text(HANDOFF)
+    with caplog.at_level("WARNING"):
+        CorpusRegistry(content_dir=tmp_path).load()
+    assert not any(
+        "docassemble" in record.message for record in caplog.records
+    )
 
 
 # --- tracks_for: omni-court topic → track links (chat handoff, #633) ---

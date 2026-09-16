@@ -4,18 +4,34 @@ Pure, like the renderer: the reviewed-only answer read happens at the call
 site, these functions only resolve the corpus mapping and rename what it holds.
 """
 
+from urllib.parse import parse_qs, urlparse
+
 from litigant_portal.app.topic_flow.schema import PacketOutput
 
 
-def interview_target(corpus) -> tuple[str, dict] | None:
-    """``(launch url, {question id: interview variable})``, or None.
+def interview_reference(section) -> str | None:
+    """The interview reference a packet section hands off to, or None.
 
-    The first packet section carrying an interview_url wins; a corpus with no
+    Extracted from the launch URL's ``?i=`` parameter; the host around it is
+    never used (#879). The URL parse goes away when the corpus carries the
+    bare reference.
+    """
+    if not isinstance(section, PacketOutput) or not section.interview_url:
+        return None
+    references = parse_qs(urlparse(section.interview_url).query).get("i", [])
+    return references[0] if references else None
+
+
+def interview_target(corpus) -> tuple[str, dict] | None:
+    """``(interview reference, {question id: interview variable})``, or None.
+
+    The first packet section carrying an interview wins; a corpus with no
     interview handoff returns None.
     """
     for section in corpus.sections:
-        if isinstance(section, PacketOutput) and section.interview_url:
-            return section.interview_url, dict(section.interview_prefill)
+        reference = interview_reference(section)
+        if reference:
+            return reference, dict(section.interview_prefill)
     return None
 
 

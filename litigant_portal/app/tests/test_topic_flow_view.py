@@ -296,12 +296,13 @@ def test_packet_form_with_url_renders_as_link(client, monkeypatch):
 
 @pytest.mark.django_db
 def test_packet_section_posts_the_handoff_when_an_interview_is_set(
-    client, monkeypatch
+    client, monkeypatch, settings
 ):
     # The handoff is a POST to our own endpoint, not a link to docassemble:
     # it creates a session, so a crawler or a reload must not fire it. The
-    # {% if ctx.interview_url %} conditional decides whether the litigant sees
-    # a working handoff at all.
+    # {% if ctx.interview_available %} conditional decides whether the litigant
+    # sees a working handoff at all.
+    settings.DOCASSEMBLE_BASE_URL = "http://localhost:8100"
     corpus = Corpus(
         metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
         sections=[
@@ -346,6 +347,33 @@ def test_packet_section_omits_interview_link_when_unset(client, monkeypatch):
     monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
     html = client.get(URL).content.decode()
     assert "Fill out your forms" not in html
+
+
+@pytest.mark.django_db
+def test_packet_section_omits_the_handoff_without_docassemble_configured(
+    client, monkeypatch, settings
+):
+    # Same corpus as the handoff test, but the environment has no docassemble:
+    # the button would 404, so it must not render (#879).
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            PacketOutput(
+                kind="output",
+                output_type="packet",
+                id="filing_packet",
+                heading="Your filing packet",
+                forms=["Petition for Name Change"],
+                interview_url="https://da.example.gov/i?i=name_change",
+            ),
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    html = client.get(URL).content.decode()
+    assert "Fill out your forms" not in html
+    assert "Petition for Name Change" in html
 
 
 @pytest.mark.django_db

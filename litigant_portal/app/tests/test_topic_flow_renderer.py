@@ -289,34 +289,39 @@ def test_packet_form_url_reaches_the_template_context():
     }
 
 
-def test_packet_without_interview_url_exposes_none():
-    """No interview_url → context carries None, so the template shows no
-    handoff button. Existing packet corpora are unaffected."""
-    section = PacketOutput(
+def _interview_packet(interview_url):
+    return PacketOutput(
         kind="output",
         output_type="packet",
         id="forms",
         heading="Your packet",
         forms=["Petition for Name Change"],
+        interview_url=interview_url,
     )
-    rendered = render_section(section, _corpus(section), {})
-    assert rendered.context["interview_url"] is None
 
 
-def test_packet_with_interview_url_exposes_it_for_the_button():
-    """interview_url reaches the template context verbatim — that's what drives
-    the 'Fill out your forms' link-out (#543)."""
-    url = "https://da.example/interview?i=docassemble.playground"
-    section = PacketOutput(
-        kind="output",
-        output_type="packet",
-        id="forms",
-        heading="Your packet",
-        forms=["Petition for Name Change"],
-        interview_url=url,
-    )
+def test_packet_without_an_interview_offers_no_handoff(settings):
+    # Existing packet corpora are unaffected: plain form list, no button.
+    settings.DOCASSEMBLE_BASE_URL = "http://localhost:8100"
+    section = _interview_packet(None)
     rendered = render_section(section, _corpus(section), {})
-    assert rendered.context["interview_url"] == url
+    assert rendered.context["interview_available"] is False
+
+
+def test_packet_with_an_interview_offers_the_handoff_when_configured(settings):
+    settings.DOCASSEMBLE_BASE_URL = "http://localhost:8100"
+    section = _interview_packet("https://da.example/interview?i=pkg:p.yml")
+    rendered = render_section(section, _corpus(section), {})
+    assert rendered.context["interview_available"] is True
+
+
+def test_packet_hides_the_handoff_without_a_configured_docassemble(settings):
+    # The environment, not the corpus, decides whether a handoff exists (#879).
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    section = _interview_packet("https://da.example/interview?i=pkg:p.yml")
+    rendered = render_section(section, _corpus(section), {})
+    assert rendered.context["interview_available"] is False
 
 
 def test_packet_context_carries_the_handoff_url_parts():

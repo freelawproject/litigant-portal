@@ -10,7 +10,7 @@ decrypt it.
 """
 
 import logging
-from urllib.parse import parse_qs, urlparse, urlunparse
+from urllib.parse import urlencode, urlparse, urlunparse
 
 import requests
 from django.conf import settings
@@ -31,15 +31,32 @@ class DocassembleError(Exception):
     """
 
 
-def docassemble_session_create(*, interview_url: str, variables: dict) -> str:
+def interview_launch_url(interview: str) -> str | None:
+    """The litigant-facing launch link for an interview reference.
+
+    Built from configuration, never from content: the public base when LP
+    reaches docassemble at an address litigants cannot, else the API base.
+    ``None`` means no docassemble in this environment — callers hide the
+    handoff.
+    """
+    base = settings.DOCASSEMBLE_PUBLIC_URL or settings.DOCASSEMBLE_BASE_URL
+    if not base:
+        return None
+    return f"{base.rstrip('/')}/interview?{urlencode({'i': interview})}"
+
+
+def docassemble_session_create(*, interview: str, variables: dict) -> str:
     """Return a one-time URL onto a new session prefilled with ``variables``.
 
-    ``interview_url`` is the plain launch link from the corpus packet section,
-    carrying the interview reference in its ``?i=`` parameter. Keys in
-    ``variables`` are interview-side names, which docassemble executes as
-    assignment statements, so they may only come from author-controlled YAML.
+    ``interview`` is the reference from the corpus packet section (the ``?i=``
+    value); where it is sent comes from settings alone. Keys in ``variables``
+    are interview-side names, which docassemble executes as assignment
+    statements, so they may only come from author-controlled YAML.
     """
-    api_root, interview = _target(interview_url)
+    api_root = settings.DOCASSEMBLE_BASE_URL
+    if not api_root:
+        raise DocassembleError("DOCASSEMBLE_BASE_URL is unset")
+    api_root = api_root.rstrip("/")
     api_key = settings.DOCASSEMBLE_API_KEY
     if not api_key:
         raise DocassembleError("DOCASSEMBLE_API_KEY is unset")
@@ -78,8 +95,9 @@ def _public(resume_url: str) -> str:
     """Swap in the litigant-facing origin, keeping the path and query.
 
     docassemble builds the launch URL from the host we called it on, which on
-    a deployment is an internal address no browser can reach. Unset means the
-    URL comes back as docassemble built it.
+    a deployment is an internal address no browser can reach. Only the origin
+    of the public URL is used here: any path prefix is already in the URL
+    docassemble built. Unset means the URL comes back as docassemble built it.
     """
     public = settings.DOCASSEMBLE_PUBLIC_URL
     if not public:
@@ -90,26 +108,6 @@ def _public(resume_url: str) -> str:
             scheme=origin.scheme, netloc=origin.netloc
         )
     )
-
-
-def _target(interview_url: str) -> tuple[str, str]:
-    """``(api root, interview reference)`` for a launch link."""
-    parts = urlparse(interview_url)
-    references = parse_qs(parts.query).get("i", [])
-    if not references:
-        raise DocassembleError(f"No ?i= interview in {interview_url!r}")
-    root = settings.DOCASSEMBLE_BASE_URL
-    if not root and settings.DOCASSEMBLE_API_KEY:
-        # Falling back to the host the corpus names would POST the key and
-        # the litigant's answers to whatever host that is.
-        raise DocassembleError(
-            "DOCASSEMBLE_API_KEY is set but DOCASSEMBLE_BASE_URL is not"
-        )
-    if not root:
-        # The API sits beside the launch route, so drop that last segment:
-        # QA's /interview/interview leaves the /interview/ path prefix.
-        root = f"{parts.scheme}://{parts.netloc}{parts.path.rsplit('/', 1)[0]}"
-    return root.rstrip("/"), references[0]
 
 
 def _call(*, method: str, api_root: str, path: str, api_key: str, **kwargs):

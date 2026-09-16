@@ -9,7 +9,8 @@ nothing downstream branches on section type.
 The renderer is *fat* but *pure*: it takes the ``corpus`` and a plain
 ``answers`` dict (``{question_id: value}``) and resolves everything the
 template needs — prefilled fields, answer labels, form lists. It imports no
-session/request machinery.
+session/request machinery; the one config read is the packet handler asking
+whether this environment has a docassemble to hand off to.
 
 Corpus validity is guaranteed upstream at load, so the renderer never
 re-validates data; an unhandled section type is a *code* gap (a union member
@@ -22,8 +23,10 @@ consume, so what's downloaded can't drift from what's rendered on the page.
 from dataclasses import dataclass
 
 from litigant_portal.app.formatting import format_long_date
+from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.topic_flow.contacts import resolve_vcf_contacts
 from litigant_portal.app.topic_flow.deadlines import resolve_ics_deadlines
+from litigant_portal.app.topic_flow.prefill import interview_reference
 from litigant_portal.app.topic_flow.schema import FactGatherSection
 
 
@@ -222,6 +225,7 @@ def _render_resources(section, corpus, answers):
 @renderer("packet")
 def _render_packet(section, corpus, answers):
     meta = corpus.metadata
+    reference = interview_reference(section)
     return RenderedSection(
         anchor_id=section.id,
         heading=section.heading,
@@ -230,7 +234,11 @@ def _render_packet(section, corpus, answers):
             "forms": [
                 {"name": form.name, "url": form.url} for form in section.forms
             ],
-            "interview_url": section.interview_url,
+            # Corpus handoff AND a configured docassemble: without either, the
+            # packet renders as a plain form list.
+            "interview_available": bool(
+                reference and interview_launch_url(reference)
+            ),
             # URL parts, as in _render_ics: the template owns {% url %}.
             "court": meta.court,
             "topic": meta.topic,
