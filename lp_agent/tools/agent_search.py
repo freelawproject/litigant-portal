@@ -37,8 +37,8 @@ class AgentSearch:
     """
     Bind trusted context to a lookup-role connection before exposing the tools.
 
-    Use lookup_connection() to verify the dedicated restricted login; manually
-    supplied connections must have the same privileges and configuration.
+    Use lookup_connection() for a dedicated restricted login. The temporary
+    QA host uses qa_lookup_connection() to narrow its application connection.
     The host authenticates access and supplies its current recall policy. These
     values never come from model arguments. Other search sources can be added
     here when implemented; the database path always uses stored functions.

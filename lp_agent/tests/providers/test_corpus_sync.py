@@ -5,6 +5,8 @@ Exercise real-corpus publication and shared QA connections in isolated Postgres.
 import asyncio
 import shutil
 from contextlib import asynccontextmanager
+from importlib import import_module
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -312,12 +314,16 @@ def test_shared_connections_use_the_application_database(
             async with connections.connection(lookup=lookup) as connection:
                 row = await (
                     await connection.execute(
-                        "SELECT current_database() AS database, current_user AS login"
+                        "SELECT current_database() AS database, current_user AS login, "
+                        "session_user AS authenticated_login"
                     )
                 ).fetchone()
                 assert row == {
                     "database": params["dbname"],
-                    "login": params["user"],
+                    "login": "agent_dev_reader"
+                    if environment == "qa" and lookup
+                    else params["user"],
+                    "authenticated_login": params["user"],
                 }
             assert connection.closed
 
@@ -327,4 +333,20 @@ def test_shared_connections_use_the_application_database(
         LP_AGENT_WRITER_DSN="",
         LP_AGENT_LOOKUP_DSN="",
     ):
+        if environment == "qa":
+            migration = import_module(
+                "litigant_portal.app.migrations.0021_restore_agent_vectors_and_qa_search"
+            )
+            with Connection.connect(database_dsns["admin"]) as connection:
+                connection.execute(
+                    "CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public"
+                )
+                connection.execute(
+                    sql.SQL("COMMENT ON TABLE agent_user IS {}").format(
+                        sql.Literal(migration.schema.MARKER)
+                    )
+                )
+                migration.restore_vectors_and_qa_search(
+                    None, SimpleNamespace(connection=connection)
+                )
         asyncio.run(scenario())

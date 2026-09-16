@@ -66,6 +66,7 @@ def default_connection_options() -> Mapping[str, object]:
             if settings.DEPLOYMENT_ENV == "qa"
             else settings.CORPUS_COURT,
             "shared_database": True,
+            "qa_role_lookup": settings.DEPLOYMENT_ENV == "qa",
         }
     return {
         "writer": settings.LP_AGENT_WRITER_DSN,
@@ -101,6 +102,7 @@ class DatabaseConnections:
         from lp_agent.adapters.connections import (
             agent_connection,
             lookup_connection,
+            qa_lookup_connection,
         )
         from lp_agent.errors import AgentValidationError
 
@@ -111,11 +113,12 @@ class DatabaseConnections:
                 raise AgentValidationError(
                     "Agent database credentials are not configured."
                 )
-            factory = (
-                lookup_connection
-                if lookup and not options.get("shared_database", False)
-                else agent_connection
-            )
+            factory = agent_connection
+            if lookup:
+                if options.get("qa_role_lookup", False):
+                    factory = qa_lookup_connection
+                elif not options.get("shared_database", False):
+                    factory = lookup_connection
             async with factory(dsn) as connection:
                 yield connection
         except Error:
