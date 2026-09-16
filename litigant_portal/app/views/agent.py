@@ -36,6 +36,18 @@ SERVICE_UNAVAILABLE = "Agent service is unavailable. Please try again later."
 UNSUPPORTED_TOOL_MODEL = "bedrock_mantle/zai.glm-4.7-flash"
 
 
+def _model_choices():
+    """
+    Omit the unavailable Sol model from the temporary QA deployment.
+    """
+    return tuple(
+        choice
+        for choice in MODEL_CHOICES
+        if settings.DEPLOYMENT_ENV != "qa"
+        or choice[0] != "bedrock_mantle/openai.gpt-5.6-sol"
+    )
+
+
 @login_required
 @permission_required("app.manage_developers", raise_exception=True)
 @never_cache
@@ -46,9 +58,10 @@ def development_page(request: HttpRequest) -> HttpResponse:
     """
     if not settings.LP_AGENT_DEV_ENABLED:
         raise Http404
+    model_choices = _model_choices()
     selected_model = site_get_model(role="assistant")
     if (
-        selected_model not in dict(MODEL_CHOICES)
+        selected_model not in dict(model_choices)
         or selected_model == UNSUPPORTED_TOOL_MODEL
     ):
         selected_model = None
@@ -65,7 +78,7 @@ def development_page(request: HttpRequest) -> HttpResponse:
             "courts": courts,
             "service_error": service_error,
             "unsupported_tool_model": UNSUPPORTED_TOOL_MODEL,
-            "model_choices": MODEL_CHOICES,
+            "model_choices": model_choices,
             "selected_model": selected_model,
             "limits": RunLimits(),
             "agent_script_version": sha256(
@@ -108,6 +121,12 @@ class AgentMessageForm(forms.Form):
 
     def __init__(self, *args, courts: tuple[Court, ...], **kwargs):
         super().__init__(*args, **kwargs)
+        model_choices = _model_choices()
+        self.fields["model"].choices = model_choices
+        self.fields["judge"].choices = (
+            ("", "Same as assistant"),
+            *model_choices,
+        )
         self.fields["court"].choices = [
             (court.choice_id, court.label) for court in courts
         ]

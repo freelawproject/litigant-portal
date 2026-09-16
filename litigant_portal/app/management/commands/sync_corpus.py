@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand, CommandError
 
+from litigant_portal.app.services.agent_corpus import agent_corpus_sync
 from litigant_portal.app.services.corpus import corpus_sync
 
 
@@ -27,6 +28,9 @@ class Command(BaseCommand):
             summary = corpus_sync(
                 court=options["court"], strict=options["strict"]
             )
+            agent_summary = agent_corpus_sync(
+                court=options["court"], strict=options["strict"]
+            )
         except ValueError as exc:
             raise CommandError(str(exc)) from exc
         self.stdout.write(
@@ -35,5 +39,14 @@ class Command(BaseCommand):
                 "{topics} topics, {flows} flows; "
                 "deleted {deleted} stale rows; "
                 "{orphaned} orphan variables flagged.".format(**summary)
+            )
+        )
+        self.stdout.write(
+            self.style.SUCCESS(
+                "Agent corpus: {courts} courts, {topics} topics, "
+                "{procedures} procedures, {prompts} prompts, "
+                "{fact_definitions} fact definitions, {phases} phases.".format(
+                    **agent_summary
+                )
             )
         )

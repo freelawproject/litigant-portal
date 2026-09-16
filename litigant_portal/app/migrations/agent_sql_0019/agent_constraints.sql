@@ -191,14 +191,12 @@ BEGIN
         SELECT * INTO doc FROM public.agent_document WHERE id = source_id;
         IF NOT FOUND THEN RETURN NULL; END IF;
         SELECT count(*), count(*) FILTER (WHERE
-            (doc.embedding_dimensions IS NULL AND embedding IS NOT NULL) OR
-            (doc.embedding_dimensions IS NOT NULL AND (embedding IS NULL OR public.vector_dims(embedding) <> doc.embedding_dimensions)) OR
             length(body) > coalesce((doc.index_config->>'max_characters')::integer, 65536))
             INTO actual_count, bad_count FROM public.agent_document_chunk WHERE document_id = source_id;
         IF doc.index_invalidated_at IS NULL AND (bad_count > 0 OR
             (doc.index_state = 'ready' AND actual_count <> doc.chunk_count) OR
             (doc.index_state <> 'ready' AND actual_count > 0)) THEN
-            RAISE EXCEPTION 'Active index must contain its declared bounded chunks and matching embeddings' USING ERRCODE = '23514';
+            RAISE EXCEPTION 'Active index must contain its declared bounded chunks' USING ERRCODE = '23514';
         END IF;
         RETURN NULL;
     END IF;

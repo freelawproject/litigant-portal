@@ -94,6 +94,7 @@ include = [ "litigant_portal*", "lp_agent*" ]
 
 [tool.setuptools.package-data]
 litigant_portal = [
+  "app/migrations/agent_sql_0019/*.sql",
   "app/templates/**/*.html",
   "app/static/**/*",
   "app/locale/**/*.po",

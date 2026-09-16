@@ -15,11 +15,6 @@ LP_AGENT_LOOKUP_DSN = os.environ.get("LP_AGENT_LOOKUP_DSN", "")
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
-# The new agent's development page also requires developer permission.
-LP_AGENT_DEV_ENABLED = (
-    os.environ.get("LP_AGENT_DEV_ENABLED", "false").lower() == "true"
-)
-
 # Deployment environment label. Distinguishes QA from prod (both run DEBUG=false).
 # Used by template context processor to gate non-prod-only UI (build-time chip).
 # Invalid values are kept as-is (fail-closed: non-prod UI won't match and stays hidden).
@@ -30,6 +25,26 @@ if DEPLOYMENT_ENV not in {"dev", "qa", "prod"}:
         "non-prod UI gates may not behave as expected.",
         DEPLOYMENT_ENV,
     )
+
+# Temporary QA PoC defaults live in the application, using the deployment's
+# existing environment label. Explicit settings override both defaults.
+_AGENT_QA_DEFAULT = "true" if DEPLOYMENT_ENV == "qa" else "false"
+if DEPLOYMENT_ENV == "qa":
+    # The QA deployment runs in us-west-2; Mantle otherwise defaults to us-east-1.
+    os.environ.setdefault(
+        "BEDROCK_MANTLE_REGION",
+        os.environ.get("AWS_REGION_NAME")
+        or os.environ.get("AWS_REGION")
+        or "us-west-2",
+    )
+LP_AGENT_USE_DJANGO_DB = (
+    os.environ.get("LP_AGENT_USE_DJANGO_DB", _AGENT_QA_DEFAULT).lower()
+    == "true"
+)
+# The new agent's development page also requires developer permission.
+LP_AGENT_DEV_ENABLED = (
+    os.environ.get("LP_AGENT_DEV_ENABLED", _AGENT_QA_DEFAULT).lower() == "true"
+)
 
 # Captured at module import — approximates container/process start time. Shown
 # in the dev/QA header so testers can disambiguate deploys by the minute.
@@ -252,6 +267,10 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",
 ]
+if DEPLOYMENT_ENV == "qa":
+    AUTHENTICATION_BACKENDS.append(
+        "litigant_portal.app.qa_access.QADeveloperBackend"
+    )
 
 SITE_ID = 1
 
@@ -333,27 +352,25 @@ CSP_CONNECT_SRC = ("'self'", *ASSET_ORIGINS, *PRIVATE_MEDIA_ORIGINS)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Production security settings
-# https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-if not DEBUG:
-    # HTTPS/SSL
-    SECURE_SSL_REDIRECT = True
-    SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+# QA uses HTTPS behind the proxy even when its environment enables DEBUG.
+if not DEBUG or DEPLOYMENT_ENV == "qa":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
-    # HSTS (HTTP Strict Transport Security)
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-
-    # Secure cookies
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-
-    # Trust origins that match ALLOWED_HOSTS over HTTPS
     CSRF_TRUSTED_ORIGINS = [
         f"https://{host}" for host in ALLOWED_HOSTS if host != "*"
     ]
+    if DEPLOYMENT_ENV == "qa":
+        CSRF_TRUSTED_ORIGINS.append("https://qa.litigantportal.com")
+
+# Production security settings
+# https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
     # Additional security headers
     SECURE_CONTENT_TYPE_NOSNIFF = True
