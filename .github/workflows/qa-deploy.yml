@@ -142,7 +142,7 @@ jobs:
         run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage bootstrap_superuser
 
       - name: Scale Up litigant-web
-        if: ${{ always() && steps.scale_down.outcome == 'success' }}
+        if: ${{ always() && steps.scale_down.conclusion != 'skipped' }}
         run: kubectl scale deployment/litigant-web -n ${{ env.EKS_NAMESPACE }} --replicas=${WEB_REPLICAS:-1}
 
       - name: Delete Temporary Pod
