@@ -93,9 +93,10 @@ jobs:
         run: kubectl wait pods -n ${{ env.EKS_NAMESPACE }} --for condition=Ready --timeout=90s temp-pod-${{ needs.build.outputs.sha_short }}
 
       - name: Collect Static Assets
+        id: collectstatic
         run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage collectstatic --noinput --clear
       - name: Handle Collectstatic Error
-        if: failure()
+        if: failure() && steps.collectstatic.conclusion == 'failure'
         run: |
           echo "collectstatic failed--aborting deploy"
           exit 1
@@ -125,9 +126,10 @@ jobs:
           PY
 
       - name: Apply Migrations
+        id: migrate
         run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage migrate --noinput
       - name: Handle Migration Error
-        if: failure()
+        if: failure() && steps.migrate.conclusion == 'failure'
         run: |
           echo "Migrations failed. Open a shell into pod temp-pod-${{ needs.build.outputs.sha_short }} to investigate."
           echo "It stops running after an hour but is kept around for debugging; the next deploy reaps it."
