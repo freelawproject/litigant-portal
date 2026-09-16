@@ -14,7 +14,7 @@ from litigant_portal.app.topic_flow.schema import (
 )
 
 MAPPING = {"first_name": "current_first", "county": "residence_county"}
-REFERENCE = "docassemble.test:petition.yml"
+REFERENCE = "docassemble.test:data/questions/petition.yml"
 
 
 def _corpus(*sections):

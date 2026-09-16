@@ -173,7 +173,7 @@ def test_prefill_key_must_reference_a_question(tmp_path):
     data = copy.deepcopy(VALID)
     data["sections"].append(
         _packet(
-            interview_reference="docassemble.pkg:i.yml",
+            interview_reference="docassemble.pkg:data/questions/i.yml",
             interview_prefill={"ghost": "current_first"},
         )
     )
@@ -200,7 +200,7 @@ def test_prefill_without_an_interview_reference_is_rejected(tmp_path):
 def test_packet_without_a_prefill_mapping_still_loads(tmp_path):
     data = copy.deepcopy(VALID)
     data["sections"].append(
-        _packet(interview_reference="docassemble.pkg:i.yml")
+        _packet(interview_reference="docassemble.pkg:data/questions/i.yml")
     )
     corpus = CorpusLoader.load(_write(tmp_path, data))
     assert corpus.sections[-1].interview_prefill == {}

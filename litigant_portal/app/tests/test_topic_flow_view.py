@@ -312,7 +312,7 @@ def test_packet_section_posts_the_handoff_when_an_interview_is_set(
                 id="filing_packet",
                 heading="Your filing packet",
                 forms=["Petition for Name Change"],
-                interview_reference="docassemble.test:name_change.yml",
+                interview_reference="docassemble.test:data/questions/name_change.yml",
             ),
         ],
     )
@@ -366,7 +366,7 @@ def test_packet_section_omits_the_handoff_without_docassemble_configured(
                 id="filing_packet",
                 heading="Your filing packet",
                 forms=["Petition for Name Change"],
-                interview_reference="docassemble.test:name_change.yml",
+                interview_reference="docassemble.test:data/questions/name_change.yml",
             ),
         ],
     )

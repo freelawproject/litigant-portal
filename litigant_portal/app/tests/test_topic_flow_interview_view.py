@@ -28,9 +28,11 @@ from litigant_portal.app.views import topic_flow as topic_flow_views
 COURT, TOPIC, ROLE = "test-court", "test_topic", "petitioner"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/interview/"
 FLOW_URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
-REFERENCE = "docassemble.test:petition.yml"
+REFERENCE = "docassemble.test:data/questions/petition.yml"
 BASE = "https://da.example.gov/interview"
-LAUNCH = f"{BASE}/interview?i=docassemble.test%3Apetition.yml"
+LAUNCH = (
+    f"{BASE}/interview?i=docassemble.test%3Adata%2Fquestions%2Fpetition.yml"
+)
 RESUME = "https://da.example.gov/interview/launch?c=token"
 MAPPING = {
     "first_name": "current_first",

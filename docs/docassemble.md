@@ -46,7 +46,7 @@ Two systems, two jobs, one contract — with a deliberate split of which facts e
 - **Topic Flow owns** a light fact set, named for the glossary (`first_name`, `county`, `name_change_publication_date`), and hands it over on the way out.
 - **The interview owns** the full document fact set Topic Flow never collects (residence, residency-since, citizenship, criminal history, publication newspaper, track-specific fields). Asking those in the guided flow would duplicate the interview.
 
-**The corpus names the interview; the environment names the host (#879).** A flow's packet section carries `interview_reference`, a docassemble package reference the loader validates (`docassemble.<package>:<file>.yml`, never a URL). Where it is sent comes from settings alone: `DOCASSEMBLE_BASE_URL` is the API root LP calls (and the default launch base), `DOCASSEMBLE_PUBLIC_URL` the litigant-facing base when those differ, `DOCASSEMBLE_API_KEY` turns prefill on. With neither URL set, the packet renders without the interview button and the registry logs which flows are affected. This keeps author-controlled content from ever deciding where the API key and the litigant's answers go.
+**The corpus names the interview; the environment names the host (#879).** A flow's packet section carries `interview_reference`, a docassemble package reference the loader validates (`docassemble.<package>:data/questions/<file>.yml`, never a URL). Where it is sent comes from settings alone: `DOCASSEMBLE_BASE_URL` is the API root LP calls (and the default launch base), `DOCASSEMBLE_PUBLIC_URL` the litigant-facing base when those differ, `DOCASSEMBLE_API_KEY` turns prefill on. With neither URL set, the packet renders without the interview button and the registry logs which flows are affected. This keeps author-controlled content from ever deciding where the API key and the litigant's answers go.
 
 **The names are not 1:1, and the mapping is explicit.** Only 3 of the interview's 19 variables happen to share our glossary names, so each flow's packet section carries an `interview_prefill` map from question id to interview variable, next to `interview_reference`:
 
@@ -57,7 +57,7 @@ interview_prefill:
   county: residence_county
 ```
 
-**Always write the full `data/questions/` path in the reference.** docassemble's API accepts the short alias (`docassemble.pkg:file.yml`) and creates a session under it, but the browser-side launch canonicalizes to the `data/questions/` path and then cannot find that session — the litigant lands on "Unable to locate interview session" and an empty, unprefilled interview. Learned the hard way on #879.
+**The full `data/questions/` path is required — the schema rejects the short alias.** docassemble's API accepts the alias (`docassemble.pkg:file.yml`) and creates a session under it, but the browser-side launch canonicalizes to the `data/questions/` path and then cannot find that session — the litigant lands on "Unable to locate interview session" and an empty, unprefilled interview. Learned the hard way on #879, so the loader now refuses an aliased reference at startup instead of shipping it.
 
 The schema validates every key is a `fact_gather` question id of that flow and every value is a plain Python identifier (docassemble executes these as assignment statements, so they may only come from author-controlled YAML). A drift guard in the test suite parses the versioned interviews and fails when a mapped variable no longer exists there.
 

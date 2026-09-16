@@ -29,12 +29,17 @@ Slug = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")]
 # docassemble executes these as assignment statements, so identifiers only.
 InterviewVariable = Annotated[str, Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")]
 
-# A docassemble interview reference (``docassemble.<package>:<file>.yml``),
-# the ``?i=`` value. Never a URL: where it is sent comes from settings (#879).
+# A docassemble interview reference, the ``?i=`` value: the installed package
+# (a Python name, so underscores are fine) plus the full data/questions path.
+# Never a URL: where it is sent comes from settings (#879). The short alias
+# (``docassemble.pkg:file.yml``) is rejected too — the API keys a prefilled
+# session under the canonical path, so the resume link for a session created
+# under the alias dead-ends on "Unable to locate interview session".
 InterviewReference = Annotated[
     str,
     Field(
-        pattern=r"^docassemble\.[A-Za-z][A-Za-z0-9]*:[A-Za-z0-9_\-./]+\.yml$"
+        pattern=r"^docassemble\.[A-Za-z_][A-Za-z0-9_]*"
+        r":data/questions/[A-Za-z0-9_\-./]+\.yml$"
     ),
 ]
 

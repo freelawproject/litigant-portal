@@ -12,7 +12,7 @@ BAD = "metadata: {court: c, topic: t, role: r, title: T}\nsections: []\n"
 # The fixture with its packet opting into the interview handoff.
 HANDOFF = VALID.replace(
     "id: filing_packet",
-    "id: filing_packet\n    interview_reference: 'docassemble.pkg:p.yml'",
+    "id: filing_packet\n    interview_reference: 'docassemble.pkg:data/questions/p.yml'",
 )
 FIXTURE_KEY = ("test-court", "test_topic", "petitioner")
 

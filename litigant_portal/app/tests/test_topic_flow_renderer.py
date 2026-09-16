@@ -310,7 +310,7 @@ def test_packet_without_an_interview_offers_no_handoff(settings):
 
 def test_packet_with_an_interview_offers_the_handoff_when_configured(settings):
     settings.DOCASSEMBLE_BASE_URL = "http://localhost:8100"
-    section = _interview_packet("docassemble.pkg:p.yml")
+    section = _interview_packet("docassemble.pkg:data/questions/p.yml")
     rendered = render_section(section, _corpus(section), {})
     assert rendered.context["interview_available"] is True
 
@@ -319,7 +319,7 @@ def test_packet_hides_the_handoff_without_a_configured_docassemble(settings):
     # The environment, not the corpus, decides whether a handoff exists (#879).
     settings.DOCASSEMBLE_BASE_URL = None
     settings.DOCASSEMBLE_PUBLIC_URL = None
-    section = _interview_packet("docassemble.pkg:p.yml")
+    section = _interview_packet("docassemble.pkg:data/questions/p.yml")
     rendered = render_section(section, _corpus(section), {})
     assert rendered.context["interview_available"] is False
 
@@ -331,7 +331,7 @@ def test_packet_context_carries_the_handoff_url_parts():
         id="forms",
         heading="Your packet",
         forms=["Petition"],
-        interview_reference="docassemble.pkg:p.yml",
+        interview_reference="docassemble.pkg:data/questions/p.yml",
     )
     context = render_section(section, _corpus(section), {}).context
     assert (context["court"], context["topic"], context["role"]) == (

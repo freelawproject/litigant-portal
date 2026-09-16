@@ -16,7 +16,7 @@ from litigant_portal.app.services.docassemble import (
     interview_launch_url,
 )
 
-INTERVIEW = "docassemble.ndnamechange:petition-standard.yml"
+INTERVIEW = "docassemble.ndnamechange:data/questions/petition-standard.yml"
 RESUME = "https://qa.example.gov/interview/session?resume=abc"
 VARIABLES = {"current_first": "Sandra", "residence_county": "Burleigh"}
 
@@ -383,7 +383,7 @@ def test_resume_url_is_left_alone_without_a_public_origin(recorder):
 def test_launch_url_is_built_on_the_public_base():
     assert interview_launch_url(INTERVIEW) == (
         "https://qa.example.gov/interview/interview"
-        "?i=docassemble.ndnamechange%3Apetition-standard.yml"
+        "?i=docassemble.ndnamechange%3Adata%2Fquestions%2Fpetition-standard.yml"
     )
 
 

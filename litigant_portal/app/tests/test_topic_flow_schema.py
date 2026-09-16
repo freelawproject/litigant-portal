@@ -107,11 +107,11 @@ def test_packet_interview_reference_defaults_to_none():
 @pytest.mark.parametrize(
     "reference",
     [
-        "docassemble.ndnamechange:petition-standard.yml",
-        "docassemble.playground1:petition-waiver.yml",
-        "docassemble.pkg:data/questions/petition.yml",
+        "docassemble.ndnamechange:data/questions/petition-standard.yml",
+        "docassemble.playground1:data/questions/petition-waiver.yml",
+        "docassemble.nd_name_change:data/questions/tracks/petition.yml",
     ],
-    ids=["package", "playground", "explicit-path"],
+    ids=["package", "playground", "underscored-package-and-subdir"],
 )
 def test_a_well_formed_interview_reference_is_accepted(reference):
     packet = PacketOutput.model_validate(
@@ -124,13 +124,15 @@ def test_a_well_formed_interview_reference_is_accepted(reference):
     "reference",
     [
         "https://da.example/interview?i=docassemble.pkg:petition.yml",
+        "docassemble.pkg:petition-standard.yml",
         "petition-standard.yml",
-        "docassemble.pkg:petition",
-        "pkg:petition.yml",
+        "docassemble.pkg:data/questions/petition",
+        "pkg:data/questions/petition.yml",
         "",
     ],
     ids=[
         "full-url",
+        "short-alias",
         "bare-filename",
         "no-yml",
         "no-docassemble-prefix",
@@ -139,7 +141,10 @@ def test_a_well_formed_interview_reference_is_accepted(reference):
 )
 def test_a_malformed_interview_reference_is_rejected(reference):
     # A URL here is the pre-#879 shape: content deciding where the key and the
-    # answers go. The loader must refuse it, not quietly carry it.
+    # answers go. The short alias is the other trap: docassemble creates the
+    # session but keys it under the canonical data/questions path, so the
+    # litigant lands on an empty, unprefilled interview. The loader must
+    # refuse both, not quietly carry them.
     with pytest.raises(ValidationError):
         PacketOutput.model_validate(_packet(interview_reference=reference))
 
@@ -163,7 +168,7 @@ def test_packet_prefill_mapping_is_carried_through():
     mapping = {"first_name": "current_first"}
     packet = PacketOutput.model_validate(
         _packet(
-            interview_reference="docassemble.pkg:i.yml",
+            interview_reference="docassemble.pkg:data/questions/i.yml",
             interview_prefill=mapping,
         )
     )
@@ -179,7 +184,7 @@ def test_interview_variable_must_be_a_plain_identifier(variable):
     with pytest.raises(ValidationError):
         PacketOutput.model_validate(
             _packet(
-                interview_reference="docassemble.pkg:i.yml",
+                interview_reference="docassemble.pkg:data/questions/i.yml",
                 interview_prefill={"first_name": variable},
             )
         )
