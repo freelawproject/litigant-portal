@@ -100,6 +100,14 @@ jobs:
           echo "collectstatic failed--aborting deploy"
           exit 1
 
+      - name: Scale Down litigant-web
+        id: scale_down
+        if: ${{ inputs.reset_db }}
+        run: |
+          echo "WEB_REPLICAS=$(kubectl get deployment/litigant-web -n ${{ env.EKS_NAMESPACE }} -o jsonpath='{.spec.replicas}')" >> $GITHUB_ENV
+          kubectl scale deployment/litigant-web -n ${{ env.EKS_NAMESPACE }} --replicas=0
+          kubectl delete pod -n ${{ env.EKS_NAMESPACE }} -l service=litigant-web --ignore-not-found --timeout=120s
+
       - name: Reset Database
         if: ${{ inputs.reset_db }}
         run: |
@@ -130,6 +138,10 @@ jobs:
 
       - name: Bootstrap Superuser
         run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage bootstrap_superuser
+
+      - name: Scale Up litigant-web
+        if: ${{ always() && steps.scale_down.outcome == 'success' }}
+        run: kubectl scale deployment/litigant-web -n ${{ env.EKS_NAMESPACE }} --replicas=${WEB_REPLICAS:-1}
 
       - name: Delete Temporary Pod
         run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }}
