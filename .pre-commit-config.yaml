@@ -8,7 +8,7 @@ ci:
   skip: [uv-lock-check]
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-ast
@@ -27,7 +27,7 @@ repos:
         args: [--markdown-linebreak-ext=md]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.8
+    rev: v0.16.7
     hooks:
       - id: ruff
         args: [--fix]
@@ -44,7 +44,7 @@ repos:
         additional_dependencies: ['prettier@3.8.1']
 
   - repo: https://github.com/djlint/djLint
-    rev: v1.36.4
+    rev: v1.46.1
     hooks:
       - id: djlint-django
 
