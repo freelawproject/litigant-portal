@@ -69,6 +69,30 @@ def test_direct_result_without_observer_and_independent_submissions():
     asyncio.run(scenario())
 
 
+def test_next_checkpoint_carries_the_version_returned_by_the_store():
+    async def scenario():
+        environment = environment_for(
+            ScriptedModel([answer_item("Done"), ModelFinished(reason="stop")])
+        )
+        commit = environment.runs.commit_checkpoint
+        versions = []
+
+        async def versioned_commit(**kwargs):
+            versions.append(kwargs["checkpoint"].storage_version)
+            saved = await commit(**kwargs)
+            return saved.model_copy(update={"storage_version": 42})
+
+        with patch.object(
+            environment.runs, "commit_checkpoint", versioned_commit
+        ):
+            async with LPAgent(environment=environment) as agent:
+                run = await agent.run(message="Hello")
+                assert (await run.result()).state == "completed"
+        assert versions == [None, 42]
+
+    asyncio.run(scenario())
+
+
 def test_checkpoint_retains_model_items_and_instruction_artifact_without_public_reasoning():
     async def scenario():
         reasoning = ReasoningItem(
@@ -198,7 +222,7 @@ def test_checkpoint_failures_are_safe_for_every_async_caller(
             attempted.append(kwargs["status"].state)
             if kwargs["status"].state == stage:
                 raise failure("private checkpoint payload and credentials")
-            await commit(**kwargs)
+            return await commit(**kwargs)
 
         agent = LPAgent(environment=environment)
         with patch.object(
@@ -398,7 +422,7 @@ def test_active_time_budget_starts_after_the_running_checkpoint():
         async def slow_commit(**kwargs):
             if kwargs["status"].state == "running":
                 await asyncio.sleep(0.05)
-            await commit(**kwargs)
+            return await commit(**kwargs)
 
         with patch.object(environment.runs, "commit_checkpoint", slow_commit):
             async with LPAgent(
@@ -576,7 +600,7 @@ def test_close_waits_for_a_terminal_commit_already_in_progress():
             if kwargs["outcome"] is not None:
                 committing.set()
                 await resume.wait()
-            await commit(**kwargs)
+            return await commit(**kwargs)
 
         agent = LPAgent(environment=environment)
         with patch.object(environment.runs, "commit_checkpoint", paused):

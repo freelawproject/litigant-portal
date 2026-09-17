@@ -118,12 +118,13 @@ class RunStore(Protocol):
         checkpoint: RunCheckpoint,
         status: RunStatus,
         outcome: RunOutcome | None = None,
-    ) -> None:
+    ) -> RunCheckpoint:
         """
         Atomically save completed work, consumed inputs, status, and outcome.
 
-        All references must identify the same authorized run. PR2 defines
-        checkpoint contents and the transaction/concurrency implementation.
+        All references must identify the same authorized run. Return a detached
+        saved checkpoint carrying the storage_version needed for the next
+        write. A store without optimistic versioning may leave it as None.
         """
         ...
 

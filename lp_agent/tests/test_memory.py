@@ -79,9 +79,11 @@ def test_checkpoints_are_copied_on_write_and_read():
             conversation_id=status.conversation_id,
             data={"items": ["original"]},
         )
-        await runs.commit_checkpoint(
+        returned = await runs.commit_checkpoint(
             access=ACCESS, checkpoint=checkpoint, status=status
         )
+        assert returned == checkpoint
+        returned.data["items"].append("changed returned checkpoint")
         checkpoint.data["items"].append("changed after write")
         saved = await runs.checkpoint(access=ACCESS, run_id=status.run_id)
         assert saved.data == {"items": ["original"]}
