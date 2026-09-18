@@ -92,21 +92,28 @@ def _session_delete(
 
 
 def _public(resume_url: str) -> str:
-    """Swap in the litigant-facing origin, keeping the path and query.
+    """Swap in the litigant-facing base, keeping docassemble's path and query.
 
     docassemble builds the launch URL from the host we called it on, which on
-    a deployment is an internal address no browser can reach. Only the origin
-    of the public URL is used here: any path prefix is already in the URL
-    docassemble built. Unset means the URL comes back as docassemble built it.
+    a deployment is an internal address no browser can reach. The public URL's
+    origin replaces it, and its path prefix (docassemble served under a
+    subpath) is prepended unless docassemble's own url root already put it
+    there. Unset means the URL comes back as docassemble built it.
     """
     public = settings.DOCASSEMBLE_PUBLIC_URL
     if not public:
         return resume_url
-    origin = urlparse(public)
+    target = urlparse(public)
+    resume = urlparse(resume_url)
+    prefix = target.path.rstrip("/")
+    path = resume.path
+    # startswith wants the trailing slash: a path merely *equal* to the
+    # prefix is docassemble's /interview endpoint colliding with an
+    # /interview prefix, and still needs the prefix in front.
+    if prefix and not path.startswith(prefix + "/"):
+        path = prefix + path
     return urlunparse(
-        urlparse(resume_url)._replace(
-            scheme=origin.scheme, netloc=origin.netloc
-        )
+        resume._replace(scheme=target.scheme, netloc=target.netloc, path=path)
     )
 
 

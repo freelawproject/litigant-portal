@@ -342,13 +342,43 @@ def test_a_bare_string_resume_response_is_accepted(monkeypatch):
     assert _create() == RESUME
 
 
-@override_settings(
-    DOCASSEMBLE_API_KEY="k",
-    DOCASSEMBLE_BASE_URL="http://docassemble",
-    DOCASSEMBLE_PUBLIC_URL="https://qa.example.gov/interview",
+@pytest.mark.parametrize(
+    ("public", "built", "expected"),
+    [
+        (
+            "https://qa.example.gov/interview",
+            "http://docassemble/launch?c=tok",
+            "https://qa.example.gov/interview/launch?c=tok",
+        ),
+        (
+            "https://qa.example.gov/interview",
+            "http://docassemble/interview/launch?c=tok",
+            "https://qa.example.gov/interview/launch?c=tok",
+        ),
+        (
+            # docassemble's own endpoint is also named /interview: a path
+            # equal to the prefix is the endpoint, not the prefix.
+            "https://qa.example.gov/interview",
+            "http://docassemble/interview?session=abc",
+            "https://qa.example.gov/interview/interview?session=abc",
+        ),
+        (
+            "https://qa.example.gov",
+            "http://docassemble/launch?c=tok",
+            "https://qa.example.gov/launch?c=tok",
+        ),
+    ],
+    ids=[
+        "prefix-prepended-when-docassemble-omits-it",
+        "prefix-not-doubled-when-docassemble-already-carries-it",
+        "endpoint-named-like-the-prefix-still-gains-it",
+        "origin-only-public-url-swaps-origin-alone",
+    ],
 )
-def test_resume_url_is_rewritten_onto_the_public_origin(monkeypatch):
-    # docassemble builds the launch URL from the host we called it on, which
+def test_resume_url_is_rewritten_onto_the_public_base(
+    monkeypatch, public, built, expected
+):
+    # docassemble builds the resume URL from the host we called it on, which
     # on a deployment is internal and unreachable from a browser.
     monkeypatch.setattr(
         requests,
@@ -356,10 +386,15 @@ def test_resume_url_is_rewritten_onto_the_public_origin(monkeypatch):
         _Recorder(
             _Response({"session": "sess-1"}),
             _Response(status=204),
-            _Response({"url": "http://docassemble/launch?c=tok"}),
+            _Response({"url": built}),
         ),
     )
-    assert _create() == "https://qa.example.gov/launch?c=tok"
+    with override_settings(
+        DOCASSEMBLE_API_KEY="k",
+        DOCASSEMBLE_BASE_URL="http://docassemble",
+        DOCASSEMBLE_PUBLIC_URL=public,
+    ):
+        assert _create() == expected
 
 
 @override_settings(
