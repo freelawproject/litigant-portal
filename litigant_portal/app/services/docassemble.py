@@ -31,6 +31,17 @@ class DocassembleError(Exception):
     """
 
 
+def docassemble_configured() -> bool:
+    """Whether this environment has a docassemble to hand off to.
+
+    The single rule behind the launch link and the deploy-time check: either
+    base is enough for the plain link, so the button renders.
+    """
+    return bool(
+        settings.DOCASSEMBLE_PUBLIC_URL or settings.DOCASSEMBLE_BASE_URL
+    )
+
+
 def interview_launch_url(interview: str) -> str | None:
     """The litigant-facing launch link for an interview reference.
 
@@ -39,9 +50,9 @@ def interview_launch_url(interview: str) -> str | None:
     ``None`` means no docassemble in this environment — callers hide the
     handoff.
     """
-    base = settings.DOCASSEMBLE_PUBLIC_URL or settings.DOCASSEMBLE_BASE_URL
-    if not base:
+    if not docassemble_configured():
         return None
+    base = settings.DOCASSEMBLE_PUBLIC_URL or settings.DOCASSEMBLE_BASE_URL
     return f"{base.rstrip('/')}/interview?{urlencode({'i': interview})}"
 
 

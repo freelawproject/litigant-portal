@@ -14,13 +14,10 @@ as startup errors.
 import logging
 from pathlib import Path
 
-from django.conf import settings
-
 from litigant_portal.app.topic_flow.loader import (
     CorpusLoader,
     CorpusValidationError,
 )
-from litigant_portal.app.topic_flow.prefill import interview_target
 from litigant_portal.app.topic_flow.schema import Corpus
 
 logger = logging.getLogger(__name__)
@@ -59,25 +56,7 @@ class CorpusRegistry:
             index[(meta.court, meta.topic, meta.role)] = corpus
         self._index = index
         self._loaded = True
-        self._warn_unservable_handoffs()
         return self
-
-    def _warn_unservable_handoffs(self):
-        # Their packet sections render without the interview button (#879), a
-        # gap nothing else reports: the pages still serve fine.
-        if settings.DOCASSEMBLE_PUBLIC_URL or settings.DOCASSEMBLE_BASE_URL:
-            return
-        affected = [
-            "/".join(key)
-            for key, corpus in self._index.items()
-            if interview_target(corpus) is not None
-        ]
-        if affected:
-            logger.warning(
-                "No docassemble configured; the interview handoff is hidden "
-                "on: %s. Set DOCASSEMBLE_BASE_URL to enable it.",
-                ", ".join(sorted(affected)),
-            )
 
     def get(self, court: str, topic: str, role: str) -> Corpus | None:
         self.load()
