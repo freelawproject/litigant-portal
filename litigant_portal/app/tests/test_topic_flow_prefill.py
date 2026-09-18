@@ -14,7 +14,7 @@ from litigant_portal.app.topic_flow.schema import (
 )
 
 MAPPING = {"first_name": "current_first", "county": "residence_county"}
-URL = "https://da.example.gov/interview/interview?i=petition.yml"
+REFERENCE = "docassemble.test:data/questions/petition.yml"
 
 
 def _corpus(*sections):
@@ -24,20 +24,20 @@ def _corpus(*sections):
     )
 
 
-def _packet(*, interview_url=URL, mapping=None, id="filing_packet"):
+def _packet(*, reference=REFERENCE, mapping=None, id="filing_packet"):
     return PacketOutput(
         kind="output",
         output_type="packet",
         id=id,
         heading="Your filing packet",
         forms=["Petition"],
-        interview_url=interview_url,
+        interview_reference=reference,
         interview_prefill=MAPPING if mapping is None else mapping,
     )
 
 
-def test_target_carries_the_launch_url_and_its_mapping():
-    assert interview_target(_corpus()) == (URL, MAPPING)
+def test_target_carries_the_interview_reference_and_its_mapping():
+    assert interview_target(_corpus()) == (REFERENCE, MAPPING)
 
 
 def test_target_is_none_without_a_packet_section():
@@ -48,16 +48,16 @@ def test_target_is_none_without_a_packet_section():
 
 
 def test_target_is_none_when_the_packet_has_no_interview():
-    assert interview_target(_corpus(_packet(interview_url=None))) is None
+    assert interview_target(_corpus(_packet(reference=None))) is None
 
 
 def test_target_skips_a_packet_without_an_interview():
-    corpus = _corpus(_packet(interview_url=None, id="forms_only"), _packet())
-    assert interview_target(corpus) == (URL, MAPPING)
+    corpus = _corpus(_packet(reference=None, id="forms_only"), _packet())
+    assert interview_target(corpus) == (REFERENCE, MAPPING)
 
 
 def test_unmapped_packet_yields_an_empty_mapping():
-    assert interview_target(_corpus(_packet(mapping={}))) == (URL, {})
+    assert interview_target(_corpus(_packet(mapping={}))) == (REFERENCE, {})
 
 
 def test_variables_are_renamed_to_their_interview_names():

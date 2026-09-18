@@ -99,25 +99,54 @@ def test_optional_lists_and_question_defaults():
     assert question.required is False
 
 
-def test_packet_interview_url_optional_and_accepted():
-    """interview_url defaults to None — the link-out is graceful when an author
-    omits it, so existing packet corpora are unaffected — and is carried through
-    when provided (the #543 docassemble handoff seam)."""
-    base = {
-        "kind": "output",
-        "output_type": "packet",
-        "id": "p",
-        "heading": "Your packet",
-        "forms": ["Petition for Name Change"],
-    }
-    assert PacketOutput.model_validate(base).interview_url is None
-    url = "https://da.example/interview?i=docassemble.playground"
-    assert (
-        PacketOutput.model_validate(
-            {**base, "interview_url": url}
-        ).interview_url
-        == url
+def test_packet_interview_reference_defaults_to_none():
+    # The handoff is opt-in: existing packet corpora are unaffected.
+    assert PacketOutput.model_validate(_packet()).interview_reference is None
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "docassemble.ndnamechange:data/questions/petition-standard.yml",
+        "docassemble.playground1:data/questions/petition-waiver.yml",
+        "docassemble.nd_name_change:data/questions/tracks/petition.yml",
+    ],
+    ids=["package", "playground", "underscored-package-and-subdir"],
+)
+def test_a_well_formed_interview_reference_is_accepted(reference):
+    packet = PacketOutput.model_validate(
+        _packet(interview_reference=reference)
     )
+    assert packet.interview_reference == reference
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "https://da.example/interview?i=docassemble.pkg:petition.yml",
+        "docassemble.pkg:petition-standard.yml",
+        "petition-standard.yml",
+        "docassemble.pkg:data/questions/petition",
+        "pkg:data/questions/petition.yml",
+        "",
+    ],
+    ids=[
+        "full-url",
+        "short-alias",
+        "bare-filename",
+        "no-yml",
+        "no-docassemble-prefix",
+        "empty",
+    ],
+)
+def test_a_malformed_interview_reference_is_rejected(reference):
+    # A URL here is the pre-#879 shape: content deciding where the key and the
+    # answers go. The short alias is the other trap: docassemble creates the
+    # session but keys it under the canonical data/questions path, so the
+    # litigant lands on an empty, unprefilled interview. The loader must
+    # refuse both, not quietly carry them.
+    with pytest.raises(ValidationError):
+        PacketOutput.model_validate(_packet(interview_reference=reference))
 
 
 def _packet(**extra):
@@ -139,7 +168,8 @@ def test_packet_prefill_mapping_is_carried_through():
     mapping = {"first_name": "current_first"}
     packet = PacketOutput.model_validate(
         _packet(
-            interview_url="https://da.example/i", interview_prefill=mapping
+            interview_reference="docassemble.pkg:data/questions/i.yml",
+            interview_prefill=mapping,
         )
     )
     assert packet.interview_prefill == mapping
@@ -154,7 +184,7 @@ def test_interview_variable_must_be_a_plain_identifier(variable):
     with pytest.raises(ValidationError):
         PacketOutput.model_validate(
             _packet(
-                interview_url="https://da.example/i",
+                interview_reference="docassemble.pkg:data/questions/i.yml",
                 interview_prefill={"first_name": variable},
             )
         )
