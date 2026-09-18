@@ -77,6 +77,6 @@ The corpus references name the `docassemble.ndnamechange` package, so a Playgrou
 
 1. Upload the interviews to **Sources** and the PDFs to **Templates** (the "Test it locally" steps in [`docassemble/nd-name-change/README.md`](../docassemble/nd-name-change/README.md)).
 2. **Folders → Packages** → add a package named `ndnamechange`, attach both interview files and the five PDF templates.
-3. Click **Install**. The server now resolves `docassemble.ndnamechange:petition-standard.yml` for every user, and the LP handoff works.
+3. Click **Install**. The server now resolves `docassemble.ndnamechange:data/questions/petition-standard.yml` for every user, and the LP handoff works.
 
 Re-run the Install after changing an interview: the Playground copy and the installed package are separate copies.
