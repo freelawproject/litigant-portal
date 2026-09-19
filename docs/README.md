@@ -11,6 +11,12 @@ The repo's reference shelf: material you reach for when you need it. Day-to-day 
 | [AGENT_DEV_GUIDE.md](./ai-tooling/AGENT_DEV_GUIDE.md) | Build agents on the chat engine: state, prompts, tools, surfaces |
 | [UPLOAD_SYSTEM.md](./ai-tooling/UPLOAD_SYSTEM.md)     | How uploads flow into the LLM: inline vs. reader subagent        |
 
+## Deployment
+
+| Doc                            | Purpose                                                                 |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| [qa-deploy.md](./qa-deploy.md) | QA on EKS: the manual deploy, the DB rebuild, docassemble, verification |
+
 ## Document assembly
 
 | Doc                                | Purpose                                                 |

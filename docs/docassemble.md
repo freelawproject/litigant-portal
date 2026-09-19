@@ -21,23 +21,27 @@ One page for the document-assembly side: authoring gotchas, the local bench, QA 
 - Playground → **Utilities → "Get list of fields from a PDF or DOCX file"** reads an AcroForm PDF and scaffolds the `fields:` block — no manual field hunting.
 - Playground work persists on named volumes across `down`/`up`.
 
-## QA hosting (path-routed under the LP hostname)
+## QA hosting (EKS, path-routed under the LP hostname)
 
-docassemble serves at `/interview/` on the existing LP hostname — path, not subdomain, so a partner needs one CNAME (see Deployment principles under [Production](../README.md#production)). It's a service in the DO QA stack (`deploy/qa-do/docker-compose.qa.yml`), so it deploys, restarts, and is removed with the rest of the box. Caddy reaches it as `docassemble:80` on the project network, no public port, and the `handle /interview/*` block in `deploy/qa-do/Caddyfile.qa` passes the prefix through.
+docassemble serves at `https://qa.litigantportal.com/interview/` — path, not subdomain, so a partner needs one CNAME (see Deployment principles under [Production](../README.md#production)). Since 2026-09-17 (#550) it's a standing workload in the `qa-litigant` EKS namespace: the all-in-one `jhpyle/docassemble` image (its own Postgres, Redis, RabbitMQ under supervisor), single replica because the database is inside the container, in **live mode** — devs log in and author interviews directly on it. The manifests and secrets live with the infra team, outside this repo (`qa-litigant/5_docassemble.yml` and friends; AWS Secrets Manager `k8s/qa-litigant/docassemble-env`). LP deploys never touch it — see [qa-deploy.md](./qa-deploy.md) — so interviews and accounts persist across `litigant-web` rollouts by design.
 
-**State lives in two named volumes**, not in the image: `docassemble_qa_backup:/usr/share/docassemble/backup` and `docassemble_qa_files:/usr/share/docassemble/files`. docassemble keeps everything internally (its own Postgres, playground files, server config, user accounts), and its `initialize.sh` writes a full backup on clean stop and nightly by cron, restoring from it on boot. That backup volume is what makes a container recreate safe. `stop_grace_period: 600s` gives the shutdown backup time to finish: a SIGKILL loses the delta and flags the next boot as an unsafe shutdown, which skips the restore (#701).
+**State lives in two persistent volumes**, not in the image: `/usr/share/docassemble/backup` and `/usr/share/docassemble/files`. docassemble keeps everything internally (playground files, server config, user accounts), and its `initialize.sh` writes a full backup on clean stop and nightly by cron, restoring from it on boot. That backup volume is what makes a pod recreate safe. `terminationGracePeriodSeconds: 600` (the compose `stop_grace_period` equivalent) gives the shutdown backup time to finish: a SIGKILL loses the delta and flags the next boot as an unsafe shutdown, which skips the restore (#701).
 
-Gotchas the compose files don't explain:
+Gotchas the manifests don't explain:
 
-- **`POSTURLROOT=/interview/`** makes docassemble regenerate its internal nginx for the sub-path. Assets/links 404 under `/interview/` → the prefix didn't take; recreate the container so `initialize.sh` re-runs.
-- **Live updates hang** = the WebSocket isn't threading the prefix. Verify `POSTURLROOT` took and Caddy is upgrading the socket — test this first after any deploy change.
-- **`BEHINDHTTPSLOADBALANCER=true`**: Caddy terminates TLS and forwards plain HTTP; docassemble still builds `https://` URLs and secure cookies.
-- **`DA_HOSTNAME` is a bare hostname, no scheme** (`qa.litigantportal.com`, unlike `DOMAIN`). A `https://` prefix produces `https://https://…` URLs and broken cookies; unset, compose substitutes an empty string with only a warning and docassemble runs hostnameless.
-- **≥ 4 GB RAM** — docassemble idles ~2 GB and OOMs on a 2 GB box. First boot pulls the ~20 GB image and inits its own DB: 5–10 minutes.
-- **Playground empty or default admin login after a recreate** = the state volumes weren't mounted, or an unsafe shutdown skipped the restore. Check `docker volume ls | grep docassemble` before re-uploading anything by hand; if the volumes are there, a recreate with the mounts restores them.
-- **Rotate the admin password on a fresh instance.** It boots with docassemble's public default login. A restored instance keeps the rotated one.
+- **Admin credentials seed only into an empty database.** `DA_ADMIN_EMAIL` / `DA_ADMIN_PASSWORD` / `DA_ADMIN_API_KEY` (Bitwarden, Litigant Portal collection) applied on first boot only; afterwards the accounts live in the backup volume and env changes are ignored. A fresh instance booted _without_ them gets docassemble's public default login — rotate it immediately.
+- **`POSTURLROOT=/interview/`** makes docassemble regenerate its internal nginx for the sub-path. Assets/links 404 under `/interview/` → the prefix didn't take; recreate the pod so `initialize.sh` re-runs.
+- **The ingress must preserve the `/interview/` prefix** (not strip it) and pass the WebSocket upgrade through, or live interview updates hang. Test this first after any routing change.
+- **`USEHTTPS=false` + `BEHINDHTTPSLOADBALANCER=true`**: the ingress terminates TLS and forwards plain HTTP; docassemble still builds `https://` URLs and secure cookies.
+- **`DAHOSTNAME` is a bare hostname, no scheme** (`qa.litigantportal.com`). A `https://` prefix produces `https://https://…` URLs and broken cookies.
+- **≥ 4 GB RAM** — docassemble idles ~2 GB and OOMs below that. First boot pulls the ~20 GB image and inits its own DB: 15+ minutes observed on EKS.
+- **Playground empty or default admin login after a recreate** = the volumes weren't mounted, or an unsafe shutdown skipped the restore. Confirm the PVCs are bound before re-uploading anything by hand; if they are, a recreate with the mounts restores them.
 
-docassemble's real production home rides the CL infra move (#461); QA hosting is the interim demo host. The state requirement travels with it: whatever runs docassemble on AWS must mount `/usr/share/docassemble/backup` (volume or S3-backed), or the #701 wipe repeats on the first recreate.
+**The DigitalOcean box is dev now, not QA** (#880): the same shape in compose form, documented in [deploy/qa-do/README.md](../deploy/qa-do/README.md), removed entirely at the #461 cutover.
+
+**Production currently runs a copy of this QA setup, and that is a placeholder, not the launch configuration.** QA is deliberately open for editing: devs log in, change interviews in place, and use the Playground. A production instance serving litigants must be the opposite — no login screen, anonymous sessions only, and interviews served exclusively from installed packages, never the Playground. That lockdown work is tracked in #556; how docassemble is hosted per court partner is a separate open decision (#888).
+
+One requirement holds for every environment, QA, prod, or a future court instance: the `/usr/share/docassemble/backup` mount must be persistent storage. Skip it and the first pod recreate silently erases every interview, account, and setting (that is what happened in #701).
 
 ## Topic Flow → docassemble handoff contract
 
