@@ -32,7 +32,7 @@ This document is the **canonical bar for every PR and issue**. Ticket-specific a
 ### Deploy & release safety: in all cases
 
 - **`main` is never knowingly broken.** Every merge to `main` triggers `deploy.yml`, which runs the test suite, then builds and publishes a Docker image to Docker Hub, then rolls it out to `litigantportal.com` on the CL EKS cluster. Nothing is manual after the merge, so we don't merge code we know is broken or incomplete, a failing test stops the pipeline before anything is published.
-- **QA is a manual deploy.** `qa.litigantportal.com` ships via `qa-deploy-do.yml`, currently to the DigitalOcean box until the AWS `qa-litigant` env is wired up. It is deliberately not test-gated: it's the lever for putting a work-in-progress branch in front of a stakeholder. There is no `staging` pipeline: prod-on-merge plus manual QA covers our needs (#461).
+- **QA is a manual deploy.** `qa.litigantportal.com` ships via `qa-deploy.yml` to the `qa-litigant` namespace on the CL EKS cluster (see [docs/qa-deploy.md](../qa-deploy.md)). It is test-gated like prod, and by default rebuilds the QA database from the deployed ref. It remains the lever for putting a work-in-progress branch in front of a stakeholder. There is no `staging` pipeline: prod-on-merge plus manual QA covers our needs (#461).
 - **Migrations are safe to run unattended.** The prod container runs `manage migrate` automatically on every deploy, with no manual gate. Migrations must be backward-compatible with the code currently running (additive columns, no dropping/renaming something still read by in-flight code) unless the team has explicitly agreed to a destructive one and planned around it.
 - **New dependencies are checked for known vulnerabilities** before merge. No dependency with an open critical/high advisory goes in without a team decision to accept the risk.
 
@@ -58,8 +58,8 @@ Whoever merges the PR that closes it, via the closing keyword. No separate sign-
 **Do we need a stakeholder or product owner to review before closing?**
 Not for most issues. We trust contributor judgment. For court-partner-facing content, or where legal-review concerns are flagged (e.g. #620), get a second read before closing.
 
-**Can I use the QA box for a stakeholder demo?**
-Yes (`qa.litigantportal.com`, deployed manually via `qa-deploy-do.yml`), but it's a temporary environment (see `deploy/qa-do/README.md`), not a durable staging ground. It can be redeployed/wiped at any time; don't treat anything on it as persistent, and confirm it's in the right state shortly before a demo rather than assuming it still is.
+**Can I use QA for a stakeholder demo?**
+Yes (`qa.litigantportal.com`, deployed manually via `qa-deploy.yml`, see [docs/qa-deploy.md](../qa-deploy.md)), but it's a shared environment, not a durable staging ground. Anyone can redeploy it, and the default deploy wipes the database; don't treat anything on it as persistent, and confirm it's in the right state shortly before a demo rather than assuming it still is.
 
 **What if I disagree with something in this document?**
 Raise it with the team: this is a living snapshot, not policy handed down. Update this file and note the date and PR in History below.
@@ -69,3 +69,4 @@ Raise it with the team: this is a living snapshot, not policy handed down. Updat
 - 2026-07-30: initial Definition of Done for litigant-portal, consolidating the quality-bar criteria previously duplicated in CONTRIBUTING.md into this canonical file.
 - 2026-07-30: removed em-dashes throughout (personal preference; the content-style ban technically exempts dev-facing docs, but kept it consistent anyway).
 - 2026-08-07: updated the deploy topology: `main` now auto-deploys to production behind a test gate, QA remains a manual deployment flow, and the `staging` pipeline has been removed.
+- 2026-09-18: QA deploy path updated for the EKS move: `qa-deploy.yml` replaces `qa-deploy-do.yml`, QA is now test-gated, and the default deploy rebuilds the database (#928).
