@@ -9,6 +9,8 @@ Two diagrams, deliberately separate: one for how the portal runs **today**, one 
 - `system-architecture.drawio` — **today.** What is actually deployed right now.
 - `target-isolation.drawio` — **target (#859).** One AWS account per court. Not built yet.
 - `eks-breakout.drawio` — component-level zoom into a court's instance internals.
+- `corpus-pipeline.drawio` — **data flow.** How source documents become the topic flow
+  pages and the assistant's prompt. Written up in [corpus-pipeline.md](corpus-pipeline.md).
 
 Each has a committed `.drawio.svg` render alongside it. That SVG shows as an image on GitHub and in Obsidian **and** reopens editable in draw.io (the diagram XML is embedded) — it's what people view without opening the app.
 
@@ -22,6 +24,7 @@ Each has a committed `.drawio.svg` render alongside it. That SVG shows as an ima
    ```sh
    drawio -x -f svg -e -o system-architecture.drawio.svg system-architecture.drawio
    drawio -x -f svg -e -o target-isolation.drawio.svg target-isolation.drawio
+   drawio -x -f svg -e -o corpus-pipeline.drawio.svg corpus-pipeline.drawio
    ```
 
    (`-e` embeds the diagram so the SVG reopens editable.) Commit both files.
