@@ -75,11 +75,10 @@ Post-change verification (from #550): the page loads over HTTPS; assets and link
 3. A topic flow renders with its corpus content (proves `sync_corpus` ran).
 4. `https://qa.litigantportal.com/interview/` still answers (proves the deploy didn't disturb docassemble).
 
-## Current gaps (2026-09-18)
+## Current gaps (2026-09-21)
 
-| Item                                                                                                                                                                                       | Issue |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- |
-| LP → docassemble handoff config (`DOCASSEMBLE_BASE_URL` / `DOCASSEMBLE_PUBLIC_URL` / `DOCASSEMBLE_API_KEY` in `litigant-env`); until wired, the QA handoff opens the interview unprefilled | #908  |
-| Access gate at the ingress covering `/api/` and `/interview/`, replacing `SitePasswordMiddleware`                                                                                          | #885  |
-| docassemble URLs become validated settings instead of corpus-carried URLs                                                                                                                  | #879  |
-| End-to-end QA verification sign-off (Jessica's #585 script for the ND flow)                                                                                                                | #587  |
+| Item                                                                                                                                                                                          | Issue |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
+| LP → docassemble handoff config (`DOCASSEMBLE_BASE_URL` / `DOCASSEMBLE_PUBLIC_URL` / `DOCASSEMBLE_API_KEY` in `litigant-env`); until wired, the packet section renders with no handoff button | #908  |
+| Access gate at the ingress covering `/api/` and `/interview/`, replacing `SitePasswordMiddleware`                                                                                             | #885  |
+| End-to-end QA verification sign-off (Jessica's #585 script for the ND flow)                                                                                                                   | #587  |
