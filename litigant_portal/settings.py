@@ -367,12 +367,14 @@ CORPUS_COURT = os.environ.get("CORPUS_COURT") or None
 # Audit window: cleanup_sessions keeps chat activity this many days.
 AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "30"))
 
-# docassemble prefill. Without a key the packet button falls back to the
-# plain, unprefilled interview link. The base URL overrides the API root
-# derived from that link, so a dev bench answers for the QA URL the content
-# YAML carries.
+# docassemble. Every URL is built from these settings; the corpus contributes
+# only the interview reference (#879). With neither URL set, packet sections
+# render without the interview button. Without a key the button falls back to
+# the plain, unprefilled interview link. Both URLs are full bases including
+# any path prefix (QA serves docassemble under /interview).
 DOCASSEMBLE_BASE_URL = os.environ.get("DOCASSEMBLE_BASE_URL") or None
 DOCASSEMBLE_API_KEY = os.environ.get("DOCASSEMBLE_API_KEY") or None
 # Set when LP reaches docassemble at an address litigants cannot, e.g. an
-# internal hostname: the resume link is rewritten onto this origin.
+# internal hostname: launch links are built on this base and the resume link
+# is rewritten onto its origin. Unset falls back to DOCASSEMBLE_BASE_URL.
 DOCASSEMBLE_PUBLIC_URL = os.environ.get("DOCASSEMBLE_PUBLIC_URL") or None

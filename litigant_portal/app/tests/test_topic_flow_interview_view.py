@@ -28,7 +28,11 @@ from litigant_portal.app.views import topic_flow as topic_flow_views
 COURT, TOPIC, ROLE = "test-court", "test_topic", "petitioner"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/interview/"
 FLOW_URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
-INTERVIEW = "https://da.example.gov/interview/interview?i=petition.yml"
+REFERENCE = "docassemble.test:data/questions/petition.yml"
+BASE = "https://da.example.gov/interview"
+LAUNCH = (
+    f"{BASE}/interview?i=docassemble.test%3Adata%2Fquestions%2Fpetition.yml"
+)
 RESUME = "https://da.example.gov/interview/launch?c=token"
 MAPPING = {
     "first_name": "current_first",
@@ -36,7 +40,13 @@ MAPPING = {
 }
 
 
-def _corpus(*, mapping=None, interview_url=INTERVIEW):
+@pytest.fixture(autouse=True)
+def _docassemble_configured(settings):
+    settings.DOCASSEMBLE_BASE_URL = BASE
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+
+
+def _corpus(*, mapping=None, reference=REFERENCE):
     return Corpus(
         metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
         sections=[
@@ -55,7 +65,7 @@ def _corpus(*, mapping=None, interview_url=INTERVIEW):
                 id="filing_packet",
                 heading="Your filing packet",
                 forms=["Petition"],
-                interview_url=interview_url,
+                interview_reference=reference,
                 interview_prefill=MAPPING if mapping is None else mapping,
             ),
         ],
@@ -78,10 +88,8 @@ class _Client:
         self.error = error
         self.calls = []
 
-    def __call__(self, *, interview_url, variables):
-        self.calls.append(
-            {"interview_url": interview_url, "variables": variables}
-        )
+    def __call__(self, *, interview, variables):
+        self.calls.append({"interview": interview, "variables": variables})
         if self.error:
             raise self.error
         return self.resume_url
@@ -179,7 +187,7 @@ def test_a_fresh_guest_goes_straight_to_the_plain_interview(
     # unencrypted multi_user session holding nothing, for the same experience.
     # Also: no identity row minted for a visitor who answered nothing.
     _flow(monkeypatch)
-    assert client.post(URL)["Location"] == INTERVIEW
+    assert client.post(URL)["Location"] == LAUNCH
     assert docassemble.calls == []
     assert UserIdentity.objects.count() == 0
 
@@ -196,13 +204,13 @@ def test_a_changed_answer_is_sent_at_its_new_value(
 
 
 @pytest.mark.django_db
-def test_the_launch_url_from_the_corpus_is_what_gets_prefilled(
+def test_the_reference_from_the_corpus_is_what_gets_prefilled(
     client, monkeypatch, docassemble, variables
 ):
     _flow(monkeypatch)
     _store(client, "first_name", "Sandra", reviewed=True)
     client.post(URL)
-    assert docassemble.calls[0]["interview_url"] == INTERVIEW
+    assert docassemble.calls[0]["interview"] == REFERENCE
 
 
 @pytest.mark.django_db
@@ -211,7 +219,7 @@ def test_an_unmapped_flow_links_out_without_a_session(
 ):
     _flow(monkeypatch, mapping={})
     _store(client, "first_name", "Sandra", reviewed=True)
-    assert client.post(URL)["Location"] == INTERVIEW
+    assert client.post(URL)["Location"] == LAUNCH
     assert docassemble.calls == []
 
 
@@ -233,7 +241,7 @@ def test_a_failed_session_falls_back_to_the_plain_interview_link(
     _store(client, "first_name", "Sandra", reviewed=True)
     response = client.post(URL)
     assert response.status_code == 302
-    assert response["Location"] == INTERVIEW
+    assert response["Location"] == LAUNCH
 
 
 @pytest.mark.django_db
@@ -263,7 +271,7 @@ def test_csrf_failure_on_the_interview_falls_back_to_the_plain_link(
     _flow(monkeypatch)
     response = Client(enforce_csrf_checks=True).post(URL)
     assert response.status_code == 302
-    assert response["Location"] == INTERVIEW
+    assert response["Location"] == LAUNCH
 
 
 @pytest.mark.django_db
@@ -277,7 +285,17 @@ def test_csrf_failure_on_an_unknown_flow_keeps_the_default_page(monkeypatch):
 def test_csrf_failure_on_a_flow_without_an_interview_keeps_the_default_page(
     monkeypatch,
 ):
-    _flow(monkeypatch, interview_url=None)
+    _flow(monkeypatch, reference=None)
+    response = Client(enforce_csrf_checks=True).post(URL)
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_csrf_failure_without_docassemble_keeps_the_default_page(
+    monkeypatch, settings
+):
+    settings.DOCASSEMBLE_BASE_URL = None
+    _flow(monkeypatch)
     response = Client(enforce_csrf_checks=True).post(URL)
     assert response.status_code == 403
 
@@ -312,7 +330,19 @@ def test_unknown_flow_returns_404(client, monkeypatch, docassemble):
 def test_a_flow_without_an_interview_returns_404(
     client, monkeypatch, docassemble
 ):
-    _flow(monkeypatch, interview_url=None)
+    _flow(monkeypatch, reference=None)
+    assert client.post(URL).status_code == 404
+    assert docassemble.calls == []
+
+
+@pytest.mark.django_db
+def test_without_docassemble_configured_the_handoff_returns_404(
+    client, monkeypatch, docassemble, settings
+):
+    # The packet section hides the button in this state; a POST that arrives
+    # anyway must not fall back onto a host named by content.
+    settings.DOCASSEMBLE_BASE_URL = None
+    _flow(monkeypatch)
     assert client.post(URL).status_code == 404
     assert docassemble.calls == []
 
@@ -326,7 +356,7 @@ def test_an_unreviewed_answer_is_never_sent(
 ):
     _flow(monkeypatch)
     _store(client, "first_name", "Sandra", reviewed=False)
-    assert client.post(URL)["Location"] == INTERVIEW
+    assert client.post(URL)["Location"] == LAUNCH
     assert docassemble.calls == []
 
 
@@ -348,7 +378,7 @@ def test_an_assistant_overwrite_drops_a_confirmed_answer_again(
     _flow(monkeypatch)
     _store(client, "first_name", "Sandra", reviewed=True)
     _store(client, "first_name", "Alex", reviewed=False)
-    assert client.post(URL)["Location"] == INTERVIEW
+    assert client.post(URL)["Location"] == LAUNCH
     assert docassemble.calls == []
 
 

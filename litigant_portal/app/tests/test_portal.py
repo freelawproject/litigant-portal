@@ -8,7 +8,13 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.management import call_command
-from django.test import Client, RequestFactory, SimpleTestCase, TestCase
+from django.test import (
+    Client,
+    RequestFactory,
+    SimpleTestCase,
+    TestCase,
+    override_settings,
+)
 
 from litigant_portal.app.context_processors import toast_messages
 
@@ -18,6 +24,9 @@ User = get_user_model()
 class DjangoSystemTests(SimpleTestCase):
     """Verify Django configuration is correct."""
 
+    # docassemble.W002 reports the environment (no docassemble configured),
+    # not the codebase — CI has none by design, so it would always fire here.
+    @override_settings(SILENCED_SYSTEM_CHECKS=["docassemble.W002"])
     def test_system_checks_pass(self):
         """Django system checks should pass without warnings."""
         # This catches misconfigurations early

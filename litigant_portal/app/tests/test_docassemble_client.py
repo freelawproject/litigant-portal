@@ -2,7 +2,8 @@
 
 DB-free. ``requests.request`` is replaced per test, so these assert the exact
 calls the client makes: payload shapes, the one-time resume flag, the API key
-in a header, and no answer ever reaching a URL.
+in a header, and no answer ever reaching a URL. Every URL is built from
+settings; the interview reference is the client's only content-derived input.
 """
 
 import pytest
@@ -12,10 +13,10 @@ from django.test import override_settings
 from litigant_portal.app.services.docassemble import (
     DocassembleError,
     docassemble_session_create,
+    interview_launch_url,
 )
 
-INTERVIEW = "docassemble.playground1:petition-standard.yml"
-INTERVIEW_URL = f"https://qa.example.gov/interview/interview?i={INTERVIEW}"
+INTERVIEW = "docassemble.ndnamechange:data/questions/petition-standard.yml"
 RESUME = "https://qa.example.gov/interview/session?resume=abc"
 VARIABLES = {"current_first": "Sandra", "residence_county": "Burleigh"}
 
@@ -67,7 +68,7 @@ def recorder(monkeypatch):
 
 def _create(**kwargs):
     return docassemble_session_create(
-        interview_url=kwargs.pop("interview_url", INTERVIEW_URL),
+        interview=kwargs.pop("interview", INTERVIEW),
         variables=kwargs.pop("variables", VARIABLES),
     )
 
@@ -97,7 +98,7 @@ def test_calls_the_three_endpoints_in_order(recorder):
     DOCASSEMBLE_API_KEY="k",
     DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
 )
-def test_new_session_asks_for_the_interview_from_the_launch_url(recorder):
+def test_new_session_asks_for_the_given_interview_reference(recorder):
     _create()
     assert recorder.calls[0]["params"] == {"i": INTERVIEW}
 
@@ -163,7 +164,7 @@ def test_every_call_sets_a_timeout(recorder):
 @override_settings(
     DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL="http://localhost:8100"
 )
-def test_base_url_override_replaces_the_api_root(recorder):
+def test_the_api_root_comes_from_the_base_url_setting(recorder):
     _create()
     assert all(
         c["url"].startswith("http://localhost:8100/api/")
@@ -171,7 +172,7 @@ def test_base_url_override_replaces_the_api_root(recorder):
     )
 
 
-@override_settings(DOCASSEMBLE_API_KEY=None, DOCASSEMBLE_BASE_URL=None)
+@override_settings(DOCASSEMBLE_API_KEY=None, DOCASSEMBLE_BASE_URL="http://da")
 def test_missing_api_key_raises_without_calling_out(recorder):
     with pytest.raises(DocassembleError):
         _create()
@@ -179,21 +180,11 @@ def test_missing_api_key_raises_without_calling_out(recorder):
 
 
 @override_settings(DOCASSEMBLE_API_KEY="k", DOCASSEMBLE_BASE_URL=None)
-def test_a_key_without_a_base_url_raises_without_calling_out(recorder):
-    # Falling back to the host the corpus names would POST the key and the
-    # litigant's answers to whatever that host is (QA, for both live corpora).
+def test_a_missing_base_url_raises_without_calling_out(recorder):
+    # No configured root means there is nowhere safe to send the key and the
+    # litigant's answers; content must never supply the host (#879).
     with pytest.raises(DocassembleError):
         _create()
-    assert recorder.calls == []
-
-
-@override_settings(
-    DOCASSEMBLE_API_KEY="k",
-    DOCASSEMBLE_BASE_URL="https://qa.example.gov/interview",
-)
-def test_launch_url_without_an_interview_reference_raises(recorder):
-    with pytest.raises(DocassembleError):
-        _create(interview_url="https://qa.example.gov/interview/interview")
     assert recorder.calls == []
 
 
@@ -351,13 +342,43 @@ def test_a_bare_string_resume_response_is_accepted(monkeypatch):
     assert _create() == RESUME
 
 
-@override_settings(
-    DOCASSEMBLE_API_KEY="k",
-    DOCASSEMBLE_BASE_URL="http://docassemble",
-    DOCASSEMBLE_PUBLIC_URL="https://qa.example.gov/interview",
+@pytest.mark.parametrize(
+    ("public", "built", "expected"),
+    [
+        (
+            "https://qa.example.gov/interview",
+            "http://docassemble/launch?c=tok",
+            "https://qa.example.gov/interview/launch?c=tok",
+        ),
+        (
+            "https://qa.example.gov/interview",
+            "http://docassemble/interview/launch?c=tok",
+            "https://qa.example.gov/interview/launch?c=tok",
+        ),
+        (
+            # docassemble's own endpoint is also named /interview: a path
+            # equal to the prefix is the endpoint, not the prefix.
+            "https://qa.example.gov/interview",
+            "http://docassemble/interview?session=abc",
+            "https://qa.example.gov/interview/interview?session=abc",
+        ),
+        (
+            "https://qa.example.gov",
+            "http://docassemble/launch?c=tok",
+            "https://qa.example.gov/launch?c=tok",
+        ),
+    ],
+    ids=[
+        "prefix-prepended-when-docassemble-omits-it",
+        "prefix-not-doubled-when-docassemble-already-carries-it",
+        "endpoint-named-like-the-prefix-still-gains-it",
+        "origin-only-public-url-swaps-origin-alone",
+    ],
 )
-def test_resume_url_is_rewritten_onto_the_public_origin(monkeypatch):
-    # docassemble builds the launch URL from the host we called it on, which
+def test_resume_url_is_rewritten_onto_the_public_base(
+    monkeypatch, public, built, expected
+):
+    # docassemble builds the resume URL from the host we called it on, which
     # on a deployment is internal and unreachable from a browser.
     monkeypatch.setattr(
         requests,
@@ -365,10 +386,15 @@ def test_resume_url_is_rewritten_onto_the_public_origin(monkeypatch):
         _Recorder(
             _Response({"session": "sess-1"}),
             _Response(status=204),
-            _Response({"url": "http://docassemble/launch?c=tok"}),
+            _Response({"url": built}),
         ),
     )
-    assert _create() == "https://qa.example.gov/launch?c=tok"
+    with override_settings(
+        DOCASSEMBLE_API_KEY="k",
+        DOCASSEMBLE_BASE_URL="http://docassemble",
+        DOCASSEMBLE_PUBLIC_URL=public,
+    ):
+        assert _create() == expected
 
 
 @override_settings(
@@ -378,3 +404,34 @@ def test_resume_url_is_rewritten_onto_the_public_origin(monkeypatch):
 )
 def test_resume_url_is_left_alone_without_a_public_origin(recorder):
     assert _create() == RESUME
+
+
+# --- launch URL ---------------------------------------------------------------
+# The plain (unprefilled) link the packet button falls back to. Built from
+# settings alone: content contributes only the ?i= reference.
+
+
+@override_settings(
+    DOCASSEMBLE_BASE_URL="http://docassemble/interview",
+    DOCASSEMBLE_PUBLIC_URL="https://qa.example.gov/interview/",
+)
+def test_launch_url_is_built_on_the_public_base():
+    assert interview_launch_url(INTERVIEW) == (
+        "https://qa.example.gov/interview/interview"
+        "?i=docassemble.ndnamechange%3Adata%2Fquestions%2Fpetition-standard.yml"
+    )
+
+
+@override_settings(
+    DOCASSEMBLE_BASE_URL="http://localhost:8100",
+    DOCASSEMBLE_PUBLIC_URL=None,
+)
+def test_launch_url_falls_back_to_the_base_url():
+    assert interview_launch_url(INTERVIEW).startswith(
+        "http://localhost:8100/interview?i="
+    )
+
+
+@override_settings(DOCASSEMBLE_BASE_URL=None, DOCASSEMBLE_PUBLIC_URL=None)
+def test_launch_url_is_none_when_no_docassemble_is_configured():
+    assert interview_launch_url(INTERVIEW) is None

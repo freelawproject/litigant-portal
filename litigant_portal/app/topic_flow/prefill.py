@@ -7,15 +7,23 @@ site, these functions only resolve the corpus mapping and rename what it holds.
 from litigant_portal.app.topic_flow.schema import PacketOutput
 
 
-def interview_target(corpus) -> tuple[str, dict] | None:
-    """``(launch url, {question id: interview variable})``, or None.
+def interview_reference(section) -> str | None:
+    """The interview reference a packet section hands off to, or None."""
+    if isinstance(section, PacketOutput):
+        return section.interview_reference
+    return None
 
-    The first packet section carrying an interview_url wins; a corpus with no
+
+def interview_target(corpus) -> tuple[str, dict] | None:
+    """``(interview reference, {question id: interview variable})``, or None.
+
+    The first packet section carrying an interview wins; a corpus with no
     interview handoff returns None.
     """
     for section in corpus.sections:
-        if isinstance(section, PacketOutput) and section.interview_url:
-            return section.interview_url, dict(section.interview_prefill)
+        reference = interview_reference(section)
+        if reference:
+            return reference, dict(section.interview_prefill)
     return None
 
 
