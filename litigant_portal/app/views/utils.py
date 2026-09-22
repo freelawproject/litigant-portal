@@ -26,10 +26,19 @@ def topic_flow_answers(request, corpus) -> dict:
     Reads through the glossary, so a fact the assistant stored shows up
     here too. Empty for a visitor with no identity yet.
     """
+    return _answer_map(request, question_ids(corpus))
+
+
+def topic_flow_reviewed_answers(request, names: list[str]) -> dict:
+    """``{question_id: value}`` for confirmed answers only, for the prefill."""
+    return _answer_map(request, names, reviewed_only=True)
+
+
+def _answer_map(request, names, *, reviewed_only=False) -> dict:
     if not _has_identity(request):
         return {}
     return variable_answer_map(
-        identity=request.identity, names=question_ids(corpus)
+        identity=request.identity, names=names, reviewed_only=reviewed_only
     )
 
 
