@@ -1,6 +1,5 @@
 import logging
 import os
-from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -33,11 +32,13 @@ LP_AGENT_DEV_ENABLED = (
     == "true"
 )
 
-# Captured at module import — approximates container/process start time. Shown
-# in the dev/QA header so testers can disambiguate deploys by the minute.
-APP_BUILD_TIME = datetime.now().strftime("%Y/%m/%d %H:%M")
-
+# Provenance of the running build, shown in the dev/QA header so testers can
+# tell which deploy they are looking at. All three are baked in at image build
+# and empty on a local bind mount, where the working tree may carry uncommitted
+# edits that no commit or build time honestly describes.
 GIT_SHA = os.environ.get("GIT_SHA", "unknown")
+GIT_BRANCH = os.environ.get("GIT_BRANCH", "")
+APP_BUILD_TIME = os.environ.get("BUILD_TIME", "")
 
 SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
 

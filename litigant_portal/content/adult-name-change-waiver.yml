@@ -76,13 +76,11 @@ resources:
 sections:
   - kind: info
     id: overview
-    heading: 'Changing your first or middle name in North Dakota'
+    heading: 'Asking to change your name without publishing notice'
     body: |
-      This walks you through a standalone adult name-change petition in North Dakota district court, on the waiver track: changing your first and/or middle name only, leaving your last name unchanged.
+      This walks you through a standalone adult name-change petition in North Dakota district court, on the waiver track: asking the judge to skip publishing notice in the newspaper. It covers both reasons the law allows, whichever part of your name you are changing.
 
-      On this track a judge may waive the newspaper publication requirement, and if publication is waived there is no 30-day waiting period. The waiver is the judge's decision on the facts you present. It is not guaranteed, so plan for the possibility that publication is still required.
-
-      If you are changing your last name (or any combination that includes it), use the publication-required version of this tool instead.
+      If the judge grants the waiver there is no 30-day waiting period. The waiver is the judge's decision on the facts you present. It is not guaranteed, so plan for the possibility that publication is still required.
 
       One common mix-up: if you wanted your name changed as part of a divorce, that has to be requested inside the divorce case. It is not handled here.
 
@@ -176,9 +174,31 @@ sections:
     id: publication_waiver
     heading: 'About the publication waiver'
     body: |
-      Because you are not changing your last name, you can ask the judge to waive the requirement to publish a notice in the newspaper. If the judge grants the waiver, there is no 30-day waiting period and your petition can be considered sooner.
+      You can ask the judge to waive the requirement to publish a notice in the newspaper. If the judge grants it, there is no 30-day waiting period and your petition can be considered sooner.
 
-      The judge decides this on your particular facts, so it is not automatic. Ask the clerk how your county handles the waiver request, and be ready in case publication is still required.
+      North Dakota law allows two reasons, and only these two:
+      - You are changing only your first or middle name, and your last name stays the same.
+      - You are a victim of domestic violence, as North Dakota law defines it.
+
+      North Dakota law defines domestic violence as physical harm, bodily injury, sexual activity compelled by physical force, assault, or being put in fear of any of those, not committed in self-defense, by a family or household member. If you ask on that basis, you explain it on the Declaration, which goes to the judge. The Declaration says you must give evidence that satisfies the judge, and North Dakota's materials do not say what evidence is enough, so this one is the judge's call on your particular facts.
+
+      You mark the reason or reasons on the Petition. The judge decides on your facts, so a waiver is not automatic.
+
+  - kind: info
+    id: waiver_denied
+    heading: 'If the judge does not waive publication'
+    body: |
+      If the judge denies your request, the court notifies you. You then publish the notice and continue from there. Nothing you have already filed is wasted.
+
+      Publishing works like this:
+      - You arrange it yourself. Contact the official newspaper of the county where you filed.
+      - The notice can run in a print edition, an e-edition, or both.
+      - After it runs, the newspaper gives you an Affidavit of Publication or a Declaration of Publication. Keep a copy and file the original with the court.
+      - Wait 30 calendar days, counting from the day after publication. The court cannot act on your petition until that time has passed.
+
+      You will also need the Notice of Petition for Name Change. It is not in the packet above, because the waiver track does not use it unless publication turns out to be required. It is on the North Dakota name change page linked in the resources.
+
+      North Dakota law does not say how many times the notice has to run. Ask the newspaper and the Clerk of Court what your county expects before you pay for publication.
 
   - kind: info
     id: form_gotchas
