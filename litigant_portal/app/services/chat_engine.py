@@ -9,6 +9,7 @@ from django.conf import settings
 from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
+from django.utils.translation import gettext as _
 
 from litigant_portal.agents.base import Agent, ToolOutput
 from litigant_portal.app.models import (
@@ -356,6 +357,37 @@ def _execute_tool(
         return ToolOutput(result=f"Error: {e}")
 
 
+def _stream_error_event(thread: ChatThread) -> dict:
+    """The user-facing payload for a failed stream (#746).
+
+    Never carries the exception text: raw provider errors leak model ids,
+    endpoints, and stack fragments to the browser. Routes to the active
+    flow's guided page when the thread has one, else the home topic grid,
+    so an AI outage always leaves a working non-AI path.
+    """
+    from litigant_portal.agents.tools.load_topic_flow import (
+        topic_flow_from_path,
+    )
+    from litigant_portal.app.topic_flow.registry import topic_flow_page_url
+
+    url, label = "/", _("Browse the help topics")
+    path = (thread.state or {}).get("active_topic_flow")
+    flow = topic_flow_from_path(path) if path else None
+    if flow is not None:
+        page_url = topic_flow_page_url(flow)
+        if page_url:
+            url, label = page_url, flow.name
+    return {
+        "type": "error",
+        "message": _(
+            "The assistant is temporarily unavailable. You can continue "
+            "with the step-by-step guide instead."
+        ),
+        "fallback_url": url,
+        "fallback_label": label,
+    }
+
+
 def chat_stream(
     *,
     identity: UserIdentity,
@@ -589,9 +621,9 @@ def chat_stream(
 
             thread.save(update_fields=["updated_at"])
             yield _sse({"type": "done"})
-        except Exception as e:
+        except Exception:
             logger.exception("chat_engine stream failed")
-            yield _sse({"type": "error", "error": str(e)})
+            yield _sse(_stream_error_event(thread))
             yield _sse({"type": "done"})
 
     response = StreamingHttpResponse(

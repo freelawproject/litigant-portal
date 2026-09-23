@@ -262,6 +262,27 @@ function makeMessage(role, content, attachments) {
   }
 }
 
+// The AI-down fallback card (#746): friendly copy from the server plus a
+// link into the non-AI path (the active flow's guided page, or home). Only
+// root-relative URLs are honored — anything else falls back to home, so a
+// bad payload can never link off-site.
+function makeErrorMessage(event) {
+  const msg = makeMessage(
+    'assistant',
+    event.message || event.error || 'Something went wrong.'
+  )
+  const url = event.fallback_url || ''
+  const safeUrl = /^\/(?!\/)/.test(url) ? url : '/'
+  const label = event.fallback_label || 'Browse the help topics'
+  msg.html +=
+    '<p class="my-1.5 last:mb-0"><a href="' +
+    escapeHtml(safeUrl) +
+    '" class="text-primary-700 underline hover:no-underline">' +
+    escapeHtml(label) +
+    '</a></p>'
+  return msg
+}
+
 // Chip data for an attachment shown on a sent user message.
 function messageAttachment(att) {
   return {
@@ -852,7 +873,8 @@ document.addEventListener('alpine:init', () => {
       } else if (event.type === 'state') {
         if (this.attached(stream)) this.setState(event.state)
       } else if (event.type === 'error') {
-        this.appendAssistant(stream, event.error || 'Something went wrong.')
+        stream.messages.push(makeErrorMessage(event))
+        stream.openIndex = null
       }
       if (this.attached(stream)) {
         this.updateThinking()
