@@ -67,7 +67,9 @@ class ReviewFacts(Tool):
         identity = chat_thread_identity_get(thread_id=thread_id)
         answers = {
             a.variable.name: a
-            for a in variable_answer_list(identity=identity, answered_only=True)
+            for a in variable_answer_list(
+                identity=identity, answered_only=True
+            )
         }
         values = {name: a.value for name, a in answers.items()}
 
@@ -112,9 +114,7 @@ class ReviewFacts(Tool):
             )
         else:
             result += " No required facts are missing."
-        result += (
-            " Only the user can confirm facts, using the card's buttons."
-        )
+        result += " Only the user can confirm facts, using the card's buttons."
 
         return ToolOutput(
             result=result,

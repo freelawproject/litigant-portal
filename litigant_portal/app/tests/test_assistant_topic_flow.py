@@ -149,16 +149,22 @@ class TopicFlowMarkdownTests(TestCase):
             topic_flow_find(topic_slug="eviction", flow_slug="tenant")
         )
 
+        # Court-specific blocks carry [source:ID] ids, one counter across
+        # sections, deadlines, forms, and links, in corpus order.
         self.assertIn("# Responding to an Eviction", markdown)
         self.assertIn("Topic: Eviction", markdown)
-        self.assertIn("## First steps", markdown)
+        self.assertIn("## First steps [source:eviction/tenant/s1]", markdown)
         self.assertIn("Read the notice.", markdown)
         self.assertIn(
-            "- Answer due: 28 days after Date you were served", markdown
+            "- [source:eviction/tenant/s2] Answer due: 28 days after "
+            "Date you were served",
+            markdown,
         )
-        self.assertIn("- Answer Form", markdown)
+        self.assertIn("- [source:eviction/tenant/s3] Answer Form", markdown)
         self.assertIn(
-            '- Fee Waiver (included when county equals "cass")', markdown
+            "- [source:eviction/tenant/s4] Fee Waiver "
+            '(included when county equals "cass")',
+            markdown,
         )
         self.assertIn("### About your case", markdown)
         self.assertIn("- date_served (date): Date you were served", markdown)
@@ -171,7 +177,11 @@ class TopicFlowMarkdownTests(TestCase):
             '(asked when county = "cass")',
             markdown,
         )
-        self.assertIn("- Court site: https://example.com/court", markdown)
+        self.assertIn(
+            "- [source:eviction/tenant/s5] Court site: "
+            "https://example.com/court",
+            markdown,
+        )
 
     def test_markdown_omits_empty_sections(self):
         _eviction_flow()
