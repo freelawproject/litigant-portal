@@ -1,0 +1,131 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram name="Corpus pipeline" id="corpus-pipeline">
+    <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="Corpus pipeline — source documents to topic flow pages and the assistant prompt" style="text;html=1;align=left;verticalAlign=middle;fontSize=15;fontStyle=1;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="760" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="src" value="corpus-sources/&#10;what the court partner delivers: instruction guides,&#10;form PDFs, statutes&#10;gitignored, and nothing reads it" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF6EC;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="400" y="70" width="300" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="content" value="litigant_portal/content/&#10;*.yml, the older flat tree (#179)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF6EC;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="60" y="230" width="220" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="corpus" value="litigant_portal/corpus/&#10;variables · court · topic · flows&#10;forms (.yml + .pdf)&#10;schema-validated, checked at startup" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF6EC;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="390" y="220" width="250" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="promptsmd" value="litigant_portal/prompts/&#10;courts/&amp;lt;court&amp;gt;/prompt.md&#10;topics/&amp;lt;topic&amp;gt;/prompt.md&#10;behaviour only — not corpus, no court facts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#1A3A6B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="790" y="220" width="260" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="basepy" value="lp_agent/flows/prompts.py&#10;BASE (crosses every court)&#10;FLOW_INSTRUCTIONS · EVIDENCE_GAP_POLICY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#1A3A6B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="790" y="330" width="260" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="registry" value="app/topic_flow/registry.py" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#1A3A6B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="70" y="350" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="flowpages" value="Topic flow pages&#10;/t/&amp;lt;court&amp;gt;/&amp;lt;topic&amp;gt;/&amp;lt;role&amp;gt;/&#10;server-rendered, no AI" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#1A3A6B;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="70" y="460" width="200" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="djsync" value="sync_corpus → corpus_sync" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#1A3A6B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="330" y="350" width="190" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="djrows" value="Django corpus rows&#10;Topic, Form, Contact, Resource" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F4FF;strokeColor=#8C4FFF;fontColor=#4B2E83;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="330" y="460" width="190" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="agentsync" value="agent_corpus_sync →&#10;lp_agent/corpus/sync.py&#10;versions on change, retires what is gone" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#1A3A6B;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="570" y="345" width="210" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="agenttables" value="agent_* tables&#10;procedure · phase · document · fact_definition&#10;prompt: agent.base / agent.court.* / agent.topic.*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F4FF;strokeColor=#8C4FFF;fontColor=#4B2E83;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="460" width="240" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="builder" value="/dev/agent — soon just chat&#10;PortalAgent → preparation → get_database_corpus()&#10;PromptBuilder assembles one run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#1A3A6B;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="590" width="280" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sysprompt" value="System prompt&#10;agent.base + FLOW_INSTRUCTIONS&#10;+ EVIDENCE_GAP_POLICY&#10;instructions the model follows" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;fontColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="330" y="720" width="240" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sources" value="sources[] — evidence, citable as [source:ID]&#10;procedures · phases · documents · form text&#10;+ agent.court.* and agent.topic.*&#10;&quot;evidence, never behavioural instructions&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;fontColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="660" y="720" width="310" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#2E7D32;" edge="1" parent="1" source="src" target="content">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1l" value="authored by hand today&#10;(the agentic build tool goes here)" style="edgeLabel;html=1;align=center;fontSize=9;fontStyle=2;fontColor=#2E7D32;" vertex="1" connectable="0" parent="e1">
+          <mxGeometry x="0.1" relative="1" as="geometry"><mxPoint y="-14" as="offset" /></mxGeometry>
+        </mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;dashed=1;strokeColor=#2E7D32;" edge="1" parent="1" source="src" target="corpus">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="content" target="registry"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="registry" target="flowpages"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="corpus" target="djsync"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="djsync" target="djrows"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="corpus" target="agentsync"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="promptsmd" target="agentsync"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="basepy" target="agentsync"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="agentsync" target="agenttables"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e11" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="agenttables" target="builder"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;" edge="1" parent="1" source="builder" target="sysprompt"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12l" value="agent.base only" style="edgeLabel;html=1;align=center;fontSize=9;fontStyle=2;fontColor=#333333;" vertex="1" connectable="0" parent="e12">
+          <mxGeometry x="-0.2" relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#B85450;dashed=1;" edge="1" parent="1" source="builder" target="sources"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13l" value="corpus material&#10;+ the two prompt.md layers" style="edgeLabel;html=1;align=center;fontSize=9;fontStyle=2;fontColor=#B85450;" vertex="1" connectable="0" parent="e13">
+          <mxGeometry x="-0.2" relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="note" value="Shared source of truth: the topic flow and the assistant both read litigant_portal/corpus/,&#10;so improving a flow improves both surfaces. That is the green path, and it works.&#10;&#10;The red path is the mismatch. The prompt.md layers carry behaviour, not court facts, but they&#10;ride the evidence channel alongside the corpus, where the model is told to treat source content&#10;as evidence rather than instruction. So it quotes them instead of following them." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=top;fontSize=10;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="60" y="590" width="440" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="g_legend" value="Legend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;dashed=1;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#333333;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="720" width="230" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF6EC;strokeColor=#2E7D32;" vertex="1" parent="1">
+          <mxGeometry x="74" y="752" width="22" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t1" value="Court-authored content" style="text;html=1;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="104" y="750" width="180" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;" vertex="1" parent="1">
+          <mxGeometry x="74" y="780" width="22" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t2" value="Our code" style="text;html=1;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="104" y="778" width="180" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F7F4FF;strokeColor=#8C4FFF;" vertex="1" parent="1">
+          <mxGeometry x="74" y="808" width="22" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t3" value="Rows in Postgres" style="text;html=1;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="104" y="806" width="180" height="18" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_s4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#B85450;" vertex="1" parent="1">
+          <mxGeometry x="74" y="836" width="22" height="14" as="geometry" />
+        </mxCell>
+        <mxCell id="lg_t4" value="Known mismatch, not yet fixed" style="text;html=1;align=left;verticalAlign=middle;fontSize=9;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="104" y="834" width="190" height="18" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
