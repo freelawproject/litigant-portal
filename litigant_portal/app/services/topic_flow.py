@@ -114,6 +114,23 @@ def variable_answer_set(
     return answer
 
 
+def variable_answer_confirm(*, identity, names: list[str]) -> int:
+    """Mark an identity's answers to ``names`` as human-reviewed.
+
+    Returns how many rows changed. Cleared answers (value None) are
+    skipped: a cleared fact is not a fact, so there is nothing to confirm.
+    Only ever called from a session-authenticated view (the person
+    confirming their own facts) — never from an agent tool, since only
+    reviewed answers reach the docassemble prefill and the model must not
+    confirm what it wrote itself.
+    """
+    return VariableAnswer.objects.filter(
+        identity=identity,
+        variable__name__in=names,
+        value__isnull=False,
+    ).update(reviewed=True)
+
+
 @transaction.atomic
 def variable_answer_set_many(
     *, identity, values: dict, reviewed: bool = False
