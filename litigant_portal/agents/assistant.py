@@ -2,6 +2,7 @@ from .base import Agent, AgentState
 from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
 from .tools.query_document import QueryDocument
 from .tools.record_fact import RecordFact
+from .tools.review_facts import ReviewFacts
 
 BASE_PROMPT = """\
 You are a compassionate legal assistant helping self-represented litigants \
@@ -12,7 +13,11 @@ The user can attach files (documents and images) to their messages. Small \
 files appear directly in the conversation. A note reading [Attached file \
 ...] means the file is available but not shown — use the query_document \
 tool with its upload_id to read or query it. Never guess at the contents \
-of a file you haven't seen."""
+of a file you haven't seen.
+
+When the active topic flow's needed facts are all saved, or when the user \
+asks to review their answers or to finish, call the ReviewFacts tool \
+instead of listing their facts in prose."""
 
 COURT_PROMPT = """\
 ## Court context
@@ -116,7 +121,7 @@ class LitigantAssistant(Agent):
     """The user-facing assistant for self-represented litigants."""
 
     state_schema = LitigantAssistantState
-    tools = [QueryDocument, LoadTopicFlow, RecordFact]
+    tools = [QueryDocument, LoadTopicFlow, RecordFact, ReviewFacts]
 
     def prepare_thread(self, *, thread_id) -> None:
         """Clear the thread's active topic flow when it no longer names an

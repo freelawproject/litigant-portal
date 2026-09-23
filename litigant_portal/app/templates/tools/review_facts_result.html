@@ -1,0 +1,97 @@
+{# ReviewFacts result card. Context: `data` (facts, missing, confirm_names, #}
+{# all_reviewed, court/topic/role, interview_available). #}
+{# Errors carry no render_data, so an empty `data` renders the error state. #}
+{# No request context here, so no {% csrf_token %}: factReviewCard creates #}
+{# the hidden token input, filled from the page's token, when confirming #}
+{# arms the launch form. The input must not exist empty in the meantime — #}
+{# an empty [name=csrfmiddlewaretoken] earlier in the DOM than the page's #}
+{# real one would shadow it for every document.querySelector caller. #}
+{% load i18n %}
+{% if data.facts or data.missing %}
+  <div class="max-w-md rounded-lg border border-greyscale-200 bg-white p-3 space-y-3"
+       x-data="factReviewCard"
+       data-confirm-url="{% url 'pages:topic_flow_confirm' %}"
+       data-names="{{ data.confirm_names|join:',' }}"
+       data-all-reviewed="{{ data.all_reviewed|yesno:'true,false' }}">
+    <p class="text-sm font-medium text-greyscale-800">{% trans "Review your answers" %}</p>
+    {% if data.facts %}
+      <div class="space-y-2">
+        {% for fact in data.facts %}
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-[10px] font-semibold uppercase tracking-wide text-greyscale-400">{{ fact.label }}</p>
+              <p class="text-xs text-greyscale-700 leading-relaxed">{{ fact.value }}</p>
+            </div>
+            {% if fact.reviewed %}
+              <c-atoms.badge variant="completed">{% trans "Confirmed" %}</c-atoms.badge>
+            {% else %}
+              <c-atoms.badge variant="pending">{% trans "Not confirmed yet" %}</c-atoms.badge>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+    {% if data.missing %}
+      <div>
+        <p class="text-[10px] font-semibold uppercase tracking-wide text-amber-600">{% trans "Still needed" %}</p>
+        <p class="text-xs text-greyscale-700 leading-relaxed">
+          {% for item in data.missing %}{{ item.label }}{% if not forloop.last %}, {% endif %}{% endfor %}
+        </p>
+      </div>
+    {% endif %}
+    {% if data.facts %}
+      <div class="space-y-2">
+        <p class="text-xs text-greyscale-500 leading-relaxed">
+          {% trans "Check the answers above. Confirming marks them as reviewed by you, so they can fill your court forms." %}
+        </p>
+        {# State flips (disabled, notes) are imperative in factReviewCard, not #}
+        {# x-bind/x-show: bindings evaluated while x-html inserts the card #}
+        {# leak into the hosting x-html effect, so the first reactive write #}
+        {# re-renders the card and resets it. Only x-on is safe in tool cards. #}
+        <c-atoms.button type="button" variant="primary" size="sm" x-on:click="confirmFacts" data-role="confirm">
+          {% trans "Confirm my answers" %}
+        </c-atoms.button>
+        <p class="text-xs text-green-700" hidden data-role="confirmed-note">
+          {% trans "Confirmed. Your answers are marked as reviewed." %}
+        </p>
+        <p class="text-xs text-amber-600" hidden data-role="error-note">
+          {% trans "Confirming did not work. Please try again." %}
+        </p>
+      </div>
+      {% if data.interview_available %}
+        <form method="post"
+              action="{% url 'pages:topic_flow_interview' court=data.court topic=data.topic role=data.role %}"
+              target="_blank"
+              rel="noopener"
+        >
+          {# Rendered enabled; init() disables it until confirmed. The real #}
+          {# gate is server-side (reviewed-only prefill), so a click before #}
+          {# init lands as an unprefilled interview at worst. #}
+          <c-atoms.button type="submit" variant="primary" size="sm">
+            <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+            {% trans "Fill out your forms" %}
+            <span class="sr-only">{% trans "(opens in a new tab)" %}</span>
+          </c-atoms.button>
+        </form>
+      {% elif data.court %}
+        <p class="text-xs text-greyscale-500 leading-relaxed">
+          {% trans "The next step is on the step-by-step guide page:" %}
+          <c-atoms.link href="{% url 'pages:topic_flow' court=data.court topic=data.topic role=data.role %}">
+            {% trans "open the guide" %}
+          </c-atoms.link>
+        </p>
+      {% endif %}
+    {% endif %}
+  </div>
+{% else %}
+  <div class="max-w-md rounded-lg border border-greyscale-200 bg-white px-3 py-2">
+    <div class="flex items-center gap-2">
+      <c-atoms.icon name="clipboard-document-check" class="w-4 h-4 text-greyscale-400 flex-shrink-0" />
+      <span class="text-sm text-greyscale-700">{% trans "Reviewed your answers" %}</span>
+    </div>
+    <span class="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
+      <c-atoms.icon name="exclamation-triangle" class="w-3 h-3 flex-shrink-0" />
+      {% trans "Something went wrong" %}
+    </span>
+  </div>
+{% endif %}

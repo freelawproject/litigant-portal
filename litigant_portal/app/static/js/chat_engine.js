@@ -1200,4 +1200,104 @@ document.addEventListener('alpine:init', () => {
       }
     },
   }))
+
+  // The ReviewFacts tool card: the human-only confirm step. Confirming POSTs
+  // fact names to the facts endpoint (outside the agent namespace — the model
+  // cannot reach it), then arms the interview launch form by injecting the
+  // page's CSRF token. Config rides on data-* attributes because tool cards
+  // render server-side with no request context.
+  //
+  // Two constraints shape this component:
+  // - No x-bind/x-show inside the card, only x-on. Bindings evaluated while
+  //   x-html inserts the card leak their dependencies into the hosting x-html
+  //   effect, so the component's first reactive write re-renders
+  //   message.resultHtml and resets the card (observed on the CSP build
+  //   3.14.9). All UI flips are imperative DOM updates instead.
+  // - Historical cards re-render from render_data frozen at call time, so a
+  //   reloaded card may show stale "not confirmed" badges; confirming again
+  //   is idempotent, and the launch endpoint reads live rows either way.
+  Alpine.data('factReviewCard', () => ({
+    names: [],
+    confirmUrl: '',
+    busy: false,
+    done: false,
+
+    init() {
+      this.names = (this.$root.dataset.names || '').split(',').filter(Boolean)
+      this.confirmUrl = this.$root.dataset.confirmUrl
+      if (this.$root.dataset.allReviewed === 'true') this.markConfirmed()
+      else this.setLaunchEnabled(false)
+    },
+
+    async confirmFacts() {
+      if (this.busy || this.done || this.names.length === 0) return
+      this.busy = true
+      this.showNote('error-note', false)
+      try {
+        const res = await fetch(this.confirmUrl, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': this.csrfToken(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ names: this.names }),
+        })
+        if (!res.ok) throw new Error('confirm failed: ' + res.status)
+        this.markConfirmed()
+      } catch (e) {
+        console.error('Failed to confirm facts:', e)
+        this.showNote('error-note', true)
+      } finally {
+        this.busy = false
+      }
+    },
+
+    markConfirmed() {
+      this.done = true
+      const confirm = this.$root.querySelector('[data-role=confirm]')
+      if (confirm) confirm.disabled = true
+      this.showNote('confirmed-note', true)
+      this.showNote('error-note', false)
+      this.setLaunchEnabled(true)
+    },
+
+    setLaunchEnabled(enabled) {
+      const button = this.$root.querySelector('form button[type=submit]')
+      if (button) button.disabled = !enabled
+      if (enabled) this.armLaunch()
+    },
+
+    showNote(role, show) {
+      const note = this.$root.querySelector('[data-role=' + role + ']')
+      if (note) note.hidden = !show
+    },
+
+    // Create the launch form's CSRF input only now, already filled: an empty
+    // [name=csrfmiddlewaretoken] input rendered into the message flow would
+    // shadow the page's real token for every document.querySelector caller
+    // (chatApp's csrfToken included), breaking all chat POSTs.
+    armLaunch() {
+      const form = this.$root.querySelector('form')
+      if (!form) return
+      let input = form.querySelector('input[name=csrfmiddlewaretoken]')
+      if (!input) {
+        input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = 'csrfmiddlewaretoken'
+        form.appendChild(input)
+      }
+      input.value = this.csrfToken()
+    },
+
+    // Unlike chatApp's csrfToken, skip empty inputs: review cards put their
+    // own (initially empty) csrfmiddlewaretoken inputs into the message
+    // flow, ahead of the page's real token in DOM order.
+    csrfToken() {
+      const inputs = document.querySelectorAll('[name=csrfmiddlewaretoken]')
+      for (const input of inputs) {
+        if (input.value) return input.value
+      }
+      return ''
+    },
+  }))
 })
