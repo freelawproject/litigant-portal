@@ -144,10 +144,14 @@ def _store(client, name, value, reviewed=False):
 
 
 def _answers():
-    """``{variable_name: VariableAnswer}`` for the single visitor in a test."""
+    """
+    Current answers for the single visitor in a test, including cleared values.
+    """
     return {
         answer.variable.name: answer
-        for answer in VariableAnswer.objects.select_related("variable")
+        for answer in VariableAnswer.objects.filter(
+            matter__isnull=True, state="active", invalidated_at__isnull=True
+        ).select_related("variable")
     }
 
 
@@ -631,11 +635,14 @@ def test_post_owns_answers_by_the_visitor_identity(
 
 
 @pytest.mark.django_db
-def test_reposting_updates_the_same_answer_row(client, monkeypatch, variables):
+def test_reposting_preserves_history_and_replaces_current_answer(
+    client, monkeypatch, variables
+):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(URL, {"name_change_publication_date": "2026-02-01"})
     client.post(URL, {"name_change_publication_date": "2026-03-01"})
-    answer = VariableAnswer.objects.get()
+    answer = VariableAnswer.objects.get(state="active")
+    assert VariableAnswer.objects.get(state="superseded").value == "2026-02-01"
     assert answer.value == "2026-03-01"
     assert answer.reviewed
 

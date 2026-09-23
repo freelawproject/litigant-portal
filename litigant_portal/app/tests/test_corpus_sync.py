@@ -265,6 +265,7 @@ class TrustBoundaryTests(CorpusSyncTests):
             variable=variable,
             value="Jane Doe",
             reviewed=True,
+            confirmation_state="confirmed" if True else "unconfirmed",
         )
         self._sync(_make_corpus(), court=None, strict=True)
         answer.refresh_from_db()

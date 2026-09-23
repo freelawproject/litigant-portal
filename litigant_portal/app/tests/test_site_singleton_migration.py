@@ -28,12 +28,20 @@ MIGRATE_TO = ("app", "0012_site_singleton")
 @pytest.mark.postgres
 class SiteSingletonMigrationTests(TransactionTestCase):
     def tearDown(self):
-        self._migrate(MIGRATE_TO)
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())
 
     def _migrate(self, target):
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
         executor.migrate([target])
+        if target == MIGRATE_TO:
+            self.site_model = executor.loader.project_state(
+                [target]
+            ).apps.get_model("app", "Site")
+            self.topic_model = executor.loader.project_state(
+                [target]
+            ).apps.get_model("app", "Topic")
         return executor
 
     def _rewind(self):
@@ -72,12 +80,12 @@ class SiteSingletonMigrationTests(TransactionTestCase):
 
         self._migrate(MIGRATE_TO)
 
-        self.assertEqual(Site.objects.count(), 1)
-        self.assertEqual(Site.objects.get().id, SITE_ID)
+        self.assertEqual(self.site_model.objects.count(), 1)
+        self.assertEqual(self.site_model.objects.get().id, SITE_ID)
         # The slug collided across the two sites, so this also pins the
         # ordering: pruning has to happen before slug goes unique.
         self.assertEqual(
-            list(Topic.objects.values_list("title", flat=True)),
+            list(self.topic_model.objects.values_list("title", flat=True)),
             ["Live Evictions"],
         )
 
@@ -96,8 +104,8 @@ class SiteSingletonMigrationTests(TransactionTestCase):
 
         self._migrate(MIGRATE_TO)
 
-        self.assertEqual(Site.objects.count(), 1)
-        self.assertEqual(Topic.objects.get().title, "First")
+        self.assertEqual(self.site_model.objects.count(), 1)
+        self.assertEqual(self.topic_model.objects.get().title, "First")
 
     def test_an_empty_table_gets_the_singleton_row(self):
         old_site, _ = self._rewind()
@@ -105,5 +113,5 @@ class SiteSingletonMigrationTests(TransactionTestCase):
 
         self._migrate(MIGRATE_TO)
 
-        self.assertEqual(Site.objects.count(), 1)
-        self.assertEqual(Site.objects.get().id, SITE_ID)
+        self.assertEqual(self.site_model.objects.count(), 1)
+        self.assertEqual(self.site_model.objects.get().id, SITE_ID)

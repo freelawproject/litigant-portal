@@ -15,7 +15,7 @@ gh workflow run qa-deploy.yml -f deploy_ref=<branch> -f reset_db=true
 Two inputs:
 
 - **`deploy_ref`** — any branch or tag (default `main`). QA is how a feature branch gets seen before merge.
-- **`reset_db`** — default **true**: the deploy drops every table and rebuilds the database from the deployed ref (#881). Untick it to keep user-entered QA data (threads, uploads, accounts) across the deploy — corpus rows are still re-synced from the ref either way (see below).
+- **`reset_db`** — default **true**: the deploy drops every table and the SQL functions owned by the agent migrations, then rebuilds the database from the deployed ref (#881). Extensions, database roles, and unrelated functions remain. Untick it to keep user-entered QA data (threads, uploads, accounts) across the deploy — corpus rows are still re-synced from the ref either way (see below).
 
 **One QA, last deploy wins.** There is a single shared environment, so a deploy replaces whatever ref was there before. A quick note in Slack before deploying a non-`main` ref is enough coordination. Per-PR preview environments are a later tier (#587).
 
@@ -26,7 +26,7 @@ Two inputs:
 3. **Secret re-sync** — the `litigant-env` ExternalSecret is forced to re-sync from AWS Secrets Manager, so pods read current values.
 4. **Temp pod** — a throwaway pod (`temp-pod-<sha>`, label `app=litigant-deploy-temp`) starts on the new image with the real secrets. All state changes run here, _before_ the web pods are touched:
    - `collectstatic --noinput --clear`
-   - with `reset_db`: scale `litigant-web` to 0, then drop every table in the schema
+   - with `reset_db`: scale `litigant-web` to 0, then drop every table in the schema and the SQL functions owned by the agent migrations
    - `migrate --noinput`
    - `sync_corpus --strict` (corpus YAML → database rows) and `bootstrap_superuser` — these two run on **every** deploy, with or without `reset_db`, so QA always serves the deployed ref's corpus
    - with `reset_db`: scale `litigant-web` back up

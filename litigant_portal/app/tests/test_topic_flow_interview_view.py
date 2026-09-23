@@ -203,6 +203,39 @@ def test_a_changed_answer_is_sent_at_its_new_value(
     assert docassemble.calls[0]["variables"] == {"current_first": "Alex"}
 
 
+@pytest.mark.postgres
+@pytest.mark.django_db
+@pytest.mark.parametrize("value", ["Alex", "Sandra"])
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("reviewed", [False, True])
+def test_replacement_prefill_uses_only_the_current_confirmed_answer(
+    client, monkeypatch, docassemble, variables, value, version, reviewed
+):
+    _flow(monkeypatch)
+    _store(client, "first_name", "Sandra", reviewed=True)
+    variable, _ = Variable.objects.get_or_create(
+        name="first_name",
+        version=version,
+        defaults={"data_type": VariableDataType.TEXT},
+    )
+    variable_answer_set(
+        identity=_identity(client),
+        variable=variable,
+        value=value,
+        reviewed=reviewed,
+    )
+
+    response = client.post(URL)
+    if reviewed:
+        assert response["Location"] == RESUME
+        assert docassemble.calls == [
+            {"interview": REFERENCE, "variables": {"current_first": value}}
+        ]
+    else:
+        assert response["Location"] == LAUNCH
+        assert docassemble.calls == []
+
+
 @pytest.mark.django_db
 def test_the_reference_from_the_corpus_is_what_gets_prefilled(
     client, monkeypatch, docassemble, variables

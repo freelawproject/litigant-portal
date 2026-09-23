@@ -40,3 +40,47 @@ __all__ = [
     "UserProfile",
     "UserUpload",
 ]
+
+from .agent import (
+    AgentMemory,
+    AgentMemorySource,
+    AgentPrompt,
+    AgentRun,
+    AgentRunStep,
+)
+from .shared import (
+    CorpusDocument,
+    Court,
+    CourtTopic,
+    Document,
+    DocumentChunk,
+    FactEvidence,
+    ImportAudit,
+    Matter,
+    MatterDocument,
+    MatterProcedure,
+    MessageAttachment,
+    PhaseDocument,
+    PhaseProgress,
+)
+
+__all__ += [
+    "Court",
+    "CourtTopic",
+    "Matter",
+    "PhaseDocument",
+    "AgentPrompt",
+    "Document",
+    "CorpusDocument",
+    "MatterDocument",
+    "DocumentChunk",
+    "FactEvidence",
+    "MatterProcedure",
+    "PhaseProgress",
+    "AgentMemory",
+    "AgentMemorySource",
+    "MessageAttachment",
+    "AgentRun",
+    "AgentRunStep",
+    "ImportAudit",
+]

@@ -1,9 +1,20 @@
-"""Postgres tests: variable_answer_list/variable_answer_map read an identity's answers scoped to that identity, to the requested names, and (with reviewed_only) to confirmed answers."""
+"""
+Answer selectors respect identity, current state, and human confirmation.
+"""
 
 import pytest
 from django.test import TestCase
+from django.utils import timezone
 
-from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
+from litigant_portal.app.models import (
+    Court,
+    CourtTopic,
+    Matter,
+    Topic,
+    UserIdentity,
+    Variable,
+    VariableAnswer,
+)
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.topic_flow import (
     variable_answer_list,
@@ -166,12 +177,65 @@ class VariableAnswerMapTests(TestCase):
         )
         self.assertEqual(result, {"residence_county": "Cass"})
 
+    def test_omits_noncurrent_answers_even_when_reviewed(self):
+        for fields in (
+            {"state": "superseded"},
+            {"state": "retracted"},
+            {"invalidated_at": timezone.now()},
+        ):
+            VariableAnswer.objects.create(
+                identity=self.identity,
+                variable=self.county,
+                value="Cass",
+                reviewed=True,
+                confirmation_state="confirmed",
+                **fields,
+            )
+        for reviewed_only in (False, True):
+            with self.subTest(reviewed_only=reviewed_only):
+                self.assertEqual(
+                    variable_answer_map(
+                        identity=self.identity,
+                        names=["residence_county"],
+                        reviewed_only=reviewed_only,
+                    ),
+                    {},
+                )
+
+    def test_omits_matter_answers_even_when_reviewed(self):
+        court_topic = CourtTopic.objects.create(
+            court=Court.objects.create(slug="test-court", name="Test court"),
+            topic=Topic.objects.create(slug="test-topic", title="Test topic"),
+        )
+        matter = Matter.objects.create(
+            user=self.identity, court_topic=court_topic, title="Test matter"
+        )
+        VariableAnswer.objects.create(
+            identity=self.identity,
+            variable=self.county,
+            matter=matter,
+            value="Cass",
+            reviewed=True,
+            confirmation_state="confirmed",
+        )
+        for reviewed_only in (False, True):
+            with self.subTest(reviewed_only=reviewed_only):
+                self.assertEqual(
+                    variable_answer_map(
+                        identity=self.identity,
+                        names=["residence_county"],
+                        reviewed_only=reviewed_only,
+                    ),
+                    {},
+                )
+
     def test_reviewed_only_includes_a_reviewed_answer(self):
         VariableAnswer.objects.create(
             identity=self.identity,
             variable=self.county,
             value="Cass",
             reviewed=True,
+            confirmation_state="confirmed",
         )
         result = variable_answer_map(
             identity=self.identity,
@@ -200,6 +264,7 @@ class VariableAnswerMapTests(TestCase):
             variable=self.county,
             value="Cass",
             reviewed=True,
+            confirmation_state="confirmed",
         )
         VariableAnswer.objects.create(
             identity=self.identity,
@@ -220,6 +285,7 @@ class VariableAnswerMapTests(TestCase):
             variable=self.county,
             value=None,
             reviewed=True,
+            confirmation_state="confirmed",
         )
         result = variable_answer_map(
             identity=self.identity,
@@ -239,6 +305,7 @@ class VariableAnswerMapTests(TestCase):
             variable=vestigial,
             value="Stark",
             reviewed=True,
+            confirmation_state="confirmed",
         )
         result = variable_answer_map(
             identity=self.identity,

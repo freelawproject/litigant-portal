@@ -131,6 +131,72 @@ model behavior; runtimes decide how flows execute.
 | [`corpus/`](corpus/)                                           | File retrieval and stubs for other retrieval backends                                                |
 | [`utils/audit.py`](utils/audit.py)                             | Canonical instruction snapshots and fingerprints                                                     |
 
+## Experimental database surfaces
+
+Django models and migrations currently own the shared application and agent
+schema. Existing web CRUD stays in Django services. The agent adapter retains
+its SQL operations, and lookup functions and integrity triggers remain SQL
+because they enforce database permissions, ownership, and atomic invariants.
+The intended later home for custom application data is a shared `lp_database`
+module; its implementation and ORM selection are outside this PR.
+
+Existing application writes use `transaction.atomic()`. A write combining ORM
+and SQL must use that same Django connection. Agent-only operations use
+`db.transaction()` on their caller-owned psycopg connection. Separate Django
+and psycopg connections do not share a transaction. Court-authoring methods
+require the host-controlled `AccessContext.author` capability, defaulting false.
+
+The database adapters are available for integration; the supplied environment
+still uses memory stores. See the [schema installation](tests/fixtures/agent_db/)
+for local installation and separate writer/lookup login credentials.
+
+Create connections inside the process and event loop using them, including
+inside a worker after it starts. Give independent concurrent work separate
+connections. The context managers configure dictionary rows and autocommit and
+close on exit. `lookup_connection()` also rejects a privileged session login,
+extra role memberships, and agent-table/internal-function privileges.
+
+With host-verified access and a prepared run, group related writes with their
+checkpoint. Let errors escape the transaction block so all its writes roll back:
+
+```python
+from lp_agent.adapters.connections import agent_connection, lookup_connection
+from lp_agent.adapters.db import AgentDatabase
+from lp_agent.tools.agent_search import AgentSearch
+
+async with agent_connection(writer_dsn) as connection:
+    db = AgentDatabase(connection, access)
+    async with db.transaction():
+        await db.append_item(
+            checkpoint.conversation_id,
+            key=item_key,
+            payload=item_payload,
+            run_id=checkpoint.run_id,
+        )
+        saved = await db.commit_checkpoint(checkpoint, status, outcome)
+    checkpoint = saved
+
+async with lookup_connection(lookup_dsn) as connection:
+    search = AgentSearch(
+        connection,
+        access=access,
+        run_id=checkpoint.run_id,
+        host_policy=current_host_policy,
+    )
+    hits = await search.search(query)
+```
+
+`RunStore.commit_checkpoint()` returns a detached saved checkpoint. Carry its
+`storage_version` into the next write; database checkpoint reads also return it.
+An initial database write uses `None`. `Engagement` carries the returned version
+automatically. Stores without optimistic versioning can return `None` for that
+field. A stale version is rejected; reloading just before writing would bypass
+the protection against stale work.
+
+`get_database_corpus()` delegates scope checks and initial revision selection to
+`AgentDatabase.pin_run_context()`, then returns available pinned material for a
+consuming flow. Runtime retrieval wiring and live model grounding remain separate.
+
 ## Checks
 
 From the repository root, run the isolated core checks:
@@ -145,8 +211,21 @@ or provider credentials. Default `tox` and `make test` also run this environment
 With LiteLLM and pytest installed, run the provider checks separately:
 
 ```sh
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c lp_agent/pytest.ini lp_agent/tests/providers
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest -c lp_agent/pytest.ini lp_agent/tests/providers/test_bedrock.py
 ```
 
 Provider checks use controlled responses and make no live model calls. The full
 project suite also covers the Django wrapper and HTTP integration.
+
+Database surface tests run through the project configuration in `make test` and
+`make pre-commit`. To run just those tests with the Docker stack running:
+
+```sh
+docker compose exec -T django tox -e py313 -- -c pyproject.toml lp_agent/tests/providers/test_database.py -q
+```
+
+The tests create a temporary database and dedicated login roles on the configured
+PostgreSQL service, install the [application migrations](tests/fixtures/agent_db/),
+and drop the database and logins during teardown. Setup errors fail the tests.
+No local installation of the agent schema is required. `tox -e fast` excludes
+PostgreSQL cases while retaining argument-validation coverage.

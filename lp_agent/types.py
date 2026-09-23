@@ -75,6 +75,7 @@ class AccessContext(ContractModel):
     """
 
     identity_id: Identifier
+    author: bool = False
 
 
 class ScopeSelection(ContractModel):
@@ -309,6 +310,9 @@ class RunCheckpoint(RunReference):
 
     version: Literal[1] = 1
     data: dict[str, JsonValue]
+    # Carry the storage version returned by checkpoint() or commit_checkpoint().
+    # None is an initial DB write or an unversioned store, not a payload version.
+    storage_version: Annotated[int, Field(ge=0)] | None = None
 
 
 class ResponsesModel(ContractModel):
@@ -616,3 +620,59 @@ class Conversation(ContractModel):
     identity_id: Identifier
     scope: ScopeSelection
     items: tuple[ModelItem, ...] = ()
+
+
+class PromptFragment(ContractModel):
+    """
+    A selected fragment; the consuming Python flow decides how to assemble it.
+    """
+
+    id: Identifier
+    key: Identifier
+    version: int
+    body: str
+    metadata: dict[str, JsonValue]
+
+
+class DatabaseCorpus(ContractModel):
+    """
+    Published court material and the exact revisions selected for a run.
+    """
+
+    scope: Scope
+    court_topic_id: Identifier
+    config: dict[str, JsonValue]
+    procedures: tuple[dict[str, JsonValue], ...]
+    document_records: tuple[dict[str, JsonValue], ...]
+    documents: tuple[CorpusDocument, ...]
+    prompts: tuple[PromptFragment, ...]
+    manifest: dict[str, dict[str, str]]
+
+
+type AgentSearchCategory = Literal[
+    "court_corpus",
+    "user_documents",
+    "user_facts",
+    "matter_facts",
+    "procedure_progress",
+    "conversation_history",
+]
+
+
+class AgentSearchQuery(ContractModel):
+    """
+    Model-supplied search arguments, with no identity or database identifiers.
+    """
+
+    category: AgentSearchCategory
+    query: Annotated[str, Field(max_length=512)]
+    limit: Annotated[StrictInt, Field(ge=1, le=20)]
+
+
+class AgentSourceQuery(ContractModel):
+    """
+    Fetch a bounded excerpt using a source ID returned by search.
+    """
+
+    category: AgentSearchCategory
+    source_id: Identifier

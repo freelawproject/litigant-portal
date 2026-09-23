@@ -14,8 +14,11 @@ from django.db.models import ProtectedError
 from django.test import TestCase
 
 from litigant_portal.app.models import (
+    Court,
+    CourtTopic,
     Form,
     FormField,
+    ImportAudit,
     Topic,
     TopicFlow,
     TopicFlowDeadline,
@@ -45,17 +48,38 @@ def build_form(slug="answer"):
 
 @pytest.mark.postgres
 class TopicFlowTests(TestCase):
-    def test_slug_is_unique_per_topic_not_globally(self):
-        first = build_flow()
-        other_topic = Topic.objects.create(slug="other", title="Other")
-        # Same slug under a different topic is fine.
-        TopicFlow.objects.create(
-            topic=other_topic, slug=first.slug, name="Tenant"
+    def test_slug_is_unique_per_court_topic_and_version(self):
+        court = Court.objects.create(slug="court", name="Court")
+        topic = Topic.objects.create(slug="topic", title="Topic")
+        pair = CourtTopic.objects.create(court=court, topic=topic)
+        audit = ImportAudit.objects.create(
+            invocation_type="test", code_version="test"
         )
-
+        first = TopicFlow.objects.create(
+            topic=topic, court_topic=pair, slug="flow", import_audit=audit
+        )
+        other_topic = Topic.objects.create(slug="other", title="Other")
+        other_pair = CourtTopic.objects.create(court=court, topic=other_topic)
+        TopicFlow.objects.create(
+            topic=other_topic,
+            court_topic=other_pair,
+            slug=first.slug,
+            import_audit=audit,
+        )
+        TopicFlow.objects.create(
+            topic=topic,
+            court_topic=pair,
+            slug=first.slug,
+            version=2,
+            previous_version=first,
+            import_audit=audit,
+        )
         with self.assertRaises(IntegrityError), transaction.atomic():
             TopicFlow.objects.create(
-                topic=first.topic, slug=first.slug, name="Clash"
+                topic=topic,
+                court_topic=pair,
+                slug=first.slug,
+                import_audit=audit,
             )
 
     def test_flows_are_disabled_until_switched_on(self):
@@ -138,13 +162,21 @@ class AnswerTests(TestCase):
         self.variable = Variable.objects.create(name="county")
         self.identity = UserIdentity.objects.create(session_key="abc123")
 
-    def test_one_answer_per_identity_per_variable(self):
+    def test_one_current_reviewed_answer_per_identity_and_variable(self):
         VariableAnswer.objects.create(
-            identity=self.identity, variable=self.variable, value="Cass"
+            identity=self.identity,
+            variable=self.variable,
+            value="Cass",
+            reviewed=True,
+            confirmation_state="confirmed",
         )
         with self.assertRaises(IntegrityError), transaction.atomic():
             VariableAnswer.objects.create(
-                identity=self.identity, variable=self.variable, value="Ward"
+                identity=self.identity,
+                variable=self.variable,
+                value="Ward",
+                reviewed=True,
+                confirmation_state="confirmed",
             )
 
     def test_two_identities_may_answer_the_same_variable(self):

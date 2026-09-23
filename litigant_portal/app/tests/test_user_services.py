@@ -11,11 +11,13 @@ from django.test import TestCase
 
 from litigant_portal.app.models import (
     ChatThread,
+    FactEvidence,
     UserIdentity,
     UserUpload,
     Variable,
     VariableAnswer,
 )
+from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.services.user import (
     user_identity_ensure,
     user_identity_merge,
@@ -87,6 +89,7 @@ class IdentityMergeVariableAnswerTests(TestCase):
             variable=variable,
             value=value,
             reviewed=reviewed,
+            confirmation_state="confirmed" if reviewed else "unconfirmed",
         )
 
     def _merge(self):
@@ -123,7 +126,34 @@ class IdentityMergeVariableAnswerTests(TestCase):
         self.assertEqual(kept.value, "Ada")
         self.assertFalse(kept.reviewed)
         self.assertEqual(
-            VariableAnswer.objects.filter(variable=self.first_name).count(), 1
+            VariableAnswer.objects.filter(
+                variable=self.first_name, state="active"
+            ).count(),
+            1,
+        )
+
+    def test_guided_confirmation_retains_provenance_after_login(self):
+        answer = variable_answer_set(
+            identity=self.anon,
+            variable=self.first_name,
+            value="Ada",
+            reviewed=True,
+        )
+
+        self._merge()
+
+        answer.refresh_from_db()
+        self.anon.refresh_from_db()
+        self.assertEqual(answer.identity, self.target)
+        self.assertTrue(answer.reviewed)
+        self.assertEqual(answer.confirmation_state, "confirmed")
+        self.assertIsNotNone(self.anon.deleted_at)
+        self.assertEqual(self.anon.session_key, "")
+        self.assertEqual(
+            FactEvidence.objects.filter(
+                fact_assertion=answer, submitted_by=self.anon
+            ).count(),
+            2,
         )
 
     def test_conflict_does_not_block_a_sibling_answer(self):
@@ -135,7 +165,9 @@ class IdentityMergeVariableAnswerTests(TestCase):
 
         moved.refresh_from_db()
         self.assertEqual(moved.identity, self.target)
-        self.assertEqual(VariableAnswer.objects.count(), 2)
+        self.assertEqual(
+            VariableAnswer.objects.filter(state="active").count(), 2
+        )
 
     def test_log_reports_the_migrated_answer_count(self):
         self._answer(self.anon, self.first_name, "Ada")
@@ -147,8 +179,8 @@ class IdentityMergeVariableAnswerTests(TestCase):
         ) as logs:
             self._merge()
 
-        # Only the non-conflicting answer counts as migrated.
-        self.assertIn("1 answer(s)", logs.output[0])
+        # Superseded history also follows the identity.
+        self.assertIn("2 answer(s)", logs.output[0])
 
 
 @pytest.mark.postgres

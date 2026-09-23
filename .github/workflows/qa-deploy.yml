@@ -8,7 +8,7 @@ on:
         required: true
         default: 'main'
       reset_db:
-        description: 'Drop every table and rebuild the database from the deployed branch'
+        description: 'Drop tables and application SQL functions, then rebuild from the deployed branch'
         type: boolean
         required: false
         default: true
@@ -122,7 +122,25 @@ jobs:
           with transaction.atomic():
               for table in tables:
                   cursor.execute("DROP TABLE IF EXISTS " + connection.ops.quote_name(table) + " CASCADE")
-          print("Dropped", len(tables), "tables")
+              # Table drops leave function bodies behind. Match the routines
+              # owned by app.0020 without removing extensions or other functions.
+              cursor.execute(
+                  "SELECT oid::regprocedure FROM pg_proc "
+                  "WHERE pronamespace = 'public'::regnamespace AND proname = ANY(%s)",
+                  [[
+                      "agent_touch_updated_at", "agent_guard_immutable",
+                      "agent_validate_record", "agent_scope_allowed",
+                      "agent_lookup_context", "agent_source_allowed",
+                      "agent_private_candidates", "agent_search_private",
+                      "agent_get_private_source", "agent_corpus_candidates",
+                      "agent_search_corpus", "agent_get_corpus_source",
+                      "app_message_sequence", "app_guard_published_revision",
+                  ]],
+              )
+              functions = [row[0] for row in cursor.fetchall()]
+              for signature in functions:
+                  cursor.execute("DROP FUNCTION " + signature + " CASCADE")
+          print("Dropped", len(tables), "tables and", len(functions), "functions")
           PY
 
       - name: Apply Migrations

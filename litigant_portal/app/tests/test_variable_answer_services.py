@@ -101,7 +101,7 @@ class VariableAnswerSetTests(TestCase):
         self.assertEqual(answer.value, "Cass")
         self.assertFalse(answer.reviewed)
 
-    def test_upsert_updates_existing_row_instead_of_duplicating(self):
+    def test_write_supersedes_previous_answer(self):
         variable_answer_set(
             identity=self.identity, variable=self.variable, value="Cass"
         )
@@ -111,8 +111,9 @@ class VariableAnswerSetTests(TestCase):
         answers = VariableAnswer.objects.filter(
             identity=self.identity, variable=self.variable
         )
-        self.assertEqual(answers.count(), 1)
-        self.assertEqual(answers.get().value, "Burleigh")
+        self.assertEqual(answers.count(), 2)
+        self.assertEqual(answers.get(state="active").value, "Burleigh")
+        self.assertEqual(answers.get(state="superseded").value, "Cass")
 
     def test_invalid_value_raises_and_writes_nothing(self):
         with self.assertRaises(ValidationError):

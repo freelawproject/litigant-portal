@@ -25,3 +25,6 @@ class UserUpload(BaseModel):
     size = models.PositiveBigIntegerField(default=0)
     pages = models.PositiveIntegerField(null=True, blank=True)
     text_chars = models.PositiveBigIntegerField(null=True, blank=True)
+    document = models.ForeignKey(
+        "Document", null=True, blank=True, on_delete=models.PROTECT
+    )

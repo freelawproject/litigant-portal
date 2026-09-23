@@ -3,12 +3,16 @@ from __future__ import annotations
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
 
 from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import (
     Contact,
+    Court,
+    CourtTopic,
     Form,
     FormField,
+    ImportAudit,
     Resource,
     Topic,
     TopicFlow,
@@ -41,23 +45,45 @@ def _apply(row, schema, *, exclude: set[str] = frozenset()) -> None:
 
 
 def _sync_variables(corpus: CorpusSchema) -> dict[str, Variable]:
-    """Upsert every variable by name. Two passes: rows first, then gates,
-    so a gate can point at a variable created in the same sync."""
-    rows = {v.name: v for v in Variable.objects.all()}
-    for name, schema in corpus.variables.items():
-        row = rows.get(name) or Variable(name=name)
-        _apply(row, schema, exclude={"asked_when"})
-        row.in_schema = True
-        row.save()
-        rows[name] = row
-    for name, schema in corpus.variables.items():
-        row = rows[name]
+    """
+    Resolve gate references and append changed variable definitions.
+    """
+    rows = {}
+
+    def resolve(name):
+        if name in rows:
+            return rows[name]
+        schema = corpus.variables[name]
         gate = schema.asked_when
-        row.asked_when = rows[gate.variable] if gate else None
-        row.asked_when_value = gate.value if gate else None
-        row.save(
-            update_fields=["asked_when", "asked_when_value", "updated_at"]
+        validation = {
+            "type": {"boolean": "boolean", "number": "number"}.get(
+                schema.data_type, "string"
+            )
+        }
+        if schema.data_type == "choice":
+            validation["enum"] = [choice.value for choice in schema.choices]
+        values = schema.model_dump(exclude={"asked_when"})
+        values.update(
+            value_schema=validation,
+            in_schema=True,
+            asked_when_id=resolve(gate.variable).id if gate else None,
+            asked_when_value=gate.value if gate else None,
         )
+        previous = (
+            Variable.objects.filter(name=name).order_by("-version").first()
+        )
+        if previous and all(
+            getattr(previous, key) == value for key, value in values.items()
+        ):
+            rows[name] = previous
+        else:
+            rows[name] = Variable.objects.create(
+                **values, version=previous.version + 1 if previous else 1
+            )
+        return rows[name]
+
+    for name in corpus.variables:
+        resolve(name)
     return rows
 
 
@@ -106,20 +132,13 @@ def _sync_forms(
     return rows
 
 
-def _sync_site(schema: CourtSchema) -> None:
-    """Write the court's fields onto the Site singleton."""
+def _sync_site(court) -> None:
+    """
+    Point the site's existing court interface at the shared court record.
+    """
     site = site_get()
-    _apply(site, schema, exclude={"name", "contacts", "resources"})
-    site.save(
-        update_fields=[
-            "court_name",
-            "jurisdiction_level",
-            "state",
-            "official_url",
-            "official_resources_url",
-            "updated_at",
-        ]
-    )
+    site.court = court
+    site.save(update_fields=["court", "updated_at"])
 
 
 def _sync_contacts(courts: list[CourtSchema], *, strict: bool) -> None:
@@ -154,11 +173,16 @@ def _sync_flow(
     schema: FlowSchema,
     forms: dict[str, Form],
     variables: dict[str, Variable],
+    court_topic,
+    audit,
 ) -> None:
-    """Upsert one flow by (topic, slug) and replace its composition rows
-    wholesale."""
-    flow = topic.flows.filter(slug=slug).first() or TopicFlow(
-        topic=topic, slug=slug
+    """
+    Refresh a court/topic flow and replace its existing composition rows.
+    """
+    flow = topic.flows.filter(court_topic=court_topic, slug=slug).order_by(
+        "-version"
+    ).first() or TopicFlow(
+        topic=topic, court_topic=court_topic, slug=slug, import_audit=audit
     )
     _apply(
         flow,
@@ -228,6 +252,19 @@ def corpus_sync(
         )
     deleted = 0
     with transaction.atomic():
+        audit = ImportAudit.objects.create(
+            invocation_type="corpus_sync", code_version=settings.GIT_SHA
+        )
+        courts = {}
+        for slug, schema in corpus.courts.items():
+            if court is not None and slug != court:
+                continue
+            row, _ = Court.objects.get_or_create(
+                slug=slug, defaults={"name": schema.name}
+            )
+            _apply(row, schema, exclude={"contacts", "resources"})
+            row.save()
+            courts[slug] = row
         variables = _sync_variables(corpus)
         forms = _sync_forms(corpus, variables)
         topics: dict[str, Topic] = {}
@@ -247,11 +284,22 @@ def corpus_sync(
         ):
             if court is not None and court_slug != court:
                 continue
-            _sync_flow(topics[topic_slug], flow_slug, schema, forms, variables)
+            pair, _ = CourtTopic.objects.get_or_create(
+                court=courts[court_slug], topic=topics[topic_slug]
+            )
+            _sync_flow(
+                topics[topic_slug],
+                flow_slug,
+                schema,
+                forms,
+                variables,
+                pair,
+                audit,
+            )
             flow_slugs.setdefault(topic_slug, []).append(flow_slug)
             flow_count += 1
         if court is not None:
-            _sync_site(corpus.courts[court])
+            _sync_site(courts[court])
         in_scope = [court] if court is not None else sorted(corpus.courts)
         _sync_contacts(
             [corpus.courts[slug] for slug in in_scope], strict=strict
@@ -261,7 +309,19 @@ def corpus_sync(
                 deleted += topic.flows.exclude(
                     slug__in=flow_slugs.get(topic_slug, [])
                 ).delete()[0]
-            deleted += Topic.objects.exclude(slug__in=topics).delete()[0]
+            for stale in Topic.objects.exclude(slug__in=topics):
+                try:
+                    with transaction.atomic():
+                        deleted += stale.flows.filter(state="draft").delete()[
+                            0
+                        ]
+                        CourtTopic.objects.filter(topic=stale).delete()
+                        deleted += stale.delete()[0]
+                except ProtectedError:
+                    CourtTopic.objects.filter(topic=stale).update(
+                        enabled=False
+                    )
+                    Topic.objects.filter(pk=stale.pk).update(enabled=False)
             stale_forms = Form.objects.exclude(slug__in=corpus.forms)
             for form in stale_forms:
                 form.file.delete(save=False)
