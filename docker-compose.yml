@@ -41,6 +41,7 @@ services:
       - AWS_BEARER_TOKEN_BEDROCK=${AWS_BEARER_TOKEN_BEDROCK}
       - SUPERUSER_EMAIL=${SUPERUSER_EMAIL}
       - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD}
+      - CORPUS_COURT=${CORPUS_COURT}
       # docassemble prefill. Unset means no prefill: the packet button links
       # out to the plain interview.
       - DOCASSEMBLE_BASE_URL=${DOCASSEMBLE_BASE_URL}
