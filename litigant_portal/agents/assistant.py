@@ -1,6 +1,7 @@
 from .base import Agent, AgentState
 from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
 from .tools.query_document import QueryDocument
+from .tools.record_fact import RecordFact
 
 BASE_PROMPT = """\
 You are a compassionate legal assistant helping self-represented litigants \
@@ -85,7 +86,7 @@ class LitigantAssistant(Agent):
     """The user-facing assistant for self-represented litigants."""
 
     state_schema = LitigantAssistantState
-    tools = [QueryDocument, LoadTopicFlow]
+    tools = [QueryDocument, LoadTopicFlow, RecordFact]
 
     def prepare_thread(self, *, thread_id) -> None:
         """Clear the thread's active topic flow when it no longer names an
