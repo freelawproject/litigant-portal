@@ -524,15 +524,49 @@ document.addEventListener('alpine:init', () => {
     init() {
       this.base = this.$root.dataset.agentBase
       this.loadThreads()
-      this.consumeQueryMessage()
+      if (!this.consumeQueryMessage()) this.resumeThread()
+    },
+
+    // --- Thread resume across reloads ---
+    // The active thread id is kept in sessionStorage so a refresh reopens
+    // the conversation instead of an empty pane. sessionStorage on purpose:
+    // it dies with the tab, so on a shared computer the next visitor gets
+    // the empty state (the thread stays reachable via history either way).
+    // All access is try/catch — storage can be blocked entirely.
+
+    rememberThread(threadId) {
+      try {
+        sessionStorage.setItem('lp:chat:thread', threadId)
+      } catch (e) {
+        /* storage unavailable — resume is a convenience, not a feature */
+      }
+    },
+
+    forgetThread() {
+      try {
+        sessionStorage.removeItem('lp:chat:thread')
+      } catch (e) {
+        /* ignore */
+      }
+    },
+
+    resumeThread() {
+      let threadId = null
+      try {
+        threadId = sessionStorage.getItem('lp:chat:thread')
+      } catch (e) {
+        return
+      }
+      if (threadId) this.openThread(threadId)
     },
 
     // Landing with "?q=..." fires that message as the start of a fresh chat.
     // The param is stripped from the URL (replaceState) before sending, so a
     // refresh or share of the page won't fire it again.
+    // Returns whether a message was fired, so init can skip thread resume.
     consumeQueryMessage() {
       const params = new URLSearchParams(window.location.search)
-      if (!params.has('q')) return
+      if (!params.has('q')) return false
       const message = (params.get('q') || '').trim()
       params.delete('q')
       const query = params.toString()
@@ -542,6 +576,7 @@ document.addEventListener('alpine:init', () => {
         window.location.hash
       window.history.replaceState(null, '', url)
       if (message) this.sendMessage(message, null)
+      return Boolean(message)
     },
 
     // --- History ---
@@ -602,6 +637,7 @@ document.addEventListener('alpine:init', () => {
 
     newChat() {
       this.closeDrawers()
+      this.forgetThread()
       this.threadId = null
       this.threadTitle = ''
       // A fresh array detaches the view from any in-flight stream, which
@@ -705,6 +741,7 @@ document.addEventListener('alpine:init', () => {
         this.markActive()
         this.updateThinking()
         this.scrollToBottom()
+        this.rememberThread(threadId)
         return
       }
 
@@ -724,7 +761,11 @@ document.addEventListener('alpine:init', () => {
         this.markActive()
         this.updateThinking()
         this.scrollToBottom()
+        this.rememberThread(data.id)
       } catch (e) {
+        // A stale remembered id (deleted thread, other session) must not
+        // keep failing on every load.
+        this.forgetThread()
         console.error('Failed to load thread:', e)
       }
     },
@@ -854,6 +895,7 @@ document.addEventListener('alpine:init', () => {
         this.setThreadStatus(stream.threadId, 'streaming')
         if (this.attached(stream)) {
           this.threadId = event.thread_id
+          this.rememberThread(event.thread_id)
           // Placeholder until the generated description arrives.
           if (!this.threadTitle) this.threadTitle = NEW_CHAT_TITLE
           this.markActive()
