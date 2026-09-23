@@ -1332,12 +1332,24 @@ def test_sql_managed_vectors_and_search_column(dsn: str) -> None:
 
 
 @pytest.mark.postgres
+@pytest.mark.parametrize(
+    "qa_reset", [False, True], ids=["round_trip", "qa_reset"]
+)
 def test_migrations_without_role_creation_round_trip_and_qa_reset(
-    database_dsns, django_db_blocker
+    database_dsns, django_db_blocker, qa_reset
 ):
     """
     A restricted owner can migrate, reverse, and rebuild after QA resets.
+
+    The workflow case runs in a checkout; container images omit .github.
+    The migration round trip runs in both environments.
     """
+    workflow_path = (
+        Path(__file__).resolve().parents[3] / ".github/workflows/qa-deploy.yml"
+    )
+    if qa_reset and not workflow_path.is_file():
+        pytest.skip(f"no QA workflow at {workflow_path} (container image)")
+
     name = "test_agent_migrations_" + uuid4().hex
     owner = "test_agent_owner_" + uuid4().hex
     password = token_urlsafe(32)
@@ -1380,57 +1392,64 @@ def test_migrations_without_role_creation_round_trip_and_qa_reset(
                             if target
                             else executor.loader.graph.leaf_nodes()
                         )
-                    workflow_path = (
-                        Path(__file__).resolve().parents[3]
-                        / ".github/workflows/qa-deploy.yml"
-                    )
-                    workflow = yaml.safe_load(workflow_path.read_text())
-                    reset_step = next(
-                        step
-                        for step in workflow["jobs"]["setup-deploy"]["steps"]
-                        if step["name"] == "Reset Database"
-                    )
-                    reset_script = reset_step["run"].split("<<'PY'\n", 1)[1]
-                    reset_script = reset_script.rsplit("\nPY", 1)[0]
-                    with migrated.cursor() as cursor:
-                        cursor.execute(
-                            "CREATE FUNCTION public.qa_reset_sentinel() "
-                            "RETURNS integer LANGUAGE sql AS 'SELECT 1'"
+                    if qa_reset:
+                        workflow = yaml.safe_load(workflow_path.read_text())
+                        reset_step = next(
+                            step
+                            for step in workflow["jobs"]["setup-deploy"][
+                                "steps"
+                            ]
+                            if step["name"] == "Reset Database"
                         )
-                        cursor.execute(
-                            "SELECT oid FROM pg_extension WHERE extname = 'vector'"
-                        )
-                        extension = cursor.fetchone()
-                        cursor.execute(
-                            "SELECT oid FROM pg_roles WHERE rolname IN "
-                            "('agent_dev_crud', 'agent_dev_reader', 'agent_dev_lookup') "
-                            "ORDER BY oid"
-                        )
-                        groups = cursor.fetchall()
-                    for _ in range(2):
-                        exec(
-                            compile(reset_script, str(workflow_path), "exec"),
-                            {},
-                        )
+                        reset_script = reset_step["run"].split("<<'PY'\n", 1)[
+                            1
+                        ]
+                        reset_script = reset_script.rsplit("\nPY", 1)[0]
                         with migrated.cursor() as cursor:
                             cursor.execute(
-                                "SELECT to_regclass('public.app_variableanswer')"
+                                "CREATE FUNCTION public.qa_reset_sentinel() "
+                                "RETURNS integer LANGUAGE sql AS 'SELECT 1'"
                             )
-                            assert cursor.fetchone() == (None,)
-                            cursor.execute("SELECT public.qa_reset_sentinel()")
-                            assert cursor.fetchone() == (1,)
                             cursor.execute(
                                 "SELECT oid FROM pg_extension WHERE extname = 'vector'"
                             )
-                            assert cursor.fetchone() == extension
+                            extension = cursor.fetchone()
                             cursor.execute(
                                 "SELECT oid FROM pg_roles WHERE rolname IN "
                                 "('agent_dev_crud', 'agent_dev_reader', 'agent_dev_lookup') "
                                 "ORDER BY oid"
                             )
-                            assert cursor.fetchall() == groups
-                        executor = MigrationExecutor(migrated)
-                        executor.migrate(executor.loader.graph.leaf_nodes())
+                            groups = cursor.fetchall()
+                        for _ in range(2):
+                            exec(
+                                compile(
+                                    reset_script, str(workflow_path), "exec"
+                                ),
+                                {},
+                            )
+                            with migrated.cursor() as cursor:
+                                cursor.execute(
+                                    "SELECT to_regclass('public.app_variableanswer')"
+                                )
+                                assert cursor.fetchone() == (None,)
+                                cursor.execute(
+                                    "SELECT public.qa_reset_sentinel()"
+                                )
+                                assert cursor.fetchone() == (1,)
+                                cursor.execute(
+                                    "SELECT oid FROM pg_extension WHERE extname = 'vector'"
+                                )
+                                assert cursor.fetchone() == extension
+                                cursor.execute(
+                                    "SELECT oid FROM pg_roles WHERE rolname IN "
+                                    "('agent_dev_crud', 'agent_dev_reader', 'agent_dev_lookup') "
+                                    "ORDER BY oid"
+                                )
+                                assert cursor.fetchall() == groups
+                            executor = MigrationExecutor(migrated)
+                            executor.migrate(
+                                executor.loader.graph.leaf_nodes()
+                            )
                     with migrated.cursor() as cursor:
                         cursor.execute(
                             "SELECT rolcreaterole, rolsuper FROM pg_roles WHERE rolname = current_user"
