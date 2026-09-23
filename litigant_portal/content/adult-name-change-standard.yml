@@ -181,12 +181,23 @@ sections:
         url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf'
       - name: 'Proposed Order for Name Change'
         url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf'
-    # Warm link-out to the docassemble interview that fills these forms (#547,
-    # #531). Standard (publish) track. docassemble is hosted under the /interview/
-    # prefix on QA, so the launch path is /interview/interview?i=... (the prefix
-    # plus docassemble's own `interview` route) — confirmed against the live
-    # Share link.
-    interview_url: 'https://qa.litigantportal.com/interview/interview?i=docassemble.playground1:petition-standard.yml'
+    # Warm handoff to the docassemble interview that fills these forms (#547,
+    # #531). Standard (publish) track. Reference only: which docassemble it is
+    # sent to comes from the environment, never from content (#879). The
+    # interview ships as the docassemble.ndnamechange package, versioned under
+    # docassemble/nd-name-change/ in this repo.
+    # Always the full data/questions path: docassemble's API accepts the short
+    # alias but keys the session under the canonical path, so the resume link
+    # cannot find a session created under the alias.
+    interview_reference: 'docassemble.ndnamechange:data/questions/petition-standard.yml'
+    # Glossary question id -> interview variable. The interview keeps its own
+    # names; only reviewed answers are sent.
+    interview_prefill:
+      first_name: current_first
+      middle_name: current_middle
+      last_name: current_last
+      county: residence_county
+      name_change_publication_date: publication_date
 
   - kind: info
     id: form_gotchas

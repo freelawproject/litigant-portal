@@ -42,6 +42,11 @@ app_patterns = [
         topic_flow_views.topic_flow_download,
         name="topic_flow_download",
     ),
+    path(
+        "t/<slug:court>/<slug:topic>/<slug:role>/interview/",
+        topic_flow_views.topic_flow_interview,
+        name="topic_flow_interview",
+    ),
     path("admin/", pages.admin, name="admin_dashboard"),
     path("profile/", pages.ProfileDetailView.as_view(), name="profile"),
     path(

@@ -77,25 +77,34 @@ def variable_answer_list(
     return list(answers.select_related("variable").order_by("variable__name"))
 
 
-def variable_answer_map(*, identity, names: list[str]) -> dict:
-    """{variable_name: value} for the given names; names with no answer are omitted.
+def variable_answer_map(
+    *, identity, names: list[str], reviewed_only: bool = False
+) -> dict:
+    """
+    Map the given names to current values; names with no answer are omitted.
 
     A cleared answer (value None) counts as no answer: this map feeds
     prefill and templates, where an absent key must stay absent rather
     than fill a blank. Excludes out-of-schema variables, as
     ``variable_answer_list`` does.
+
+    ``reviewed_only`` drops answers no human has confirmed. The guided page
+    reads without it, since it is the surface where that confirmation
+    happens; the docassemble prefill reads with it, because a prefilled
+    variable skips its interview question and so never gets reviewed there.
     """
-    return dict(
-        VariableAnswer.objects.filter(
-            identity=identity,
-            variable__name__in=names,
-            matter__isnull=True,
-            state="active",
-            invalidated_at__isnull=True,
-            variable__in_schema=True,
-            value__isnull=False,
-        ).values_list("variable__name", "value")
+    answers = VariableAnswer.objects.filter(
+        identity=identity,
+        variable__name__in=names,
+        matter__isnull=True,
+        state="active",
+        invalidated_at__isnull=True,
+        variable__in_schema=True,
+        value__isnull=False,
     )
+    if reviewed_only:
+        answers = answers.filter(reviewed=True)
+    return dict(answers.values_list("variable__name", "value"))
 
 
 def variable_answer_groups(*, identity) -> list[dict]:

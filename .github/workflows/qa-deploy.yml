@@ -7,6 +7,11 @@ on:
         description: 'Branch or tag to build and deploy to QA'
         required: true
         default: 'main'
+      reset_db:
+        description: 'Drop tables and application SQL functions, then rebuild from the deployed branch'
+        type: boolean
+        required: false
+        default: true
 
 env:
   AWS_REGION: us-west-2
@@ -88,21 +93,75 @@ jobs:
         run: kubectl wait pods -n ${{ env.EKS_NAMESPACE }} --for condition=Ready --timeout=90s temp-pod-${{ needs.build.outputs.sha_short }}
 
       - name: Collect Static Assets
+        id: collectstatic
         run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage collectstatic --noinput --clear
       - name: Handle Collectstatic Error
-        if: failure()
+        if: failure() && steps.collectstatic.conclusion == 'failure'
         run: |
           echo "collectstatic failed--aborting deploy"
           exit 1
 
+      - name: Scale Down litigant-web
+        id: scale_down
+        if: ${{ inputs.reset_db }}
+        run: |
+          echo "WEB_REPLICAS=$(kubectl get deployment/litigant-web -n ${{ env.EKS_NAMESPACE }} -o jsonpath='{.spec.replicas}')" >> $GITHUB_ENV
+          kubectl scale deployment/litigant-web -n ${{ env.EKS_NAMESPACE }} --replicas=0
+          kubectl delete pod -n ${{ env.EKS_NAMESPACE }} -l service=litigant-web --ignore-not-found --timeout=120s
+
+      - name: Reset Database
+        if: ${{ inputs.reset_db }}
+        run: |
+          kubectl exec -i -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage shell <<'PY'
+          from django.db import connection, transaction
+
+          cursor = connection.cursor()
+          cursor.execute("SET lock_timeout = 30000")
+          cursor.execute("SELECT tablename FROM pg_tables WHERE schemaname = current_schema()")
+          tables = [row[0] for row in cursor.fetchall()]
+          with transaction.atomic():
+              for table in tables:
+                  cursor.execute("DROP TABLE IF EXISTS " + connection.ops.quote_name(table) + " CASCADE")
+              # Table drops leave function bodies behind. Match the routines
+              # owned by app.0020 without removing extensions or other functions.
+              cursor.execute(
+                  "SELECT oid::regprocedure FROM pg_proc "
+                  "WHERE pronamespace = 'public'::regnamespace AND proname = ANY(%s)",
+                  [[
+                      "agent_touch_updated_at", "agent_guard_immutable",
+                      "agent_validate_record", "agent_scope_allowed",
+                      "agent_lookup_context", "agent_source_allowed",
+                      "agent_private_candidates", "agent_search_private",
+                      "agent_get_private_source", "agent_corpus_candidates",
+                      "agent_search_corpus", "agent_get_corpus_source",
+                      "app_message_sequence", "app_guard_published_revision",
+                  ]],
+              )
+              functions = [row[0] for row in cursor.fetchall()]
+              for signature in functions:
+                  cursor.execute("DROP FUNCTION " + signature + " CASCADE")
+          print("Dropped", len(tables), "tables and", len(functions), "functions")
+          PY
+
       - name: Apply Migrations
+        id: migrate
         run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage migrate --noinput
       - name: Handle Migration Error
-        if: failure()
+        if: failure() && steps.migrate.conclusion == 'failure'
         run: |
           echo "Migrations failed. Open a shell into pod temp-pod-${{ needs.build.outputs.sha_short }} to investigate."
           echo "It stops running after an hour but is kept around for debugging; the next deploy reaps it."
           exit 1
+
+      - name: Sync Corpus
+        run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage sync_corpus --strict
+
+      - name: Bootstrap Superuser
+        run: kubectl exec -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }} -- manage bootstrap_superuser
+
+      - name: Scale Up litigant-web
+        if: ${{ always() && steps.scale_down.conclusion != 'skipped' }}
+        run: kubectl scale deployment/litigant-web -n ${{ env.EKS_NAMESPACE }} --replicas=${WEB_REPLICAS:-1}
 
       - name: Delete Temporary Pod
         run: kubectl delete pod -n ${{ env.EKS_NAMESPACE }} temp-pod-${{ needs.build.outputs.sha_short }}

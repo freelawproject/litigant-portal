@@ -144,10 +144,14 @@ def _store(client, name, value, reviewed=False):
 
 
 def _answers():
-    """``{variable_name: VariableAnswer}`` for the single visitor in a test."""
+    """
+    Current answers for the single visitor in a test, including cleared values.
+    """
     return {
         answer.variable.name: answer
-        for answer in VariableAnswer.objects.select_related("variable")
+        for answer in VariableAnswer.objects.filter(
+            matter__isnull=True, state="active", invalidated_at__isnull=True
+        ).select_related("variable")
     }
 
 
@@ -295,12 +299,14 @@ def test_packet_form_with_url_renders_as_link(client, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_packet_section_renders_interview_link_when_set(client, monkeypatch):
-    # When the corpus sets interview_url, the packet emits the "Fill out your
-    # forms" handoff as an <a> to that url that opens in a new tab (#543). The
-    # {% if ctx.interview_url %} conditional is our code deciding whether the
-    # litigant sees a working docassemble link-out — behavioral, not markup.
-    interview = "https://da.example.gov/interview?i=name_change"
+def test_packet_section_posts_the_handoff_when_an_interview_is_set(
+    client, monkeypatch, settings
+):
+    # The handoff is a POST to our own endpoint, not a link to docassemble:
+    # it creates a session, so a crawler or a reload must not fire it. The
+    # {% if ctx.interview_available %} conditional decides whether the litigant
+    # sees a working handoff at all.
+    settings.DOCASSEMBLE_BASE_URL = "http://localhost:8100"
     corpus = Corpus(
         metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
         sections=[
@@ -310,20 +316,23 @@ def test_packet_section_renders_interview_link_when_set(client, monkeypatch):
                 id="filing_packet",
                 heading="Your filing packet",
                 forms=["Petition for Name Change"],
-                interview_url=interview,
+                interview_reference="docassemble.test:data/questions/name_change.yml",
             ),
         ],
     )
     monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
     flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
     assert re.search(
-        rf'<a[^>]*href="{re.escape(interview)}"[^>]*target="_blank"', flat
+        rf'<form[^>]*method="post"[^>]*action="{re.escape(URL)}interview/"',
+        flat,
     )
+    assert "csrfmiddlewaretoken" in flat
+    assert "Fill out your forms" in flat
 
 
 @pytest.mark.django_db
 def test_packet_section_omits_interview_link_when_unset(client, monkeypatch):
-    # interview_url unset is the default for existing corpora — the else side of
+    # The reference unset is the default for existing corpora — the else side of
     # the same conditional: the packet renders a plain form list and the "Fill
     # out your forms" handoff never appears. Guards against a regression that
     # would surface a dead/empty-href link-out for corpora that never opted in.
@@ -342,6 +351,33 @@ def test_packet_section_omits_interview_link_when_unset(client, monkeypatch):
     monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
     html = client.get(URL).content.decode()
     assert "Fill out your forms" not in html
+
+
+@pytest.mark.django_db
+def test_packet_section_omits_the_handoff_without_docassemble_configured(
+    client, monkeypatch, settings
+):
+    # Same corpus as the handoff test, but the environment has no docassemble:
+    # the button would 404, so it must not render (#879).
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            PacketOutput(
+                kind="output",
+                output_type="packet",
+                id="filing_packet",
+                heading="Your filing packet",
+                forms=["Petition for Name Change"],
+                interview_reference="docassemble.test:data/questions/name_change.yml",
+            ),
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    html = client.get(URL).content.decode()
+    assert "Fill out your forms" not in html
+    assert "Petition for Name Change" in html
 
 
 @pytest.mark.django_db
@@ -657,6 +693,154 @@ def test_answers_survive_login(client, monkeypatch, variables):
     answer = VariableAnswer.objects.get()
     assert answer.identity.user == user
     assert answer.reviewed
+
+
+# --- blank NEVER_PREFILL fields (needs DB) ----------------------------------
+# A protected field renders blank whatever is stored, so its blank submission
+# can't be read as "erase this" — the litigant never saw the value.
+
+
+def _identity_corpus():
+    """A corpus whose fact_gather pairs an optional protected question with a
+    plain one."""
+    return Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="your_information",
+                heading="Your name",
+                questions=[
+                    Question(id="first_name", label="First name"),
+                    Question(
+                        id="filing_county",
+                        label="County",
+                        type="choice",
+                        choices=["Cass", "Burleigh"],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def name_variable(variables):
+    Variable.objects.create(name="first_name", data_type=VariableDataType.TEXT)
+
+
+@pytest.mark.django_db
+def test_blank_protected_field_keeps_a_reviewed_answer(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(URL, {"first_name": "", "filing_county": "Burleigh"})
+    assert _values() == {"first_name": "Sandra", "filing_county": "Burleigh"}
+    assert _answers()["first_name"].reviewed
+
+
+@pytest.mark.django_db
+def test_blank_protected_field_keeps_an_unreviewed_answer_unreviewed(
+    client, monkeypatch, name_variable
+):
+    # The AI-written case: saving this section must neither destroy the
+    # assistant's answer nor confirm it on the litigant's behalf.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(URL, {"first_name": "", "filing_county": "Cass"})
+    answer = _answers()["first_name"]
+    assert answer.value == "Sandra"
+    assert not answer.reviewed
+
+
+@pytest.mark.django_db
+def test_typing_a_protected_field_overwrites_it_and_marks_it_reviewed(
+    client, monkeypatch, name_variable
+):
+    # Overwriting is the only correction available for a field the page can't
+    # show, so it has to work.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(URL, {"first_name": "Alex", "filing_county": "Cass"})
+    answer = _answers()["first_name"]
+    assert answer.value == "Alex"
+    assert answer.reviewed
+
+
+@pytest.mark.django_db
+def test_blank_unprotected_field_still_clears_its_answer(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(URL, {"first_name": "", "filing_county": ""})
+    assert _answers()["filing_county"].value is None
+
+
+# --- clearing a protected answer (needs DB) -----------------------------------
+# The page never shows a NEVER_PREFILL value, so erasing one takes an explicit
+# checkbox; without it there is no way to remove an unwanted stored answer
+# before it prefills onto a court form.
+
+
+@pytest.mark.django_db
+def test_checking_clear_erases_a_protected_answer(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(
+        URL,
+        {"first_name": "", "first_name__clear": "on", "filing_county": "Cass"},
+    )
+    assert _answers()["first_name"].value is None
+
+
+@pytest.mark.django_db
+def test_a_typed_value_wins_over_the_clear_checkbox(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(
+        URL,
+        {
+            "first_name": "Alex",
+            "first_name__clear": "on",
+            "filing_county": "Cass",
+        },
+    )
+    assert _answers()["first_name"].value == "Alex"
+
+
+@pytest.mark.django_db
+def test_clear_checkbox_renders_only_beside_a_saved_protected_answer(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    before = client.get(URL).content.decode()
+    assert 'name="first_name__clear"' not in before
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    after = client.get(URL).content.decode()
+    assert re.search(
+        r'<input[^>]*type="checkbox"[^>]*name="first_name__clear"', after
+    )
+    # The unprotected sibling shows its value, so it never needs the box.
+    assert 'name="filing_county__clear"' not in after
+
+
+@pytest.mark.django_db
+def test_clearing_erases_an_unreviewed_assistant_answer_too(
+    client, monkeypatch, name_variable
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(
+        URL,
+        {"first_name": "", "first_name__clear": "on", "filing_county": "Cass"},
+    )
+    assert _answers()["first_name"].value is None
 
 
 # --- fact_gather POST validation (#525, needs DB) ---------------------------
