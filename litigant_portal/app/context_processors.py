@@ -7,6 +7,8 @@ def app_meta(request):
     return {
         "deployment_env": settings.DEPLOYMENT_ENV,
         "app_build_time": settings.APP_BUILD_TIME,
+        "app_git_sha": settings.GIT_SHA,
+        "app_git_branch": settings.GIT_BRANCH,
     }
 
 
