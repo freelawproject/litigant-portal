@@ -6,18 +6,25 @@ import asyncio
 import json
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from hashlib import sha256
-from pathlib import Path
 from secrets import token_urlsafe
 from uuid import uuid4
 
 import pytest
 from django.conf import settings
+from django.db import connections
+from django.db.backends.postgresql.base import DatabaseWrapper
+from django.db.migrations.executor import MigrationExecutor
 from jsonschema import ValidationError as SchemaValidationError
 from psycopg import AsyncConnection, Connection, sql
 from psycopg.conninfo import conninfo_to_dict, make_conninfo
-from psycopg.errors import CheckViolation, InsufficientPrivilege
-from psycopg.rows import dict_row, tuple_row
+from psycopg.errors import (
+    CheckViolation,
+    ForeignKeyViolation,
+    InsufficientPrivilege,
+)
+from psycopg.rows import DictRow, dict_row, tuple_row
 from pydantic import ValidationError
 
 from lp_agent import LPAgent
@@ -53,7 +60,7 @@ from lp_agent.utils.audit import InstructionArtifact
 
 
 @pytest.fixture(scope="module")
-def database_dsns() -> Iterator[dict[str, str]]:
+def database_dsns(django_db_blocker) -> Iterator[dict[str, str]]:
     """
     Install a temporary database and dedicated writer and lookup login roles.
     """
@@ -69,7 +76,6 @@ def database_dsns() -> Iterator[dict[str, str]]:
     test_dsn = make_conninfo(server, dbname=name)
     dsns = {"admin": test_dsn}
     roles = []
-    fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "agent_db"
     with Connection.connect(
         server, dbname="postgres", autocommit=True
     ) as admin:
@@ -77,13 +83,28 @@ def database_dsns() -> Iterator[dict[str, str]]:
             sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name))
         )
         try:
+            for permission in ("crud", "lookup", "reader"):
+                group = "agent_dev_" + permission
+                if not admin.execute(
+                    "SELECT 1 FROM pg_roles WHERE rolname = %s", (group,)
+                ).fetchone():
+                    admin.execute(
+                        sql.SQL(
+                            "CREATE ROLE {} NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS"
+                        ).format(sql.Identifier(group))
+                    )
+            config = {**settings.DATABASES["default"], "NAME": name}
+            migrated = DatabaseWrapper(config, alias="default")
+            original = connections["default"]
+            with django_db_blocker.unblock():
+                try:
+                    connections["default"] = migrated
+                    executor = MigrationExecutor(migrated)
+                    executor.migrate(executor.loader.graph.leaf_nodes())
+                finally:
+                    migrated.close()
+                    connections["default"] = original
             with Connection.connect(test_dsn) as connection:
-                for filename in (
-                    "agent_tables.sql",
-                    "agent_constraints.sql",
-                    "agent_search.sql",
-                ):
-                    connection.execute((fixtures / filename).read_bytes())
                 for permission in ("crud", "lookup"):
                     role = "test_agent_" + permission + "_" + uuid4().hex
                     password = token_urlsafe(32)
@@ -124,6 +145,38 @@ def dsn(database_dsns: dict[str, str]) -> str:
     return database_dsns["crud"]
 
 
+async def host_identity(dsn: str, label: str | None = None) -> str:
+    """
+    Create the native identity as host code before opening an agent context.
+    """
+    # Host identities use the existing bigint key; test labels stay synthetic.
+    label = label or uuid4().hex
+    if not label.isdecimal():
+        config = settings.DATABASES["default"]
+        admin_dsn = make_conninfo(
+            dsn, user=config["USER"], password=config["PASSWORD"]
+        )
+        async with await AsyncConnection[DictRow].connect(
+            admin_dsn, row_factory=dict_row, autocommit=True
+        ) as host:
+            row = await (
+                await host.execute(
+                    "SELECT id FROM public.app_useridentity WHERE session_key = %s",
+                    (label,),
+                )
+            ).fetchone()
+            if row is None:
+                row = await (
+                    await host.execute(
+                        "INSERT INTO public.app_useridentity (session_key) VALUES (%s) RETURNING id",
+                        (label,),
+                    )
+                ).fetchone()
+            assert row is not None
+            label = str(row["id"])
+    return label
+
+
 @asynccontextmanager
 async def database(
     dsn: str, identity: str | None = None
@@ -132,9 +185,8 @@ async def database(
     Use a real connection and commit inside the fixture's temporary database.
     """
     async with agent_connection(dsn) as conn:
-        db = AgentDatabase(
-            conn, AccessContext(identity_id=identity or uuid4().hex)
-        )
+        label = await host_identity(dsn, identity)
+        db = AgentDatabase(conn, AccessContext(identity_id=label, author=True))
         await db.ensure_user()
         yield db
 
@@ -243,7 +295,7 @@ async def fixture_scope(
         definition = await db.save_catalog(
             "fact_definition",
             {
-                "key": uuid4().hex,
+                "key": "fact_" + uuid4().hex,
                 "version": 1,
                 "scope": "matter",
                 "label": "Fixture answer",
@@ -475,7 +527,7 @@ def test_owned_records_and_store_contracts(dsn: str) -> None:
             assert partial.scope.topic is None
             other = AgentDatabase(
                 db.connection,
-                AccessContext(identity_id="other-" + uuid4().hex),
+                AccessContext(identity_id=await host_identity(dsn)),
             )
             await other.ensure_user()
             for operation, record_id in (
@@ -613,7 +665,7 @@ def test_message_ordering_retries_and_checkpoint_conflicts(dsn: str) -> None:
             assert steps[0]["operation_key"] == items[0]["deduplication_key"]
             progress = await (
                 await db.connection.execute(
-                    "SELECT * FROM public.agent_phase_progress WHERE matter_procedure_id = %s",
+                    "SELECT * FROM public.app_phase_progress WHERE matter_procedure_id = %s",
                     (procedure["id"],),
                 )
             ).fetchall()
@@ -753,7 +805,7 @@ def test_stored_search_permissions_facts_and_progress(
             personal_definition = await db.save_catalog(
                 "fact_definition",
                 {
-                    "key": uuid4().hex,
+                    "key": "fact_" + uuid4().hex,
                     "version": 1,
                     "scope": "user",
                     "label": "Preferred name",
@@ -858,7 +910,7 @@ def test_stored_search_permissions_facts_and_progress(
                         )
                 denied = AgentSearch(
                     conn,
-                    access=AccessContext(identity_id="wrong-owner"),
+                    access=AccessContext(identity_id=await host_identity(dsn)),
                     run_id=ids["run"],
                     host_policy={},
                 )
@@ -969,8 +1021,8 @@ def test_lookup_rejects_privileged_logins_and_closes_connections(
             "REVOKE SELECT ON public.agent_prompt FROM {}",
         ),
         (
-            "GRANT EXECUTE ON FUNCTION public.agent_lookup_context(text, uuid, jsonb) TO {}",
-            "REVOKE EXECUTE ON FUNCTION public.agent_lookup_context(text, uuid, jsonb) FROM {}",
+            "GRANT EXECUTE ON FUNCTION public.agent_lookup_context(bigint, uuid, jsonb) TO {}",
+            "REVOKE EXECUTE ON FUNCTION public.agent_lookup_context(bigint, uuid, jsonb) FROM {}",
         ),
         (
             "GRANT agent_dev_crud TO {} WITH INHERIT FALSE",
@@ -1060,3 +1112,290 @@ def test_tool_arguments_are_closed_and_memory_is_excluded() -> None:
         AgentSourceQuery.model_validate(
             {"category": "prompt", "source_id": uuid4().hex}
         )
+
+
+@pytest.mark.postgres
+def test_court_authoring_requires_host_capability(dsn: str) -> None:
+    """
+    A normal context may read published court material and write owned uploads.
+    """
+
+    async def scenario():
+        async with database(dsn) as author:
+            ids = await fixture_scope(author)
+            reader = AgentDatabase(
+                author.connection,
+                AccessContext(identity_id=author.access.identity_id),
+            )
+            assert not reader.access.author
+            await reader.document(ids["document"])
+            draft = await author.save_document(
+                file_fields(), court_id=ids["court_id"]
+            )
+            for operation in (
+                reader.save_catalog(
+                    "court",
+                    {
+                        "slug": "denied",
+                        "name": "Denied",
+                        "jurisdiction_level": "state",
+                    },
+                ),
+                reader.delete_catalog_record("procedure", ids["procedure"]),
+                reader.document(str(draft["id"])),
+                reader.save_document(
+                    {"state": "withdrawn"}, record_id=ids["document"]
+                ),
+                reader.save_document(file_fields(), court_id=ids["court_id"]),
+                reader.replace_document_text(
+                    ids["document"],
+                    [("Denied", {})],
+                    parser_version="test",
+                    chunker_version="test",
+                ),
+            ):
+                with pytest.raises(AgentAccessError):
+                    await operation
+            private = await reader.save_document(
+                {**file_fields(), "state": "private"}
+            )
+            await reader.replace_document_text(
+                str(private["id"]),
+                [("Owned", {})],
+                parser_version="test",
+                chunker_version="test",
+            )
+            other = AgentDatabase(
+                author.connection,
+                AccessContext(identity_id=await host_identity(dsn)),
+            )
+            with pytest.raises(AgentAccessError):
+                await other.document(str(private["id"]))
+            with pytest.raises(CheckViolation):
+                await author.connection.execute(
+                    "DELETE FROM public.app_document WHERE id = %s",
+                    (ids["document"],),
+                )
+            with pytest.raises(CheckViolation):
+                await author.connection.execute(
+                    "INSERT INTO public.app_topicflowinterviewpage (flow_id, key, title, \"order\") VALUES (%s, 'changed', 'Changed', 99)",
+                    (ids["procedure"],),
+                )
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.postgres
+def test_shared_attribution_and_guided_confirmation(dsn: str) -> None:
+    """
+    Imports have truthful provenance; guided confirmation needs no model run.
+    """
+
+    async def scenario():
+        async with database(dsn) as db:
+            ids = await fixture_scope(db)
+            audit = await db._one(
+                "INSERT INTO public.app_import_audit (invocation_type, code_version) VALUES ('test_import', 'test-sha') RETURNING id",
+                (),
+            )
+            imported = await db._one(
+                "INSERT INTO public.agent_prompt (key, version, body, state, import_audit_id, published_at) VALUES (%s, 1, 'Imported', 'published', %s, now()) RETURNING *",
+                (uuid4().hex, audit["id"]),
+            )
+            assert imported["created_by"] is None
+            assert imported["reviewed_by"] is None
+            assert imported["published_by"] is None
+            with pytest.raises(CheckViolation):
+                await db.connection.execute(
+                    "INSERT INTO public.agent_prompt (key, version, body) VALUES (%s, 1, 'Missing author')",
+                    (uuid4().hex,),
+                )
+            with pytest.raises(ForeignKeyViolation):
+                await db.connection.execute(
+                    "INSERT INTO public.agent_prompt (key, version, body, created_by) VALUES (%s, 1, 'Unknown author', 9223372036854775807)",
+                    (uuid4().hex,),
+                )
+            fact = await db.record_fact(
+                ids["definition"], True, matter_id=ids["matter"]
+            )
+            for role in ("basis", "confirmation"):
+                await db._one(
+                    "INSERT INTO public.app_fact_evidence (answer_id, role, submitted_by_id, locator_sha256) VALUES (%s, %s, %s, %s) RETURNING id",
+                    (
+                        fact["id"],
+                        role,
+                        db.access.identity_id,
+                        sha256(b"{}").hexdigest(),
+                    ),
+                )
+            await db.set_fact_confirmation(str(fact["id"]), "confirmed")
+            answer = await db._one(
+                "SELECT reviewed, confirmation_state FROM public.app_variableanswer WHERE id = %s",
+                (fact["id"],),
+            )
+            assert answer == {
+                "reviewed": True,
+                "confirmation_state": "confirmed",
+            }
+            parent = await db.follow_procedure(ids["matter"], ids["procedure"])
+            progress = await db.set_phase_progress(
+                str(parent["id"]), ids["phase"], None, "active", {}
+            )
+            assert progress["last_run_step_id"] is None
+            assert await db._one(
+                "SELECT public.agent_source_allowed(%s, 'progress', %s, '[{}]') AS allowed",
+                (db.access.identity_id, progress["id"]),
+            ) == {"allowed": True}
+            assert await db._one(
+                "SELECT public.agent_source_allowed(%s, 'progress', %s, '[{}]') AS allowed",
+                (await host_identity(dsn), progress["id"]),
+            ) == {"allowed": False}
+            assert await db._one(
+                "SELECT public.agent_source_allowed(%s, 'fact', %s, '[{}]') AS allowed",
+                (db.access.identity_id, fact["id"]),
+            ) == {"allowed": True}
+            definition = await db.catalog_record(
+                "fact_definition", ids["definition"]
+            )
+            revision = await db.save_catalog(
+                "fact_definition",
+                {
+                    "key": definition["key"],
+                    "scope": "matter",
+                    "version": 2,
+                    "value_schema": {"type": "boolean"},
+                },
+            )
+            competing = await db.record_fact(
+                str(revision["id"]), False, matter_id=ids["matter"]
+            )
+            with pytest.raises(CheckViolation):
+                await db.set_fact_confirmation(
+                    str(competing["id"]), "confirmed"
+                )
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.postgres
+def test_sql_managed_vectors_and_search_column(dsn: str) -> None:
+    """
+    Flexible vectors retain per-document checks and the generated search column.
+    """
+
+    async def scenario():
+        async with database(dsn) as db:
+
+            async def index(dimensions, vector):
+                document = await db.save_document(
+                    {**file_fields(), "state": "private"}
+                )
+                async with db.transaction():
+                    await db._save(
+                        "document",
+                        {
+                            "index_revision": 1,
+                            "index_state": "ready",
+                            "chunk_count": 1,
+                            "parser_version": "fixture",
+                            "chunker_version": "fixture",
+                            "indexed_at": datetime.now(UTC),
+                            "embedding_provider": "fixture",
+                            "embedding_model": "fixture",
+                            "embedding_dimensions": dimensions,
+                        },
+                        str(document["id"]),
+                    )
+                    return await db._one(
+                        "INSERT INTO public.app_document_chunk (document_id, ordinal, body, locator, text_sha256, embedding) VALUES (%s, 1, 'Embedded source', '{}', %s, %s::vector) RETURNING vector_dims(embedding) AS dimensions, search_vector @@ plainto_tsquery('english', 'embedded') AS searchable",
+                        (
+                            document["id"],
+                            sha256(b"Embedded source").hexdigest(),
+                            json.dumps(vector),
+                        ),
+                    )
+
+            assert await index(2, [1, 2]) == {
+                "dimensions": 2,
+                "searchable": True,
+            }
+            assert await index(3, [1, 2, 3]) == {
+                "dimensions": 3,
+                "searchable": True,
+            }
+            with pytest.raises(CheckViolation):
+                await index(2, [1, 2, 3])
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.postgres
+def test_migrations_without_role_creation_and_round_trip(
+    database_dsns, django_db_blocker
+):
+    """
+    Infrastructure installs the extension and roles; a restricted owner migrates.
+    """
+    name = "test_agent_migrations_" + uuid4().hex
+    owner = "test_agent_owner_" + uuid4().hex
+    password = token_urlsafe(32)
+    with Connection.connect(database_dsns["admin"], autocommit=True) as admin:
+        admin.execute(
+            sql.SQL(
+                "CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS PASSWORD {} IN ROLE agent_dev_reader"
+            ).format(sql.Identifier(owner), sql.Literal(password))
+        )
+        try:
+            admin.execute(
+                sql.SQL("CREATE DATABASE {} OWNER {}").format(
+                    sql.Identifier(name), sql.Identifier(owner)
+                )
+            )
+            with Connection.connect(
+                make_conninfo(database_dsns["admin"], dbname=name),
+                autocommit=True,
+            ) as infrastructure:
+                infrastructure.execute("CREATE EXTENSION vector")
+            config = {
+                **settings.DATABASES["default"],
+                "NAME": name,
+                "USER": owner,
+                "PASSWORD": password,
+            }
+            migrated = DatabaseWrapper(config, alias="default")
+            original = connections["default"]
+            with django_db_blocker.unblock():
+                try:
+                    connections["default"] = migrated
+                    for target in (
+                        None,
+                        ("app", "0018_bedrock_model_choices"),
+                        None,
+                    ):
+                        executor = MigrationExecutor(migrated)
+                        executor.migrate(
+                            [target]
+                            if target
+                            else executor.loader.graph.leaf_nodes()
+                        )
+                    with migrated.cursor() as cursor:
+                        cursor.execute(
+                            "SELECT rolcreaterole, rolsuper FROM pg_roles WHERE rolname = current_user"
+                        )
+                        assert cursor.fetchone() == (False, False)
+                        cursor.execute(
+                            "SELECT atttypmod FROM pg_attribute WHERE attrelid = 'public.app_document_chunk'::regclass AND attname = 'embedding'"
+                        )
+                        assert cursor.fetchone() == (-1,)
+                finally:
+                    migrated.close()
+                    connections["default"] = original
+        finally:
+            admin.execute(
+                sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
+                    sql.Identifier(name)
+                )
+            )
+            admin.execute(
+                sql.SQL("DROP ROLE {}").format(sql.Identifier(owner))
+            )

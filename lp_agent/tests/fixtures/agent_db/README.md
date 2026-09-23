@@ -1,42 +1,46 @@
-# Experimental agent schema fixtures
+# Agent database installation
 
-These SQL files define the experimental `agent_` schema used by the PostgreSQL
-surface tests. They remain separate from application migrations and seed data
-pending team review.
+Django models and migrations own the approved shared schema. Migration `0019`
+adds the model fields and tables; `0020` contains the PostgreSQL-specific columns,
+indexes, constraints, triggers, functions, and grants as inline `RunSQL`.
+The specialized `vector` and `tsvector` columns are SQL-managed, not ORM fields.
+Tests inspect these objects as well as checking model/migration consistency.
+There is no separate fixture schema to maintain or install.
 
-The database test fixture applies these files in order, in one transaction:
+Install with the application's normal `manage migrate` command. These migrations
+assume a fresh database, not an existing experimental `agent_` installation.
+The existing corpus command remains the importer for the existing application
+corpus. This PR adds no agent prompt or document publisher.
 
-1. `agent_tables.sql`: tables, indexes, and basic constraints.
-2. `agent_constraints.sql`: foreign keys, validation, and integrity triggers.
-3. `agent_search.sql`: stored lookup functions and restricted database roles.
+## Local and test roles
 
-The tests use a temporary database on the configured PostgreSQL server and drop
-it during teardown. The existing Docker and CI PostgreSQL services provide
-pgvector and administrator access for database and role creation. SQL setup
-creates the three non-login agent roles if absent and validates existing roles.
-Those permission groups are shared with local development and retained after
-testing. Tests create separate writer and lookup logins with temporary
-credentials, connect as those logins, and drop them during teardown.
+Server roles are provisioned separately from migrations. Docker and CI currently
+use administrator PostgreSQL accounts; database tests explicitly provision the
+three unprivileged, non-login permission groups below. They create temporary
+writer and lookup logins, install the real migrations in a temporary database,
+and remove that database and those logins afterward. Permission groups remain
+server-level resources shared with local development.
 
-Run the tests through the project configuration with `make test` or
-`make pre-commit`. No schema installation is needed before running the tests.
+For local agent database use, an administrator creates these groups before
+running migrations, if they do not already exist:
 
-For a local experiment, the temporary installer reads this same SQL bundle:
-
-```sh
-python3 lp_agent/tests/fixtures/agent_db/setup_agent_db.py
-python3 lp_agent/tests/fixtures/agent_db/setup_agent_db.py --status
+```sql
+CREATE ROLE agent_dev_crud NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE ROLE agent_dev_reader NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+CREATE ROLE agent_dev_lookup NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
 ```
 
-It starts only the local Compose PostgreSQL service and installs into
-`litigant_portal.public`. An unchanged rerun keeps existing data; a changed
-bundle is rejected. `--recreate-empty` only replaces a recognized installation
-when every agent table is empty. It refuses unknown objects and external
-dependencies and uses no cascading drops. Migrations and seed data are separate.
+A non-superuser migration owner needs membership in `agent_dev_reader` to assign
+ownership of the security-definer lookup functions. Infrastructure must also
+install the `vector` extension before migrations if that owner cannot install
+extensions. Migrations require no `CREATEROLE` permission. They validate existing
+group attributes and apply grants to explicitly named shared/agent objects;
+framework tables are excluded. With no agent groups provisioned, the schema
+installs without enabling separate writer or lookup access. Public function
+execution is revoked in either case.
 
-The installer creates no login credentials. For local integration, open an
-administrator session with `docker compose exec postgres psql -U postgres -d
-litigant_portal`, then create separate logins and set their passwords interactively:
+Create separate login credentials administratively and set passwords
+interactively, rather than putting passwords in committed commands:
 
 ```sql
 CREATE ROLE agent_local_writer LOGIN IN ROLE agent_dev_crud;
@@ -45,7 +49,25 @@ CREATE ROLE agent_local_lookup LOGIN IN ROLE agent_dev_lookup;
 \password agent_local_lookup
 ```
 
-Supply their connection strings to `agent_connection()` and `lookup_connection()`
-respectively. The lookup login must inherit only `agent_dev_lookup`, have no
-direct agent-table or internal-function privileges, and have no schema-creation
-privilege. A privileged session using `SET ROLE` does not meet that contract.
+Pass their DSNs to `agent_connection()` and `lookup_connection()`. The lookup
+login must inherit only `agent_dev_lookup`, lack schema-creation privileges,
+and have no direct access to the shared tables or internal routines. Using
+`SET ROLE` on an administrator connection is not a restricted lookup login.
+
+## Production ownership
+
+FLP infrastructure owns extension installation, migration-role memberships,
+permission groups, login provisioning, and credential rotation. DSNs belong in
+the deployment's existing secret mechanism; trusted host code supplies them to
+the connection factories. This PR introduces no deployment wiring, new settings,
+or environment-specific credential exceptions.
+
+Court authoring additionally requires `AccessContext.author=True`, set only by
+host code after its permission checks. Ordinary contexts default to false.
+Separate author/writer database credentials remain infrastructure follow-up;
+the current writer role can perform trusted application writes.
+
+Embedding storage remains dimension-flexible. Select the embedding model,
+dimensions, and vector index together when implementing vector retrieval.
+Full-text query/index optimization and corpus-load limits are also deferred;
+this PR preserves the existing lookup execution strategy.

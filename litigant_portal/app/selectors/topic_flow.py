@@ -48,6 +48,7 @@ def topic_flow_find(*, topic_slug: str, flow_slug: str) -> TopicFlow | None:
             "form_conditions__variable",
             "interview_pages__variables__variable__asked_when",
         )
+        .order_by("-version")
         .first()
     )
 
@@ -65,7 +66,11 @@ def variable_answer_list(
     ``variable_answer_map``: a cleared fact is not a fact.
     """
     answers = VariableAnswer.objects.filter(
-        identity=identity, variable__in_schema=True
+        identity=identity,
+        variable__in_schema=True,
+        matter__isnull=True,
+        state="active",
+        invalidated_at__isnull=True,
     )
     if answered_only:
         answers = answers.filter(value__isnull=False)
@@ -84,6 +89,9 @@ def variable_answer_map(*, identity, names: list[str]) -> dict:
         VariableAnswer.objects.filter(
             identity=identity,
             variable__name__in=names,
+            matter__isnull=True,
+            state="active",
+            invalidated_at__isnull=True,
             variable__in_schema=True,
             value__isnull=False,
         ).values_list("variable__name", "value")

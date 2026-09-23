@@ -22,6 +22,21 @@ class ChatThread(BaseModel):
     )
     state = models.JSONField(default=dict, blank=True)
     description = models.CharField(max_length=255, blank=True, default="")
+    matter = models.ForeignKey(
+        "Matter", null=True, blank=True, on_delete=models.PROTECT
+    )
+    court_topic = models.ForeignKey(
+        "CourtTopic", null=True, blank=True, on_delete=models.PROTECT
+    )
+    court = models.ForeignKey(
+        "Court", null=True, blank=True, on_delete=models.PROTECT
+    )
+    topic = models.ForeignKey(
+        "Topic", null=True, blank=True, on_delete=models.PROTECT
+    )
+    status = models.CharField(max_length=16, default="active")
+    next_sequence = models.PositiveBigIntegerField(default=1)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
 
 class PromptArtifact(BaseModel):
@@ -31,6 +46,8 @@ class PromptArtifact(BaseModel):
     system_prompt = models.TextField()
     tool_schemas = models.JSONField(default=list, blank=True)
     content_hash = models.CharField(max_length=64, unique=True)
+    canonical_format = models.CharField(max_length=64, blank=True)
+    canonical_payload = models.TextField(blank=True)
 
 
 class ChatMessage(BaseModel):
@@ -57,3 +74,24 @@ class ChatMessage(BaseModel):
     num_tokens = models.PositiveIntegerField(default=0)
     cost = models.FloatField(default=0.0)
     git_sha = models.CharField(max_length=40, blank=True, default="")
+    sequence = models.PositiveBigIntegerField(null=True, blank=True)
+    deduplication_key = models.CharField(max_length=255, null=True, blank=True)
+    item_kind = models.CharField(max_length=32, default="message")
+    origin = models.CharField(max_length=16, default="framework")
+    context_state = models.CharField(max_length=16, default="pending")
+    search_text = models.TextField(null=True, blank=True)
+    redacted_at = models.DateTimeField(null=True, blank=True)
+    run = models.ForeignKey(
+        "AgentRun",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    run_step = models.ForeignKey(
+        "AgentRunStep",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )

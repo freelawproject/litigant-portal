@@ -75,6 +75,7 @@ class AccessContext(ContractModel):
     """
 
     identity_id: Identifier
+    author: bool = False
 
 
 class ScopeSelection(ContractModel):

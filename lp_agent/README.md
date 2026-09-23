@@ -133,8 +133,21 @@ model behavior; runtimes decide how flows execute.
 
 ## Experimental database surfaces
 
+Django models and migrations currently own the shared application and agent
+schema. Existing web CRUD stays in Django services. The agent adapter retains
+its SQL operations, and lookup functions and integrity triggers remain SQL
+because they enforce database permissions, ownership, and atomic invariants.
+The intended later home for custom application data is a shared `lp_database`
+module; its implementation and ORM selection are outside this PR.
+
+Existing application writes use `transaction.atomic()`. A write combining ORM
+and SQL must use that same Django connection. Agent-only operations use
+`db.transaction()` on their caller-owned psycopg connection. Separate Django
+and psycopg connections do not share a transaction. Court-authoring methods
+require the host-controlled `AccessContext.author` capability, defaulting false.
+
 The database adapters are available for integration; the supplied environment
-still uses memory stores. See the [temporary schema setup](tests/fixtures/agent_db/)
+still uses memory stores. See the [schema installation](tests/fixtures/agent_db/)
 for local installation and separate writer/lookup login credentials.
 
 Create connections inside the process and event loop using them, including
@@ -212,7 +225,7 @@ docker compose exec -T django tox -e py313 -- -c pyproject.toml lp_agent/tests/p
 ```
 
 The tests create a temporary database and dedicated login roles on the configured
-PostgreSQL service, install the [experimental SQL fixtures](tests/fixtures/agent_db/),
+PostgreSQL service, install the [application migrations](tests/fixtures/agent_db/),
 and drop the database and logins during teardown. Setup errors fail the tests.
 No local installation of the agent schema is required. `tox -e fast` excludes
 PostgreSQL cases while retaining argument-validation coverage.

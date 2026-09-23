@@ -51,6 +51,89 @@ CATALOG_TABLES = frozenset(
     }
 )
 
+TABLES = {
+    "user": "app_useridentity",
+    "topic": "app_topic",
+    "court": "app_court",
+    "court_topic": "app_court_topic",
+    "matter": "app_matter",
+    "procedure": "app_topicflow",
+    "phase": "app_topicflowinterviewpage",
+    "phase_fact": "app_topicflowinterviewvariable",
+    "phase_deadline": "app_topicflowdeadline",
+    "fact_definition": "app_variable",
+    "fact_assertion": "app_variableanswer",
+    "conversation": "app_chatthread",
+    "conversation_item": "app_chatmessage",
+    "phase_document": "app_phase_document",
+    "prompt": "agent_prompt",
+    "document": "app_document",
+    "corpus_document": "app_corpus_document",
+    "matter_document": "app_matter_document",
+    "document_chunk": "app_document_chunk",
+    "fact_evidence": "app_fact_evidence",
+    "matter_procedure": "app_matter_procedure",
+    "phase_progress": "app_phase_progress",
+    "memory": "agent_memory",
+    "memory_source": "agent_memory_source",
+    "message_attachment": "app_message_attachment",
+    "run": "agent_run",
+    "run_step": "agent_run_step",
+}
+COLUMNS = {
+    "user_id": "identity_id",
+    "conversation_id": "thread_id",
+    "conversation_item_id": "message_id",
+    "procedure_id": "flow_id",
+    "phase_id": "page_id",
+    "fact_definition_id": "variable_id",
+    "fact_assertion_id": "answer_id",
+    "payload": "data",
+}
+
+FIELDS = {
+    "conversation": {"state": "status", "title": "description"},
+    "procedure": {"title": "name"},
+    "fact_definition": {
+        "key": "name",
+        "description": "help_text",
+        "enabled": "in_schema",
+    },
+    "phase": {"position": "order"},
+    "phase_fact": {"position": "order"},
+    "phase_deadline": {"anchor_fact_definition_id": "offset_from_id"},
+}
+
+
+def record(row: DictRow, table: str = "") -> DictRow:
+    """
+    Preserve the adapter's record keys over the approved shared columns.
+    """
+    result = dict(row)
+    for old, new in (COLUMNS | FIELDS.get(table, {})).items():
+        if new in row:
+            result[old] = row[new]
+    for key in (
+        "user_id",
+        "owner_user_id",
+        "created_by",
+        "reviewed_by",
+        "published_by",
+    ):
+        if result.get(key) is not None:
+            result[key] = str(result[key])
+    if table == "fact_definition":
+        result["scope"] = "user" if row["is_global"] else "matter"
+    if table == "conversation_item":
+        result["visibility"] = (
+            "internal" if row["hidden"] or row["meta"] else "user"
+        )
+    if table in {"phase", "phase_fact"}:
+        result["position"] = row["order"] + 1
+    if table == "phase_deadline":
+        result.update(key=str(row["id"]), rule={"days": row["offset_days"]})
+    return result
+
 
 class AgentDatabase:
     """
@@ -85,7 +168,7 @@ class AgentDatabase:
             ).fetchone()
             if row is None:
                 raise AgentAccessError("Agent record is unavailable.")
-            return row
+            return record(row)
 
     async def _save(
         self,
@@ -98,6 +181,61 @@ class AgentDatabase:
         """
         if not fields or "id" in fields:
             raise AgentValidationError("Provide fields without a primary key.")
+        original = dict(fields)
+        values_by_column = dict(fields)
+        if table == "fact_definition" and "scope" in values_by_column:
+            values_by_column["is_global"] = (
+                values_by_column.pop("scope") == "user"
+            )
+        if table == "conversation_item" and "visibility" in values_by_column:
+            values_by_column["hidden"] = (
+                values_by_column.pop("visibility") == "internal"
+            )
+        if table in {"phase", "phase_fact"} and "position" in values_by_column:
+            position = values_by_column["position"]
+            if not isinstance(position, int):
+                raise AgentValidationError("Position must be an integer.")
+            values_by_column["position"] = position - 1
+        if table == "procedure" and record_id is None:
+            pair = await self.catalog_record(
+                "court_topic", str(values_by_column["court_topic_id"])
+            )
+            values_by_column["topic_id"] = pair["topic_id"]
+        if table == "phase_deadline":
+            values_by_column.pop("key", None)
+            if "rule" in values_by_column:
+                rule = values_by_column.pop("rule")
+                if (
+                    not isinstance(rule, dict)
+                    or set(rule) != {"days"}
+                    or type(rule["days"]) is not int
+                ):
+                    raise AgentValidationError(
+                        "A deadline rule must contain an integer days offset."
+                    )
+                values_by_column["offset_days"] = rule["days"]
+            phase = await self.catalog_record(
+                "phase", str(values_by_column["phase_id"])
+            )
+            values_by_column["procedure_id"] = phase["procedure_id"]
+        if (
+            table == "run_step"
+            and "instruction_canonical_json" in values_by_column
+        ):
+            artifact = await self._one(
+                "INSERT INTO public.app_promptartifact (id, created_at, updated_at, canonical_format, canonical_payload, content_hash, system_prompt, tool_schemas) VALUES (gen_random_uuid(), now(), now(), %s, %s, %s, '', '[]') ON CONFLICT (content_hash) DO UPDATE SET content_hash = EXCLUDED.content_hash RETURNING id",
+                (
+                    values_by_column.pop("instruction_format"),
+                    values_by_column.pop("instruction_canonical_json"),
+                    values_by_column.pop("instruction_sha256"),
+                ),
+            )
+            values_by_column["prompt_artifact_id"] = artifact["id"]
+        mapping = COLUMNS | FIELDS.get(table, {})
+        fields = {
+            mapping.get(key, key): value
+            for key, value in values_by_column.items()
+        }
         columns = list(map(sql.Identifier, fields))
         values = [
             Jsonb(v) if isinstance(v, dict | list) else v
@@ -107,7 +245,7 @@ class AgentDatabase:
             query = sql.SQL(
                 "INSERT INTO public.{} ({}) VALUES ({}) RETURNING *"
             ).format(
-                sql.Identifier("agent_" + table),
+                sql.Identifier(TABLES[table]),
                 sql.SQL(", ").join(columns),
                 sql.SQL(", ").join(sql.Placeholder() for _ in columns),
             )
@@ -115,26 +253,43 @@ class AgentDatabase:
             query = sql.SQL(
                 "UPDATE public.{} SET {} WHERE id = %s RETURNING *"
             ).format(
-                sql.Identifier("agent_" + table),
+                sql.Identifier(TABLES[table]),
                 sql.SQL(", ").join(
                     sql.SQL("{} = %s").format(c) for c in columns
                 ),
             )
             values.append(record_id)
-        return await self._one(query, values)
+        row = record(await self._one(query, values), table)
+        if table == "run_step":
+            row.update(
+                {
+                    key: original.get(key)
+                    for key in (
+                        "instruction_format",
+                        "instruction_canonical_json",
+                        "instruction_sha256",
+                    )
+                }
+            )
+        return row
 
     async def ensure_user(self) -> DictRow:
         """
-        Register the host identity without resetting existing recall settings.
+        Require the live host identity; the adapter does not create identities.
         """
         return await self._one(
-            """
-            INSERT INTO public.agent_user (user_id) VALUES (%s)
-            ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
-            WHERE agent_user.deleted_at IS NULL RETURNING *
-        """,
+            "SELECT *, id AS user_id FROM public.app_useridentity WHERE id = %s AND deleted_at IS NULL",
             (self.access.identity_id,),
         )
+
+    def _require_author(self) -> None:
+        """
+        Court authoring is a capability supplied only by trusted host code.
+        """
+        if not self.access.author:
+            raise AgentAccessError(
+                "Court authoring requires host authorization."
+            )
 
     async def set_recall(
         self, enabled: bool, limits: dict[str, JsonValue]
@@ -144,9 +299,9 @@ class AgentDatabase:
         """
         await self._one(
             """
-            UPDATE public.agent_user SET recall_enabled = %s, recall_limits = %s,
-                recall_consent_at = now() WHERE user_id = %s AND deleted_at IS NULL
-            RETURNING user_id
+            UPDATE public.app_useridentity SET recall_enabled = %s, recall_limits = %s,
+                recall_consent_at = now() WHERE id = %s AND deleted_at IS NULL
+            RETURNING id AS user_id
         """,
             (enabled, Jsonb(limits), self.access.identity_id),
         )
@@ -164,6 +319,7 @@ class AgentDatabase:
         Field names are schema columns. This trusted API deliberately has no
         duplicate Python model for every experimental table.
         """
+        self._require_author()
         if table not in CATALOG_TABLES:
             raise AgentValidationError("Unsupported catalog table.")
         values = dict(fields)
@@ -185,17 +341,36 @@ class AgentDatabase:
         """
         if table not in CATALOG_TABLES:
             raise AgentValidationError("Unsupported catalog table.")
-        return await self._one(
-            sql.SQL("SELECT * FROM public.{} WHERE id = %s").format(
-                sql.Identifier("agent_" + table)
+        row = record(
+            await self._one(
+                sql.SQL("SELECT * FROM public.{} WHERE id = %s").format(
+                    sql.Identifier(TABLES[table])
+                ),
+                (record_id,),
             ),
-            (record_id,),
+            table,
         )
+        if table in {"procedure", "prompt"} and row["state"] != "published":
+            self._require_author()
+        if table in {
+            "phase",
+            "phase_fact",
+            "phase_deadline",
+            "phase_document",
+        }:
+            phase = (
+                row
+                if table == "phase"
+                else await self.catalog_record("phase", str(row["phase_id"]))
+            )
+            await self.catalog_record("procedure", str(phase["procedure_id"]))
+        return row
 
     async def delete_catalog_record(self, table: str, record_id: str) -> None:
         """
         Delete an unused catalog row; database references and freezes apply.
         """
+        self._require_author()
         if table not in CATALOG_TABLES:
             raise AgentValidationError("Unsupported catalog table.")
         condition = sql.SQL("true")
@@ -203,11 +378,11 @@ class AgentDatabase:
             condition = sql.SQL("state IN ('draft', 'in_review')")
         elif table == "phase":
             condition = sql.SQL(
-                "procedure_id IN (SELECT id FROM public.agent_procedure WHERE state IN ('draft', 'in_review'))"
+                "flow_id IN (SELECT id FROM public.app_topicflow WHERE state IN ('draft', 'in_review'))"
             )
         elif table.startswith("phase_"):
             condition = sql.SQL(
-                "phase_id IN (SELECT ph.id FROM public.agent_phase ph JOIN public.agent_procedure p ON p.id = ph.procedure_id WHERE p.state IN ('draft', 'in_review'))"
+                "page_id IN (SELECT ph.id FROM public.app_topicflowinterviewpage ph JOIN public.app_topicflow p ON p.id = ph.flow_id WHERE p.state IN ('draft', 'in_review'))"
             )
         elif table == "fact_definition":
             raise AgentValidationError(
@@ -217,7 +392,7 @@ class AgentDatabase:
             sql.SQL(
                 "DELETE FROM public.{} WHERE id = %s AND {} RETURNING id"
             ).format(
-                sql.Identifier("agent_" + table),
+                sql.Identifier(TABLES[table]),
                 condition,
             ),
             (record_id,),
@@ -252,9 +427,9 @@ class AgentDatabase:
             scope = await (
                 await conn.execute(
                     """
-                SELECT ct.id FROM public.agent_court_topic ct
-                JOIN public.agent_court c ON c.id = ct.court_id
-                JOIN public.agent_topic t ON t.id = ct.topic_id
+                SELECT ct.id FROM public.app_court_topic ct
+                JOIN public.app_court c ON c.id = ct.court_id
+                JOIN public.app_topic t ON t.id = ct.topic_id
                 WHERE ct.id = %s AND ct.enabled AND c.enabled AND t.enabled
             """,
                     (conversation["court_topic_id"],),
@@ -275,9 +450,9 @@ class AgentDatabase:
                             'documents', coalesce((
                                 SELECT jsonb_object_agg(base_id::text, id::text) FROM (
                                     SELECT DISTINCT ON (base.id) base.id AS base_id, d.id
-                                    FROM public.agent_corpus_document cd
-                                    JOIN public.agent_document base ON base.id = cd.document_id
-                                    JOIN public.agent_document d ON d.key = base.key AND d.owner_court_id = base.owner_court_id
+                                    FROM public.app_corpus_document cd
+                                    JOIN public.app_document base ON base.id = cd.document_id
+                                    JOIN public.app_document d ON d.key = base.key AND d.owner_court_id = base.owner_court_id
                                     WHERE cd.court_topic_id = ct.id AND cd.enabled AND d.state = 'published'
                                         AND d.storage_state = 'available' AND d.deleted_at IS NULL
                                     ORDER BY base.id, d.version DESC
@@ -286,7 +461,7 @@ class AgentDatabase:
                             'procedures', coalesce((
                                 SELECT jsonb_object_agg(base_id::text, id::text) FROM (
                                     SELECT DISTINCT ON (base.id) base.id AS base_id, p.id
-                                    FROM public.agent_procedure base JOIN public.agent_procedure p
+                                    FROM public.app_topicflow base JOIN public.app_topicflow p
                                         ON p.court_topic_id = base.court_topic_id AND p.slug = base.slug
                                     WHERE base.court_topic_id = ct.id AND base.version = 1 AND p.state = 'published'
                                     ORDER BY base.id, p.version DESC
@@ -301,11 +476,11 @@ class AgentDatabase:
                                 WHERE base.version = 1 AND latest.metadata @> %s
                             ), '{}'::jsonb)
                         ) AS manifest
-                    FROM public.agent_run r JOIN public.agent_conversation c ON c.id = r.conversation_id
-                    JOIN public.agent_user u ON u.user_id = c.user_id
-                    JOIN public.agent_court_topic ct ON ct.id = c.court_topic_id
-                    JOIN public.agent_court court ON court.id = ct.court_id
-                    JOIN public.agent_topic topic ON topic.id = ct.topic_id
+                    FROM public.agent_run r JOIN public.app_chatthread c ON c.id = r.thread_id
+                    JOIN public.app_useridentity u ON u.id = c.identity_id
+                    JOIN public.app_court_topic ct ON ct.id = c.court_topic_id
+                    JOIN public.app_court court ON court.id = ct.court_id
+                    JOIN public.app_topic topic ON topic.id = ct.topic_id
                     WHERE r.id = %s AND r.context_selected_at IS NULL
                 )
                 UPDATE public.agent_run r SET context_court_topic_id = %s, context_format_version = 2,
@@ -362,8 +537,8 @@ class AgentDatabase:
         """
         return await self._one(
             """
-            SELECT m.* FROM public.agent_matter m JOIN public.agent_user u USING (user_id)
-            WHERE m.id = %s AND m.user_id = %s AND m.deleted_at IS NULL AND u.deleted_at IS NULL
+            SELECT m.* FROM public.app_matter m JOIN public.app_useridentity u ON u.id = m.identity_id
+            WHERE m.id = %s AND m.identity_id = %s AND m.deleted_at IS NULL AND u.deleted_at IS NULL
         """,
             (matter_id, self.access.identity_id),
         )
@@ -392,12 +567,12 @@ class AgentDatabase:
         """
         return await self._one(
             """
-            SELECT c.*, court.slug AS court, topic.slug AS topic
-            FROM public.agent_conversation c JOIN public.agent_user u USING (user_id)
-            LEFT JOIN public.agent_court court ON court.id = c.court_id
-            LEFT JOIN public.agent_topic topic ON topic.id = c.topic_id
-            LEFT JOIN public.agent_matter m ON m.id = c.matter_id
-            WHERE c.id = %s AND c.user_id = %s AND c.deleted_at IS NULL
+            SELECT c.*, c.status AS state, c.description AS title, court.slug AS court, topic.slug AS topic
+            FROM public.app_chatthread c JOIN public.app_useridentity u ON u.id = c.identity_id
+            LEFT JOIN public.app_court court ON court.id = c.court_id
+            LEFT JOIN public.app_topic topic ON topic.id = c.topic_id
+            LEFT JOIN public.app_matter m ON m.id = c.matter_id
+            WHERE c.id = %s AND c.identity_id = %s AND c.deleted_at IS NULL
                 AND u.deleted_at IS NULL AND m.deleted_at IS NULL
         """,
             (conversation_id, self.access.identity_id),
@@ -433,13 +608,13 @@ class AgentDatabase:
                     row = await self._one(
                         sql.SQL(
                             "SELECT id FROM public.{} WHERE slug = %s AND enabled"
-                        ).format(sql.Identifier("agent_" + table)),
+                        ).format(sql.Identifier(TABLES[table])),
                         (slug,),
                     )
                     ids[table + "_id"] = row["id"]
             if len(ids) == 2:
                 pair = await self._one(
-                    "SELECT id FROM public.agent_court_topic WHERE court_id = %s AND topic_id = %s AND enabled",
+                    "SELECT id FROM public.app_court_topic WHERE court_id = %s AND topic_id = %s AND enabled",
                     (ids["court_id"], ids["topic_id"]),
                 )
                 ids["court_topic_id"] = pair["id"]
@@ -487,7 +662,7 @@ class AgentDatabase:
         async with self.connection.transaction():
             await self.conversation(conversation_id)
             current = await self._one(
-                "SELECT next_sequence FROM public.agent_conversation WHERE id = %s FOR UPDATE",
+                "SELECT next_sequence FROM public.app_chatthread WHERE id = %s FOR UPDATE",
                 (conversation_id,),
             )
             values = {
@@ -504,14 +679,15 @@ class AgentDatabase:
             }
             old = await (
                 await self.connection.execute(
-                    "SELECT * FROM public.agent_conversation_item WHERE conversation_id = %s AND deduplication_key = %s",
+                    "SELECT * FROM public.app_chatmessage WHERE thread_id = %s AND deduplication_key = %s",
                     (conversation_id, key),
                 )
             ).fetchone()
             if old:
+                old = record(old, "conversation_item")
                 attachments = await (
                     await self.connection.execute(
-                        "SELECT document_id FROM public.agent_message_attachment WHERE conversation_item_id = %s ORDER BY position",
+                        "SELECT document_id FROM public.app_message_attachment WHERE message_id = %s ORDER BY position",
                         (old["id"],),
                     )
                 ).fetchall()
@@ -537,7 +713,7 @@ class AgentDatabase:
                     },
                 )
             await self.connection.execute(
-                "UPDATE public.agent_conversation SET next_sequence = next_sequence + 1 WHERE id = %s",
+                "UPDATE public.app_chatthread SET next_sequence = next_sequence + 1, updated_at = now() WHERE id = %s",
                 (conversation_id,),
             )
             return row
@@ -550,12 +726,13 @@ class AgentDatabase:
         """
         async with self.connection.transaction():
             await self.conversation(conversation_id)
-            return await (
+            rows = await (
                 await self.connection.execute(
-                    "SELECT * FROM public.agent_conversation_item WHERE conversation_id = %s AND sequence > %s AND redacted_at IS NULL ORDER BY sequence LIMIT %s",
+                    "SELECT * FROM public.app_chatmessage WHERE thread_id = %s AND sequence > %s AND redacted_at IS NULL ORDER BY sequence LIMIT %s",
                     (conversation_id, after, min(max(limit, 1), 500)),
                 )
             ).fetchall()
+            return [record(row, "conversation_item") for row in rows]
 
     async def create_run(
         self,
@@ -574,8 +751,8 @@ class AgentDatabase:
             await self.conversation(conversation_id)
             row = await self._one(
                 """
-                INSERT INTO public.agent_run (conversation_id, request, configuration, request_key)
-                VALUES (%s, %s, %s, %s) ON CONFLICT (conversation_id, request_key)
+                INSERT INTO public.agent_run (thread_id, request, configuration, request_key)
+                VALUES (%s, %s, %s, %s) ON CONFLICT (thread_id, request_key)
                 DO UPDATE SET request_key = EXCLUDED.request_key RETURNING *
             """,
                 (
@@ -620,7 +797,7 @@ class AgentDatabase:
         async with self.connection.transaction():
             run = await self.run(run_id)
             await self._one(
-                "SELECT id FROM public.agent_conversation WHERE id = %s FOR UPDATE",
+                "SELECT id FROM public.app_chatthread WHERE id = %s FOR UPDATE",
                 (run["conversation_id"],),
             )
             run = await self._one(
@@ -634,7 +811,7 @@ class AgentDatabase:
             )
             old = await (
                 await self.connection.execute(
-                    "SELECT * FROM public.agent_run_step WHERE run_id = %s AND operation_key = %s AND state = 'completed'",
+                    "SELECT s.*, p.canonical_payload AS instruction_canonical_json FROM public.agent_run_step s LEFT JOIN public.app_promptartifact p ON p.id = s.prompt_artifact_id WHERE s.run_id = %s AND s.operation_key = %s AND s.state = 'completed'",
                     (run_id, key),
                 )
             ).fetchone()
@@ -697,11 +874,11 @@ class AgentDatabase:
         async with self.connection.transaction():
             await self.conversation(checkpoint.conversation_id)
             conversation = await self._one(
-                "SELECT next_sequence FROM public.agent_conversation WHERE id = %s FOR UPDATE",
+                "SELECT next_sequence FROM public.app_chatthread WHERE id = %s FOR UPDATE",
                 (checkpoint.conversation_id,),
             )
             run = await self._one(
-                "SELECT * FROM public.agent_run WHERE id = %s AND conversation_id = %s FOR UPDATE",
+                "SELECT * FROM public.agent_run WHERE id = %s AND thread_id = %s FOR UPDATE",
                 (checkpoint.run_id, checkpoint.conversation_id),
             )
             if run["lock_version"] != (checkpoint.storage_version or 0) or run[
@@ -744,11 +921,11 @@ class AgentDatabase:
         """
         return await self._one(
             """
-            SELECT d.* FROM public.agent_document d
-            WHERE d.id = %s AND d.deleted_at IS NULL AND (d.owner_kind = 'court' OR
-                (d.owner_user_id = %s AND EXISTS (SELECT FROM public.agent_user u WHERE u.user_id = d.owner_user_id AND u.deleted_at IS NULL)))
+            SELECT d.* FROM public.app_document d
+            WHERE d.id = %s AND d.deleted_at IS NULL AND ((d.owner_kind = 'court' AND (%s OR d.state = 'published')) OR
+                (d.owner_user_id = %s AND EXISTS (SELECT FROM public.app_useridentity u WHERE u.id = d.owner_user_id AND u.deleted_at IS NULL)))
         """,
-            (document_id, self.access.identity_id),
+            (document_id, self.access.author, self.access.identity_id),
         )
 
     async def save_document(
@@ -763,9 +940,21 @@ class AgentDatabase:
         """
         async with self.connection.transaction():
             values = dict(fields)
+            if {
+                "owner_kind",
+                "owner_user_id",
+                "owner_court_id",
+            } & values.keys():
+                raise AgentValidationError(
+                    "Document ownership is fixed by the host."
+                )
             if record_id is not None:
-                await self.document(record_id)
-            else:
+                current = await self.document(record_id)
+                if current["owner_kind"] == "court":
+                    self._require_author()
+            elif court_id is not None:
+                self._require_author()
+            if record_id is None:
                 values.update(
                     owner_kind="court" if court_id else "user",
                     owner_court_id=court_id,
@@ -789,7 +978,7 @@ class AgentDatabase:
             await self.matter(matter_id)
             await self.document(document_id)
             return await self._one(
-                "INSERT INTO public.agent_matter_document (matter_id, document_id) VALUES (%s, %s) ON CONFLICT (matter_id, document_id) DO UPDATE SET note = agent_matter_document.note RETURNING *",
+                "INSERT INTO public.app_matter_document (matter_id, document_id) VALUES (%s, %s) ON CONFLICT (matter_id, document_id) DO UPDATE SET note = app_matter_document.note RETURNING *",
                 (matter_id, document_id),
             )
 
@@ -805,18 +994,20 @@ class AgentDatabase:
         Atomically replace supplied text/locators; no extraction or embeddings run.
         """
         async with self.connection.transaction():
-            await self.document(document_id)
+            document = await self.document(document_id)
+            if document["owner_kind"] == "court":
+                self._require_author()
             await self._one(
-                "SELECT id FROM public.agent_document WHERE id = %s FOR UPDATE",
+                "SELECT id FROM public.app_document WHERE id = %s FOR UPDATE",
                 (document_id,),
             )
             await self.connection.execute(
-                "DELETE FROM public.agent_document_chunk WHERE document_id = %s",
+                "DELETE FROM public.app_document_chunk WHERE document_id = %s",
                 (document_id,),
             )
             async with self.connection.cursor() as cursor:
                 await cursor.executemany(
-                    "INSERT INTO public.agent_document_chunk (document_id, ordinal, body, locator, text_sha256) VALUES (%s, %s, %s, %s, %s)",
+                    "INSERT INTO public.app_document_chunk (document_id, ordinal, body, locator, text_sha256) VALUES (%s, %s, %s, %s, %s)",
                     [
                         (
                             document_id,
@@ -830,7 +1021,7 @@ class AgentDatabase:
                 )
             await self.connection.execute(
                 """
-                UPDATE public.agent_document SET index_revision = index_revision + 1,
+                UPDATE public.app_document SET index_revision = index_revision + 1,
                     index_state = 'ready', parser_version = %s, chunker_version = %s,
                     chunk_count = %s, indexed_at = now(), index_invalidated_at = NULL,
                     index_error_code = NULL WHERE id = %s
@@ -845,12 +1036,13 @@ class AgentDatabase:
         async with self.connection.transaction():
             if matter_id is not None:
                 await self.matter(matter_id)
-            return await (
+            rows = await (
                 await self.connection.execute(
-                    "SELECT a.* FROM public.agent_fact_assertion a JOIN public.agent_user u USING (user_id) WHERE a.user_id = %s AND u.deleted_at IS NULL AND matter_id IS NOT DISTINCT FROM %s::uuid AND state = 'active' AND invalidated_at IS NULL ORDER BY observed_at, id",
+                    "SELECT a.* FROM public.app_variableanswer a JOIN public.app_useridentity u ON u.id = a.identity_id JOIN public.app_variable v ON v.id = a.variable_id WHERE (v.is_global OR a.matter_id IS NOT NULL) AND a.identity_id = %s AND u.deleted_at IS NULL AND matter_id IS NOT DISTINCT FROM %s::uuid AND state = 'active' AND invalidated_at IS NULL ORDER BY a.observed_at, a.id",
                     (self.access.identity_id, matter_id),
                 )
             ).fetchall()
+            return [record(row) for row in rows]
 
     async def record_fact(
         self,
@@ -886,7 +1078,7 @@ class AgentDatabase:
             )
             if supersedes_id:
                 await self.connection.execute(
-                    "UPDATE public.agent_fact_assertion SET state = 'superseded' WHERE id = %s AND user_id = %s",
+                    "UPDATE public.app_variableanswer SET state = 'superseded' WHERE id = %s AND identity_id = %s",
                     (supersedes_id, self.access.identity_id),
                 )
             return row
@@ -906,12 +1098,12 @@ class AgentDatabase:
         """
         async with self.connection.transaction():
             await self._one(
-                "SELECT id FROM public.agent_fact_assertion WHERE id = %s AND user_id = %s",
+                "SELECT id FROM public.app_variableanswer WHERE id = %s AND identity_id = %s",
                 (fact_id, self.access.identity_id),
             )
             return await self._one(
                 """
-                INSERT INTO public.agent_fact_evidence (fact_assertion_id, role, conversation_item_id, document_id, run_step_id, locator, locator_sha256)
+                INSERT INTO public.app_fact_evidence (answer_id, role, message_id, document_id, run_step_id, locator, locator_sha256)
                 VALUES (%s, %s, %s, %s, %s, %s, encode(sha256(convert_to(%s::jsonb::text, 'UTF8')), 'hex')) RETURNING *
             """,
                 (
@@ -930,8 +1122,8 @@ class AgentDatabase:
         Record confirmation or rejection; searchable confirmations need evidence.
         """
         await self._one(
-            "UPDATE public.agent_fact_assertion SET confirmation_state = %s WHERE id = %s AND user_id = %s RETURNING id",
-            (state, fact_id, self.access.identity_id),
+            "UPDATE public.app_variableanswer SET confirmation_state = %s, reviewed = (%s = 'confirmed') WHERE id = %s AND identity_id = %s RETURNING id",
+            (state, state, fact_id, self.access.identity_id),
         )
 
     async def follow_procedure(
@@ -943,7 +1135,7 @@ class AgentDatabase:
         async with self.connection.transaction():
             await self.matter(matter_id)
             return await self._one(
-                "INSERT INTO public.agent_matter_procedure (matter_id, procedure_id) VALUES (%s, %s) ON CONFLICT (matter_id, procedure_id) DO UPDATE SET state = agent_matter_procedure.state RETURNING *",
+                "INSERT INTO public.app_matter_procedure (matter_id, flow_id) VALUES (%s, %s) ON CONFLICT (matter_id, flow_id) DO UPDATE SET state = app_matter_procedure.state RETURNING *",
                 (matter_id, procedure_id),
             )
 
@@ -951,7 +1143,7 @@ class AgentDatabase:
         self,
         matter_procedure_id: str,
         phase_id: str,
-        step_id: str,
+        step_id: str | None,
         state: str,
         basis: dict[str, JsonValue],
     ) -> DictRow:
@@ -960,15 +1152,15 @@ class AgentDatabase:
         """
         async with self.connection.transaction():
             parent = await self._one(
-                "SELECT matter_id FROM public.agent_matter_procedure WHERE id = %s",
+                "SELECT matter_id FROM public.app_matter_procedure WHERE id = %s",
                 (matter_procedure_id,),
             )
             await self.matter(str(parent["matter_id"]))
             return await self._one(
                 """
-                INSERT INTO public.agent_phase_progress (matter_procedure_id, phase_id, last_run_step_id, state, basis, started_at, completed_at)
+                INSERT INTO public.app_phase_progress (matter_procedure_id, page_id, last_run_step_id, state, basis, started_at, completed_at)
                 VALUES (%s, %s, %s, %s, %s, now(), CASE WHEN %s = 'completed' THEN now() END)
-                ON CONFLICT (matter_procedure_id, phase_id) DO UPDATE SET state = EXCLUDED.state,
+                ON CONFLICT (matter_procedure_id, page_id) DO UPDATE SET state = EXCLUDED.state,
                     basis = EXCLUDED.basis, last_run_step_id = EXCLUDED.last_run_step_id, completed_at = EXCLUDED.completed_at RETURNING *
             """,
                 (

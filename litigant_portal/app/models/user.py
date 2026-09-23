@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -11,6 +13,11 @@ SESSION_KEY_DISPLAY_CHARS = 8
 class UserIdentity(BaseModel):
     """Single identity row for either an authenticated user or an anonymous session."""
 
+    objects = models.Manager()
+
+    if TYPE_CHECKING:
+        variable_answers: models.Manager
+
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -19,6 +26,10 @@ class UserIdentity(BaseModel):
         related_name="identity",
     )
     session_key = models.CharField(max_length=40, blank=True, db_index=True)
+    recall_enabled = models.BooleanField(null=True, blank=True)
+    recall_limits = models.JSONField(default=dict, blank=True)
+    recall_consent_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
 
     @property
     def session_key_short(self) -> str:

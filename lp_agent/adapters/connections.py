@@ -73,7 +73,7 @@ async def lookup_connection(
                         SELECT FROM pg_class c
                         WHERE c.relnamespace = 'public'::regnamespace
                             AND c.relkind IN ('r', 'p', 'v', 'm', 'f')
-                            AND c.relname LIKE 'agent!_%' ESCAPE '!'
+                            AND c.relname IN ('agent_memory', 'agent_memory_source', 'agent_prompt', 'agent_run', 'agent_run_step', 'app_chatmessage', 'app_chatthread', 'app_corpus_document', 'app_court', 'app_court_topic', 'app_document', 'app_document_chunk', 'app_fact_evidence', 'app_import_audit', 'app_matter', 'app_matter_document', 'app_matter_procedure', 'app_message_attachment', 'app_phase_document', 'app_phase_progress', 'app_promptartifact', 'app_topic', 'app_topicflow', 'app_topicflowdeadline', 'app_topicflowinterviewpage', 'app_topicflowinterviewvariable', 'app_useridentity', 'app_variable', 'app_variableanswer')
                             AND (c.relowner IN (SELECT oid FROM roles)
                                 OR has_table_privilege(session_user, c.oid,
                                     'SELECT,INSERT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER'))

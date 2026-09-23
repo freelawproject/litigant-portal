@@ -3,7 +3,8 @@ import uuid
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import RegexValidator
 from django.db import models
-from django.utils import formats
+from django.db.models.functions import Now
+from django.utils import formats, timezone
 from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.translation import gettext_lazy as _
 
@@ -11,12 +12,15 @@ from litigant_portal.app.formatting import format_long_date
 
 from .base import BaseModel
 from .choices import TopicFlowFormConditionOperator, VariableDataType
+from .shared import Attribution
 
 SNAKE_CASE_PATTERN = r"^[a-z][a-z0-9_]*$"
 
 
 class Topic(BaseModel):
     """A legal topic the app supports."""
+
+    objects = models.Manager()
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.SlugField(max_length=64, unique=True)
@@ -28,12 +32,16 @@ class Topic(BaseModel):
     prompts = models.JSONField(default=list, blank=True)
     order = models.PositiveIntegerField(default=0)
 
+    enabled = models.BooleanField(default=True)
+
     class Meta:
         ordering = ["order", "created_at"]
 
 
-class TopicFlow(BaseModel):
+class TopicFlow(Attribution, BaseModel):
     """A guided flow for a topic."""
+
+    objects = models.Manager()
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     topic = models.ForeignKey(
@@ -46,11 +54,27 @@ class TopicFlow(BaseModel):
     enabled = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
 
+    court_topic = models.ForeignKey(
+        "CourtTopic", null=True, blank=True, on_delete=models.PROTECT
+    )
+    version = models.PositiveIntegerField(default=1)
+    previous_version = models.OneToOneField(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="next_version",
+    )
+    guidance = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict)
+    state = models.CharField(max_length=16, default="draft")
+
     class Meta:
         ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
-                fields=["topic", "slug"], name="unique_topic_flow_slug"
+                fields=["court_topic", "slug", "version"],
+                name="topic_flow_court_slug_version",
             )
         ]
 
@@ -73,12 +97,15 @@ class TopicFlowSection(BaseModel):
 
 
 class Variable(BaseModel):
-    """A fact about the person or their case, named once app-wide."""
+    """
+    A versioned definition of a fact about the person or their case.
+    """
+
+    objects = models.Manager()
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(
         max_length=255,
-        unique=True,
         validators=[RegexValidator(SNAKE_CASE_PATTERN, "Use snake_case.")],
     )
     label = models.CharField(max_length=255, blank=True)
@@ -103,9 +130,15 @@ class Variable(BaseModel):
     )
     asked_when_value = models.JSONField(null=True, blank=True)
 
+    version = models.PositiveIntegerField(default=1)
+    value_schema = models.JSONField(default=dict)
+
     class Meta:
         ordering = ["name"]
         constraints = [
+            models.UniqueConstraint(
+                fields=["name", "version"], name="variable_name_version"
+            ),
             models.CheckConstraint(
                 condition=models.Q(name__regex=SNAKE_CASE_PATTERN),
                 name="variable_name_snake_case",
@@ -130,6 +163,8 @@ class Variable(BaseModel):
 class VariableAnswer(BaseModel):
     """An identity's stored answer to a glossary variable."""
 
+    objects = models.Manager()
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     identity = models.ForeignKey(
         "UserIdentity",
@@ -143,6 +178,24 @@ class VariableAnswer(BaseModel):
     )
     value = models.JSONField(null=True, blank=True)
     reviewed = models.BooleanField(default=False)
+
+    matter = models.ForeignKey(
+        "Matter", null=True, blank=True, on_delete=models.PROTECT
+    )
+    evidence_kind = models.CharField(max_length=32, default="user_statement")
+    confirmation_state = models.CharField(max_length=16, default="unconfirmed")
+    state = models.CharField(max_length=16, default="active")
+    observed_at = models.DateTimeField(default=timezone.now, db_default=Now())
+    effective_from = models.DateTimeField(null=True, blank=True)
+    effective_to = models.DateTimeField(null=True, blank=True)
+    supersedes = models.ForeignKey(
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+    )
+    invalidated_at = models.DateTimeField(null=True, blank=True)
 
     @property
     def display_value(self) -> str:
@@ -189,9 +242,23 @@ class VariableAnswer(BaseModel):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["identity", "variable"],
-                name="unique_identity_variable_answer",
-            )
+                fields=["identity", "matter", "variable"],
+                condition=models.Q(
+                    reviewed=True, state="active", invalidated_at__isnull=True
+                ),
+                nulls_distinct=False,
+                name="answer_current_reviewed",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(reviewed=True, confirmation_state="confirmed")
+                    | (
+                        models.Q(reviewed=False)
+                        & ~models.Q(confirmation_state="confirmed")
+                    )
+                ),
+                name="answer_review_confirmation",
+            ),
         ]
 
 
@@ -202,6 +269,10 @@ class Form(BaseModel):
     slug = models.SlugField(max_length=64, unique=True)
     name = models.CharField(max_length=255)
     file = models.FileField(upload_to="forms/")
+
+    document = models.ForeignKey(
+        "Document", null=True, blank=True, on_delete=models.PROTECT
+    )
 
     class Meta:
         ordering = ["slug"]
@@ -333,6 +404,10 @@ class TopicFlowInterviewPage(BaseModel):
     description = models.TextField(blank=True)
     order = models.PositiveIntegerField(default=0)
 
+    key = models.CharField(max_length=128, blank=True)
+    instructions = models.TextField(blank=True)
+    completion_criteria = models.JSONField(default=list)
+
     class Meta:
         ordering = ["order", "created_at"]
 
@@ -352,6 +427,9 @@ class TopicFlowInterviewVariable(BaseModel):
         related_name="interview_placements",
     )
     order = models.PositiveIntegerField(default=0)
+
+    required = models.BooleanField(default=False)
+    condition = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ["order", "created_at"]
@@ -398,6 +476,14 @@ class TopicFlowDeadline(BaseModel):
         related_name="deadlines",
     )
     order = models.PositiveIntegerField(default=0)
+
+    page = models.ForeignKey(
+        "TopicFlowInterviewPage",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="deadlines",
+    )
 
     class Meta:
         ordering = ["order", "created_at"]

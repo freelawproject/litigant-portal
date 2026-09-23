@@ -37,6 +37,8 @@ async def get_database_corpus(
     silently upgrade a running conversation. Withdrawals take effect on reads.
     The consuming flow assembles prompts and adds this material to ModelRequest.
     """
+    from lp_agent.adapters.db import record
+
     async with db.transaction():
         run = await db.pin_run_context(
             court,
@@ -52,29 +54,50 @@ async def get_database_corpus(
                 """
             SELECT to_jsonb(p) || jsonb_build_object('phases', coalesce((
                 SELECT jsonb_agg(to_jsonb(ph) || jsonb_build_object(
-                    'facts', coalesce((SELECT jsonb_agg(to_jsonb(pf) || jsonb_build_object('definition', to_jsonb(fd)) ORDER BY pf.position)
-                        FROM public.agent_phase_fact pf JOIN public.agent_fact_definition fd ON fd.id = pf.fact_definition_id WHERE pf.phase_id = ph.id), '[]'::jsonb),
-                    'documents', coalesce((SELECT jsonb_agg(to_jsonb(pd) ORDER BY pd.position) FROM public.agent_phase_document pd WHERE pd.phase_id = ph.id), '[]'::jsonb),
-                    'deadlines', coalesce((SELECT jsonb_agg(to_jsonb(dl) ORDER BY dl.key) FROM public.agent_phase_deadline dl WHERE dl.phase_id = ph.id), '[]'::jsonb)
-                ) ORDER BY ph.position) FROM public.agent_phase ph WHERE ph.procedure_id = p.id
+                    'facts', coalesce((SELECT jsonb_agg(to_jsonb(pf) || jsonb_build_object('definition', to_jsonb(fd)) ORDER BY pf."order")
+                        FROM public.app_topicflowinterviewvariable pf JOIN public.app_variable fd ON fd.id = pf.variable_id WHERE pf.page_id = ph.id), '[]'::jsonb),
+                    'documents', coalesce((SELECT jsonb_agg(to_jsonb(pd) ORDER BY pd.position) FROM public.app_phase_document pd WHERE pd.page_id = ph.id), '[]'::jsonb),
+                    'deadlines', coalesce((SELECT jsonb_agg(to_jsonb(dl) ORDER BY dl.id) FROM public.app_topicflowdeadline dl WHERE dl.page_id = ph.id), '[]'::jsonb)
+                ) ORDER BY ph."order") FROM public.app_topicflowinterviewpage ph WHERE ph.flow_id = p.id
             ), '[]'::jsonb)) AS procedure
-            FROM public.agent_procedure p WHERE p.id = ANY(%s::uuid[]) AND p.state = 'published'
+            FROM public.app_topicflow p WHERE p.id = ANY(%s::uuid[]) AND p.state = 'published'
             ORDER BY p.slug
         """,
                 (list(manifest["procedures"].values()),),
             )
         ).fetchall()
+        for row in procedures:
+            procedure = record(row["procedure"], "procedure")
+            procedure["phases"] = [
+                record(phase, "phase") for phase in procedure["phases"]
+            ]
+            for phase in procedure["phases"]:
+                phase["facts"] = [
+                    record(fact, "phase_fact") for fact in phase["facts"]
+                ]
+                for fact in phase["facts"]:
+                    fact["definition"] = record(
+                        fact["definition"], "fact_definition"
+                    )
+                phase["documents"] = [
+                    record(document) for document in phase["documents"]
+                ]
+                phase["deadlines"] = [
+                    record(deadline, "phase_deadline")
+                    for deadline in phase["deadlines"]
+                ]
+            row["procedure"] = procedure
         documents = await (
             await conn.execute(
                 """
             SELECT to_jsonb(d) AS document, coalesce((
                 SELECT jsonb_agg(jsonb_build_object('id', ch.id, 'body', ch.body, 'locator', ch.locator) ORDER BY ch.ordinal)
-                FROM public.agent_document_chunk ch WHERE ch.document_id = d.id
+                FROM public.app_document_chunk ch WHERE ch.document_id = d.id
                     AND d.index_state = 'ready' AND d.index_invalidated_at IS NULL
-            ), '[]'::jsonb) AS chunks FROM public.agent_document d
+            ), '[]'::jsonb) AS chunks FROM public.app_document d
             WHERE d.id = ANY(%s::uuid[]) AND d.state = 'published' AND d.storage_state = 'available'
                 AND d.deleted_at IS NULL
-                AND EXISTS (SELECT FROM public.agent_corpus_document cd JOIN public.agent_document base ON base.id = cd.document_id
+                AND EXISTS (SELECT FROM public.app_corpus_document cd JOIN public.app_document base ON base.id = cd.document_id
                     WHERE cd.court_topic_id = %s AND cd.enabled AND base.key = d.key AND base.owner_court_id = d.owner_court_id)
             ORDER BY d.key
         """,

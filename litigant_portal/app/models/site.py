@@ -1,9 +1,13 @@
 import uuid
+from typing import TYPE_CHECKING
 
 from django.db import models
 
 from .base import BaseModel
-from .choices import BedrockModel, JurisdictionLevel, State
+from .choices import BedrockModel
+
+if TYPE_CHECKING:
+    from .shared import Court
 
 SITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -12,13 +16,13 @@ class Site(BaseModel):
     """Site-wide settings. Constrained to a single row."""
 
     id = models.UUIDField(primary_key=True, default=SITE_ID, editable=False)
-    court_name = models.CharField(max_length=255, blank=True)
-    jurisdiction_level = models.CharField(
-        max_length=16, blank=True, choices=JurisdictionLevel.choices
-    )
-    state = models.CharField(max_length=2, blank=True, choices=State.choices)
-    official_url = models.URLField(blank=True)
-    official_resources_url = models.URLField(blank=True)
+    if TYPE_CHECKING:
+        court: Court | None
+        court_id: uuid.UUID | None
+    else:
+        court = models.ForeignKey(
+            "Court", null=True, blank=True, on_delete=models.PROTECT
+        )
     fast_model = models.CharField(
         max_length=128,
         blank=True,
@@ -31,6 +35,59 @@ class Site(BaseModel):
         null=True,
         choices=BedrockModel.choices,
     )
+
+    @property
+    def court_name(self):
+        """
+        Retain the site's existing court metadata interface.
+        """
+        return self.court.court_name if self.court is not None else ""
+
+    @property
+    def jurisdiction_level(self):
+        """
+        Retain the site's existing court metadata interface.
+        """
+        return self.court.jurisdiction_level if self.court is not None else ""
+
+    @property
+    def state(self):
+        """
+        Retain the site's existing court metadata interface.
+        """
+        return self.court.state if self.court is not None else ""
+
+    @property
+    def official_url(self):
+        """
+        Retain the site's existing court metadata interface.
+        """
+        return self.court.official_url if self.court is not None else ""
+
+    @property
+    def official_resources_url(self):
+        """
+        Retain the site's existing court metadata interface.
+        """
+        return (
+            self.court.official_resources_url if self.court is not None else ""
+        )
+
+    def get_state_display(self):
+        """
+        Display the court choice through the existing site interface.
+        """
+        return self.court.get_state_display() if self.court is not None else ""
+
+    def get_jurisdiction_level_display(self):
+        """
+        Display the court choice through the existing site interface.
+        """
+        return (
+            self.court.get_jurisdiction_level_display()
+            if self.court is not None
+            else ""
+        )
 
     class Meta:
         constraints = [

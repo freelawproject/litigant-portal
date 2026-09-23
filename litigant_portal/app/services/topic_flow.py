@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from hashlib import sha256
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -19,6 +20,9 @@ def _topic_unique_slug(*, title: str) -> str:
         suffix = f"-{n}"
         slug, n = base[: 64 - len(suffix)] + suffix, n + 1
     return slug
+
+
+EMPTY_LOCATOR_SHA256 = sha256(b"{}").hexdigest()
 
 
 @busts_cache(TOPIC_LIST_CACHE_KEY)
@@ -91,7 +95,8 @@ def variable_value_validate(*, data_type: str, choices: list, value):
 def variable_answer_set(
     *, identity, variable: Variable, value, reviewed: bool = False
 ) -> VariableAnswer:
-    """Upsert an identity's answer to a variable.
+    """
+    Append an answer and supersede the identity's previous current answer.
 
     Validates against the variable's data_type/choices first — an invalid
     value writes nothing. ``reviewed`` defaults to False (AI-written); pass
@@ -106,11 +111,42 @@ def variable_answer_set(
     value = variable_value_validate(
         data_type=variable.data_type, choices=variable.choices, value=value
     )
-    answer, _ = VariableAnswer.objects.update_or_create(
-        identity=identity,
-        variable=variable,
-        defaults={"value": value, "reviewed": reviewed},
-    )
+    with transaction.atomic():
+        previous = (
+            VariableAnswer.objects.filter(
+                identity=identity,
+                variable__name=variable.name,
+                matter__isnull=True,
+                state="active",
+                invalidated_at__isnull=True,
+            )
+            .order_by("-observed_at")
+            .first()
+        )
+        if previous:
+            VariableAnswer.objects.filter(pk=previous.pk).update(
+                state="superseded"
+            )
+        answer = VariableAnswer.objects.create(
+            identity=identity,
+            variable=variable,
+            value=value,
+            reviewed=reviewed,
+            confirmation_state="confirmed" if reviewed else "unconfirmed",
+            evidence_kind="user_statement" if reviewed else "model_inference",
+            supersedes=previous,
+        )
+        if reviewed:
+            from litigant_portal.app.models import FactEvidence
+
+            for role in ("basis", "confirmation"):
+                FactEvidence.objects.create(
+                    fact_assertion=answer,
+                    role=role,
+                    submitted_by=identity,
+                    locator={},
+                    locator_sha256=EMPTY_LOCATOR_SHA256,
+                )
     return answer
 
 
@@ -127,7 +163,9 @@ def variable_answer_set_many(
     """
     variables = {
         variable.name: variable
-        for variable in Variable.objects.filter(name__in=values)
+        for variable in Variable.objects.filter(name__in=values).order_by(
+            "name", "version"
+        )
     }
     missing = sorted(set(values) - set(variables))
     if missing:

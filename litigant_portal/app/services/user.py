@@ -2,6 +2,8 @@ import logging
 
 from django.contrib.auth.models import Group, User
 from django.db import transaction
+from django.db.models.deletion import ProtectedError
+from django.utils import timezone
 
 from litigant_portal.app.models import UserIdentity
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
@@ -40,30 +42,33 @@ def user_identity_ensure(*, user) -> UserIdentity:
 def _variable_answers_migrate(
     *, source_identity: UserIdentity, target_identity: UserIdentity
 ) -> int:
-    """Move ``source``'s answers to ``target``; returns how many moved.
+    """
+    Move unscoped answers and history, keeping target answers current.
 
-    ``(identity, variable)`` is unique, so an answer both identities gave
-    can't move. The target's wins: it belongs to the account being logged
-    into, and dropping the anonymous one only re-asks a question, where
-    overwriting a confirmed answer could prefill a court form with the
-    wrong value. The losers stay on ``source`` and die with it via CASCADE.
+    Supersede conflicting anonymous answers before transferring their owner.
+    Matching uses the variable name across definition versions.
     """
     answered = set(
-        target_identity.variable_answers.values_list("variable_id", flat=True)
+        target_identity.variable_answers.filter(
+            matter__isnull=True, state="active"
+        ).values_list("variable__name", flat=True)
     )
-    return source_identity.variable_answers.exclude(
-        variable_id__in=answered
-    ).update(identity=target_identity)
+    source_identity.variable_answers.filter(
+        matter__isnull=True, state="active", variable__name__in=answered
+    ).update(state="superseded")
+    return source_identity.variable_answers.filter(matter__isnull=True).update(
+        identity=target_identity
+    )
 
 
 @transaction.atomic
 def user_identity_merge(
     *, source_identity: UserIdentity, target_identity: UserIdentity
 ) -> None:
-    """Fold ``source`` into ``target``, then delete ``source``.
+    """
+    Transfer existing application records to the authenticated identity.
 
-    All chat threads and uploads migrate, as do variable answers the target
-    hasn't answered itself. Runs in a single transaction.
+    Preserve the anonymous identity when immutable attribution refers to it.
     """
     threads = source_identity.chat_threads.update(identity=target_identity)
     uploads = source_identity.uploads.update(identity=target_identity)
@@ -71,7 +76,15 @@ def user_identity_merge(
         source_identity=source_identity, target_identity=target_identity
     )
 
-    source_identity.delete()
+    try:
+        with transaction.atomic():
+            source_identity.delete()
+    except ProtectedError:
+        UserIdentity.objects.filter(pk=source_identity.pk).update(
+            session_key="",
+            deleted_at=timezone.now(),
+            updated_at=timezone.now(),
+        )
 
     logger.info(
         "Merged anonymous identity into user %s: "
