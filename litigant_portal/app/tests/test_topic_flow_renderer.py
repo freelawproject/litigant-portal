@@ -61,9 +61,9 @@ def test_info_renders_heading_and_body():
 
 # --- fact_gather ------------------------------------------------------------
 
-# Literal, not imported from the renderer: importing the set under test would
-# make these agree with a deletion from it.
-PROTECTED_IDS = [
+# The ids the #638/#803 masking used to blank. Kept as a literal pin of the
+# 2026-09-23 revert: these now render like any other field.
+FORMERLY_MASKED_IDS = [
     "name_change_publication_date",
     "first_name",
     "middle_name",
@@ -100,41 +100,15 @@ def test_fact_gather_unanswered_question_prefills_empty():
     assert q["value"] == ""
 
 
-@pytest.mark.parametrize("question_id", PROTECTED_IDS)
-def test_fact_gather_never_prefills_a_protected_question(question_id):
-    section = _fg([Question(id=question_id, label="Protected")])
+@pytest.mark.parametrize("question_id", FORMERLY_MASKED_IDS)
+def test_fact_gather_prefills_a_formerly_masked_question(question_id):
+    section = _fg([Question(id=question_id, label="Identity")])
     rendered = render_section(
         section, _corpus(section), {question_id: "stored"}
     )
     (q,) = rendered.context["questions"]
-    assert q["value"] == ""
-
-
-@pytest.mark.parametrize("question_id", PROTECTED_IDS)
-def test_fact_gather_flags_a_stored_protected_answer_as_saved(question_id):
-    # The page refuses to echo the value, so "saved" is the only signal the
-    # litigant gets that an answer exists — and the clear checkbox rides on it.
-    section = _fg([Question(id=question_id, label="Protected")])
-    rendered = render_section(
-        section, _corpus(section), {question_id: "stored"}
-    )
-    (q,) = rendered.context["questions"]
-    assert q["saved"] is True
-
-
-def test_fact_gather_unanswered_protected_question_is_not_saved():
-    section = _fg([Question(id="first_name", label="First name")])
-    rendered = render_section(section, _corpus(section), {})
-    (q,) = rendered.context["questions"]
-    assert q["saved"] is False
-
-
-def test_fact_gather_a_plain_answered_question_is_not_flagged_saved():
-    # A plain field shows its value, so blank already means "erase it".
-    section = _fg([Question(id="pubcounty", label="County of publication")])
-    rendered = render_section(section, _corpus(section), {"pubcounty": "Cass"})
-    (q,) = rendered.context["questions"]
-    assert q["saved"] is False
+    assert q["value"] == "stored"
+    assert "saved" not in q
 
 
 def test_fact_gather_carries_choice_metadata():
@@ -232,11 +206,11 @@ def test_summary_omits_unanswered_questions():
     ]
 
 
-@pytest.mark.parametrize("question_id", PROTECTED_IDS)
-def test_summary_never_recaps_a_protected_question(question_id):
+@pytest.mark.parametrize("question_id", FORMERLY_MASKED_IDS)
+def test_summary_recaps_a_formerly_masked_question(question_id):
     fg = _fg(
         [
-            Question(id=question_id, label="Protected"),
+            Question(id=question_id, label="Identity"),
             Question(id="filing_county", label="County"),
         ]
     )
@@ -248,7 +222,10 @@ def test_summary_never_recaps_a_protected_question(question_id):
         _corpus(fg, summary),
         {question_id: "stored", "filing_county": "Cass"},
     )
-    assert rendered.context["items"] == [{"label": "County", "value": "Cass"}]
+    assert rendered.context["items"] == [
+        {"label": "Identity", "value": "stored"},
+        {"label": "County", "value": "Cass"},
+    ]
 
 
 # --- packet -----------------------------------------------------------------

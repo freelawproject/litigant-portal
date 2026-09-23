@@ -527,9 +527,8 @@ def test_post_redirects_to_the_saved_section_anchor(
 def test_posted_answers_prefill_on_the_redirected_get(
     client, monkeypatch, variables
 ):
-    # What you submitted comes back filled in: the choice marks its option
-    # selected. name_change_publication_date is the exception (#638) — it never echoes
-    # back, even right after you just submitted it.
+    # What you submitted comes back filled in: the text/date field carries
+    # its value and the choice marks its option selected.
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     client.post(
         URL,
@@ -540,7 +539,7 @@ def test_posted_answers_prefill_on_the_redirected_get(
     )
     html = client.get(URL).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert 'value="2026-02-01"' not in _field_tag(
+    assert 'value="2026-02-01"' in _field_tag(
         html, "name_change_publication_date"
     )
     assert re.search(r'<option value="Cass"[^>]*selected', flat)
@@ -553,7 +552,7 @@ def test_get_prefills_form_from_stored_answers(client, monkeypatch, variables):
     _store(client, "filing_county", "Cass")
     html = client.get(URL).content.decode()
     flat = re.sub(r"\s+", " ", html)
-    assert 'value="2026-03-15"' not in _field_tag(
+    assert 'value="2026-03-15"' in _field_tag(
         html, "name_change_publication_date"
     )
     assert re.search(r'<option value="Cass"[^>]*selected', flat)
@@ -585,12 +584,12 @@ def test_get_for_a_first_time_visitor_creates_no_identity(client, monkeypatch):
 
 
 @pytest.mark.django_db
-def test_recap_never_shows_publication_date(client, monkeypatch, variables):
+def test_recap_shows_every_stored_answer(client, monkeypatch, variables):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     _store(client, "name_change_publication_date", "2026-03-15")
     _store(client, "filing_county", "Cass")
     html = client.get(URL).content.decode()
-    assert "2026-03-15" not in html
+    assert "2026-03-15" in html
     assert "Cass" in html
 
 
@@ -688,14 +687,14 @@ def test_answers_survive_login(client, monkeypatch, variables):
     assert answer.reviewed
 
 
-# --- blank NEVER_PREFILL fields (needs DB) ----------------------------------
-# A protected field renders blank whatever is stored, so its blank submission
-# can't be read as "erase this" — the litigant never saw the value.
+# --- saved answers in the form (needs DB) ------------------------------------
+# Saved answers render back into the fields so the litigant can check,
+# correct, and clear them in place (reverts the #638/#803 masking; the clear
+# affordance is emptying the field and saving).
 
 
 def _identity_corpus():
-    """A corpus whose fact_gather pairs an optional protected question with a
-    plain one."""
+    """A corpus whose fact_gather pairs a text question with a choice one."""
     return Corpus(
         metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
         sections=[
@@ -723,36 +722,54 @@ def name_variable(variables):
 
 
 @pytest.mark.django_db
-def test_blank_protected_field_keeps_a_reviewed_answer(
+def test_saved_answer_renders_back_into_its_field(
     client, monkeypatch, name_variable
 ):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
     client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
-    client.post(URL, {"first_name": "", "filing_county": "Burleigh"})
-    assert _values() == {"first_name": "Sandra", "filing_county": "Burleigh"}
-    assert _answers()["first_name"].reviewed
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert re.search(r'<input[^>]*name="first_name"[^>]*value="Sandra"', flat)
 
 
 @pytest.mark.django_db
-def test_blank_protected_field_keeps_an_unreviewed_answer_unreviewed(
+def test_blank_submission_clears_a_saved_answer(
     client, monkeypatch, name_variable
 ):
-    # The AI-written case: saving this section must neither destroy the
-    # assistant's answer nor confirm it on the litigant's behalf.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    client.post(URL, {"first_name": "", "filing_county": ""})
+    assert _answers()["first_name"].value is None
+    assert _answers()["filing_county"].value is None
+
+
+@pytest.mark.django_db
+def test_an_unreviewed_assistant_answer_prefills_its_field(
+    client, monkeypatch, name_variable
+):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
     _store(client, "first_name", "Sandra", reviewed=False)
-    client.post(URL, {"first_name": "", "filing_county": "Cass"})
-    answer = _answers()["first_name"]
-    assert answer.value == "Sandra"
-    assert not answer.reviewed
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert re.search(r'<input[^>]*name="first_name"[^>]*value="Sandra"', flat)
 
 
 @pytest.mark.django_db
-def test_typing_a_protected_field_overwrites_it_and_marks_it_reviewed(
+def test_saving_the_form_confirms_the_assistant_answer_it_displays(
     client, monkeypatch, name_variable
 ):
-    # Overwriting is the only correction available for a field the page can't
-    # show, so it has to work.
+    # The value is on screen when the litigant saves, so re-submitting it is
+    # human review: the flag flips only over what the eye could check.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
+    answer = _answers()["first_name"]
+    assert answer.value == "Sandra"
+    assert answer.reviewed
+
+
+@pytest.mark.django_db
+def test_typing_a_new_value_replaces_the_assistant_answer(
+    client, monkeypatch, name_variable
+):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
     _store(client, "first_name", "Sandra", reviewed=False)
     client.post(URL, {"first_name": "Alex", "filing_county": "Cass"})
@@ -762,78 +779,10 @@ def test_typing_a_protected_field_overwrites_it_and_marks_it_reviewed(
 
 
 @pytest.mark.django_db
-def test_blank_unprotected_field_still_clears_its_answer(
-    client, monkeypatch, name_variable
-):
+def test_no_clear_checkbox_renders(client, monkeypatch, name_variable):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
     client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
-    client.post(URL, {"first_name": "", "filing_county": ""})
-    assert _answers()["filing_county"].value is None
-
-
-# --- clearing a protected answer (needs DB) -----------------------------------
-# The page never shows a NEVER_PREFILL value, so erasing one takes an explicit
-# checkbox; without it there is no way to remove an unwanted stored answer
-# before it prefills onto a court form.
-
-
-@pytest.mark.django_db
-def test_checking_clear_erases_a_protected_answer(
-    client, monkeypatch, name_variable
-):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
-    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
-    client.post(
-        URL,
-        {"first_name": "", "first_name__clear": "on", "filing_county": "Cass"},
-    )
-    assert _answers()["first_name"].value is None
-
-
-@pytest.mark.django_db
-def test_a_typed_value_wins_over_the_clear_checkbox(
-    client, monkeypatch, name_variable
-):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
-    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
-    client.post(
-        URL,
-        {
-            "first_name": "Alex",
-            "first_name__clear": "on",
-            "filing_county": "Cass",
-        },
-    )
-    assert _answers()["first_name"].value == "Alex"
-
-
-@pytest.mark.django_db
-def test_clear_checkbox_renders_only_beside_a_saved_protected_answer(
-    client, monkeypatch, name_variable
-):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
-    before = client.get(URL).content.decode()
-    assert 'name="first_name__clear"' not in before
-    client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
-    after = client.get(URL).content.decode()
-    assert re.search(
-        r'<input[^>]*type="checkbox"[^>]*name="first_name__clear"', after
-    )
-    # The unprotected sibling shows its value, so it never needs the box.
-    assert 'name="filing_county__clear"' not in after
-
-
-@pytest.mark.django_db
-def test_clearing_erases_an_unreviewed_assistant_answer_too(
-    client, monkeypatch, name_variable
-):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
-    _store(client, "first_name", "Sandra", reviewed=False)
-    client.post(
-        URL,
-        {"first_name": "", "first_name__clear": "on", "filing_county": "Cass"},
-    )
-    assert _answers()["first_name"].value is None
+    assert "__clear" not in client.get(URL).content.decode()
 
 
 # --- fact_gather POST validation (#525, needs DB) ---------------------------
@@ -972,22 +921,7 @@ def test_post_persists_stripped_value(client, monkeypatch, variables):
 def test_post_save_flashes_a_saved_toast(client, monkeypatch, variables):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
     response = client.post(URL, {"filing_county": "Cass"}, follow=True)
-    html = response.content.decode()
-    assert "Saved." in html
-    assert "For your privacy" not in html
-
-
-@pytest.mark.django_db
-def test_post_of_a_protected_answer_explains_the_privacy_blank(
-    client, monkeypatch, variables
-):
-    # A NEVER_PREFILL answer re-renders blank right after saving (#638), so
-    # the toast must say the save worked and why the field looks empty (#803).
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
-    response = client.post(
-        URL, {"name_change_publication_date": "2026-02-01"}, follow=True
-    )
-    assert "For your privacy" in response.content.decode()
+    assert "Saved." in response.content.decode()
 
 
 @pytest.mark.django_db

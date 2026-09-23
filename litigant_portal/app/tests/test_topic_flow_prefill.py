@@ -98,8 +98,7 @@ def test_a_date_stays_an_iso_string():
     }
 
 
-def test_a_question_the_page_never_shows_still_reaches_the_payload():
-    # NEVER_PREFILL governs rendering, not sending.
+def test_a_collected_identity_question_reaches_the_payload():
     corpus = _corpus(
         FactGatherSection(
             kind="fact_gather",
