@@ -1,8 +1,10 @@
+import json
 import logging
 
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve
+from django.utils.translation import gettext as _
 from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_POST
 
@@ -11,6 +13,7 @@ from litigant_portal.app.services.docassemble import (
     docassemble_session_create,
     interview_launch_url,
 )
+from litigant_portal.app.services.topic_flow import variable_answer_confirm
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
     find_downloadable,
@@ -21,6 +24,7 @@ from litigant_portal.app.topic_flow.prefill import (
 )
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.views.utils import (
+    _has_identity,
     topic_flow_answers,
     topic_flow_reviewed_answers,
 )
@@ -106,6 +110,46 @@ def topic_flow_interview(request, court, topic, role):
         )
         return redirect(launch_url)
     return redirect(resume_url)
+
+
+@require_POST
+def topic_flow_confirm(request):
+    """Mark the visitor's stored answers as reviewed by the visitor.
+
+    Deliberately NOT an agent tool and not under the ``/api/agents/``
+    namespace: only a human action may set ``reviewed=True``, because
+    reviewed answers prefill the docassemble interview and skip their
+    questions there. This stays a session-authenticated, CSRF-protected
+    page endpoint the model cannot reach.
+
+    Accepts a JSON body ``{"names": [...]}`` or a form-encoded ``names``
+    list; responds ``{"confirmed": n}``.
+    """
+    if not _has_identity(request):
+        return JsonResponse({"error": _("Forbidden")}, status=403)
+    names = _confirm_names(request)
+    if names is None:
+        return JsonResponse(
+            {"error": _("Send a list of fact names.")}, status=400
+        )
+    confirmed = variable_answer_confirm(identity=request.identity, names=names)
+    return JsonResponse({"confirmed": confirmed})
+
+
+def _confirm_names(request) -> list[str] | None:
+    """The submitted fact names, or None when the body is malformed."""
+    if request.content_type == "application/json":
+        try:
+            names = json.loads(request.body).get("names")
+        except (json.JSONDecodeError, AttributeError):
+            return None
+    else:
+        names = request.POST.getlist("names")
+    if not isinstance(names, list) or not all(
+        isinstance(name, str) for name in names
+    ):
+        return None
+    return names
 
 
 def csrf_failure(request, reason=""):

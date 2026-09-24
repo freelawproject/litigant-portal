@@ -1,4 +1,5 @@
 import json
+from itertools import count
 
 from litigant_portal.agents.base import Field, Tool, ToolOutput
 
@@ -35,11 +36,29 @@ def _variable_line(variable) -> str:
 
 
 def topic_flow_markdown(flow) -> str:
-    """Everything the assistant should know about ``flow``, as markdown."""
+    """Everything the assistant should know about ``flow``, as markdown.
+
+    Every court-specific block carries a stable ``[source:ID]`` id, numbered
+    in corpus order, so the assistant can cite what supports a claim and a
+    reviewer can trace a citation back to the DB row. The ids are
+    deterministic for a given corpus state; a corpus edit that reorders
+    blocks renumbers them, which is acceptable while citations live only
+    inside a conversation.
+    """
+    prefix = topic_flow_path(flow)
+    counter = count(1)
+
+    def source_id() -> str:
+        return f"[source:{prefix}/s{next(counter)}]"
+
     lines = [f"# {flow.name}", f"Topic: {flow.topic.title}"]
 
     for section in flow.sections.all():
-        lines += ["", f"## {section.heading}", section.content.strip()]
+        lines += [
+            "",
+            f"## {section.heading} {source_id()}",
+            section.content.strip(),
+        ]
 
     deadlines = list(flow.deadlines.all())
     if deadlines:
@@ -51,7 +70,7 @@ def topic_flow_markdown(flow) -> str:
                 if d.offset_days >= 0
                 else f"{-d.offset_days} days before"
             )
-            line = f"- {d.label}: {when} {anchor}"
+            line = f"- {source_id()} {d.label}: {when} {anchor}"
             if d.description:
                 line += f". {d.description}"
             lines.append(line)
@@ -60,7 +79,7 @@ def topic_flow_markdown(flow) -> str:
     if conditions:
         lines += ["", "## Form packet"]
         for c in conditions:
-            line = f"- {c.form.name}"
+            line = f"- {source_id()} {c.form.name}"
             if c.variable:
                 line += (
                     f" (included when {c.variable.name} {c.operator} "
@@ -83,9 +102,48 @@ def topic_flow_markdown(flow) -> str:
     links = list(flow.links.all())
     if links:
         lines += ["", "## Links"]
-        lines += [f"- {link.name}: {link.url}" for link in links]
+        lines += [f"- {source_id()} {link.name}: {link.url}" for link in links]
+
+    lines += _court_grounding_lines()
 
     return "\n".join(lines)
+
+
+def _court_grounding_lines() -> list[str]:
+    """Court contacts and resources as citable grounding, with their own ids.
+
+    Court-scoped, not flow-scoped, so their ids don't carry the flow prefix.
+    These give the evidence-gap policy documented contacts to point at
+    instead of invented referrals.
+    """
+    from litigant_portal.app.selectors.site import contact_list, resource_list
+
+    lines = []
+    contacts = contact_list()
+    if contacts:
+        lines += ["", "## Court contacts"]
+        for n, contact in enumerate(contacts, start=1):
+            details = ", ".join(
+                part
+                for part in (contact.phone, contact.email, contact.url)
+                if part
+            )
+            line = f"- [source:court/contact-{n}] {contact.name}"
+            if details:
+                line += f": {details}"
+            if contact.note:
+                line += f". {contact.note.strip()}"
+            lines.append(line)
+
+    resources = resource_list()
+    if resources:
+        lines += ["", "## Court resources"]
+        for n, resource in enumerate(resources, start=1):
+            line = f"- [source:court/resource-{n}] {resource.label}: {resource.url}"
+            if resource.note:
+                line += f". {resource.note.strip()}"
+            lines.append(line)
+    return lines
 
 
 class LoadTopicFlow(Tool):
