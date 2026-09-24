@@ -1,4 +1,5 @@
-from django.http import HttpRequest, JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
+from django.shortcuts import render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
@@ -14,6 +15,7 @@ from litigant_portal.app.services.upload import (
     user_upload_serialize,
 )
 from litigant_portal.app.views import chat_engine
+from litigant_portal.app.views.utils import briefcase_answers
 
 THREAD_TYPE = "user_chat"
 
@@ -68,6 +70,20 @@ def thread_delete(request: HttpRequest, thread_id) -> JsonResponse:
 
 
 # Assistant-specific endpoints
+
+
+@require_GET
+def briefcase(request: HttpRequest) -> HttpResponse:
+    """The chat page's briefcase panel alone, swapped in after a turn (#941).
+
+    Same component and context as the page's first paint, so a refreshed
+    panel can't drift from a server-rendered one.
+    """
+    return render(
+        request,
+        "pages/chat/partials/_briefcase.html",
+        {"briefcase_groups": briefcase_answers(request)},
+    )
 
 
 @require_GET

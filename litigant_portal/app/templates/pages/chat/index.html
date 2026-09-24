@@ -14,6 +14,7 @@
   {# The chat component is agent-agnostic: point it at any agent's API mount. #}
   <div x-data="chatApp"
        data-agent-base="/api/agents/assistant/"
+       data-briefcase-url="{% url 'pages:briefcase' %}"
        class="relative overflow-hidden flex-1 flex flex-row min-h-0">
     {# Left panel — conversation history (collapses into the history drawer below lg) #}
     {# Sidebar width tracks the viewport slightly but the center column absorbs most of a squeeze. #}

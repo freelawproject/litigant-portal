@@ -25,6 +25,7 @@ from litigant_portal.app.views import (
 app_patterns = [
     path("", pages.home, name="home"),
     path("chat/", pages.chat_view, name="chat"),
+    path("chat/briefcase/", assistant.briefcase, name="briefcase"),
     path("dev/agent/", agent_views.development_page, name="agent_development"),
     path(
         "dev/agent/stream/",

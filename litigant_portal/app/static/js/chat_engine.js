@@ -436,6 +436,8 @@ document.addEventListener('alpine:init', () => {
     // Mount point of the agent's API (e.g. "/api/agents/assistant/") — the
     // component itself is agent-agnostic.
     base: '',
+    // Server-rendered briefcase fragment, re-fetched after each turn.
+    briefcaseUrl: '',
     // History sidebar
     threads: [],
     showEmpty: false,
@@ -486,6 +488,7 @@ document.addEventListener('alpine:init', () => {
 
     init() {
       this.base = this.$root.dataset.agentBase
+      this.briefcaseUrl = this.$root.dataset.briefcaseUrl
       this.loadThreads()
       this.consumeQueryMessage()
     },
@@ -808,6 +811,27 @@ document.addEventListener('alpine:init', () => {
         this.updateThinking()
         this.refreshSendState()
         this.loadThreads()
+        this.refreshBriefcase()
+      }
+    },
+
+    // Swap in the server-rendered briefcase after a turn, since tools may
+    // have saved or corrected answers (#941). Django renders the panel; this
+    // only replaces each copy (sidebar and drawer) with the fresh markup.
+    async refreshBriefcase() {
+      if (!this.briefcaseUrl) return
+      try {
+        const res = await fetch(this.briefcaseUrl)
+        if (!res.ok) throw new Error('Request failed: ' + res.status)
+        const fresh = new DOMParser()
+          .parseFromString(await res.text(), 'text/html')
+          .querySelector('[data-briefcase-facts]')
+        if (!fresh) return
+        this.$root.querySelectorAll('[data-briefcase-facts]').forEach((el) => {
+          el.replaceWith(fresh.cloneNode(true))
+        })
+      } catch (e) {
+        console.error('Failed to refresh briefcase:', e)
       }
     },
 
