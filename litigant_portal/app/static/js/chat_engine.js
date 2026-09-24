@@ -526,6 +526,8 @@ document.addEventListener('alpine:init', () => {
     // component itself is agent-agnostic.
     base: '',
     reviewWarningText: '',
+    // Server-rendered briefcase fragment, re-fetched after each turn.
+    briefcaseUrl: '',
     // History sidebar
     threads: [],
     showEmpty: false,
@@ -575,6 +577,7 @@ document.addEventListener('alpine:init', () => {
     init() {
       this.base = this.$root.dataset.agentBase
       this.reviewWarningText = this.$root.dataset.reviewWarning
+      this.briefcaseUrl = this.$root.dataset.briefcaseUrl
       setCitationChips(this.$root.dataset.citationChips === 'true')
       this.loadThreads()
       this.consumeQueryMessage()
@@ -924,6 +927,7 @@ document.addEventListener('alpine:init', () => {
         this.updateThinking()
         this.refreshSendState()
         this.loadThreads()
+        this.refreshBriefcase()
         // Wait for Alpine to re-enable the input without taking focus elsewhere.
         this.$nextTick(() => {
           if (
@@ -937,6 +941,26 @@ document.addEventListener('alpine:init', () => {
             this.$refs.input?.focus({ preventScroll: true })
           }
         })
+      }
+    },
+
+    // Swap in the server-rendered briefcase after a turn, since tools may
+    // have saved or corrected answers (#941). Django renders the panel; this
+    // only replaces the mounted copy with the fresh markup.
+    async refreshBriefcase() {
+      if (!this.briefcaseUrl) return
+      try {
+        const res = await fetch(this.briefcaseUrl)
+        if (!res.ok) throw new Error('Request failed: ' + res.status)
+        const fresh = new DOMParser()
+          .parseFromString(await res.text(), 'text/html')
+          .querySelector('[data-briefcase-facts]')
+        if (!fresh) return
+        this.$root.querySelectorAll('[data-briefcase-facts]').forEach((el) => {
+          el.replaceWith(fresh.cloneNode(true))
+        })
+      } catch (e) {
+        console.error('Failed to refresh briefcase:', e)
       }
     },
 

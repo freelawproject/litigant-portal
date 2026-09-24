@@ -314,3 +314,58 @@ class BriefcaseSampleTests(SimpleTestCase):
 
     def test_a_plain_text_fact_is_untouched(self):
         self.assertEqual(self._fact("tenant_first").display_value, "Jamie")
+
+
+@pytest.mark.postgres
+class BriefcaseEndpointTests(TestCase):
+    """The briefcase fragment chat re-fetches after a turn (#941)."""
+
+    def test_returns_the_visitors_current_groups(self):
+        self.client.session.save()
+        identity = UserIdentity.objects.create(
+            session_key=self.client.session.session_key
+        )
+        topic = Topic.objects.create(slug="eviction", order=0)
+        flow = TopicFlow.objects.create(
+            topic=topic, slug="tenant", order=0, enabled=True
+        )
+        page = TopicFlowInterviewPage.objects.create(
+            flow=flow, title="About you", order=0
+        )
+        variable = Variable.objects.create(name="tenant_name", label="Name")
+        VariableAnswer.objects.create(
+            identity=identity, variable=variable, value="Jamie"
+        )
+        _place(page, variable, 0)
+
+        response = self.client.get(reverse("pages:briefcase"))
+
+        groups = response.context["briefcase_groups"]
+        self.assertEqual([g["title"] for g in groups], ["About you"])
+
+    def test_renders_the_panel_alone_not_the_chat_page(self):
+        response = self.client.get(reverse("pages:briefcase"))
+
+        self.assertTemplateUsed(
+            response, "pages/chat/partials/_briefcase.html"
+        )
+        self.assertTemplateNotUsed(response, "pages/chat/index.html")
+
+    def test_fragment_carries_the_hook_the_refresh_swaps_on(self):
+        # chat_engine.js refreshBriefcase finds this attribute in the fetched
+        # fragment; without it the refresh silently does nothing.
+        response = self.client.get(reverse("pages:briefcase"))
+
+        self.assertContains(response, "data-briefcase-facts")
+
+    def test_visitor_without_a_session_gets_the_empty_state(self):
+        # A fetch must not mint an identity row, same as the chat page.
+        response = self.client.get(reverse("pages:briefcase"))
+
+        self.assertEqual(response.context["briefcase_groups"], [])
+        self.assertFalse(UserIdentity.objects.exists())
+
+    def test_post_is_rejected(self):
+        response = self.client.post(reverse("pages:briefcase"))
+
+        self.assertEqual(response.status_code, 405)
