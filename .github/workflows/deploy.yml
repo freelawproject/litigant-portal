@@ -98,7 +98,7 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and Push
-        run: make push-image -e VERSION=${{ steps.vars.outputs.sha_short }}
+        run: make push-image -e VERSION=${{ steps.vars.outputs.sha_short }} -e GIT_BRANCH="${{ github.ref_name }}" -e BUILD_TIME="$(date -u +'%Y/%m/%d %H:%M')"
 
   setup-deploy:
     needs: [get-pr-labels, build]

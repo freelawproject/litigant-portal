@@ -9,6 +9,7 @@ from django.views.decorators.http import require_POST
 from litigant_portal.app.services.docassemble import (
     DocassembleError,
     docassemble_session_create,
+    interview_launch_url,
 )
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
@@ -74,7 +75,12 @@ def topic_flow_interview(request, court, topic, role):
     target = interview_target(corpus)
     if target is None:
         raise Http404(f"No interview handoff for {court}/{topic}/{role}")
-    interview_url, mapping = target
+    interview, mapping = target
+    launch_url = interview_launch_url(interview)
+    if launch_url is None:
+        # No docassemble configured in this environment; the packet section
+        # hides the button, so only a stale or hand-built POST lands here.
+        raise Http404(f"No docassemble configured for {court}/{topic}/{role}")
 
     variables = prefill_variables(
         mapping=mapping,
@@ -84,10 +90,10 @@ def topic_flow_interview(request, court, topic, role):
         # Nothing to prefill: a session would cost three API calls and an
         # unencrypted multi_user session holding nothing, for the same
         # experience the plain link gives.
-        return redirect(interview_url)
+        return redirect(launch_url)
     try:
         resume_url = docassemble_session_create(
-            interview_url=interview_url, variables=variables
+            interview=interview, variables=variables
         )
     except DocassembleError:
         logger.warning(
@@ -98,7 +104,7 @@ def topic_flow_interview(request, court, topic, role):
             role,
             exc_info=True,
         )
-        return redirect(interview_url)
+        return redirect(launch_url)
     return redirect(resume_url)
 
 
@@ -111,7 +117,7 @@ def csrf_failure(request, reason=""):
     runs — leaving no path to the interview at all. That failure mode hits
     privacy-hardened phones and locked-down shared/library machines hardest,
     which is the audience the handoff (#804) is for. Reroute those hits to
-    the plain interview_url the view would have used; anything else keeps
+    the plain launch URL the view would have used; anything else keeps
     Django's default CSRF failure page.
 
     Wired app-wide via ``CSRF_FAILURE_VIEW`` since Django only supports one
@@ -125,6 +131,7 @@ def csrf_failure(request, reason=""):
         kwargs = match.kwargs
         corpus = registry.get(kwargs["court"], kwargs["topic"], kwargs["role"])
         target = interview_target(corpus) if corpus else None
-        if target is not None:
-            return redirect(target[0])
+        launch_url = interview_launch_url(target[0]) if target else None
+        if launch_url is not None:
+            return redirect(launch_url)
     return _django_csrf_failure(request, reason=reason)

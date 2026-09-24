@@ -128,6 +128,42 @@ sections:
       File in the district court for the county where you have lived for the past 6 months. Your driver's license, lease, or a utility bill usually shows this. The court locator link in the contacts at the end of this page can also help.
 
   - kind: info
+    id: publication_waiver
+    heading: 'Asking the judge to skip the newspaper notice'
+    body: |
+      North Dakota law requires you to publish notice of your name change and wait 30 days before a judge can decide. Before you publish, you can ask the judge to skip that step.
+
+      There are two reasons the law allows, and only these two:
+      - You are changing only your first or middle name, and your last name stays the same.
+      - You are a victim of domestic violence, as North Dakota law defines it.
+
+      You can give both reasons if both are true. Changing your last name does not rule out the second reason.
+
+      North Dakota law defines domestic violence as physical harm, bodily injury, sexual activity compelled by physical force, assault, or being put in fear of any of those, not committed in self-defense, by a family or household member.
+
+      You ask for this on the Petition, and the Declaration carries your explanation if you ask on the basis of domestic violence. The Declaration says you must give evidence that satisfies the judge. North Dakota's materials do not say what evidence is enough, so this one is the judge's call on your particular facts rather than a rule you can check yourself.
+
+      The packet this page builds assumes you are publishing, so it does not request the waiver. To ask for it, use the publication waiver version of this tool. That one builds the Petition that makes the request, whichever part of your name you are changing.
+
+      If the judge grants the waiver, you skip publication and the 30-day wait. If the judge denies it, the court notifies you, and you publish the notice and continue from there. Nothing you have already filed is wasted.
+
+  - kind: info
+    id: publishing_your_notice
+    heading: 'Publishing your notice'
+    body: |
+      If you are publishing, this step comes first, before you fill out the rest of your forms.
+
+      How it works:
+      - You arrange the publication yourself. Contact the official newspaper of the county where you will file.
+      - The notice can run in a print edition, an e-edition, or both.
+      - After it runs, the newspaper gives you an Affidavit of Publication or a Declaration of Publication. Keep a copy and file the original with the court.
+      - Then wait 30 calendar days, counting from the day after publication, before you complete the rest of your forms. The Petition and Declaration ask whether anyone objected during that window, so you cannot answer them accurately until it has passed.
+
+      Your filing is not complete without the Affidavit or Declaration of Publication. It is the document that proves you met the 30-day requirement.
+
+      North Dakota law does not say how many times the notice has to run. The statute requires only that 30 days of notice be given before a judge can act. The North Dakota Legal Self Help Center cannot interpret this, so ask the newspaper and the Clerk of Court what your county expects before you pay for publication. Newspapers handle these notices routinely and can tell you what they normally run.
+
+  - kind: info
     # Sets the expectation before the form below: NEVER_PREFILL renders its
     # saved answers blank, which looks like a failed save without this (#803).
     id: your_information_privacy
@@ -181,12 +217,15 @@ sections:
         url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf'
       - name: 'Proposed Order for Name Change'
         url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf'
-    # Warm link-out to the docassemble interview that fills these forms (#547,
-    # #531). Standard (publish) track. docassemble is hosted under the /interview/
-    # prefix on QA, so the launch path is /interview/interview?i=... (the prefix
-    # plus docassemble's own `interview` route) — confirmed against the live
-    # Share link.
-    interview_url: 'https://qa.litigantportal.com/interview/interview?i=docassemble.playground1:petition-standard.yml'
+    # Warm handoff to the docassemble interview that fills these forms (#547,
+    # #531). Standard (publish) track. Reference only: which docassemble it is
+    # sent to comes from the environment, never from content (#879). The
+    # interview ships as the docassemble.ndnamechange package, versioned under
+    # docassemble/nd-name-change/ in this repo.
+    # Always the full data/questions path: docassemble's API accepts the short
+    # alias but keys the session under the canonical path, so the resume link
+    # cannot find a session created under the alias.
+    interview_reference: 'docassemble.ndnamechange:data/questions/petition-standard.yml'
     # Glossary question id -> interview variable. The interview keeps its own
     # names; only reviewed answers are sent.
     interview_prefill:
@@ -205,6 +244,7 @@ sections:
       - The case number stays blank. The clerk assigns it when you file.
       - Only the judge signs the Proposed Order.
       - The Confidential Information Form is sealed and stays out of the public file. A copy must be attached to every certified copy of your Order, or North Dakota Vital Records will reject your updates later. Keep copies.
+      - If you published, the newspaper's Affidavit or Declaration of Publication is filed with everything else. Without it, the court has nothing showing the 30-day requirement was met.
 
   - kind: info
     id: hearing

@@ -11,7 +11,6 @@ merges there.
 
 import re
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 
 import pytest
 import yaml
@@ -50,12 +49,9 @@ _MODIFIERS = {
 }
 
 
-def _interview_path(interview_url):
-    """The versioned interview file a launch URL points at, if we have it."""
-    reference = parse_qs(urlparse(interview_url).query).get("i", [])
-    if not reference:
-        return None
-    file_name = reference[0].rsplit(":", 1)[-1]
+def _interview_path(reference):
+    """The versioned interview file a reference points at, if we have it."""
+    file_name = reference.rsplit(":", 1)[-1].rsplit("/", 1)[-1]
     matches = list(INTERVIEW_DIR.glob(f"*/{file_name}"))
     return matches[0] if len(matches) == 1 else None
 
@@ -91,8 +87,8 @@ def _mapped():
         target = interview_target(CorpusLoader.load(path))
         if target is None:
             continue
-        interview_url, mapping = target
-        interview_path = _interview_path(interview_url)
+        reference, mapping = target
+        interview_path = _interview_path(reference)
         if interview_path is None:
             continue
         for question_id, variable in mapping.items():
@@ -102,7 +98,7 @@ def _mapped():
 def _handoff_interviews():
     """(content file, interview path) per interview a flow hands off to.
 
-    Every flow with an interview_url, mapped or not: the handoff creates a
+    Every flow with an interview reference, mapped or not: the handoff creates a
     session either way.
     """
     seen = {}

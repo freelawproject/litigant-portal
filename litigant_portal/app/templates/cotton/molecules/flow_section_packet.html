@@ -1,8 +1,9 @@
 {% load i18n %}
 
 {# Packet section body: the forms the corpus says this flow needs. When the #}
-{# corpus sets interview_url, a warm handoff to a docassemble interview that #}
-{# fills these forms. Unset => plain form list. #}
+{# corpus names an interview AND the environment configures a docassemble, a #}
+{# warm handoff to the interview that fills these forms. Else => plain form #}
+{# list. #}
 <ul class="list-disc space-y-1 pl-5 text-greyscale-700">
   {% for form in ctx.forms %}
   <li>
@@ -15,7 +16,7 @@
   {% endfor %}
 </ul>
 
-{% if ctx.interview_url %}
+{% if ctx.interview_available %}
 <div class="mt-4 space-y-3">
   {# A POST: it creates a docassemble session and redirects onto a one-time #}
   {# link, so it can't be a GET a crawler or a reload would fire. #}

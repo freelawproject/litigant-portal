@@ -82,8 +82,12 @@
               <c-atoms.icon name="chat-bubble-left-ellipsis" class="w-5 h-5 text-greyscale-500" />
               {% trans "Feedback" %}
             </a>
-            <div class="border-t border-greyscale-200 mt-1 px-4 py-2 text-xs text-greyscale-400 tabular-nums" aria-label="{% trans "Build time" %}">
-              {{ app_build_time }}
+            <div class="border-t border-greyscale-200 mt-1 px-4 py-2 text-xs text-greyscale-400 tabular-nums" aria-label="{% trans "Deployed build" %}">
+              {% if app_git_branch %}
+                {{ app_git_branch }} · {{ app_git_sha }} · {{ app_build_time }}
+              {% else %}
+                {% trans "local working tree" %}
+              {% endif %}
             </div>
           </div>
         </div>

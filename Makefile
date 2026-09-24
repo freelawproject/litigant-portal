@@ -134,8 +134,11 @@ file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdi
 REPO ?= freelawproject/litigant-portal
 DOCKER_TAG_PROD = $(VERSION)-prod
 
+GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
+BUILD_TIME ?= $(shell date -u +"%Y/%m/%d %H:%M")
+
 build-image: ## Build the prod portal image (requires VERSION=...)
-	docker build -t $(REPO):$(DOCKER_TAG_PROD) --build-arg GIT_SHA=$(VERSION) --file docker/django/Dockerfile .
+	docker build -t $(REPO):$(DOCKER_TAG_PROD) --build-arg GIT_SHA=$(VERSION) --build-arg GIT_BRANCH="$(GIT_BRANCH)" --build-arg BUILD_TIME="$(BUILD_TIME)" --file docker/django/Dockerfile .
 
 push-image: build-image ## Build then push the prod portal image (amd64 only)
 	@if [ "$$(uname -m)" != "x86_64" ]; then \

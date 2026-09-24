@@ -1,6 +1,5 @@
 import logging
 import os
-from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -13,11 +12,6 @@ BEDROCK_API_KEY = os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "")
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
-# The new agent's development page also requires developer permission.
-LP_AGENT_DEV_ENABLED = (
-    os.environ.get("LP_AGENT_DEV_ENABLED", "false").lower() == "true"
-)
-
 # Deployment environment label. Distinguishes QA from prod (both run DEBUG=false).
 # Used by template context processor to gate non-prod-only UI (build-time chip).
 # Invalid values are kept as-is (fail-closed: non-prod UI won't match and stays hidden).
@@ -29,11 +23,22 @@ if DEPLOYMENT_ENV not in {"dev", "qa", "prod"}:
         DEPLOYMENT_ENV,
     )
 
-# Captured at module import — approximates container/process start time. Shown
-# in the dev/QA header so testers can disambiguate deploys by the minute.
-APP_BUILD_TIME = datetime.now().strftime("%Y/%m/%d %H:%M")
+# The new agent's development page also requires developer permission. QA
+# exists to test it, so the label turns it on without a second variable.
+LP_AGENT_DEV_ENABLED = (
+    os.environ.get(
+        "LP_AGENT_DEV_ENABLED", "true" if DEPLOYMENT_ENV == "qa" else "false"
+    ).lower()
+    == "true"
+)
 
+# Provenance of the running build, shown in the dev/QA header so testers can
+# tell which deploy they are looking at. All three are baked in at image build
+# and empty on a local bind mount, where the working tree may carry uncommitted
+# edits that no commit or build time honestly describes.
 GIT_SHA = os.environ.get("GIT_SHA", "unknown")
+GIT_BRANCH = os.environ.get("GIT_BRANCH", "")
+APP_BUILD_TIME = os.environ.get("BUILD_TIME", "")
 
 SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
 
@@ -46,6 +51,11 @@ ALLOWED_HOSTS = [
     for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
     if h.strip()
 ] or (["localhost", "127.0.0.1", "0.0.0.0"] if DEBUG else [])
+
+# The QA deployment always serves this hostname, and CSRF_TRUSTED_ORIGINS below
+# already hardcodes it. Extra hosts still come from the environment.
+if DEPLOYMENT_ENV == "qa" and "qa.litigantportal.com" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("qa.litigantportal.com")
 
 
 INSTALLED_APPS = [
@@ -332,27 +342,26 @@ CSP_CONNECT_SRC = ("'self'", *ASSET_ORIGINS, *PRIVATE_MEDIA_ORIGINS)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# Production security settings
-# https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
-if not DEBUG:
-    # HTTPS/SSL
-    SECURE_SSL_REDIRECT = True
-    SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+# QA uses HTTPS behind the proxy even when its environment enables DEBUG.
+if not DEBUG or DEPLOYMENT_ENV == "qa":
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-
-    # HSTS (HTTP Strict Transport Security)
-    SECURE_HSTS_SECONDS = 31536000  # 1 year
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-
-    # Secure cookies
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-
-    # Trust origins that match ALLOWED_HOSTS over HTTPS
     CSRF_TRUSTED_ORIGINS = [
         f"https://{host}" for host in ALLOWED_HOSTS if host != "*"
     ]
+    qa_origin = "https://qa.litigantportal.com"
+    if DEPLOYMENT_ENV == "qa" and qa_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(qa_origin)
+
+# Production security settings
+# https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r"^api/health/$"]
+    SECURE_HSTS_SECONDS = 31536000  # 1 year
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
     # Additional security headers
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -367,12 +376,14 @@ CORPUS_COURT = os.environ.get("CORPUS_COURT") or None
 # Audit window: cleanup_sessions keeps chat activity this many days.
 AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "30"))
 
-# docassemble prefill. Without a key the packet button falls back to the
-# plain, unprefilled interview link. The base URL overrides the API root
-# derived from that link, so a dev bench answers for the QA URL the content
-# YAML carries.
+# docassemble. Every URL is built from these settings; the corpus contributes
+# only the interview reference (#879). With neither URL set, packet sections
+# render without the interview button. Without a key the button falls back to
+# the plain, unprefilled interview link. Both URLs are full bases including
+# any path prefix (QA serves docassemble under /interview).
 DOCASSEMBLE_BASE_URL = os.environ.get("DOCASSEMBLE_BASE_URL") or None
 DOCASSEMBLE_API_KEY = os.environ.get("DOCASSEMBLE_API_KEY") or None
 # Set when LP reaches docassemble at an address litigants cannot, e.g. an
-# internal hostname: the resume link is rewritten onto this origin.
+# internal hostname: launch links are built on this base and the resume link
+# is rewritten onto its origin. Unset falls back to DOCASSEMBLE_BASE_URL.
 DOCASSEMBLE_PUBLIC_URL = os.environ.get("DOCASSEMBLE_PUBLIC_URL") or None
