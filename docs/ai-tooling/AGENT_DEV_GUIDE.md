@@ -149,10 +149,12 @@ can **read and manipulate state**.
 ```python
 class CheckWeather(Tool):
     """Check the current weather for a location."""
+
     location: str = Field(description="City or place to check the weather for")
 
     def __call__(self, *, thread_id) -> ToolOutput:
-        ...  # load thread, mutate state, return ToolOutput
+        # load thread, mutate state, return ToolOutput
+        ...
 ```
 
 The engine auto-generates the function schema from the model (`get_schema()`),
@@ -269,9 +271,9 @@ class WeatherState(AgentState):
 class WeatherAgent(Agent):
     """A demo agent that can check the weather."""
 
-    completion_args = {"max_tokens": 1000}       # INGREDIENT 1: LLM config
-    state_schema = WeatherState                  # INGREDIENT 2
-    tools = [CheckWeather]                        # INGREDIENT 4
+    completion_args = {"max_tokens": 1000}  # INGREDIENT 1: LLM config
+    state_schema = WeatherState  # INGREDIENT 2
+    tools = [CheckWeather]  # INGREDIENT 4
 
     # INGREDIENT 3: the system prompt, built from the thread (state + user +
     # conversation are all reachable here).
@@ -349,6 +351,7 @@ example — it binds `LitigantAssistant` and adds the upload endpoints:
 # litigant_portal/app/views/assistant.py
 THREAD_TYPE = "user_chat"
 
+
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def stream(request: HttpRequest):
@@ -358,6 +361,7 @@ def stream(request: HttpRequest):
         thread_type=THREAD_TYPE,
         model=site_get_model(role="assistant"),
     )
+
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
@@ -370,7 +374,9 @@ Mount the surface under its own URL namespace in `urls.py`:
 ```python
 path(
     "api/agents/assistant/",
-    include((assistant_patterns, "litigant_portal.app"), namespace="assistant"),
+    include(
+        (assistant_patterns, "litigant_portal.app"), namespace="assistant"
+    ),
 )
 ```
 

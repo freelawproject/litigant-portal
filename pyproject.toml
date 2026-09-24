@@ -165,7 +165,10 @@ markers = [
 profile = "django"
 max_line_length = 120
 # H006: img without alt, H021: inline styles (Alpine x-show), H030/H031: meta tags
-ignore = "H006,H021,H030,H031"
+# Added in djlint 1.46, all false positives on our templates:
+# H013: img alt via x-bind:alt, H026: templated class="{{ class }}",
+# H042: label ids on multi-line tags, H051: flags valid roles (menuitem)
+ignore = "H006,H013,H021,H026,H030,H031,H042,H051"
 extend_exclude = ".venv,node_modules,staticfiles"
 # Recognize Cotton components
 custom_blocks = "c-slot,c-vars"
