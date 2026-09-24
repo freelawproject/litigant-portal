@@ -28,7 +28,6 @@ from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
-    NEVER_PREFILL,
     question_ids,
     render_section,
     submitted_section_anchor,
@@ -110,23 +109,14 @@ def topic_flow(request, court, topic, role):
         # re-render, and a padded date breaks date.fromisoformat in the
         # deadline compute. A blank required field or an out-of-list choice
         # never lands in the store; valid siblings still save. A blank
-        # optional field stores None, which clears the answer — except for a
-        # NEVER_PREFILL field, which renders blank whatever is stored, so a
-        # blank submission there means "never shown", not "erase it". Erasing
-        # one takes its explicit clear checkbox; a typed value wins over the
-        # checkbox, since replacing is the stronger intent.
+        # optional field stores None, which clears the answer — the litigant
+        # sees the stored value in the field, so emptying it and saving is
+        # the clear affordance.
         valid = {}
         for qid, raw in submitted.items():
             if qid in errors:
                 continue
-            value = raw.strip() or None
-            if (
-                value is None
-                and qid in NEVER_PREFILL
-                and f"{qid}__clear" not in request.POST
-            ):
-                continue
-            valid[qid] = value
+            valid[qid] = raw.strip() or None
         if valid:
             variable_answer_set_many(
                 identity=request.identity, values=valid, reviewed=True
@@ -141,18 +131,7 @@ def topic_flow(request, court, topic, role):
                 request, corpus, topic_flow_answers(request, corpus), errors
             )
         if valid:
-            # A NEVER_PREFILL field re-renders blank even after a successful
-            # save, so without a toast the save looks like it failed (#803).
-            if any(valid.get(qid) for qid in NEVER_PREFILL):
-                messages.success(
-                    request,
-                    _(
-                        "Saved. For your privacy, your answers are not "
-                        "shown on this page."
-                    ),
-                )
-            else:
-                messages.success(request, _("Saved."))
+            messages.success(request, _("Saved."))
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.

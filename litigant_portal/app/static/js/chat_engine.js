@@ -44,22 +44,38 @@ function renderInline(text) {
       if (part.length > 1 && part[0] === '`' && part[part.length - 1] === '`') {
         return '<code>' + part.slice(1, -1) + '</code>'
       }
-      return part
-        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
-          const safe = /^(https?:|mailto:)/i.test(url) ? url : '#'
-          return (
-            '<a href="' +
-            safe +
-            '" target="_blank" rel="noopener noreferrer" class="text-primary-700 underline hover:no-underline">' +
-            label +
-            '</a>'
+      return (
+        part
+          // Citation chips: [source:ID] from grounded answers. The id char
+          // class is strict, so the id is safe inside the title attribute of
+          // already-escaped text.
+          .replace(
+            /\[source:([A-Za-z0-9_/.:-]+)\]/g,
+            (_m, id) =>
+              '<span class="inline-block align-baseline rounded border ' +
+              'border-greyscale-200 bg-greyscale-100 px-1 text-[10px] ' +
+              'font-mono text-greyscale-500" title="' +
+              id +
+              '">' +
+              id +
+              '</span>'
           )
-        })
-        .replace(
-          /\*\*([^*]+)\*\*/g,
-          '<strong class="font-semibold">$1</strong>'
-        )
-        .replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>')
+          .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
+            const safe = /^(https?:|mailto:)/i.test(url) ? url : '#'
+            return (
+              '<a href="' +
+              safe +
+              '" target="_blank" rel="noopener noreferrer" class="text-primary-700 underline hover:no-underline">' +
+              label +
+              '</a>'
+            )
+          })
+          .replace(
+            /\*\*([^*]+)\*\*/g,
+            '<strong class="font-semibold">$1</strong>'
+          )
+          .replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>')
+      )
     })
     .join('')
 }
@@ -244,6 +260,27 @@ function makeMessage(role, content, attachments) {
       ? 'bg-primary-600 text-white'
       : 'bg-greyscale-100 text-greyscale-900',
   }
+}
+
+// The AI-down fallback card (#746): friendly copy from the server plus a
+// link into the non-AI path (the active flow's guided page, or home). Only
+// root-relative URLs are honored — anything else falls back to home, so a
+// bad payload can never link off-site.
+function makeErrorMessage(event) {
+  const msg = makeMessage(
+    'assistant',
+    event.message || event.error || 'Something went wrong.'
+  )
+  const url = event.fallback_url || ''
+  const safeUrl = /^\/(?!\/)/.test(url) ? url : '/'
+  const label = event.fallback_label || 'Browse the help topics'
+  msg.html +=
+    '<p class="my-1.5 last:mb-0"><a href="' +
+    escapeHtml(safeUrl) +
+    '" class="text-primary-700 underline hover:no-underline">' +
+    escapeHtml(label) +
+    '</a></p>'
+  return msg
 }
 
 // Chip data for an attachment shown on a sent user message.
@@ -487,15 +524,49 @@ document.addEventListener('alpine:init', () => {
     init() {
       this.base = this.$root.dataset.agentBase
       this.loadThreads()
-      this.consumeQueryMessage()
+      if (!this.consumeQueryMessage()) this.resumeThread()
+    },
+
+    // --- Thread resume across reloads ---
+    // The active thread id is kept in sessionStorage so a refresh reopens
+    // the conversation instead of an empty pane. sessionStorage on purpose:
+    // it dies with the tab, so on a shared computer the next visitor gets
+    // the empty state (the thread stays reachable via history either way).
+    // All access is try/catch — storage can be blocked entirely.
+
+    rememberThread(threadId) {
+      try {
+        sessionStorage.setItem('lp:chat:thread', threadId)
+      } catch (e) {
+        /* storage unavailable — resume is a convenience, not a feature */
+      }
+    },
+
+    forgetThread() {
+      try {
+        sessionStorage.removeItem('lp:chat:thread')
+      } catch (e) {
+        /* ignore */
+      }
+    },
+
+    resumeThread() {
+      let threadId = null
+      try {
+        threadId = sessionStorage.getItem('lp:chat:thread')
+      } catch (e) {
+        return
+      }
+      if (threadId) this.openThread(threadId)
     },
 
     // Landing with "?q=..." fires that message as the start of a fresh chat.
     // The param is stripped from the URL (replaceState) before sending, so a
     // refresh or share of the page won't fire it again.
+    // Returns whether a message was fired, so init can skip thread resume.
     consumeQueryMessage() {
       const params = new URLSearchParams(window.location.search)
-      if (!params.has('q')) return
+      if (!params.has('q')) return false
       const message = (params.get('q') || '').trim()
       params.delete('q')
       const query = params.toString()
@@ -505,6 +576,7 @@ document.addEventListener('alpine:init', () => {
         window.location.hash
       window.history.replaceState(null, '', url)
       if (message) this.sendMessage(message, null)
+      return Boolean(message)
     },
 
     // --- History ---
@@ -565,6 +637,7 @@ document.addEventListener('alpine:init', () => {
 
     newChat() {
       this.closeDrawers()
+      this.forgetThread()
       this.threadId = null
       this.threadTitle = ''
       // A fresh array detaches the view from any in-flight stream, which
@@ -668,6 +741,7 @@ document.addEventListener('alpine:init', () => {
         this.markActive()
         this.updateThinking()
         this.scrollToBottom()
+        this.rememberThread(threadId)
         return
       }
 
@@ -687,7 +761,11 @@ document.addEventListener('alpine:init', () => {
         this.markActive()
         this.updateThinking()
         this.scrollToBottom()
+        this.rememberThread(data.id)
       } catch (e) {
+        // A stale remembered id (deleted thread, other session) must not
+        // keep failing on every load.
+        this.forgetThread()
         console.error('Failed to load thread:', e)
       }
     },
@@ -817,6 +895,7 @@ document.addEventListener('alpine:init', () => {
         this.setThreadStatus(stream.threadId, 'streaming')
         if (this.attached(stream)) {
           this.threadId = event.thread_id
+          this.rememberThread(event.thread_id)
           // Placeholder until the generated description arrives.
           if (!this.threadTitle) this.threadTitle = NEW_CHAT_TITLE
           this.markActive()
@@ -836,7 +915,8 @@ document.addEventListener('alpine:init', () => {
       } else if (event.type === 'state') {
         if (this.attached(stream)) this.setState(event.state)
       } else if (event.type === 'error') {
-        this.appendAssistant(stream, event.error || 'Something went wrong.')
+        stream.messages.push(makeErrorMessage(event))
+        stream.openIndex = null
       }
       if (this.attached(stream)) {
         this.updateThinking()
@@ -1198,6 +1278,106 @@ document.addEventListener('alpine:init', () => {
       } catch (e) {
         console.error('Failed to load chat usage:', e)
       }
+    },
+  }))
+
+  // The ReviewFacts tool card: the human-only confirm step. Confirming POSTs
+  // fact names to the facts endpoint (outside the agent namespace — the model
+  // cannot reach it), then arms the interview launch form by injecting the
+  // page's CSRF token. Config rides on data-* attributes because tool cards
+  // render server-side with no request context.
+  //
+  // Two constraints shape this component:
+  // - No x-bind/x-show inside the card, only x-on. Bindings evaluated while
+  //   x-html inserts the card leak their dependencies into the hosting x-html
+  //   effect, so the component's first reactive write re-renders
+  //   message.resultHtml and resets the card (observed on the CSP build
+  //   3.14.9). All UI flips are imperative DOM updates instead.
+  // - Historical cards re-render from render_data frozen at call time, so a
+  //   reloaded card may show stale "not confirmed" badges; confirming again
+  //   is idempotent, and the launch endpoint reads live rows either way.
+  Alpine.data('factReviewCard', () => ({
+    names: [],
+    confirmUrl: '',
+    busy: false,
+    done: false,
+
+    init() {
+      this.names = (this.$root.dataset.names || '').split(',').filter(Boolean)
+      this.confirmUrl = this.$root.dataset.confirmUrl
+      if (this.$root.dataset.allReviewed === 'true') this.markConfirmed()
+      else this.setLaunchEnabled(false)
+    },
+
+    async confirmFacts() {
+      if (this.busy || this.done || this.names.length === 0) return
+      this.busy = true
+      this.showNote('error-note', false)
+      try {
+        const res = await fetch(this.confirmUrl, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': this.csrfToken(),
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ names: this.names }),
+        })
+        if (!res.ok) throw new Error('confirm failed: ' + res.status)
+        this.markConfirmed()
+      } catch (e) {
+        console.error('Failed to confirm facts:', e)
+        this.showNote('error-note', true)
+      } finally {
+        this.busy = false
+      }
+    },
+
+    markConfirmed() {
+      this.done = true
+      const confirm = this.$root.querySelector('[data-role=confirm]')
+      if (confirm) confirm.disabled = true
+      this.showNote('confirmed-note', true)
+      this.showNote('error-note', false)
+      this.setLaunchEnabled(true)
+    },
+
+    setLaunchEnabled(enabled) {
+      const button = this.$root.querySelector('form button[type=submit]')
+      if (button) button.disabled = !enabled
+      if (enabled) this.armLaunch()
+    },
+
+    showNote(role, show) {
+      const note = this.$root.querySelector('[data-role=' + role + ']')
+      if (note) note.hidden = !show
+    },
+
+    // Create the launch form's CSRF input only now, already filled: an empty
+    // [name=csrfmiddlewaretoken] input rendered into the message flow would
+    // shadow the page's real token for every document.querySelector caller
+    // (chatApp's csrfToken included), breaking all chat POSTs.
+    armLaunch() {
+      const form = this.$root.querySelector('form')
+      if (!form) return
+      let input = form.querySelector('input[name=csrfmiddlewaretoken]')
+      if (!input) {
+        input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = 'csrfmiddlewaretoken'
+        form.appendChild(input)
+      }
+      input.value = this.csrfToken()
+    },
+
+    // Unlike chatApp's csrfToken, skip empty inputs: review cards put their
+    // own (initially empty) csrfmiddlewaretoken inputs into the message
+    // flow, ahead of the page's real token in DOM order.
+    csrfToken() {
+      const inputs = document.querySelectorAll('[name=csrfmiddlewaretoken]')
+      for (const input of inputs) {
+        if (input.value) return input.value
+      }
+      return ''
     },
   }))
 })

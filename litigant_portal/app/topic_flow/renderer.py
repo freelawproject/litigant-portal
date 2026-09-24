@@ -95,16 +95,11 @@ def _render_info(section, corpus, answers):
     )
 
 
-# Stored for downstream use (deadline computation, docassemble prefill) but
-# never echoed back into the form or the recap, so a shared terminal can't
-# replay one litigant's answers to the next (#638, #803).
-NEVER_PREFILL = {
-    "name_change_publication_date",
-    "first_name",
-    "middle_name",
-    "last_name",
-    "county",
-}
+# Saved answers render back into the form and the recap so the litigant can
+# check, correct, and clear them in place. This deliberately reverts the
+# #638/#803 shared-terminal masking (decided 2026-09-23, pending team
+# review): the briefcase already shows the same values to the same session,
+# so the masking hid them only where editing happens.
 
 
 @renderer("fact_gather")
@@ -117,11 +112,7 @@ def _render_fact_gather(section, corpus, answers):
             "required": q.required,
             "choices": q.choices,
             "help_text": q.help_text,
-            "value": "" if q.id in NEVER_PREFILL else answers.get(q.id, ""),
-            # The blanked-out fields need an explicit clear affordance: the
-            # litigant never sees the stored value, so a blank submission
-            # can't mean "erase it" (see the entry view's POST handler).
-            "saved": q.id in NEVER_PREFILL and q.id in answers,
+            "value": answers.get(q.id, ""),
             "errors": [],
             "autofocus": False,
         }
@@ -175,14 +166,9 @@ def submitted_section_anchor(corpus, submitted_ids):
 
 
 def _answered_in_corpus_order(corpus, answers):
-    """Yield ``{label, value}`` for answered questions, in corpus order.
-
-    Same leak vector as the fact_gather form: skip anything in
-    ``NEVER_PREFILL`` so a prior guest's answer can't surface in the recap
-    either (#638).
-    """
+    """Yield ``{label, value}`` for answered questions, in corpus order."""
     for question in _fact_gather_questions(corpus):
-        if question.id in answers and question.id not in NEVER_PREFILL:
+        if question.id in answers:
             yield {"label": question.label, "value": answers[question.id]}
 
 

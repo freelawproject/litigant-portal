@@ -1,15 +1,14 @@
-"""Drift guard: the name/county questions real content asks never echo back.
+"""Drift guard: the ND name-change flows keep collecting the identity
+questions the docassemble prefill maps (#531). DB-free.
 
-The ND name-change flows collect them for the docassemble prefill, not to
-display them, and a content-side addition that misses ``NEVER_PREFILL`` would
-only surface on a shared terminal. DB-free.
+The NEVER_PREFILL half of this guard was removed with the #638/#803 masking
+(2026-09-23): saved answers now render back into the form.
 """
 
 import pytest
 
 from litigant_portal.app.topic_flow.loader import CorpusLoader
 from litigant_portal.app.topic_flow.registry import CONTENT_DIR
-from litigant_portal.app.topic_flow.renderer import NEVER_PREFILL
 
 NAME_CHANGE_FLOWS = [
     "adult-name-change-standard.yml",
@@ -35,8 +34,3 @@ def test_name_change_flow_collects_the_identity_question(
     file_name, question_id
 ):
     assert question_id in _question_ids(file_name)
-
-
-@pytest.mark.parametrize("question_id", IDENTITY_QUESTIONS)
-def test_identity_question_is_never_prefilled(question_id):
-    assert question_id in NEVER_PREFILL
