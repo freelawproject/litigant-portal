@@ -80,8 +80,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 
 @login_required
 @permission_required("app.manage_site", raise_exception=True)
-def admin(request):
-    ...
+def admin(request): ...
 ```
 
 `raise_exception=True` produces a 403 for a signed-in user who lacks the
@@ -105,8 +104,7 @@ from litigant_portal.app.views.utils import (
 
 @require_GET
 @manage_site_required
-def user_list_view(request):
-    ...
+def user_list_view(request): ...
 ```
 
 They exist rather than reusing `permission_required` because the built-in
@@ -171,8 +169,8 @@ from litigant_portal.app.services.user import (
     user_developer_toggle,
 )
 
-user_admin_toggle(user=target)       # -> new state, True if now in Admins
-user_developer_toggle(user=target)   # -> new state, True if now a Developer
+user_admin_toggle(user=target)  # -> new state, True if now in Admins
+user_developer_toggle(user=target)  # -> new state, True if now a Developer
 ```
 
 Both are idempotent toggles that return the resulting state.
@@ -197,14 +195,14 @@ keeps answering with the old value:
 
 ```python
 user_admin_toggle(user=user)
-user.has_perm("app.manage_site")   # may still be the pre-toggle answer
+user.has_perm("app.manage_site")  # may still be the pre-toggle answer
 ```
 
 Re-fetch the user after changing group membership:
 
 ```python
 user = User.objects.get(pk=user.pk)
-user.has_perm("app.manage_site")   # correct
+user.has_perm("app.manage_site")  # correct
 ```
 
 This matters mostly in tests and management commands. A normal request loads
