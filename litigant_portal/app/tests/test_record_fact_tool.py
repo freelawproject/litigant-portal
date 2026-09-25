@@ -86,9 +86,12 @@ def test_unknown_name_reported_without_blocking_sibling_save(thread, county):
         thread_id=thread.id
     )
 
-    assert VariableAnswer.objects.get(
-        identity=thread.identity, variable=county
-    ).value == "cass"
+    assert (
+        VariableAnswer.objects.get(
+            identity=thread.identity, variable=county
+        ).value
+        == "cass"
+    )
     assert "not_a_variable: no variable with this name" in output.result
     assert "exact variable names" in output.result
 
@@ -101,9 +104,12 @@ def test_invalid_value_reported_without_blocking_sibling_save(
     )(thread_id=thread.id)
 
     assert not VariableAnswer.objects.filter(variable=county).exists()
-    assert VariableAnswer.objects.get(
-        identity=thread.identity, variable=date_of_birth
-    ).value == "1990-01-31"
+    assert (
+        VariableAnswer.objects.get(
+            identity=thread.identity, variable=date_of_birth
+        ).value
+        == "1990-01-31"
+    )
     assert "county: must be one of" in output.result
 
 
@@ -155,7 +161,9 @@ def test_prompt_refresh_only_when_something_was_written(thread, county):
 
 def test_render_data_carries_plain_strings_and_labels(thread):
     Variable.objects.create(
-        name="is_adult", label="18 or older", data_type=VariableDataType.BOOLEAN
+        name="is_adult",
+        label="18 or older",
+        data_type=VariableDataType.BOOLEAN,
     )
 
     output = RecordFact(facts={"is_adult": True, "unknown_name": "x"})(
