@@ -4,19 +4,19 @@ from litigant_portal.agents.base import Field, Tool, ToolOutput
 
 
 class RecordFact(Tool):
-    """Save facts the user states as answers to the loaded flow's variables.
+    """Save facts the user states as answers to the portal's variables.
 
     Call this as soon as the user states a fact; do not ask permission
-    first. Save every fact the user volunteers in one call; when asking for
-    more, ask for the next missing fact (a closely related pair like the
-    current and new name is fine), not a list. Use the flow's exact variable
-    names and
-    typed values (ISO dates, listed choice values); a null value clears a
-    saved answer. Saves are unconfirmed suggestions the user reviews later;
-    when the user corrects a fact, save the new value. Never save a guess
-    or a default the user has not voiced (confirming a value you stated
-    counts as voiced), and confirm first when a value looks impossible for
-    the jurisdiction, like a county that does not exist in the state.
+    first. Save every fact the user volunteers in one call; when asking
+    for more, ask for the next missing fact (a closely related pair like
+    the current and new name is fine), not a list. Use exact variable
+    names (the loaded flow lists them) and typed values (ISO dates,
+    listed choice values); a null value clears a saved answer. Saves are
+    unconfirmed suggestions the user reviews later; when the user
+    corrects a fact, save the new value. Never save a guess or a default
+    the user has not voiced (confirming a value you stated counts as
+    voiced), and confirm first when a value looks impossible for the
+    jurisdiction, like a county that does not exist in the state.
     """
 
     facts: dict[str, Any] = Field(

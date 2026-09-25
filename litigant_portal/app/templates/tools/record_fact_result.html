@@ -52,11 +52,10 @@
 {% else %}
   <div class="max-w-md rounded-lg border border-greyscale-200 bg-white px-3 py-2">
     <div class="flex items-center gap-2">
-      <c-atoms.icon name="clipboard-document-check" class="w-4 h-4 text-greyscale-400 flex-shrink-0" />
-      <span class="text-sm text-greyscale-700">{% trans "Saved your answers" %}</span>
+      <c-atoms.icon name="exclamation-triangle" class="w-4 h-4 text-amber-600 flex-shrink-0" />
+      <span class="text-sm text-greyscale-700">{% trans "Could not save your answers" %}</span>
     </div>
     <span class="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
-      <c-atoms.icon name="exclamation-triangle" class="w-3 h-3 flex-shrink-0" />
       {% trans "Something went wrong" %}
     </span>
   </div>
