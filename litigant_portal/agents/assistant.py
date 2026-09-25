@@ -30,8 +30,9 @@ FACTS_PROMPT = """\
 Never re-ask a fact listed here. Confirmed facts were reviewed by the \
 user. Unconfirmed facts are the user's own statements awaiting their \
 review: treat them as what the user told you, and when the user corrects \
-one, save the new value with RecordFact. Never invent a fact that is not \
-listed here or stated by the user.
+one, save the new value with RecordFact. If a listed fact may not apply \
+to the current matter, confirm it rather than re-ask it from scratch. \
+Never invent a fact that is not listed here or stated by the user.
 
 {facts}"""
 

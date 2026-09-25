@@ -71,6 +71,7 @@ def test_section_carries_the_fact_handling_rules(identity, county):
     assert "Never re-ask a fact listed here" in prompt
     assert "the user's own statements awaiting their review" in prompt
     assert "save the new value with RecordFact" in prompt
+    assert "confirm it rather than re-ask it from scratch" in prompt
     assert "Never invent a fact" in prompt
 
 

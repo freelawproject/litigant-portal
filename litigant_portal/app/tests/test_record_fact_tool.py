@@ -64,6 +64,23 @@ def test_stated_fact_lands_as_unconfirmed_answer(thread, county):
     assert "county" in output.result
 
 
+def test_hallucinated_reviewed_arg_is_ignored_and_save_stays_unconfirmed(
+    thread, county
+):
+    # extra="allow" keeps the stray argument as an instance attribute; the
+    # save stays unconfirmed because __call__ passes a literal
+    # reviewed=False and never reads self.reviewed.
+    output = RecordFact(facts={"county": "burleigh"}, reviewed=True)(
+        thread_id=thread.id
+    )
+
+    answer = VariableAnswer.objects.get(
+        identity=thread.identity, variable=county
+    )
+    assert answer.reviewed is False
+    assert "unconfirmed" in output.result
+
+
 def test_confirmed_answer_resaved_drops_back_to_unconfirmed(thread, county):
     variable_answer_set(
         identity=thread.identity,
