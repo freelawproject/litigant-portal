@@ -58,6 +58,21 @@ Two things make this work:
 This pattern comes from `agent_development.test.cjs` — follow it rather than
 introducing a second approach.
 
+## Gotcha: values from the vm are cross-realm
+
+Anything the code under test constructs — an array, an object, a `Date` — gets
+the vm context's prototypes, not the test file's. So:
+
+```js
+assert.deepEqual(msg.attachments, [])   // fails: prototypes differ
+assert.ok(Array.isArray(msg.attachments))  // works: cross-realm safe
+```
+
+`assert.deepStrictEqual` (which `node:assert/strict` gives you for
+`deepEqual`) compares prototypes and rejects a vm-built `[]` against a local
+one. `Array.isArray`, `typeof` and comparing primitives are all fine. Assert
+on length and specific properties rather than on whole structures.
+
 ## What is worth testing here
 
 The pure functions. `chat_engine.js` is two things in one file: roughly the
