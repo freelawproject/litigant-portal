@@ -84,3 +84,51 @@ lives.
 Testing the components themselves would mean faking enough DOM to be its own
 project. If that becomes necessary, it is a decision to make deliberately,
 not one to arrive at by adding stubs until something passes.
+
+## Verifying a test actually tests something
+
+Tests written after the code get mutation-verified before they are trusted.
+A test that passes against deliberately broken source is not coverage, it is
+decoration, and there is no way to tell the two apart by reading them.
+
+The loop: break one thing in the source, confirm a test fails, put it back.
+Because these files load the source as a string, a mutant is a string
+replacement rather than an edit to the real file:
+
+```js
+const SRC = fs.readFileSync(SOURCE_PATH, 'utf8')
+const ctx = { window: {}, document: { addEventListener() {} } }
+vm.createContext(ctx)
+vm.runInContext(SRC.replace('deleteArmed: false,', 'deleteArmed: true,'), ctx)
+// now re-run the assertions against ctx and expect them to fail
+```
+
+Write that as a throwaway script outside the repo, run it, and delete it. It is
+scaffolding for one afternoon, not a second test suite to maintain. Assert that
+each mutant is caught, and that the pattern you replaced was actually found:
+a typo in the search string produces a "surviving" mutant that was never
+applied.
+
+Mutate behaviour a reviewer would care about, not syntax. The ones that earned
+their keep here: dropping a key from `blankMessage()`, flipping one half of a
+boolean pair, removing a `!!` coercion, reordering the `FILE_STYLES` patterns
+so a catch-all shadows a specific one, an off-by-one on a size threshold, and
+showing a tool result before its call finished.
+
+Two things this caught that reading the tests would not have:
+
+- **A passing assertion that proved nothing.** `!out.includes('<script>')` is
+  satisfied by `<script&gt;`, which is a live tag. The escaping was fine; the
+  assertion was not. It is now `!/<script/i`.
+- **Assertions that silently never ran**, because the value under test came
+  from the vm and `deepStrictEqual` was rejecting it on prototype rather than
+  on content. See the cross-realm section above.
+
+**A surviving mutant is not automatically a missing test.** Some code cannot be
+killed because it cannot be reached. The `Math.max(0, …)` clamp in `timeSince`
+is the example in this suite: with negative seconds every `Math.floor(seconds /
+unit)` is also negative and never satisfies `value >= 1`, so the function falls
+through to `'just now'` with or without the clamp. That is an equivalent
+mutant. Leave the defensive code, keep the test that pins the behaviour, and
+write down why nothing can cover the line, or the next person will spend the
+afternoon rediscovering it.
