@@ -112,7 +112,10 @@ test('escaping happens before transforms, so markup cannot be smuggled through e
   // The bold transform runs on already-escaped text. If it ran first, the
   // angle brackets would survive into the output as live markup.
   const out = renderInline('**<b>hi</b>**')
-  assert.equal(out, '<strong class="font-semibold">&lt;b&gt;hi&lt;/b&gt;</strong>')
+  assert.equal(
+    out,
+    '<strong class="font-semibold">&lt;b&gt;hi&lt;/b&gt;</strong>'
+  )
 })
 
 test('a closing tag cannot escape a code span', () => {
@@ -148,7 +151,9 @@ test('a quote in a link target cannot break out of the href attribute', () => {
 test('http, https and mailto links keep their target', () => {
   assert.ok(renderInline('[a](https://e.com)').includes('href="https://e.com"'))
   assert.ok(renderInline('[a](http://e.com)').includes('href="http://e.com"'))
-  assert.ok(renderInline('[a](mailto:a@e.com)').includes('href="mailto:a@e.com"'))
+  assert.ok(
+    renderInline('[a](mailto:a@e.com)').includes('href="mailto:a@e.com"')
+  )
 })
 
 test('a javascript: URL is replaced with a dead link', () => {
@@ -164,7 +169,9 @@ test('the scheme check is case-insensitive', () => {
 })
 
 test('data and vbscript URLs are replaced with a dead link', () => {
-  assert.ok(renderInline('[a](data:text/html,<script>x</script>)').includes('href="#"'))
+  assert.ok(
+    renderInline('[a](data:text/html,<script>x</script>)').includes('href="#"')
+  )
   assert.ok(renderInline('[a](vbscript:msgbox)').includes('href="#"'))
 })
 

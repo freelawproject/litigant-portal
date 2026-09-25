@@ -98,7 +98,11 @@ test('paired booleans are always exact inverses', () => {
   ]
   for (const obj of objects) {
     for (const [yes, no] of BOOLEAN_PAIRS) {
-      assert.equal(obj[yes], !obj[no], `${yes}/${no} drifted: ${obj[yes]}/${obj[no]}`)
+      assert.equal(
+        obj[yes],
+        !obj[no],
+        `${yes}/${no} drifted: ${obj[yes]}/${obj[no]}`
+      )
     }
   }
 })
@@ -249,7 +253,9 @@ test('buildItem maps attachments into chips', () => {
   const msg = buildItem({
     kind: 'user',
     content: 'hi',
-    attachments: [{ id: 1, name: 'a.pdf', size: 2048, content_type: 'application/pdf' }],
+    attachments: [
+      { id: 1, name: 'a.pdf', size: 2048, content_type: 'application/pdf' },
+    ],
   })
   assert.equal(msg.attachments.length, 1)
   assert.equal(msg.attachments[0].sizeLabel, '2 KB')
@@ -392,7 +398,10 @@ test('decorateUpload composes the badge, size and age into one card', () => {
 
 test('a decorated upload starts with its delete control unarmed', () => {
   // Arming survives a re-render otherwise, and the next click deletes.
-  const card = decorateUpload({ id: 1, content_type: 'application/pdf', size: 1 }, true)
+  const card = decorateUpload(
+    { id: 1, content_type: 'application/pdf', size: 1 },
+    true
+  )
   assert.equal(card.deleteArmed, false)
   assert.equal(card.deleteIdle, true)
   assert.equal(card.deleteClass, uploadDeleteClass(false))

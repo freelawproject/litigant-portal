@@ -64,8 +64,8 @@ Anything the code under test constructs — an array, an object, a `Date` — ge
 the vm context's prototypes, not the test file's. So:
 
 ```js
-assert.deepEqual(msg.attachments, [])   // fails: prototypes differ
-assert.ok(Array.isArray(msg.attachments))  // works: cross-realm safe
+assert.deepEqual(msg.attachments, []) // fails: prototypes differ
+assert.ok(Array.isArray(msg.attachments)) // works: cross-realm safe
 ```
 
 `assert.deepStrictEqual` (which `node:assert/strict` gives you for
