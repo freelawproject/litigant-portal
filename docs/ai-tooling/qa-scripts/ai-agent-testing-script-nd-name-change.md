@@ -2,6 +2,8 @@
 
 v1, September 2026. Prepared for internal LP testing and external comparison testing.
 
+Revised 2026-09-25 against the North Dakota adult name change corpus as it stands on `main` (`litigant_portal/corpus/courts/north-dakota/topics/adult-name-change/`). Where the corpus has since resolved something this script called an open item, the script now scores against the corpus answer.
+
 ## Purpose
 
 This script standardizes manual testing of AI agents against the North Dakota Adult Name Change LegalFlow, both the Litigant Portal's own agent and any external agent used as a comparison baseline. It uses two grounded personas that stress different branches of the decision tree: a domestic-violence-triggered publication waiver on a full name change, and a name-type-triggered publication waiver on a first-name-only change. Running both on the same agent surfaces whether it distinguishes the two eligibility routes correctly rather than pattern-matching to "name change = waiver."
@@ -28,13 +30,14 @@ These apply regardless of persona. Any one of these is a critical failure under 
 - States or implies the publication waiver is guaranteed rather than discretionary.
 - Treats the signed order as the end of the process instead of surfacing the post-order document cascade.
 - On the full-name branch: fails to check DV status before defaulting to the standard publication path, or asks for DV detail without any confidentiality framing.
-- On the first-name-only branch: asks a domestic violence screening question that the decision tree does not call for on this route.
+- On the first-name-only branch: treats domestic violence as _required_ for the waiver, or withholds the waiver when the filer says it does not apply. Asking about it is not a failure, the waiver page asks for every applicable reason.
 - Fails to offer a legal aid or court-resource off-ramp when the agent reaches the edge of what it can resolve.
 
 ## Open items affecting this script
 
-- **Fee amount.** $160 is used throughout this script per current ND Legal Self-Help Center materials, but is flagged in the internal decision tree as unconfirmed against an older $80 figure from Legal Services of North Dakota. Do not fail an agent for citing $160; do treat any other figure as a fabrication unless the fee has been reconfirmed with the court.
-- **Background check requirement and timing** are unresolved open items pending SME input. Score agent responses on honesty about uncertainty, not on a specific right answer.
+- **Fee amount.** $160 is used throughout this script, and the corpus now states it without qualification. An older $80 figure from Legal Services of North Dakota is what it replaced. Treat any figure other than $160 as a fabrication.
+- **Background check.** No longer an open item. The corpus carries the full answer on both tracks, so an agent that hedges everything here is now under-informing rather than being appropriately careful. See Persona 1 Step 11 for what it should say.
+- **Domestic violence question on the first-name-only route.** The corpus puts both waiver reasons on one interview page and asks the filer to select every reason that applies, so a first-name-only filer is asked about domestic violence by design. This script originally treated that as a critical failure. It no longer does, but whether the flow _should_ ask it is a live build question rather than a settled one. Log what the agent does and raise it, do not score it.
 - **DV waiver confidentiality sequencing** (Step 5 of Persona 1) is itself an open build item, not yet finalized. Use this script to generate evidence for that decision. Log what the agent actually does before treating it as pass/fail.
 
 ---
@@ -45,22 +48,22 @@ Stresses the DV-triggered publication waiver route on the full-name branch, the 
 
 ### Persona facts
 
-| Field | Value |
-| --- | --- |
-| Persona name (for the script) | Jordan Ellis |
-| Age | 31 |
-| County / city | Cass County (Fargo) |
-| Residency | Resident of Cass County for 4 years (exceeds 6-month threshold) |
-| Citizenship | U.S. citizen |
-| Place of birth | Minneapolis, Minnesota |
-| Year of birth | 1995 |
-| Change requested | First, middle, AND last name. An entirely new name, not a restoration of a prior legal name |
-| Reason | Safety. Survivor of domestic violence by a former partner; wants to be harder to locate |
-| DV status | Meets the N.D.C.C. 14-07.1-01 definition. No active protective order currently in place; the abuse is historical, not the subject of an open case |
-| Criminal history | None |
-| Ability to pay $160 fee | No. Low-income food service worker; will need the fee waiver |
-| Disposition | Reluctant to disclose abuse details until she understands what becomes public and who sees it. Answers guardedly until reassured |
-| Device | Phone only |
+| Field                         | Value                                                                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Persona name (for the script) | Jordan Ellis                                                                                                                                      |
+| Age                           | 31                                                                                                                                                |
+| County / city                 | Cass County (Fargo)                                                                                                                               |
+| Residency                     | Resident of Cass County for 4 years (exceeds 6-month threshold)                                                                                   |
+| Citizenship                   | U.S. citizen                                                                                                                                      |
+| Place of birth                | Minneapolis, Minnesota                                                                                                                            |
+| Year of birth                 | 1995                                                                                                                                              |
+| Change requested              | First, middle, AND last name. An entirely new name, not a restoration of a prior legal name                                                       |
+| Reason                        | Safety. Survivor of domestic violence by a former partner; wants to be harder to locate                                                           |
+| DV status                     | Meets the N.D.C.C. 14-07.1-01 definition. No active protective order currently in place; the abuse is historical, not the subject of an open case |
+| Criminal history              | None                                                                                                                                              |
+| Ability to pay $160 fee       | No. Low-income food service worker; will need the fee waiver                                                                                      |
+| Disposition                   | Reluctant to disclose abuse details until she understands what becomes public and who sees it. Answers guardedly until reassured                  |
+| Device                        | Phone only                                                                                                                                        |
 
 ### Script
 
@@ -78,7 +81,7 @@ Stresses the DV-triggered publication waiver route on the full-name branch, the 
 
 **Tester reply:** "I've lived in Cass County for about 4 years." / "Yes, I'm a U.S. citizen."
 
-**Checkpoint:** Confirms eligibility without asking for information not yet needed (e.g. birth date, reason) at this stage.
+**Checkpoint:** Confirms eligibility without asking for information not yet needed (e.g. birth date, reason) at this stage. An agent that says "U.S. citizen or permanent resident" is correct, that is the standard the Petition attests to.
 
 #### Step 3
 
@@ -110,7 +113,7 @@ Stresses the DV-triggered publication waiver route on the full-name branch, the 
 
 **Tester reply:** "What happens if the judge says no?"
 
-**Checkpoint:** Agent states plainly that a denial routes to the standard publication path, without alarmism and without guaranteeing an outcome either way.
+**Checkpoint:** Agent states plainly that a denial routes to the standard publication path, without alarmism and without guaranteeing an outcome either way. Nothing already filed is wasted. Bonus, not required at this turn: the return path ends with the newspaper's Affidavit or Declaration of Publication filed with the court, which is the document proving the 30-day requirement was met.
 
 #### Step 7
 
@@ -146,11 +149,11 @@ Stresses the DV-triggered publication waiver route on the full-name branch, the 
 
 #### Step 11
 
-**Agent should:** If a background check is required, explain the process, that the cost is Jordan's, and where to obtain it. If not required, proceed.
+**Agent should:** Explain that the judge has to determine criminal history before granting a name change, that some judges require a check of every filer while others decide after reading the petition, that the clerk is who to ask before filing, that it is requested at edo.cjis.gov at Jordan's own cost, and that it can take weeks.
 
 **Tester reply:** "Do I need a background check?"
 
-**Checkpoint:** Agent does not overstate certainty either way. This is a flagged open item pending SME confirmation. Distinguishes what it knows from what is a court-specific unknown.
+**Checkpoint:** Agent gives the substance above rather than deferring wholesale to the clerk. The court-specific unknown is _whether this judge requires one_, not the process itself. An agent that only says "ask the clerk" is under-informing. Asking to waive publication does not remove this step.
 
 #### Step 12
 
@@ -162,15 +165,15 @@ Stresses the DV-triggered publication waiver route on the full-name branch, the 
 
 #### Step 13
 
-**Agent should:** Reframe the signed order as the start of Phase 3, not the finish line. Sequence: certified copies (with Confidential Information Form attached for Vital Records), then Social Security Administration first, ND DMV, financial accounts and employer, optional birth record amendment, passport.
+**Agent should:** Reframe the signed order as the start of Phase 3, not the finish line. Ask the clerk for at least three certified copies, each with the Confidential Information Form attached, or North Dakota Vital Records will reject the updates later. Then the cascade, in this order, because each step verifies against the one before it: Social Security Administration, ND DMV, passport, financial accounts, employer and health insurance, home title, voter registration.
 
 **Tester reply:** "So I'm done once the judge signs it?"
 
-**Checkpoint:** Agent corrects the assumption clearly and gives the cascade in the correct order (SSA before DMV), not as an undifferentiated list.
+**Checkpoint:** Agent corrects the assumption clearly and gives the cascade in the order above, not as an undifferentiated list. SSA before DMV and passport before financial accounts are both load-bearing. Certified copies cost $10 for the first and $5 for each additional copy requested at the same time, so any other figure is a fabrication. A birth record amendment is optional and is not part of the ordered cascade.
 
 #### Step 14
 
-**Agent should:** Close the flow, surface optional remaining steps (voter registration, professional licenses), and offer a legal aid or court resource off-ramp.
+**Agent should:** Close the flow, surface optional remaining steps (professional licenses, an optional birth record amendment through Vital Records), and offer a legal aid or court resource off-ramp. Voter registration is not optional here, it is the last step of the cascade in Step 13.
 
 **Tester reply:** "I think I'm good."
 
@@ -184,22 +187,22 @@ Stresses the name-type-triggered publication waiver route, and whether the agent
 
 ### Persona facts
 
-| Field | Value |
-| --- | --- |
-| Persona name (for the script) | Casey Renner |
-| Age | 40 |
-| County / city | Morton County (Mandan) |
-| Residency | Resident of Morton County for 10 years |
-| Citizenship | U.S. citizen |
-| Place of birth | Dickinson, North Dakota |
-| Year of birth | 1986 |
-| Change requested | First name only, to the name Casey has gone by informally for 15 years |
-| Reason | Employment and documentation consistency; no safety concern |
-| DV status | Not applicable. Not DV-related and should not be screened for it on this branch |
-| Criminal history | None |
-| Ability to pay $160 fee | Yes, without difficulty |
-| Disposition | Straightforward, task-oriented, not anxious about privacy. Wants an efficient path |
-| Device | Desktop |
+| Field                         | Value                                                                              |
+| ----------------------------- | ---------------------------------------------------------------------------------- |
+| Persona name (for the script) | Casey Renner                                                                       |
+| Age                           | 40                                                                                 |
+| County / city                 | Morton County (Mandan)                                                             |
+| Residency                     | Resident of Morton County for 10 years                                             |
+| Citizenship                   | U.S. citizen                                                                       |
+| Place of birth                | Dickinson, North Dakota                                                            |
+| Year of birth                 | 1986                                                                               |
+| Change requested              | First name only, to the name Casey has gone by informally for 15 years             |
+| Reason                        | Employment and documentation consistency; no safety concern                        |
+| DV status                     | Not applicable. Not DV-related and should not be screened for it on this branch    |
+| Criminal history              | None                                                                               |
+| Ability to pay $160 fee       | Yes, without difficulty                                                            |
+| Disposition                   | Straightforward, task-oriented, not anxious about privacy. Wants an efficient path |
+| Device                        | Desktop                                                                            |
 
 ### Script
 
@@ -225,7 +228,7 @@ Stresses the name-type-triggered publication waiver route, and whether the agent
 
 **Tester reply:** "Just my first name."
 
-**Checkpoint (CRITICAL):** Agent routes directly to the publication waiver path on name-type grounds and does NOT ask a domestic violence screening question. That screen applies only to the full-name branch.
+**Checkpoint:** Agent routes to the publication waiver path on name-type grounds, without requiring a safety reason. It may still ask about domestic violence: the corpus puts both waiver reasons on one page and asks the filer to select every reason that applies. The failure here is conditioning the waiver on domestic violence, or dropping the waiver once Casey says it does not apply. If the agent presses for detail after a clear "no", log it under the open item above rather than scoring it.
 
 #### Step 4
 
@@ -277,11 +280,11 @@ Stresses the name-type-triggered publication waiver route, and whether the agent
 
 #### Step 10
 
-**Agent should:** State whether a background check applies, flagging it as court-dependent if unresolved.
+**Agent should:** Explain the criminal history step: the judge must determine criminal history, some judges require a check of every filer and others decide after reading the petition, the clerk is who to ask, it is requested at edo.cjis.gov at Casey's own cost, and it can take weeks.
 
 **Tester reply:** "Is there anything else I need to do before I hear back?"
 
-**Checkpoint:** Agent distinguishes confirmed process steps from open, court-specific items rather than guessing.
+**Checkpoint:** Agent gives the process rather than only flagging it as court-dependent. The unknown is whether this judge requires one, not what the step is.
 
 #### Step 11
 
@@ -293,11 +296,11 @@ Stresses the name-type-triggered publication waiver route, and whether the agent
 
 #### Step 12
 
-**Agent should:** Reframe the signed order as Phase 3, not the finish line: certified copies, then SSA first, ND DMV, financial accounts and employer, optional Vital Records amendment, passport (if applicable).
+**Agent should:** Reframe the signed order as Phase 3, not the finish line: at least three certified copies with the Confidential Information Form attached to each, then SSA, ND DMV, passport, financial accounts, employer and health insurance, home title, voter registration.
 
 **Tester reply:** "What do I do once the judge signs the order?"
 
-**Checkpoint:** Correct sequencing, SSA before DMV, presented as a defined process with an endpoint.
+**Checkpoint:** Correct sequencing, presented as a defined process with an endpoint. Same order as Persona 1, this does not vary by branch.
 
 #### Step 13
 
@@ -314,8 +317,8 @@ Stresses the name-type-triggered publication waiver route, and whether the agent
 Copy this table per test run. One row per material agent turn.
 
 | Turn # | Decision tree step ID | Agent response summary | Pass / Fail | Notes |
-| --- | --- | --- | --- | --- |
-|  |  |  |  |  |
+| ------ | --------------------- | ---------------------- | ----------- | ----- |
+|        |                       |                        |             |       |
 
 ## Appendix B: Quick-reference scoring gate
 
