@@ -1,0 +1,62 @@
+{# RecordFact result card. Context: `data` (saved: [{name, label, value, cleared}], errors: [{name, label, message}]). #}
+{# Errors carry no render_data, so an empty `data` renders the error state. #}
+{% load i18n %}
+{% if data.saved or data.errors %}
+  <div class="max-w-md rounded-lg border border-greyscale-200 bg-white overflow-hidden">
+    <details class="group">
+      <summary class="block px-3 py-2 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
+        <span class="flex items-center gap-2 min-w-0">
+          <c-atoms.icon name="clipboard-document-check" class="w-4 h-4 text-greyscale-400 flex-shrink-0" />
+          <span class="text-sm text-greyscale-700 truncate">
+            {% if data.saved %}
+              {% trans "Saved to your answers" %}
+            {% else %}
+              {% trans "Could not save your answers" %}
+            {% endif %}
+          </span>
+        </span>
+        <span class="mt-1.5 flex items-center gap-1 text-xs text-greyscale-400 group-hover:text-greyscale-600 transition-colors">
+          <c-atoms.icon name="chevron-right" class="w-3 h-3 transition-transform group-open:rotate-90" />
+          {% trans "Show details" %}
+        </span>
+      </summary>
+      <div class="px-3 pb-2">
+        <div class="pl-4 space-y-2">
+          {% for fact in data.saved %}
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-wide text-greyscale-400">{{ fact.label }}</p>
+              {% if fact.cleared %}
+                <p class="text-xs text-greyscale-400 italic leading-relaxed">{% trans "Cleared" %}</p>
+              {% else %}
+                <p class="text-xs text-greyscale-500 leading-relaxed">{{ fact.value }}</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+          {% if data.errors %}
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-wide text-amber-600">{% trans "Not saved" %}</p>
+              {% for error in data.errors %}
+                <p class="text-xs text-amber-600 leading-relaxed">{{ error.label }}: {{ error.message }}</p>
+              {% endfor %}
+            </div>
+          {% endif %}
+          {% if data.saved %}
+            <p class="text-xs text-greyscale-400 leading-relaxed">
+              {% trans "You will review and confirm these before anything is filed." %}
+            </p>
+          {% endif %}
+        </div>
+      </div>
+    </details>
+  </div>
+{% else %}
+  <div class="max-w-md rounded-lg border border-greyscale-200 bg-white px-3 py-2">
+    <div class="flex items-center gap-2">
+      <c-atoms.icon name="exclamation-triangle" class="w-4 h-4 text-amber-600 flex-shrink-0" />
+      <span class="text-sm text-greyscale-700">{% trans "Could not save your answers" %}</span>
+    </div>
+    <span class="mt-1.5 flex items-center gap-1 text-xs text-amber-600">
+      {% trans "Something went wrong" %}
+    </span>
+  </div>
+{% endif %}

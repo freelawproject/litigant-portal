@@ -1,6 +1,7 @@
 from .base import Agent, AgentState
 from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
 from .tools.query_document import QueryDocument
+from .tools.record_fact import RecordFact
 
 BASE_PROMPT = """\
 You are a compassionate legal assistant helping self-represented litigants \
@@ -22,6 +23,18 @@ MULTI_COURT_CONTEXT = """\
 This portal is running in multi-court mode: the guided topic flows may \
 belong to different courts. Confirm which court and state the user's case \
 is in before relying on court-specific details."""
+
+FACTS_PROMPT = """\
+## Facts the user has already provided
+
+Never re-ask a fact listed here. Confirmed facts were reviewed by the \
+user. Unconfirmed facts are the user's own statements awaiting their \
+review: treat them as what the user told you, and when the user corrects \
+one, save the new value with RecordFact. If a listed fact may not apply \
+to the current matter, confirm it rather than re-ask it from scratch. \
+Never invent a fact that is not listed here or stated by the user.
+
+{facts}"""
 
 TOPIC_FLOWS_PROMPT = """\
 ## Guided topic flows
@@ -75,6 +88,25 @@ def generate_topic_flows_prompt() -> str:
     )
 
 
+def generate_facts_prompt(identity) -> str:
+    """The stored-facts section, or '' when the identity has none.
+
+    RecordFact sets refresh_system_prompt when it saves, so a fact stored
+    mid-turn appears here before the model's next step.
+    """
+    from litigant_portal.app.selectors.topic_flow import variable_answer_list
+
+    answers = variable_answer_list(identity=identity, answered_only=True)
+    if not answers:
+        return ""
+    facts = "\n".join(
+        f"- {a.variable.name} ({a.variable.label or a.variable.name}): "
+        f"{a.display_value} [{'confirmed' if a.reviewed else 'unconfirmed'}]"
+        for a in answers
+    )
+    return FACTS_PROMPT.format(facts=facts)
+
+
 class LitigantAssistantState(AgentState):
     """Litigant assistant state."""
 
@@ -85,7 +117,7 @@ class LitigantAssistant(Agent):
     """The user-facing assistant for self-represented litigants."""
 
     state_schema = LitigantAssistantState
-    tools = [QueryDocument, LoadTopicFlow]
+    tools = [QueryDocument, LoadTopicFlow, RecordFact]
 
     def prepare_thread(self, *, thread_id) -> None:
         """Clear the thread's active topic flow when it no longer names an
@@ -120,12 +152,18 @@ class LitigantAssistant(Agent):
         we'll need to account for the active topic flow data being dropped from
         history.
         """
+        from litigant_portal.app.selectors.chat_engine import (
+            chat_thread_identity_get,
+        )
+
+        identity = chat_thread_identity_get(thread_id=thread_id)
         return "\n\n".join(
             section
             for section in (
                 BASE_PROMPT,
                 generate_court_prompt(),
                 generate_topic_flows_prompt(),
+                generate_facts_prompt(identity),
             )
             if section
         )
