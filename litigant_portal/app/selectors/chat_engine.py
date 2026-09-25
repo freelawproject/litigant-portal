@@ -35,6 +35,17 @@ def chat_thread_get(
     )
 
 
+def chat_thread_identity_get(*, thread_id) -> UserIdentity:
+    """The identity that owns a thread (raises ChatThread.DoesNotExist).
+
+    Takes no identity input: the engine already checked ownership when it
+    resolved the thread, so tools running inside a turn look the owner up
+    by thread id alone.
+    """
+    thread = ChatThread.objects.select_related("identity").get(id=thread_id)
+    return thread.identity
+
+
 def chat_message_list(
     *,
     thread: ChatThread,
