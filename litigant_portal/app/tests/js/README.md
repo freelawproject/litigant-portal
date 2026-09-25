@@ -6,7 +6,7 @@ Tests for the browser code in `litigant_portal/app/static/js/`.
 
 ```sh
 make test-js                                   # all of them
-node --test litigant_portal/app/tests/js/      # the same thing, directly
+node --test litigant_portal/app/tests/js/*.test.cjs   # the same thing, directly
 node --test litigant_portal/app/tests/js/chat_engine_markdown.test.cjs
 ```
 
@@ -16,10 +16,14 @@ node --test litigant_portal/app/tests/js/chat_engine_markdown.test.cjs
 **This adds Node as a host requirement for `make test`.** The Python suite runs
 inside the Docker container; these run on the host, because the django image
 carries no Node (Tailwind is a standalone binary there, not an npm package).
-Anything from Node 18 onward works — `node:test`, `node:assert/strict` and
-`node:vm` have been stable since then. CI relies on the Node that ships with
-`ubuntu-latest` rather than adding a `setup-node` step, which would mean
-pinning another action SHA for no gain.
+CI relies on the Node that ships with `ubuntu-latest` rather than adding a
+`setup-node` step, which would mean pinning another action SHA for no gain.
+
+**Pass the test files, not the directory.** `node --test <directory>` is not
+supported on every version of Node. It fails on the Node 22 that CI currently
+runs, which tries to load the directory as a module and reports `Cannot find
+module`. Newer Node accepts it, which is how the directory form passed locally
+and failed in CI. The glob above works on both.
 
 They need no `npm install`: Node's built-in test runner and assertion library
 do the work, so there is no `package.json`, no bundler and no lockfile to keep

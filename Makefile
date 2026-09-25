@@ -35,7 +35,7 @@ test: test-js ## Run tests
 	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS))
 
 test-js: ## Run the browser JS tests (Node's built-in runner, no install needed)
-	node --test litigant_portal/app/tests/js/
+	node --test litigant_portal/app/tests/js/*.test.cjs
 
 test-v: ## Run tests — verbose output
 	$(require-docker)
