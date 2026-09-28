@@ -4,7 +4,7 @@ System architecture for the Litigant Portal, authored in **draw.io** (diagrams.n
 
 ## Files
 
-Two diagrams, deliberately separate: one for how the portal runs **today**, one for **where it is going**. Conflating them is how a court partner ends up believing their data is already in its own account.
+Four diagrams. The first two are deliberately separate: one for how the portal runs **today**, one for **where it is going**. Conflating them is how a court partner ends up believing their data is already in its own account. The other two zoom in on one part of the picture.
 
 - `system-architecture.drawio` — **today.** What is actually deployed right now.
 - `target-isolation.drawio` — **target (#859).** One AWS account per court. Not built yet.
