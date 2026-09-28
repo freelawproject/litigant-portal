@@ -29,6 +29,8 @@ The chat model is chosen in the admin settings UI (`BedrockModel` enum), default
 
 **DB-free fast tests** — when `.tox/fast` exists _and_ is current, Claude can run a focused test directly with `.tox/fast/bin/pytest <path>`. **Existence is not enough:** the env is built from `uv.lock`, and a stale one fails at import (`ModuleNotFoundError`) rather than reporting a test failure. After any dependency change, `tox -e fast --recreate`. Use that suite for a real RED→GREEN cycle on non-DB units: write the focused test, run it and confirm that it fails for the expected reason, implement the change, then rerun it to green. Tests marked `postgres` require `make test` and Docker. The fast marker filter is not a complete database-isolation boundary: unmarked tests may still use Django's database, so run only focused tests already known to be DB-free through this path.
 
+**Architecture diagrams** — after editing any `docs/architecture/*.drawio`, run `make diagrams` to regenerate its `.drawio.svg` render, and commit both files. It re-exports only sources newer than their render, because draw.io stamps a random id into every SVG and a blanket regenerate is pure diff noise. Claude must run it outside the sandbox: the draw.io CLI is an Electron app, and Electron aborts at startup (`bootstrap_check_in … Permission denied`, then `SIGTRAP`) when the macOS sandbox denies it a Mach port. Before re-exporting, check the source with `xmllint --noout <file>.drawio`. draw.io renders a malformed file (for example, `--` inside an XML comment) only up to the error and reports no failure, so a broken diagram exports looking half-empty.
+
 ### Local Development (Docker)
 
 ```sh
