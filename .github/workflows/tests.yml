@@ -59,3 +59,9 @@ jobs:
 
       - name: Test agent without Django
         run: tox run -e agent
+
+      # Browser JS, via Node's built-in test runner. No install step: there is
+      # no package.json, no bundler and no lockfile, which keeps the no-build
+      # stance the static assets already rely on.
+      - name: Test browser JS
+        run: node --test litigant_portal/app/tests/js/*.test.cjs

@@ -30,9 +30,12 @@ install: ## Install Python dependencies with dev extras
 lint: ## Run pre-commit hooks to lint and format code
 	pre-commit run --all-files
 
-test: ## Run tests
+test: test-js ## Run tests
 	$(require-docker)
 	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS))
+
+test-js: ## Run the browser JS tests (Node's built-in runner, no install needed)
+	node --test litigant_portal/app/tests/js/*.test.cjs
 
 test-v: ## Run tests — verbose output
 	$(require-docker)
