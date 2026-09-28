@@ -43,18 +43,18 @@
           <mxGeometry x="478" y="313" width="26" height="26" as="geometry" />
         </mxCell>
 
-        <!-- Migration Job: ephemeral temp pod (K8s Job icon) -->
-        <mxCell id="mig" value="Migration Job (temp pod)&#10;collectstatic + migrate, deleted after" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#2875E2;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;shape=mxgraph.kubernetes.icon2;prIcon=job;labelWidth=140;" vertex="1" parent="1">
+        <!-- Migration Pod: a bare pod from kubectl run (restart Never), not a Job, so nothing reaps it but the next deploy -->
+        <mxCell id="mig" value="Migration Pod (temp)&#10;collectstatic + migrate, reaped on next deploy" style="sketch=0;html=1;dashed=0;whiteSpace=wrap;aspect=fixed;verticalLabelPosition=bottom;verticalAlign=top;align=center;fillColor=#2875E2;strokeColor=#ffffff;fontColor=#232F3E;fontSize=11;shape=mxgraph.kubernetes.icon2;prIcon=job;labelWidth=140;" vertex="1" parent="1">
           <mxGeometry x="345" y="318" width="48" height="48" as="geometry" />
         </mxCell>
 
         <!-- docassemble Deployment: third-party image we pull and configure (dashed grey) -->
-        <mxCell id="da" value="docassemble Deployment&#10;stock jhpyle/docassemble image, pulled and configured&#10;own container, own database" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#666666;fontColor=#333333;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="470" y="440" width="260" height="78" as="geometry" />
+        <mxCell id="da" value="docassemble Deployment&#10;stock jhpyle/docassemble image, pulled and configured&#10;own container, own database&#10;prod: placeholder, not launch config (#556, #888)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#666666;fontColor=#333333;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="470" y="440" width="260" height="96" as="geometry" />
         </mxCell>
 
         <!-- ExternalSecret CRD (no native stencil; labeled box tied to Secrets Manager color) -->
-        <mxCell id="es" value="ExternalSecret&#10;(LITIGANT_ENV)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDECEC;strokeColor=#DD344C;fontColor=#A3283A;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
+        <mxCell id="es" value="ExternalSecret&#10;(litigant-env)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDECEC;strokeColor=#DD344C;fontColor=#A3283A;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
           <mxGeometry x="360" y="572" width="180" height="58" as="geometry" />
         </mxCell>
 
@@ -96,8 +96,15 @@
           <mxGeometry relative="1" as="geometry"><mxPoint y="-12" as="offset" /></mxGeometry>
         </mxCell>
 
-        <!-- litigant-web <-> docassemble -->
-        <mxCell id="e_web_da" value="interview / doc assembly" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;startArrow=block;strokeColor=#2F5FB0;fontSize=10;" edge="1" parent="1" source="web" target="da">
+        <!-- interview requests: the ALB path-splits /interview/* straight to docassemble, bypassing Django -->
+        <mxCell id="e_alb_da" value="/interview/*" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#232F3E;fontSize=10;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="alb" target="da">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points"><mxPoint x="800" y="136" /><mxPoint x="800" y="488" /></Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- litigant-web -> docassemble: API calls only (session creation, prefill) -->
+        <mxCell id="e_web_da" value="API: create session,&#10;push guided answers" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;strokeColor=#2F5FB0;fontSize=10;" edge="1" parent="1" source="web" target="da">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
 

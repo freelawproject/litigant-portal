@@ -40,16 +40,16 @@
         <mxCell id="browser" value="Litigant browser" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=12;" vertex="1" parent="1">
           <mxGeometry x="85" y="250" width="120" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="ingress" value="Ingress&#10;TLS termination + site-wide access gate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
+        <mxCell id="ingress" value="Ingress&#10;TLS termination&#10;no access gate here yet (#885)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#232F3E;fontColor=#232F3E;fontSize=11;" vertex="1" parent="1">
           <mxGeometry x="70" y="400" width="150" height="90" as="geometry" />
         </mxCell>
 
-        <mxCell id="app" value="Django app — our code&#10;(Litigant Portal + Topic Flows + AI assistant + agent tooling)&#10;deployment: litigant-web" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
-          <mxGeometry x="370" y="240" width="320" height="95" as="geometry" />
+        <mxCell id="app" value="Django app — our code&#10;(Litigant Portal + Topic Flows + AI assistant + agent tooling)&#10;deployment: litigant-web&#10;temporary site password gate: pages only, not /api/ or /interview/*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E6EEFB;strokeColor=#2F5FB0;fontColor=#12325F;fontSize=11;verticalAlign=middle;align=center;" vertex="1" parent="1">
+          <mxGeometry x="370" y="240" width="320" height="110" as="geometry" />
         </mxCell>
 
-        <mxCell id="da" value="docassemble — guided interviews + document assembly&#10;the stock jhpyle/docassemble image, pulled and configured&#10;not our code · own container, own database" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#666666;fontColor=#333333;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
-          <mxGeometry x="370" y="435" width="320" height="110" as="geometry" />
+        <mxCell id="da" value="docassemble — guided interviews + document assembly&#10;the stock jhpyle/docassemble image, pulled and configured&#10;not our code · own container, own database&#10;prod runs a placeholder copy of the QA setup, not the launch configuration (#556, #888)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#F2F2F2;strokeColor=#666666;fontColor=#333333;fontSize=11;verticalAlign=middle;align=center;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="370" y="435" width="320" height="130" as="geometry" />
         </mxCell>
 
         <mxCell id="note_qa" value="QA is the same shape in this same cluster: namespace qa-litigant, same litigant-web deployment and docassemble container, deployed by manual dispatch only." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#00A4A6;dashed=1;fontColor=#147EBA;fontSize=10;verticalAlign=middle;align=center;" vertex="1" parent="1">

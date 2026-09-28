@@ -16,7 +16,9 @@ Each has a committed `.drawio.svg` render alongside it. That SVG shows as an ima
 
 ## Editing
 
-1. Install draw.io: `brew install --cask drawio`.
+1. Install draw.io:
+   - macOS: `brew install --cask drawio`
+   - Linux: download a package (`.deb`, `.rpm`, or AppImage) from the [drawio-desktop releases page](https://github.com/jgraph/drawio-desktop/releases)
 2. Open the `.drawio` file you want, edit, save.
 3. Keep it **uncompressed** so the source diffs cleanly: Extras → Edit Diagram shows plain XML; the file must stay a plain `<mxGraphModel>` (not a base64-deflate blob). draw.io preserves the format it opened.
 4. Regenerate the SVG so the repo render stays in sync:
@@ -24,6 +26,7 @@ Each has a committed `.drawio.svg` render alongside it. That SVG shows as an ima
    ```sh
    drawio -x -f svg -e -o system-architecture.drawio.svg system-architecture.drawio
    drawio -x -f svg -e -o target-isolation.drawio.svg target-isolation.drawio
+   drawio -x -f svg -e -o eks-breakout.drawio.svg eks-breakout.drawio
    drawio -x -f svg -e -o corpus-pipeline.drawio.svg corpus-pipeline.drawio
    ```
 
@@ -52,9 +55,9 @@ let `labelWidth` handle the rest, so the text reflows when it is edited.
 
 C4 **Container** level, a technical / trust-boundary view for a new dev or a court's tech resource. Every node carries what it _does_, not just what it is:
 
-- **Public edge** — the litigant's browser, and the ingress that terminates TLS and holds the site-wide access gate. The ingress splits by path: `/interview/*` goes to docassemble, everything else to Django.
+- **Public edge** — the litigant's browser, and the ingress that terminates TLS. The ingress splits by path: `/interview/*` goes to docassemble, everything else to Django. There is no access gate at the ingress yet (that move is #885). The only gate today is `SitePasswordMiddleware` inside Django, which runs only when `SITE_PASSWORD` is set and skips `/api/`, static, and media. Interview requests never reach Django, so they are not gated at all.
 - **FLP AWS account → shared EKS cluster → namespace `litigant`** — this is the part people get wrong. There is no per-court account today. The cluster's _name_ is `courtlistener` (that's the value of `EKS_CLUSTER_NAME` in `deploy.yml`, not a mislabel) — the portal is a tenant in it. Prod is the `litigant` namespace; QA is a second namespace, `qa-litigant`, in that same cluster, deployed by manual dispatch only.
-- **The two workloads in the namespace** — the Django app (`litigant-web`), which is our code, and docassemble, which is **not**: it's the stock `jhpyle/docassemble` image, pulled and configured, running in its own container with its own database. That's why no arrow connects it to the app's Postgres. The diagram styles it as a dashed grey box for exactly that reason.
+- **The two workloads in the namespace** — the Django app (`litigant-web`), which is our code, and docassemble, which is **not**: it's the stock `jhpyle/docassemble` image, pulled and configured, running in its own container with its own database. That's why no arrow connects it to the app's Postgres. The diagram styles it as a dashed grey box for exactly that reason. What runs in prod today is a placeholder copy of the QA setup, open for editing, not the launch configuration: locking it down to anonymous, package-only interviews is #556, and how docassemble is hosted per court is still open in #888 (see [docassemble.md](../docassemble.md)).
 - **Managed AWS services** — Secrets Manager (app config + credentials, synced in by External Secrets), Postgres + pgvector (app data, corpus rows, chat threads, **and sessions** — Django's session backend is the database, not Redis), Redis/ElastiCache (Django's cache only), and S3 (a private bucket for litigant uploads, a public one for static + media).
 - **External services** — AWS Bedrock for LLM inference, reached through LiteLLM, which is a _library inside the Django app_, not a service of its own. Third-party court and state services are **outbound links the litigant follows off-site** — there is no API integration with them.
 - **Delivery** — GitHub Actions runs tests, builds the image, pushes it to **Docker Hub** (`freelawproject/litigant-portal:<sha>-prod`), then deploys to EKS. Prod deploys automatically on merge to main; QA is manual-dispatch only. The court corpus is YAML in this repo and ships **inside the image**, read at runtime.
