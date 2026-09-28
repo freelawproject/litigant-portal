@@ -13,10 +13,10 @@ The repo's reference shelf: material you reach for when you need it. Day-to-day 
 
 ## Architecture
 
-| Doc                                                    | Purpose                                                                           |
-| ------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| [architecture/](./architecture/README.md)              | draw.io diagrams: today's deployed topology, the per-court target, EKS internals |
-| [corpus-pipeline.md](./architecture/corpus-pipeline.md) | How source documents become topic flow pages and the assistant's prompt           |
+| Doc                                                     | Purpose                                                                          |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| [architecture/](./architecture/README.md)               | draw.io diagrams: today's deployed topology, the per-court target, EKS internals |
+| [corpus-pipeline.md](./architecture/corpus-pipeline.md) | How source documents become topic flow pages and the assistant's prompt          |
 
 ## Deployment
 
