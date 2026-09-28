@@ -21,16 +21,13 @@ Each has a committed `.drawio.svg` render alongside it. That SVG shows as an ima
    - Linux: download a package (`.deb`, `.rpm`, or AppImage) from the [drawio-desktop releases page](https://github.com/jgraph/drawio-desktop/releases)
 2. Open the `.drawio` file you want, edit, save.
 3. Keep it **uncompressed** so the source diffs cleanly: Extras → Edit Diagram shows plain XML; the file must stay a plain `<mxGraphModel>` (not a base64-deflate blob). draw.io preserves the format it opened.
-4. Regenerate the SVG so the repo render stays in sync:
+4. Regenerate the SVG so the repo render stays in sync, from the repo root:
 
    ```sh
-   drawio -x -f svg -e -o system-architecture.drawio.svg system-architecture.drawio
-   drawio -x -f svg -e -o target-isolation.drawio.svg target-isolation.drawio
-   drawio -x -f svg -e -o eks-breakout.drawio.svg eks-breakout.drawio
-   drawio -x -f svg -e -o corpus-pipeline.drawio.svg corpus-pipeline.drawio
+   make diagrams
    ```
 
-   (`-e` embeds the diagram so the SVG reopens editable.) Commit both files.
+   It re-exports only the diagrams whose `.drawio` is newer than its `.drawio.svg`. That matters because draw.io stamps a random id into every SVG it writes, so re-exporting an unchanged diagram produces a diff with no visible change. Under the hood it runs `drawio -x -f svg -e -o <name>.drawio.svg <name>.drawio`, where `-e` embeds the diagram so the SVG reopens editable. Commit both files.
 
 ### Wrapping a label under an icon
 

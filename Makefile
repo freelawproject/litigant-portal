@@ -48,6 +48,17 @@ pre-commit: ## Lint then test — stops if lint fails/fixes anything
 agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'report ...')
 	uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
 
+# Only sources newer than their render are re-exported: draw.io stamps a random
+# id into every SVG, so regenerating an unchanged diagram is pure diff noise.
+DIAGRAMS := $(wildcard docs/architecture/*.drawio)
+
+.PHONY: diagrams
+diagrams: $(DIAGRAMS:=.svg) ## Regenerate docs/architecture SVG renders whose .drawio changed (needs the draw.io desktop CLI)
+
+docs/architecture/%.drawio.svg: docs/architecture/%.drawio
+	@command -v drawio >/dev/null || { echo "drawio not found — see docs/architecture/README.md"; exit 1; }
+	drawio -x -f svg -e -o $@ $<
+
 css: ## Build Tailwind CSS (one-time)
 	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT)
 
