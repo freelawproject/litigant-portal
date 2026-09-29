@@ -1,3 +1,5 @@
+import json
+
 from .base import Agent, AgentState
 from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
 from .tools.query_document import QueryDocument
@@ -99,9 +101,11 @@ def generate_facts_prompt(identity) -> str:
     answers = variable_answer_list(identity=identity, answered_only=True)
     if not answers:
         return ""
+    # json.dumps: a value with a newline must not add its own prompt lines.
     facts = "\n".join(
         f"- {a.variable.name} ({a.variable.label or a.variable.name}): "
-        f"{a.display_value} [{'confirmed' if a.reviewed else 'unconfirmed'}]"
+        f"{json.dumps(str(a.display_value), ensure_ascii=False)} "
+        f"[{'confirmed' if a.reviewed else 'unconfirmed'}]"
         for a in answers
     )
     return FACTS_PROMPT.format(facts=facts)
