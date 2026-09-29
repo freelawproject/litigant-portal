@@ -1,7 +1,7 @@
-{# RecordFact result card. Context: `data` (saved: [{name, label, value, cleared}], errors: [{name, label, message}]). #}
+{# RecordFact result card. Context: `data` (saved: [{name, label, value, cleared}], unchanged: [{name, label, value}], errors: [{name, label, message}]). #}
 {# Errors carry no render_data, so an empty `data` renders the error state. #}
 {% load i18n %}
-{% if data.saved or data.errors %}
+{% if data.saved or data.unchanged or data.errors %}
   <div class="max-w-md rounded-lg border border-greyscale-200 bg-white overflow-hidden">
     <details class="group">
       <summary class="block px-3 py-2 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
@@ -10,6 +10,8 @@
           <span class="text-sm text-greyscale-700 truncate">
             {% if data.saved %}
               {% trans "Saved to your answers" %}
+            {% elif data.unchanged %}
+              {% trans "Already in your answers" %}
             {% else %}
               {% trans "Could not save your answers" %}
             {% endif %}
@@ -30,6 +32,12 @@
               {% else %}
                 <p class="text-xs text-greyscale-500 leading-relaxed">{{ fact.value }}</p>
               {% endif %}
+            </div>
+          {% endfor %}
+          {% for fact in data.unchanged %}
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-wide text-greyscale-400">{{ fact.label }}</p>
+              <p class="text-xs text-greyscale-500 leading-relaxed">{{ fact.value }}</p>
             </div>
           {% endfor %}
           {% if data.errors %}

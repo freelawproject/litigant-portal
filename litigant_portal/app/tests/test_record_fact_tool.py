@@ -98,6 +98,134 @@ def test_confirmed_answer_resaved_drops_back_to_unconfirmed(thread, county):
     assert answer.reviewed is False
 
 
+def test_restated_confirmed_answer_keeps_its_confirmation(thread, county):
+    variable_answer_set(
+        identity=thread.identity,
+        variable=county,
+        value="cass",
+        reviewed=True,
+    )
+
+    output = RecordFact(facts={"county": "cass"})(thread_id=thread.id)
+
+    answer = VariableAnswer.objects.get(
+        identity=thread.identity, variable=county
+    )
+    assert answer.reviewed is True
+    assert "Already saved, unchanged: county." in output.result
+    assert "Saved as" not in output.result
+    assert output.refresh_system_prompt is False
+
+
+def test_restated_unconfirmed_answer_is_not_rewritten(thread, county):
+    before = variable_answer_set(
+        identity=thread.identity, variable=county, value="cass"
+    )
+
+    RecordFact(facts={"county": "cass"})(thread_id=thread.id)
+
+    answer = VariableAnswer.objects.get(pk=before.pk)
+    assert answer.reviewed is False
+    assert answer.updated_at == before.updated_at
+
+
+def test_clearing_a_confirmed_answer_drops_its_confirmation(thread, county):
+    variable_answer_set(
+        identity=thread.identity,
+        variable=county,
+        value="cass",
+        reviewed=True,
+    )
+
+    output = RecordFact(facts={"county": None})(thread_id=thread.id)
+
+    answer = VariableAnswer.objects.get(
+        identity=thread.identity, variable=county
+    )
+    assert answer.value is None
+    assert answer.reviewed is False
+    assert output.render_data["saved"][0]["cleared"] is True
+
+
+def test_clearing_an_already_cleared_answer_is_unchanged(thread, county):
+    variable_answer_set(identity=thread.identity, variable=county, value=None)
+
+    output = RecordFact(facts={"county": None})(thread_id=thread.id)
+
+    assert output.render_data["saved"] == []
+    assert [f["name"] for f in output.render_data["unchanged"]] == ["county"]
+    assert "Cleared" not in output.result
+
+
+def test_restated_value_in_other_case_is_validated_not_unchanged(
+    thread, county
+):
+    variable_answer_set(
+        identity=thread.identity, variable=county, value="cass"
+    )
+
+    output = RecordFact(facts={"county": "Cass"})(thread_id=thread.id)
+
+    assert output.render_data["unchanged"] == []
+    assert "county: must be one of" in output.result
+
+
+def test_unchanged_facts_carry_label_and_display_value(thread, date_of_birth):
+    is_adult = Variable.objects.create(
+        name="is_adult",
+        label="18 or older",
+        data_type=VariableDataType.BOOLEAN,
+    )
+    variable_answer_set(
+        identity=thread.identity, variable=date_of_birth, value="1991-01-31"
+    )
+    variable_answer_set(
+        identity=thread.identity, variable=is_adult, value=True
+    )
+
+    output = RecordFact(
+        facts={"date_of_birth": "1991-01-31", "is_adult": True}
+    )(thread_id=thread.id)
+
+    unchanged = output.render_data["unchanged"]
+    # Same lazy-proxy trap as saved rows: pin the type, not just the value.
+    assert all(type(fact["value"]) is str for fact in unchanged)
+    assert unchanged == [
+        {
+            "name": "date_of_birth",
+            "label": "Date of birth",
+            "value": "Thursday, January 31, 1991",
+        },
+        {"name": "is_adult", "label": "18 or older", "value": "Yes"},
+    ]
+
+
+def test_unchanged_fact_does_not_block_sibling_save(
+    thread, county, date_of_birth
+):
+    variable_answer_set(
+        identity=thread.identity,
+        variable=county,
+        value="cass",
+        reviewed=True,
+    )
+
+    output = RecordFact(
+        facts={"county": "cass", "date_of_birth": "1990-01-31"}
+    )(thread_id=thread.id)
+
+    assert (
+        VariableAnswer.objects.get(
+            identity=thread.identity, variable=date_of_birth
+        ).value
+        == "1990-01-31"
+    )
+    assert [fact["name"] for fact in output.render_data["saved"]] == [
+        "date_of_birth"
+    ]
+    assert output.refresh_system_prompt is True
+
+
 def test_unknown_name_reported_without_blocking_sibling_save(thread, county):
     output = RecordFact(facts={"not_a_variable": "x", "county": "cass"})(
         thread_id=thread.id

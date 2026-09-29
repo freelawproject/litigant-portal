@@ -32,7 +32,7 @@ class RecordFact(Tool):
     def __call__(self, *, thread_id) -> ToolOutput:
         from django.core.exceptions import ValidationError
 
-        from litigant_portal.app.models import Variable
+        from litigant_portal.app.models import Variable, VariableAnswer
         from litigant_portal.app.selectors.chat_engine import (
             chat_thread_identity_get,
         )
@@ -54,9 +54,16 @@ class RecordFact(Tool):
                 name__in=self.facts, in_schema=True
             )
         }
+        answers = {
+            a.variable_id: a
+            for a in VariableAnswer.objects.filter(
+                identity=identity, variable__in=variables.values()
+            ).select_related("variable")
+        }
 
         # Per-fact, not atomic: a bad value must not block sibling saves.
         saved: list[dict] = []
+        unchanged: list[dict] = []
         errors: list[dict] = []
         for name, value in self.facts.items():
             variable = variables.get(name)
@@ -66,6 +73,18 @@ class RecordFact(Tool):
                         "name": name,
                         "label": name,
                         "message": "no variable with this name",
+                    }
+                )
+                continue
+            # A restated fact must not reset a confirmation the user gave
+            # on the guided page.
+            existing = answers.get(variable.pk)
+            if existing is not None and existing.value == value:
+                unchanged.append(
+                    {
+                        "name": name,
+                        "label": variable.label or name,
+                        "value": str(existing.display_value),
                     }
                 )
                 continue
@@ -105,6 +124,11 @@ class RecordFact(Tool):
             )
         if cleared:
             parts.append(f"Cleared saved answers: {', '.join(cleared)}.")
+        if unchanged:
+            parts.append(
+                "Already saved, unchanged: "
+                f"{', '.join(fact['name'] for fact in unchanged)}."
+            )
         if errors:
             parts.append("Not saved:")
             parts += [f"- {e['name']}: {e['message']}" for e in errors]
@@ -116,6 +140,10 @@ class RecordFact(Tool):
 
         return ToolOutput(
             result="\n".join(parts),
-            render_data={"saved": saved, "errors": errors},
+            render_data={
+                "saved": saved,
+                "unchanged": unchanged,
+                "errors": errors,
+            },
             refresh_system_prompt=bool(saved),
         )
