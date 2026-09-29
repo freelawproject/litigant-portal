@@ -1,0 +1,72 @@
+/*
+ * POC (#946): styles for the embedded interview panel. Plain CSS in its own
+ * file so the spike needs no Tailwind rebuild; anything that survives the
+ * POC moves into main.css as tokens and utilities.
+ */
+
+/* Full-height panel that slides in from the right; full width on phones. */
+.interview-panel {
+  position: fixed;
+  inset: 0 0 0 auto;
+  margin: 0;
+  width: 100%;
+  max-width: 48rem;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 0;
+  border: 0;
+  display: none;
+  flex-direction: column;
+  background: #fff;
+  box-shadow: -8px 0 24px rgb(0 0 0 / 0.12);
+  transform: translateX(100%);
+  transition:
+    transform 300ms ease,
+    overlay 300ms allow-discrete,
+    display 300ms allow-discrete;
+}
+
+.interview-panel[open] {
+  display: flex;
+  transform: translateX(0);
+}
+
+/* Entry animation: start off-screen when the dialog first opens. */
+@starting-style {
+  .interview-panel[open] {
+    transform: translateX(100%);
+  }
+}
+
+.interview-panel::backdrop {
+  background: rgb(0 0 0 / 0.3);
+}
+
+/* The frame fills the rest of the panel and draws no border of its own, so
+   the interview reads as part of the page rather than a box inside it. */
+.interview-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+}
+
+/* A tab on the right edge, back into the interview once it has started. */
+.interview-edge-tab {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  padding: 1rem 0.5rem;
+  border-radius: 0.5rem 0 0 0.5rem;
+  background: var(--color-primary-600, #2563eb);
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .interview-panel {
+    transition: none;
+  }
+}

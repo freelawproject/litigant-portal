@@ -1,0 +1,41 @@
+{% load i18n %}
+
+{# POC (#946): flow_section_packet.html with the interview opened in the page's #}
+{# slide-in panel instead of a new tab. Without JS the form keeps #}
+{# target="_blank", so the plain new-tab handoff still works. #}
+<ul class="list-disc space-y-1 pl-5 text-greyscale-700">
+  {% for form in ctx.forms %}
+  <li>
+    {% if form.url %}
+    <c-atoms.link href="{{ form.url }}" target="_blank" external_icon="true">{{ form.name }}</c-atoms.link>
+    {% else %}
+    {{ form.name }}
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+
+{% if ctx.interview_available %}
+<div class="mt-4 space-y-3">
+  <form
+    method="post"
+    action="{% url 'pages:topic_flow_interview' court=ctx.court topic=ctx.topic role=ctx.role %}"
+    target="_blank"
+    x-bind:target="formTarget"
+    x-on:submit="start"
+  >
+    {% csrf_token %}
+    <c-atoms.button type="submit" variant="primary" x-show="isNotStarted">
+      <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+      {% trans "Fill out your forms" %}
+    </c-atoms.button>
+  </form>
+  <c-atoms.button type="button" variant="primary" x-cloak x-show="isStarted" x-on:click="open">
+    <c-atoms.icon name="pencil-square" class="w-4 h-4" />
+    {% trans "Continue your forms" %}
+  </c-atoms.button>
+  <p class="text-sm text-greyscale-700">
+    {% trans "Save your completed packet somewhere easy to find. You'll need to print and sign these forms and bring them with you to court (or mail them in, depending on your court's process)." %}
+  </p>
+</div>
+{% endif %}

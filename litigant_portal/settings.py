@@ -387,3 +387,12 @@ DOCASSEMBLE_API_KEY = os.environ.get("DOCASSEMBLE_API_KEY") or None
 # internal hostname: launch links are built on this base and the resume link
 # is rewritten onto its origin. Unset falls back to DOCASSEMBLE_BASE_URL.
 DOCASSEMBLE_PUBLIC_URL = os.environ.get("DOCASSEMBLE_PUBLIC_URL") or None
+
+# POC (#946): the embedded-interview page frames docassemble, so frames may
+# load from its litigant-facing origin. Without it, frame-src falls back to
+# default-src 'self' and the browser blocks the frame.
+_docassemble_frame_base = DOCASSEMBLE_PUBLIC_URL or DOCASSEMBLE_BASE_URL
+CSP_FRAME_SRC = ("'self'",)
+if _docassemble_frame_base:
+    _parts = urlsplit(_docassemble_frame_base)
+    CSP_FRAME_SRC += (f"{_parts.scheme}://{_parts.netloc}",)

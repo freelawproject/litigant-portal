@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% load i18n static %}
+
+{% block title %}
+  {{ corpus.metadata.title }} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block extra_css %}
+  <link rel="stylesheet" href="{% static 'css/topic_flow_embedded_poc.css' %}" />
+{% endblock extra_css %}
+
+{% block header %}
+  <c-organisms.header :toc="toc" />
+{% endblock header %}
+
+{% block content %}
+<div x-data="embeddedInterview">
+  <div class="border-b border-greyscale-100 bg-primary-50 px-4 py-4">
+    <h1 class="text-xl font-bold text-greyscale-900">{{ corpus.metadata.title }}</h1>
+  </div>
+
+  <div class="mx-auto max-w-3xl px-4 py-8">
+    {% for section in rendered_sections %}
+    <section id="{{ section.anchor_id }}" class="mb-8 scroll-mt-4">
+      {% if section.heading %}
+      <h2 class="mb-3 text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
+      {% endif %}
+      {% include section.template with ctx=section.context %}
+    </section>
+    {% endfor %}
+  </div>
+
+  {# Edge tab: back into the interview once started. Swipe left on it, or tap. #}
+  <button
+    type="button"
+    class="interview-edge-tab"
+    x-cloak
+    x-show="showsEdgeTab"
+    x-on:click="open"
+    x-on:touchstart="touchStart"
+    x-on:touchend="edgeTouchEnd"
+  >
+    {% trans "Your forms" %}
+  </button>
+
+  {# The interview lives in this dialog for the life of the page: closing hides #}
+  {# it but keeps the frame loaded, so a half-filled interview is still there #}
+  {# when the litigant comes back to it. #}
+  <dialog
+    x-ref="panel"
+    class="interview-panel"
+    aria-labelledby="interview-panel-title"
+    x-on:close="closed"
+  >
+    <div
+      class="flex items-center gap-3 border-b border-greyscale-100 bg-white px-4 py-3"
+      x-on:touchstart="touchStart"
+      x-on:touchend="panelTouchEnd"
+    >
+      <c-atoms.button type="button" variant="ghost" size="icon" aria_label="{% trans 'Back to the guide' %}" x-on:click="close">
+        <c-atoms.icon name="arrow-left" class="w-5 h-5" />
+      </c-atoms.button>
+      <div>
+        <h2 id="interview-panel-title" class="text-base font-semibold text-greyscale-900">{% trans "Fill out your forms" %}</h2>
+        <p class="text-xs text-greyscale-500">{% trans "Your progress is kept while you read the guide." %}</p>
+      </div>
+    </div>
+    <iframe
+      name="da-interview-frame"
+      title="{% trans 'Court forms interview' %}"
+      class="interview-frame"
+    ></iframe>
+  </dialog>
+</div>
+{% endblock content %}
+
+{% block extra_js %}
+  <script src="{% static 'js/topic_flow_embedded_poc.js' %}"></script>
+{% endblock extra_js %}

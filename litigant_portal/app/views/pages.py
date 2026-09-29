@@ -1,5 +1,7 @@
 import os
+from dataclasses import replace
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -191,6 +193,53 @@ def _render_topic_flow(request, corpus, answers, errors=None):
     return render(
         request,
         "pages/topic_flow.html",
+        {
+            "corpus": corpus,
+            "rendered_sections": rendered_sections,
+            "toc": toc,
+        },
+    )
+
+
+_PACKET_TEMPLATE = "cotton/molecules/flow_section_packet.html"
+_EMBEDDED_PACKET_TEMPLATE = (
+    "cotton/molecules/flow_section_packet_embedded.html"
+)
+
+
+def topic_flow_embedded_poc(request, court, topic, role):
+    """POC (#946): the Topic Flow page with its interview embedded in place.
+
+    DEBUG-only spike. Renders the same sections as ``topic_flow``, but the
+    packet section opens the docassemble interview in a slide-in panel on
+    this page instead of a new tab. Answers are saved through the normal
+    ``topic_flow`` POST, so only rendering differs.
+    """
+    if not settings.DEBUG:
+        raise Http404("POC pages exist only in DEBUG")
+    corpus = registry.get(court, topic, role)
+    if corpus is None:
+        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+
+    answers = topic_flow_answers(request, corpus)
+    rendered_sections = [
+        render_section(section, corpus, answers, None)
+        for section in corpus.sections
+    ]
+    rendered_sections = [
+        replace(section, template=_EMBEDDED_PACKET_TEMPLATE)
+        if section.template == _PACKET_TEMPLATE
+        else section
+        for section in rendered_sections
+    ]
+    toc = [
+        {"anchor": section.anchor_id, "heading": section.heading}
+        for section in rendered_sections
+        if section.heading
+    ]
+    return render(
+        request,
+        "pages/topic_flow_embedded_poc.html",
         {
             "corpus": corpus,
             "rendered_sections": rendered_sections,
