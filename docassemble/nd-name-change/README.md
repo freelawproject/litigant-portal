@@ -48,8 +48,10 @@ Prereq: the bench is up. See [`docs/docassemble.md`](../../docs/docassemble.md).
 - Upload the templates: in the Playground, open the **Templates** folder → upload
   `petition.pdf`, `declaration.pdf`, `notice.pdf`, `confidential-info.pdf`, and `order.pdf`
   (each attachment block's `pdf template file:` line resolves against this folder)
-- Upload the interview: in the **Sources** folder (the interview file list at the top of the
-  editor) → upload `petition-standard.yml`, then select it so it loads in the editor
+- Upload the interview: on the Playground's main page (the interview editor, **not**
+  Folders → Sources), use the upload button to add `petition-standard.yml`, then select
+  it so it loads in the editor. Files in Folders → Sources install to `data/sources/`,
+  which is never served as an interview.
 - Run it: click **Save and Run**
 - Walk the screens with the sample data below, then **download the combined
   packet** (and spot-check each form) at the end
