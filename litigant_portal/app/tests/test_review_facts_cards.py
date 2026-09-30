@@ -140,6 +140,12 @@ def test_the_outcome_notes_render_hidden_for_the_component_to_reveal(
         "error-note": True,
         "stale-note": True,
     }
+    # Revealing a note flips `hidden`, which a screen reader only announces
+    # inside a live region (WCAG 4.1.3). One region wraps all three.
+    (region,) = re.findall(
+        r'<div aria-live="polite">(.*?)</div>', html, flags=re.DOTALL
+    )
+    assert region.count("-note") == 3
 
 
 def test_missing_facts_are_listed_as_still_needed(client_thread):

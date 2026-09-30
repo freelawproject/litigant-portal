@@ -49,15 +49,19 @@
         <c-atoms.button type="button" variant="primary" size="sm" x-on:click="confirmFacts" data-role="confirm">
           {% trans "Confirm my answers" %}
         </c-atoms.button>
-        <p class="text-xs text-green-700" hidden data-role="confirmed-note">
-          {% trans "Confirmed. Your answers are marked as reviewed." %}
-        </p>
-        <p class="text-xs text-amber-600" hidden data-role="error-note">
-          {% trans "Confirming did not work. Please try again." %}
-        </p>
-        <p class="text-xs text-amber-600" hidden data-role="stale-note">
-          {% trans "Some answers changed after this card was shown, so they were not confirmed. Ask me to review your answers again." %}
-        </p>
+        {# One live region: the notes show one at a time, and revealing a #}
+        {# child announces it (WCAG 4.1.3). #}
+        <div aria-live="polite">
+          <p class="text-xs text-green-700" hidden data-role="confirmed-note">
+            {% trans "Confirmed. Your answers are marked as reviewed." %}
+          </p>
+          <p class="text-xs text-amber-600" hidden data-role="error-note">
+            {% trans "Confirming did not work. Please try again." %}
+          </p>
+          <p class="text-xs text-amber-600" hidden data-role="stale-note">
+            {% trans "Some answers changed after this card was shown, so they were not confirmed. Ask me to review your answers again." %}
+          </p>
+        </div>
       </div>
       {% if data.interview_available %}
         <form method="post"
