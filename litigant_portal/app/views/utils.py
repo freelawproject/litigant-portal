@@ -10,7 +10,7 @@ from litigant_portal.app.selectors.topic_flow import (
 from litigant_portal.app.topic_flow.renderer import question_ids
 
 
-def _has_identity(request) -> bool:
+def has_identity(request) -> bool:
     """Whether this visitor already has an identity worth reading.
 
     ``request.identity`` resolves lazily by minting a session and a
@@ -35,7 +35,7 @@ def topic_flow_reviewed_answers(request, names: list[str]) -> dict:
 
 
 def _answer_map(request, names, *, reviewed_only=False) -> dict:
-    if not _has_identity(request):
+    if not has_identity(request):
         return {}
     return variable_answer_map(
         identity=request.identity, names=names, reviewed_only=reviewed_only
@@ -48,7 +48,7 @@ def briefcase_answers(request) -> list[dict]:
     Empty for a visitor with no identity yet, which renders as the panel's
     empty state rather than an absent context key.
     """
-    if not _has_identity(request):
+    if not has_identity(request):
         return []
     return variable_answer_groups(identity=request.identity)
 

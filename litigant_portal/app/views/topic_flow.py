@@ -28,7 +28,7 @@ from litigant_portal.app.topic_flow.prefill import (
 )
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.views.utils import (
-    _has_identity,
+    has_identity,
     topic_flow_answers,
     topic_flow_reviewed_answers,
 )
@@ -134,7 +134,7 @@ def topic_flow_confirm(request):
     tell a value that changed since it was shown from one already confirmed
     on an earlier card (both leave ``n`` short).
     """
-    if not _has_identity(request):
+    if not has_identity(request):
         return JsonResponse({"error": _("Forbidden")}, status=403)
     names = [name for name in request.POST.getlist("names") if name]
     if not names:
