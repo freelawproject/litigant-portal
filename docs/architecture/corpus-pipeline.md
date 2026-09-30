@@ -31,12 +31,12 @@ publication, our flow prose carried one, and no check noticed.
 
 ## Layer 2: repository trees
 
-| Tree                           | Holds                                                   | Read by                                                              |
-| ------------------------------ | ------------------------------------------------------- | -------------------------------------------------------------------- |
-| `litigant_portal/corpus/`      | variables, court, topic, flows, forms (`.yml` + `.pdf`) | `selectors/corpus.py`, then `sync_corpus`                            |
-| `litigant_portal/content/`     | the older flat corpus                                   | `app/topic_flow/registry.py`                                         |
-| `litigant_portal/prompts/`     | `courts/<court>/prompt.md`, `topics/<topic>/prompt.md`  | nothing reads the text; a file existing gates its deep link          |
-| `litigant_portal/agents/`      | `BASE_PROMPT` and the court, flow and facts templates   | the chat assistant, assembled per turn                               |
+| Tree                       | Holds                                                   | Read by                                                     |
+| -------------------------- | ------------------------------------------------------- | ----------------------------------------------------------- |
+| `litigant_portal/corpus/`  | variables, court, topic, flows, forms (`.yml` + `.pdf`) | `selectors/corpus.py`, then `sync_corpus`                   |
+| `litigant_portal/content/` | the older flat corpus                                   | `app/topic_flow/registry.py`                                |
+| `litigant_portal/prompts/` | `courts/<court>/prompt.md`, `topics/<topic>/prompt.md`  | nothing reads the text; a file existing gates its deep link |
+| `litigant_portal/agents/`  | `BASE_PROMPT` and the court, flow and facts templates   | the chat assistant, assembled per turn                      |
 
 `corpus/` is the contract boundary. It is schema-validated and checked at startup, so
 it is the right emit target for a build tool.
