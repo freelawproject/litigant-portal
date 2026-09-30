@@ -100,3 +100,17 @@ class CorpusRegistry:
 
 # Module-level default over the repo's content/ directory.
 registry = CorpusRegistry()
+
+
+def topic_flow_track_find(flow) -> dict | None:
+    """The registry track matching a DB TopicFlow, or None.
+
+    Bridges the two live trees: ``flow`` is a database row synced from
+    ``corpus/``; the returned track names the ``content/`` page for the
+    same (topic, role). Several courts sharing a topic and role would make
+    the first match win; fine while the registry holds one court (#179).
+    """
+    for track in registry.tracks_for(flow.topic.slug):
+        if track["role"] == flow.slug:
+            return track
+    return None

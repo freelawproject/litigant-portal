@@ -1200,4 +1200,98 @@ document.addEventListener('alpine:init', () => {
       }
     },
   }))
+
+  // The ReviewFacts tool card: the human-only confirm step. UI flips are
+  // imperative DOM updates, not x-bind/x-show: bindings evaluated while x-html
+  // inserts the card leak into the hosting x-html effect, so the first
+  // reactive write re-renders and resets the card (CSP build 3.14.9).
+  Alpine.data('factReviewCard', () => ({
+    names: [],
+    confirmUrl: '',
+    busy: false,
+    done: false,
+
+    init() {
+      this.names = (this.$root.dataset.names || '').split(',').filter(Boolean)
+      this.confirmUrl = this.$root.dataset.confirmUrl
+      if (this.$root.dataset.allReviewed === 'true') this.markConfirmed()
+      else this.setLaunchEnabled(false)
+    },
+
+    // Token in the form body: the X-CSRFToken header is stripped on QA.
+    async confirmFacts() {
+      if (this.busy || this.done || this.names.length === 0) return
+      this.busy = true
+      this.showNote('error-note', false)
+      try {
+        const body = new FormData()
+        body.append('csrfmiddlewaretoken', this.csrfToken())
+        for (const name of this.names) body.append('names', name)
+        const res = await fetch(this.confirmUrl, { method: 'POST', body })
+        if (!res.ok) throw new Error('confirm failed: ' + res.status)
+        this.markConfirmed()
+      } catch (e) {
+        console.error('Failed to confirm facts:', e)
+        this.showNote('error-note', true)
+      } finally {
+        this.busy = false
+      }
+    },
+
+    markConfirmed() {
+      this.done = true
+      const confirm = this.$root.querySelector('[data-role=confirm]')
+      if (confirm) confirm.disabled = true
+      this.showNote('confirmed-note', true)
+      this.showNote('error-note', false)
+      this.showAll('badge-pending', false)
+      this.showAll('badge-confirmed', true)
+      this.setLaunchEnabled(true)
+    },
+
+    showAll(role, show) {
+      for (const el of this.$root.querySelectorAll(
+        '[data-role=' + role + ']'
+      )) {
+        el.hidden = !show
+      }
+    },
+
+    setLaunchEnabled(enabled) {
+      const button = this.$root.querySelector('form button[type=submit]')
+      if (button) button.disabled = !enabled
+      if (enabled) this.armLaunch()
+    },
+
+    showNote(role, show) {
+      const note = this.$root.querySelector('[data-role=' + role + ']')
+      if (note) note.hidden = !show
+    },
+
+    // The launch form's token input is created here, already filled: an empty
+    // one in the message flow would shadow the page's token for every caller.
+    armLaunch() {
+      const form = this.$root.querySelector('form')
+      if (!form) return
+      const token = this.csrfToken()
+      let input = form.querySelector('input[name=csrfmiddlewaretoken]')
+      if (!input) {
+        input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = 'csrfmiddlewaretoken'
+        form.appendChild(input)
+      }
+      input.value = token
+    },
+
+    // Skips empty inputs: this card's own input precedes the page's in DOM order.
+    csrfToken() {
+      for (const input of document.querySelectorAll(
+        '[name=csrfmiddlewaretoken]'
+      )) {
+        if (input.value) return input.value
+      }
+      return ''
+    },
+  }))
 })

@@ -372,6 +372,17 @@ def test_the_same_answer_is_sent_once_the_litigant_confirms_it(
 
 
 @pytest.mark.django_db
+def test_an_answer_confirmed_through_the_chat_endpoint_reaches_the_payload(
+    client, monkeypatch, docassemble, variables
+):
+    _flow(monkeypatch)
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post("/facts/confirm/", {"names": ["first_name"]})
+    client.post(URL)
+    assert docassemble.calls[0]["variables"] == {"current_first": "Sandra"}
+
+
+@pytest.mark.django_db
 def test_an_assistant_overwrite_drops_a_confirmed_answer_again(
     client, monkeypatch, docassemble, variables
 ):
