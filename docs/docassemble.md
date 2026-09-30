@@ -79,8 +79,8 @@ Sending the payload creates a session, so the handoff is a POST from a form, not
 
 The corpus references name the `docassemble.ndnamechange` package, so a Playground upload alone no longer resolves them: the interviews must be installed as that package on whichever docassemble serves the handoff (bench or QA). From the Playground it takes a minute:
 
-1. Upload the interviews to **Sources** and the PDFs to **Templates** (the "Test it locally" steps in [`docassemble/nd-name-change/README.md`](../docassemble/nd-name-change/README.md)).
-2. **Folders → Packages** → add a package named `ndnamechange`, attach both interview files and the five PDF templates.
+1. Upload the interviews on the Playground's main page (the interview editor) and the PDFs to **Templates** (the "Test it locally" steps in [`docassemble/nd-name-change/README.md`](../docassemble/nd-name-change/README.md)). Not Folders → Sources: that folder installs to `data/sources/`, so a package built from it installs cleanly but serves no interviews, and every launch 404s.
+2. **Folders → Packages** → add a package named `ndnamechange`. Select both interviews in the **Interview files** box (the first one, not **Source files**) and the five PDFs in **Template files**. Add `lp-branding.css` and `lp-logo.svg` under **Static files** for the portal look.
 3. Click **Install**. The server now resolves `docassemble.ndnamechange:data/questions/petition-standard.yml` for every user, and the LP handoff works.
 
 Re-run the Install after changing an interview: the Playground copy and the installed package are separate copies.
