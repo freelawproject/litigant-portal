@@ -82,7 +82,7 @@
         <mxCell id="corpus" value="Court corpus (YAML, in the repo)&#10;the court's topics, sections, forms and contacts&#10;ships inside the image, read at runtime" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EAF6EC;strokeColor=#2E7D32;fontColor=#1B5E20;fontSize=10;" vertex="1" parent="1">
           <mxGeometry x="690" y="820" width="320" height="110" as="geometry" />
         </mxCell>
-        <mxCell id="devbox" value="Dev only — not a court instance&#10;local: docker compose (Caddy, Postgres, Redis, docassemble)&#10;shared dev + demo host: a DigitalOcean droplet at dev.litigantportal.com" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;dashed=1;fontColor=#555555;fontSize=10;" vertex="1" parent="1">
+        <mxCell id="devbox" value="Dev only — not a court instance&#10;local: docker compose (Caddy, Postgres, Redis, docassemble)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#999999;dashed=1;fontColor=#555555;fontSize=10;" vertex="1" parent="1">
           <mxGeometry x="1040" y="820" width="380" height="110" as="geometry" />
         </mxCell>
 

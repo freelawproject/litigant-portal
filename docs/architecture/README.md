@@ -58,7 +58,7 @@ C4 **Container** level, a technical / trust-boundary view for a new dev or a cou
 - **Managed AWS services** — Secrets Manager (app config + credentials, synced in by External Secrets), Postgres + pgvector (app data, corpus rows, chat threads, **and sessions** — Django's session backend is the database, not Redis), Redis/ElastiCache (Django's cache only), and S3 (a private bucket for litigant uploads, a public one for static + media).
 - **External services** — AWS Bedrock for LLM inference, reached through LiteLLM, which is a _library inside the Django app_, not a service of its own. Third-party court and state services are **outbound links the litigant follows off-site** — there is no API integration with them.
 - **Delivery** — GitHub Actions runs tests, builds the image, pushes it to **Docker Hub** (`freelawproject/litigant-portal:<sha>-prod`), then deploys to EKS. Prod deploys automatically on merge to main; QA is manual-dispatch only. The court corpus is YAML in this repo and ships **inside the image**, read at runtime.
-- **Dev is not a court instance** — locally it's `docker compose`; the shared dev/demo host is a DigitalOcean droplet at `dev.litigantportal.com`. Neither is part of the deployed topology.
+- **Dev is not a court instance** — locally it's `docker compose`, which is not part of the deployed topology.
 
 The diagram carries its own legend, bottom left: solid blue is our code, green is court-authored content, dashed grey is third-party software we merely pull and configure, purple is an AWS-managed service (drawn with its AWS4 stencil), and orange is external — the litigant leaves the portal.
 
