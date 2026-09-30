@@ -1,8 +1,9 @@
 import logging
 
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve
+from django.utils.translation import gettext as _
 from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_POST
 
@@ -11,6 +12,7 @@ from litigant_portal.app.services.docassemble import (
     docassemble_session_create,
     interview_launch_url,
 )
+from litigant_portal.app.services.topic_flow import variable_answer_confirm
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
     find_downloadable,
@@ -21,6 +23,7 @@ from litigant_portal.app.topic_flow.prefill import (
 )
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.views.utils import (
+    _has_identity,
     topic_flow_answers,
     topic_flow_reviewed_answers,
 )
@@ -106,6 +109,31 @@ def topic_flow_interview(request, court, topic, role):
         )
         return redirect(launch_url)
     return redirect(resume_url)
+
+
+@require_POST
+def topic_flow_confirm(request):
+    """Mark the visitor's stored answers as reviewed by the visitor.
+
+    Deliberately NOT an agent tool and not under ``/api/agents/``: only a
+    human action may set ``reviewed=True``, because reviewed answers
+    prefill the docassemble interview and skip their questions there. This
+    stays a session-authenticated, CSRF-protected page endpoint the model
+    cannot reach.
+
+    Form-encoded only, with a repeated ``names`` field and the token in the
+    body: the ``X-CSRFToken`` header does not survive the QA proxy (#940).
+    Responds ``{"confirmed": n}``.
+    """
+    if not _has_identity(request):
+        return JsonResponse({"error": _("Forbidden")}, status=403)
+    names = [name for name in request.POST.getlist("names") if name]
+    if not names:
+        return JsonResponse(
+            {"error": _("Send a list of fact names.")}, status=400
+        )
+    confirmed = variable_answer_confirm(identity=request.identity, names=names)
+    return JsonResponse({"confirmed": confirmed})
 
 
 def csrf_failure(request, reason=""):
