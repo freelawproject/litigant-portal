@@ -36,6 +36,7 @@ FACTS = [
     {"name": "county", "label": "County", "value": "Cass", "reviewed": False},
 ]
 TRACK = {"court": "test-court", "topic": "name-change", "role": "standard"}
+AS_OF = "2026-09-29T12:00:00.000000+00:00"
 
 
 def _data(**overrides):
@@ -43,6 +44,7 @@ def _data(**overrides):
         "facts": FACTS,
         "missing": [],
         "confirm_names": ["first_name", "county"],
+        "as_of": AS_OF,
         "all_reviewed": False,
         "interview_available": True,
         **TRACK,
@@ -119,6 +121,7 @@ def test_facts_render_with_label_value_and_review_badge(client_thread):
         ("badge-pending", False),
     ]
     assert 'data-names="first_name,county"' in html
+    assert f'data-as-of="{AS_OF}"' in html
     assert 'data-all-reviewed="false"' in html
     assert 'data-confirm-url="/facts/confirm/"' in html
     assert CONFIRM in html

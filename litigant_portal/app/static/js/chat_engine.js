@@ -1208,17 +1208,21 @@ document.addEventListener('alpine:init', () => {
   Alpine.data('factReviewCard', () => ({
     names: [],
     confirmUrl: '',
+    asOf: '',
     busy: false,
     done: false,
 
     init() {
       this.names = (this.$root.dataset.names || '').split(',').filter(Boolean)
       this.confirmUrl = this.$root.dataset.confirmUrl
+      this.asOf = this.$root.dataset.asOf || ''
       if (this.$root.dataset.allReviewed === 'true') this.markConfirmed()
       else this.setLaunchEnabled(false)
     },
 
     // Token in the form body: the X-CSRFToken header is stripped on QA.
+    // as_of is when the card read its answers; the endpoint confirms only
+    // rows unchanged since, so a value this card never showed stays pending.
     async confirmFacts() {
       if (this.busy || this.done || this.names.length === 0) return
       this.busy = true
@@ -1226,6 +1230,7 @@ document.addEventListener('alpine:init', () => {
       try {
         const body = new FormData()
         body.append('csrfmiddlewaretoken', this.csrfToken())
+        body.append('as_of', this.asOf)
         for (const name of this.names) body.append('names', name)
         const res = await fetch(this.confirmUrl, { method: 'POST', body })
         if (!res.ok) throw new Error('confirm failed: ' + res.status)

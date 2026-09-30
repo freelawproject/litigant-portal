@@ -1,5 +1,5 @@
 {# ReviewFacts result card. Context: `data` (facts: [{name, label, value, reviewed}], #}
-{# missing: [{name, label}], confirm_names, all_reviewed, court/topic/role, interview_available). #}
+{# missing: [{name, label}], confirm_names, as_of, all_reviewed, court/topic/role, interview_available). #}
 {# Errors carry no render_data, so an empty `data` renders the error state. #}
 {# No request context, so no {% csrf_token %}: factReviewCard supplies the token. #}
 {% load i18n %}
@@ -8,6 +8,7 @@
        x-data="factReviewCard"
        data-confirm-url="{% url 'pages:topic_flow_confirm' %}"
        data-names="{{ data.confirm_names|join:',' }}"
+       data-as-of="{{ data.as_of|default:'' }}"
        data-all-reviewed="{{ data.all_reviewed|yesno:'true,false' }}">
     <p class="text-sm font-medium text-greyscale-800">{% trans "Review your answers" %}</p>
     {% if data.facts %}

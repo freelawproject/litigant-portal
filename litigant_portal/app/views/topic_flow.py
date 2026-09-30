@@ -3,6 +3,8 @@ import logging
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.utils.translation import gettext as _
 from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_POST
@@ -121,9 +123,10 @@ def topic_flow_confirm(request):
     stays a session-authenticated, CSRF-protected page endpoint the model
     cannot reach.
 
-    Form-encoded only, with a repeated ``names`` field and the token in the
-    body: the ``X-CSRFToken`` header does not survive the QA proxy (#940).
-    Responds ``{"confirmed": n}``.
+    Form-encoded only, with a repeated ``names`` field, an aware ISO
+    ``as_of`` (when the card read the answers it shows) and the token in
+    the body: the ``X-CSRFToken`` header does not survive the QA proxy
+    (#940). Responds ``{"confirmed": n}``.
     """
     if not _has_identity(request):
         return JsonResponse({"error": _("Forbidden")}, status=403)
@@ -132,7 +135,15 @@ def topic_flow_confirm(request):
         return JsonResponse(
             {"error": _("Send a list of fact names.")}, status=400
         )
-    confirmed = variable_answer_confirm(identity=request.identity, names=names)
+    as_of = parse_datetime(request.POST.get("as_of", ""))
+    if as_of is None or timezone.is_naive(as_of):
+        return JsonResponse(
+            {"error": _("Send when the answers were shown, as_of.")},
+            status=400,
+        )
+    confirmed = variable_answer_confirm(
+        identity=request.identity, names=names, as_of=as_of
+    )
     return JsonResponse({"confirmed": confirmed})
 
 

@@ -6,6 +6,8 @@ takes no input that could steer the card, and it never writes.
 """
 
 import pytest
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 from litigant_portal.agents.tools.review_facts import ReviewFacts
 from litigant_portal.app.models import (
@@ -153,6 +155,18 @@ def test_answered_flow_variables_are_listed_with_their_review_state(
     ]
     assert data["confirm_names"] == ["first_name", "county"]
     assert data["all_reviewed"] is False
+
+
+def test_the_card_carries_an_aware_timestamp_of_when_it_read_the_answers(
+    thread, active_flow
+):
+    _store(thread, "county", "Cass")
+    before = timezone.now()
+    as_of = parse_datetime(
+        ReviewFacts()(thread_id=thread.id).render_data["as_of"]
+    )
+    assert not timezone.is_naive(as_of)
+    assert before <= as_of <= timezone.now()
 
 
 def test_all_reviewed_is_true_only_when_every_listed_fact_is_confirmed(

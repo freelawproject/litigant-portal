@@ -11,6 +11,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import resolve, reverse
+from django.utils import timezone
 
 from litigant_portal.app.models import UserIdentity, Variable
 from litigant_portal.app.models.choices import VariableDataType
@@ -377,7 +378,10 @@ def test_an_answer_confirmed_through_the_chat_endpoint_reaches_the_payload(
 ):
     _flow(monkeypatch)
     _store(client, "first_name", "Sandra", reviewed=False)
-    client.post("/facts/confirm/", {"names": ["first_name"]})
+    client.post(
+        "/facts/confirm/",
+        {"names": ["first_name"], "as_of": timezone.now().isoformat()},
+    )
     client.post(URL)
     assert docassemble.calls[0]["variables"] == {"current_first": "Sandra"}
 

@@ -22,6 +22,7 @@ const source = fs.readFileSync(
 
 const PAGE_TOKEN = 'page-token-value'
 const CONFIRM_URL = '/facts/confirm/'
+const AS_OF = '2026-09-29T12:00:00.000000+00:00'
 
 function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
   const confirmButton = { disabled: false }
@@ -48,6 +49,7 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
     dataset: {
       names,
       confirmUrl: CONFIRM_URL,
+      asOf: AS_OF,
       allReviewed: allReviewed ? 'true' : 'false',
     },
     querySelector(selector) {
@@ -145,7 +147,7 @@ test('arming twice reuses the one input and keeps the page token', async () => {
   assert.equal(cardInputs[0].value, PAGE_TOKEN)
 })
 
-test('confirming posts a form body with the token and every name, no JSON header', async () => {
+test('confirming posts a form body with the token, as_of and every name, no JSON header', async () => {
   const { card, fetchCalls } = mountCard()
   await card.confirmFacts()
   assert.equal(fetchCalls.length, 1)
@@ -155,6 +157,7 @@ test('confirming posts a form body with the token and every name, no JSON header
   assert.equal(options.headers, undefined)
   assert.ok(options.body instanceof FormData)
   assert.equal(options.body.get('csrfmiddlewaretoken'), PAGE_TOKEN)
+  assert.equal(options.body.get('as_of'), AS_OF)
   assert.equal(options.body.getAll('names').join(','), 'first_name,county')
 })
 

@@ -9,6 +9,7 @@ write VariableAnswer rows.
 import pytest
 from django.test import Client
 from django.urls import resolve, reverse
+from django.utils import timezone
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
 from litigant_portal.app.models.choices import VariableDataType
@@ -55,6 +56,12 @@ def _session_client(**kwargs):
     return client
 
 
+def _post(client, names, as_of=None):
+    # As the card posts: the names plus when it read them.
+    as_of = (as_of or timezone.now()).isoformat()
+    return client.post(URL, {"names": names, "as_of": as_of})
+
+
 # --- routing (DB-free) ------------------------------------------------------
 
 
@@ -75,7 +82,7 @@ def test_a_visitor_confirms_their_own_answers(variables):
     client = _session_client()
     _store(client, "first_name", "Sandra")
     _store(client, "county", "Cass")
-    response = client.post(URL, {"names": ["first_name", "county"]})
+    response = _post(client, ["first_name", "county"])
     assert response.status_code == 200
     assert response.json() == {"confirmed": 2}
     assert _reviewed(client, "first_name") is True
@@ -88,9 +95,27 @@ def test_only_the_named_answers_are_confirmed(variables):
     client = _session_client()
     _store(client, "first_name", "Sandra")
     _store(client, "county", "Cass")
-    client.post(URL, {"names": ["county"]})
+    _post(client, ["county"])
     assert _reviewed(client, "first_name") is False
     assert _reviewed(client, "county") is True
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_an_answer_changed_after_the_card_was_shown_is_not_confirmed(
+    variables,
+):
+    # The card showed "Cass"; the assistant then re-saved "Burleigh". The
+    # click confirms what the person saw, never the newer value.
+    client = _session_client()
+    _store(client, "first_name", "Sandra")
+    _store(client, "county", "Cass")
+    shown_at = timezone.now()
+    _store(client, "county", "Burleigh")
+    response = _post(client, ["first_name", "county"], as_of=shown_at)
+    assert response.json() == {"confirmed": 1}
+    assert _reviewed(client, "first_name") is True
+    assert _reviewed(client, "county") is False
 
 
 @pytest.mark.postgres
@@ -98,7 +123,7 @@ def test_only_the_named_answers_are_confirmed(variables):
 def test_a_visitor_without_a_session_is_forbidden_and_mints_no_identity(
     variables,
 ):
-    response = Client().post(URL, {"names": ["county"]})
+    response = _post(Client(), ["county"])
     assert response.status_code == 403
     assert UserIdentity.objects.count() == 0
 
@@ -106,13 +131,36 @@ def test_a_visitor_without_a_session_is_forbidden_and_mints_no_identity(
 @pytest.mark.postgres
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "body",
-    [{}, {"names": []}, {"names": ""}],
+    "names",
+    [None, [], ""],
     ids=["no-names", "empty-list", "blank-name"],
 )
-def test_a_body_without_names_is_rejected_and_writes_nothing(variables, body):
+def test_a_body_without_names_is_rejected_and_writes_nothing(variables, names):
     client = _session_client()
     _store(client, "county", "Cass")
+    body = {"as_of": timezone.now().isoformat()}
+    if names is not None:
+        body["names"] = names
+    response = client.post(URL, body)
+    assert response.status_code == 400
+    assert _reviewed(client, "county") is False
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "as_of",
+    [None, "", "yesterday", "2026-09-29T12:00:00"],
+    ids=["missing", "blank", "not-a-date", "naive"],
+)
+def test_a_body_without_a_usable_as_of_is_rejected_and_writes_nothing(
+    variables, as_of
+):
+    client = _session_client()
+    _store(client, "county", "Cass")
+    body = {"names": ["county"]}
+    if as_of is not None:
+        body["as_of"] = as_of
     response = client.post(URL, body)
     assert response.status_code == 400
     assert _reviewed(client, "county") is False
@@ -134,7 +182,7 @@ def test_a_json_body_is_treated_as_having_no_names(variables):
 @pytest.mark.django_db
 def test_an_unanswered_name_confirms_nothing_without_error(variables):
     client = _session_client()
-    response = client.post(URL, {"names": ["county", "no_such_variable"]})
+    response = _post(client, ["county", "no_such_variable"])
     assert response.status_code == 200
     assert response.json() == {"confirmed": 0}
 
@@ -145,7 +193,7 @@ def test_a_cleared_answer_cannot_be_confirmed(variables):
     client = _session_client()
     _store(client, "county", "Cass")
     _store(client, "county", None)
-    assert client.post(URL, {"names": ["county"]}).json() == {"confirmed": 0}
+    assert _post(client, ["county"]).json() == {"confirmed": 0}
     assert _reviewed(client, "county") is False
 
 
@@ -154,9 +202,7 @@ def test_a_cleared_answer_cannot_be_confirmed(variables):
 def test_an_out_of_schema_answer_cannot_be_confirmed(variables):
     client = _session_client()
     _store(client, "old_field", "kept for migration")
-    assert client.post(URL, {"names": ["old_field"]}).json() == {
-        "confirmed": 0
-    }
+    assert _post(client, ["old_field"]).json() == {"confirmed": 0}
     assert _reviewed(client, "old_field") is False
 
 
@@ -167,7 +213,7 @@ def test_another_visitors_answers_are_untouched(variables):
     _store(other, "county", "Burleigh")
     client = _session_client()
     _store(client, "county", "Cass")
-    assert client.post(URL, {"names": ["county"]}).json() == {"confirmed": 1}
+    assert _post(client, ["county"]).json() == {"confirmed": 1}
     assert _reviewed(other, "county") is False
 
 
@@ -176,8 +222,8 @@ def test_another_visitors_answers_are_untouched(variables):
 def test_confirming_twice_is_idempotent(variables):
     client = _session_client()
     _store(client, "county", "Cass")
-    client.post(URL, {"names": ["county"]})
-    assert client.post(URL, {"names": ["county"]}).json() == {"confirmed": 0}
+    _post(client, ["county"])
+    assert _post(client, ["county"]).json() == {"confirmed": 0}
     assert _reviewed(client, "county") is True
 
 
@@ -194,6 +240,6 @@ def test_a_post_without_the_csrf_token_is_rejected_and_writes_nothing(
 ):
     client = _session_client(enforce_csrf_checks=True)
     _store(client, "county", "Cass")
-    response = client.post(URL, {"names": ["county"]})
+    response = _post(client, ["county"])
     assert response.status_code == 403
     assert _reviewed(client, "county") is False

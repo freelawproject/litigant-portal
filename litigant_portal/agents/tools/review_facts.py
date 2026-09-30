@@ -1,3 +1,5 @@
+from django.utils import timezone
+
 from litigant_portal.agents.base import Tool, ToolOutput
 from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
 
@@ -68,6 +70,9 @@ class ReviewFacts(Tool):
             )
 
         identity = chat_thread_identity_get(thread_id=thread_id)
+        # Stamped before the read: the confirm endpoint refuses rows written
+        # after it, so a value this card never showed cannot be confirmed.
+        as_of = timezone.now()
         answers = {
             a.variable.name: a
             for a in variable_answer_list(
@@ -123,6 +128,7 @@ class ReviewFacts(Tool):
                 "facts": facts,
                 "missing": missing,
                 "confirm_names": [f["name"] for f in facts],
+                "as_of": as_of.isoformat(),
                 "all_reviewed": bool(facts)
                 and all(f["reviewed"] for f in facts),
                 "court": track["court"] if track else None,
