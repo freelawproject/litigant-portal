@@ -1223,10 +1223,13 @@ document.addEventListener('alpine:init', () => {
     // Token in the form body: the X-CSRFToken header is stripped on QA.
     // as_of is when the card read its answers; the endpoint confirms only
     // rows unchanged since, so a value this card never showed stays pending.
+    // The response's `pending` list, not its count, decides the outcome: a
+    // short count also happens when an earlier card already confirmed rows.
     async confirmFacts() {
       if (this.busy || this.done || this.names.length === 0) return
       this.busy = true
       this.showNote('error-note', false)
+      this.showNote('stale-note', false)
       try {
         const body = new FormData()
         body.append('csrfmiddlewaretoken', this.csrfToken())
@@ -1234,7 +1237,12 @@ document.addEventListener('alpine:init', () => {
         for (const name of this.names) body.append('names', name)
         const res = await fetch(this.confirmUrl, { method: 'POST', body })
         if (!res.ok) throw new Error('confirm failed: ' + res.status)
-        this.markConfirmed()
+        const { pending } = await res.json()
+        if (Array.isArray(pending) && pending.length > 0) {
+          this.showNote('stale-note', true)
+        } else {
+          this.markConfirmed()
+        }
       } catch (e) {
         console.error('Failed to confirm facts:', e)
         this.showNote('error-note', true)
@@ -1249,6 +1257,7 @@ document.addEventListener('alpine:init', () => {
       if (confirm) confirm.disabled = true
       this.showNote('confirmed-note', true)
       this.showNote('error-note', false)
+      this.showNote('stale-note', false)
       this.showAll('badge-pending', false)
       this.showAll('badge-confirmed', true)
       this.setLaunchEnabled(true)

@@ -84,7 +84,7 @@ def test_a_visitor_confirms_their_own_answers(variables):
     _store(client, "county", "Cass")
     response = _post(client, ["first_name", "county"])
     assert response.status_code == 200
-    assert response.json() == {"confirmed": 2}
+    assert response.json() == {"confirmed": 2, "pending": []}
     assert _reviewed(client, "first_name") is True
     assert _reviewed(client, "county") is True
 
@@ -113,7 +113,7 @@ def test_an_answer_changed_after_the_card_was_shown_is_not_confirmed(
     shown_at = timezone.now()
     _store(client, "county", "Burleigh")
     response = _post(client, ["first_name", "county"], as_of=shown_at)
-    assert response.json() == {"confirmed": 1}
+    assert response.json() == {"confirmed": 1, "pending": ["county"]}
     assert _reviewed(client, "first_name") is True
     assert _reviewed(client, "county") is False
 
@@ -184,7 +184,7 @@ def test_an_unanswered_name_confirms_nothing_without_error(variables):
     client = _session_client()
     response = _post(client, ["county", "no_such_variable"])
     assert response.status_code == 200
-    assert response.json() == {"confirmed": 0}
+    assert response.json() == {"confirmed": 0, "pending": []}
 
 
 @pytest.mark.postgres
@@ -193,7 +193,7 @@ def test_a_cleared_answer_cannot_be_confirmed(variables):
     client = _session_client()
     _store(client, "county", "Cass")
     _store(client, "county", None)
-    assert _post(client, ["county"]).json() == {"confirmed": 0}
+    assert _post(client, ["county"]).json() == {"confirmed": 0, "pending": []}
     assert _reviewed(client, "county") is False
 
 
@@ -202,7 +202,10 @@ def test_a_cleared_answer_cannot_be_confirmed(variables):
 def test_an_out_of_schema_answer_cannot_be_confirmed(variables):
     client = _session_client()
     _store(client, "old_field", "kept for migration")
-    assert _post(client, ["old_field"]).json() == {"confirmed": 0}
+    assert _post(client, ["old_field"]).json() == {
+        "confirmed": 0,
+        "pending": [],
+    }
     assert _reviewed(client, "old_field") is False
 
 
@@ -213,7 +216,7 @@ def test_another_visitors_answers_are_untouched(variables):
     _store(other, "county", "Burleigh")
     client = _session_client()
     _store(client, "county", "Cass")
-    assert _post(client, ["county"]).json() == {"confirmed": 1}
+    assert _post(client, ["county"]).json() == {"confirmed": 1, "pending": []}
     assert _reviewed(other, "county") is False
 
 
@@ -223,7 +226,8 @@ def test_confirming_twice_is_idempotent(variables):
     client = _session_client()
     _store(client, "county", "Cass")
     _post(client, ["county"])
-    assert _post(client, ["county"]).json() == {"confirmed": 0}
+    # Zero confirmed but nothing pending: the card treats this as done.
+    assert _post(client, ["county"]).json() == {"confirmed": 0, "pending": []}
     assert _reviewed(client, "county") is True
 
 

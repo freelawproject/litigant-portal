@@ -127,6 +127,21 @@ def test_facts_render_with_label_value_and_review_badge(client_thread):
     assert CONFIRM in html
 
 
+def test_the_outcome_notes_render_hidden_for_the_component_to_reveal(
+    client_thread,
+):
+    html = _card_html(*client_thread, render_data=_data())
+    notes = {
+        m.group(2): "hidden" in m.group(1) + m.group(3)
+        for m in re.finditer(r'<p([^>]*)data-role="(\w+-note)"([^>]*)>', html)
+    }
+    assert notes == {
+        "confirmed-note": True,
+        "error-note": True,
+        "stale-note": True,
+    }
+
+
 def test_missing_facts_are_listed_as_still_needed(client_thread):
     html = _card_html(
         *client_thread,

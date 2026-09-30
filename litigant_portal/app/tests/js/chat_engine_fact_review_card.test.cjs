@@ -29,6 +29,7 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
   const launchButton = { disabled: false }
   const confirmedNote = { hidden: true }
   const errorNote = { hidden: true }
+  const staleNote = { hidden: true }
   const pendingBadges = [{ hidden: false }, { hidden: false }]
   const confirmedBadges = [{ hidden: true }, { hidden: true }]
 
@@ -60,6 +61,8 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
           return confirmedNote
         case '[data-role=error-note]':
           return errorNote
+        case '[data-role=stale-note]':
+          return staleNote
         case 'form button[type=submit]':
           return launchButton
         case 'form':
@@ -78,7 +81,7 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
   // The page's own {% csrf_token %} input comes AFTER the message flow.
   const pageToken = { name: 'csrfmiddlewaretoken', value: PAGE_TOKEN }
   const fetchCalls = []
-  let fetchResponse = { ok: true }
+  let fetchResponse = okResponse({ confirmed: 2, pending: [] })
   const context = {
     window: {},
     console: { error() {} },
@@ -121,6 +124,7 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
     launchButton,
     confirmedNote,
     errorNote,
+    staleNote,
     pendingBadges,
     confirmedBadges,
     cardInputs,
@@ -128,7 +132,14 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
     failNextFetch() {
       fetchResponse = { ok: false, status: 403 }
     },
+    respondWith(body) {
+      fetchResponse = okResponse(body)
+    },
   }
+}
+
+function okResponse(body) {
+  return { ok: true, json: () => Promise.resolve(body) }
 }
 
 test('arming the launch form fills it with the PAGE token, not its own empty input', async () => {
@@ -197,6 +208,54 @@ test('a failed confirm shows the error note and keeps launch disabled', async ()
   assert.equal(confirmedNote.hidden, true)
   assert.equal(launchButton.disabled, true)
   assert.equal(card.done, false)
+})
+
+// The endpoint confirms only rows unchanged since as_of. A row re-saved after
+// the card rendered comes back in `pending`, and the card must not show it as
+// confirmed: the badges are the surface that earns the litigant's trust.
+test('a confirm the server left partly pending shows the stale note and flips nothing', async () => {
+  const {
+    card,
+    confirmButton,
+    launchButton,
+    confirmedNote,
+    staleNote,
+    pendingBadges,
+    confirmedBadges,
+    respondWith,
+  } = mountCard()
+  respondWith({ confirmed: 1, pending: ['county'] })
+  await card.confirmFacts()
+  assert.equal(staleNote.hidden, false)
+  assert.equal(confirmedNote.hidden, true)
+  assert.ok(pendingBadges.every((b) => !b.hidden))
+  assert.ok(confirmedBadges.every((b) => b.hidden))
+  assert.equal(launchButton.disabled, true)
+  assert.equal(confirmButton.disabled, false)
+  assert.equal(card.done, false)
+})
+
+// A reloaded card renders badges frozen at call time (#966), so its rows may
+// already be confirmed: the count is 0 but nothing is pending.
+test('a confirm with a zero count but nothing pending still marks the card confirmed', async () => {
+  const { card, staleNote, confirmedNote, launchButton, respondWith } =
+    mountCard()
+  respondWith({ confirmed: 0, pending: [] })
+  await card.confirmFacts()
+  assert.equal(staleNote.hidden, true)
+  assert.equal(confirmedNote.hidden, false)
+  assert.equal(launchButton.disabled, false)
+  assert.equal(card.done, true)
+})
+
+test('a later full confirm clears the stale note', async () => {
+  const { card, staleNote, confirmedNote, respondWith } = mountCard()
+  respondWith({ confirmed: 1, pending: ['county'] })
+  await card.confirmFacts()
+  respondWith({ confirmed: 1, pending: [] })
+  await card.confirmFacts()
+  assert.equal(staleNote.hidden, true)
+  assert.equal(confirmedNote.hidden, false)
 })
 
 test('an already-reviewed card arms launch on init without posting', () => {

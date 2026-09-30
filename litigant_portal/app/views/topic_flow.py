@@ -9,6 +9,9 @@ from django.utils.translation import gettext as _
 from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_POST
 
+from litigant_portal.app.selectors.topic_flow import (
+    variable_answer_unreviewed_names,
+)
 from litigant_portal.app.services.docassemble import (
     DocassembleError,
     docassemble_session_create,
@@ -126,7 +129,10 @@ def topic_flow_confirm(request):
     Form-encoded only, with a repeated ``names`` field, an aware ISO
     ``as_of`` (when the card read the answers it shows) and the token in
     the body: the ``X-CSRFToken`` header does not survive the QA proxy
-    (#940). Responds ``{"confirmed": n}``.
+    (#940). Responds ``{"confirmed": n, "pending": [names]}``: ``pending``
+    lists the named answers still unconfirmed afterwards, so the card can
+    tell a value that changed since it was shown from one already confirmed
+    on an earlier card (both leave ``n`` short).
     """
     if not _has_identity(request):
         return JsonResponse({"error": _("Forbidden")}, status=403)
@@ -144,7 +150,10 @@ def topic_flow_confirm(request):
     confirmed = variable_answer_confirm(
         identity=request.identity, names=names, as_of=as_of
     )
-    return JsonResponse({"confirmed": confirmed})
+    pending = variable_answer_unreviewed_names(
+        identity=request.identity, names=names
+    )
+    return JsonResponse({"confirmed": confirmed, "pending": pending})
 
 
 def csrf_failure(request, reason=""):
