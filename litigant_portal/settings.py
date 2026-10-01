@@ -185,8 +185,8 @@ MEDIA_ROOT = BASE_DIR / "app" / "media"
 
 # Storage — local filesystem in dev/test, S3 in prod/QA. Gated by USE_S3 rather
 # than DEBUG directly, so a non-debug deploy can still run on local storage when
-# it has no S3 creds (the self-contained DigitalOcean QA box). Default preserves
-# the prior behavior: S3 whenever DEBUG is off, filesystem otherwise.
+# it has no S3 creds. Default preserves the prior behavior: S3 whenever DEBUG is
+# off, filesystem otherwise.
 USE_S3 = (
     os.environ.get("USE_S3", "false" if DEBUG else "true").lower() == "true"
 )
