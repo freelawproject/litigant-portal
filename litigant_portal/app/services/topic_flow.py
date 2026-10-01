@@ -114,6 +114,31 @@ def variable_answer_set(
     return answer
 
 
+def variable_answer_confirm(
+    *, identity, names: list[str], as_of: datetime
+) -> int:
+    """Mark an identity's answers to ``names`` as human-reviewed.
+
+    ``as_of`` is when the surface the person confirmed from read the
+    answers; a row written after it shows a value the person never saw,
+    so it stays unconfirmed. Returns how many rows changed;
+    already-reviewed rows do not count. Cleared answers (value None) and
+    out-of-schema variables are skipped: neither is a fact any surface
+    shows, so there is nothing to confirm. Only ever called from a
+    session-authenticated page view, never from an agent tool: reviewed
+    answers reach the docassemble prefill, and the model must not confirm
+    what it wrote itself.
+    """
+    return VariableAnswer.objects.filter(
+        identity=identity,
+        variable__name__in=names,
+        variable__in_schema=True,
+        value__isnull=False,
+        reviewed=False,
+        updated_at__lte=as_of,
+    ).update(reviewed=True)
+
+
 @transaction.atomic
 def variable_answer_set_many(
     *, identity, values: dict, reviewed: bool = False

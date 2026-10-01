@@ -47,6 +47,11 @@ app_patterns = [
         topic_flow_views.topic_flow_interview,
         name="topic_flow_interview",
     ),
+    path(
+        "facts/confirm/",
+        topic_flow_views.topic_flow_confirm,
+        name="topic_flow_confirm",
+    ),
     path("admin/", pages.admin, name="admin_dashboard"),
     path("profile/", pages.ProfileDetailView.as_view(), name="profile"),
     path(

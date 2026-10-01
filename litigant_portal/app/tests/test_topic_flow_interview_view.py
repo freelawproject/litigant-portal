@@ -11,6 +11,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from django.test import Client
 from django.urls import resolve, reverse
+from django.utils import timezone
 
 from litigant_portal.app.models import UserIdentity, Variable
 from litigant_portal.app.models.choices import VariableDataType
@@ -367,6 +368,20 @@ def test_the_same_answer_is_sent_once_the_litigant_confirms_it(
     _flow(monkeypatch)
     _store(client, "first_name", "Sandra", reviewed=False)
     client.post(FLOW_URL, {"first_name": "Sandra", "filing_county": ""})
+    client.post(URL)
+    assert docassemble.calls[0]["variables"] == {"current_first": "Sandra"}
+
+
+@pytest.mark.django_db
+def test_an_answer_confirmed_through_the_chat_endpoint_reaches_the_payload(
+    client, monkeypatch, docassemble, variables
+):
+    _flow(monkeypatch)
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(
+        "/facts/confirm/",
+        {"names": ["first_name"], "as_of": timezone.now().isoformat()},
+    )
     client.post(URL)
     assert docassemble.calls[0]["variables"] == {"current_first": "Sandra"}
 

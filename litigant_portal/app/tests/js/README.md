@@ -89,6 +89,14 @@ Testing the components themselves would mean faking enough DOM to be its own
 project. If that becomes necessary, it is a decision to make deliberately,
 not one to arrive at by adding stubs until something passes.
 
+One such decision has been made: `chat_engine_fact_review_card.test.cjs`
+tests the `factReviewCard` component with a hand-built fake of the few
+elements it touches. It exists for a bug that only shows up in DOM order (the
+card's own CSRF input shadowing the page's) and that no Python test can
+reach. Its fake is shaped for that one component; do not grow it into a
+general DOM fake. A new component test should make the same case for itself
+at the top of its file.
+
 ## Verifying a test actually tests something
 
 Tests written after the code get mutation-verified before they are trusted.

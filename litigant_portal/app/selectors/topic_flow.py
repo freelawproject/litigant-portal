@@ -98,6 +98,24 @@ def variable_answer_map(
     return dict(answers.values_list("variable__name", "value"))
 
 
+def variable_answer_unreviewed_names(*, identity, names: list[str]) -> list:
+    """The given names whose answer no human has confirmed yet, sorted.
+
+    Same exclusions as ``variable_answer_map``: cleared and out-of-schema
+    answers are not pending, since nothing shows them. Names with no
+    answer at all are left out too.
+    """
+    return sorted(
+        VariableAnswer.objects.filter(
+            identity=identity,
+            variable__name__in=names,
+            variable__in_schema=True,
+            value__isnull=False,
+            reviewed=False,
+        ).values_list("variable__name", flat=True)
+    )
+
+
 def variable_answer_groups(*, identity) -> list[dict]:
     """An identity's answers, grouped for reading by interview page.
 
