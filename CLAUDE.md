@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Access to justice portal for self-represented litigants. Django 6.0 with server-rendered components (Django Cotton), Tailwind CSS v4, and Alpine.js for reactivity.
 
-## Current Focus: Beta Demo — Housing Eviction Flow
+## Current Focus: October SME Review
 
-Building a complete eviction flow from discovery to resolution for court partner demos. One topic, end-to-end, at production quality — every button/link does something, no placeholders. Court-neutral information where partner-specific data isn't available yet.
+Getting each court partner's own instance ready for its subject-matter experts to click through: Franklin County Municipal Court (eviction), Arizona (civil traffic), and North Dakota (name change). Production quality: every button/link does something, no placeholders, and court-neutral information where partner-specific data isn't available yet. The date marks when SME review starts, not a ship date.
 
-- [Milestone](https://github.com/freelawproject/litigant-portal/milestone/3) - Beta Demo: Housing Eviction Flow
+- [Milestone](https://github.com/freelawproject/litigant-portal/milestone/6) - October SME Review
 
 ## Environment Philosophy
 
@@ -250,8 +250,8 @@ Components live in `litigant_portal/app/templates/cotton/` using Atomic Design h
 ```
 litigant_portal/app/templates/cotton/
 ├── atoms/      # Basic elements: alert, auto_dismiss, badge, button, checkbox, eyebrow, icon, input, link, nav_link, search_input, select
-├── molecules/  # Combinations: auth_status, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, toast_container, topic_card, user_menu
-└── organisms/  # Complex sections: auth_cta, auth_layout, chat_header, fallback_resources, footer, header, hero, topic_grid
+├── molecules/  # Combinations: auth_status, briefcase_fact, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, toast_container, topic_card, user_menu
+└── organisms/  # Complex sections: auth_cta, auth_layout, briefcase_panel, chat_header, fallback_resources, footer, header, hero, topic_grid
 ```
 
 **Syntax:** `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`

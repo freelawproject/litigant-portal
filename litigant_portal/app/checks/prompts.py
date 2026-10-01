@@ -5,12 +5,14 @@ configuration drift loudly — a fail here means the deploy doesn't proceed.
 
 Currently checks:
 
-- Every ``chat/prompts/courts/<slug>/court.json`` parses and conforms to
-  ``chat/prompts/courts/_schema.json``. Catches typos, missing required
-  fields, or schema drift introduced when adding a new partner court.
-- Every ``chat/prompts/topics/<slug>/topic.json`` parses and conforms to
-  ``chat/prompts/topics/_schema.json``. Same shape as the court check;
-  enforces the topic.json sibling that reconciles parallel topic registries.
+- Every ``litigant_portal/prompts/courts/<slug>/court.json`` parses and
+  conforms to ``litigant_portal/prompts/courts/_schema.json``. Catches typos,
+  missing required fields, or schema drift introduced when adding a new
+  partner court.
+- Every ``litigant_portal/prompts/topics/<slug>/topic.json`` parses and
+  conforms to ``litigant_portal/prompts/topics/_schema.json``. Same shape as
+  the court check; enforces the topic.json sibling that reconciles parallel
+  topic registries.
 """
 
 import json
@@ -28,14 +30,14 @@ _TOPIC_SCHEMA_PATH = _TOPICS_DIR / "_schema.json"
 
 @register(Tags.compatibility)
 def check_court_json_schema(app_configs, **kwargs):
-    """Validate every court.json under chat/prompts/courts/ against the schema."""
+    """Validate each court.json under litigant_portal/prompts/courts/."""
     errors: list[Error] = []
 
     if not _SCHEMA_PATH.is_file():
         return [
             Error(
                 f"Court schema missing at {_SCHEMA_PATH}",
-                hint="Restore chat/prompts/courts/_schema.json.",
+                hint="Restore litigant_portal/prompts/courts/_schema.json.",
                 id="chat.E001",
             )
         ]
@@ -84,14 +86,14 @@ def check_court_json_schema(app_configs, **kwargs):
 
 @register(Tags.compatibility)
 def check_topic_json_schema(app_configs, **kwargs):
-    """Validate every topic.json under chat/prompts/topics/ against the schema."""
+    """Validate each topic.json under litigant_portal/prompts/topics/."""
     errors: list[Error] = []
 
     if not _TOPIC_SCHEMA_PATH.is_file():
         return [
             Error(
                 f"Topic schema missing at {_TOPIC_SCHEMA_PATH}",
-                hint="Restore chat/prompts/topics/_schema.json.",
+                hint="Restore litigant_portal/prompts/topics/_schema.json.",
                 id="chat.E005",
             )
         ]
