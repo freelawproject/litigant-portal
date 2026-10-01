@@ -107,3 +107,10 @@ Everything that touches the rules model: what sets scope, what supplies facts, w
 ## Test cases
 
 Check the model against the ND personas (`docassemble/nd-name-change/test-personas.md`, #311, #312) and the Franklin County eviction stories (#720, #722, #723), which cover both the tenant and the landlord path.
+
+## Prior art
+
+Read before settling the condition format:
+
+- **Rules as Code.** The legal and government movement for writing legislation and procedure as machine-readable rules, and the closest match to what this repo does: court procedure in, a litigant's path and forms out. Start with the OECD Observatory of Public Sector Innovation (OPSI) report on Rules as Code, then the tools: Catala (a language for legal rules), OpenFisca (tax and benefits rules), and Blawx.
+- **XLSForm `relevant`.** The form standard behind ODK and KoboToolbox, and the most battle-tested version of the condition model sketched here: each question carries `relevant` (show when), `required` and `constraint` expressions over other answers, evaluated on both server and client.
