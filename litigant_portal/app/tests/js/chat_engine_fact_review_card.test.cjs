@@ -142,17 +142,15 @@ function okResponse(body) {
   return { ok: true, json: () => Promise.resolve(body) }
 }
 
-test('arming the launch form fills it with the PAGE token, not its own empty input', async () => {
-  const { card, cardInputs } = mountCard()
-  await card.confirmFacts()
+test('arming the launch form fills it with the PAGE token, not its own empty input', () => {
+  const { cardInputs } = mountCard()
   assert.equal(cardInputs.length, 1)
   assert.equal(cardInputs[0].name, 'csrfmiddlewaretoken')
   assert.equal(cardInputs[0].value, PAGE_TOKEN)
 })
 
-test('arming twice reuses the one input and keeps the page token', async () => {
+test('arming twice reuses the one input and keeps the page token', () => {
   const { card, cardInputs } = mountCard()
-  await card.confirmFacts()
   card.armLaunch()
   assert.equal(cardInputs.length, 1)
   assert.equal(cardInputs[0].value, PAGE_TOKEN)
@@ -172,10 +170,19 @@ test('confirming posts a form body with the token, as_of and every name, no JSON
   assert.equal(options.body.getAll('names').join(','), 'first_name,county')
 })
 
-test('a successful confirm disables the button, shows the note and enables launch', async () => {
+// Confirm is a shortcut, not a gate: unconfirmed facts never prefill, so an
+// early launch only means the interview asks those questions itself.
+test('launch is armed and enabled on init, before any confirm', () => {
+  const { launchButton, cardInputs, fetchCalls } = mountCard()
+  assert.equal(fetchCalls.length, 0)
+  assert.equal(launchButton.disabled, false)
+  assert.equal(cardInputs.length, 1)
+  assert.equal(cardInputs[0].value, PAGE_TOKEN)
+})
+
+test('a successful confirm disables the button and shows the note', async () => {
   const { card, confirmButton, launchButton, confirmedNote, errorNote } =
     mountCard()
-  assert.equal(launchButton.disabled, true)
   await card.confirmFacts()
   assert.equal(confirmButton.disabled, true)
   assert.equal(confirmedNote.hidden, false)
@@ -199,14 +206,14 @@ test('a failed confirm leaves the badges pending', async () => {
   assert.ok(confirmedBadges.every((b) => b.hidden))
 })
 
-test('a failed confirm shows the error note and keeps launch disabled', async () => {
+test('a failed confirm shows the error note and leaves launch enabled', async () => {
   const { card, launchButton, confirmedNote, errorNote, failNextFetch } =
     mountCard()
   failNextFetch()
   await card.confirmFacts()
   assert.equal(errorNote.hidden, false)
   assert.equal(confirmedNote.hidden, true)
-  assert.equal(launchButton.disabled, true)
+  assert.equal(launchButton.disabled, false)
   assert.equal(card.done, false)
 })
 
@@ -230,7 +237,7 @@ test('a confirm the server left partly pending shows the stale note and flips no
   assert.equal(confirmedNote.hidden, true)
   assert.ok(pendingBadges.every((b) => !b.hidden))
   assert.ok(confirmedBadges.every((b) => b.hidden))
-  assert.equal(launchButton.disabled, true)
+  assert.equal(launchButton.disabled, false)
   assert.equal(confirmButton.disabled, false)
   assert.equal(card.done, false)
 })

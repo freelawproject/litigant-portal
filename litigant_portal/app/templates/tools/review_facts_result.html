@@ -43,7 +43,7 @@
     {% if data.facts %}
       <div class="space-y-2">
         <p class="text-xs text-greyscale-500 leading-relaxed">
-          {% trans "Check the answers above. Confirming marks them as reviewed by you, so they can fill your court forms. If one is wrong, tell me the right value in chat first." %}
+          {% trans "Check the answers above. Confirming marks them as reviewed by you, so your court forms can skip these questions. If one is wrong, tell me the right value in chat first." %}
         </p>
         {# Only x-on in tool cards; factReviewCard explains why. #}
         <c-atoms.button type="button" variant="primary" size="sm" x-on:click="confirmFacts" data-role="confirm">

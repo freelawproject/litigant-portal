@@ -1216,8 +1216,8 @@ document.addEventListener('alpine:init', () => {
       this.names = (this.$root.dataset.names || '').split(',').filter(Boolean)
       this.confirmUrl = this.$root.dataset.confirmUrl
       this.asOf = this.$root.dataset.asOf || ''
+      this.armLaunch()
       if (this.$root.dataset.allReviewed === 'true') this.markConfirmed()
-      else this.setLaunchEnabled(false)
     },
 
     // Token in the form body: the X-CSRFToken header is stripped on QA.
@@ -1260,7 +1260,6 @@ document.addEventListener('alpine:init', () => {
       this.showNote('stale-note', false)
       this.showAll('badge-pending', false)
       this.showAll('badge-confirmed', true)
-      this.setLaunchEnabled(true)
     },
 
     showAll(role, show) {
@@ -1269,12 +1268,6 @@ document.addEventListener('alpine:init', () => {
       )) {
         el.hidden = !show
       }
-    },
-
-    setLaunchEnabled(enabled) {
-      const button = this.$root.querySelector('form button[type=submit]')
-      if (button) button.disabled = !enabled
-      if (enabled) this.armLaunch()
     },
 
     showNote(role, show) {
