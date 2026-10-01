@@ -25,7 +25,7 @@ repos:
         args: [--markdown-linebreak-ext=md]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.16.7
+    rev: v0.16.9
     hooks:
       - id: ruff
         args: [--fix]
@@ -42,7 +42,7 @@ repos:
         additional_dependencies: ['prettier@3.8.1']
 
   - repo: https://github.com/djlint/djLint
-    rev: v1.46.1
+    rev: v1.46.2
     hooks:
       - id: djlint-django
 
