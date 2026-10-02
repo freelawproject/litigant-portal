@@ -28,6 +28,11 @@ from litigant_portal.app.models.choices import (
 )
 from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
+from litigant_portal.app.theme import (
+    contrast_level,
+    contrast_ratio,
+    theme_colors,
+)
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
     NEVER_PREFILL,
@@ -378,6 +383,67 @@ def atomic_design(request):
             "levels": levels,
             "current": current,
             "internal_section": "atomic_design",
+        },
+    )
+
+
+# Simulations the Accessibility page can apply to its demos, grouped for the
+# controls. Each key is also a CSS class suffix (a11y-sim-<key>) in main.css.
+_A11Y_SIMULATIONS = (
+    ("colour", "protanopia", _("Red-blind (protanopia)")),
+    ("colour", "deuteranopia", _("Green-blind (deuteranopia)")),
+    ("colour", "tritanopia", _("Blue-blind (tritanopia)")),
+    ("colour", "achromatopsia", _("No colour (achromatopsia)")),
+    ("vision", "blur", _("Blurred vision")),
+    ("vision", "cataracts", _("Cataracts")),
+    ("vision", "glaucoma", _("Glaucoma")),
+)
+
+# Text colours on white, chosen to show pass, borderline and fail. The fail
+# sample is our own placeholder colour. Class names are written out in full
+# so Tailwind's scanner finds them.
+_A11Y_CONTRAST_SAMPLES = (
+    ("greyscale-700", "white", "text-greyscale-700"),
+    ("greyscale-500", "white", "text-greyscale-500"),
+    ("greyscale-400", "white", "text-greyscale-400"),
+)
+
+
+def a11y_guide(request):
+    """Accessibility (A11y): what WCAG protects against, shown on our own
+    components, with simulations applied through ?simulate= links."""
+    simulations = [
+        {"group": group, "key": key, "label": label}
+        for group, key, label in _A11Y_SIMULATIONS
+    ]
+    selected = request.GET.get("simulate")
+    simulation = next((s for s in simulations if s["key"] == selected), None)
+    colors = theme_colors()
+    contrast_samples = []
+    for foreground, background, text_class in _A11Y_CONTRAST_SAMPLES:
+        ratio = contrast_ratio(colors[foreground], colors[background])
+        contrast_samples.append(
+            {
+                "foreground": foreground,
+                "background": background,
+                "text_class": text_class,
+                "ratio": ratio,
+                "level": contrast_level(ratio),
+            }
+        )
+    return render(
+        request,
+        "pages/a11y_guide.html",
+        {
+            "simulations": simulations,
+            "simulation": simulation,
+            "contrast_samples": contrast_samples,
+            # Shown on the passing form-field example, so its error state
+            # renders without a submitted form.
+            "name_errors": [
+                _("Enter your full legal name, as it appears on your ID.")
+            ],
+            "internal_section": "a11y",
         },
     )
 

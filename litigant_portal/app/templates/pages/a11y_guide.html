@@ -1,0 +1,279 @@
+{% extends "pages/internal_base.html" %}
+
+{% load i18n %}
+
+{# Accessibility (A11y): what WCAG protects against, shown on our own #}
+{# components. Each section pairs a passing example with a failing one; #}
+{# the simulations (?simulate=, see a11y_guide in views/pages.py) apply to #}
+{# the .a11y-demo panels only, so the explanations stay readable. Failing #}
+{# examples are raw HTML on purpose, since our atoms won't fail. #}
+{% block title %}
+  {% trans "Accessibility (A11y)" %}
+{% endblock title %}
+
+{% block internal_title %}
+  {% trans "Accessibility (A11y)" %}
+{% endblock internal_title %}
+
+{% block internal_lede %}
+  <p>
+    {% blocktrans trimmed %}
+      Access to justice means the portal works for everyone, including people with low vision, colour blindness, shaky hands, or no mouse. "A11y" is short for accessibility: the a and the y, with the 11 letters between them counted. This page shows the fundamentals on our own components, with a passing and a failing example side by side. Most failures look fine with typical vision, so turn on a simulation and watch which examples hold up.
+    {% endblocktrans %}
+  </p>
+{% endblock internal_lede %}
+
+{% block internal_body %}
+  {% trans "Simulate" as simulate_label %}
+  {% trans "Colour vision" as colour_label %}
+  {% trans "Low vision" as vision_label %}
+  {# Colour-vision filters, referenced from main.css by id. Matrices are #}
+  {# common approximations of each condition, not clinical models. #}
+  <svg class="absolute h-0 w-0" aria-hidden="true" focusable="false">
+    <defs>
+      <filter id="a11y-protanopia">
+        <feColorMatrix type="matrix" values="0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0" />
+      </filter>
+      <filter id="a11y-deuteranopia">
+        <feColorMatrix type="matrix" values="0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0" />
+      </filter>
+      <filter id="a11y-tritanopia">
+        <feColorMatrix type="matrix" values="0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0" />
+      </filter>
+    </defs>
+  </svg>
+  <div class="max-w-workbench mx-auto px-4 py-8 {% if simulation %}a11y-sim-{{ simulation.key }}{% endif %}">
+    {# Sticky so the controls stay in reach while scrolling the demos. #}
+    <nav aria-label="{{ simulate_label }}" class="sticky top-0 z-10 mb-10 rounded-xl border border-greyscale-200 bg-white p-4 shadow-sm">
+      <p class="mb-3 text-sm font-semibold text-greyscale-900">{% trans "See the demos as:" %}</p>
+      <div class="flex flex-col gap-3 text-sm">
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <c-atoms.link href="?" variant="unstyled" aria-current="{% if not simulation %}page{% endif %}" class="text-greyscale-600 aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900">{% trans "Typical vision" %}</c-atoms.link>
+        </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span class="font-semibold text-greyscale-500">{{ colour_label }}</span>
+          {% for sim in simulations %}
+            {% if sim.group == "colour" %}
+              <c-atoms.link href="?simulate={{ sim.key }}" variant="unstyled" aria-current="{% if simulation.key == sim.key %}page{% endif %}" class="text-greyscale-600 aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900">{{ sim.label }}</c-atoms.link>
+            {% endif %}
+          {% endfor %}
+        </div>
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <span class="font-semibold text-greyscale-500">{{ vision_label }}</span>
+          {% for sim in simulations %}
+            {% if sim.group == "vision" %}
+              <c-atoms.link href="?simulate={{ sim.key }}" variant="unstyled" aria-current="{% if simulation.key == sim.key %}page{% endif %}" class="text-greyscale-600 aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900">{{ sim.label }}</c-atoms.link>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      <p class="mt-3 text-xs text-greyscale-600">
+        {% trans "Simulations are approximations. They help us notice problems; they are no substitute for testing with disabled people." %}
+      </p>
+    </nav>
+    <div class="flex max-w-content flex-col gap-14">
+      {# --- Contrast --- #}
+      <section aria-labelledby="contrast-heading">
+        <h2 id="contrast-heading" class="text-display-xs font-semibold">{% trans "Contrast" %}</h2>
+        <p class="mt-2 max-w-prose text-greyscale-700">
+          {% blocktrans trimmed %}
+            Text needs enough difference from its background to read on a cheap phone in sunlight, or with ageing eyes. All three look readable on a good screen. Try Cataracts.
+          {% endblocktrans %}
+        </p>
+        <p class="mt-1 text-sm text-greyscale-600">WCAG 1.4.3 (AA, 4.5:1), 1.4.6 (AAA, 7:1), 1.4.11 (controls, 3:1)</p>
+        <div class="a11y-demo mt-4 grid gap-4 sm:grid-cols-3">
+          {% for sample in contrast_samples %}
+            <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+              <p class="{{ sample.text_class }}">{% trans "Your hearing is on Tuesday at 9:00 a.m. Bring your notice." %}</p>
+              <p class="mt-3 text-sm font-semibold text-greyscale-900">{{ sample.ratio }}:1 · {{ sample.level }}</p>
+              <p class="font-mono text-xs text-greyscale-600">{{ sample.foreground }} on {{ sample.background }}</p>
+            </div>
+          {% endfor %}
+        </div>
+        <p class="mt-3 max-w-prose text-sm text-greyscale-600">
+          {% blocktrans trimmed %}
+            The failing sample is the colour our form inputs use for placeholder text today. Ratios are measured from the theme in src/main.css every time this page loads.
+          {% endblocktrans %}
+        </p>
+      </section>
+      {# --- Colour alone --- #}
+      <section aria-labelledby="colour-heading">
+        <h2 id="colour-heading" class="text-display-xs font-semibold">{% trans "Colour alone" %}</h2>
+        <p class="mt-2 max-w-prose text-greyscale-700">
+          {% blocktrans trimmed %}
+            About 1 in 12 men can't tell red from green. If colour is the only signal, they miss it. Try Green-blind.
+          {% endblocktrans %}
+        </p>
+        <p class="mt-1 text-sm text-greyscale-600">WCAG 1.4.1 (A)</p>
+        <div class="a11y-demo mt-4 grid gap-4 sm:grid-cols-2">
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-red-700">{% trans "Fails: colour only" %}</p>
+            <ul class="flex flex-col gap-2">
+              <li class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-green-600"></span>{% trans "Petition" %}</li>
+              <li class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-red-600"></span>{% trans "Notice of hearing" %}</li>
+              <li class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-green-600"></span>{% trans "Proposed order" %}</li>
+            </ul>
+          </div>
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-green-700">{% trans "Passes: colour, icon and words" %}</p>
+            <ul class="flex flex-col gap-2">
+              <li class="flex items-center gap-2"><c-atoms.icon name="check-circle" class="h-5 w-5 text-green-700" />{% trans "Petition" %} <c-atoms.badge variant="completed">{% trans "Done" %}</c-atoms.badge></li>
+              <li class="flex items-center gap-2"><c-atoms.icon name="exclamation-triangle" class="h-5 w-5 text-red-700" />{% trans "Notice of hearing" %} <c-atoms.badge variant="urgent">{% trans "Missing" %}</c-atoms.badge></li>
+              <li class="flex items-center gap-2"><c-atoms.icon name="check-circle" class="h-5 w-5 text-green-700" />{% trans "Proposed order" %} <c-atoms.badge variant="completed">{% trans "Done" %}</c-atoms.badge></li>
+            </ul>
+          </div>
+        </div>
+        <p class="mt-6 text-sm font-semibold text-greyscale-900">{% trans "Our palette" %}</p>
+        <p class="max-w-prose text-sm text-greyscale-600">{% trans "Under each colour simulation, watch which swatches start to look alike. Those pairs must never carry meaning by colour alone." %}</p>
+        <ul class="a11y-demo mt-3 grid grid-cols-3 gap-3 sm:grid-cols-6">
+          <li><span class="block h-12 rounded-lg bg-primary-600"></span><span class="font-mono text-xs text-greyscale-600">primary-600</span></li>
+          <li><span class="block h-12 rounded-lg bg-red-600"></span><span class="font-mono text-xs text-greyscale-600">red-600</span></li>
+          <li><span class="block h-12 rounded-lg bg-green-600"></span><span class="font-mono text-xs text-greyscale-600">green-600</span></li>
+          <li><span class="block h-12 rounded-lg bg-yellow-400"></span><span class="font-mono text-xs text-greyscale-600">yellow-400</span></li>
+          <li><span class="block h-12 rounded-lg bg-blue-700"></span><span class="font-mono text-xs text-greyscale-600">blue-700</span></li>
+          <li><span class="block h-12 rounded-lg bg-brand-600"></span><span class="font-mono text-xs text-greyscale-600">brand-600</span></li>
+        </ul>
+      </section>
+      {# --- Target size --- #}
+      <section aria-labelledby="target-heading">
+        <h2 id="target-heading" class="text-display-xs font-semibold">{% trans "Target size" %}</h2>
+        <p class="mt-2 max-w-prose text-greyscale-700">
+          {% blocktrans trimmed %}
+            Thumbs, tremors and cracked screens all miss small targets. Buttons, links and inputs need room to hit. Text inputs also need text of at least 16px: below that, iPhones zoom in when you tap the field, and the page jumps.
+          {% endblocktrans %}
+        </p>
+        <p class="mt-1 text-sm text-greyscale-600">WCAG 2.5.8 (AA, 24px), 2.5.5 (AAA, 44px)</p>
+        <div class="a11y-demo mt-4 flex flex-col gap-4 rounded-xl border border-greyscale-200 bg-white p-4">
+          <div class="flex flex-wrap items-end gap-6">
+            <div class="flex flex-col items-start gap-1">
+              <a href="#target-heading" class="text-xs leading-none text-primary-600 underline">{% trans "Edit" %}</a>
+              <span class="text-xs text-greyscale-600">{% trans "12px link: fails" %}</span>
+            </div>
+            <div class="flex flex-col items-start gap-1">
+              <c-atoms.button type="button" size="sm">{% trans "Small" %}</c-atoms.button>
+              <span class="text-xs text-greyscale-600">{% trans "30px: passes AA" %}</span>
+            </div>
+            <div class="flex flex-col items-start gap-1">
+              <c-atoms.button type="button">{% trans "Default" %}</c-atoms.button>
+              <span class="text-xs text-greyscale-600">{% trans "40px: passes AA" %}</span>
+            </div>
+            <div class="flex flex-col items-start gap-1">
+              <c-atoms.button type="button" size="xl">{% trans "Large" %}</c-atoms.button>
+              <span class="text-xs text-greyscale-600">{% trans "48px: passes AAA" %}</span>
+            </div>
+            <div class="flex items-end gap-3 text-xs text-greyscale-600">
+              <span class="flex h-6 w-6 items-center justify-center border border-dashed border-greyscale-500">24</span>
+              <span class="flex h-11 w-11 items-center justify-center border border-dashed border-greyscale-500">44</span>
+            </div>
+          </div>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="a11y-input-small" class="text-sm font-semibold text-red-700">{% trans "Fails: 14px text, iPhone zooms in" %}</label>
+              <input id="a11y-input-small" type="text" class="mt-1 w-full rounded border border-greyscale-300 px-2 py-1 text-sm" />
+            </div>
+            <div>
+              <label for="a11y-input-ok" class="text-sm font-semibold text-green-700">{% trans "Passes: our input, 16px text" %}</label>
+              <c-atoms.input id="a11y-input-ok" class="mt-1" />
+            </div>
+          </div>
+        </div>
+      </section>
+      {# --- Keyboard --- #}
+      <section aria-labelledby="keyboard-heading">
+        <h2 id="keyboard-heading" class="text-display-xs font-semibold">{% trans "Keyboard navigation" %}</h2>
+        <p class="mt-2 max-w-prose text-greyscale-700">
+          {% blocktrans trimmed %}
+            Some people can't use a mouse: they move with Tab and act with Enter or Space. They need to see where they are, and to move in the order they read. Click just above a row, then press Tab.
+          {% endblocktrans %}
+        </p>
+        <p class="mt-1 text-sm text-greyscale-600">WCAG 2.1.1 (A), 2.4.3 (A), 2.4.7 (AA), 2.4.11 (AA)</p>
+        <div class="a11y-demo mt-4 grid gap-4 sm:grid-cols-2">
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-green-700">{% trans "Passes: visible focus" %}</p>
+            <div class="flex gap-2">
+              <c-atoms.button type="button" variant="outline">{% trans "Back" %}</c-atoms.button>
+              <c-atoms.button type="button" variant="outline">{% trans "Save" %}</c-atoms.button>
+              <c-atoms.button type="button">{% trans "Next" %}</c-atoms.button>
+            </div>
+          </div>
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-red-700">{% trans "Fails: focus outline removed" %}</p>
+            <div class="flex gap-2">
+              <button type="button" class="rounded-lg border border-greyscale-300 px-3.5 py-2.5 text-sm outline-none">{% trans "Back" %}</button>
+              <button type="button" class="rounded-lg border border-greyscale-300 px-3.5 py-2.5 text-sm outline-none">{% trans "Save" %}</button>
+              <button type="button" class="rounded-lg bg-primary-600 px-3.5 py-2.5 text-sm text-white outline-none">{% trans "Next" %}</button>
+            </div>
+          </div>
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4 sm:col-span-2">
+            <p class="mb-3 text-sm font-semibold text-red-700">{% trans "Fails: reordered with CSS, so Tab goes 3, 2, 1" %}</p>
+            <div class="flex flex-row-reverse justify-end gap-2">
+              <c-atoms.button type="button" variant="outline">{% trans "Step 3" %}</c-atoms.button>
+              <c-atoms.button type="button" variant="outline">{% trans "Step 2" %}</c-atoms.button>
+              <c-atoms.button type="button" variant="outline">{% trans "Step 1" %}</c-atoms.button>
+            </div>
+          </div>
+        </div>
+      </section>
+      {# --- Skip link --- #}
+      <section aria-labelledby="skip-heading">
+        <h2 id="skip-heading" class="text-display-xs font-semibold">{% trans "Skip to main content" %}</h2>
+        <p class="mt-2 max-w-prose text-greyscale-700">
+          {% blocktrans trimmed %}
+            Without a skip link, a keyboard user tabs through every link in the header on every page before reaching what they came for. Every page on the portal now starts with one. Reload this page and press Tab once: "Skip to main content" appears in the top corner, and Enter jumps straight past the header.
+          {% endblocktrans %}
+        </p>
+        <p class="mt-1 text-sm text-greyscale-600">WCAG 2.4.1 (A)</p>
+      </section>
+      {# --- Forms --- #}
+      <section aria-labelledby="forms-heading">
+        <h2 id="forms-heading" class="text-display-xs font-semibold">{% trans "Form labels and errors" %}</h2>
+        <p class="mt-2 max-w-prose text-greyscale-700">
+          {% blocktrans trimmed %}
+            A placeholder isn't a label: it disappears as soon as you type, it's often too faint to read, and screen readers may skip it. An error has to say what went wrong and how to fix it, next to the field, in words, not only a red border.
+          {% endblocktrans %}
+        </p>
+        <p class="mt-1 text-sm text-greyscale-600">WCAG 1.3.1 (A), 3.3.1 (A), 3.3.2 (A)</p>
+        {% trans "Your full legal name" as name_label %}
+        {% trans "As it appears on your ID" as name_help %}
+        <div class="a11y-demo mt-4 grid gap-4 sm:grid-cols-2">
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-red-700">{% trans "Fails: placeholder as label, colour-only error" %}</p>
+            <input type="text" placeholder="{{ name_label }}" aria-label="{{ name_label }}" class="w-full rounded-lg border-2 border-red-500 px-4 py-3 placeholder:text-greyscale-400" />
+          </div>
+          <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+            <p class="mb-3 text-sm font-semibold text-green-700">{% trans "Passes: our form field" %}</p>
+            <c-molecules.form-field label="{{ name_label }}" name="a11y_full_name" id="a11y-full-name" help_text="{{ name_help }}" :errors="name_errors" />
+          </div>
+        </div>
+      </section>
+      {# --- Zoom and reflow --- #}
+      <section aria-labelledby="reflow-heading">
+        <h2 id="reflow-heading" class="text-display-xs font-semibold">{% trans "Zoom and reflow" %}</h2>
+        <p class="mt-2 max-w-prose text-greyscale-700">
+          {% blocktrans trimmed %}
+            Many people zoom to read. At 200% zoom, or on a 320px-wide phone, everything must still fit without scrolling sideways. Try it: press Ctrl and + (Cmd and + on a Mac) a few times. This page reflows; the box below doesn't.
+          {% endblocktrans %}
+        </p>
+        <p class="mt-1 text-sm text-greyscale-600">WCAG 1.4.4 (AA), 1.4.10 (AA)</p>
+        {% trans "Example of content that doesn't reflow" as reflow_label %}
+        <div class="a11y-demo mt-4 overflow-x-auto rounded-xl border border-greyscale-200 bg-white p-4" tabindex="0" role="region" aria-label="{{ reflow_label }}">
+          <p class="mb-3 text-sm font-semibold text-red-700">{% trans "Fails: fixed 720px width, scrolls sideways when narrow" %}</p>
+          <div class="w-[720px] rounded-lg bg-greyscale-100 p-4 text-sm text-greyscale-700">
+            {% trans "Hearing date · Courtroom · Judge · Case number · What to bring · Who to call" %}
+          </div>
+        </div>
+      </section>
+      {# --- Further reading --- #}
+      <section aria-labelledby="reading-heading">
+        <h2 id="reading-heading" class="text-display-xs font-semibold">{% trans "Go deeper" %}</h2>
+        <ul class="mt-3 flex flex-col gap-2">
+          <li><c-atoms.link href="https://www.w3.org/WAI/WCAG22/quickref/" target="_blank">{% trans "How to Meet WCAG 2.2: the W3C's quick reference, every criterion with techniques" %}</c-atoms.link></li>
+          <li><c-atoms.link href="https://www.w3.org/WAI/people-use-web/" target="_blank">{% trans "How People with Disabilities Use the Web (W3C)" %}</c-atoms.link></li>
+          <li><c-atoms.link href="https://webaim.org/resources/contrastchecker/" target="_blank">{% trans "WebAIM contrast checker" %}</c-atoms.link></li>
+          <li><c-atoms.link href="https://webaim.org/projects/million/" target="_blank">{% trans "The WebAIM Million: the most common failures across a million home pages" %}</c-atoms.link></li>
+          <li><c-atoms.link href="https://github.com/freelawproject/litigant-portal/blob/main/docs/wiki/wcag-strategy.md" target="_blank">{% trans "Our WCAG strategy: the criteria the portal commits to" %}</c-atoms.link></li>
+        </ul>
+      </section>
+    </div>
+  </div>
+{% endblock internal_body %}

@@ -20,13 +20,16 @@
     {% endblock extra_css %}
   </head>
   <body class="{% block body_class %}min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}">
+    {# WCAG 2.4.1: the first stop for a keyboard user jumps past the header. #}
+    {# Hidden until focused, then shown over the page. #}
+    <a href="#main-content" class="skip-link">{% trans "Skip to main content" %}</a>
     {% block header %}
       {# Court props are empty unless the view or a context processor sets them (#771), which falls back to the FLP brand. #}
       <c-organisms.header court_logo="{{ court_logo }}" court_name="{{ court_name }}" court_name_image="{{ court_name_image }}" />
     {% endblock header %}
 
     <c-molecules.toast-container :messages="toast_messages" />
-    <main class="flex-1 {% block main_class %}{% endblock main_class %}">
+    <main id="main-content" tabindex="-1" class="flex-1 focus:outline-none {% block main_class %}{% endblock main_class %}">
       {% block content %}
       {% endblock content %}
     </main>

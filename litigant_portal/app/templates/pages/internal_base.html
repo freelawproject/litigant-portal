@@ -2,23 +2,25 @@
 
 {% load i18n %}
 
-{# Frame for the internal design-system pages (style guide, Atomic Design). #}
+{# Frame for the internal design-system pages (style guide, Atomic Design, #}
+{# Accessibility). #}
 {# Site header, then a sub-header strip holding only the tabs between the #}
-{# two pages, then the page: title, intro, body. The tabs sit in their own #}
-{# fixed-height strip so they stay in the same place on both pages, #}
+{# pages, then the page: title, intro, body. The tabs sit in their own #}
+{# fixed-height strip so they stay in the same place on every page, #}
 {# whatever the title and intro below them hold (layout stability). The #}
 {# strip and the page share the workbench width (max-w-workbench): a 16rem #}
 {# nav rail, a 2rem gap, and the app's content column, so a component shown #}
 {# beside the rail sits at the width litigant content actually gets. The #}
-{# view passes internal_section ("style_guide" or "atomic_design") to mark #}
-{# the current tab. #}
+{# view passes internal_section ("style_guide", "atomic_design" or "a11y") #}
+{# to mark the current tab. #}
 {% block content %}
   {% trans "Design system" as internal_nav_label %}
   <div class="border-b border-greyscale-200 bg-white">
-    <nav aria-label="{{ internal_nav_label }}" class="max-w-workbench mx-auto flex items-end gap-6 px-4 pt-3 text-greyscale-600">
+    <nav aria-label="{{ internal_nav_label }}" class="max-w-workbench mx-auto flex flex-wrap items-end gap-x-6 px-4 pt-3 text-greyscale-600">
       <span class="pb-3 text-sm font-semibold uppercase text-primary-600">{% trans "Design system" %}</span>
       <c-atoms.link href="{% url 'pages:style_guide' %}" variant="unstyled" aria-current="{% if internal_section == 'style_guide' %}page{% endif %}" class="pb-3 border-b-2 border-transparent font-medium aria-[current=page]:border-primary-600 aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900">{% trans "Style guide" %}</c-atoms.link>
       <c-atoms.link href="{% url 'pages:atomic_design' %}" variant="unstyled" aria-current="{% if internal_section == 'atomic_design' %}page{% endif %}" class="pb-3 border-b-2 border-transparent font-medium aria-[current=page]:border-primary-600 aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900">{% trans "Atomic design" %}</c-atoms.link>
+      <c-atoms.link href="{% url 'pages:a11y_guide' %}" variant="unstyled" aria-current="{% if internal_section == 'a11y' %}page{% endif %}" class="pb-3 border-b-2 border-transparent font-medium aria-[current=page]:border-primary-600 aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900">{% trans "Accessibility (A11y)" %}</c-atoms.link>
     </nav>
   </div>
   <div class="max-w-workbench mx-auto px-4 pt-8">
