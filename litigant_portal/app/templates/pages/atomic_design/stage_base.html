@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{# A stage is a column of the Atomic Design summary, rendered inside a #}
+{# phone-width frame. Pieces are shown loose, so the site frame stays out #}
+{# until the template stage puts it back. #}
+{% block title %}
+  {% trans "Atomic Design" %}
+{% endblock title %}
+
+{% block body_class %}min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
+
+{% block header %}
+{% endblock header %}
+
+{% block footer %}
+{% endblock footer %}
+
+{% block content %}
+  <div class="flex flex-col gap-6 p-4">
+    {% block parts %}
+    {% endblock parts %}
+  </div>
+{% endblock content %}

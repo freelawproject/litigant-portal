@@ -1,0 +1,11 @@
+{% extends "pages/atomic_design/stage_base.html" %}
+
+{# Atoms joined to do one job each. #}
+{% block parts %}
+  <c-molecules.logo court_logo="{{ court_logo }}" court_name="{{ court_name }}" />
+  <div>
+    <c-molecules.user-menu />
+  </div>
+  <c-molecules.search-bar />
+  <c-molecules.topic-card title="Topic name" description="One line about what this topic covers" />
+{% endblock parts %}

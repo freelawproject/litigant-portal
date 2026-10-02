@@ -62,6 +62,24 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
+  // Frame auto-height (Atomic Design samples)
+  // ===========================================================================
+
+  // Grows a same-origin iframe to its content, so a sample shows whole
+  // instead of scrolling inside a box. The frame's min-height is the no-JS
+  // size, so with JS it only ever grows. Height goes through el.style,
+  // which our CSP allows. init covers a frame that loaded before Alpine.
+  Alpine.data('frameAutoHeight', () => ({
+    init() {
+      if (this.$el.contentDocument?.readyState === 'complete') this.resize()
+    },
+    resize() {
+      const doc = this.$el.contentDocument
+      if (doc) this.$el.style.height = `${doc.documentElement.scrollHeight}px`
+    },
+  }))
+
+  // ===========================================================================
   // Action plan page (print button)
   // ===========================================================================
 
