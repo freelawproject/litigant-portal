@@ -237,22 +237,82 @@
 
 @layer components {
   /* Logo */
+  /* Stacked so the court variant's "Powered by" line sits under both the
+     court logo and its name; the FLP variant is a single image either way. */
   .logo {
-    @apply inline-flex items-center gap-2 no-underline;
+    @apply inline-flex flex-col items-start gap-1 no-underline;
     @apply text-greyscale-900 font-cooper font-semibold;
     @apply hover:text-primary-600 transition-colors;
   }
 
   .logo-image {
-    @apply h-10 w-auto; /* 40px - default */
+    @apply h-12 w-auto; /* 48px - default (header) */
   }
 
   .logo-sm .logo-image {
-    @apply h-8; /* 32px - compact (mobile header) */
+    @apply h-8; /* 32px - compact */
   }
 
   .logo-lg .logo-image {
-    @apply h-15; /* 60px - prominent (footer, hero) */
+    @apply h-15; /* 60px - prominent (auth pages) */
+  }
+
+  .logo-court {
+    @apply flex items-center gap-3;
+  }
+
+  .logo-court-mark {
+    @apply h-12 w-auto shrink-0;
+  }
+
+  .logo-sm .logo-court-mark {
+    @apply h-10;
+  }
+
+  .logo-lg .logo-court-mark {
+    @apply h-15;
+  }
+
+  .logo-court-name-image {
+    @apply h-8 w-auto;
+  }
+
+  .logo-sm .logo-court-name-image {
+    @apply h-7;
+  }
+
+  .logo-lg .logo-court-name-image {
+    @apply h-10;
+  }
+
+  .logo-court-name {
+    @apply text-lg leading-tight;
+  }
+
+  /* The court variant responds to its own frame, not the viewport (see
+     logo.html). Below the width its full lockup needs, it shows the court
+     logo alone; sr-only rather than hidden, so the name stays in the
+     link's accessible name. */
+  .logo-frame-responsive {
+    @apply @container flex-1 min-w-12;
+  }
+
+  .logo-frame-responsive .logo-court-name,
+  .logo-frame-responsive .logo-court-name-image {
+    @apply @max-[11rem]:sr-only;
+  }
+
+  .logo-frame-responsive .logo-court-mark {
+    @apply @max-[11rem]:h-10;
+  }
+
+  .logo-frame-responsive .logo-lg .logo-court-name,
+  .logo-frame-responsive .logo-lg .logo-court-name-image {
+    @apply @max-[13rem]:sr-only;
+  }
+
+  .logo-powered {
+    @apply font-sans font-normal text-xs text-greyscale-600;
   }
 
   /* Search Bar */
@@ -302,9 +362,9 @@
     @apply sticky top-0 z-40;
   }
 
+  /* Full window width on every page; content below keeps its own width. */
   .mobile-header-inner {
     @apply flex items-center justify-between px-4 py-2;
-    @apply max-w-content mx-auto;
   }
 
   /* Hero Section */

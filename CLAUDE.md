@@ -251,7 +251,7 @@ Components live in `litigant_portal/app/templates/cotton/` using Atomic Design h
 litigant_portal/app/templates/cotton/
 ├── atoms/      # Basic elements: alert, auto_dismiss, badge, button, checkbox, eyebrow, icon, input, link, nav_link, search_input, select
 ├── molecules/  # Combinations: auth_status, briefcase_fact, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, toast_container, topic_card, user_menu
-└── organisms/  # Complex sections: auth_cta, auth_layout, briefcase_panel, chat_header, fallback_resources, footer, header, hero, topic_grid
+└── organisms/  # Complex sections: auth_cta, auth_layout, briefcase_panel, fallback_resources, footer, header, hero, topic_grid
 ```
 
 **Syntax:** `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`

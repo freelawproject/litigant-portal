@@ -1,12 +1,15 @@
 {% extends "base.html" %}
 
-{% load heroicons %}
+{% load heroicons static %}
 
 {% block title %}
   Style Guide - Litigant Portal
 {% endblock title %}
 
 {% block content %}
+  {# Sample court art for the Logo and Header entries, until a real court logo comes from Site config (#771). #}
+  {% static 'images/style_guide/sample_court_logo.png' as sample_court_logo %}
+  {% static 'images/style_guide/sample_court_name.png' as sample_court_name_image %}
   <div class="max-w-content mx-auto px-4 py-8">
     <div class="flex flex-col md:flex-row gap-8">
       <nav class="md:w-64 md:flex-shrink-0 md:sticky md:top-8 md:self-start md:max-h-[calc(100vh-4rem)] md:overflow-y-auto"
@@ -845,11 +848,35 @@
               class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Molecules</h2>
           <section id="logo" class="mb-12" aria-labelledby="logo-heading">
             <h3 id="logo-heading" class="mb-4">Logo</h3>
-            <p class="text-greyscale-600 mb-6">Portal branding component.</p>
+            <p class="text-greyscale-600 mb-6">
+              Site brand, linking home. With <code>court_name</code> set it shows the court's logo and name with a "Powered by Free Law Project" line under both; without it, the Free Law Project lockup. <code>court_name_image</code> is optional art for the name, with <code>court_name</code> as its alt text. Sizes: <code>sm</code>, default, <code>lg</code>. The court version responds to the space it is placed in, not the screen: under about 11rem it shows the court logo alone, keeping the name for screen readers. In a flex row it grows into free space, and never shrinks below one court logo. The court shown is sample art.
+            </p>
+            <h4 class="text-sm font-semibold text-greyscale-500 mb-3">Court configured</h4>
+            <div class="flex flex-col gap-6 mb-8">
+              <c-molecules.logo size="sm" court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+              <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+              <c-molecules.logo size="lg" court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+              <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" />
+            </div>
+            <h4 class="text-sm font-semibold text-greyscale-500 mb-3">Same logo, narrow spaces</h4>
+            <div class="flex flex-wrap items-start gap-6 mb-8">
+              <div class="w-64 rounded-lg border border-dashed border-greyscale-300 p-2">
+                <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+              </div>
+              <div class="w-36 rounded-lg border border-dashed border-greyscale-300 p-2">
+                <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+              </div>
+              <div class="flex w-64 items-center gap-2 rounded-lg border border-dashed border-greyscale-300 p-2">
+                <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+                <c-atoms.button type="button" variant="outline" size="sm">Exit</c-atoms.button>
+                <c-atoms.button type="button" variant="outline" size="sm">Account</c-atoms.button>
+              </div>
+            </div>
+            <h4 class="text-sm font-semibold text-greyscale-500 mb-3">No court configured</h4>
             <div class="flex flex-col gap-6 mb-6">
-              <c-molecules.logo size="sm" show_image />
-              <c-molecules.logo show_image />
-              <c-molecules.logo size="lg" show_image />
+              <c-molecules.logo size="sm" />
+              <c-molecules.logo />
+              <c-molecules.logo size="lg" />
             </div>
           </section>
           <section id="search-bar" class="mb-12" aria-labelledby="search-bar-heading">
@@ -1072,9 +1099,16 @@
               class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Organisms</h2>
           <section id="header" class="mb-12" aria-labelledby="header-heading">
             <h3 id="header-heading" class="mb-4">Header</h3>
-            <p class="text-greyscale-600 mb-6">Responsive sticky header.</p>
+            <p class="text-greyscale-600 mb-6">
+              The one site header. Left card: <code>c-molecules.logo</code>, passed <code>court_logo</code>, <code>court_name</code> and <code>court_name_image</code>. Right card: user menu, then the page's table of contents or the dev menu. Source order is tab order, so the cards collapse in place and never reorder with CSS. It spans the full window width on every page.
+            </p>
+            <h4 class="text-sm font-semibold text-greyscale-500 mb-3">Court configured</h4>
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-8">
+              <c-organisms.header court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+            </div>
+            <h4 class="text-sm font-semibold text-greyscale-500 mb-3">No court configured</h4>
             <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-              <c-organisms.header sticky="" />
+              <c-organisms.header />
             </div>
           </section>
           <section id="hero" class="mb-12" aria-labelledby="hero-heading">

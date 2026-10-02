@@ -21,7 +21,8 @@
   </head>
   <body class="{% block body_class %}min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}">
     {% block header %}
-      <c-organisms.header />
+      {# Court props are empty unless the view or a context processor sets them (#771), which falls back to the FLP brand. #}
+      <c-organisms.header court_logo="{{ court_logo }}" court_name="{{ court_name }}" court_name_image="{{ court_name_image }}" />
     {% endblock header %}
 
     <c-molecules.toast-container :messages="toast_messages" />
