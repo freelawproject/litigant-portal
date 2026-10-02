@@ -365,6 +365,14 @@
     @apply sticky top-0 z-40;
   }
 
+  /* WCAG 2.4.1 skip link: off screen until a keyboard user tabs to it. */
+  .skip-link {
+    @apply sr-only;
+    @apply focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50;
+    @apply focus:rounded-lg focus:bg-greyscale-900 focus:px-4 focus:py-3 focus:text-white;
+    @apply focus:ring-4 focus:ring-primary-300;
+  }
+
   /* Full window width on every page; content below keeps its own width. */
   .mobile-header-inner {
     @apply flex items-center justify-between px-4 py-2;
