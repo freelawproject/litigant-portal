@@ -61,6 +61,16 @@ app_patterns = [
     path("privacy/", pages.privacy, name="privacy"),
     path("accessibility/", pages.accessibility, name="accessibility"),
     path("style-guide/", pages.style_guide, name="style_guide"),
+    path(
+        "style-guide/atomic-design/",
+        pages.atomic_design,
+        name="atomic_design",
+    ),
+    path(
+        "style-guide/atomic-design/<slug:stage>/",
+        pages.atomic_design_stage,
+        name="atomic_design_stage",
+    ),
 ]
 
 assistant_patterns = [

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "pages/internal_base.html" %}
 
 {% load heroicons static %}
 
@@ -6,11 +6,31 @@
   Style Guide - Litigant Portal
 {% endblock title %}
 
-{% block content %}
+{% block internal_title %}
+  Style Guide
+{% endblock internal_title %}
+
+{% block internal_lede %}
+  Design tokens and component library for the Litigant Portal. Components use
+  <a href="https://django-cotton.com"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="underline">Django Cotton</a>,
+  <a href="https://alpinejs.dev"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="underline">Alpine.js</a>, and
+  <a href="https://tailwindcss.com"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="underline">Tailwind CSS</a>.
+{% endblock internal_lede %}
+
+{% block internal_body %}
   {# Sample court art for the Logo and Header entries, until a real court logo comes from Site config (#771). #}
   {% static 'images/style_guide/sample_court_logo.png' as sample_court_logo %}
   {% static 'images/style_guide/sample_court_name.png' as sample_court_name_image %}
-  <div class="max-w-content mx-auto px-4 py-8">
+  <div class="max-w-workbench mx-auto px-4 py-8">
     <div class="flex flex-col md:flex-row gap-8">
       <nav class="md:w-64 md:flex-shrink-0 md:sticky md:top-8 md:self-start md:max-h-[calc(100vh-4rem)] md:overflow-y-auto"
            aria-label="Style guide navigation">
@@ -179,27 +199,9 @@
           </ul>
         </details>
       </nav>
-      <main class="flex-1 max-w-3xl">
-        <header class="mb-12">
-          <p class="text-sm font-semibold text-primary-600 uppercase mb-2">Litigant Portal</p>
-          <h1>Style Guide</h1>
-          <p class="mt-4 text-greyscale-600">
-            Design tokens and component library for the Litigant Portal.
-            Components use
-            <a href="https://django-cotton.com"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="underline">Django Cotton</a>,
-            <a href="https://alpinejs.dev"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="underline">Alpine.js</a>, and
-            <a href="https://tailwindcss.com"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="underline">Tailwind CSS</a>.
-          </p>
-        </header>
+      {# The canvas is the content column's width, so components show at the #}
+      {# size they get on litigant pages. A div: base.html owns <main>. #}
+      <div class="min-w-0 flex-1 max-w-content">
         <section id="design-tokens" aria-labelledby="design-tokens-heading">
           <h2 id="design-tokens-heading"
               class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Design Tokens</h2>
@@ -1213,7 +1215,7 @@
             </div>
           </section>
         </section>
-      </main>
+      </div>
     </div>
   </div>
-{% endblock content %}
+{% endblock internal_body %}

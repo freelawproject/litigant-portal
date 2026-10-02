@@ -12,6 +12,7 @@ COURT_NAME = "State of North Dakota Courts"
 COURT_LOGO = "/static/images/court-logo.png"
 COURT_NAME_IMAGE = "/static/images/court-name.png"
 FLP_LOGO = "images/logo_powered.svg"
+PLACEHOLDER_COURT_LOGO = "images/style_guide/placeholder_court_logo.svg"
 
 
 def _render_logo(**props):
@@ -60,6 +61,17 @@ class LogoTests(SimpleTestCase):
 
 @pytest.mark.postgres
 class HeaderCourtContextTests(TestCase):
+    def test_header_takes_court_props_from_the_page_context(self):
+        """base.html hands court_logo and court_name to the header; the
+        Atomic Design template stage sets placeholder ones."""
+        response = self.client.get(
+            reverse("pages:atomic_design_stage", args=["template"])
+        )
+        html = response.content.decode()
+
+        self.assertIn(PLACEHOLDER_COURT_LOGO, html)
+        self.assertNotIn(FLP_LOGO, html)
+
     def test_header_without_court_context_shows_the_flp_logo(self):
         response = self.client.get(reverse("pages:home"))
 
