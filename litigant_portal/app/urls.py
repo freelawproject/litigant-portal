@@ -67,6 +67,11 @@ app_patterns = [
         name="atomic_design",
     ),
     path(
+        "style-guide/accessibility/",
+        pages.a11y_guide,
+        name="a11y_guide",
+    ),
+    path(
         "style-guide/atomic-design/<slug:stage>/",
         pages.atomic_design_stage,
         name="atomic_design_stage",

@@ -373,6 +373,40 @@
     @apply focus:ring-4 focus:ring-primary-300;
   }
 
+  /* Accessibility page simulations, applied to its .a11y-demo panels only so
+     the explanations stay readable. Approximations, not diagnoses. The
+     colour-vision filters are SVG colour matrices defined in the page
+     (pages/a11y_guide.html); CSP allows a filter that references them. */
+  .a11y-sim-protanopia .a11y-demo {
+    filter: url(#a11y-protanopia);
+  }
+
+  .a11y-sim-deuteranopia .a11y-demo {
+    filter: url(#a11y-deuteranopia);
+  }
+
+  .a11y-sim-tritanopia .a11y-demo {
+    filter: url(#a11y-tritanopia);
+  }
+
+  .a11y-sim-achromatopsia .a11y-demo {
+    filter: grayscale(1);
+  }
+
+  .a11y-sim-blur .a11y-demo {
+    filter: blur(2.5px);
+  }
+
+  /* Cataracts: clouded, washed out, and yellowed. */
+  .a11y-sim-cataracts .a11y-demo {
+    filter: blur(1.5px) contrast(0.55) brightness(1.15) sepia(0.3);
+  }
+
+  /* Glaucoma: vision narrows to the centre of each panel. */
+  .a11y-sim-glaucoma .a11y-demo {
+    mask-image: radial-gradient(ellipse at center, #000 25%, transparent 70%);
+  }
+
   /* Full window width on every page; content below keeps its own width. */
   .mobile-header-inner {
     @apply flex items-center justify-between px-4 py-2;
