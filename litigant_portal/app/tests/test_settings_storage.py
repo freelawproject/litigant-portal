@@ -1,7 +1,7 @@
 """Storage backend selection is gated by USE_S3, not DEBUG directly.
 
-A non-debug deploy without S3 credentials (the self-contained DigitalOcean QA
-box) must be able to run on local filesystem storage. These tests pin that
+A non-debug deploy without S3 credentials must be able to run on local
+filesystem storage. These tests pin that
 contract and the back-compatible default (S3 whenever DEBUG is off, filesystem
 otherwise) by reloading the settings module under a controlled environment.
 """

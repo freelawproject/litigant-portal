@@ -37,8 +37,6 @@ Gotchas the manifests don't explain:
 - **≥ 4 GB RAM** — docassemble idles ~2 GB and OOMs below that. First boot pulls the ~20 GB image and inits its own DB: 15+ minutes observed on EKS.
 - **Playground empty or default admin login after a recreate** = the volumes weren't mounted, or an unsafe shutdown skipped the restore. Confirm the PVCs are bound before re-uploading anything by hand; if they are, a recreate with the mounts restores them.
 
-**The DigitalOcean box is dev now, not QA** (#880): the same shape in compose form, documented in [deploy/qa-do/README.md](../deploy/qa-do/README.md), removed entirely at the #461 cutover.
-
 **Production currently runs a copy of this QA setup, and that is a placeholder, not the launch configuration.** QA is deliberately open for editing: devs log in, change interviews in place, and use the Playground. A production instance serving litigants must be the opposite — no login screen, anonymous sessions only, and interviews served exclusively from installed packages, never the Playground. That lockdown work is tracked in #556; how docassemble is hosted per court partner is a separate open decision (#888).
 
 One requirement holds for every environment, QA, prod, or a future court instance: the `/usr/share/docassemble/backup` mount must be persistent storage. Skip it and the first pod recreate silently erases every interview, account, and setting (that is what happened in #701).

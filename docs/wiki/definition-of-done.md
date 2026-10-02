@@ -42,7 +42,7 @@ This document is the **canonical bar for every PR and issue**. Ticket-specific a
 - Security-relevant changes (auth, PII, data retention, CSP) reviewed with that lens explicitly; anything found gets reported per [SECURITY.md](../../SECURITY.md), not fixed silently in an unrelated PR.
 - Public-facing docs (README, style guide, help content) updated, or an issue filed to update them later if not urgent.
 - Internal docs (this file, CLAUDE.md, docs/wiki/\*) updated when the change alters a documented process or architecture decision.
-- During the Beta Demo push specifically: every button/link does something real, no placeholders, and any partner-specific data that isn't available yet is replaced with court-neutral information rather than a stub.
+- Every button/link does something real, no placeholders, and any partner-specific data that isn't available yet is replaced with court-neutral information rather than a stub.
 
 ## FAQ
 

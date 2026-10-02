@@ -1,6 +1,6 @@
 # QA on EKS — how deploys work
 
-QA is `qa.litigantportal.com`: the `qa-litigant` namespace on the `courtlistener` EKS cluster (us-west-2). It replaced the DigitalOcean box, which is a dev sandbox now (see [deploy/qa-do/README.md](../deploy/qa-do/README.md)) and is removed entirely at cutover. Prod is the sibling `litigant` namespace on the same cluster and deploys automatically from `main` (`.github/workflows/deploy.yml`); QA deploys are always manual.
+QA is `qa.litigantportal.com`: the `qa-litigant` namespace on the `courtlistener` EKS cluster (us-west-2). Prod is the sibling `litigant` namespace on the same cluster and deploys automatically from `main` (`.github/workflows/deploy.yml`); QA deploys are always manual.
 
 This doc covers the app side — what a deploy does, what it deliberately does not touch, and how to verify. The cluster itself (manifests, secrets values, ingress, the docassemble workload) is infra-team territory and lives outside this repo; changes there are an infra ask, like #881 was.
 
@@ -21,7 +21,7 @@ Two inputs:
 
 ## What a deploy does, in order
 
-1. **Tests** — the full suite (`tests.yml`) runs against the ref; a red suite stops the deploy. (The old DigitalOcean path had no test gate; this one does.)
+1. **Tests** — the full suite (`tests.yml`) runs against the ref; a red suite stops the deploy.
 2. **Build & push** — the image from `docker/django/Dockerfile` is pushed to Docker Hub as `freelawproject/litigant-portal:<short-sha>-prod`.
 3. **Secret re-sync** — the `litigant-env` ExternalSecret is forced to re-sync from AWS Secrets Manager, so pods read current values.
 4. **Temp pod** — a throwaway pod (`temp-pod-<sha>`, label `app=litigant-deploy-temp`) starts on the new image with the real secrets. All state changes run here, _before_ the web pods are touched:
