@@ -1,0 +1,27 @@
+{% load i18n %}
+
+{# The atoms the later levels are built from, loose and unassembled. One #}
+{# source for the atoms stage page and the Atomic Design page's inline #}
+{# atoms sample. Expects court_logo in the context. #}
+  {% trans "What do you need help with?" as search_placeholder %}
+  {% trans "Search" as search_label %}
+  {# A plain <img> is an atom too: an HTML element that can't be broken #}
+  {# down further. Only atoms that carry a decision get a Cotton component. #}
+  <img src="{{ court_logo }}" alt="" class="h-12 w-auto" />
+  <div class="flex flex-wrap items-center gap-4 text-greyscale-600">
+    <c-atoms.icon name="bars-3" class="w-6 h-6" />
+    <c-atoms.icon name="arrow-right-end-on-rectangle" class="w-6 h-6" />
+    <c-atoms.icon name="magnifying-glass" class="w-6 h-6" />
+    <c-atoms.icon name="question-mark-circle" class="w-6 h-6" />
+    <c-atoms.icon name="chevron-right" class="w-6 h-6" />
+    <c-atoms.icon name="chevron-down" class="w-6 h-6" />
+  </div>
+  <c-atoms.search-input placeholder="{{ search_placeholder }}" />
+  <div class="flex flex-wrap items-center gap-3">
+    <c-atoms.button type="button" variant="primary" size="xl" aria_label="{{ search_label }}">
+      <c-atoms.icon name="magnifying-glass" class="w-5 h-5" />
+    </c-atoms.button>
+    <c-atoms.button type="button" variant="primary">{% trans "Create Account" %}</c-atoms.button>
+    <c-atoms.button type="button" variant="outline">{% trans "Sign In" %}</c-atoms.button>
+  </div>
+  <c-atoms.link href="#" variant="secondary">{% trans "Legal aid referral" %}</c-atoms.link>

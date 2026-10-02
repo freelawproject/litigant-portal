@@ -1,15 +1,24 @@
-{% load static i18n %}
+{% load i18n %}
 
-<c-vars sticky="" toc="" />
+{# The one site header, the same frame on every page and full width. #}
+{# Pages vary only what the cards hold (the menus and actions inside), #}
+{# never the header itself. Left card: brand. Right card: actions. Source #}
+{# order is tab order, so the cards collapse in place at narrow widths #}
+{# and never reorder with CSS order or row-reverse (WCAG 1.3.2, 2.4.3). #}
+{# Anything that moves into a menu on mobile is rendered in both places, #}
+{# and the hidden copy is display:none, which takes it out of tab order. #}
+<c-vars sticky="" toc="" court_logo="" court_name="" court_name_image="" />
 <header class="mobile-header flex-shrink-0 {% if sticky %}mobile-header-sticky{% endif %} {{ class }}"
         {{ attrs }}>
   <div class="mobile-header-inner">
-    <a href="{% url 'pages:home' %}" aria-label="{% trans "Home" %}">
-      <img src="{% static 'images/logo_powered.svg' %}"
-           alt="{% trans "Litigant Portal – Powered by Free Law Project" %}"
-           class="h-12">
-    </a>
-    <div class="flex items-center gap-1 sm:gap-2">
+    <div class="flex min-w-0 flex-1 items-center">
+      <c-molecules.logo
+        court_logo="{{ court_logo }}"
+        court_name="{{ court_name }}"
+        court_name_image="{{ court_name_image }}"
+      />
+    </div>
+    <div class="flex shrink-0 items-center gap-1 sm:gap-2">
       <c-molecules.user-menu class="hidden sm:flex" />
       {% if toc %}
         {% trans "On this page" as toc_label %}

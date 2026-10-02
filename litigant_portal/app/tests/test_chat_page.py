@@ -1,8 +1,8 @@
 """Tests for the chat page rendering inside the shared site frame.
 
-These pin the contract: no `chat_header.html` override on the chat page
-itself (`pages/admin/index.html` still depends on that file - see
-`AdminHeaderRegressionTests`), the Briefcase agent-state aside gated
+These pin the contract: the chat page (and the admin dashboard, see
+`AdminHeaderTests`) renders the one shared site header, the Briefcase
+agent-state aside gated
 server-side to the `manage_developers` permission, an accessible live
 region on the messages container, and a handful of Tailwind hygiene
 swaps.
@@ -25,8 +25,7 @@ AGENT_STATE_PATH = Path(
     "litigant_portal/app/templates/pages/chat/partials/_agent_state.html"
 )
 
-# Markup unique to the default site header (cotton/organisms/header.html) —
-# absent from the bespoke chat_header.html override.
+# Markup unique to the shared site header (cotton/organisms/header.html).
 DEFAULT_HEADER_MARKER = "mobile-header-inner"
 
 # Markup unique to _agent_state.html (the Briefcase aside body).
@@ -65,7 +64,7 @@ class ChatPageRouteTests(TestCase):
 
 @pytest.mark.postgres
 class ChatPageHeaderFrameTests(TestCase):
-    """No `header` block override in the chat template, so `<c-organisms.header />` (not chat_header.html) renders."""
+    """No `header` block override in the chat template, so the shared `<c-organisms.header />` renders."""
 
     def test_default_header_markup_renders_on_chat_page(self):
         response = self.client.get(reverse("pages:chat"))
@@ -73,10 +72,11 @@ class ChatPageHeaderFrameTests(TestCase):
 
 
 @pytest.mark.postgres
-class AdminHeaderRegressionTests(TestCase):
-    """`pages/admin/index.html` still depends on `chat_header.html` — deleting it would break `/admin`."""
+class AdminHeaderTests(TestCase):
+    """The admin dashboard renders the one shared site header; its own
+    `chat_header.html` override is gone (#771)."""
 
-    def test_admin_page_renders_successfully_with_chat_header(self):
+    def test_admin_page_renders_the_shared_header(self):
         User = get_user_model()
         User.objects.create_superuser(
             username="admin_root",
@@ -88,8 +88,7 @@ class AdminHeaderRegressionTests(TestCase):
         response = client.get(reverse("pages:admin_dashboard"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "pages/admin/index.html")
-        # Admin still uses its own header, not the default.
-        self.assertNotIn(DEFAULT_HEADER_MARKER, response.content.decode())
+        self.assertIn(DEFAULT_HEADER_MARKER, response.content.decode())
 
 
 @pytest.mark.postgres
