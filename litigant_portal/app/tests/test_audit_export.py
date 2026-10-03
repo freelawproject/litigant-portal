@@ -572,6 +572,28 @@ class ThreadExportTests(TestCase):
             markdown.index("Third answer."),
         )
 
+    def test_markdown_marks_identity_prompt_removed_when_facts_are_cleared(
+        self,
+    ):
+        artifact = self._artifact()
+        for content, identity_prompt in (
+            ("With facts.", self.IDENTITY_PROMPT),
+            ("Facts cleared.", {}),
+        ):
+            self._message({"role": "user", "content": "Question."})
+            self._message(
+                {"role": "assistant", "content": content},
+                prompt_artifact=artifact,
+                identity_prompt=identity_prompt,
+            )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertEqual(markdown.count("### Identity prompt"), 2)
+        removed = markdown.index("None: the prompt had no identity part")
+        self.assertLess(markdown.index("With facts."), removed)
+        self.assertLess(removed, markdown.index("Facts cleared."))
+
     def test_markdown_fences_identity_prompt_like_the_artifact(self):
         embedded_markdown = "# Nested heading\n\n```python\nprint('safe')\n```"
         self._message(

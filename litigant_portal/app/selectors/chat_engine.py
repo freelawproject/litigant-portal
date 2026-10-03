@@ -149,7 +149,7 @@ def chat_thread_export_markdown(*, thread: ChatThread) -> str:
 
     previous_sha = messages[0]["git_sha"] if messages else None
     active_prompt_artifact_id = None
-    active_identity_text = None
+    active_identity_text = ""
     for msg in messages:
         if msg["git_sha"] != previous_sha:
             lines += [
@@ -167,11 +167,14 @@ def chat_thread_export_markdown(*, thread: ChatThread) -> str:
                 _prompt_artifact_lines(artifacts_by_id[prompt_artifact_id])
             )
             active_prompt_artifact_id = prompt_artifact_id
-        identity_text = msg["identity_prompt"].get("text")
-        if identity_text and identity_text != active_identity_text:
-            lines.append("")
-            lines.extend(_identity_prompt_lines(identity_text))
-            active_identity_text = identity_text
+        # Only a model call can change the identity part, and an empty one
+        # on a model call is a definite "no facts were sent", not unknown.
+        if prompt_artifact_id is not None:
+            identity_text = msg["identity_prompt"].get("text", "")
+            if identity_text != active_identity_text:
+                lines.append("")
+                lines.extend(_identity_prompt_lines(identity_text))
+                active_identity_text = identity_text
         lines.append("")
         lines.extend(_message_lines(msg))
     return "\n".join(lines) + "\n"
@@ -204,6 +207,12 @@ def _prompt_artifact_lines(artifact: dict) -> list[str]:
 
 def _identity_prompt_lines(text: str) -> list[str]:
     """The per-identity part appended to the artifact's system prompt."""
+    if not text:
+        return [
+            "### Identity prompt",
+            "",
+            "None: the prompt had no identity part from here on.",
+        ]
     return [
         "### Identity prompt",
         "",
