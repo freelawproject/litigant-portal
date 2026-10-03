@@ -3,7 +3,7 @@
 import json
 import uuid
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from django.test import SimpleTestCase
 from django.urls import reverse
@@ -24,6 +24,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
             id=uuid.uuid4(),
             state={},
             description="Existing description",
+            refresh_from_db=Mock(),
         )
 
     def stream_error(self):
