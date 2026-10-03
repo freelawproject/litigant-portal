@@ -1,6 +1,6 @@
 import json
 
-from .base import Agent, AgentState
+from .base import Agent, AgentState, IdentityPrompt
 from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
 from .tools.query_document import QueryDocument
 from .tools.record_fact import RecordFact
@@ -95,6 +95,25 @@ def generate_topic_flows_prompt() -> str:
     )
 
 
+def _fact_values(answers) -> dict[str, str]:
+    """Variable name -> the value exactly as the facts section renders it."""
+    return {
+        a.variable.name: json.dumps(str(a.display_value), ensure_ascii=False)
+        for a in answers
+    }
+
+
+def _facts_prompt(answers) -> str:
+    values = _fact_values(answers)
+    facts = "\n".join(
+        f"- {a.variable.name} ({a.variable.label or a.variable.name}): "
+        f"{values[a.variable.name]} "
+        f"[{'confirmed' if a.reviewed else 'unconfirmed'}]"
+        for a in answers
+    )
+    return FACTS_PROMPT.format(facts=facts)
+
+
 def generate_facts_prompt(identity) -> str:
     """The stored-facts section, or '' when the identity has none.
 
@@ -106,14 +125,7 @@ def generate_facts_prompt(identity) -> str:
     answers = variable_answer_list(identity=identity, answered_only=True)
     if not answers:
         return ""
-    # json.dumps: a value with a newline must not add its own prompt lines.
-    facts = "\n".join(
-        f"- {a.variable.name} ({a.variable.label or a.variable.name}): "
-        f"{json.dumps(str(a.display_value), ensure_ascii=False)} "
-        f"[{'confirmed' if a.reviewed else 'unconfirmed'}]"
-        for a in answers
-    )
-    return FACTS_PROMPT.format(facts=facts)
+    return _facts_prompt(answers)
 
 
 class LitigantAssistantState(AgentState):
@@ -153,7 +165,7 @@ class LitigantAssistant(Agent):
         chat_thread_state_merge(thread_id=thread_id, updates=clear_if_stale)
 
     def generate_system_prompt(self, *, thread_id) -> str:
-        """The non-empty prompt sections, blank-line separated.
+        """The non-empty shared prompt sections, blank-line separated.
 
         The active topic flow is deliberately absent: the model learns it
         from the LoadTopicFlow result in history, which only works while
@@ -161,18 +173,29 @@ class LitigantAssistant(Agent):
         we'll need to account for the active topic flow data being dropped from
         history.
         """
-        from litigant_portal.app.selectors.chat_engine import (
-            chat_thread_identity_get,
-        )
-
-        identity = chat_thread_identity_get(thread_id=thread_id)
         return "\n\n".join(
             section
             for section in (
                 BASE_PROMPT,
                 generate_court_prompt(),
                 generate_topic_flows_prompt(),
-                generate_facts_prompt(identity),
             )
             if section
+        )
+
+    def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt | None:
+        """The stored-facts section for the thread's identity, or None."""
+        from litigant_portal.app.selectors.chat_engine import (
+            chat_thread_identity_get,
+        )
+        from litigant_portal.app.selectors.topic_flow import (
+            variable_answer_list,
+        )
+
+        identity = chat_thread_identity_get(thread_id=thread_id)
+        answers = variable_answer_list(identity=identity, answered_only=True)
+        if not answers:
+            return None
+        return IdentityPrompt(
+            text=_facts_prompt(answers), values=_fact_values(answers)
         )

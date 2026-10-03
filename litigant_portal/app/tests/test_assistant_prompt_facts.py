@@ -100,13 +100,60 @@ def test_section_carries_the_fact_handling_rules(identity, county):
     assert "Never invent a fact" in prompt
 
 
-def test_system_prompt_includes_the_thread_identitys_facts(identity, county):
-    variable_answer_set(identity=identity, variable=county, value="Cass")
-    thread = ChatThread.objects.create(
+@pytest.fixture
+def thread(identity):
+    return ChatThread.objects.create(
         identity=identity, thread_type="user_chat"
     )
 
+
+def test_identity_prompt_carries_the_thread_identitys_facts(
+    identity, county, thread
+):
+    variable_answer_set(identity=identity, variable=county, value="Cass")
+
+    prompt = LitigantAssistant().generate_identity_prompt(thread_id=thread.id)
+
+    assert "## Facts the user has already provided" in prompt.text
+    assert '- county (County): "Cass" [unconfirmed]' in prompt.text
+    assert prompt.values == {"county": '"Cass"'}
+
+
+def test_shared_system_prompt_never_contains_the_facts(
+    identity, county, thread
+):
+    variable_answer_set(identity=identity, variable=county, value="Cass")
+
     prompt = LitigantAssistant().generate_system_prompt(thread_id=thread.id)
 
-    assert "## Facts the user has already provided" in prompt
-    assert '- county (County): "Cass" [unconfirmed]' in prompt
+    assert "## Facts the user has already provided" not in prompt
+    assert "Cass" not in prompt
+
+
+def test_identity_without_answers_gets_no_identity_prompt(thread):
+    assert (
+        LitigantAssistant().generate_identity_prompt(thread_id=thread.id)
+        is None
+    )
+
+
+def test_every_identity_prompt_value_appears_literally_in_its_text(
+    identity, county, thread
+):
+    date_of_birth = Variable.objects.create(
+        name="date_of_birth",
+        label="Date of birth",
+        data_type=VariableDataType.DATE,
+    )
+    variable_answer_set(
+        identity=identity, variable=county, value='Cass "North"\nline two'
+    )
+    variable_answer_set(
+        identity=identity, variable=date_of_birth, value="1991-01-31"
+    )
+
+    prompt = LitigantAssistant().generate_identity_prompt(thread_id=thread.id)
+
+    assert set(prompt.values) == {"county", "date_of_birth"}
+    for value in prompt.values.values():
+        assert value in prompt.text

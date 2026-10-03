@@ -10,7 +10,7 @@ from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 
-from litigant_portal.agents.base import Agent, ToolOutput
+from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
@@ -238,6 +238,15 @@ def _to_llm_message(msg: dict[str, Any]) -> dict[str, Any]:
     return {"role": "user", "content": msg.get("content", "")}
 
 
+def _system_prompt_text(
+    shared: str, identity_prompt: IdentityPrompt | None
+) -> str:
+    """The system message the model sees: shared part plus identity part."""
+    if identity_prompt is None:
+        return shared
+    return f"{shared}\n\n{identity_prompt.text}"
+
+
 def _messages_for_llm(
     system_prompt: str,
     history: list[dict[str, Any]],
@@ -403,6 +412,9 @@ def chat_stream(
 
         try:
             system_prompt = agent.generate_system_prompt(thread_id=thread.id)
+            identity_prompt = agent.generate_identity_prompt(
+                thread_id=thread.id
+            )
 
             for _ in range(MAX_STEPS):
                 tool_schemas = agent.tool_schemas or []
@@ -414,7 +426,7 @@ def chat_stream(
                     **agent.completion_args,
                     "model": model,
                     "messages": _messages_for_llm(
-                        system_prompt,
+                        _system_prompt_text(system_prompt, identity_prompt),
                         history,
                         attachment_cache=attachment_cache,
                     ),
@@ -567,6 +579,9 @@ def chat_stream(
 
                 if refresh:
                     system_prompt = agent.generate_system_prompt(
+                        thread_id=thread.id
+                    )
+                    identity_prompt = agent.generate_identity_prompt(
                         thread_id=thread.id
                     )
 

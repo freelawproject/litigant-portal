@@ -6,7 +6,12 @@ from unittest.mock import patch
 import pytest
 from django.test import SimpleTestCase, TestCase
 
-from litigant_portal.agents.base import Agent, Tool, ToolOutput
+from litigant_portal.agents.base import (
+    Agent,
+    IdentityPrompt,
+    Tool,
+    ToolOutput,
+)
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
@@ -161,6 +166,24 @@ class RefreshingAgent(Agent):
 class NoToolsAgent(Agent):
     def generate_system_prompt(self, *, thread_id) -> str:
         return "System prompt without tools"
+
+
+class IdentityAgent(Agent):
+    tools = [RefreshPrompt]
+
+    def __init__(self):
+        self.identity_reads = 0
+
+    def generate_system_prompt(self, *, thread_id) -> str:
+        return "Shared prompt"
+
+    def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt:
+        self.identity_reads += 1
+        name = ChatThread.objects.get(id=thread_id).identity.session_key
+        return IdentityPrompt(
+            text=f"## Facts\n- name: {name} (read {self.identity_reads})",
+            values={"name": name},
+        )
 
 
 def _chunk(*, content=None, tool_calls=None):
@@ -345,3 +368,104 @@ class PromptArtifactCaptureTests(TestCase):
         )
         self.assertEqual(RefreshingAgent.schema_reads, 2)
         self.assertEqual(PromptArtifact.objects.count(), 2)
+
+    def _stream(self, *, identity, thread, completions):
+        with (
+            patch(
+                "litigant_portal.app.services.chat_engine.litellm.completion",
+                side_effect=completions,
+            ) as completion,
+            patch(
+                "litigant_portal.app.services.chat_engine.litellm.token_counter",
+                return_value=0,
+            ),
+        ):
+            response = chat_stream(
+                identity=identity,
+                message="Help me.",
+                agent_class=IdentityAgent,
+                thread_type="test_agent",
+                model=MODEL,
+                thread_id=str(thread.id),
+            )
+            list(response.streaming_content)
+        return completion
+
+    def test_model_receives_shared_and_identity_parts_joined(self):
+        completion = self._stream(
+            identity=self.identity,
+            thread=self.thread,
+            completions=[iter([_chunk(content="Answer.")])],
+        )
+
+        system_message = completion.call_args.kwargs["messages"][0]
+        self.assertEqual(
+            system_message["content"],
+            "Shared prompt\n\n## Facts\n- name: prompt-capture (read 1)",
+        )
+
+    def test_identity_part_never_reaches_the_artifact(self):
+        self._stream(
+            identity=self.identity,
+            thread=self.thread,
+            completions=[iter([_chunk(content="Answer.")])],
+        )
+
+        artifact = PromptArtifact.objects.get()
+        self.assertEqual(artifact.system_prompt, "Shared prompt")
+        self.assertNotIn("prompt-capture", artifact.system_prompt)
+
+    def test_identities_with_different_facts_share_one_artifact(self):
+        other_identity = UserIdentity.objects.create(session_key="other-user")
+        other_thread = ChatThread.objects.create(
+            identity=other_identity, thread_type="test_agent"
+        )
+
+        first = self._stream(
+            identity=self.identity,
+            thread=self.thread,
+            completions=[iter([_chunk(content="Answer.")])],
+        )
+        second = self._stream(
+            identity=other_identity,
+            thread=other_thread,
+            completions=[iter([_chunk(content="Answer.")])],
+        )
+
+        self.assertNotEqual(
+            first.call_args.kwargs["messages"][0]["content"],
+            second.call_args.kwargs["messages"][0]["content"],
+        )
+        self.assertEqual(PromptArtifact.objects.count(), 1)
+        assistants = ChatMessage.objects.filter(
+            data__role="assistant"
+        ).values_list("prompt_artifact_id", flat=True)
+        self.assertEqual(len(set(assistants)), 1)
+
+    def test_tool_refresh_regenerates_the_identity_part(self):
+        tool_call = SimpleNamespace(
+            index=0,
+            id="call-1",
+            function=SimpleNamespace(name="RefreshPrompt", arguments="{}"),
+        )
+        completion = self._stream(
+            identity=self.identity,
+            thread=self.thread,
+            completions=[
+                iter([_chunk(tool_calls=[tool_call])]),
+                iter([_chunk(content="Final answer.")]),
+            ],
+        )
+
+        system_messages = [
+            call.kwargs["messages"][0]["content"]
+            for call in completion.call_args_list
+        ]
+        self.assertEqual(
+            system_messages,
+            [
+                "Shared prompt\n\n## Facts\n- name: prompt-capture (read 1)",
+                "Shared prompt\n\n## Facts\n- name: prompt-capture (read 2)",
+            ],
+        )
+        self.assertEqual(PromptArtifact.objects.count(), 1)
