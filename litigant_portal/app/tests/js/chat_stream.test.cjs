@@ -9,7 +9,11 @@ const source = fs.readFileSync(
   'utf8'
 )
 
-function makeApp(fetchImpl = async () => { throw new Error('offline') }) {
+function makeApp(
+  fetchImpl = async () => {
+    throw new Error('offline')
+  }
+) {
   const components = {}
   const context = {
     AbortController,
@@ -131,8 +135,9 @@ test('a stream drop preserves partial text and renders one incomplete fallback',
   assert.equal(app.messages[1].content, 'This response may be incomplete.')
   assert.match(app.messages[2].html, /Continue the eviction guide/)
   assert.equal(
-    app.messages.filter((item) => item.html.includes('Continue the eviction guide'))
-      .length,
+    app.messages.filter((item) =>
+      item.html.includes('Continue the eviction guide')
+    ).length,
     1
   )
 })
@@ -143,10 +148,13 @@ test('first-token timeout resolves a silent initial response', async (t) => {
     ok: true,
     body: {
       getReader: () => ({
-        read: () => new Promise((_resolve, reject) => {
-          if (options.signal.aborted) return reject(new Error('aborted'))
-          options.signal.addEventListener('abort', () => reject(new Error('aborted')))
-        }),
+        read: () =>
+          new Promise((_resolve, reject) => {
+            if (options.signal.aborted) return reject(new Error('aborted'))
+            options.signal.addEventListener('abort', () =>
+              reject(new Error('aborted'))
+            )
+          }),
       }),
     },
   }))
@@ -213,7 +221,12 @@ test('tool response resumes the stall watchdog', (t) => {
   const stream = newStream(app)
   app.handleEvent(stream, { type: 'content_delta', content: 'A' })
   t.mock.timers.tick(59000)
-  app.handleEvent(stream, { type: 'tool_call', id: 'call-1', name: 'tool', args: {} })
+  app.handleEvent(stream, {
+    type: 'tool_call',
+    id: 'call-1',
+    name: 'tool',
+    args: {},
+  })
   t.mock.timers.tick(59000)
   assert.equal(stream.failureRendered, false)
   app.handleEvent(stream, {
@@ -275,7 +288,10 @@ test('a tool can run longer than the stall interval, then a later stall fails', 
   const pending = app.sendMessage('Help', null)
   for (let index = 0; index < 10; index++) await Promise.resolve()
   t.mock.timers.tick(120000)
-  assert.equal(app.messages.some((item) => item.html.includes('Browse the help topics')), false)
+  assert.equal(
+    app.messages.some((item) => item.html.includes('Browse the help topics')),
+    false
+  )
 
   resolveToolResponse({
     value: sse('tool_response', {
@@ -287,7 +303,10 @@ test('a tool can run longer than the stall interval, then a later stall fails', 
   })
   for (let index = 0; index < 10; index++) await Promise.resolve()
   assert.equal(app.messages[1].status, 'done')
-  assert.equal(app.messages.some((item) => item.html.includes('Browse the help topics')), false)
+  assert.equal(
+    app.messages.some((item) => item.html.includes('Browse the help topics')),
+    false
+  )
 
   t.mock.timers.tick(60000)
   await pending

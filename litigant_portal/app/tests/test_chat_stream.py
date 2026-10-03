@@ -9,7 +9,6 @@ from django.test import SimpleTestCase
 from django.urls import reverse
 
 from litigant_portal.agents.base import Agent
-from litigant_portal.app.models import TopicFlow
 from litigant_portal.app.services.chat_engine import chat_stream
 
 
@@ -94,7 +93,9 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 return_value=[track],
             ),
         ):
-            flow_first = flow_filter.return_value.select_related.return_value.first
+            flow_first = (
+                flow_filter.return_value.select_related.return_value.first
+            )
             flow_first.return_value = flow
             events = self.stream_error()
             flow_filter.assert_called_once_with(
@@ -130,9 +131,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 with patch(
                     "litigant_portal.app.services.chat_engine.TopicFlow.objects.filter"
                 ) as flow_filter:
-                    flow_first = (
-                        flow_filter.return_value.select_related.return_value.first
-                    )
+                    flow_first = flow_filter.return_value.select_related.return_value.first
                     flow_first.return_value = None
                     events = self.stream_error()
                 error = next(
@@ -144,7 +143,9 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 )
                 self.assertNotIn("secret-provider-detail", json.dumps(events))
 
-    def test_resolution_failure_keeps_safe_home_error_and_hides_both_exceptions(self):
+    def test_resolution_failure_keeps_safe_home_error_and_hides_both_exceptions(
+        self,
+    ):
         self.thread.state = {"active_topic_flow": "eviction/tenant"}
         with patch(
             "litigant_portal.app.services.chat_engine.TopicFlow.objects.filter",
