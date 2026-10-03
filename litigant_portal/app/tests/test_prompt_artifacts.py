@@ -23,6 +23,7 @@ from litigant_portal.app.services.chat_engine import (
     chat_message_inject_hidden,
     chat_message_inject_meta,
     chat_stream,
+    chat_thread_delete,
     prompt_artifact_content_hash,
     prompt_artifact_get_or_create,
 )
@@ -277,6 +278,7 @@ class PromptArtifactCaptureTests(TestCase):
 
         for message in (user, tool, hidden, meta):
             self.assertIsNone(message.prompt_artifact)
+            self.assertEqual(message.identity_prompt, {})
 
     def test_links_each_assistant_turn_to_its_exact_instruction_state(self):
         tool_call = SimpleNamespace(
@@ -442,6 +444,70 @@ class PromptArtifactCaptureTests(TestCase):
         ).values_list("prompt_artifact_id", flat=True)
         self.assertEqual(len(set(assistants)), 1)
 
+    def test_assistant_message_stores_the_identity_prompt_it_was_sent_with(
+        self,
+    ):
+        self._stream(
+            identity=self.identity,
+            thread=self.thread,
+            completions=[iter([_chunk(content="Answer.")])],
+        )
+
+        assistant = ChatMessage.objects.get(data__role="assistant")
+        self.assertEqual(
+            assistant.identity_prompt,
+            {
+                "text": "## Facts\n- name: prompt-capture (read 1)",
+                "values": {"name": "prompt-capture"},
+            },
+        )
+
+    def test_agent_without_identity_prompt_stores_an_empty_one(self):
+        with (
+            patch(
+                "litigant_portal.app.services.chat_engine.litellm.completion",
+                return_value=iter([_chunk(content="Answer.")]),
+            ),
+            patch(
+                "litigant_portal.app.services.chat_engine.litellm.token_counter",
+                return_value=0,
+            ),
+        ):
+            response = chat_stream(
+                identity=self.identity,
+                message="Help me.",
+                agent_class=NoToolsAgent,
+                thread_type="test_agent",
+                model=MODEL,
+                thread_id=str(self.thread.id),
+            )
+            list(response.streaming_content)
+
+        assistant = ChatMessage.objects.get(data__role="assistant")
+        self.assertEqual(assistant.identity_prompt, {})
+
+    def test_deleting_the_thread_removes_the_stored_identity_prompts(self):
+        self._stream(
+            identity=self.identity,
+            thread=self.thread,
+            completions=[iter([_chunk(content="Answer.")])],
+        )
+        self.assertEqual(
+            ChatMessage.objects.exclude(identity_prompt={}).count(), 1
+        )
+
+        chat_thread_delete(
+            identity=self.identity,
+            thread_id=str(self.thread.id),
+            thread_type="test_agent",
+        )
+
+        self.assertEqual(
+            ChatMessage.objects.exclude(identity_prompt={}).count(), 0
+        )
+        # The shared artifact holds nothing personal and stays.
+        self.assertEqual(PromptArtifact.objects.count(), 1)
+
     def test_tool_refresh_regenerates_the_identity_part(self):
         tool_call = SimpleNamespace(
             index=0,
@@ -469,3 +535,16 @@ class PromptArtifactCaptureTests(TestCase):
             ],
         )
         self.assertEqual(PromptArtifact.objects.count(), 1)
+        stored = [
+            message.identity_prompt["text"]
+            for message in ChatMessage.objects.filter(
+                data__role="assistant"
+            ).order_by("created_at")
+        ]
+        self.assertEqual(
+            stored,
+            [
+                "## Facts\n- name: prompt-capture (read 1)",
+                "## Facts\n- name: prompt-capture (read 2)",
+            ],
+        )

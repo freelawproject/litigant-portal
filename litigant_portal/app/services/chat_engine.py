@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 from collections.abc import Callable, Iterator
+from dataclasses import asdict
 from typing import Any
 
 import litellm
@@ -81,6 +82,7 @@ def chat_message_create(
     meta: bool = False,
     cost: float = 0.0,
     prompt_artifact: PromptArtifact | None = None,
+    identity_prompt: IdentityPrompt | None = None,
 ) -> ChatMessage:
     """Add a message to a thread."""
     if num_tokens is None:
@@ -96,6 +98,7 @@ def chat_message_create(
         cost=cost,
         git_sha=settings.GIT_SHA,
         prompt_artifact=prompt_artifact,
+        identity_prompt=asdict(identity_prompt) if identity_prompt else {},
     )
 
 
@@ -500,6 +503,7 @@ def chat_stream(
                     num_tokens=completion_tokens,
                     cost=cost,
                     prompt_artifact=prompt_artifact,
+                    identity_prompt=identity_prompt,
                 )
 
                 if not tool_calls:
