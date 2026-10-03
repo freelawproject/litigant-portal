@@ -96,7 +96,10 @@ def generate_topic_flows_prompt() -> str:
 
 
 def _fact_values(answers) -> dict[str, str]:
-    """Variable name -> the value exactly as the facts section renders it."""
+    """Variable name -> the value exactly as the facts section renders it.
+
+    json.dumps: a value with a newline must not add its own prompt lines.
+    """
     return {
         a.variable.name: json.dumps(str(a.display_value), ensure_ascii=False)
         for a in answers
@@ -112,20 +115,6 @@ def _facts_prompt(answers) -> str:
         for a in answers
     )
     return FACTS_PROMPT.format(facts=facts)
-
-
-def generate_facts_prompt(identity) -> str:
-    """The stored-facts section, or '' when the identity has none.
-
-    RecordFact sets refresh_system_prompt when it saves, so a fact stored
-    mid-turn appears here before the model's next step.
-    """
-    from litigant_portal.app.selectors.topic_flow import variable_answer_list
-
-    answers = variable_answer_list(identity=identity, answered_only=True)
-    if not answers:
-        return ""
-    return _facts_prompt(answers)
 
 
 class LitigantAssistantState(AgentState):
@@ -184,7 +173,11 @@ class LitigantAssistant(Agent):
         )
 
     def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt | None:
-        """The stored-facts section for the thread's identity, or None."""
+        """The stored-facts section for the thread's identity, or None.
+
+        RecordFact sets refresh_system_prompt when it saves, so a fact stored
+        mid-turn appears here before the model's next step.
+        """
         from litigant_portal.app.selectors.chat_engine import (
             chat_thread_identity_get,
         )
