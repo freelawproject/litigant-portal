@@ -246,6 +246,50 @@ function makeMessage(role, content, attachments) {
   }
 }
 
+function makeErrorMessage(event) {
+  const copy =
+    typeof event.message === 'string' && event.message.trim()
+      ? event.message
+      : 'The assistant is temporarily unavailable.'
+  const message = makeMessage('assistant', copy)
+  const url = event.fallback_url || ''
+  const safeUrl =
+    typeof url === 'string' &&
+    /^\/(?![\/\\])/.test(url) &&
+    !/[\\\u0000-\u001f\u007f]/.test(url)
+      ? url
+      : '/'
+  const label =
+    typeof event.fallback_label === 'string' && event.fallback_label.trim()
+      ? event.fallback_label
+      : 'Browse the help topics'
+  message.html +=
+    '<p class="my-1.5 last:mb-0"><a href="' +
+    escapeHtml(safeUrl) +
+    '" class="text-primary-700 underline hover:no-underline">' +
+    escapeHtml(label) +
+    '</a></p>'
+  return message
+}
+
+const FIRST_TOKEN_TIMEOUT_MS = 30000
+const STREAM_STALL_TIMEOUT_MS = 60000
+
+function clearStreamTimers(stream) {
+  clearTimeout(stream.firstTokenTimer)
+  clearTimeout(stream.stallTimer)
+  stream.firstTokenTimer = null
+  stream.stallTimer = null
+}
+
+function resetStallTimer(app, stream) {
+  clearTimeout(stream.stallTimer)
+  stream.stallTimer = setTimeout(
+    () => app.failStream(stream),
+    STREAM_STALL_TIMEOUT_MS
+  )
+}
+
 // Chip data for an attachment shown on a sent user message.
 function messageAttachment(att) {
   return {
@@ -744,6 +788,12 @@ document.addEventListener('alpine:init', () => {
         messages: this.messages,
         // Index of the assistant text part receiving content, if any.
         openIndex: null,
+        hadAssistantText: false,
+        failureRendered: false,
+        terminal: false,
+        receivedFirstModelEvent: false,
+        inFlightToolIds: [],
+        controller: new AbortController(),
       }
       this.activeStream = stream
       stream.messages.push(makeMessage('user', message, attachments))
@@ -753,7 +803,13 @@ document.addEventListener('alpine:init', () => {
       this.refreshSendState()
       this.updateThinking()
       this.scrollToBottom()
+      stream.firstTokenTimer = setTimeout(
+        () => this.failStream(stream),
+        FIRST_TOKEN_TIMEOUT_MS
+      )
+      resetStallTimer(this, stream)
 
+      let reader
       try {
         const body = new FormData()
         body.append('message', message)
@@ -764,16 +820,20 @@ document.addEventListener('alpine:init', () => {
         const res = await fetch(this.base + 'stream/', {
           method: 'POST',
           body,
+          signal: stream.controller.signal,
         })
         if (!res.ok) throw new Error('Request failed: ' + res.status)
 
-        const reader = res.body.getReader()
+        reader = res.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
 
         while (true) {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done) {
+            if (!stream.terminal) this.failStream(stream)
+            break
+          }
 
           buffer += decoder.decode(value, { stream: true })
           const lines = buffer.split('\n')
@@ -788,15 +848,32 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
               // Ignore parse errors for partial chunks.
             }
+            if (stream.terminal) break
+          }
+          if (stream.terminal) {
+            break
           }
         }
       } catch (e) {
-        console.error('Chat stream failed:', e)
-        this.appendAssistant(
-          stream,
-          'Sorry, something went wrong. Please try again.'
-        )
+        if (!stream.failureRendered && !stream.terminal) {
+          console.error('Chat stream failed:', e)
+          this.failStream(stream)
+        }
       } finally {
+        clearStreamTimers(stream)
+        if (reader) {
+          try {
+            await reader.cancel()
+          } catch {
+            // Cleanup failures do not replace the stream outcome.
+          } finally {
+            try {
+              reader.releaseLock()
+            } catch {
+              // Cleanup failures do not replace the stream outcome.
+            }
+          }
+        }
         this.streaming = false
         // Viewed streams end quietly; backgrounded ones flag their row
         // green until the user opens the thread.
@@ -812,6 +889,16 @@ document.addEventListener('alpine:init', () => {
     },
 
     handleEvent(stream, event) {
+      if (
+        !event ||
+        typeof event !== 'object' ||
+        typeof event.type !== 'string'
+      ) {
+        return
+      }
+      if (stream.inFlightToolIds.length === 0) {
+        resetStallTimer(this, stream)
+      }
       if (event.type === 'thread') {
         stream.threadId = event.thread_id
         this.setThreadStatus(stream.threadId, 'streaming')
@@ -824,20 +911,68 @@ document.addEventListener('alpine:init', () => {
         // Surface the new thread's row (and its dot) right away.
         this.loadThreads()
       } else if (event.type === 'content_delta') {
+        this.markFirstModelEvent(stream)
         this.appendContent(stream, event.content || '')
       } else if (event.type === 'tool_call') {
+        this.markFirstModelEvent(stream)
         // A new tool starts a fresh text run after it.
         stream.openIndex = null
         stream.messages.push(makeToolFromCall(event))
+        if (!stream.inFlightToolIds.includes(event.id)) {
+          stream.inFlightToolIds.push(event.id)
+        }
+        clearTimeout(stream.stallTimer)
+        stream.stallTimer = null
       } else if (event.type === 'tool_response') {
         this.applyToolResponse(stream, event)
+        stream.inFlightToolIds = stream.inFlightToolIds.filter(
+          (id) => id !== event.id
+        )
+        if (stream.inFlightToolIds.length === 0 && !stream.terminal) {
+          resetStallTimer(this, stream)
+        }
       } else if (event.type === 'description') {
         if (this.attached(stream)) this.threadTitle = event.description
       } else if (event.type === 'state') {
         if (this.attached(stream)) this.setState(event.state)
       } else if (event.type === 'error') {
-        this.appendAssistant(stream, event.error || 'Something went wrong.')
+        this.failStream(stream, event)
+      } else if (event.type === 'done') {
+        stream.terminal = true
+        clearStreamTimers(stream)
       }
+      if (this.attached(stream)) {
+        this.updateThinking()
+        this.scrollToBottom()
+      }
+    },
+
+    markFirstModelEvent(stream) {
+      if (stream.receivedFirstModelEvent) return
+      stream.receivedFirstModelEvent = true
+      clearTimeout(stream.firstTokenTimer)
+      stream.firstTokenTimer = null
+    },
+
+    failStream(stream, event = {}) {
+      if (stream.failureRendered || stream.terminal) return
+      stream.failureRendered = true
+      stream.terminal = true
+      clearStreamTimers(stream)
+      stream.controller.abort()
+      stream.messages.forEach((message, index) => {
+        if (message.isTool && message.status === 'calling') {
+          stream.messages[index] = computeToolFlags({
+            ...message,
+            status: 'failed',
+          })
+        }
+      })
+      if (stream.hadAssistantText) {
+        this.appendAssistant(stream, 'This response may be incomplete.')
+      }
+      stream.messages.push(makeErrorMessage(event))
+      stream.openIndex = null
       if (this.attached(stream)) {
         this.updateThinking()
         this.scrollToBottom()
@@ -846,6 +981,7 @@ document.addEventListener('alpine:init', () => {
 
     // Append streamed content to the open assistant part (creating it lazily).
     appendContent(stream, text) {
+      if (text) stream.hadAssistantText = true
       if (stream.openIndex === null) {
         stream.messages.push(makeMessage('assistant', ''))
         stream.openIndex = stream.messages.length - 1

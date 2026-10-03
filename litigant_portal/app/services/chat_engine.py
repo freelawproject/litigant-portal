@@ -9,12 +9,15 @@ from django.conf import settings
 from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.translation import gettext as _
 
 from litigant_portal.agents.base import Agent, ToolOutput
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
     PromptArtifact,
+    TopicFlow,
     UserIdentity,
 )
 from litigant_portal.app.selectors.chat_engine import (
@@ -26,6 +29,7 @@ from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
     user_upload_render_list,
 )
+from litigant_portal.app.topic_flow.registry import registry
 
 logger = logging.getLogger(__name__)
 
@@ -356,6 +360,56 @@ def _execute_tool(
         return ToolOutput(result=f"Error: {e}")
 
 
+def _stream_error_event(thread: ChatThread) -> dict[str, str]:
+    """Return safe user-facing copy and the best available guided-flow link."""
+    url, label = "/", _("Browse the help topics")
+    try:
+        active_path = (thread.state or {}).get("active_topic_flow")
+        if isinstance(active_path, str):
+            parts = active_path.strip("/").split("/")
+            if len(parts) == 2:
+                topic_slug, flow_slug = parts
+                flow = (
+                    TopicFlow.objects.filter(
+                        topic__slug=topic_slug,
+                        slug=flow_slug,
+                        enabled=True,
+                    )
+                    .select_related("topic")
+                    .first()
+                )
+                if flow is not None:
+                    track = next(
+                        (
+                            track
+                            for track in registry.tracks_for(flow.topic.slug)
+                            if track["role"] == flow.slug
+                        ),
+                        None,
+                    )
+                    if track is not None:
+                        url = reverse(
+                            "pages:topic_flow",
+                            kwargs={
+                                "court": track["court"],
+                                "topic": track["topic"],
+                                "role": track["role"],
+                            },
+                        )
+                        label = flow.name
+    except Exception:
+        logger.exception("chat_engine stream fallback resolution failed")
+    return {
+        "type": "error",
+        "message": _(
+            "The assistant is temporarily unavailable. You can continue "
+            "with the step-by-step guide instead."
+        ),
+        "fallback_url": url,
+        "fallback_label": label,
+    }
+
+
 def chat_stream(
     *,
     identity: UserIdentity,
@@ -589,9 +643,9 @@ def chat_stream(
 
             thread.save(update_fields=["updated_at"])
             yield _sse({"type": "done"})
-        except Exception as e:
+        except Exception:
             logger.exception("chat_engine stream failed")
-            yield _sse({"type": "error", "error": str(e)})
+            yield _sse(_stream_error_event(thread))
             yield _sse({"type": "done"})
 
     response = StreamingHttpResponse(
