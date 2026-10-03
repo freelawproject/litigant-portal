@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 from collections.abc import Callable, Iterator
+from dataclasses import asdict
 from typing import Any
 
 import litellm
@@ -10,7 +11,7 @@ from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 
-from litigant_portal.agents.base import Agent, ToolOutput
+from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
@@ -81,6 +82,7 @@ def chat_message_create(
     meta: bool = False,
     cost: float = 0.0,
     prompt_artifact: PromptArtifact | None = None,
+    identity_prompt: IdentityPrompt | None = None,
 ) -> ChatMessage:
     """Add a message to a thread."""
     if num_tokens is None:
@@ -96,6 +98,7 @@ def chat_message_create(
         cost=cost,
         git_sha=settings.GIT_SHA,
         prompt_artifact=prompt_artifact,
+        identity_prompt=asdict(identity_prompt) if identity_prompt else {},
     )
 
 
@@ -236,6 +239,15 @@ def _to_llm_message(msg: dict[str, Any]) -> dict[str, Any]:
             out["tool_calls"] = msg["tool_calls"]
         return out
     return {"role": "user", "content": msg.get("content", "")}
+
+
+def _system_prompt_text(
+    shared: str, identity_prompt: IdentityPrompt | None
+) -> str:
+    """The system message the model sees: shared part plus identity part."""
+    if identity_prompt is None:
+        return shared
+    return f"{shared}\n\n{identity_prompt.text}"
 
 
 def _messages_for_llm(
@@ -403,6 +415,9 @@ def chat_stream(
 
         try:
             system_prompt = agent.generate_system_prompt(thread_id=thread.id)
+            identity_prompt = agent.generate_identity_prompt(
+                thread_id=thread.id
+            )
 
             for _ in range(MAX_STEPS):
                 tool_schemas = agent.tool_schemas or []
@@ -414,7 +429,7 @@ def chat_stream(
                     **agent.completion_args,
                     "model": model,
                     "messages": _messages_for_llm(
-                        system_prompt,
+                        _system_prompt_text(system_prompt, identity_prompt),
                         history,
                         attachment_cache=attachment_cache,
                     ),
@@ -488,6 +503,7 @@ def chat_stream(
                     num_tokens=completion_tokens,
                     cost=cost,
                     prompt_artifact=prompt_artifact,
+                    identity_prompt=identity_prompt,
                 )
 
                 if not tool_calls:
@@ -567,6 +583,9 @@ def chat_stream(
 
                 if refresh:
                     system_prompt = agent.generate_system_prompt(
+                        thread_id=thread.id
+                    )
+                    identity_prompt = agent.generate_identity_prompt(
                         thread_id=thread.id
                     )
 
