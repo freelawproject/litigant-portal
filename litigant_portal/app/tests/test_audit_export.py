@@ -508,3 +508,95 @@ class ThreadExportTests(TestCase):
         self.assertEqual(export["prompt_artifacts"], [])
         self.assertIsNone(export["messages"][0]["prompt_artifact_id"])
         self.assertEqual(export["messages"][0]["id"], str(legacy.id))
+
+    IDENTITY_PROMPT = {
+        "text": '## Facts\n- county (County): "Cass" [confirmed]',
+        "values": {"county": '"Cass"'},
+    }
+
+    def test_json_export_carries_identity_prompt_per_message(self):
+        user = self._message({"role": "user", "content": "Help me."})
+        assistant = self._message(
+            {"role": "assistant", "content": "Answer."},
+            prompt_artifact=self._artifact(),
+            identity_prompt=self.IDENTITY_PROMPT,
+        )
+
+        export = chat_thread_export_data(thread=self.thread)
+
+        by_id = {message["id"]: message for message in export["messages"]}
+        self.assertEqual(by_id[str(user.id)]["identity_prompt"], {})
+        self.assertEqual(
+            by_id[str(assistant.id)]["identity_prompt"], self.IDENTITY_PROMPT
+        )
+        self.assertNotIn(
+            "Cass", export["prompt_artifacts"][0]["system_prompt"]
+        )
+
+    def test_markdown_renders_identity_prompt_once_until_it_changes(self):
+        artifact = self._artifact()
+        changed = {
+            "text": '## Facts\n- county (County): "Stark" [confirmed]',
+            "values": {"county": '"Stark"'},
+        }
+        for content, identity_prompt in (
+            ("First answer.", self.IDENTITY_PROMPT),
+            ("Second answer.", self.IDENTITY_PROMPT),
+            ("Third answer.", changed),
+        ):
+            self._message({"role": "user", "content": "Question."})
+            self._message(
+                {"role": "assistant", "content": content},
+                prompt_artifact=artifact,
+                identity_prompt=identity_prompt,
+            )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertEqual(markdown.count("## Prompt artifact"), 1)
+        self.assertEqual(markdown.count("### Identity prompt"), 2)
+        self.assertLess(
+            markdown.index(f"- ID: `{artifact.id}`"),
+            markdown.index("### Identity prompt"),
+        )
+        self.assertLess(
+            markdown.index('"Cass" [confirmed]'),
+            markdown.index("First answer."),
+        )
+        self.assertLess(
+            markdown.index("Second answer."),
+            markdown.index('"Stark" [confirmed]'),
+        )
+        self.assertLess(
+            markdown.index('"Stark" [confirmed]'),
+            markdown.index("Third answer."),
+        )
+
+    def test_markdown_fences_identity_prompt_like_the_artifact(self):
+        embedded_markdown = "# Nested heading\n\n```python\nprint('safe')\n```"
+        self._message(
+            {"role": "assistant", "content": "Answer."},
+            prompt_artifact=self._artifact(),
+            identity_prompt={"text": embedded_markdown, "values": {}},
+        )
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertIn(
+            f"### Identity prompt\n\n````text\n{embedded_markdown}\n````",
+            markdown,
+        )
+
+    def test_markdown_prints_no_identity_block_for_empty_identity_prompt(
+        self,
+    ):
+        self._message(
+            {"role": "assistant", "content": "Legacy answer."},
+            prompt_artifact=self._artifact(),
+        )
+        self._message({"role": "user", "content": "Follow-up."})
+
+        markdown = chat_thread_export_markdown(thread=self.thread)
+
+        self.assertNotIn("### Identity prompt", markdown)
+        self.assertIn("## Prompt artifact", markdown)
