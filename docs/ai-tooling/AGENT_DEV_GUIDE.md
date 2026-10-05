@@ -127,6 +127,19 @@ def generate_system_prompt(self, *, thread_id) -> str:
 > `refresh_system_prompt=True`). This is what lets state changes show up in the
 > model's instructions instantly.
 
+### Optional: the identity part — `generate_identity_prompt(thread_id)`
+
+`generate_system_prompt` is the **shared** prompt: the engine hashes it and
+stores it in a `PromptArtifact` row that other threads and identities reuse,
+so nothing about the person may go in it. Anything per-person (the litigant
+assistant puts its stored-facts section here) comes from
+`generate_identity_prompt`, which returns an `IdentityPrompt(text, values)` or
+`None` (the default). The engine appends `text` to the shared prompt for the
+model and keeps it with the assistant message, so it is deleted with the
+thread. `values` maps each variable name to the value as it appears in
+`text`, so a later pass can redact by name. Both methods are regenerated
+together on a refresh.
+
 ### Optional: the per-message hook — `prepare_thread(thread_id)`
 
 The engine calls `prepare_thread(thread_id=...)` **once per user message**,
