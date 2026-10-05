@@ -55,7 +55,11 @@ from litigant_portal.app.views.utils import (
 def home(request):
     """Home page - dashboard with hero and topic grid."""
     topics = {t.slug: t for t in topic_list()}
-    return render(request, "pages/home.html", {"topics": topics})
+    return render(
+        request,
+        "pages/home.html",
+        {"topics": topics, "briefcase_groups": briefcase_answers(request)},
+    )
 
 
 def chat_view(request):
@@ -193,8 +197,8 @@ def _render_topic_flow(request, corpus, answers, errors=None):
         render_section(section, corpus, answers, errors)
         for section in corpus.sections
     ]
-    # Table of contents for the in-header wayfinding menu — one entry per
-    # headed section, so a litigant can jump back to re-read or revise.
+    # The flow's sections for the frame's left region: one entry per headed
+    # section, so a litigant can jump back to re-read or revise.
     toc = [
         {"anchor": section.anchor_id, "heading": section.heading}
         for section in rendered_sections
@@ -207,6 +211,9 @@ def _render_topic_flow(request, corpus, answers, errors=None):
             "corpus": corpus,
             "rendered_sections": rendered_sections,
             "toc": toc,
+            "frame_left_label": _("Sections"),
+            "frame_left_icon": "list-bullet",
+            "briefcase_groups": briefcase_answers(request),
         },
     )
 

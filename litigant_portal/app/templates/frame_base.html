@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{# Pages that use the site frame (#988) extend this instead of base.html. #}
+{# They fill frame_left, content and frame_right; a region they leave alone #}
+{# keeps its default. The views pass briefcase_groups for the right region, #}
+{# and may pass frame_left_label to rename the left one (the topic flow does). #}
+
+{% block header %}
+  {% trans "Activity" as default_left_label %}
+  {% trans "Briefcase" as right_label %}
+  <c-organisms.header court_logo="{{ court_logo }}" court_name="{{ court_name }}" court_name_image="{{ court_name_image }}" left_label="{{ frame_left_label|default:default_left_label }}" left_icon="{{ frame_left_icon|default:'history' }}" right_label="{{ right_label }}" />
+{% endblock header %}
+
+{% block main %}
+  {% trans "Activity" as default_left_label %}
+  {% trans "Briefcase" as right_label %}
+  <c-organisms.site-frame left_label="{{ frame_left_label|default:default_left_label }}" left_icon="{{ frame_left_icon|default:'history' }}" right_label="{{ right_label }}" right_icon="briefcase">
+    <c-slot name="left">
+      {% block frame_left %}
+        {% trans "Your chats will show here." as empty_left_text %}
+        {% trans "Start a chat" as empty_left_action %}
+        <c-molecules.empty-state icon="chat-bubble-left-right" text="{{ empty_left_text }}" action_label="{{ empty_left_action }}" action_href="{% url 'pages:chat' %}" />
+      {% endblock frame_left %}
+    </c-slot>
+    {% block content %}
+    {% endblock content %}
+    <c-slot name="right">
+      {% block frame_right %}
+        <c-organisms.briefcase-panel :groups="briefcase_groups" />
+      {% endblock frame_right %}
+    </c-slot>
+  </c-organisms.site-frame>
+{% endblock main %}

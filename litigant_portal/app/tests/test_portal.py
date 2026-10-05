@@ -45,11 +45,6 @@ class HomePageTests(TestCase):
     def setUp(self):
         self.client = Client()
 
-    def test_home_has_footer(self):
-        """Home page should render the footer."""
-        response = self.client.get("/")
-        self.assertContains(response, "mobile-footer")
-
     def test_home_does_not_have_chat_interface(self):
         """Home page should not include the chat Alpine component."""
         response = self.client.get("/")
@@ -68,11 +63,6 @@ class ChatPageTests(TestCase):
         response = self.client.get("/chat/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "chatApp")
-
-    def test_chat_page_has_no_footer(self):
-        """Chat page should suppress the footer."""
-        response = self.client.get("/chat/")
-        self.assertNotContains(response, "mobile-footer")
 
 
 # =============================================================================
@@ -348,39 +338,6 @@ class ProfileViewTests(TestCase):
         self.assertEqual(profile.phone, "555-1234")
         self.assertEqual(profile.city, "Boston")
         self.assertEqual(profile.state, "MA")
-
-
-# =============================================================================
-# Footer & Navigation Tests
-# =============================================================================
-
-
-@pytest.mark.postgres
-class FooterLinkTests(TestCase):
-    """Tests for footer links on the home page."""
-
-    def setUp(self):
-        self.client = Client()
-
-    def test_footer_has_about_link(self):
-        """Footer should link to the about page."""
-        response = self.client.get("/")
-        self.assertContains(response, "/about/")
-
-    def test_footer_has_privacy_link(self):
-        """Footer should link to the privacy page."""
-        response = self.client.get("/")
-        self.assertContains(response, "/privacy/")
-
-    def test_footer_has_accessibility_link(self):
-        """Footer should link to the accessibility page."""
-        response = self.client.get("/")
-        self.assertContains(response, "/accessibility/")
-
-    def test_footer_has_free_law_link(self):
-        """Footer should link to free.law."""
-        response = self.client.get("/")
-        self.assertContains(response, "https://free.law")
 
 
 # =============================================================================

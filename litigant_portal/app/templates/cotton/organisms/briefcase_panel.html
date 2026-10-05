@@ -28,9 +28,8 @@
       {% endfor %}
     </div>
   {% else %}
-    <p class="p-4 text-sm text-greyscale-600">
-      {% trans "Nothing saved yet. As you answer questions, the details you give will collect here so you can check them later." %}
-    </p>
+    {% trans "Nothing saved yet. As you answer questions, the details you give will collect here so you can check them later." as empty_briefcase_text %}
+    <c-molecules.empty-state icon="briefcase" text="{{ empty_briefcase_text }}" />
   {% endif %}
 
   {% if show_agent_state and perms.app.manage_developers %}

@@ -1,0 +1,33 @@
+{% load i18n %}
+
+<c-vars left_label="" left_icon="" right_label="" right_icon="" />
+{# The site frame (#988): left region, <main>, right region, in reading order. #}
+{# From xl up the regions sit beside the content; below xl each is a native #}
+{# popover drawer, opened by the header's popovertarget buttons, so drawers #}
+{# work without JS and from outside any Alpine scope. frameDrawer only adds #}
+{# focus handling (see components.js). A browser without popover support #}
+{# ignores the attribute; main.css stacks the regions with the content there. #}
+{% trans "Close" as close_label %}
+<div class="site-frame {{ class }}" {{ attrs }}>
+  <aside id="frame-left" popover aria-label="{{ left_label }}" tabindex="-1" x-data="frameDrawer" x-on:toggle="onToggle" x-on:focusout="onFocusOut" class="site-frame-region site-frame-left">
+    <div class="site-frame-region-head">
+      <c-atoms.eyebrow icon="{{ left_icon }}" label="{{ left_label }}" />
+      <c-atoms.button type="button" variant="ghost" size="icon" aria_label="{{ close_label }}" popovertarget="frame-left" popovertargetaction="hide" class="site-frame-close">
+        <c-atoms.icon name="x-mark" class="h-5 w-5" />
+      </c-atoms.button>
+    </div>
+    {{ left }}
+  </aside>
+  <main id="main-content" tabindex="-1" class="site-frame-main">
+    {{ slot }}
+  </main>
+  <aside id="frame-right" popover aria-label="{{ right_label }}" tabindex="-1" x-data="frameDrawer" x-on:toggle="onToggle" x-on:focusout="onFocusOut" class="site-frame-region site-frame-right">
+    <div class="site-frame-region-head">
+      <c-atoms.eyebrow icon="{{ right_icon }}" label="{{ right_label }}" />
+      <c-atoms.button type="button" variant="ghost" size="icon" aria_label="{{ close_label }}" popovertarget="frame-right" popovertargetaction="hide" class="site-frame-close">
+        <c-atoms.icon name="x-mark" class="h-5 w-5" />
+      </c-atoms.button>
+    </div>
+    {{ right }}
+  </aside>
+</div>

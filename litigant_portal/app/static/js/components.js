@@ -34,14 +34,46 @@ document.addEventListener('alpine:init', () => {
   // Dev menu (header dropdown — visible in dev + QA only)
   // ===========================================================================
 
-  Alpine.data('devMenu', () => ({
-    open: false,
-    toggle() {
-      this.open = !this.open
+  // ===========================================================================
+  // Site frame drawer (#988)
+  // ===========================================================================
+
+  // Below xl each site frame region is a native popover, opened by a header
+  // button with no JS. This adds what the popover doesn't do on its own: it
+  // moves focus into the drawer when it opens, closes it when focus leaves
+  // (so Tab can't land on the page hidden behind it, WCAG 2.4.11), and closes
+  // it when the window widens to xl, where the region shows inline instead.
+  Alpine.data('frameDrawer', () => ({
+    init() {
+      this.wideQuery = window.matchMedia('(width >= 80rem)')
+      this.closeWhenWide = () => {
+        if (this.wideQuery.matches) this.close()
+      }
+      this.wideQuery.addEventListener('change', this.closeWhenWide)
+    },
+    destroy() {
+      this.wideQuery.removeEventListener('change', this.closeWhenWide)
+    },
+    isOpen() {
+      return (
+        typeof this.$root.hidePopover === 'function' &&
+        this.$root.matches(':popover-open')
+      )
     },
     close() {
-      this.open = false
+      if (this.isOpen()) this.$root.hidePopover()
     },
+    onToggle(event) {
+      if (event.newState === 'open') this.$root.focus()
+    },
+    onFocusOut(event) {
+      const next = event.relatedTarget
+      if (this.isOpen() && next && !this.$root.contains(next)) this.close()
+    },
+  }))
+
+  // The site menu's dev-tools group (molecules/site_menu.html).
+  Alpine.data('devMenu', () => ({
     async resetDemo() {
       const csrfToken =
         document.querySelector('[name=csrfmiddlewaretoken]')?.value ||

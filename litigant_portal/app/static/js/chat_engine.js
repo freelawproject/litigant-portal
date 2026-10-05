@@ -492,9 +492,6 @@ document.addEventListener('alpine:init', () => {
     streaming: false,
     sendDisabled: true,
     menuOpen: false,
-    // Slide-over drawers for the collapsed side panels at narrow widths.
-    historyOpen: false,
-    briefcaseOpen: false,
     confirmingDelete: false,
     thinkingVisible: false,
     // The in-flight stream context, if any. It owns the message array it
@@ -630,29 +627,21 @@ document.addEventListener('alpine:init', () => {
       this.menuOpen = false
     },
 
-    // --- Drawers (collapsed side panels at narrow widths) ---
+    // --- Drawers ---
 
-    openHistory() {
-      this.historyOpen = true
-      this.briefcaseOpen = false
-    },
-
-    closeHistory() {
-      this.historyOpen = false
-    },
-
-    openBriefcase() {
-      this.briefcaseOpen = true
-      this.historyOpen = false
-    },
-
-    closeBriefcase() {
-      this.briefcaseOpen = false
-    },
-
+    // Below xl the site frame's regions are native popover drawers (#988).
+    // Choosing a thread or starting a new chat closes whichever one is open.
     closeDrawers() {
-      this.historyOpen = false
-      this.briefcaseOpen = false
+      for (const id of ['frame-left', 'frame-right']) {
+        const region = document.getElementById(id)
+        if (
+          region &&
+          typeof region.hidePopover === 'function' &&
+          region.matches(':popover-open')
+        ) {
+          region.hidePopover()
+        }
+      }
     },
 
     // Open the delete-confirmation modal for the active thread.
