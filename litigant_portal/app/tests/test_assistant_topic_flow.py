@@ -353,6 +353,23 @@ class AssistantSystemPromptTests(TestCase):
         self.assertNotIn("### Court contacts", prompt)
         self.assertNotIn("### Court resources", prompt)
 
+    def test_boundaries_then_evidence_sit_between_base_and_court(self):
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        positions = [
+            prompt.index(heading)
+            for heading in (
+                "You are a compassionate legal assistant",
+                "## Boundaries",
+                "## Evidence, citations, and gaps",
+                "## Court context",
+            )
+        ]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_prompt_has_no_em_dash(self):
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertNotIn("—", prompt)
+
     def test_prompt_ignores_the_active_flow(self):
         # The prompt depends only on the enabled-flow list, never on
         # per-thread state, so all threads share one cached prompt
