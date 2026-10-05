@@ -1,6 +1,6 @@
 # Front-end design principles
 
-> Current as of 2026-09-02.
+> Current as of 2026-10-05.
 
 ## Why we build components this way
 
@@ -55,6 +55,8 @@ Enough to settle the recurring questions without a meeting.
 **Extract on the second use.** The first time, write it inline. The second time, extract it. Not "I might reuse this," which builds an abstraction for an imagined need that rarely matches the real one when it arrives. If you are copy-pasting markup, the paste is the second use.
 
 **Tier by composition, not by size.** An atom is one element with a design and accessibility decision baked in. A molecule is atoms plus the layout that gives them a single job. An organism is a page section composed of molecules. When it is genuinely ambiguous, take the lower tier: a component placed too low costs nothing, one placed too high is harder to find and invites duplication.
+
+**Name a component what the rest of the web calls it.** Before naming a new component, look it up in [The Component Gallery](https://component.gallery/), which lists the names dozens of open-source design systems use for the same thing, and in [Open UI](https://open-ui.org/), the W3C community group that researches those names to standardize them. Take the most common one: `sidebar`, not `rail`. A coined name is one more term every contributor has to learn, and nobody can search for it.
 
 **One component with variants, or two components?** One if a change to one should propagate to the others, the way `button variant="primary|secondary"` evolves together. Two if the only thing they share is looking similar today. The test: imagine redesigning one variant. If the change would need a conditional to exempt the others, they were always two components sharing a file.
 
