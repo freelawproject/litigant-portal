@@ -63,6 +63,15 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `ty
 
 `make lint` and `make test` before pushing (`make pre-commit` runs both; pre-commit hooks also run on every commit). `make test` execs into the Django container, so `make docker` needs to be running first. What "done" actually requires — testing philosophy, WCAG/CSP/progressive-enhancement gates, content style, component discipline — lives in [docs/wiki/definition-of-done.md](docs/wiki/definition-of-done.md); that's the canonical bar for every PR and issue.
 
+## Dev tooling runs on macOS and Linux
+
+The team works on both, so every script and `make` target has to behave the same on each. Before adding tooling:
+
+- **Find programs, don't hard-code their paths.** Look a binary up on `PATH`, fall back to the usual macOS app-bundle location, and offer an environment variable to override it. `scripts/screenshots.mjs` does this for Chrome (`CHROME=`).
+- **Branch on the platform where the commands differ.** `scripts/file_issue.py` opens a URL with `open` on macOS and `xdg-open` elsewhere.
+- **Avoid flags whose GNU and BSD versions differ** in `Makefile` recipes and shell scripts, such as `sed -i` (which needs `''` on macOS) or `date -d`. Prefer Python or Node built-ins for anything beyond a one-liner.
+- **Say which platforms you tested.** If you could only test one, say so in the PR, so a teammate on the other can check it.
+
 ## Contributor License Agreement (CLA)
 
 Free Law Project requires a signed CLA before a PR can be merged. A bot checks this automatically on every PR.
