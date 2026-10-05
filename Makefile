@@ -141,7 +141,7 @@ docassemble-down: ## Stop the local-dev docassemble bench
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
 	uv run python scripts/file_issue.py $(FILE)
 
-screenshots: ## Full-page captures of the front-end pages at 1440 and 320px (LABEL=before|after; run outside the sandbox)
+screenshots: ## Full-page captures of the front-end pages at 1440 and 320px (LABEL=before|after; on macOS, run outside the Claude Code sandbox)
 	node scripts/screenshots.mjs $(or $(LABEL),$(error set LABEL, e.g. make screenshots LABEL=before))
 
 # Image build & push — used by .github/workflows/deploy.yml to publish the

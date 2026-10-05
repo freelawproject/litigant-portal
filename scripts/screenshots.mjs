@@ -7,16 +7,19 @@
 //
 // Writes .screenshots/<label>/<page>-<width>.png (gitignored), each a
 // full-page capture. Needs the dev server running (`make docker`) and Google
-// Chrome installed. Node built-ins only, no install.
+// Chrome or Chromium: found in /Applications on macOS and on PATH on Linux,
+// or set CHROME=/path/to/chrome. Node built-ins only, no install.
 //
 // Widths are set with the DevTools protocol's device emulation, not
 // --window-size: headless Chrome will not lay a window out narrower than
-// about 500px, so a 320px window is really a crop of a wider page.
+// about 750px, so a 320px window is really a crop of a wider page.
 //
-// Run it outside the macOS sandbox: Chrome aborts at startup when the sandbox
-// denies it a Mach port, the same failure as the draw.io CLI (see CLAUDE.md).
+// On macOS under Claude Code, run it outside the sandbox: Chrome aborts at
+// startup when the sandbox denies it a Mach port, the same failure as the
+// draw.io CLI (see CLAUDE.md).
 import { spawn } from 'node:child_process'
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -24,7 +27,7 @@ import {
   writeFileSync,
 } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { delimiter, join } from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 
 const [label, baseUrl = 'http://localhost'] = process.argv.slice(2)
@@ -33,9 +36,37 @@ if (!label) {
   process.exit(1)
 }
 
-const CHROME =
-  process.env.CHROME ||
-  '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+// Where Chrome or Chromium usually lives: app bundles on macOS, command
+// names to look up on PATH elsewhere (Linux).
+const CHROME_CANDIDATES =
+  process.platform === 'darwin'
+    ? [
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      ]
+    : ['google-chrome', 'google-chrome-stable', 'chromium', 'chromium-browser']
+
+function findChrome() {
+  if (process.env.CHROME) return process.env.CHROME
+  const pathDirs = (process.env.PATH || '').split(delimiter)
+  for (const candidate of CHROME_CANDIDATES) {
+    if (candidate.startsWith('/')) {
+      if (existsSync(candidate)) return candidate
+    } else {
+      const dir = pathDirs.find((d) => existsSync(join(d, candidate)))
+      if (dir) return join(dir, candidate)
+    }
+  }
+  return null
+}
+
+const CHROME = findChrome()
+if (!CHROME) {
+  console.error(
+    `Chrome not found (looked for ${CHROME_CANDIDATES.join(', ')}). Set CHROME=/path/to/chrome.`
+  )
+  process.exit(1)
+}
 
 // [name, path]. Add a line to capture another page or simulation.
 const PAGES = [
