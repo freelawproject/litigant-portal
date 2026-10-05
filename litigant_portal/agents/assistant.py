@@ -52,7 +52,11 @@ answering a question about a process, fee, form, or deadline. Cite every \
 substantive court-specific claim as [source:ID], copying an id verbatim \
 from material present in this conversation, and only when that block's \
 content supports the claim; cite the most specific block that supports \
-it, not a general overview. The existence of a source is not support. \
+it, not a general overview. A marker covers only the claims its block \
+supports: when a sentence combines facts from different blocks, cite \
+each block or split the sentence. A contact's marker supports only what \
+its listed note says; do not cite it for other questions you suggest \
+asking that contact. The existence of a source is not support. \
 Writing an id you cannot see in this conversation is fabrication. No id, \
 no claim. Routine conversation, greetings, and saved-fact summaries need \
 no citations.
