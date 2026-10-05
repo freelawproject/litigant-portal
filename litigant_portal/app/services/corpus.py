@@ -131,14 +131,14 @@ def _sync_contacts(courts: list[CourtSchema], *, strict: bool) -> None:
     for schema in courts:
         for entry in schema.contacts:
             row = contacts.get(entry.name) or Contact(name=entry.name)
-            _apply(row, entry)
+            _apply(row, entry, exclude={"id"})
             row.order = len(names)
             row.save()
             contacts[entry.name] = row
             names.append(entry.name)
         for entry in schema.resources:
             row = resources.get(entry.label) or Resource(label=entry.label)
-            _apply(row, entry)
+            _apply(row, entry, exclude={"id"})
             row.order = len(labels)
             row.save()
             resources[entry.label] = row
@@ -168,7 +168,9 @@ def _sync_flow(
     flow.save()
     flow.sections.all().delete()
     TopicFlowSection.objects.bulk_create(
-        TopicFlowSection(flow=flow, order=order, **row.model_dump())
+        TopicFlowSection(
+            flow=flow, order=order, **row.model_dump(exclude={"id"})
+        )
         for order, row in enumerate(schema.sections)
     )
     flow.interview_pages.all().delete()
@@ -203,13 +205,13 @@ def _sync_flow(
             flow=flow,
             order=order,
             offset_from=variables[row.offset_from],
-            **row.model_dump(exclude={"offset_from"}),
+            **row.model_dump(exclude={"id", "offset_from"}),
         )
         for order, row in enumerate(schema.deadlines)
     )
     flow.links.all().delete()
     TopicFlowLink.objects.bulk_create(
-        TopicFlowLink(flow=flow, order=order, **row.model_dump())
+        TopicFlowLink(flow=flow, order=order, **row.model_dump(exclude={"id"}))
         for order, row in enumerate(schema.links)
     )
 

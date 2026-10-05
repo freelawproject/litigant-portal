@@ -81,15 +81,23 @@ def _make_corpus(*, include_beta=True, include_vestigial=True):
         "alpha": {
             "name": "Alpha",
             "court_name": "Alpha District Court",
-            "contacts": [{"name": "Alpha Help"}],
-            "resources": [{"label": "Alpha Guide", "url": "https://a.test"}],
+            "contacts": [{"id": "alpha_help", "name": "Alpha Help"}],
+            "resources": [
+                {
+                    "id": "alpha_guide",
+                    "label": "Alpha Guide",
+                    "url": "https://a.test",
+                }
+            ],
         }
     }
     topics = {("alpha", "pets"): {"title": "Pets"}}
     flows = {
         ("alpha", "pets", "standard"): {
             "name": "Standard",
-            "sections": [{"heading": "Start", "content": "Read."}],
+            "sections": [
+                {"id": "start", "heading": "Start", "content": "Read."}
+            ],
             "interview": [
                 {
                     "title": "About your pet",
@@ -108,13 +116,21 @@ def _make_corpus(*, include_beta=True, include_vestigial=True):
         courts["beta"] = {
             "name": "Beta",
             "court_name": "Beta Municipal Court",
-            "contacts": [{"name": "Beta Help"}],
-            "resources": [{"label": "Beta Guide", "url": "https://b.test"}],
+            "contacts": [{"id": "beta_help", "name": "Beta Help"}],
+            "resources": [
+                {
+                    "id": "beta_guide",
+                    "label": "Beta Guide",
+                    "url": "https://b.test",
+                }
+            ],
         }
         topics[("beta", "eviction")] = {"title": "Eviction"}
         flows[("beta", "eviction", "tenant")] = {
             "name": "Tenant",
-            "sections": [{"heading": "Start", "content": "Read."}],
+            "sections": [
+                {"id": "start", "heading": "Start", "content": "Read."}
+            ],
             "interview": [{"title": "About you", "variables": ["full_name"]}],
             "packet": [{"form": "addendum"}],
         }

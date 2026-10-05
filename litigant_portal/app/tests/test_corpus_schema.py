@@ -73,13 +73,23 @@ def _corpus_data():
             "north-dakota": {
                 "name": "North Dakota",
                 "court_name": "District Court",
+                "contacts": [{"id": "clerk", "name": "Clerk"}],
+                "resources": [
+                    {"id": "guide", "label": "Guide", "url": "https://a.test"}
+                ],
             }
         },
         "topics": {("north-dakota", "pets"): {"title": "Pets"}},
         "flows": {
             ("north-dakota", "pets", "standard"): {
                 "name": "Standard",
-                "sections": [{"heading": "Start here", "content": "Read."}],
+                "sections": [
+                    {
+                        "id": "start",
+                        "heading": "Start here",
+                        "content": "Read.",
+                    }
+                ],
                 "interview": [
                     {
                         "title": "About your pet",
@@ -94,6 +104,7 @@ def _corpus_data():
                 "packet": [{"form": "license"}],
                 "deadlines": [
                     {
+                        "id": "license_due",
                         "label": "License due",
                         "offset_days": 30,
                         "offset_from": "adopted_on",
@@ -351,7 +362,9 @@ def _flow_doc(**overrides):
     return FlowSchema.model_validate(
         {
             "name": "Standard",
-            "sections": [{"heading": "Start", "content": "Read."}],
+            "sections": [
+                {"id": "start", "heading": "Start", "content": "Read."}
+            ],
             **overrides,
         }
     )
@@ -385,6 +398,87 @@ def test_variable_placed_on_two_pages_is_rejected():
                 {"title": "Two", "variables": ["full_name"]},
             ]
         )
+
+
+# Source ids: the citation targets stored in user threads
+
+
+def _section(id, heading="H"):
+    return {"id": id, "heading": heading, "content": "Read."}
+
+
+def test_section_without_an_id_is_rejected():
+    with pytest.raises(ValidationError, match="id"):
+        _flow_doc(sections=[{"heading": "Start", "content": "Read."}])
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"sections": [_section("start"), _section("start")]},
+        {
+            "deadlines": [
+                {
+                    "id": "start",
+                    "label": "Due",
+                    "offset_days": 1,
+                    "offset_from": "adopted_on",
+                }
+            ]
+        },
+        {"links": [{"id": "start", "name": "Court", "url": "https://a.test"}]},
+        {"sections": [_section("license")], "packet": [{"form": "license"}]},
+    ],
+    ids=[
+        "two-sections",
+        "deadline-and-section",
+        "link-and-section",
+        "section-and-packet-form-slug",
+    ],
+)
+def test_duplicate_ids_in_one_flow_are_rejected(overrides):
+    with pytest.raises(ValidationError, match="duplicate ids in flow"):
+        _flow_doc(**overrides)
+
+
+def test_duplicate_id_error_names_the_id():
+    with pytest.raises(ValidationError, match=r"\['start'\]"):
+        _flow_doc(sections=[_section("start"), _section("start")])
+
+
+def test_contact_and_resource_sharing_an_id_are_rejected():
+    data = _corpus_data()
+    data["courts"]["north-dakota"]["resources"][0]["id"] = "clerk"
+    with pytest.raises(ValidationError, match="duplicate ids in court"):
+        CorpusSchema.model_validate(data)
+
+
+def test_two_courts_keying_the_same_contact_are_rejected():
+    data = _corpus_data()
+    data["courts"]["other-court"] = {
+        "name": "Other",
+        "court_name": "Other Court",
+        "contacts": [{"id": "clerk", "name": "Other clerk"}],
+    }
+    with pytest.raises(ValidationError, match="'clerk'.*more than one court"):
+        CorpusSchema.model_validate(data)
+
+
+def test_topic_slugged_court_is_rejected():
+    data = _corpus_data()
+    data["topics"][("north-dakota", "court")] = {"title": "Court"}
+    with pytest.raises(ValidationError, match="'court' is reserved"):
+        CorpusSchema.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    "id",
+    ["Filing_Fee", "filing fee", "filing/fee", ""],
+    ids=["uppercase", "space", "slash", "empty"],
+)
+def test_id_must_be_a_slug(id):
+    with pytest.raises(ValidationError, match="pattern"):
+        _flow_doc(sections=[_section(id)])
 
 
 # Forms resolve against their PDFs
