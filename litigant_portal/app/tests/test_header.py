@@ -4,6 +4,8 @@ header takes from the page context.
 """
 
 import pytest
+from django.contrib.auth.models import AnonymousUser
+from django.template.loader import render_to_string
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import reverse
 from django_cotton.utils import render_component
@@ -76,3 +78,21 @@ class HeaderCourtContextTests(TestCase):
         response = self.client.get(reverse("pages:home"))
 
         self.assertIn(FLP_LOGO, response.content.decode())
+
+    def test_topic_flow_header_takes_court_props_from_the_page_context(self):
+        """topic_flow.html overrides the header block, so it must forward the
+        court props itself or flow pages alone keep the FLP logo."""
+        request = RequestFactory().get("/")
+        request.user = AnonymousUser()
+        html = render_to_string(
+            "pages/topic_flow.html",
+            {
+                "court_logo": COURT_LOGO,
+                "court_name": COURT_NAME,
+                "court_name_image": COURT_NAME_IMAGE,
+            },
+            request=request,
+        )
+
+        self.assertIn(f'src="{COURT_NAME_IMAGE}" alt="{COURT_NAME}"', html)
+        self.assertNotIn(FLP_LOGO, html)
