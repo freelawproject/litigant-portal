@@ -2,14 +2,30 @@
 Tests for the Atomic Design summary page and the stage pages it frames.
 """
 
+import re
+
 import pytest
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
 from litigant_portal.app.views.pages import (
     ATOMIC_DESIGN_STAGES,
     ATOMIC_PLACEHOLDER_TOPICS,
+    _sample_components,
 )
+
+
+class SampleComponentsTests(SimpleTestCase):
+    """The "In the code" line is read from the sample template, so it
+    can't drift from what the sample renders."""
+
+    def test_follows_includes_and_lists_each_component_once_in_order(self):
+        # atoms.html renders nothing itself; its atoms are in an include,
+        # and icon and button appear there more than once.
+        self.assertEqual(
+            _sample_components("pages/atomic_design/atoms.html"),
+            ["icon", "search-input", "button", "link"],
+        )
 
 
 @pytest.mark.postgres
@@ -101,13 +117,36 @@ class AtomicDesignLevelSelectionTests(TestCase):
         self.assertTrue(organisms.context["current"]["phone"])
         self.assertFalse(molecules.context["current"]["phone"])
 
+    def test_only_the_selected_level_card_is_marked_current(self):
+        """The sidebar cards say which level is shown with aria-current, so
+        the choice isn't carried by the coral tint alone. Molecules has no
+        width choice, so its card is the only ?level= link marked current."""
+        response = self._get(level="molecules")
+
+        current_links = re.findall(
+            r'<a href="(\?level=[^"]*)"[^>]*aria-current="page"',
+            response.content.decode(),
+        )
+        self.assertEqual(current_links, ["?level=molecules"])
+
+    def test_width_choice_renders_only_for_levels_with_a_phone_view(self):
+        organisms = self._get(level="organisms").content.decode()
+        molecules = self._get(level="molecules").content.decode()
+
+        self.assertIn("?level=organisms&viewport=phone", organisms)
+        self.assertNotIn("viewport=phone", molecules)
+
 
 @pytest.mark.postgres
 class InternalPageFrameTests(TestCase):
     def test_internal_pages_have_a_single_main_landmark(self):
-        """Both pages render inside base.html's <main>; a second one inside
-        it gives screen readers two main landmarks."""
-        for name in ("pages:style_guide", "pages:atomic_design"):
+        """Every internal page renders inside base.html's <main>; a second
+        one inside it gives screen readers two main landmarks."""
+        for name in (
+            "pages:style_guide",
+            "pages:atomic_design",
+            "pages:a11y_guide",
+        ):
             with self.subTest(page=name):
                 response = self.client.get(reverse(name))
 

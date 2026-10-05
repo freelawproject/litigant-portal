@@ -1,10 +1,12 @@
 import os
+import re
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
+from django.template.loader import get_template
 from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
 from django.utils.http import urlencode
@@ -255,11 +257,15 @@ ATOMIC_PLACEHOLDER_TOPICS = {
 
 
 # The five levels of the Atomic Design page, smallest first. "summary" is
-# for stakeholders, "code" for developers: where the pieces live. "sample"
+# for stakeholders, "code" for developers: where the pieces live. The atom,
+# molecule and organism levels have no "code" here; theirs is read from the
+# sample template (see _sample_components), so it can't drift from it. "sample"
 # is the width the rendered sample is shown at, each the smallest real place
 # that level lives: atoms inline (no layout of their own), molecules in a
-# phone, organisms in the content column, template and page in the window.
-# "phone_view" offers a 375px view of the wider samples.
+# phone, organisms in the content column, template and page in the window
+# (a fixed-height frame filling the content column beside the sidebar;
+# "Open full size" shows them at true window width). "phone_view" offers a
+# 375px view of the wider samples.
 _ATOMIC_DESIGN_LEVELS = (
     {
         "stage": "atoms",
@@ -270,7 +276,6 @@ _ATOMIC_DESIGN_LEVELS = (
             "from it inherits them."
         ),
         "detail": "",
-        "code": "cotton/atoms/: icon, button, search-input, link; plus plain <img>",
         "sample": "inline",
         "phone_view": False,
     },
@@ -284,10 +289,6 @@ _ATOMIC_DESIGN_LEVELS = (
         "detail": _(
             "Molecules get reused in small spaces, so they are shown at "
             "phone width."
-        ),
-        "code": (
-            "cotton/molecules/: logo (link + img), user-menu, "
-            "search-bar, topic-card"
         ),
         "sample": "phone",
         "phone_view": False,
@@ -305,10 +306,6 @@ _ATOMIC_DESIGN_LEVELS = (
             "inside it is a molecule: it does one small job, and on its own "
             "it is not a section of anything."
         ),
-        "code": (
-            "cotton/organisms/: header, topic-grid, hero, "
-            "fallback-resources, auth-cta, footer"
-        ),
         "sample": "content",
         "phone_view": True,
     },
@@ -323,7 +320,7 @@ _ATOMIC_DESIGN_LEVELS = (
         "detail": _(
             "Where the organisms go and in what order. In our code that is a "
             "Django template file, and every page shares the frame from "
-            "base.html: site header, then content, then footer."
+            "base.html."
         ),
         "code": "base.html + pages/home.html, with placeholder data",
         "sample": "window",
@@ -334,12 +331,9 @@ _ATOMIC_DESIGN_LEVELS = (
         "name": _("Page"),
         "summary": _(
             "The same template with real content: the home page a litigant "
-            "sees right now, live."
+            "sees right now."
         ),
-        "detail": _(
-            "The template and the page render the same file; only the data "
-            "the view passes in is different."
-        ),
+        "detail": "",
         "code": "pages/home.html, rendered by views/pages.py home()",
         "sample": "window",
         "phone_view": True,
@@ -347,8 +341,29 @@ _ATOMIC_DESIGN_LEVELS = (
 )
 
 
+_SAMPLE_TAG = re.compile(
+    r"<c-(?:atoms|molecules|organisms)\.([\w-]+)"
+    r"|{%\s*include\s+\"([^\"]+)\""
+)
+
+
+def _sample_components(template_name: str) -> list[str]:
+    """The components a sample template renders, each once, in first-use
+    order. Includes are followed, so a sample split across files reads as
+    one."""
+    # The raw file, not .template.source: Cotton's loader has already
+    # compiled the <c-...> tags in that.
+    with open(get_template(template_name).origin.name) as f:
+        source = f.read()
+    names: list[str] = []
+    for component, include in _SAMPLE_TAG.findall(source):
+        names += [component] if component else _sample_components(include)
+    return list(dict.fromkeys(names))
+
+
 def atomic_design(request):
-    """Atomic Design: the five levels, with one level's live sample below.
+    """Atomic Design: the five levels in a sidebar, one level's live sample
+    beside them.
 
     The level and viewport come from the query string, so the selector is
     plain links and works without JS. An unknown level falls back to atoms;
@@ -368,6 +383,13 @@ def atomic_design(request):
         for level in _ATOMIC_DESIGN_LEVELS
     ]
     current = next(level for level in levels if level["is_current"])
+    if "code" not in current:
+        components = _sample_components(
+            f"pages/atomic_design/{current['stage']}.html"
+        )
+        current["code"] = (
+            f"cotton/{current['stage']}/: {', '.join(components)}"
+        )
     current["frame_url"] = (
         reverse("pages:home")
         if current["stage"] == "page"
