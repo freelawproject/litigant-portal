@@ -57,6 +57,56 @@ flow is active. Available flows:
 {flows}"""
 
 
+def _court_source_marker(key: str) -> str:
+    from litigant_portal.app.selectors.corpus import COURT_SOURCE_SLUG
+
+    return f"[source:{COURT_SOURCE_SLUG}/{key}]"
+
+
+def _contact_line(contact) -> str:
+    details = [
+        f"{label} {value}"
+        for label, value in (
+            ("phone", contact.phone),
+            ("email", contact.email),
+            ("website", contact.url),
+        )
+        if value
+    ]
+    line = f"- {_court_source_marker(contact.key)} {contact.name}"
+    if details:
+        line += f" ({', '.join(details)})"
+    if contact.note:
+        line += f": {contact.note}"
+    return line
+
+
+def _resource_line(resource) -> str:
+    line = f"- {_court_source_marker(resource.key)} {resource.label}: "
+    line += resource.url
+    if resource.note:
+        line += f". {resource.note}"
+    return line
+
+
+def _court_sources() -> list[str]:
+    """The court's contacts and resources, each with its citable id, so
+    they can be cited before any flow is loaded. Empty lists render no
+    heading."""
+    from litigant_portal.app.selectors.site import contact_list, resource_list
+
+    lines = []
+    contacts = contact_list()
+    if contacts:
+        lines += ["", "### Court contacts"]
+        lines += [_contact_line(c) for c in contacts]
+    resources = resource_list()
+    if resources:
+        lines += ["", "### Court resources"]
+        lines += [_resource_line(r) for r in resources]
+    return lines
+
+
 def generate_court_prompt() -> str:
     """The court-context section. A blank court name means the site
     wasn't synced to one court, so the flows may span several."""
@@ -64,20 +114,21 @@ def generate_court_prompt() -> str:
 
     site = site_get()
     if not site.court_name:
-        return COURT_PROMPT.format(context=MULTI_COURT_CONTEXT)
-    lines = [f"You are operating in {site.court_name}."]
-    if site.jurisdiction_level:
-        level = site.get_jurisdiction_level_display()
-        lines.append(f"- Jurisdiction level: {level}")
-    if site.state:
-        lines.append(f"- State: {site.get_state_display()}")
-    if site.official_url:
-        lines.append(f"- Court website: {site.official_url}")
-    if site.official_resources_url:
-        lines.append(
-            f"- Court self-help resources: {site.official_resources_url}"
-        )
-    return COURT_PROMPT.format(context="\n".join(lines))
+        lines = [MULTI_COURT_CONTEXT]
+    else:
+        lines = [f"You are operating in {site.court_name}."]
+        if site.jurisdiction_level:
+            level = site.get_jurisdiction_level_display()
+            lines.append(f"- Jurisdiction level: {level}")
+        if site.state:
+            lines.append(f"- State: {site.get_state_display()}")
+        if site.official_url:
+            lines.append(f"- Court website: {site.official_url}")
+        if site.official_resources_url:
+            lines.append(
+                f"- Court self-help resources: {site.official_resources_url}"
+            )
+    return COURT_PROMPT.format(context="\n".join(lines + _court_sources()))
 
 
 def generate_topic_flows_prompt() -> str:

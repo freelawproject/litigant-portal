@@ -34,12 +34,26 @@ def _variable_line(variable) -> str:
     return line
 
 
+def source_marker(flow, key: str) -> str:
+    """The citation marker for one of ``flow``'s blocks. The prompt's
+    evidence rules describe this exact shape, so change both together."""
+    return f"[source:{topic_flow_path(flow)}/{key}]"
+
+
 def topic_flow_markdown(flow) -> str:
-    """Everything the assistant should know about ``flow``, as markdown."""
+    """Everything the assistant should know about ``flow``, as markdown.
+
+    Every court-specific block carries its source marker; the interview
+    facts do not, since they describe what we ask, not what the court
+    says."""
     lines = [f"# {flow.name}", f"Topic: {flow.topic.title}"]
 
     for section in flow.sections.all():
-        lines += ["", f"## {section.heading}", section.content.strip()]
+        lines += [
+            "",
+            f"## {section.heading} {source_marker(flow, section.key)}",
+            section.content.strip(),
+        ]
 
     deadlines = list(flow.deadlines.all())
     if deadlines:
@@ -51,7 +65,7 @@ def topic_flow_markdown(flow) -> str:
                 if d.offset_days >= 0
                 else f"{-d.offset_days} days before"
             )
-            line = f"- {d.label}: {when} {anchor}"
+            line = f"- {source_marker(flow, d.key)} {d.label}: {when} {anchor}"
             if d.description:
                 line += f". {d.description}"
             lines.append(line)
@@ -60,7 +74,7 @@ def topic_flow_markdown(flow) -> str:
     if conditions:
         lines += ["", "## Form packet"]
         for c in conditions:
-            line = f"- {c.form.name}"
+            line = f"- {source_marker(flow, c.form.slug)} {c.form.name}"
             if c.variable:
                 line += (
                     f" (included when {c.variable.name} {c.operator} "
@@ -83,7 +97,10 @@ def topic_flow_markdown(flow) -> str:
     links = list(flow.links.all())
     if links:
         lines += ["", "## Links"]
-        lines += [f"- {link.name}: {link.url}" for link in links]
+        lines += [
+            f"- {source_marker(flow, link.key)} {link.name}: {link.url}"
+            for link in links
+        ]
 
     return "\n".join(lines)
 
@@ -95,7 +112,8 @@ class LoadTopicFlow(Tool):
     topic flows listed in your instructions. The result contains the flow's
     full content (its guidance, deadlines, forms, and the facts it
     collects); ground your answers in that content while the flow is
-    active.
+    active. Each block of guidance carries a [source:ID] marker, the id to
+    cite when you rely on that block.
     """
 
     topic_flow: str = Field(
