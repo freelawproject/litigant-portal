@@ -12,6 +12,7 @@ from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
+from litigant_portal.agents.citations import citation_ids, citation_ids_unknown
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
@@ -239,6 +240,20 @@ def _to_llm_message(msg: dict[str, Any]) -> dict[str, Any]:
             out["tool_calls"] = msg["tool_calls"]
         return out
     return {"role": "user", "content": msg.get("content", "")}
+
+
+def _supplied_citation_ids(
+    system_prompt: str, history: list[dict[str, Any]]
+) -> set[str]:
+    """The source ids this thread has actually seen: the system prompt's
+    plus every LoadTopicFlow result in its history. The thread's own view,
+    never the live corpus, so a content edit after the flow loaded does not
+    turn an honest citation into an unknown one."""
+    ids = set(citation_ids(system_prompt))
+    for msg in history:
+        if msg.get("role") == "tool" and msg.get("name") == "LoadTopicFlow":
+            ids.update(citation_ids(msg.get("content", "")))
+    return ids
 
 
 def _system_prompt_text(
@@ -495,6 +510,19 @@ def chat_stream(
                 }
                 if tool_calls:
                     assistant_msg["tool_calls"] = tool_calls
+                # Runs after the chips are already on screen; the UI
+                # treatment waits until we know how often this happens.
+                unknown = citation_ids_unknown(
+                    assistant_msg["content"],
+                    _supplied_citation_ids(system_prompt, history),
+                )
+                if unknown:
+                    assistant_msg["unknown_citations"] = unknown
+                    logger.warning(
+                        "chat_engine unknown citation ids %s in thread %s",
+                        unknown,
+                        thread.id,
+                    )
                 history.append(assistant_msg)
                 chat_message_create(
                     thread_id=thread.id,
