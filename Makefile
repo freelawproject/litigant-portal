@@ -3,7 +3,7 @@
 	   check migrate shell collectstatic superuser messages compilemessages \
 	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
 	   docassemble-up docassemble-down \
-	   file-issue build-image push-image
+	   file-issue screenshots build-image push-image
 
 # Guard for commands that require the Docker container to be running
 # Holds docker's own stderr rather than swallowing it, and prints it only when
@@ -140,6 +140,9 @@ docassemble-down: ## Stop the local-dev docassemble bench
 
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
 	uv run python scripts/file_issue.py $(FILE)
+
+screenshots: ## Full-page captures of the front-end pages at 1440 and 320px (LABEL=before|after; run outside the sandbox)
+	node scripts/screenshots.mjs $(or $(LABEL),$(error set LABEL, e.g. make screenshots LABEL=before))
 
 # Image build & push — used by .github/workflows/deploy.yml to publish the
 # portal image for the EKS deploy. Requires VERSION (the short git SHA in CI):
