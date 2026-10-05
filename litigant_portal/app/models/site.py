@@ -48,6 +48,7 @@ class Contact(BaseModel):
     """A court or legal-help contact."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.SlugField(max_length=64, blank=True, default="")
     name = models.CharField(max_length=255, unique=True)
     phone = models.CharField(max_length=32, blank=True)
     email = models.EmailField(blank=True)
@@ -63,6 +64,7 @@ class Resource(BaseModel):
     """An external resource link."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    key = models.SlugField(max_length=64, blank=True, default="")
     label = models.CharField(max_length=255, unique=True)
     url = models.URLField(max_length=500)
     note = models.TextField(blank=True)

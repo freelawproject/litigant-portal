@@ -64,6 +64,7 @@ class TopicFlowSection(BaseModel):
         on_delete=models.CASCADE,
         related_name="sections",
     )
+    key = models.SlugField(max_length=64, blank=True, default="")
     heading = models.CharField(max_length=255)
     content = models.TextField(blank=True)
     order = models.PositiveIntegerField(default=0)
@@ -372,6 +373,7 @@ class TopicFlowLink(BaseModel):
         on_delete=models.CASCADE,
         related_name="links",
     )
+    key = models.SlugField(max_length=64, blank=True, default="")
     name = models.CharField(max_length=255)
     url = models.URLField(max_length=500)
     order = models.PositiveIntegerField(default=0)
@@ -389,6 +391,7 @@ class TopicFlowDeadline(BaseModel):
         on_delete=models.CASCADE,
         related_name="deadlines",
     )
+    key = models.SlugField(max_length=64, blank=True, default="")
     label = models.CharField(max_length=255)
     description = models.TextField(blank=True)
     offset_days = models.IntegerField(default=0)

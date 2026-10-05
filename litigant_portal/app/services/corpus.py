@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
@@ -32,12 +34,34 @@ from litigant_portal.app.selectors.site import site_get
 
 from .utils import busts_cache
 
+logger = logging.getLogger(__name__)
+
 
 def _apply(row, schema, *, exclude: set[str] = frozenset()) -> None:
     """Set each schema field onto the row. ``exclude`` names the fields
     the caller resolves itself (relations, files, display-only)."""
     for field, value in schema.model_dump(exclude=exclude).items():
         setattr(row, field, value)
+
+
+def _source_row(schema, **fields):
+    """Schema fields plus the authored ``id``, stored as ``key`` because
+    ``id`` is the row's UUID."""
+    return {"key": schema.id, **schema.model_dump(exclude={"id"}), **fields}
+
+
+def _warn_removed_keys(scope: str, stored, authored) -> None:
+    """A stored key that left the corpus may still be cited in threads, so
+    its removal is reported. Removing a block can be correct, so this is
+    a warning, not a failure."""
+    removed = sorted(set(stored) - set(authored) - {""})
+    if removed:
+        logger.warning(
+            "%s: source ids removed from the corpus: %s "
+            "(stored citations to them are now stale)",
+            scope,
+            removed,
+        )
 
 
 def _sync_variables(corpus: CorpusSchema) -> dict[str, Variable]:
@@ -126,12 +150,19 @@ def _sync_contacts(courts: list[CourtSchema], *, strict: bool) -> None:
     """Upsert every court's contacts and resources by name and label."""
     contacts = {c.name: c for c in Contact.objects.all()}
     resources = {r.label: r for r in Resource.objects.all()}
+    if strict:
+        _warn_removed_keys(
+            "court contacts and resources",
+            [r.key for r in (*contacts.values(), *resources.values())],
+            [i for schema in courts for i in schema.source_ids],
+        )
     names: list[str] = []
     labels: list[str] = []
     for schema in courts:
         for entry in schema.contacts:
             row = contacts.get(entry.name) or Contact(name=entry.name)
             _apply(row, entry, exclude={"id"})
+            row.key = entry.id
             row.order = len(names)
             row.save()
             contacts[entry.name] = row
@@ -139,6 +170,7 @@ def _sync_contacts(courts: list[CourtSchema], *, strict: bool) -> None:
         for entry in schema.resources:
             row = resources.get(entry.label) or Resource(label=entry.label)
             _apply(row, entry, exclude={"id"})
+            row.key = entry.id
             row.order = len(labels)
             row.save()
             resources[entry.label] = row
@@ -166,11 +198,21 @@ def _sync_flow(
         exclude={"sections", "interview", "packet", "deadlines", "links"},
     )
     flow.save()
+    _warn_removed_keys(
+        f"flow {topic.slug}/{slug}",
+        [
+            key
+            for rows in (flow.sections, flow.deadlines, flow.links)
+            for key in rows.values_list("key", flat=True)
+        ],
+        [
+            source.id
+            for source in (*schema.sections, *schema.deadlines, *schema.links)
+        ],
+    )
     flow.sections.all().delete()
     TopicFlowSection.objects.bulk_create(
-        TopicFlowSection(
-            flow=flow, order=order, **row.model_dump(exclude={"id"})
-        )
+        TopicFlowSection(**_source_row(row, flow=flow, order=order))
         for order, row in enumerate(schema.sections)
     )
     flow.interview_pages.all().delete()
@@ -202,16 +244,18 @@ def _sync_flow(
     flow.deadlines.all().delete()
     TopicFlowDeadline.objects.bulk_create(
         TopicFlowDeadline(
-            flow=flow,
-            order=order,
-            offset_from=variables[row.offset_from],
-            **row.model_dump(exclude={"id", "offset_from"}),
+            **_source_row(
+                row,
+                flow=flow,
+                order=order,
+                offset_from=variables[row.offset_from],
+            )
         )
         for order, row in enumerate(schema.deadlines)
     )
     flow.links.all().delete()
     TopicFlowLink.objects.bulk_create(
-        TopicFlowLink(flow=flow, order=order, **row.model_dump(exclude={"id"}))
+        TopicFlowLink(**_source_row(row, flow=flow, order=order))
         for order, row in enumerate(schema.links)
     )
 

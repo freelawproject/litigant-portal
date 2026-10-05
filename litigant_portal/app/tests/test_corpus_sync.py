@@ -29,8 +29,12 @@ from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
 
+START_SECTION = {"id": "start", "heading": "Start", "content": "Read."}
 
-def _make_corpus(*, include_beta=True, include_vestigial=True):
+
+def _make_corpus(
+    *, include_beta=True, include_vestigial=True, alpha_sections=None
+):
     """A small valid corpus: two courts, two forms, one gated variable."""
     variables = {
         "full_name": {"name": "full_name", "label": "Full name"},
@@ -95,9 +99,7 @@ def _make_corpus(*, include_beta=True, include_vestigial=True):
     flows = {
         ("alpha", "pets", "standard"): {
             "name": "Standard",
-            "sections": [
-                {"id": "start", "heading": "Start", "content": "Read."}
-            ],
+            "sections": alpha_sections or [START_SECTION],
             "interview": [
                 {
                     "title": "About your pet",
@@ -128,9 +130,7 @@ def _make_corpus(*, include_beta=True, include_vestigial=True):
         topics[("beta", "eviction")] = {"title": "Eviction"}
         flows[("beta", "eviction", "tenant")] = {
             "name": "Tenant",
-            "sections": [
-                {"id": "start", "heading": "Start", "content": "Read."}
-            ],
+            "sections": [START_SECTION],
             "interview": [{"title": "About you", "variables": ["full_name"]}],
             "packet": [{"form": "addendum"}],
         }
@@ -268,6 +268,73 @@ class CourtScopingTests(CorpusSyncTests):
     def test_unknown_court_is_rejected(self):
         with self.assertRaises(ValueError):
             self._sync(_make_corpus(), court="gamma")
+
+
+@pytest.mark.postgres
+class SourceKeyTests(CorpusSyncTests):
+    """The authored id lands on the row as ``key`` and survives edits
+    around it; a removed id is reported, since threads may cite it."""
+
+    def _alpha_sections(self):
+        flow = TopicFlow.objects.get(topic__slug="pets", slug="standard")
+        return list(flow.sections.values_list("key", "order"))
+
+    def test_sync_stores_each_sections_authored_id_in_order(self):
+        self._sync(
+            _make_corpus(
+                alpha_sections=[
+                    START_SECTION,
+                    {"id": "fees", "heading": "Fees", "content": "Pay."},
+                ]
+            ),
+            court=None,
+        )
+        self.assertEqual(self._alpha_sections(), [("start", 0), ("fees", 1)])
+
+    def test_sync_stores_contact_and_resource_ids(self):
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(
+            Contact.objects.get(name="Alpha Help").key, "alpha_help"
+        )
+        self.assertEqual(
+            Resource.objects.get(label="Alpha Guide").key, "alpha_guide"
+        )
+
+    def test_inserting_a_section_before_an_old_one_keeps_the_old_key(self):
+        self._sync(_make_corpus(), court=None)
+        self._sync(
+            _make_corpus(
+                alpha_sections=[
+                    {"id": "intro", "heading": "Intro", "content": "Hi."},
+                    START_SECTION,
+                ]
+            ),
+            court=None,
+        )
+        self.assertEqual(self._alpha_sections(), [("intro", 0), ("start", 1)])
+
+    def test_renaming_a_section_key_logs_the_old_key_and_the_flow(self):
+        self._sync(_make_corpus(), court=None)
+        with self.assertLogs(services.logger, level="WARNING") as logs:
+            self._sync(
+                _make_corpus(
+                    alpha_sections=[{**START_SECTION, "id": "begin"}]
+                ),
+                court=None,
+            )
+        (line,) = logs.output
+        self.assertIn("pets/standard", line)
+        self.assertIn("'start'", line)
+        self.assertNotIn("begin", line)
+
+    def test_removing_a_contact_logs_its_key_in_strict_mode(self):
+        self._sync(_make_corpus(), court=None, strict=True)
+        with self.assertLogs(services.logger, level="WARNING") as logs:
+            self._sync(
+                _make_corpus(include_beta=False), court=None, strict=True
+            )
+        self.assertTrue(any("'beta_help'" in line for line in logs.output))
+        self.assertTrue(any("'beta_guide'" in line for line in logs.output))
 
 
 @pytest.mark.postgres
