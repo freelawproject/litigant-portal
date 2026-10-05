@@ -5,9 +5,11 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import redirect, render
+from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
 from django.utils.http import urlencode
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView, UpdateView
 
 from litigant_portal.app.forms import UserProfileForm
@@ -40,6 +42,9 @@ from litigant_portal.app.views.utils import (
 )
 
 
+# The Atomic Design summary page frames the real home page as its "page"
+# column, so home opts in to same-origin framing (Django's default is DENY).
+@xframe_options_sameorigin
 def home(request):
     """Home page - dashboard with hero and topic grid."""
     topics = {t.slug: t for t in topic_list()}
@@ -220,8 +225,180 @@ def style_guide(request):
     return render(
         request,
         "pages/style_guide.html",
-        {"topics": topics, "briefcase_groups": _briefcase_sample()},
+        {
+            "topics": topics,
+            "briefcase_groups": _briefcase_sample(),
+            "internal_section": "style_guide",
+        },
     )
+
+
+# Stages the Atomic Design summary page frames, smallest first. The fifth
+# column, "page", is the real home page rather than a stage of its own.
+ATOMIC_DESIGN_STAGES = ("atoms", "molecules", "organisms", "template")
+
+# Stand-in content for the stages below "page", so the columns show
+# structure with no real court or topic in it.
+ATOMIC_PLACEHOLDER_TOPICS = {
+    f"topic-{number}": {
+        "icon": "question-mark-circle",
+        "title": "Topic name",
+        "description": "One line about what this topic covers",
+    }
+    for number in range(1, 4)
+}
+
+
+# The five levels of the Atomic Design page, smallest first. "summary" is
+# for stakeholders, "code" for developers: where the pieces live. "sample"
+# is the width the rendered sample is shown at, each the smallest real place
+# that level lives: atoms inline (no layout of their own), molecules in a
+# phone, organisms in the content column, template and page in the window.
+# "phone_view" offers a 375px view of the wider samples.
+_ATOMIC_DESIGN_LEVELS = (
+    {
+        "stage": "atoms",
+        "name": _("Atoms"),
+        "summary": _(
+            "The smallest pieces: an icon, a button, a search box. Each "
+            "one carries its own accessibility rules, so everything built "
+            "from it inherits them."
+        ),
+        "detail": "",
+        "code": "cotton/atoms/: icon, button, search-input, link; plus plain <img>",
+        "sample": "inline",
+        "phone_view": False,
+    },
+    {
+        "stage": "molecules",
+        "name": _("Molecules"),
+        "summary": _(
+            "A few atoms joined to do one job. The logo links home; the "
+            "search bar finds help; a topic card opens a topic."
+        ),
+        "detail": _(
+            "Molecules get reused in small spaces, so they are shown at "
+            "phone width."
+        ),
+        "code": (
+            "cotton/molecules/: logo (link + img), user-menu, "
+            "search-bar, topic-card"
+        ),
+        "sample": "phone",
+        "phone_view": False,
+    },
+    {
+        "stage": "organisms",
+        "name": _("Organisms"),
+        "summary": _(
+            "Whole sections of a page, built from molecules: the header, "
+            "the topic list, the sign-in box."
+        ),
+        "detail": _(
+            "The test for an organism: could it be dropped onto a different "
+            "page and still make sense on its own? The header can. The logo "
+            "inside it is a molecule: it does one small job, and on its own "
+            "it is not a section of anything."
+        ),
+        "code": (
+            "cotton/organisms/: header, topic-grid, hero, "
+            "fallback-resources, auth-cta, footer"
+        ),
+        "sample": "content",
+        "phone_view": True,
+    },
+    {
+        "stage": "template",
+        "name": _("Template"),
+        "summary": _(
+            "The sections placed into the page frame, filled with stand-in "
+            "content. This is the layout, without a real court or topic in "
+            "it."
+        ),
+        "detail": _(
+            "Where the organisms go and in what order. In our code that is a "
+            "Django template file, and every page shares the frame from "
+            "base.html: site header, then content, then footer."
+        ),
+        "code": "base.html + pages/home.html, with placeholder data",
+        "sample": "window",
+        "phone_view": True,
+    },
+    {
+        "stage": "page",
+        "name": _("Page"),
+        "summary": _(
+            "The same template with real content: the home page a litigant "
+            "sees right now, live."
+        ),
+        "detail": _(
+            "The template and the page render the same file; only the data "
+            "the view passes in is different."
+        ),
+        "code": "pages/home.html, rendered by views/pages.py home()",
+        "sample": "window",
+        "phone_view": True,
+    },
+)
+
+
+def atomic_design(request):
+    """Atomic Design: the five levels, with one level's live sample below.
+
+    The level and viewport come from the query string, so the selector is
+    plain links and works without JS. An unknown level falls back to atoms;
+    a phone view is only offered for the levels wider than a phone. Every
+    sample renders the real components, so a change shows on next reload.
+    """
+    stages = [level["stage"] for level in _ATOMIC_DESIGN_LEVELS]
+    selected = request.GET.get("level")
+    if selected not in stages:
+        selected = stages[0]
+    levels = [
+        {
+            **level,
+            "href": f"?level={level['stage']}",
+            "is_current": level["stage"] == selected,
+        }
+        for level in _ATOMIC_DESIGN_LEVELS
+    ]
+    current = next(level for level in levels if level["is_current"])
+    current["frame_url"] = (
+        reverse("pages:home")
+        if current["stage"] == "page"
+        else reverse("pages:atomic_design_stage", args=[current["stage"]])
+    )
+    current["phone"] = (
+        current["phone_view"] and request.GET.get("viewport") == "phone"
+    )
+    return render(
+        request,
+        "pages/atomic_design/index.html",
+        {
+            "levels": levels,
+            "current": current,
+            "internal_section": "atomic_design",
+        },
+    )
+
+
+@xframe_options_sameorigin
+def atomic_design_stage(request, stage):
+    """One column of the Atomic Design summary, rendered to be framed.
+
+    The template stage renders the home page's own template with
+    placeholder data, so template and page differ only in their data.
+    """
+    if stage not in ATOMIC_DESIGN_STAGES:
+        raise Http404
+    context = {
+        "topics": ATOMIC_PLACEHOLDER_TOPICS,
+        "court_logo": static("images/style_guide/placeholder_court_logo.svg"),
+        "court_name": "Court name",
+    }
+    if stage == "template":
+        return render(request, "pages/home.html", context)
+    return render(request, f"pages/atomic_design/{stage}.html", context)
 
 
 def _briefcase_sample() -> list[dict]:

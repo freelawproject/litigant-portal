@@ -10,7 +10,7 @@
 {# so wayfinding lives in the consistent header slot instead of a jump-link #}
 {# wall above the content. #}
 {% block header %}
-  <c-organisms.header :toc="toc" />
+  <c-organisms.header :toc="toc" court_logo="{{ court_logo }}" court_name="{{ court_name }}" court_name_image="{{ court_name_image }}" />
 {% endblock header %}
 
 {% block content %}

@@ -1,0 +1,42 @@
+{# Pictogram for one Atomic Design level, chosen by stage. Each one builds #}
+{# on the last, like Brad Frost's diagram: loose shapes, the shapes joined #}
+{# into a row, the row inside a section, a page outline with stand-in #}
+{# blocks, then that page with real colour. Decorative: the card's text #}
+{# names the level. #}
+<svg viewBox="0 0 160 100" class="h-auto w-full" aria-hidden="true" focusable="false">
+  {% if stage == "atoms" %}
+    <circle cx="36" cy="50" r="15" class="fill-primary-600" />
+    <rect x="64" y="40" width="40" height="20" rx="10" class="fill-greyscale-400" />
+    <rect x="114" y="35" width="30" height="30" rx="5" class="fill-greyscale-300" />
+  {% elif stage == "molecules" %}
+    <rect x="18" y="37" width="96" height="26" rx="6" class="fill-white stroke-greyscale-400" stroke-width="2" />
+    <circle cx="33" cy="50" r="5" class="fill-none stroke-greyscale-400" stroke-width="2" />
+    <rect x="44" y="47" width="44" height="6" rx="3" class="fill-greyscale-300" />
+    <rect x="120" y="37" width="26" height="26" rx="6" class="fill-primary-600" />
+  {% elif stage == "organisms" %}
+    <rect x="10" y="14" width="140" height="72" rx="6" class="fill-white stroke-greyscale-300" stroke-width="2" />
+    <circle cx="28" cy="32" r="8" class="fill-primary-600" />
+    <rect x="42" y="29" width="40" height="6" rx="3" class="fill-greyscale-300" />
+    <rect x="124" y="27" width="16" height="10" rx="3" class="fill-greyscale-300" />
+    <rect x="22" y="56" width="92" height="18" rx="4" class="fill-white stroke-greyscale-400" stroke-width="2" />
+    <rect x="118" y="56" width="20" height="18" rx="4" class="fill-primary-600" />
+  {% elif stage == "template" %}
+    <rect x="42" y="5" width="76" height="90" rx="6" class="fill-white stroke-greyscale-400" stroke-width="2" stroke-dasharray="5 4" />
+    <rect x="50" y="13" width="60" height="10" rx="2" class="fill-greyscale-200" />
+    <rect x="50" y="29" width="60" height="22" rx="2" class="fill-greyscale-200" />
+    <rect x="50" y="57" width="28" height="14" rx="2" class="fill-greyscale-200" />
+    <rect x="82" y="57" width="28" height="14" rx="2" class="fill-greyscale-200" />
+    <rect x="50" y="77" width="60" height="10" rx="2" class="fill-greyscale-200" />
+  {% elif stage == "page" %}
+    <rect x="42" y="5" width="76" height="90" rx="6" class="fill-white stroke-greyscale-400" stroke-width="2" />
+    <rect x="50" y="13" width="60" height="10" rx="2" class="fill-greyscale-100" />
+    <circle cx="56" cy="18" r="3.5" class="fill-primary-600" />
+    <rect x="50" y="29" width="60" height="22" rx="2" class="fill-primary-100" />
+    <rect x="56" y="35" width="34" height="5" rx="2.5" class="fill-primary-600" />
+    <rect x="50" y="57" width="28" height="14" rx="2" class="fill-greyscale-100" />
+    <circle cx="57" cy="64" r="3" class="fill-primary-600" />
+    <rect x="82" y="57" width="28" height="14" rx="2" class="fill-greyscale-100" />
+    <circle cx="89" cy="64" r="3" class="fill-primary-600" />
+    <rect x="50" y="77" width="60" height="10" rx="2" class="fill-greyscale-200" />
+  {% endif %}
+</svg>

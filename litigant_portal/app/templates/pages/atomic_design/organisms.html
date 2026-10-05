@@ -1,0 +1,13 @@
+{% extends "pages/atomic_design/stage_base.html" %}
+
+{# Whole page sections, each built from molecules, not yet placed on a page. #}
+{% block content %}
+  <div class="flex flex-col gap-6 py-4">
+    <c-organisms.header court_logo="{{ court_logo }}" court_name="{{ court_name }}" class="border-y" />
+    <c-organisms.topic-grid />
+    <c-organisms.hero />
+    <c-organisms.fallback-resources />
+    <c-organisms.auth-cta preview="true" />
+    <c-organisms.footer />
+  </div>
+{% endblock content %}
