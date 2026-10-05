@@ -12,27 +12,65 @@ from litigant_portal.app.theme import contrast_ratio, theme_colors
 
 @pytest.mark.postgres
 class A11yGuideSimulationTests(TestCase):
-    """Simulations are plain ?simulate= links, so the view decides which
-    one, if any, is applied to the demos."""
+    """The switcher is radios that CSS watches, so the server's only job is
+    to pre-check one from ?simulate=, for links that open the page with a
+    simulation on."""
 
     def _get(self, **params):
         return self.client.get(reverse("pages:a11y_guide"), params)
 
-    def test_no_simulation_by_default(self):
+    def _checked_keys(self, response):
+        return [
+            option["key"]
+            for group in response.context["simulation_groups"]
+            for option in group["options"]
+            if option["checked"]
+        ]
+
+    def test_typical_vision_is_checked_by_default(self):
         response = self._get()
 
-        self.assertIsNone(response.context["simulation"])
+        self.assertEqual(self._checked_keys(response), [""])
 
-    def test_a_known_simulation_is_applied(self):
+    def test_simulate_checks_the_matching_radio(self):
         response = self._get(simulate="deuteranopia")
 
-        self.assertEqual(response.context["simulation"]["key"], "deuteranopia")
+        self.assertEqual(self._checked_keys(response), ["deuteranopia"])
 
-    def test_an_unknown_simulation_is_ignored(self):
+    def test_an_unknown_simulation_falls_back_to_typical_vision(self):
         response = self._get(simulate="x-ray")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIsNone(response.context["simulation"])
+        self.assertEqual(self._checked_keys(response), [""])
+
+    def test_radio_ids_are_unique(self):
+        """main.css finds each radio by id (#sim-<key>), and typical vision
+        has the empty key, so it needs an id of its own."""
+        response = self._get()
+
+        ids = [
+            option["input_id"]
+            for group in response.context["simulation_groups"]
+            for option in group["options"]
+        ]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertIn("sim-typical", ids)
+        self.assertIn("sim-cataracts", ids)
+
+    def test_try_it_links_open_the_simulation_at_their_section(self):
+        response = self._get()
+
+        hrefs = {
+            section: link["href"]
+            for section, link in response.context["try_it"].items()
+        }
+        self.assertEqual(
+            hrefs,
+            {
+                "contrast": "?simulate=cataracts#contrast",
+                "colour_alone": "?simulate=deuteranopia#colour-alone",
+            },
+        )
 
 
 @pytest.mark.postgres
@@ -58,6 +96,14 @@ class A11yGuideContrastTests(TestCase):
 
         levels = [s["level"] for s in response.context["contrast_samples"]]
         self.assertEqual(levels, ["AAA", "AA", "Fail"])
+
+    def test_a_sample_passes_only_at_body_text_contrast(self):
+        """The samples are body text, so the pass/fail label follows the
+        4.5:1 AA threshold, not the 3:1 one for large text."""
+        response = self.client.get(reverse("pages:a11y_guide"))
+
+        verdicts = [s["passes"] for s in response.context["contrast_samples"]]
+        self.assertEqual(verdicts, [True, True, False])
 
 
 @pytest.mark.postgres

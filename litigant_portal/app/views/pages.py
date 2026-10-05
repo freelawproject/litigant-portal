@@ -387,16 +387,40 @@ def atomic_design(request):
     )
 
 
-# Simulations the Accessibility page can apply to its demos, grouped for the
-# controls. Each key is also a CSS class suffix (a11y-sim-<key>) in main.css.
-_A11Y_SIMULATIONS = (
-    ("colour", "protanopia", _("Red-blind (protanopia)")),
-    ("colour", "deuteranopia", _("Green-blind (deuteranopia)")),
-    ("colour", "tritanopia", _("Blue-blind (tritanopia)")),
-    ("colour", "achromatopsia", _("No colour (achromatopsia)")),
-    ("vision", "blur", _("Blurred vision")),
-    ("vision", "cataracts", _("Cataracts")),
-    ("vision", "glaucoma", _("Glaucoma")),
+# Simulations the Accessibility page can apply to its demos, grouped as the
+# switcher shows them: typical vision on its own, then colour vision, then
+# low vision. Each key is also a CSS class suffix (a11y-sim-<key>) in
+# main.css, and names the switcher radio (#sim-<key>) that main.css watches
+# with :has(). Typical vision, the empty key, applies no simulation.
+_A11Y_SIMULATION_GROUPS = (
+    ("", "", (("", _("Typical vision")),)),
+    (
+        "colour",
+        _("Colour vision"),
+        (
+            ("protanopia", _("Red-blind")),
+            ("deuteranopia", _("Green-blind")),
+            ("tritanopia", _("Blue-blind")),
+            ("achromatopsia", _("No colour")),
+        ),
+    ),
+    (
+        "low",
+        _("Low vision"),
+        (
+            ("blur", _("Blurred")),
+            ("cataracts", _("Cataracts")),
+            ("glaucoma", _("Glaucoma")),
+        ),
+    ),
+)
+
+# The simulation each section's "Try it" link switches on: (section id,
+# simulation key). The template reads each link as try_it.<section id>, with
+# hyphens as underscores, since a template variable can't hold a hyphen.
+_A11Y_TRY_IT = (
+    ("contrast", "cataracts"),
+    ("colour-alone", "deuteranopia"),
 )
 
 # Text colours on white, chosen to show pass, borderline and fail. The fail
@@ -408,35 +432,85 @@ _A11Y_CONTRAST_SAMPLES = (
     ("greyscale-400", "white", "text-greyscale-400"),
 )
 
+# Levels that pass for body text. "AA large text" (3:1) does not: the
+# contrast samples are body-size text.
+_A11Y_BODY_TEXT_PASSING_LEVELS = ("AAA", "AA")
+
+# The two copies of each demo for the "Compare with typical vision" toggle.
+# The copy is aria-hidden and inert, and main.css shows it only while the
+# toggle is checked; the simulation filter skips it.
+_A11Y_DEMO_COPIES = (
+    {"is_copy": False, "suffix": "", "caption": _("Simulated")},
+    {"is_copy": True, "suffix": "-typical", "caption": _("Typical vision")},
+)
+
 
 def a11y_guide(request):
     """Accessibility (A11y): what WCAG protects against, shown on our own
-    components, with simulations applied through ?simulate= links."""
-    simulations = [
-        {"group": group, "key": key, "label": label}
-        for group, key, label in _A11Y_SIMULATIONS
+    components, seen through a vision simulation.
+
+    The switcher is radios that main.css watches with :has(), so switching
+    needs no reload and no JS. ?simulate=<key> pre-checks one, so a link can
+    open the page with a simulation on; an unknown key falls back to typical
+    vision, so exactly one radio is always checked.
+    """
+    labels = {
+        key: label
+        for _group, _group_label, options in _A11Y_SIMULATION_GROUPS
+        for key, label in options
+    }
+    selected = request.GET.get("simulate", "")
+    if selected not in labels:
+        selected = ""
+    simulation_groups = [
+        {
+            "key": group,
+            "label": group_label,
+            "options": [
+                {
+                    "key": key,
+                    "label": label,
+                    "input_id": f"sim-{key or 'typical'}",
+                    "checked": key == selected,
+                }
+                for key, label in options
+            ],
+        }
+        for group, group_label, options in _A11Y_SIMULATION_GROUPS
     ]
-    selected = request.GET.get("simulate")
-    simulation = next((s for s in simulations if s["key"] == selected), None)
+    try_it = {
+        section.replace("-", "_"): {
+            "href": f"?simulate={key}#{section}",
+            "label": labels[key],
+        }
+        for section, key in _A11Y_TRY_IT
+    }
     colors = theme_colors()
     contrast_samples = []
     for foreground, background, text_class in _A11Y_CONTRAST_SAMPLES:
         ratio = contrast_ratio(colors[foreground], colors[background])
+        level = contrast_level(ratio)
+        passes = level in _A11Y_BODY_TEXT_PASSING_LEVELS
         contrast_samples.append(
             {
                 "foreground": foreground,
                 "background": background,
                 "text_class": text_class,
                 "ratio": ratio,
-                "level": contrast_level(ratio),
+                "level": level,
+                "passes": passes,
+                "label": f"{ratio}:1, {level}" if passes else f"{ratio}:1",
             }
         )
     return render(
         request,
         "pages/a11y_guide.html",
         {
-            "simulations": simulations,
-            "simulation": simulation,
+            "simulation_groups": simulation_groups,
+            "try_it": try_it,
+            # The demos render twice when compared: the simulated copy,
+            # then an inert typical-vision copy. "suffix" keeps ids unique.
+            "demo_copies": _A11Y_DEMO_COPIES,
             "contrast_samples": contrast_samples,
             # Shown on the passing form-field example, so its error state
             # renders without a submitted form.
