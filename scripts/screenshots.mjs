@@ -42,6 +42,9 @@ const PAGES = [
   ['home', '/'],
   ['chat', '/chat/'],
   ['style-guide', '/style-guide/'],
+  ['atomic-design', '/style-guide/atomic-design/'],
+  ['atomic-design-organisms', '/style-guide/atomic-design/?level=organisms'],
+  ['atomic-design-page', '/style-guide/atomic-design/?level=page'],
 ]
 
 // Desktop, and the narrowest phone WCAG reflow (1.4.10) asks us to support.
