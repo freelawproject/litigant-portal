@@ -148,6 +148,23 @@
     @apply font-sans text-greyscale-900 bg-greyscale-25;
   }
 
+  /* Line breaking: no lone word on a paragraph's last line, and even line
+     lengths on short headings, instead of the browser's greedy default. */
+  p,
+  li,
+  dd,
+  figcaption,
+  blockquote {
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
   /* Headings */
   h1 {
     @apply font-cooper text-display-sm font-semibold md:text-display-lg;
