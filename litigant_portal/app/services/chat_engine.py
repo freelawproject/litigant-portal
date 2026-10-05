@@ -14,11 +14,11 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
+from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
     PromptArtifact,
-    TopicFlow,
     UserIdentity,
 )
 from litigant_portal.app.selectors.chat_engine import (
@@ -30,7 +30,7 @@ from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
     user_upload_render_list,
 )
-from litigant_portal.app.topic_flow.registry import registry
+from litigant_portal.app.topic_flow.registry import topic_flow_track_find
 
 logger = logging.getLogger(__name__)
 
@@ -375,48 +375,34 @@ def _execute_tool(
 def _stream_error_event(thread: ChatThread) -> dict[str, str]:
     """Return safe user-facing copy and the best available guided-flow link."""
     url, label = "/", _("Browse the help topics")
+    message = _(
+        "The assistant is temporarily unavailable. You can browse "
+        "the help topics instead."
+    )
     try:
         active_path = (thread.state or {}).get("active_topic_flow")
-        if isinstance(active_path, str):
-            parts = active_path.strip("/").split("/")
-            if len(parts) == 2:
-                topic_slug, flow_slug = parts
-                flow = (
-                    TopicFlow.objects.filter(
-                        topic__slug=topic_slug,
-                        slug=flow_slug,
-                        enabled=True,
-                    )
-                    .select_related("topic")
-                    .first()
-                )
-                if flow is not None:
-                    track = next(
-                        (
-                            track
-                            for track in registry.tracks_for(flow.topic.slug)
-                            if track["role"] == flow.slug
-                        ),
-                        None,
-                    )
-                    if track is not None:
-                        url = reverse(
-                            "pages:topic_flow",
-                            kwargs={
-                                "court": track["court"],
-                                "topic": track["topic"],
-                                "role": track["role"],
-                            },
-                        )
-                        label = flow.name
+        flow = (
+            topic_flow_from_path(active_path)
+            if isinstance(active_path, str)
+            else None
+        )
+        track = topic_flow_track_find(flow) if flow else None
+        if track:
+            guided_url = reverse(
+                "pages:topic_flow",
+                kwargs={key: track[key] for key in ("court", "topic", "role")},
+            )
+            guided_label = flow.name
+            guided_message = _(
+                "The assistant is temporarily unavailable. You can continue "
+                "with the step-by-step guide instead."
+            )
+            url, label, message = guided_url, guided_label, guided_message
     except Exception:
         logger.exception("chat_engine stream fallback resolution failed")
     return {
         "type": "error",
-        "message": _(
-            "The assistant is temporarily unavailable. You can continue "
-            "with the step-by-step guide instead."
-        ),
+        "message": message,
         "fallback_url": url,
         "fallback_label": label,
     }
@@ -542,6 +528,14 @@ def chat_stream(
                             slot["function"]["arguments"] += (
                                 tc.function.arguments
                             )
+
+                if not content_parts and not tool_calls:
+                    logger.warning(
+                        "chat_engine model returned an empty response"
+                    )
+                    yield _sse(_stream_error_event(thread))
+                    yield _sse({"type": "done"})
+                    return
 
                 assistant_msg: dict[str, Any] = {
                     "role": "assistant",

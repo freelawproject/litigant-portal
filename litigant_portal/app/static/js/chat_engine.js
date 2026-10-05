@@ -272,13 +272,13 @@ function makeErrorMessage(event) {
   return message
 }
 
-const FIRST_TOKEN_TIMEOUT_MS = 30000
+const INITIAL_RESPONSE_TIMEOUT_MS = 30000
 const STREAM_STALL_TIMEOUT_MS = 60000
 
 function clearStreamTimers(stream) {
-  clearTimeout(stream.firstTokenTimer)
+  clearTimeout(stream.initialResponseTimer)
   clearTimeout(stream.stallTimer)
-  stream.firstTokenTimer = null
+  stream.initialResponseTimer = null
   stream.stallTimer = null
 }
 
@@ -791,7 +791,7 @@ document.addEventListener('alpine:init', () => {
         hadAssistantText: false,
         failureRendered: false,
         terminal: false,
-        receivedFirstModelEvent: false,
+        receivedFirstStreamEvent: false,
         inFlightToolIds: [],
         controller: new AbortController(),
       }
@@ -803,9 +803,9 @@ document.addEventListener('alpine:init', () => {
       this.refreshSendState()
       this.updateThinking()
       this.scrollToBottom()
-      stream.firstTokenTimer = setTimeout(
+      stream.initialResponseTimer = setTimeout(
         () => this.failStream(stream),
-        FIRST_TOKEN_TIMEOUT_MS
+        INITIAL_RESPONSE_TIMEOUT_MS
       )
       resetStallTimer(this, stream)
 
@@ -896,6 +896,7 @@ document.addEventListener('alpine:init', () => {
       ) {
         return
       }
+      this.markFirstStreamEvent(stream)
       if (stream.inFlightToolIds.length === 0) {
         resetStallTimer(this, stream)
       }
@@ -911,10 +912,8 @@ document.addEventListener('alpine:init', () => {
         // Surface the new thread's row (and its dot) right away.
         this.loadThreads()
       } else if (event.type === 'content_delta') {
-        this.markFirstModelEvent(stream)
         this.appendContent(stream, event.content || '')
       } else if (event.type === 'tool_call') {
-        this.markFirstModelEvent(stream)
         // A new tool starts a fresh text run after it.
         stream.openIndex = null
         stream.messages.push(makeToolFromCall(event))
@@ -947,11 +946,11 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    markFirstModelEvent(stream) {
-      if (stream.receivedFirstModelEvent) return
-      stream.receivedFirstModelEvent = true
-      clearTimeout(stream.firstTokenTimer)
-      stream.firstTokenTimer = null
+    markFirstStreamEvent(stream) {
+      if (stream.receivedFirstStreamEvent) return
+      stream.receivedFirstStreamEvent = true
+      clearTimeout(stream.initialResponseTimer)
+      stream.initialResponseTimer = null
     },
 
     failStream(stream, event = {}) {

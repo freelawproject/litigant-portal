@@ -67,7 +67,7 @@ function newStream(app) {
     openIndex: null,
     failureRendered: false,
     terminal: false,
-    receivedFirstModelEvent: false,
+    receivedFirstStreamEvent: false,
     inFlightToolIds: [],
     hadAssistantText: false,
     controller: new AbortController(),
@@ -142,7 +142,7 @@ test('a stream drop preserves partial text and renders one incomplete fallback',
   )
 })
 
-test('first-token timeout resolves a silent initial response', async (t) => {
+test('initial-response timeout resolves a silent initial stream', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const { app } = makeApp(async (_url, options) => ({
     ok: true,
@@ -160,8 +160,6 @@ test('first-token timeout resolves a silent initial response', async (t) => {
   }))
   const pending = app.sendMessage('Help', null)
   for (let index = 0; index < 10; index++) await Promise.resolve()
-  app.handleEvent(app.activeStream, { type: 'thread', thread_id: 'thread-id' })
-  app.handleEvent(app.activeStream, { type: 'state', state: {} })
   t.mock.timers.tick(30000)
   await pending
 
@@ -171,6 +169,51 @@ test('first-token timeout resolves a silent initial response', async (t) => {
       .length,
     1
   )
+})
+
+test('early lifecycle events clear the initial deadline and reset the stall watchdog', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  for (const type of ['thread', 'state']) {
+    let reads = 0
+    let resolveRead
+    const { app } = makeApp(async (_url, options) => ({
+      ok: true,
+      body: {
+        getReader: () => ({
+          read: () => {
+            if (reads++ === 0) {
+              return Promise.resolve({
+                value: sse(type, { thread_id: 'thread-id', state: {} }),
+                done: false,
+              })
+            }
+            return new Promise((resolve, reject) => {
+              resolveRead = resolve
+              options.signal.addEventListener('abort', () =>
+                reject(new Error('aborted'))
+              )
+            })
+          },
+          cancel: async () => {},
+          releaseLock: () => {},
+        }),
+      },
+    }))
+    const pending = app.sendMessage('Help', null)
+    for (let index = 0; index < 10; index++) await Promise.resolve()
+    t.mock.timers.tick(30000)
+    assert.equal(app.activeStream.failureRendered, false)
+    assert.equal(app.streaming, true)
+
+    resolveRead({ value: sse('state', { state: {} }), done: false })
+    for (let index = 0; index < 10; index++) await Promise.resolve()
+    t.mock.timers.tick(59000)
+    assert.equal(app.activeStream.failureRendered, false)
+    t.mock.timers.tick(1000)
+    await pending
+    assert.match(app.messages.at(-1).html, /Browse the help topics/)
+    assert.equal(app.streaming, false)
+  }
 })
 
 test('silent stall resolves after activity stops', async (t) => {
