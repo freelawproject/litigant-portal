@@ -111,8 +111,8 @@
 
   /* Max widths */
   --container-content: 948px;
-  /* Internal design-system pages: a 16rem nav rail, a 2rem gap, and the
-     content column, so a component beside the rail sits at its real width. */
+  /* Internal design-system pages: a 16rem sidebar, a 2rem gap, and the
+     content column, so a component beside the sidebar sits at its real width. */
   --container-workbench: calc(var(--container-content) + 18rem);
 }
 
