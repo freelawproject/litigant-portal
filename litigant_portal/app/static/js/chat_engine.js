@@ -44,22 +44,40 @@ function renderInline(text) {
       if (part.length > 1 && part[0] === '`' && part[part.length - 1] === '`') {
         return '<code>' + part.slice(1, -1) + '</code>'
       }
-      return part
-        .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
-          const safe = /^(https?:|mailto:)/i.test(url) ? url : '#'
-          return (
-            '<a href="' +
-            safe +
-            '" target="_blank" rel="noopener noreferrer" class="text-primary-700 underline hover:no-underline">' +
-            label +
-            '</a>'
+      return (
+        part
+          // Citation chips: [source:ID] from grounded answers. The grammar is
+          // exactly one or two slash-joined slugs (court/key, topic/flow/key),
+          // the same pattern as CITATION_PATTERN in agents/citations.py; change
+          // both together. An id outside it stays text, so an invented id never
+          // gets a chip. The text is already escaped and the grammar has no
+          // quotes, so the id is safe inside the title attribute. Runs before
+          // the link rule so that rule never sees these brackets.
+          .replace(
+            /\[source:([a-z0-9_-]+(?:\/[a-z0-9_-]+){1,2})\]/g,
+            (_m, id) =>
+              '<span class="inline-block align-baseline rounded border border-greyscale-200 bg-greyscale-100 px-1 text-[10px] font-mono text-greyscale-500" title="' +
+              id +
+              '">' +
+              id +
+              '</span>'
           )
-        })
-        .replace(
-          /\*\*([^*]+)\*\*/g,
-          '<strong class="font-semibold">$1</strong>'
-        )
-        .replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>')
+          .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
+            const safe = /^(https?:|mailto:)/i.test(url) ? url : '#'
+            return (
+              '<a href="' +
+              safe +
+              '" target="_blank" rel="noopener noreferrer" class="text-primary-700 underline hover:no-underline">' +
+              label +
+              '</a>'
+            )
+          })
+          .replace(
+            /\*\*([^*]+)\*\*/g,
+            '<strong class="font-semibold">$1</strong>'
+          )
+          .replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>')
+      )
     })
     .join('')
 }
