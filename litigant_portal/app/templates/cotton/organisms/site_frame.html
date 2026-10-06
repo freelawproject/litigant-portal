@@ -9,7 +9,7 @@
 {# ignores the attribute; main.css stacks the regions with the content there. #}
 {% trans "Close" as close_label %}
 <div class="site-frame {{ class }}" {{ attrs }}>
-  <aside id="frame-left" popover aria-label="{{ left_label }}" tabindex="-1" x-data="frameDrawer" x-on:toggle="onToggle" x-on:focusout="onFocusOut" class="site-frame-region site-frame-left">
+  <aside id="frame-left" popover aria-label="{{ left_label }}" tabindex="-1" x-data="frameDrawer" x-on:toggle="onToggle" x-on:focusout="onFocusOut" x-on:click="onClick" class="site-frame-region site-frame-left">
     <div class="site-frame-region-head">
       <c-atoms.eyebrow icon="{{ left_icon }}" label="{{ left_label }}" />
       <c-atoms.button type="button" variant="ghost" size="icon" aria_label="{{ close_label }}" popovertarget="frame-left" popovertargetaction="hide" class="site-frame-close">
@@ -21,7 +21,7 @@
   <main id="main-content" tabindex="-1" class="site-frame-main">
     {{ slot }}
   </main>
-  <aside id="frame-right" popover aria-label="{{ right_label }}" tabindex="-1" x-data="frameDrawer" x-on:toggle="onToggle" x-on:focusout="onFocusOut" class="site-frame-region site-frame-right">
+  <aside id="frame-right" popover aria-label="{{ right_label }}" tabindex="-1" x-data="frameDrawer" x-on:toggle="onToggle" x-on:focusout="onFocusOut" x-on:click="onClick" class="site-frame-region site-frame-right">
     <div class="site-frame-region-head">
       <c-atoms.eyebrow icon="{{ right_icon }}" label="{{ right_label }}" />
       <c-atoms.button type="button" variant="ghost" size="icon" aria_label="{{ close_label }}" popovertarget="frame-right" popovertargetaction="hide" class="site-frame-close">

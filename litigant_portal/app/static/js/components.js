@@ -41,8 +41,9 @@ document.addEventListener('alpine:init', () => {
   // Below xl each site frame region is a native popover, opened by a header
   // button with no JS. This adds what the popover doesn't do on its own: it
   // moves focus into the drawer when it opens, closes it when focus leaves
-  // (so Tab can't land on the page hidden behind it, WCAG 2.4.11), and closes
-  // it when the window widens to xl, where the region shows inline instead.
+  // (so Tab can't land on the page hidden behind it, WCAG 2.4.11), closes it
+  // when a link inside is followed, and closes it when the window widens to
+  // xl, where the region shows inline instead.
   Alpine.data('frameDrawer', () => ({
     init() {
       this.wideQuery = window.matchMedia('(width >= 80rem)')
@@ -68,7 +69,30 @@ document.addEventListener('alpine:init', () => {
     },
     onFocusOut(event) {
       const next = event.relatedTarget
-      if (this.isOpen() && next && !this.$root.contains(next)) this.close()
+      if (!this.isOpen() || !next || this.$root.contains(next)) return
+      // Chrome focuses this drawer's header button on mousedown, before the
+      // click toggles the popover: closing here would let that click reopen
+      // it. Leave the toggle to the button.
+      if (next.getAttribute('popovertarget') === this.$root.id) return
+      this.close()
+    },
+    // A followed link keeps focus inside the drawer, so focusout never fires
+    // and the drawer would stay open over the page it just navigated.
+    // popovertarget only works on buttons, so links need this.
+    onClick(event) {
+      const link = event.target.closest('a[href]')
+      if (!link) return
+      this.close()
+      // Hiding returns focus to the button that opened the drawer. For an
+      // in-page link, put it on the section instead, where the reader went.
+      const href = link.getAttribute('href')
+      const section = href.startsWith('#')
+        ? document.getElementById(href.slice(1))
+        : null
+      if (!section) return
+      if (!section.hasAttribute('tabindex'))
+        section.setAttribute('tabindex', '-1')
+      section.focus()
     },
   }))
 
