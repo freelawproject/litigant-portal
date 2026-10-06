@@ -17,7 +17,11 @@
 {# plain images, and text. The stacked layout lives on .logo inside the #}
 {# link, because the link atom's own inline-flex items-center would #}
 {# override it as a utility. #}
-<c-vars size="default" court_logo="" court_name="" court_name_image="" />
+{# class is declared so it can't leak in from a parent: this repo runs #}
+{# Cotton without context isolation, so an undeclared class falls back #}
+{# to whatever class the enclosing component was given (the header's, #}
+{# for one), and the frame would wear that parent's styles. #}
+<c-vars size="default" court_logo="" court_name="" court_name_image="" class="" />
 <div class="logo-frame {% if court_name and court_logo %}logo-frame-responsive{% endif %} {{ class }}">
   {# hover:no-underline! cancels the unstyled variant's hover underline, #}
   {# which would otherwise run under the court name and the "Powered by" line. #}

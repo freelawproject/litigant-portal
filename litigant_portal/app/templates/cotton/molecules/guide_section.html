@@ -1,0 +1,18 @@
+<c-vars id="" heading="" criteria="" />
+{# One topic of a guide page: a section heading, the intro slot (why it #}
+{# matters, how to try it), the WCAG criteria it maps to, then the #}
+{# examples in the default slot. criteria is plain text, such as #}
+{# "1.4.3 (AA, 4.5:1)", shown after a WCAG badge. #}
+<section id="{{ id }}" aria-labelledby="{{ id }}-heading" class="{{ class }}">
+  <c-atoms.section-heading id="{{ id }}-heading">{{ heading }}</c-atoms.section-heading>
+  <div class="mt-4 flex max-w-prose flex-col gap-3 text-greyscale-700">{{ intro }}</div>
+  {% if criteria %}
+    <p class="mt-3 flex flex-wrap items-center gap-2 text-sm text-greyscale-600">
+      <c-atoms.badge variant="info">WCAG</c-atoms.badge>
+      {{ criteria }}
+    </p>
+  {% endif %}
+  {% if slot.strip %}
+    <div class="mt-6">{{ slot }}</div>
+  {% endif %}
+</section>

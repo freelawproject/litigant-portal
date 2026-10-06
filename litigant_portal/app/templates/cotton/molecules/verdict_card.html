@@ -1,0 +1,22 @@
+<c-vars verdict="pass" label="" />
+{% load i18n %}
+{# An example that passes or fails a guideline. The verdict is a badge with #}
+{# an icon and a word, so it survives colour blindness; the label says #}
+{# what the example shows. verdict: pass|fail #}
+<div class="rounded-xl border border-greyscale-200 bg-white p-4 {{ class }}" {{ attrs }}>
+  <p class="mb-3 flex flex-wrap items-center gap-2 text-sm font-semibold text-greyscale-900">
+    {% if verdict == "fail" %}
+      <c-atoms.badge variant="urgent" class="gap-1">
+        <c-atoms.icon name="x-circle" class="h-4 w-4" />
+        {% trans "Fails" %}
+      </c-atoms.badge>
+    {% else %}
+      <c-atoms.badge variant="completed" class="gap-1">
+        <c-atoms.icon name="check-circle" class="h-4 w-4" />
+        {% trans "Passes" %}
+      </c-atoms.badge>
+    {% endif %}
+    <span>{{ label }}</span>
+  </p>
+  {{ slot }}
+</div>
