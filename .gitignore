@@ -187,3 +187,6 @@ dmypy.json
 # Court-partner corpus source docs — local archive only (see corpus-sources/README.md)
 /corpus-sources/*
 !/corpus-sources/README.md
+
+# Before/after captures from scripts/screenshots.mjs
+/.screenshots/

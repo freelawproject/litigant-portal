@@ -31,6 +31,8 @@ The chat model is chosen in the admin settings UI (`BedrockModel` enum), default
 
 **Architecture diagrams** — after editing any `docs/architecture/*.drawio`, run `make diagrams` to regenerate its `.drawio.svg` render, and commit both files. It re-exports only sources newer than their render, because draw.io stamps a random id into every SVG and a blanket regenerate is pure diff noise. Claude must run it outside the sandbox: the draw.io CLI is an Electron app, and Electron aborts at startup (`bootstrap_check_in … Permission denied`, then `SIGTRAP`) when the macOS sandbox denies it a Mach port. Before re-exporting, check the source with `xmllint --noout <file>.drawio`. draw.io renders a malformed file (for example, `--` inside an XML comment) only up to the error and reports no failure, so a broken diagram exports looking half-empty.
 
+**Tooling is OS-agnostic.** Scripts and `make` targets must work on both macOS and Linux; the rules are in [CONTRIBUTING.md](CONTRIBUTING.md#dev-tooling-runs-on-macos-and-linux).
+
 ### Local Development (Docker)
 
 ```sh
