@@ -193,15 +193,17 @@ return ToolOutput(
 
 ### 5. Tool rendering — default box, custom template, or nothing
 
-Every tool call and every tool result is rendered in the conversation. You
-control how with two class attributes, `tool_call_template` and
+A tool call or result shows in the conversation only when its tool gives it a
+template. Two class attributes control it, `tool_call_template` and
 `tool_result_template`:
 
-| Value                        | Behavior                                                                |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `None` _(default)_           | The engine renders a **slick JSON box** of the call args / result data. |
-| `False`                      | Render **nothing**.                                                     |
-| `"tools/your_template.html"` | Render a **custom Django template** under `templates/tools/`.           |
+| Value                        | Behavior                                                      |
+| ---------------------------- | ------------------------------------------------------------- |
+| `None` _(default)_ / `False` | Render **nothing**.                                           |
+| `"tools/your_template.html"` | Render a **custom Django template** under `templates/tools/`. |
+
+Raw args and result data are never shown to the user. A call to a tool name the
+agent doesn't have renders nothing too.
 
 The call template receives `{ args }` (the tool's inputs); the result template
 receives `{ data }` (the tool's `render_data`). The engine renders them to HTML
@@ -210,7 +212,7 @@ ordinary Django + cotton.
 
 > The **call** card is transient — the frontend shows it only while that tool is
 > the last thing on screen (perfect for a "working…" spinner). The **result**
-> card persists. Default JSON boxes persist for both.
+> card persists.
 
 ---
 
@@ -235,7 +237,7 @@ class CheckWeather(Tool):
 
     location: str = Field(description="City or place to check the weather for")
 
-    # INGREDIENT 5: custom templates (None → JSON box, False → nothing)
+    # INGREDIENT 5: custom templates (None or False → nothing)
     tool_call_template = "tools/check_weather_call.html"
     tool_result_template = "tools/check_weather_result.html"
 
@@ -528,8 +530,8 @@ engine already uses for tool data and hidden messages.
 4. Write one `Tool` subclass per action, one file each under `agents/tools/`;
    return `ToolOutput(result, render_data, refresh_system_prompt)`; mutate
    state through the thread.
-5. (Optional) Add `templates/tools/*.html` for custom call/result cards — or
-   leave the default JSON box.
+5. (Optional) Add `templates/tools/*.html` for custom call/result cards;
+   without them the tool runs with nothing shown.
 6. Subclass `Agent`, set `completion_args`, `state_schema`, and `tools`
    (each imported by its module path under `tools/`); export the agent from
    `agents/__init__.py`.
