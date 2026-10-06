@@ -173,19 +173,28 @@ try {
       else resolve(message.result)
     } else if (message.method === 'Page.loadEventFired') {
       loaded.shift()?.resolve()
+    } else if (message.method === 'Inspector.targetCrashed') {
+      failAll(`The page crashed while capturing ${current}`)
     }
   }
-  // A crashed renderer or a dead Chrome closes the socket: fail every wait
-  // still outstanding rather than leave it pending forever.
-  ws.onclose = () => {
-    const error = new Error('Chrome closed the connection (did it crash?)')
-    for (const { reject } of pending.values()) reject(error)
+  // Chrome can fail two ways, and neither answers what we're waiting on: a
+  // crashed renderer leaves the socket open but the page dead, and a dead
+  // Chrome closes the socket. Either way, fail every outstanding wait now,
+  // and remember why: a send after close is silently dropped, so a wait that
+  // starts later would otherwise hang until its timeout.
+  let current = 'the first page'
+  let failure
+  const failAll = (reason) => {
+    failure ??= new Error(reason)
+    for (const { reject } of pending.values()) reject(failure)
     pending.clear()
-    for (const { reject } of loaded.splice(0)) reject(error)
+    for (const { reject } of loaded.splice(0)) reject(failure)
   }
+  ws.onclose = () => failAll('Chrome closed the connection (did it crash?)')
   const send = (method, params = {}) =>
     withTimeout(
       new Promise((resolve, reject) => {
+        if (failure) return reject(failure)
         const id = ++nextId
         pending.set(id, { method, resolve, reject })
         ws.send(JSON.stringify({ id, method, params }))
@@ -194,6 +203,7 @@ try {
     )
 
   await send('Page.enable')
+  await send('Inspector.enable') // reports a renderer crash
   const outDir = join('.screenshots', label)
   mkdirSync(outDir, { recursive: true })
 
@@ -203,16 +213,14 @@ try {
       deviceScaleFactor: 1,
     })
     for (const [name, path] of PAGES) {
+      current = `${name} (${path}) at ${viewport.width}px`
       // Listen before navigating so the load event can't arrive first.
       const pageLoaded = new Promise((resolve, reject) =>
-        loaded.push({ resolve, reject })
+        failure ? reject(failure) : loaded.push({ resolve, reject })
       )
       pageLoaded.catch(() => {}) // a failed navigate settles it unawaited
       await send('Page.navigate', { url: baseUrl + path })
-      await withTimeout(
-        pageLoaded,
-        `loading ${name} (${path}) at ${viewport.width}px`
-      )
+      await withTimeout(pageLoaded, `loading ${current}`)
       await sleep(500) // fonts and images settle after the load event
       const { cssContentSize } = await send('Page.getLayoutMetrics')
       const shot = await send('Page.captureScreenshot', {
