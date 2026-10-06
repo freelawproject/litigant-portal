@@ -1,0 +1,22 @@
+<c-vars href="" label="" current="" orientation="vertical" />
+{# One option in a set of illustrated choices, such as an Atomic Design #}
+{# level. A plain link, so choosing works without JS; the current option #}
+{# is marked with aria-current, a tint and a check icon, not by colour #}
+{# alone. Put it in a list item. The thumb slot holds a decorative #}
+{# picture; the label names the option. #}
+{# orientation sets the arrangement from md up, and flips below md: #}
+{# - vertical (default): picture above label, for a row of cards in a #}
+{#   grid; below md the picture shrinks beside the label, one per line. #}
+{# - horizontal: a small picture beside the label, for a stacked list in #}
+{#   a sidebar; below md a small tile, picture above label, for a row #}
+{#   that scrolls sideways, label centred and the check icon in the #}
+{#   tile's corner so the label keeps the width. #}
+<c-atoms.link href="{{ href }}" variant="unstyled" aria-current="{% if current %}page{% endif %}" class="h-full w-full rounded-xl border border-greyscale-200 bg-white text-greyscale-900 hover:border-primary-300 hover:no-underline! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 aria-[current=page]:border-primary-600 aria-[current=page]:bg-primary-50 {% if orientation == 'horizontal' %}relative flex-col p-2 text-sm md:flex-row md:gap-3 md:text-base{% else %}flex-row gap-3 p-3 md:flex-col md:items-start{% endif %} {{ class }}">
+  <span class="shrink-0 {% if orientation == 'horizontal' %}w-20{% else %}w-14 md:w-full{% endif %}">{{ thumb }}</span>
+  <span class="flex items-center gap-1.5 font-semibold">
+    {{ label }}
+    {% if current %}
+      <c-atoms.icon name="check-circle" class="shrink-0 text-primary-600 {% if orientation == 'horizontal' %}absolute top-1.5 right-1.5 h-4 w-4 md:static md:h-5 md:w-5{% else %}h-5 w-5{% endif %}" />
+    {% endif %}
+  </span>
+</c-atoms.link>

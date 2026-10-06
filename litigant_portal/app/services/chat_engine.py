@@ -10,9 +10,12 @@ from django.conf import settings
 from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.translation import gettext as _
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
 from litigant_portal.agents.citations import citation_ids, citation_ids_unknown
+from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
@@ -28,6 +31,7 @@ from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
     user_upload_render_list,
 )
+from litigant_portal.app.topic_flow.registry import topic_flow_track_find
 
 logger = logging.getLogger(__name__)
 
@@ -383,6 +387,42 @@ def _execute_tool(
         return ToolOutput(result=f"Error: {e}")
 
 
+def _stream_error_event(thread: ChatThread) -> dict[str, str]:
+    """Return safe user-facing copy and the best available guided-flow link."""
+    url, label = "/", _("Browse the help topics")
+    message = _(
+        "The assistant is temporarily unavailable. You can browse "
+        "the help topics instead."
+    )
+    try:
+        active_path = (thread.state or {}).get("active_topic_flow")
+        flow = (
+            topic_flow_from_path(active_path)
+            if isinstance(active_path, str)
+            else None
+        )
+        track = topic_flow_track_find(flow) if flow else None
+        if track:
+            guided_url = reverse(
+                "pages:topic_flow",
+                kwargs={key: track[key] for key in ("court", "topic", "role")},
+            )
+            guided_label = flow.name
+            guided_message = _(
+                "The assistant is temporarily unavailable. You can continue "
+                "with the step-by-step guide instead."
+            )
+            url, label, message = guided_url, guided_label, guided_message
+    except Exception:
+        logger.exception("chat_engine stream fallback resolution failed")
+    return {
+        "type": "error",
+        "message": message,
+        "fallback_url": url,
+        "fallback_label": label,
+    }
+
+
 def chat_stream(
     *,
     identity: UserIdentity,
@@ -503,6 +543,14 @@ def chat_stream(
                             slot["function"]["arguments"] += (
                                 tc.function.arguments
                             )
+
+                if not content_parts and not tool_calls:
+                    logger.warning(
+                        "chat_engine model returned an empty response"
+                    )
+                    yield _sse(_stream_error_event(thread))
+                    yield _sse({"type": "done"})
+                    return
 
                 assistant_msg: dict[str, Any] = {
                     "role": "assistant",
@@ -636,9 +684,9 @@ def chat_stream(
 
             thread.save(update_fields=["updated_at"])
             yield _sse({"type": "done"})
-        except Exception as e:
+        except Exception:
             logger.exception("chat_engine stream failed")
-            yield _sse({"type": "error", "error": str(e)})
+            yield _sse(_stream_error_event(thread))
             yield _sse({"type": "done"})
 
     response = StreamingHttpResponse(

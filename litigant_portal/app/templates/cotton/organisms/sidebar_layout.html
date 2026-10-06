@@ -1,0 +1,21 @@
+<c-vars nav_label="" />
+{# A sidebar of in-page links beside a content column, for long internal #}
+{# pages. Sits inside the workbench width (max-w-workbench): a 16rem #}
+{# sidebar that sticks while the page scrolls, a 2rem gap, and the app's #}
+{# content column, so components show at the width litigant pages give #}
+{# them. Below md the sidebar stacks above the content. The sidebar slot #}
+{# holds side nav groups, inside a <nav> named by nav_label. The optional #}
+{# controls slot sits above that <nav>, outside it, for page controls that #}
+{# aren't navigation. Below md the sidebar's wrapper is display: contents, #}
+{# so a sticky element in the controls slot sticks over the whole content #}
+{# column, not only over the sidebar. #}
+<div class="flex flex-col gap-8 md:flex-row {{ class }}" {{ attrs }}>
+  <div class="contents md:sticky md:top-8 md:block md:max-h-[calc(100vh-4rem)] md:w-64 md:flex-shrink-0 md:self-start md:overflow-y-auto">
+    {% if controls %}
+      {{ controls }}
+    {% endif %}
+    <nav aria-label="{{ nav_label }}">{{ sidebar }}</nav>
+  </div>
+  {# A div, not <main>: base.html owns <main>. #}
+  <div class="min-w-0 max-w-content flex-1">{{ slot }}</div>
+</div>

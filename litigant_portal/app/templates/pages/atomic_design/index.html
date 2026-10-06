@@ -12,70 +12,93 @@
 
 {% block internal_lede %}
   {% blocktrans trimmed %}
-    The portal is built from small, reusable pieces that combine into bigger ones. Pick a level to see it rendered live below, from loose atoms up to the finished page. Every sample renders the real components, so a change to any of them shows up here on the next reload.
+    The portal is built from small, reusable pieces that combine into bigger ones. Pick a level to see it rendered live, from loose atoms up to the finished page. Every sample renders the real components, so a change to any of them shows up here on the next reload.
   {% endblocktrans %}
 {% endblock internal_lede %}
 
 {% block internal_body %}
+  {% trans "Atomic Design levels" as levels_label %}
   {% trans "Sample width" as width_label %}
   {% blocktrans with name=current.name asvar frame_title %}{{ name }}, rendered live{% endblocktrans %}
-  {# Selector and description share the workbench width. The sample below #}
-  {# is sized by level, each at the smallest real place that level lives. #}
-  <div class="max-w-workbench mx-auto px-4 pt-8">
-    {# Plain links with a query string, so selecting a level needs no JS. #}
-    <ol class="grid gap-3 md:grid-cols-5">
-      {% for level in levels %}
-        <li>
-          <c-atoms.link href="{{ level.href }}" variant="unstyled" aria-current="{% if level.is_current %}page{% endif %}" class="h-full w-full flex-row gap-3 rounded-xl border border-greyscale-200 bg-white p-3 text-greyscale-900 hover:border-primary-300 hover:no-underline! md:flex-col aria-[current=page]:border-primary-600 aria-[current=page]:bg-primary-50">
-            <span class="w-14 shrink-0 md:w-full">
-              {% include "pages/atomic_design/_level_thumb.html" with stage=level.stage %}
-            </span>
-            <span class="flex items-center gap-1.5 font-semibold">
-              {{ forloop.counter }}. {{ level.name }}
-              {% if level.is_current %}
-                <c-atoms.icon name="check-circle" class="w-5 h-5 text-primary-600" />
-              {% endif %}
-            </span>
-          </c-atoms.link>
-        </li>
-      {% endfor %}
-    </ol>
-    <section class="mt-8" aria-labelledby="level-heading">
-      <h2 id="level-heading" class="text-display-xs font-semibold">{{ current.name }}</h2>
-      <p class="mt-2 max-w-prose text-greyscale-700">{{ current.summary }}</p>
-      {% if current.detail %}<p class="mt-2 max-w-prose text-greyscale-600">{{ current.detail }}</p>{% endif %}
-      <p class="mt-3 text-sm text-greyscale-600">
-        {% trans "In the code:" %} <code class="font-mono text-xs text-greyscale-500">{{ current.code }}</code>
-      </p>
-      <div class="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+  {# Same frame as the Accessibility page: the five levels in the sidebar, #}
+  {# the chosen level and its live sample in the content column. Each #}
+  {# sample is sized by level, at the smallest real place that level #}
+  {# lives; template and page fill the content column, and "Open full #}
+  {# size" shows them at window width. #}
+  <div class="max-w-workbench mx-auto px-4 pt-4 pb-12 md:pt-8">
+    <c-organisms.sidebar-layout nav_label="{{ levels_label }}">
+      <c-slot name="sidebar">
+        {# Plain links with a query string, so selecting a level needs no #}
+        {# JS. Below md the cards are a row that scrolls sideways inside #}
+        {# this list, never the page; py-1 keeps the focus ring unclipped. #}
+        {# Tiles are sized so the third peeks in at 320 and 375px, a cue #}
+        {# that the row scrolls. scrollRowToSelected brings the chosen #}
+        {# card into view within the row; without JS it starts at the left. #}
+        <ol x-data="scrollRowToSelected" class="-mx-4 flex list-none gap-2 overflow-x-auto px-4 py-1 md:mx-0 md:flex-col md:overflow-visible md:p-0">
+          {% for level in levels %}
+            <li class="w-32 shrink-0 md:w-auto">
+              <c-molecules.selector-card href="{{ level.href }}" label="{{ forloop.counter }}. {{ level.name }}" :current="level.is_current" orientation="horizontal">
+                <c-slot name="thumb">
+                  {% include "pages/atomic_design/_level_thumb.html" with stage=level.stage %}
+                </c-slot>
+              </c-molecules.selector-card>
+            </li>
+          {% endfor %}
+        </ol>
         {% if current.phone_view %}
-          <nav aria-label="{{ width_label }}" class="flex gap-4 text-greyscale-600">
-            <c-atoms.link href="?level={{ current.stage }}" variant="unstyled" aria-current="{% if not current.phone %}page{% endif %}" class="aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900">{% trans "Full width" %}</c-atoms.link>
-            <c-atoms.link href="?level={{ current.stage }}&viewport=phone" variant="unstyled" aria-current="{% if current.phone %}page{% endif %}" class="aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900">{% trans "Phone (375px)" %}</c-atoms.link>
-          </nav>
+          {# A group, not a second <nav>: it sits inside the levels <nav>. #}
+          {# Styled like the Accessibility page's simulation choices. #}
+          {% with choice_class="rounded-lg border border-greyscale-300 bg-white px-2.5 py-1.5 text-greyscale-700 hover:border-primary-600 hover:no-underline! aria-[current=page]:border-primary-600 aria-[current=page]:bg-primary-50 aria-[current=page]:font-semibold aria-[current=page]:text-greyscale-900 md:w-full md:py-1 md:not-aria-[current=page]:border-transparent md:not-aria-[current=page]:bg-transparent" %}
+            <div role="group" aria-labelledby="width-label" class="mt-4 md:mt-6">
+              <p id="width-label" class="text-sm font-semibold text-greyscale-900">{{ width_label }}</p>
+              <ul class="mt-1 flex list-none gap-2 pl-0 text-sm md:mt-2 md:flex-col md:gap-0.5">
+                <li>
+                  <c-atoms.link href="?level={{ current.stage }}" variant="unstyled" aria-current="{% if not current.phone %}page{% endif %}" class="{{ choice_class }}">
+                    {% trans "Full width" %}
+                    {% if not current.phone %}<c-atoms.icon name="check-circle" class="h-4 w-4 shrink-0 text-primary-600" />{% endif %}
+                  </c-atoms.link>
+                </li>
+                <li>
+                  <c-atoms.link href="?level={{ current.stage }}&viewport=phone" variant="unstyled" aria-current="{% if current.phone %}page{% endif %}" class="{{ choice_class }}">
+                    {% trans "Phone (375px)" %}
+                    {% if current.phone %}<c-atoms.icon name="check-circle" class="h-4 w-4 shrink-0 text-primary-600" />{% endif %}
+                  </c-atoms.link>
+                </li>
+              </ul>
+            </div>
+          {% endwith %}
         {% endif %}
-        <c-atoms.link href="{{ current.frame_url }}" target="_blank" variant="secondary">{% trans "Open full size" %}</c-atoms.link>
-      </div>
-    </section>
-  </div>
-  {# A page is as wide as the window, so its sample leaves the workbench. #}
-  <div class="px-4 pt-6 pb-12 {% if current.sample != 'window' or current.phone %}max-w-workbench mx-auto{% endif %}">
-    {% if current.sample == "inline" %}
-      {# Atoms have no layout of their own, so they render here directly, #}
-      {# in a small area rather than stretched across the page. #}
-      {% static 'images/style_guide/placeholder_court_logo.svg' as placeholder_court_logo %}
-      <div class="flex max-w-sm flex-col gap-6 rounded-xl border border-greyscale-200 bg-white p-4">
-        {% include "pages/atomic_design/_atoms_parts.html" with court_logo=placeholder_court_logo %}
-      </div>
-    {% elif current.sample == "phone" or current.phone %}
-      {# An iframe, so breakpoint classes inside behave as on a phone. #}
-      <iframe src="{{ current.frame_url }}" title="{{ frame_title }}" x-data="frameAutoHeight" x-on:load="resize" class="block w-[375px] max-w-full min-h-[40rem] rounded-xl border border-greyscale-300 bg-white"></iframe>
-    {% elif current.sample == "content" %}
-      <iframe src="{{ current.frame_url }}" title="{{ frame_title }}" x-data="frameAutoHeight" x-on:load="resize" class="block w-full max-w-content min-h-[44rem] rounded-xl border border-greyscale-300 bg-white"></iframe>
-    {% else %}
-      {# Template and page stand for a whole window, so they keep a fixed #}
-      {# height and scroll inside, like a browser does. #}
-      <iframe src="{{ current.frame_url }}" title="{{ frame_title }}" class="block h-[min(80dvh,56rem)] w-full rounded-xl border border-greyscale-300 bg-white"></iframe>
-    {% endif %}
+      </c-slot>
+      <section aria-labelledby="level-heading">
+        <c-atoms.section-heading id="level-heading">{{ current.name }}</c-atoms.section-heading>
+        <p class="mt-4 max-w-prose text-greyscale-700">{{ current.summary }}</p>
+        {% if current.detail %}<p class="mt-2 max-w-prose text-greyscale-600">{{ current.detail }}</p>{% endif %}
+        <p class="mt-3 text-sm text-greyscale-600">
+          {% trans "In the code:" %} <code class="font-mono text-xs text-greyscale-500">{{ current.code }}</code>
+        </p>
+        <p class="mt-3 text-sm">
+          <c-atoms.link href="{{ current.frame_url }}" target="_blank" variant="secondary">{% trans "Open full size" %}</c-atoms.link>
+        </p>
+        <div class="mt-6">
+          {% if current.sample == "inline" %}
+            {# Atoms have no layout of their own, so they render here #}
+            {# directly, in a small area rather than stretched across. #}
+            {% static 'images/style_guide/placeholder_court_logo.svg' as placeholder_court_logo %}
+            <div class="flex max-w-sm flex-col gap-6 rounded-xl border border-greyscale-200 bg-white p-4">
+              {% include "pages/atomic_design/_atoms_parts.html" with court_logo=placeholder_court_logo %}
+            </div>
+          {% elif current.sample == "phone" or current.phone %}
+            {# An iframe, so breakpoint classes inside behave as on a phone. #}
+            <iframe src="{{ current.frame_url }}" title="{{ frame_title }}" x-data="frameAutoHeight" x-on:load="resize" class="block w-[375px] max-w-full min-h-[40rem] rounded-xl border border-greyscale-300 bg-white"></iframe>
+          {% elif current.sample == "content" %}
+            <iframe src="{{ current.frame_url }}" title="{{ frame_title }}" x-data="frameAutoHeight" x-on:load="resize" class="block w-full min-h-[44rem] rounded-xl border border-greyscale-300 bg-white"></iframe>
+          {% else %}
+            {# Template and page stand for a whole window, so they keep a #}
+            {# fixed height and scroll inside, like a browser does. #}
+            <iframe src="{{ current.frame_url }}" title="{{ frame_title }}" class="block h-[min(80dvh,56rem)] w-full rounded-xl border border-greyscale-300 bg-white"></iframe>
+          {% endif %}
+        </div>
+      </section>
+    </c-organisms.sidebar-layout>
   </div>
 {% endblock internal_body %}

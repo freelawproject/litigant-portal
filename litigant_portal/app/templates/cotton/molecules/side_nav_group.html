@@ -1,0 +1,15 @@
+<c-vars label="" href="" />
+{% load heroicons %}
+{# A collapsible group of in-page links for a page sidebar. The label #}
+{# links to the group's own section; the chevron toggles the group. Put #}
+{# each link in an <li> as a <c-atoms.link variant="unstyled">; the group #}
+{# styles them, so callers repeat no classes. #}
+<details open class="nav-accordion mb-2 {{ class }}">
+  <summary class="flex cursor-pointer list-none items-center gap-2 text-sm font-semibold uppercase tracking-wider text-greyscale-500 hover:text-primary-600 [&::-webkit-details-marker]:hidden">
+    <span class="nav-chevron flex h-4 w-4 flex-shrink-0 items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
+    <c-atoms.link href="{{ href }}" variant="unstyled" class="hover:text-primary-600">{{ label }}</c-atoms.link>
+  </summary>
+  <ul class="ml-2 mt-1 list-none border-l border-greyscale-200 pl-5 [&_a]:flex [&_a]:py-1 [&_a]:pl-2 [&_a]:text-sm [&_a]:text-greyscale-600 [&_a:hover]:text-primary-600">
+    {{ slot }}
+  </ul>
+</details>

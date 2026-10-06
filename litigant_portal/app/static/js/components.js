@@ -80,6 +80,30 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
+  // Scroll a row to its selected item (Atomic Design levels, A11y switcher)
+  // ===========================================================================
+
+  // On a phone these rows scroll sideways, so a choice made further along
+  // would load scrolled out of sight. Centres the selected item (a link
+  // with aria-current="page", or the label of a checked input) within the
+  // row by setting the row's own scrollLeft, so the page never scrolls.
+  // Does nothing when the row doesn't overflow (md and up). Without JS the
+  // row simply starts at the left.
+  Alpine.data('scrollRowToSelected', () => ({
+    init() {
+      const row = this.$el
+      if (row.scrollWidth <= row.clientWidth) return
+      const selected = row.querySelector('[aria-current="page"], :checked')
+      if (!selected) return
+      const item = selected.closest('label') ?? selected
+      const rowBox = row.getBoundingClientRect()
+      const itemBox = item.getBoundingClientRect()
+      row.scrollLeft +=
+        itemBox.left - rowBox.left - (row.clientWidth - itemBox.width) / 2
+    },
+  }))
+
+  // ===========================================================================
   // Action plan page (print button)
   // ===========================================================================
 
