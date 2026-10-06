@@ -326,10 +326,10 @@ _ATOMIC_DESIGN_LEVELS = (
         ),
         "detail": _(
             "Where the organisms go and in what order. In our code that is a "
-            "Django template file, and every page shares the frame from "
-            "base.html."
+            "Django template file, and every framed page extends "
+            "frame_base.html, which builds on base.html."
         ),
-        "code": "base.html + pages/home.html, with placeholder data",
+        "code": "frame_base.html + pages/home.html, with placeholder data",
         "sample": "window",
         "phone_view": True,
     },
