@@ -48,3 +48,14 @@ def test_no_unknown_ids_when_every_id_is_known():
 
 def test_no_unknown_ids_for_text_without_markers():
     assert citation_ids_unknown("Hello.", []) == []
+
+
+@pytest.mark.parametrize("id", INVALID_IDS)
+def test_a_malformed_marker_is_unknown_even_if_listed_as_known(id):
+    assert citation_ids_unknown(_marked([id]), [id]) == [id]
+
+
+def test_a_marker_with_a_space_is_unknown():
+    assert citation_ids_unknown(
+        "claim [source: court/clerk]", ["court/clerk"]
+    ) == [" court/clerk"]
