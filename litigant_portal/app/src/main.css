@@ -938,8 +938,10 @@ body:has(#a11y-compare:checked) .a11y-demo-pane > :last-child > * {
   .site-frame-region:popover-open {
     display: flex;
     position: sticky;
-    top: var(--header-height);
+    /* inset before top: the shorthand resets top, and sticky with every inset
+       auto never sticks. */
     inset: auto;
+    top: var(--header-height);
     align-self: flex-start;
     flex-shrink: 0;
     width: clamp(280px, 20vw, 384px);
