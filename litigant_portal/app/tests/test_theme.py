@@ -3,6 +3,10 @@ Tests for reading theme colours from src/main.css and computing WCAG
 contrast ratios between them.
 """
 
+import tempfile
+from pathlib import Path
+from unittest import mock
+
 from django.test import SimpleTestCase
 
 from litigant_portal.app.theme import (
@@ -48,6 +52,18 @@ class ThemeColorsTests(SimpleTestCase):
 
         self.assertEqual(colors["white"], "#ffffff")
         self.assertEqual(colors["black"], "#000000")
+
+    def test_an_edited_theme_is_read_on_the_next_call(self):
+        """The Accessibility page promises ratios measured from the theme on
+        every load, so a palette edit shows up without a server restart."""
+        with tempfile.TemporaryDirectory() as tmp:
+            css = Path(tmp) / "main.css"
+            with mock.patch("litigant_portal.app.theme.THEME_CSS", css):
+                css.write_text("--color-primary-600: #111111;")
+                theme_colors()
+                css.write_text("--color-primary-600: #222222;")
+
+                self.assertEqual(theme_colors()["primary-600"], "#222222")
 
 
 class ContrastLevelTests(SimpleTestCase):

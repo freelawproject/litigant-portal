@@ -7,7 +7,6 @@ could drift when the palette changes.
 
 import math
 import re
-from functools import cache
 
 from django.conf import settings
 
@@ -19,9 +18,12 @@ _COLOR_TOKEN = re.compile(r"--color-([a-z]+-\d+):\s*(#[0-9a-fA-F]{3,6})\b")
 _BUILT_IN_COLORS = {"white": "#ffffff", "black": "#000000"}
 
 
-@cache
 def theme_colors() -> dict[str, str]:
-    """Map each theme colour token to its hex value: {"greyscale-900": "#1c1814"}."""
+    """Map each theme colour token to its hex value: {"greyscale-900": "#1c1814"}.
+
+    Read on every call, not cached, so a palette edit shows up on the next
+    page load without a server restart.
+    """
     css = THEME_CSS.read_text()
     tokens = {name: value.lower() for name, value in _COLOR_TOKEN.findall(css)}
     return {**_BUILT_IN_COLORS, **tokens}
