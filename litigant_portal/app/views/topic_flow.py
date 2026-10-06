@@ -27,6 +27,7 @@ from litigant_portal.app.topic_flow.prefill import (
     prefill_variables,
 )
 from litigant_portal.app.topic_flow.registry import registry
+from litigant_portal.app.topic_flow.rules import applying
 from litigant_portal.app.views.utils import (
     has_identity,
     topic_flow_answers,
@@ -55,9 +56,10 @@ def topic_flow_download(request, court, topic, role, output_id):
     if section is None:
         raise Http404(f"No downloadable output {output_id!r}")
 
-    artifact = build_download(
-        section, corpus, topic_flow_answers(request, corpus)
-    )
+    # The applying answers, as the page renders from, so a gated deadline the
+    # page hides is not in the download either.
+    answers = applying(corpus, topic_flow_answers(request, corpus))
+    artifact = build_download(section, corpus, answers.applying_answers)
     response = HttpResponse(artifact.body, content_type=artifact.content_type)
     response["Content-Disposition"] = (
         f'attachment; filename="{artifact.filename}"'

@@ -12,6 +12,8 @@ guards is *user* input — an absent or malformed date yields ``None`` (the
 
 from datetime import date, timedelta
 
+from litigant_portal.app.topic_flow.rules import evaluate
+
 
 def compute_deadline(deadline, answers):
     """Return ``deadline``'s date from ``answers``, or ``None`` if uncomputable.
@@ -43,11 +45,16 @@ def resolve_ics_deadlines(section, corpus, answers):
     and the ``.ics`` download view (which turns the computed ones into calendar
     events) — so the downloaded calendar can't drift from what the page shows.
     The loader guarantees every id resolves, so the lookup never misses.
+
+    A deadline whose ``when`` gate fails for ``answers`` is left out here, so
+    the page and the download hide it together.
     """
     by_id = {deadline.id: deadline for deadline in corpus.deadlines}
     resolved = []
     for deadline_id in section.deadline_ids:
         deadline = by_id[deadline_id]
+        if not evaluate(deadline.when, answers):
+            continue
         resolved.append(
             {
                 "id": deadline.id,

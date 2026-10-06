@@ -637,6 +637,120 @@ def test_resources_uses_the_resources_template():
     assert rendered.template.endswith("flow_section_resources.html")
 
 
+# --- when gates (#970 rules POC) --------------------------------------------
+# The view hands the renderer the applying answers; inside a section the
+# renderer drops a question, packet form or deadline whose own gate fails.
+
+RENTER = {"fact": "poc_path", "equals": "renter"}
+
+
+def _gated_fg():
+    return _fg(
+        [
+            Question(
+                id="poc_path",
+                label="Role",
+                type="choice",
+                choices=["renter", "marina"],
+            ),
+            Question(
+                id="poc_notice_date", label="Date", type="date", when=RENTER
+            ),
+        ],
+        id="who",
+    )
+
+
+def test_fact_gather_leaves_out_a_question_whose_gate_fails():
+    section = _gated_fg()
+    rendered = render_section(
+        section, _corpus(section), {"poc_path": "marina"}
+    )
+    assert [q["id"] for q in rendered.context["questions"]] == ["poc_path"]
+
+
+def test_fact_gather_keeps_a_question_whose_gate_holds():
+    section = _gated_fg()
+    rendered = render_section(
+        section, _corpus(section), {"poc_path": "renter"}
+    )
+    assert [q["id"] for q in rendered.context["questions"]] == [
+        "poc_path",
+        "poc_notice_date",
+    ]
+
+
+def test_fact_gather_hides_a_gated_question_until_its_fact_is_answered():
+    section = _gated_fg()
+    rendered = render_section(section, _corpus(section), {})
+    assert [q["id"] for q in rendered.context["questions"]] == ["poc_path"]
+
+
+def test_packet_leaves_out_a_form_whose_gate_fails():
+    section = PacketOutput(
+        kind="output",
+        output_type="packet",
+        id="forms",
+        heading="Forms",
+        forms=[
+            {"name": "Renter's Answer", "when": RENTER},
+            {
+                "name": "Marina Complaint",
+                "when": {"fact": "poc_path", "equals": "marina"},
+            },
+            "Shared Dock Agreement",
+        ],
+    )
+    corpus = _corpus(_gated_fg(), section)
+    names = [
+        f["name"]
+        for f in render_section(
+            section, corpus, {"poc_path": "marina"}
+        ).context["forms"]
+    ]
+    assert names == ["Marina Complaint", "Shared Dock Agreement"]
+
+
+def test_packet_with_no_gates_lists_every_form():
+    section = PacketOutput(
+        kind="output",
+        output_type="packet",
+        id="forms",
+        heading="Forms",
+        forms=["Petition", "Order"],
+    )
+    rendered = render_section(section, _corpus(section), {})
+    assert [f["name"] for f in rendered.context["forms"]] == [
+        "Petition",
+        "Order",
+    ]
+
+
+def test_ics_leaves_out_a_deadline_whose_gate_fails():
+    gated = Deadline(
+        id="answer_due",
+        label="Answer due",
+        offset_days=14,
+        offset_from="poc_notice_date",
+        when=RENTER,
+    )
+    ics = IcsOutput(
+        kind="output",
+        output_type="ics",
+        id="cal",
+        heading="Calendar",
+        deadline_ids=["answer_due"],
+    )
+    corpus = _corpus(_gated_fg(), ics, deadlines=[gated])
+    hidden = render_section(ics, corpus, {"poc_path": "marina"}).context
+    shown = render_section(
+        ics, corpus, {"poc_path": "renter", "poc_notice_date": "2026-02-01"}
+    ).context
+    assert hidden["deadlines"] == []
+    assert hidden["has_dates"] is False
+    assert [d["date_iso"] for d in shown["deadlines"]] == ["2026-02-15"]
+
+
 # --- submitted_section_anchor (PRG scroll restore, #510) --------------------
 # The entry view redirects a saved form back to its section anchor so the
 # litigant keeps their place. The anchor is matched by submitted question-id

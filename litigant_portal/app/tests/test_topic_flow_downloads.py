@@ -20,6 +20,7 @@ from litigant_portal.app.topic_flow.downloads import (
     find_downloadable,
 )
 from litigant_portal.app.topic_flow.schema import (
+    Condition,
     Contact,
     Corpus,
     Deadline,
@@ -147,6 +148,15 @@ def test_omits_deadlines_without_a_computable_date():
     # No answer yet → the deadline isn't a calendar event (empty, valid cal).
     corpus = _corpus()
     artifact = build_download(_ics_section(corpus), corpus, {})
+    cal = vobject.readOne(artifact.body)
+    assert "vevent" not in cal.contents
+
+
+def test_omits_a_deadline_whose_gate_fails():
+    # A gated deadline the page hides must not leak into the calendar file.
+    corpus = _corpus()
+    corpus.deadlines[0].when = Condition(fact="poc_path", equals="renter")
+    artifact = build_download(_ics_section(corpus), corpus, ANSWERS)
     cal = vobject.readOne(artifact.body)
     assert "vevent" not in cal.contents
 

@@ -136,3 +136,46 @@ def test_resolve_carries_description():
         _section("pub_wait"), _corpus(deadline), {}
     )
     assert resolved["description"] == "Judge reviews."
+
+
+# --- when gates (#970 rules POC) --------------------------------------------
+# A gated deadline is left out of the resolved list when its gate fails, so
+# the page and the .ics download hide it in the same place.
+
+
+def _gated_deadline():
+    return Deadline(
+        id="answer_due",
+        label="Answer due",
+        offset_days=14,
+        offset_from="name_change_publication_date",
+        when={"fact": "poc_path", "equals": "renter"},
+    )
+
+
+def test_resolve_skips_a_deadline_whose_gate_fails():
+    resolved = resolve_ics_deadlines(
+        _section("answer_due"),
+        _corpus(_gated_deadline()),
+        {"poc_path": "marina", "name_change_publication_date": "2026-02-01"},
+    )
+    assert resolved == []
+
+
+def test_resolve_skips_a_gated_deadline_until_its_fact_is_answered():
+    resolved = resolve_ics_deadlines(
+        _section("answer_due"),
+        _corpus(_gated_deadline()),
+        {"name_change_publication_date": "2026-02-01"},
+    )
+    assert resolved == []
+
+
+def test_resolve_keeps_a_deadline_whose_gate_holds_and_an_ungated_one():
+    resolved = resolve_ics_deadlines(
+        _section("answer_due", "pub_wait"),
+        _corpus(_gated_deadline(), _named_deadline("pub_wait", "Wait")),
+        {"poc_path": "renter", "name_change_publication_date": "2026-02-01"},
+    )
+    assert [r["id"] for r in resolved] == ["answer_due", "pub_wait"]
+    assert resolved[0]["date"] == date(2026, 2, 15)

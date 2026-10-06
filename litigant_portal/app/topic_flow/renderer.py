@@ -12,6 +12,11 @@ template needs — prefilled fields, answer labels, form lists. It imports no
 session/request machinery; the one config read is the packet handler asking
 whether this environment has a docassemble to hand off to.
 
+``answers`` is the *applying* answers (``rules.applying``): the view has
+already dropped answers to questions that are no longer asked. Within a
+section the renderer evaluates the remaining ``when`` gates against them, so
+a gated question, packet form or deadline is left out when its gate fails.
+
 Corpus validity is guaranteed upstream at load, so the renderer never
 re-validates data; an unhandled section type is a *code* gap (a union member
 with no registered handler) and fails fast. The ``ics`` and ``vcf`` handlers
@@ -27,6 +32,7 @@ from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.topic_flow.contacts import resolve_vcf_contacts
 from litigant_portal.app.topic_flow.deadlines import resolve_ics_deadlines
 from litigant_portal.app.topic_flow.prefill import interview_reference
+from litigant_portal.app.topic_flow.rules import evaluate
 from litigant_portal.app.topic_flow.schema import FactGatherSection
 
 
@@ -126,6 +132,7 @@ def _render_fact_gather(section, corpus, answers):
             "autofocus": False,
         }
         for q in section.questions
+        if evaluate(q.when, answers)
     ]
     return RenderedSection(
         anchor_id=section.id,
@@ -232,7 +239,9 @@ def _render_packet(section, corpus, answers):
         template=f"{_TEMPLATE_DIR}/flow_section_packet.html",
         context={
             "forms": [
-                {"name": form.name, "url": form.url} for form in section.forms
+                {"name": form.name, "url": form.url}
+                for form in section.forms
+                if evaluate(form.when, answers)
             ],
             # Corpus handoff AND a configured docassemble: without either, the
             # packet renders as a plain form list.

@@ -42,6 +42,7 @@ from litigant_portal.app.topic_flow.renderer import (
     render_section,
     submitted_section_anchor,
 )
+from litigant_portal.app.topic_flow.rules import applying
 from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
     briefcase_answers,
@@ -192,10 +193,17 @@ def _render_topic_flow(request, corpus, answers, errors=None):
     Shared by the GET path and the POST error re-render. ``errors`` (a
     ``{question_id: [message]}`` map) threads into ``render_section`` so a
     failed fact_gather submit shows inline errors; ``None`` on a clean render.
+
+    Only the sections whose ``when`` gate holds render, and every section
+    renders from the applying answers, so a stored answer to a question that
+    is no longer asked shows nowhere (form, summary, deadlines) while its row
+    stays in the store for when the gate opens again.
     """
+    applies = applying(corpus, answers)
     rendered_sections = [
-        render_section(section, corpus, answers, errors)
+        render_section(section, corpus, applies.applying_answers, errors)
         for section in corpus.sections
+        if applies.section(section)
     ]
     # The flow's sections for the frame's left region: one entry per headed
     # section, so a litigant can jump back to re-read or revise.
