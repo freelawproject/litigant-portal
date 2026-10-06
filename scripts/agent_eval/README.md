@@ -61,9 +61,22 @@ because that model did not support the selected chat-completions API endpoint.
 setting; `null` preserves the current setting. Original/effective models are
 recorded, and the setting is restored afterward. Legacy agent code is unchanged.
 
-[cases.yml](cases.yml) contains eight real-reference and six fictional cases.
+[cases.yml](cases.yml) contains twelve real-reference and six fictional cases.
 [references/](references/) freezes repository corpus content for answer keys,
 with provenance and draft review status. It is not independently verified law.
+When the corpus changes, copy the source files over the frozen ones and update
+the hashes in `provenance.json`; a stale reference makes the judge penalize
+answers that follow the current corpus.
+
+A case may carry `history`: user turns sent on the same thread before
+`question`. Their replies are recorded in the attempt's `detail.transcript`
+and shown to the judge as context; only the final answer is graded. The old
+system continues one chat thread across turns and clears the evaluation
+identity's stored facts before each case, recording what the agent stored as
+`detail.stored_facts`. Raw replays the turns as a message list. The new
+system rejects history cases. Timing covers all turns of the case. The
+conversation cases (`nd-convo-*`) follow the personas in
+`docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
 
 The fictional chicken-law variants change the fee and procedural order while
 retaining identical questions. Both include the 200-square-feet-per-chicken

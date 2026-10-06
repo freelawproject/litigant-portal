@@ -342,6 +342,7 @@ async def evaluate(
     }
     payload = {
         "question": case.question,
+        "conversation": (record.get("detail") or {}).get("transcript") or [],
         "answer_passages": answer_passages(record["answer"]),
         "fictional": case.group == "fictional",
         "references": references,

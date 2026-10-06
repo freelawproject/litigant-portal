@@ -103,6 +103,9 @@ class Case(Schema):
     court: Slug
     topic: Slug
     question: str = Field(min_length=1)
+    # User turns sent before ``question`` on the same thread. Their replies
+    # are recorded as context for the judge; only the final answer is graded.
+    history: list[str] = Field(default_factory=list)
     references: list[str] = Field(min_length=1)
     facts: list[Fact] = Field(min_length=1)
     acceptable_deferral: str
@@ -116,6 +119,8 @@ class Case(Schema):
         ids = [fact.id for fact in self.facts]
         if len(ids) != len(set(ids)):
             raise ValueError("Fact IDs must be unique within a case.")
+        if any(not turn.strip() for turn in self.history):
+            raise ValueError("History turns must not be empty.")
         return self
 
 
