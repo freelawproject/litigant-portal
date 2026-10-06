@@ -453,8 +453,8 @@ _A11Y_TRY_IT = (
 )
 
 # Text colours on white, chosen to show pass, borderline and fail. The fail
-# sample is our own placeholder colour. Class names are written out in full
-# so Tailwind's scanner finds them.
+# sample is the placeholder colour our inputs used before #984. Class names
+# are written out in full so Tailwind's scanner finds them.
 _A11Y_CONTRAST_SAMPLES = (
     ("greyscale-700", "white", "text-greyscale-700"),
     ("greyscale-500", "white", "text-greyscale-500"),
