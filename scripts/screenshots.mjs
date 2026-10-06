@@ -91,6 +91,21 @@ try {
   process.exit(1)
 }
 
+// Every wait on Chrome gets a deadline, so a page that never loads or a
+// Chrome that dies fails with a message instead of hanging forever.
+const TIMEOUT_MS = 15_000
+
+function withTimeout(promise, what) {
+  let timer
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Timed out after ${TIMEOUT_MS / 1000}s ${what}`)),
+      TIMEOUT_MS
+    )
+  })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer))
+}
+
 const profile = mkdtempSync(join(tmpdir(), 'lp-screenshots-'))
 const chrome = spawn(
   CHROME,
@@ -104,64 +119,100 @@ const chrome = spawn(
   ],
   { stdio: 'ignore' }
 )
-
-// With port 0, Chrome picks a free port and writes it to the profile.
-let port
-for (let i = 0; i < 50 && !port; i++) {
-  await sleep(200)
-  try {
-    port = readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split(
-      '\n'
-    )[0]
-  } catch {}
-}
-if (!port) {
-  chrome.kill()
-  console.error(
-    `Chrome did not start (${CHROME}). Set CHROME=... if it lives elsewhere.`
-  )
-  process.exit(1)
-}
-
-const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json()
-const ws = new WebSocket(
-  targets.find((t) => t.type === 'page').webSocketDebuggerUrl
-)
-await new Promise((resolve) => (ws.onopen = resolve))
-
-let nextId = 0
-const pending = new Map()
-const loaded = []
-ws.onmessage = ({ data }) => {
-  const message = JSON.parse(data)
-  if (message.id && pending.has(message.id)) {
-    pending.get(message.id)(message.result)
-    pending.delete(message.id)
-  } else if (message.method === 'Page.loadEventFired') {
-    loaded.shift()?.()
-  }
-}
-const send = (method, params = {}) =>
-  new Promise((resolve) => {
-    const id = ++nextId
-    pending.set(id, resolve)
-    ws.send(JSON.stringify({ id, method, params }))
+// Registered now so cleanup can't miss an early exit. A failed spawn emits
+// 'error' and may never emit 'exit'.
+let startError
+const chromeExited = new Promise((resolve) => {
+  chrome.once('exit', resolve)
+  chrome.once('error', (error) => {
+    startError = error
+    resolve()
   })
+})
 
-await send('Page.enable')
-const outDir = join('.screenshots', label)
-mkdirSync(outDir, { recursive: true })
-
+let ws
 try {
+  // With port 0, Chrome picks a free port and writes it to the profile.
+  let port
+  for (let i = 0; i < 50 && !port && !startError; i++) {
+    await sleep(200)
+    try {
+      port = readFileSync(join(profile, 'DevToolsActivePort'), 'utf8').split(
+        '\n'
+      )[0]
+    } catch {}
+  }
+  if (!port) {
+    throw new Error(
+      `Chrome did not start (${CHROME}). Set CHROME=... if it lives elsewhere.`
+    )
+  }
+
+  const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json()
+  ws = new WebSocket(
+    targets.find((t) => t.type === 'page').webSocketDebuggerUrl
+  )
+  await withTimeout(
+    new Promise((resolve, reject) => {
+      ws.onopen = resolve
+      ws.onerror = () => reject(new Error('Could not connect to Chrome'))
+    }),
+    'connecting to Chrome'
+  )
+
+  let nextId = 0
+  const pending = new Map()
+  const loaded = []
+  ws.onmessage = ({ data }) => {
+    const message = JSON.parse(data)
+    if (message.id && pending.has(message.id)) {
+      const { method, resolve, reject } = pending.get(message.id)
+      pending.delete(message.id)
+      if (message.error)
+        reject(new Error(`${method}: ${message.error.message}`))
+      else resolve(message.result)
+    } else if (message.method === 'Page.loadEventFired') {
+      loaded.shift()?.resolve()
+    }
+  }
+  // A crashed renderer or a dead Chrome closes the socket: fail every wait
+  // still outstanding rather than leave it pending forever.
+  ws.onclose = () => {
+    const error = new Error('Chrome closed the connection (did it crash?)')
+    for (const { reject } of pending.values()) reject(error)
+    pending.clear()
+    for (const { reject } of loaded.splice(0)) reject(error)
+  }
+  const send = (method, params = {}) =>
+    withTimeout(
+      new Promise((resolve, reject) => {
+        const id = ++nextId
+        pending.set(id, { method, resolve, reject })
+        ws.send(JSON.stringify({ id, method, params }))
+      }),
+      `waiting for ${method}`
+    )
+
+  await send('Page.enable')
+  const outDir = join('.screenshots', label)
+  mkdirSync(outDir, { recursive: true })
+
   for (const viewport of VIEWPORTS) {
     await send('Emulation.setDeviceMetricsOverride', {
       ...viewport,
       deviceScaleFactor: 1,
     })
     for (const [name, path] of PAGES) {
-      const pageLoaded = new Promise((resolve) => loaded.push(resolve))
+      // Listen before navigating so the load event can't arrive first.
+      const pageLoaded = new Promise((resolve, reject) =>
+        loaded.push({ resolve, reject })
+      )
+      pageLoaded.catch(() => {}) // a failed navigate settles it unawaited
       await send('Page.navigate', { url: baseUrl + path })
-      await pageLoaded
+      await withTimeout(
+        pageLoaded,
+        `loading ${name} (${path}) at ${viewport.width}px`
+      )
       await sleep(500) // fonts and images settle after the load event
       const { cssContentSize } = await send('Page.getLayoutMetrics')
       const shot = await send('Page.captureScreenshot', {
@@ -180,11 +231,14 @@ try {
       console.log(file)
     }
   }
+} catch (error) {
+  console.error(error.message)
+  process.exitCode = 1
 } finally {
-  ws.close()
-  // Chrome keeps writing its profile until it exits, so wait before removing it.
-  const exited = new Promise((resolve) => chrome.once('exit', resolve))
-  chrome.kill()
-  await exited
+  ws?.close()
+  // Chrome keeps writing its profile until it exits, so wait before removing
+  // it. Only kill a Chrome that is still running: a dead one won't exit twice.
+  if (chrome.exitCode === null && chrome.signalCode === null) chrome.kill()
+  await chromeExited
   rmSync(profile, { recursive: true, force: true, maxRetries: 3 })
 }
