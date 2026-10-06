@@ -56,7 +56,7 @@ function renderInline(text) {
           .replace(
             /\[source:([a-z0-9_-]+(?:\/[a-z0-9_-]+){1,2})\]/g,
             (_m, id) =>
-              '<span class="inline-block align-baseline rounded border border-greyscale-200 bg-greyscale-100 px-1 text-[10px] font-mono text-greyscale-500" title="' +
+              '<span class="inline-block align-baseline rounded border border-greyscale-200 bg-greyscale-100 px-1 text-xs font-mono text-greyscale-600" title="' +
               id +
               '">' +
               id +
