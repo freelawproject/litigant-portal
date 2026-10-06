@@ -129,14 +129,13 @@ class AgentStateGatingTests(TestCase):
         self.assertIn(AGENT_STATE_MARKER, content)
         self.assertRegex(content, BRIEFCASE_CHROME_RE)
 
-    def test_developer_sees_agent_state_in_both_inline_and_drawer_variants(
-        self,
-    ):
+    def test_developer_sees_agent_state_once(self):
         self.client.login(username="dev", password="pw")
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
-        # _agent_state.html is included twice: inline sidebar + drawer.
-        self.assertEqual(content.count(AGENT_STATE_MARKER), 2)
+        # The frame's right region is both the sidebar and the drawer, so
+        # _agent_state.html is included once (#988).
+        self.assertEqual(content.count(AGENT_STATE_MARKER), 1)
 
 
 @pytest.mark.postgres

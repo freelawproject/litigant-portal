@@ -19,7 +19,7 @@
     {% block extra_css %}
     {% endblock extra_css %}
   </head>
-  <body class="{% block body_class %}min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}">
+  <body class="{% block body_class %}min-h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}" {% block body_attrs %}{% endblock body_attrs %}>
     {# WCAG 2.4.1: the first stop for a keyboard user jumps past the header. #}
     {# Hidden until focused, then shown over the page. #}
     <a href="#main-content" class="skip-link">{% trans "Skip to main content" %}</a>
@@ -29,13 +29,13 @@
     {% endblock header %}
 
     <c-molecules.toast-container :messages="toast_messages" />
-    <main id="main-content" tabindex="-1" class="flex-1 focus:outline-none {% block main_class %}{% endblock main_class %}">
-      {% block content %}
-      {% endblock content %}
-    </main>
-    {% block footer %}
-      <c-organisms.footer />
-    {% endblock footer %}
+    {# frame_base.html replaces this block with the site frame, which holds <main> between its side regions. #}
+    {% block main %}
+      <main id="main-content" tabindex="-1" class="flex-1 focus:outline-none {% block main_class %}{% endblock main_class %}">
+        {% block content %}
+        {% endblock content %}
+      </main>
+    {% endblock main %}
 
     {# Django JS i18n catalog - must load before components #}
     <script src="{% url 'javascript-catalog' %}"></script>

@@ -276,10 +276,10 @@ def _messages_for_llm(
 
 def _render_tool(template: str | bool | None, context: dict) -> dict[str, Any]:
     """Resolve a tool's render template into a frontend rendering directive."""
-    if template is False:
+    # No template (None or False) renders nothing: raw args and result data
+    # are for developers, not for the person in the conversation.
+    if not template:
         return {"render_mode": "skip"}
-    if template is None:
-        return {"render_mode": "default"}
     return {
         "render_mode": "custom",
         "render_html": render_to_string(template, context),
@@ -305,8 +305,8 @@ def _tool_item(tool_call: dict, results: dict, tools: dict) -> dict[str, Any]:
             tool_class.tool_result_template, {"data": render_data or {}}
         )
     else:
-        call = {"render_mode": "default"}
-        result = {"render_mode": "default"}
+        call = {"render_mode": "skip"}
+        result = {"render_mode": "skip"}
 
     return {
         "kind": "tool",
@@ -580,7 +580,7 @@ def chat_stream(
                                     {"args": args},
                                 )
                                 if tool_class is not None
-                                else {"render_mode": "default"}
+                                else {"render_mode": "skip"}
                             ),
                         }
                     )
@@ -621,7 +621,7 @@ def chat_stream(
                                     {"data": output.render_data or {}},
                                 )
                                 if tool_class is not None
-                                else {"render_mode": "default"}
+                                else {"render_mode": "skip"}
                             ),
                         }
                     )

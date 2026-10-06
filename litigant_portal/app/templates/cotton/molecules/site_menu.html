@@ -1,0 +1,105 @@
+{% load i18n %}
+
+<c-vars />
+{# The header's site menu (#988): the pages the footer used to link, in every #}
+{# environment, plus the account links on phones (where the user menu is #}
+{# hidden) and a dev-tools group outside production. A native <details> #}
+{# disclosure over a plain link list, so it works without JS and carries no #}
+{# role="menu" promise of arrow-key navigation. #}
+{% trans "Menu" as menu_label %}
+{% trans "Dev tools" as dev_tools_label %}
+<details class="site-menu relative {{ class }}" {{ attrs }}>
+  <summary class="flex items-center justify-center p-2 rounded-lg cursor-pointer hover:bg-greyscale-100 list-none" aria-label="{{ menu_label }}">
+    <c-atoms.icon name="bars-3" class="w-6 h-6" />
+  </summary>
+  <nav aria-label="{{ menu_label }}" class="absolute right-0 mt-2 w-64 max-w-[90vw] bg-white rounded-lg shadow-lg border border-greyscale-200 py-1 z-50">
+    <ul class="list-none pl-0">
+      {% if user.is_authenticated %}
+        <li class="sm:hidden">
+          <c-atoms.link href="{% url 'pages:profile' %}" variant="unstyled" class="site-menu-item">
+            <c-atoms.icon name="user" class="w-5 h-5 text-greyscale-500" />
+            {% trans "Profile" %}
+          </c-atoms.link>
+        </li>
+        {% if perms.app.manage_site %}
+          <li class="sm:hidden">
+            <c-atoms.link href="{% url 'pages:admin_dashboard' %}" variant="unstyled" class="site-menu-item">
+              <c-atoms.icon name="wrench-screwdriver" class="w-5 h-5 text-greyscale-500" />
+              {% trans "Admin" %}
+            </c-atoms.link>
+          </li>
+        {% endif %}
+        <li class="sm:hidden">
+          <c-atoms.link href="{% url 'account_logout' %}" variant="unstyled" class="site-menu-item">
+            <c-atoms.icon name="arrow-right-start-on-rectangle" class="w-5 h-5 text-greyscale-500" />
+            {% trans "Sign out" %}
+          </c-atoms.link>
+        </li>
+      {% else %}
+        <li class="sm:hidden">
+          <c-atoms.link href="{% url 'account_login' %}" variant="unstyled" class="site-menu-item">
+            <c-atoms.icon name="arrow-right-end-on-rectangle" class="w-5 h-5 text-greyscale-500" />
+            {% trans "Sign in" %}
+          </c-atoms.link>
+        </li>
+      {% endif %}
+      <li>
+        <c-atoms.link href="{% url 'pages:about' %}" variant="unstyled" class="site-menu-item">{% trans "About" %}</c-atoms.link>
+      </li>
+      <li>
+        <c-atoms.link href="{% url 'pages:privacy' %}" variant="unstyled" class="site-menu-item">{% trans "Privacy" %}</c-atoms.link>
+      </li>
+      <li>
+        <c-atoms.link href="{% url 'pages:accessibility' %}" variant="unstyled" class="site-menu-item">{% trans "Accessibility" %}</c-atoms.link>
+      </li>
+    </ul>
+    <p class="border-t border-greyscale-200 mt-1 px-4 py-2 text-xs text-greyscale-500">
+      © {% now "Y" %} <c-atoms.link href="https://free.law" target="_blank" variant="unstyled" class="text-xs text-greyscale-500 hover:text-greyscale-700">Free Law Project</c-atoms.link>
+    </p>
+    {% if deployment_env != "prod" %}
+      <div x-data="devMenu" class="border-t border-greyscale-200 mt-1 pt-1">
+        <p class="px-4 py-2 text-xs font-semibold text-greyscale-500">{{ dev_tools_label }}</p>
+        <ul class="list-none pl-0">
+          <li>
+            {# User-language label: it erases chat + case and reloads. #}
+            <c-atoms.button type="button" variant="ghost" full_width="true" x-on:click="resetDemo" class="site-menu-item rounded-none">
+              <c-atoms.icon name="arrow-path" class="w-5 h-5 text-greyscale-500" />
+              {% trans "Start over" %}
+            </c-atoms.button>
+          </li>
+          <li>
+            <c-atoms.link href="{% url 'pages:topic_flow' court='north-dakota' topic='adult-name-change' role='standard' %}" variant="unstyled" class="site-menu-item">
+              <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
+              {% trans "Demo: Name Change, Standard" %}
+            </c-atoms.link>
+          </li>
+          <li>
+            <c-atoms.link href="{% url 'pages:topic_flow' court='north-dakota' topic='adult-name-change' role='waiver' %}" variant="unstyled" class="site-menu-item">
+              <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
+              {% trans "Demo: Name Change, Waiver" %}
+            </c-atoms.link>
+          </li>
+          <li>
+            <c-atoms.link href="{% url 'pages:style_guide' %}" variant="unstyled" class="site-menu-item">
+              <c-atoms.icon name="swatch" class="w-5 h-5 text-greyscale-500" />
+              {% trans "Style Guide" %}
+            </c-atoms.link>
+          </li>
+          <li>
+            <c-atoms.link href="https://github.com/freelawproject/litigant-portal/issues/new" target="_blank" variant="unstyled" class="site-menu-item">
+              <c-atoms.icon name="chat-bubble-left-ellipsis" class="w-5 h-5 text-greyscale-500" />
+              {% trans "Feedback" %}
+            </c-atoms.link>
+          </li>
+        </ul>
+        <p class="border-t border-greyscale-200 mt-1 px-4 py-2 text-xs text-greyscale-500 tabular-nums">
+          {% if app_git_branch %}
+            {{ app_git_branch }} · {{ app_git_sha }} · {{ app_build_time }}
+          {% else %}
+            {% trans "local working tree" %}
+          {% endif %}
+        </p>
+      </div>
+    {% endif %}
+  </nav>
+</details>

@@ -65,6 +65,8 @@
           <li><c-atoms.link href="#auth-status" variant="unstyled">Auth Status</c-atoms.link></li>
           <li><c-atoms.link href="#toast-container" variant="unstyled">Toast Container</c-atoms.link></li>
           <li><c-atoms.link href="#user-menu" variant="unstyled">User Menu</c-atoms.link></li>
+          <li><c-atoms.link href="#empty-state" variant="unstyled">Empty State</c-atoms.link></li>
+          <li><c-atoms.link href="#site-menu" variant="unstyled">Site Menu</c-atoms.link></li>
           <li><c-atoms.link href="#selector-card" variant="unstyled">Selector Card</c-atoms.link></li>
           <li><c-atoms.link href="#side-nav-group" variant="unstyled">Side Nav Group</c-atoms.link></li>
           <li><c-atoms.link href="#verdict-card" variant="unstyled">Verdict Card</c-atoms.link></li>
@@ -74,7 +76,7 @@
           <li><c-atoms.link href="#header" variant="unstyled">Header</c-atoms.link></li>
           <li><c-atoms.link href="#hero" variant="unstyled">Hero</c-atoms.link></li>
           <li><c-atoms.link href="#topic-grid" variant="unstyled">Topic Grid</c-atoms.link></li>
-          <li><c-atoms.link href="#footer" variant="unstyled">Footer</c-atoms.link></li>
+          <li><c-atoms.link href="#site-frame" variant="unstyled">Site Frame</c-atoms.link></li>
           <li><c-atoms.link href="#briefcase-panel" variant="unstyled">Briefcase Panel</c-atoms.link></li>
           <li><c-atoms.link href="#fallback-resources" variant="unstyled">Fallback Resources</c-atoms.link></li>
           <li><c-atoms.link href="#auth-cta" variant="unstyled">Auth CTA</c-atoms.link></li>
@@ -996,6 +998,20 @@
           <p class="text-greyscale-600 mb-6">Header user menu — shows sign-in link for anonymous users, dropdown with profile/logout for authenticated users. Used inside <code>c-organisms.header</code>.</p>
           <p class="text-sm text-greyscale-500 mb-4">No props — reads <code>user</code> from template context. Requires the <code>userMenu</code> Alpine.js component.</p>
         </section>
+        <section id="empty-state" class="mb-12" aria-labelledby="empty-state-heading">
+          <h3 id="empty-state-heading" class="mb-4">Empty State</h3>
+          <p class="text-greyscale-600 mb-6">What fills a site frame region before the visitor has anything to put there: an icon, one sentence on what will collect there, and an optional action. Props: <code>icon</code>, <code>text</code>, <code>action_label</code>, <code>action_href</code>.</p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm bg-greyscale-25">
+            <c-molecules.empty-state icon="chat-bubble-left-right" text="Your chats will show here." action_label="Start a chat" action_href="#empty-state" />
+          </div>
+        </section>
+        <section id="site-menu" class="mb-12" aria-labelledby="site-menu-heading">
+          <h3 id="site-menu-heading" class="mb-4">Site Menu</h3>
+          <p class="text-greyscale-600 mb-6">The header's menu: About, Privacy and Accessibility in every environment, account links on phones (where the user menu is hidden), and a dev-tools group outside production. A native <code>&lt;details&gt;</code> over a plain link list, so it works without JS. No props.</p>
+          <div class="flex justify-end border border-greyscale-200 rounded-lg p-4 mb-6 min-h-80">
+            <c-molecules.site-menu />
+          </div>
+        </section>
         <section id="selector-card" class="mb-12" aria-labelledby="selector-card-heading">
           <h3 id="selector-card-heading" class="mb-4">Selector Card</h3>
           <p class="text-greyscale-600 mb-6">
@@ -1095,7 +1111,7 @@
         <section id="header" class="mb-12" aria-labelledby="header-heading">
           <h3 id="header-heading" class="mb-4">Header</h3>
           <p class="text-greyscale-600 mb-6">
-            The one site header. Left card: <code>c-molecules.logo</code>, passed <code>court_logo</code>, <code>court_name</code> and <code>court_name_image</code>. Right card: user menu, then the page's table of contents or the dev menu. Source order is tab order, so the cards collapse in place and never reorder with CSS. It spans the full window width on every page.
+            The one site header. Left card: <code>c-molecules.logo</code>, passed <code>court_logo</code>, <code>court_name</code> and <code>court_name_image</code>. Right card: on pages that use the site frame, buttons that open its regions as drawers below <code>xl</code>; then the user menu and the site menu. Source order is tab order, so the cards collapse in place and never reorder with CSS. It spans the full window width on every page.
           </p>
           <h4 class="text-sm font-semibold text-greyscale-500 mb-3">Court configured</h4>
           <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-8">
@@ -1120,23 +1136,22 @@
             <c-organisms.topic-grid />
           </div>
         </section>
-        <section id="footer" class="mb-12" aria-labelledby="footer-heading">
-          <h3 id="footer-heading" class="mb-4">Footer</h3>
-          <p class="text-greyscale-600 mb-6">Site footer with navigation.</p>
-          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-            <c-organisms.footer />
-          </div>
+        <section id="site-frame" class="mb-12" aria-labelledby="site-frame-heading">
+          <h3 id="site-frame-heading" class="mb-4">Site Frame</h3>
+          <p class="text-greyscale-600 mb-4">The layout chat, home and the topic flow share (#988): a left region, <code>&lt;main&gt;</code>, and a right region, in that reading order. From <code>xl</code> up the regions sit beside the content, sticky under the header. Below <code>xl</code> each is a native popover drawer, opened by the header's buttons with no JS; the <code>frameDrawer</code> Alpine component moves focus in on open, and closes the drawer when focus leaves or a link inside it is followed.</p>
+          <p class="text-greyscale-600 mb-4">Pages don't use it directly: they extend <code>frame_base.html</code> and fill <code>frame_left</code>, <code>content</code> and <code>frame_right</code>. It isn't rendered live here because it holds the page's one <code>&lt;main&gt;</code>; chat, home and the topic flow show it in place.</p>
+          <p class="text-sm text-greyscale-500 mb-4">Props: <code>left_label</code>, <code>left_icon</code>, <code>right_label</code>, <code>right_icon</code>. Slots: <code>left</code>, <code>right</code>, and the default slot for the content.</p>
         </section>
         <section id="briefcase-panel" class="mb-12" aria-labelledby="briefcase-panel-heading">
           <h3 id="briefcase-panel-heading" class="mb-4">Briefcase Panel</h3>
           <p class="text-greyscale-600 mb-6">
-            The chat page's right-hand panel: the visitor's stored facts,
+            The site frame's right region on every framed page: the visitor's stored facts,
             grouped by interview page. Pass the grouped list via the
             <code>:groups</code> prop, as built by
             <code>variable_answer_groups()</code>. Groups with no title render
             their facts without a heading, which is where unplaced answers
-            land. Used in both the desktop column and the mobile drawer, so
-            the two cannot drift.
+            land. The same region is the desktop column and the mobile
+            drawer, so the two cannot drift.
           </p>
           <p class="text-sm text-greyscale-500 mb-4">
             Always renders. With no facts it shows its empty state rather

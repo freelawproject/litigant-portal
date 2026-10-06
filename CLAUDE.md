@@ -237,7 +237,7 @@ When choosing how to implement UI behavior, follow this priority order:
 
 **Layout stability (WCAG + mobile-first):**
 
-Every page follows the same frame: **site header → sub-header (contextual) → content (scrollable)**. The sub-header varies per view (topic cards on home, topic context on chat, etc.) but is always in the same position and never shifts when state changes. Content is the only area that grows and scrolls.
+Chat, home and the topic flow share one frame (`frame_base.html` → `c-organisms.site-frame`, #988): **sticky site header → left region · content · right region**. From `xl` up the regions sit beside the content; below `xl` they're popover drawers opened from the header. The regions keep their place on every framed page and show an empty state when a page has nothing for them yet, so the frame never shifts when state changes.
 
 - **No mode-switching layouts.** Never toggle between completely different DOM structures based on state (e.g., hero vs. chat mode). Users with cognitive or motor disabilities rely on consistent placement of controls and landmarks.
 - **Mobile-first and responsive**, but layout stability for WCAG always wins over visual flair. Buttons, links, and navigation stay in predictable locations across all views and states.
@@ -252,8 +252,8 @@ Components live in `litigant_portal/app/templates/cotton/` using Atomic Design h
 ```
 litigant_portal/app/templates/cotton/
 ├── atoms/      # Basic elements: alert, auto_dismiss, badge, button, checkbox, eyebrow, icon, input, link, nav_link, search_input, select
-├── molecules/  # Combinations: auth_status, briefcase_fact, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, toast_container, topic_card, user_menu
-└── organisms/  # Complex sections: auth_cta, auth_layout, briefcase_panel, fallback_resources, footer, header, hero, topic_grid
+├── molecules/  # Combinations: auth_status, briefcase_fact, empty_state, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, site_menu, toast_container, topic_card, user_menu
+└── organisms/  # Complex sections: auth_cta, auth_layout, briefcase_panel, fallback_resources, header, hero, site_frame, topic_grid
 ```
 
 **Syntax:** `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`

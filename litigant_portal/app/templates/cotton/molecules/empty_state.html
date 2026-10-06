@@ -1,0 +1,14 @@
+<c-vars icon="" text="" action_label="" action_href="" />
+{# What fills a frame region before the visitor has anything to put there: #}
+{# an icon, one sentence on what will collect here, and an optional action. #}
+<div class="flex flex-col items-center gap-3 px-6 py-10 text-center {{ class }}" {{ attrs }}>
+  {% if icon %}
+    <span class="flex h-12 w-12 items-center justify-center rounded-full bg-primary-50 text-primary-600">
+      <c-atoms.icon name="{{ icon }}" class="h-6 w-6" />
+    </span>
+  {% endif %}
+  <p class="max-w-xs text-sm text-greyscale-700">{{ text }}</p>
+  {% if action_href %}
+    <c-atoms.link href="{{ action_href }}" variant="primary">{{ action_label }}</c-atoms.link>
+  {% endif %}
+</div>
