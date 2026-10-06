@@ -20,7 +20,7 @@ from datetime import date
 
 from django.utils.translation import gettext_lazy as _
 
-from litigant_portal.app.topic_flow.schema import FactGatherSection
+from litigant_portal.app.topic_flow.schema import QUESTION_SECTIONS
 
 REQUIRED_ERROR = _("Please answer this before continuing.")
 INVALID_CHOICE_ERROR = _("Choose one of the listed options.")
@@ -39,7 +39,7 @@ def validate_answers(corpus, submitted):
     """Return ``{question_id: [error]}`` for invalid submitted answers."""
     errors: dict[str, list] = {}
     for section in corpus.sections:
-        if not isinstance(section, FactGatherSection):
+        if not isinstance(section, QUESTION_SECTIONS):
             continue
         for question in section.questions:
             if question.id not in submitted:

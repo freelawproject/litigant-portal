@@ -452,12 +452,103 @@ def test_the_poc_corpus_loads():
     assert corpus.metadata.court == "harbor-county"
     gated = [s.id for s in corpus.sections if s.when is not None]
     assert gated == [
+        "screener",
         "renter_notice",
         "renter_steps",
         "marina_steps",
         "neighbor_steps",
         "answer_urgent",
     ]
+
+
+# --- screener (#970 rules POC) ----------------------------------------------
+# A screener's ``fact`` is an earlier choice question and each outcome value
+# one of its choices; its outcomes may read the screener's own questions.
+
+
+def _screener(fact="poc_path", outcome_value="renter", **extra):
+    return {
+        "kind": "screener",
+        "id": "screener",
+        "fact": fact,
+        "questions": [
+            {
+                "id": "pays_fee",
+                "label": "Who pays?",
+                "type": "choice",
+                "choices": ["i_pay", "nobody"],
+            }
+        ],
+        "outcomes": [
+            {
+                "value": outcome_value,
+                "label": "Continue",
+                "when": {"fact": "pays_fee", "equals": "i_pay"},
+            }
+        ],
+        **extra,
+    }
+
+
+def test_a_screener_loads_and_its_outcomes_see_its_own_questions(tmp_path):
+    corpus = CorpusLoader.load(_write(tmp_path, _gated_corpus(_screener())))
+    screener = corpus.sections[1]
+    assert screener.kind == "screener"
+    assert screener.outcomes[0].when.fact == "pays_fee"
+
+
+def test_a_screener_question_is_declared_for_later_gates(tmp_path):
+    data = _gated_corpus(
+        _screener(), _info("after", {"fact": "pays_fee", "equals": "nobody"})
+    )
+    corpus = CorpusLoader.load(_write(tmp_path, data))
+    assert corpus.sections[2].when.fact == "pays_fee"
+
+
+def test_a_screener_outcome_value_outside_the_facts_choices_is_a_problem(
+    tmp_path,
+):
+    data = _gated_corpus(_screener(outcome_value="neighbor"))
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "screener 'screener' outcome 'neighbor' is not a choice of 'poc_path'"
+        in p
+        for p in exc.value.problems
+    )
+
+
+@pytest.mark.parametrize(
+    "fact",
+    ["ghost", "pays_fee"],
+    ids=["unknown", "its-own-question"],
+)
+def test_a_screener_fact_must_be_an_earlier_question(tmp_path, fact):
+    data = _gated_corpus(_screener(fact=fact))
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        f"screener 'screener' fact {fact!r} is not a question declared "
+        "earlier" in p
+        for p in exc.value.problems
+    )
+
+
+def test_a_screener_fact_must_be_a_choice_question(tmp_path):
+    data = _gated_corpus(
+        {
+            "kind": "fact_gather",
+            "id": "name",
+            "questions": [{"id": "county", "label": "County"}],
+        },
+        _screener(fact="county", outcome_value="Cass"),
+    )
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "screener 'screener' fact 'county' is not a choice" in p
+        for p in exc.value.problems
+    )
 
 
 # The cross-reference and schema tests above run against tmp_path fixtures; this

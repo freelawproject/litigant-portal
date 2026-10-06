@@ -14,6 +14,7 @@ from litigant_portal.app.topic_flow.schema import (
     InfoSection,
     Metadata,
     Question,
+    ScreenerSection,
 )
 
 # --- evaluate ---------------------------------------------------------------
@@ -303,6 +304,46 @@ def test_an_unanswered_asked_question_is_absent_from_applying_answers():
     result = applying(_corpus(), {"poc_path": "renter"})
     assert "poc_received_notice" in result.question_ids
     assert "poc_received_notice" not in result.applying_answers
+
+
+def test_a_screener_asks_its_questions_like_a_fact_gather():
+    corpus = Corpus(
+        metadata=Metadata(court="c", topic="t", role="r", title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="who",
+                questions=[
+                    Question(
+                        id="poc_path",
+                        label="Role",
+                        type="choice",
+                        choices=["renter", "not_sure"],
+                    )
+                ],
+            ),
+            ScreenerSection(
+                kind="screener",
+                id="screener",
+                fact="poc_path",
+                when={"fact": "poc_path", "equals": "not_sure"},
+                questions=[Question(id="pays_fee", label="Who pays?")],
+                outcomes=[
+                    {
+                        "value": "renter",
+                        "label": "Continue",
+                        "when": {"fact": "pays_fee", "answered": True},
+                    }
+                ],
+            ),
+        ],
+    )
+    hidden = applying(corpus, {"poc_path": "renter", "pays_fee": "me"})
+    shown = applying(corpus, {"poc_path": "not_sure", "pays_fee": "me"})
+    assert "pays_fee" not in hidden.question_ids
+    assert hidden.applying_answers == {"poc_path": "renter"}
+    assert "pays_fee" in shown.question_ids
+    assert shown.applying_answers["pays_fee"] == "me"
 
 
 def test_applying_offers_section_and_question_predicates():

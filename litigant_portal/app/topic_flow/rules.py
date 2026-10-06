@@ -13,7 +13,7 @@ missing. Switch the path back and it applies again without re-entering.
 
 from dataclasses import dataclass, field
 
-from litigant_portal.app.topic_flow.schema import FactGatherSection
+from litigant_portal.app.topic_flow.schema import QUESTION_SECTIONS
 
 
 @dataclass(frozen=True)
@@ -72,7 +72,7 @@ def applying(corpus, answers) -> Applying:
         if not evaluate(section.when, applying_answers):
             continue
         section_ids.add(section.id)
-        if not isinstance(section, FactGatherSection):
+        if not isinstance(section, QUESTION_SECTIONS):
             continue
         for question in section.questions:
             if not evaluate(question.when, applying_answers):

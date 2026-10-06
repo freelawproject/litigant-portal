@@ -4,7 +4,7 @@ A corpus is one ``(court, topic, role)`` recipe authored as YAML on disk and
 loaded into these typed models. AI-free — nothing here calls an LLM.
 
 Sections are a discriminated union on ``kind`` (``info`` / ``fact_gather`` /
-``output``); ``output`` sections are themselves a sub-union on ``output_type``
+``screener`` / ``output``); ``output`` sections are a sub-union on ``output_type``
 (``ics`` / ``vcf`` / ``packet`` / ``summary``). Pydantic resolves this nested
 discriminated union natively. Id-reference cross-checks (a deadline's
 ``offset_from`` pointing at a question, outputs pointing at deadlines/contacts,
@@ -210,6 +210,40 @@ class FactGatherSection(_Base):
     when: Condition | None = None
 
 
+class Outcome(_Base):
+    """One way a screener can resolve: a ``value`` for the screener's ``fact``.
+
+    The first outcome whose ``when`` holds renders a confirm button labelled
+    ``label`` that stores ``value``. The loader checks ``value`` is one of the
+    fact's choices.
+    """
+
+    value: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    when: Condition
+
+
+class ScreenerSection(_Base):
+    """A fact_gather whose answers propose a value for an earlier choice fact.
+
+    The screener never derives a fact on its own: the litigant confirms the
+    proposed outcome with a button, which stores it like any other answer.
+    """
+
+    kind: Literal["screener"]
+    id: Slug
+    heading: str | None = None
+    fact: Slug
+    questions: list[Question] = Field(min_length=1)
+    outcomes: list[Outcome] = Field(min_length=1)
+    when: Condition | None = None
+
+
+# The section kinds that ask questions; everything that walks questions
+# corpus-wide (loader, renderer, validation, rules) dispatches on this.
+QUESTION_SECTIONS = (FactGatherSection, ScreenerSection)
+
+
 class IcsOutput(_Base):
     kind: Literal["output"]
     output_type: Literal["ics"]
@@ -292,7 +326,7 @@ OutputSection = Annotated[
 # ... and the section list discriminates on kind, with the output sub-union as
 # one branch (all output members share kind="output").
 Section = Annotated[
-    InfoSection | FactGatherSection | OutputSection,
+    InfoSection | FactGatherSection | ScreenerSection | OutputSection,
     Field(discriminator="kind"),
 ]
 

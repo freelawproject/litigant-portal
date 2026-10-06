@@ -37,6 +37,7 @@ from litigant_portal.app.topic_flow.schema import (
     Question,
     Resource,
     ResourcesOutput,
+    ScreenerSection,
     SummaryOutput,
     VcfOutput,
 )
@@ -1378,6 +1379,128 @@ def test_the_ics_download_leaves_out_a_gated_deadline(
     body = client.get(GATED_DOWNLOAD_URL).content.decode()
     assert "BEGIN:VEVENT" in body
     assert "20260215" in body
+
+
+# --- screener (#970 rules POC, needs DB) ------------------------------------
+# The screener's confirm button is a plain POST of the path fact, so the
+# existing handler stores it; the redirected GET then hides the screener.
+
+
+def _screener_corpus():
+    return Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="who_are_you",
+                heading="Your role",
+                questions=[
+                    Question(
+                        id="poc_path",
+                        label="Role",
+                        type="choice",
+                        choices=["renter", "marina", "not_sure"],
+                    )
+                ],
+            ),
+            ScreenerSection(
+                kind="screener",
+                id="screener",
+                heading="Working out your role",
+                fact="poc_path",
+                when={"fact": "poc_path", "equals": "not_sure"},
+                questions=[
+                    Question(
+                        id="poc_pays_slip_fee",
+                        label="Who pays the slip fee?",
+                        type="choice",
+                        choices=["i_pay", "i_collect"],
+                    )
+                ],
+                outcomes=[
+                    {
+                        "value": "renter",
+                        "label": "Continue as a renter",
+                        "when": {
+                            "fact": "poc_pays_slip_fee",
+                            "equals": "i_pay",
+                        },
+                    }
+                ],
+            ),
+            InfoSection(
+                kind="info",
+                id="renter_steps",
+                heading="Renter steps",
+                body="Keep paying.",
+                when=RENTER,
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def screener_variables(db):
+    Variable.objects.create(
+        name="poc_path",
+        data_type=VariableDataType.CHOICE,
+        choices=[
+            {"value": "renter", "label": "Renter"},
+            {"value": "marina", "label": "Marina"},
+            {"value": "not_sure", "label": "Not sure"},
+        ],
+    )
+    Variable.objects.create(
+        name="poc_pays_slip_fee",
+        data_type=VariableDataType.CHOICE,
+        choices=[
+            {"value": "i_pay", "label": "I pay"},
+            {"value": "i_collect", "label": "I collect"},
+        ],
+    )
+
+
+@pytest.mark.django_db
+def test_screener_shows_for_not_sure_with_no_button_until_answered(
+    client, monkeypatch, screener_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _screener_corpus())
+    assert 'id="screener"' not in client.get(URL).content.decode()
+    client.post(URL, {"poc_path": "not_sure"})
+    html = client.get(URL).content.decode()
+    assert 'id="screener"' in html
+    assert 'name="poc_pays_slip_fee"' in html
+    assert "Continue as a renter" not in html
+
+
+@pytest.mark.django_db
+def test_screener_offers_the_outcome_as_a_hidden_input_post(
+    client, monkeypatch, screener_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _screener_corpus())
+    client.post(URL, {"poc_path": "not_sure"})
+    client.post(URL, {"poc_pays_slip_fee": "i_pay"})
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert re.search(
+        r'<input[^>]*type="hidden"[^>]*name="poc_path"[^>]*value="renter"',
+        flat,
+    )
+    assert "Continue as a renter" in flat
+
+
+@pytest.mark.django_db
+def test_confirming_the_outcome_stores_the_path_and_hides_the_screener(
+    client, monkeypatch, screener_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _screener_corpus())
+    client.post(URL, {"poc_path": "not_sure"})
+    client.post(URL, {"poc_pays_slip_fee": "i_pay"})
+    response = client.post(URL, {"poc_path": "renter"})
+    assert response["Location"] == f"{URL}#who_are_you"
+    html = client.get(URL).content.decode()
+    assert 'id="screener"' not in html
+    assert 'id="renter_steps"' in html
+    assert _values()["poc_path"] == "renter"
 
 
 # --- vcf download (#473, needs DB) ------------------------------------------

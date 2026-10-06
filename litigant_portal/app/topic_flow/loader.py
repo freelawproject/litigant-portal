@@ -16,11 +16,12 @@ import yaml
 from pydantic import ValidationError
 
 from litigant_portal.app.topic_flow.schema import (
+    QUESTION_SECTIONS,
     Corpus,
-    FactGatherSection,
     IcsOutput,
     PacketOutput,
     ResourcesOutput,
+    ScreenerSection,
     VcfOutput,
 )
 
@@ -93,7 +94,7 @@ def _cross_reference_problems(corpus: Corpus) -> list[str]:
         [
             q.id
             for s in corpus.sections
-            if isinstance(s, FactGatherSection)
+            if isinstance(s, QUESTION_SECTIONS)
             for q in s.questions
         ],
         "question",
@@ -167,9 +168,11 @@ def _condition_problems(corpus: Corpus) -> list[str]:
 
     Walks the sections in corpus order. A gate may only name a question
     declared before it (a question's own gate sees the earlier questions of
-    its section), so one forward pass evaluates everything and there is no
-    cycle to detect. Deadlines are corpus-level and are resolved after every
-    section, so they may name any question.
+    its section; a screener's outcomes see the screener's own questions), so
+    one forward pass evaluates everything and there is no cycle to detect.
+    Deadlines are corpus-level and are resolved after every section, so they
+    may name any question. A screener's ``fact`` must be an earlier choice
+    question and every outcome ``value`` one of its choices.
     """
     problems = []
     declared: dict[str, object] = {}
@@ -196,6 +199,15 @@ def _condition_problems(corpus: Corpus) -> list[str]:
     for section in corpus.sections:
         if section.when is not None:
             _check(f"section {section.id!r}", section.when, declared)
+        if isinstance(section, ScreenerSection):
+            # Outcomes see the screener's own questions; check them after
+            # those are declared, below.
+            outcome_gates = [
+                (f"screener {section.id!r} outcome {o.value!r}", o.when)
+                for o in section.outcomes
+            ]
+        else:
+            outcome_gates = []
         if isinstance(section, PacketOutput):
             for form in section.forms:
                 if form.when is not None:
@@ -204,15 +216,41 @@ def _condition_problems(corpus: Corpus) -> list[str]:
                         form.when,
                         declared,
                     )
-        if isinstance(section, FactGatherSection):
+        if isinstance(section, QUESTION_SECTIONS):
             for question in section.questions:
                 if question.when is not None:
                     _check(
                         f"question {question.id!r}", question.when, declared
                     )
                 declared[question.id] = question
+        for owner, gate in outcome_gates:
+            _check(owner, gate, declared)
+        if isinstance(section, ScreenerSection):
+            problems.extend(_screener_problems(section, declared))
 
     for deadline in corpus.deadlines:
         if deadline.when is not None:
             _check(f"deadline {deadline.id!r}", deadline.when, declared)
+    return problems
+
+
+def _screener_problems(section, declared) -> list[str]:
+    """``declared`` holds every question up to and including the screener's."""
+    owner = f"screener {section.id!r}"
+    fact = declared.get(section.fact)
+    problems = []
+    if fact is None or fact.id in {q.id for q in section.questions}:
+        problems.append(
+            f"{owner} fact {section.fact!r} is not a question declared "
+            "earlier in the corpus"
+        )
+    elif fact.type != "choice":
+        problems.append(f"{owner} fact {section.fact!r} is not a choice")
+    else:
+        for outcome in section.outcomes:
+            if outcome.value not in fact.choices:
+                problems.append(
+                    f"{owner} outcome {outcome.value!r} is not a choice of "
+                    f"{section.fact!r}"
+                )
     return problems

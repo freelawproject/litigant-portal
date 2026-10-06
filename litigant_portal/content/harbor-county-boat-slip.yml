@@ -42,6 +42,28 @@ sections:
         choices: [renter, marina, neighbor, not_sure]
         help_text: 'Pick "not_sure" and the page will help you work it out.'
 
+  - kind: screener
+    id: screener
+    heading: 'Working out your role'
+    fact: poc_path
+    when: { fact: poc_path, equals: not_sure }
+    questions:
+      - id: poc_pays_slip_fee
+        label: 'Who pays the slip fee for the boat in this dispute?'
+        type: choice
+        choices: [i_pay, i_collect, nobody]
+        help_text: 'If you pay a fee to keep your boat there, you rent the slip. If you collect it, you run the marina. If nobody pays, you share the dock.'
+    outcomes:
+      - value: renter
+        label: 'Continue as a renter'
+        when: { fact: poc_pays_slip_fee, equals: i_pay }
+      - value: marina
+        label: 'Continue as the marina'
+        when: { fact: poc_pays_slip_fee, equals: i_collect }
+      - value: neighbor
+        label: 'Continue as a dock neighbor'
+        when: { fact: poc_pays_slip_fee, equals: nobody }
+
   - kind: fact_gather
     id: renter_notice
     heading: 'The notice you received'

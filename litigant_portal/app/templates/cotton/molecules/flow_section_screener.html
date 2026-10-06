@@ -1,0 +1,18 @@
+{% load i18n %}
+
+{# Screener section body: the same server-rendered question form as a #}
+{# fact_gather, then, once the answers point at one outcome, a confirm button #}
+{# that POSTs the outcome's value for the screener's fact (ctx.fact) to the #}
+{# same page. The path stays an ordinary stored answer; nothing is derived. #}
+{% include "cotton/molecules/flow_section_fact_gather.html" with ctx=ctx %}
+
+{% if ctx.outcome %}
+<form method="post" class="mt-4">
+  {% csrf_token %}
+  <input type="hidden" name="{{ ctx.fact }}" value="{{ ctx.outcome.value }}" />
+  <c-atoms.button type="submit" variant="outline">
+    <c-atoms.icon name="arrow-right" class="w-4 h-4" />
+    {{ ctx.outcome.label }}
+  </c-atoms.button>
+</form>
+{% endif %}

@@ -43,6 +43,7 @@ from litigant_portal.app.topic_flow.renderer import (
     submitted_section_anchor,
 )
 from litigant_portal.app.topic_flow.rules import applying
+from litigant_portal.app.topic_flow.schema import Question, ScreenerSection
 from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
     briefcase_answers,
@@ -250,9 +251,35 @@ def style_guide(request):
         {
             "topics": topics,
             "briefcase_groups": _briefcase_sample(),
+            "screener_sample": _screener_sample(),
             "internal_section": "style_guide",
         },
     )
+
+
+def _screener_sample() -> dict:
+    """The screener molecule's context, answered so the confirm button shows."""
+    section = ScreenerSection(
+        kind="screener",
+        id="demo_screener",
+        fact="demo_path",
+        questions=[
+            Question(
+                id="demo_pays_fee",
+                label="Who pays the slip fee?",
+                type="choice",
+                choices=["i_pay", "i_collect", "nobody"],
+            )
+        ],
+        outcomes=[
+            {
+                "value": "renter",
+                "label": "Continue as a renter",
+                "when": {"fact": "demo_pays_fee", "equals": "i_pay"},
+            }
+        ],
+    )
+    return render_section(section, None, {"demo_pays_fee": "i_pay"}).context
 
 
 # Stages the Atomic Design summary page frames, smallest first. The fifth

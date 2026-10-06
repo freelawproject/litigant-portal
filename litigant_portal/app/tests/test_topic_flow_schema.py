@@ -387,6 +387,42 @@ def test_a_packet_form_object_may_carry_a_when():
     assert packet.forms[1].when is None
 
 
+def test_a_screener_needs_a_fact_questions_and_outcomes():
+    data = _fixture()
+    data["sections"] = [
+        {
+            "kind": "screener",
+            "id": "s",
+            "fact": "poc_path",
+            "questions": [{"id": "q", "label": "Q"}],
+            "outcomes": [],
+        }
+    ]
+    with pytest.raises(ValidationError):
+        Corpus.model_validate(data)
+    del data["sections"][0]["fact"]
+    data["sections"][0]["outcomes"] = [
+        {"value": "v", "label": "L", "when": {"fact": "q", "answered": True}}
+    ]
+    with pytest.raises(ValidationError):
+        Corpus.model_validate(data)
+
+
+def test_an_outcome_requires_a_when():
+    data = _fixture()
+    data["sections"] = [
+        {
+            "kind": "screener",
+            "id": "s",
+            "fact": "poc_path",
+            "questions": [{"id": "q", "label": "Q"}],
+            "outcomes": [{"value": "v", "label": "L"}],
+        }
+    ]
+    with pytest.raises(ValidationError):
+        Corpus.model_validate(data)
+
+
 def test_resources_output_requires_at_least_one_reference():
     # min_length=1 — an empty resources section is an authoring mistake, not a
     # silently-empty list.

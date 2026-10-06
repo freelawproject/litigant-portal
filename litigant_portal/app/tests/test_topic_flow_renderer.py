@@ -30,6 +30,7 @@ from litigant_portal.app.topic_flow.schema import (
     Question,
     Resource,
     ResourcesOutput,
+    ScreenerSection,
     SummaryOutput,
     VcfOutput,
 )
@@ -749,6 +750,102 @@ def test_ics_leaves_out_a_deadline_whose_gate_fails():
     assert hidden["deadlines"] == []
     assert hidden["has_dates"] is False
     assert [d["date_iso"] for d in shown["deadlines"]] == ["2026-02-15"]
+
+
+# --- screener (#970 rules POC) ----------------------------------------------
+# A screener renders its questions like a fact_gather plus the first outcome
+# whose gate holds, which the template turns into a confirm button.
+
+
+def _screener():
+    return ScreenerSection(
+        kind="screener",
+        id="screener",
+        heading="Working it out",
+        fact="poc_path",
+        questions=[
+            Question(
+                id="poc_pays_slip_fee",
+                label="Who pays?",
+                type="choice",
+                choices=["i_pay", "i_collect", "nobody"],
+            )
+        ],
+        outcomes=[
+            {
+                "value": "renter",
+                "label": "Continue as a renter",
+                "when": {"fact": "poc_pays_slip_fee", "equals": "i_pay"},
+            },
+            {
+                "value": "marina",
+                "label": "Continue as the marina",
+                "when": {"fact": "poc_pays_slip_fee", "answered": True},
+            },
+        ],
+    )
+
+
+def test_screener_renders_its_questions_and_fact():
+    section = _screener()
+    context = render_section(section, _corpus(section), {}).context
+    assert [q["id"] for q in context["questions"]] == ["poc_pays_slip_fee"]
+    assert context["fact"] == "poc_path"
+
+
+def test_screener_has_no_outcome_before_its_question_is_answered():
+    section = _screener()
+    rendered = render_section(section, _corpus(section), {})
+    assert rendered.context["outcome"] is None
+    assert rendered.template.endswith("flow_section_screener.html")
+
+
+def test_screener_offers_the_matching_outcome():
+    section = _screener()
+    context = render_section(
+        section, _corpus(section), {"poc_pays_slip_fee": "i_collect"}
+    ).context
+    assert context["outcome"] == {
+        "value": "marina",
+        "label": "Continue as the marina",
+    }
+
+
+def test_screener_outcomes_are_checked_in_order_and_the_first_wins():
+    # i_pay satisfies both gates; the first declared outcome is offered.
+    section = _screener()
+    context = render_section(
+        section, _corpus(section), {"poc_pays_slip_fee": "i_pay"}
+    ).context
+    assert context["outcome"]["value"] == "renter"
+
+
+def test_screener_takes_inline_errors_like_a_fact_gather():
+    section = _screener()
+    rendered = render_section(
+        section,
+        _corpus(section),
+        {},
+        errors={"poc_pays_slip_fee": ["Choose one of the listed options."]},
+    )
+    (q,) = rendered.context["questions"]
+    assert q["errors"] == ["Choose one of the listed options."]
+    assert q["autofocus"] is True
+
+
+def test_screener_questions_count_for_the_anchor_and_the_summary():
+    screener = _screener()
+    summary = SummaryOutput(
+        kind="output", output_type="summary", id="recap", heading="Recap"
+    )
+    corpus = _corpus(screener, summary)
+    assert (
+        submitted_section_anchor(corpus, {"poc_pays_slip_fee"}) == "screener"
+    )
+    items = render_section(
+        summary, corpus, {"poc_pays_slip_fee": "nobody"}
+    ).context["items"]
+    assert items == [{"label": "Who pays?", "value": "nobody"}]
 
 
 # --- submitted_section_anchor (PRG scroll restore, #510) --------------------
