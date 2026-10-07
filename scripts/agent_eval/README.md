@@ -13,7 +13,8 @@ It does not install evaluation dependencies into the application environment or
 Docker image.
 
 ```bash
-# Full matrix: 3 systems × 2 models × 14 cases × 3 attempts = 252 attempts.
+# Full matrix: 3 systems × 2 models × 22 cases × 3 attempts = 396 attempts,
+# minus the history cases the new system does not run.
 make agent-eval
 
 # Small live run, including the separate Sol judge.
@@ -66,7 +67,9 @@ recorded, and the setting is restored afterward. Legacy agent code is unchanged.
 with provenance and draft review status. It is not independently verified law.
 When the corpus changes, copy the source files over the frozen ones and update
 the hashes in `provenance.json`; a stale reference makes the judge penalize
-answers that follow the current corpus.
+answers that follow the current corpus. The frozen files carry the authored
+source ids from #949, which the citation check depends on. Re-freeze only
+from a corpus tree that has them: `main` once #994 merges, not before.
 
 A case may carry `history`: user turns sent on the same thread before
 `question`. Their replies are recorded in the attempt's `detail.transcript`
@@ -74,7 +77,9 @@ and shown to the judge as context; only the final answer is graded. The old
 system continues one chat thread across turns and clears the evaluation
 identity's stored facts before each case, recording what the agent stored as
 `detail.stored_facts`. Raw replays the turns as a message list. The new
-system rejects history cases. Timing covers all turns of the case. The
+system takes single-turn cases only, so the runner does not schedule it for
+history cases and the planned attempt count excludes them. Timing covers
+all turns of the case. The
 conversation cases (`nd-convo-*`) follow the personas in
 `docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
 
