@@ -1,6 +1,7 @@
 import os
 import re
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -9,9 +10,10 @@ from django.shortcuts import redirect, render
 from django.template.loader import get_template
 from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
-from django.utils.http import urlencode
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, UpdateView
 
 from litigant_portal.app.forms import UserProfileForm
@@ -30,6 +32,7 @@ from litigant_portal.app.models.choices import (
 )
 from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
+from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.theme import (
     contrast_level,
     contrast_ratio,
@@ -216,6 +219,32 @@ def _render_topic_flow(request, corpus, answers, errors=None):
             "briefcase_groups": briefcase_answers(request),
         },
     )
+
+
+@require_POST
+def start_over(request):
+    """Dev and QA only: start the session over from the seeded defaults
+    (#969).
+
+    Deletes the visitor's chats, uploads and answers, then returns to
+    ``next`` when it is on this site. The site menu asks for confirmation
+    first. Production answers 404 here, whatever the menu shows, so the
+    check lives on the server and not only in the template.
+    """
+    if settings.DEPLOYMENT_ENV == "prod":
+        raise Http404
+    user_identity_reset(identity=request.identity)
+    messages.success(
+        request, _("Started over. Your chats and answers are cleared.")
+    )
+    next_url = request.POST.get("next", "")
+    if not url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = reverse("pages:home")
+    return redirect(next_url)
 
 
 def about(request):

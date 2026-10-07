@@ -58,6 +58,7 @@ app_patterns = [
         "profile/edit/", pages.ProfileEditView.as_view(), name="profile_edit"
     ),
     path("about/", pages.about, name="about"),
+    path("start-over/", pages.start_over, name="start_over"),
     path("privacy/", pages.privacy, name="privacy"),
     path("accessibility/", pages.accessibility, name="accessibility"),
     path("style-guide/", pages.style_guide, name="style_guide"),
