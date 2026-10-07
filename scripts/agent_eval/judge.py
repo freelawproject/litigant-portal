@@ -159,6 +159,11 @@ def validate_grade(
                 raise InvalidGrade(
                     "escalation", "Judge invented an escalation requirement."
                 )
+        elif failure["category"] == "reply_shape":
+            if not case.expects_one_question:
+                raise InvalidGrade(
+                    "reply_shape", "Judge invented a reply shape requirement."
+                )
         elif not failure["evidence"]:
             raise InvalidGrade(
                 "missing_evidence", "A deal breaker needs answer evidence."
@@ -170,6 +175,15 @@ def validate_grade(
                 "deal_breaker_evidence",
                 "Deal-breaker evidence is not in the answer.",
             )
+    if case.expects_one_question and "?" not in answer:
+        failures.append(
+            {
+                "category": "reply_shape",
+                "evidence": "",
+                "explanation": "The reply asks no question.",
+                "check": "question presence",
+            }
+        )
     facts = {fact.id: fact for fact in case.facts}
     for assessment in grade.facts:
         fact = facts[assessment.fact_id]
@@ -349,6 +363,7 @@ async def evaluate(
         "expected_facts": [fact.model_dump() for fact in case.facts],
         "acceptable_deferral": case.acceptable_deferral,
         "requires_escalation": case.requires_escalation,
+        "expects_one_question": case.expects_one_question,
     }
     if protocol["format_version"] != FORMAT_VERSION:
         raise ValueError("Unsupported live judge format.")
