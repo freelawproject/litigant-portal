@@ -150,12 +150,11 @@ def _sync_contacts(courts: list[CourtSchema], *, strict: bool) -> None:
     """Upsert every court's contacts and resources by name and label."""
     contacts = {c.name: c for c in Contact.objects.all()}
     resources = {r.label: r for r in Resource.objects.all()}
-    if strict:
-        _warn_removed_keys(
-            "court contacts and resources",
-            [r.key for r in (*contacts.values(), *resources.values())],
-            [i for schema in courts for i in schema.source_ids],
-        )
+    _warn_removed_keys(
+        "court contacts and resources",
+        [r.key for r in (*contacts.values(), *resources.values())],
+        [i for schema in courts for i in schema.source_ids],
+    )
     names: list[str] = []
     labels: list[str] = []
     for schema in courts:

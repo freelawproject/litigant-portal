@@ -327,14 +327,22 @@ class SourceKeyTests(CorpusSyncTests):
         self.assertIn("'start'", line)
         self.assertNotIn("begin", line)
 
-    def test_removing_a_contact_logs_its_key_in_strict_mode(self):
-        self._sync(_make_corpus(), court=None, strict=True)
-        with self.assertLogs(services.logger, level="WARNING") as logs:
-            self._sync(
-                _make_corpus(include_beta=False), court=None, strict=True
-            )
-        self.assertTrue(any("'beta_help'" in line for line in logs.output))
-        self.assertTrue(any("'beta_guide'" in line for line in logs.output))
+    def test_removing_a_contact_logs_its_key_with_or_without_strict(self):
+        for strict in (True, False):
+            with self.subTest(strict=strict):
+                self._sync(_make_corpus(), court=None, strict=True)
+                with self.assertLogs(services.logger, level="WARNING") as logs:
+                    self._sync(
+                        _make_corpus(include_beta=False),
+                        court=None,
+                        strict=strict,
+                    )
+                self.assertTrue(
+                    any("'beta_help'" in line for line in logs.output)
+                )
+                self.assertTrue(
+                    any("'beta_guide'" in line for line in logs.output)
+                )
 
 
 @pytest.mark.postgres
