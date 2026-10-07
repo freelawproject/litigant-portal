@@ -151,37 +151,64 @@ def _sync_site(schema: CourtSchema) -> None:
     )
 
 
+def _reject_shared_names(courts: list[CourtSchema]) -> None:
+    """Contact names and resource labels are unique columns, so two courts
+    in one sync sharing one would collapse into a single row. The schema
+    already rejects a repeat within one court, so any repeat here spans
+    courts."""
+    for scope, values in (
+        ("contact names", [c.name for s in courts for c in s.contacts]),
+        ("resource labels", [r.label for s in courts for r in s.resources]),
+    ):
+        shared = sorted({v for v in values if values.count(v) > 1})
+        if shared:
+            raise ValueError(
+                f"{scope} shared by more than one court in this sync: {shared}"
+            )
+
+
+def _upsert_sources(model, entries, *, natural: str) -> list[str]:
+    """Upsert ``entries`` by key. A keyless row (migrated before keys
+    existed, or admin-created) is adopted by its ``natural`` field, the
+    only identity it has. Returns the keys written, in display order."""
+    rows = list(model.objects.all())
+    by_key = {r.key: r for r in rows if r.key}
+    keyless = {getattr(r, natural): r for r in rows if not r.key}
+    keys: list[str] = []
+    for order, entry in enumerate(entries):
+        row = (
+            by_key.get(entry.id)
+            or keyless.pop(getattr(entry, natural), None)
+            or model()
+        )
+        _apply(row, entry, exclude={"id"})
+        row.key = entry.id
+        row.order = order
+        row.save()
+        keys.append(entry.id)
+    return keys
+
+
 def _sync_contacts(courts: list[CourtSchema], *, strict: bool) -> None:
-    """Upsert every court's contacts and resources by name and label."""
-    contacts = {c.name: c for c in Contact.objects.all()}
-    resources = {r.label: r for r in Resource.objects.all()}
+    """Upsert every court's contacts and resources by key."""
+    _reject_shared_names(courts)
     _warn_removed_keys(
         "court contacts and resources",
-        [r.key for r in (*contacts.values(), *resources.values())],
+        [
+            *Contact.objects.values_list("key", flat=True),
+            *Resource.objects.values_list("key", flat=True),
+        ],
         [i for schema in courts for i in schema.source_ids],
     )
-    names: list[str] = []
-    labels: list[str] = []
-    for schema in courts:
-        for entry in schema.contacts:
-            row = contacts.get(entry.name) or Contact(name=entry.name)
-            _apply(row, entry, exclude={"id"})
-            row.key = entry.id
-            row.order = len(names)
-            row.save()
-            contacts[entry.name] = row
-            names.append(entry.name)
-        for entry in schema.resources:
-            row = resources.get(entry.label) or Resource(label=entry.label)
-            _apply(row, entry, exclude={"id"})
-            row.key = entry.id
-            row.order = len(labels)
-            row.save()
-            resources[entry.label] = row
-            labels.append(entry.label)
+    contact_keys = _upsert_sources(
+        Contact, [c for s in courts for c in s.contacts], natural="name"
+    )
+    resource_keys = _upsert_sources(
+        Resource, [r for s in courts for r in s.resources], natural="label"
+    )
     if strict:
-        Contact.objects.exclude(name__in=names).delete()
-        Resource.objects.exclude(label__in=labels).delete()
+        Contact.objects.exclude(key__in=contact_keys).delete()
+        Resource.objects.exclude(key__in=resource_keys).delete()
 
 
 def _sync_flow(

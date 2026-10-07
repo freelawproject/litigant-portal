@@ -453,6 +453,26 @@ def test_contact_and_resource_sharing_an_id_are_rejected():
         CorpusSchema.model_validate(data)
 
 
+@pytest.mark.parametrize(
+    ("block", "entry"),
+    [
+        ("contacts", {"id": "clerk_2", "name": "Clerk"}),
+        (
+            "resources",
+            {"id": "guide_2", "label": "Guide", "url": "https://b.test"},
+        ),
+    ],
+    ids=["contact-name", "resource-label"],
+)
+def test_repeated_contact_name_or_resource_label_in_a_court_is_rejected(
+    block, entry
+):
+    data = _corpus_data()
+    data["courts"]["north-dakota"][block].append(entry)
+    with pytest.raises(ValidationError, match="duplicate .* in court"):
+        CorpusSchema.model_validate(data)
+
+
 def test_two_courts_keying_the_same_contact_are_rejected():
     data = _corpus_data()
     data["courts"]["other-court"] = {

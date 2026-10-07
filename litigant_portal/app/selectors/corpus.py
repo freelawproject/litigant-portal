@@ -310,8 +310,17 @@ class CourtSchema(BaseSchema):
     def _unique_source_ids(self):
         """Validates:
         - contact and resource ids are unique within the court
+        - contact names and resource labels are unique within the court,
+          since each is a unique column and the sync would merge the rows
         """
         _duplicate_ids("court", self.source_ids)
+        for scope, values in (
+            ("contact names", [c.name for c in self.contacts]),
+            ("resource labels", [r.label for r in self.resources]),
+        ):
+            duplicates = sorted({v for v in values if values.count(v) > 1})
+            if duplicates:
+                raise ValueError(f"duplicate {scope} in court: {duplicates}")
         return self
 
 

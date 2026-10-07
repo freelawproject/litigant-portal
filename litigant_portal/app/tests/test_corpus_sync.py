@@ -39,7 +39,11 @@ START_SECTION = {"id": "start", "heading": "Start", "content": "Read."}
 
 
 def _make_corpus(
-    *, include_beta=True, include_vestigial=True, alpha_sections=None
+    *,
+    include_beta=True,
+    include_vestigial=True,
+    alpha_sections=None,
+    alpha_contacts=None,
 ):
     """A small valid corpus: two courts, two forms, one gated variable."""
     variables = {
@@ -91,7 +95,8 @@ def _make_corpus(
         "alpha": {
             "name": "Alpha",
             "court_name": "Alpha District Court",
-            "contacts": [{"id": "alpha_help", "name": "Alpha Help"}],
+            "contacts": alpha_contacts
+            or [{"id": "alpha_help", "name": "Alpha Help"}],
             "resources": [
                 {
                     "id": "alpha_guide",
@@ -349,6 +354,38 @@ class SourceKeyTests(CorpusSyncTests):
                 self.assertTrue(
                     any("'beta_guide'" in line for line in logs.output)
                 )
+
+    def test_a_renamed_contact_keeps_its_row_by_key(self):
+        self._sync(_make_corpus(), court=None)
+        row_id = Contact.objects.get(key="alpha_help").id
+        self._sync(
+            _make_corpus(
+                alpha_contacts=[{"id": "alpha_help", "name": "Alpha Desk"}]
+            ),
+            court=None,
+        )
+        self.assertEqual(Contact.objects.get(id=row_id).name, "Alpha Desk")
+        self.assertFalse(Contact.objects.filter(name="Alpha Help").exists())
+
+    def test_a_keyless_row_is_adopted_by_name(self):
+        row = Contact.objects.create(name="Alpha Help")
+        self._sync(_make_corpus(), court=None)
+        row.refresh_from_db()
+        self.assertEqual(row.key, "alpha_help")
+        self.assertEqual(Contact.objects.filter(name="Alpha Help").count(), 1)
+
+    def test_two_courts_in_one_sync_sharing_a_contact_name_are_rejected(self):
+        corpus = _make_corpus(
+            alpha_contacts=[{"id": "alpha_help", "name": "Beta Help"}]
+        )
+        with self.assertRaisesRegex(ValueError, r"\['Beta Help'\]"):
+            self._sync(corpus, court=None)
+        self.assertFalse(Contact.objects.exists())
+        # Scoped to one court the name is unique, so the same corpus syncs.
+        self._sync(corpus, court="alpha")
+        self.assertEqual(
+            Contact.objects.get(key="alpha_help").name, "Beta Help"
+        )
 
     def test_sync_drops_the_cached_contact_and_resource_lists(self):
         self._sync(_make_corpus(), court=None)
