@@ -227,15 +227,6 @@ variables:
       - value: nobody
         label: 'Nobody pays a slip fee'
 
-  - name: poc_received_notice
-    label: 'Received a written notice'
-    data_type: choice
-    choices:
-      - value: 'yes'
-        label: 'Yes'
-      - value: 'no'
-        label: 'No'
-
   - name: poc_notice_date
     label: 'Date on the notice'
     data_type: date

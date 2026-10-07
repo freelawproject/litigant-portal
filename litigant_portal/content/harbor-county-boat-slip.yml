@@ -2,8 +2,10 @@
 # can be exercised on a page without touching a real corpus. Never shown to
 # a litigant. Throwaway, leaves with the POC branch.
 #
-# poc_path is the three-way path (renter / marina / neighbor, plus "not
-# sure"); poc_received_notice is the two-way branch under the renter path.
+# Shape under test: an intro that asks the hard gates up front (here one,
+# poc_path, the three-way role plus "not sure" and its helper), then a scroll
+# with no gates of its own. The notice is a soft gate: an optional date the
+# deadline computes from, not a yes/no that hides sections.
 # A section, question, packet form or deadline with no `when` always applies.
 
 metadata:
@@ -18,10 +20,7 @@ deadlines:
     offset_days: 14
     offset_from: poc_notice_date
     description: 'Harbor County gives a slip renter 14 days from the date on the notice to file a written answer with the harbor clerk.'
-    when:
-      all:
-        - { fact: poc_path, equals: renter }
-        - { fact: poc_received_notice, equals: 'yes' }
+    when: { fact: poc_path, equals: renter }
 
 sections:
   - kind: info
@@ -30,8 +29,9 @@ sections:
     body: |
       This page walks you through a disagreement about a boat slip in Harbor County: who may use it, who pays for it, and what happens when someone is told to leave.
 
-      Answer the question below first. The rest of the page changes to match your situation, and your answers stay saved if you come back.
+      Start with the question below. The rest of the page is written for your role in the dispute, and your answers stay saved if you come back.
 
+  # Intro: the hard gates, asked before anything else.
   - kind: fact_gather
     id: who_are_you
     heading: 'Your role in the dispute'
@@ -64,20 +64,17 @@ sections:
         label: 'Continue as a dock neighbor'
         when: { fact: poc_pays_slip_fee, equals: nobody }
 
+  # Soft gate: the date is optional. Entered, the answer deadline computes;
+  # blank, nothing is hidden and the deadline asks for the date.
   - kind: fact_gather
     id: renter_notice
-    heading: 'The notice you received'
+    heading: 'If you received a written notice'
     when: { fact: poc_path, equals: renter }
     questions:
-      - id: poc_received_notice
-        label: 'Has the marina given you a written notice to leave your slip?'
-        type: choice
-        choices: ['yes', 'no']
       - id: poc_notice_date
-        label: 'What date is printed on the notice?'
+        label: 'What date is printed on the notice to leave your slip?'
         type: date
-        when: { fact: poc_received_notice, equals: 'yes' }
-        help_text: 'Use the date printed at the top of the notice, not the day you found it.'
+        help_text: 'Use the date printed at the top of the notice, not the day you found it. Leave this blank if the marina has not given you one.'
 
   - kind: info
     id: renter_steps
@@ -110,13 +107,10 @@ sections:
 
   - kind: info
     id: answer_urgent
-    heading: 'You have a deadline'
-    when:
-      all:
-        - { fact: poc_path, equals: renter }
-        - { fact: poc_received_notice, equals: 'yes' }
+    heading: 'When a notice starts the clock'
+    when: { fact: poc_path, equals: renter }
     body: |
-      Because you have a written notice, the clock is running. Enter the date on the notice above and your answer deadline appears in the calendar section below.
+      Once the marina gives you a written notice, the clock is running. Enter the date on the notice above and your answer deadline appears in the calendar section below.
 
       If you miss the deadline, the marina can ask the clerk to order your boat removed without hearing your side.
 
@@ -136,7 +130,8 @@ sections:
         when: { fact: poc_path, equals: renter }
       - name: 'Marina Complaint'
         when: { fact: poc_path, equals: marina }
-      - 'Shared Dock Agreement'
+      - name: 'Shared Dock Agreement'
+        when: { fact: poc_path, equals: neighbor }
 
   - kind: output
     output_type: summary
