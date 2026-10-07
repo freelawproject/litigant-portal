@@ -108,8 +108,9 @@
   {# Start over's confirmation, outside the <details> so it renders once #}
   {# the menu closes. A native popover: it opens and closes without JS, #}
   {# Escape or a click outside cancels, and autofocus lands on Cancel, the #}
-  {# safe choice. #}
-  <div id="start-over-confirm" popover role="dialog" aria-labelledby="start-over-heading" class="w-[min(24rem,calc(100%-2rem))] rounded-lg border border-greyscale-200 bg-white p-6 text-left shadow-xl backdrop:bg-black/30">
+  {# safe choice. Pinned under the header at the right, below the menu it #}
+  {# opened from, instead of the browser's default centre. #}
+  <div id="start-over-confirm" popover role="dialog" aria-labelledby="start-over-heading" class="fixed inset-auto top-[calc(var(--header-height)+0.5rem)] right-4 m-0 w-[min(24rem,calc(100%-2rem))] rounded-lg border border-greyscale-200 bg-white p-6 text-left shadow-xl backdrop:bg-black/30">
     <h2 id="start-over-heading" class="text-lg font-semibold text-greyscale-900">{% trans "Start over?" %}</h2>
     <p class="mt-2 text-sm text-greyscale-700">{% trans "This clears your session: your chats, uploads and answers, so you can begin again. Topics and court information stay. This can't be undone." %}</p>
     <form method="post" action="{% url 'pages:start_over' %}" class="mt-4 flex flex-wrap gap-3">
