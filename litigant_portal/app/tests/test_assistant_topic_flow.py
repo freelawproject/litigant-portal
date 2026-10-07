@@ -202,6 +202,21 @@ class TopicFlowMarkdownTests(TestCase):
         interview = interview.split("## Links")[0]
         self.assertNotIn("[source:", interview)
 
+    def test_markdown_skips_the_marker_for_a_section_without_a_key(self):
+        flow = _eviction_flow()
+        TopicFlowSection.objects.create(
+            flow=flow, heading="First steps", content="Read the notice."
+        )
+        TopicFlowLink.objects.create(
+            flow=flow, name="Court site", url="https://example.com/court"
+        )
+        markdown = topic_flow_markdown(
+            topic_flow_find(topic_slug="eviction", flow_slug="tenant")
+        )
+        self.assertIn("\n## First steps\nRead the notice.", markdown)
+        self.assertIn("\n- Court site: https://example.com/court", markdown)
+        self.assertNotIn("[source:", markdown)
+
     def test_markdown_omits_empty_sections(self):
         _eviction_flow()
         markdown = topic_flow_markdown(
@@ -347,6 +362,16 @@ class AssistantSystemPromptTests(TestCase):
         self.assertIn("multi-court mode", prompt)
         self.assertIn("- [source:court/clerk] Clerk of Court", prompt)
         self.assertIn("- [source:court/fee_waiver] Fee waiver forms", prompt)
+
+    def test_court_rows_without_a_key_render_without_a_marker(self):
+        Contact.objects.create(name="Clerk of Court", phone="(701) 555-0100")
+        Resource.objects.create(
+            label="Fee waiver forms", url="https://alpha.test/fees"
+        )
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertIn("\n- Clerk of Court (phone (701) 555-0100)\n", prompt)
+        self.assertIn("\n- Fee waiver forms: https://alpha.test/fees", prompt)
+        self.assertNotIn("[source:court/", prompt)
 
     def test_court_source_headings_are_omitted_when_empty(self):
         prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)

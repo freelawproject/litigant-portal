@@ -1,7 +1,7 @@
 import json
 
 from .base import Agent, AgentState, IdentityPrompt
-from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
+from .tools.load_topic_flow import LoadTopicFlow, cited, topic_flow_path
 from .tools.query_document import QueryDocument
 from .tools.record_fact import RecordFact
 from .tools.review_facts import ReviewFacts
@@ -114,9 +114,11 @@ flow is active. Available flows:
 
 
 def _court_source_marker(key: str) -> str:
+    """The citation marker for a court contact or resource, or "" when the
+    row has no key (a migrated-but-unsynced or admin-created row)."""
     from litigant_portal.app.selectors.corpus import COURT_SOURCE_SLUG
 
-    return f"[source:{COURT_SOURCE_SLUG}/{key}]"
+    return f"[source:{COURT_SOURCE_SLUG}/{key}]" if key else ""
 
 
 def _contact_line(contact) -> str:
@@ -129,7 +131,7 @@ def _contact_line(contact) -> str:
         )
         if value
     ]
-    line = f"- {_court_source_marker(contact.key)} {contact.name}"
+    line = f"- {cited(_court_source_marker(contact.key), contact.name)}"
     if details:
         line += f" ({', '.join(details)})"
     if contact.note:
@@ -138,7 +140,7 @@ def _contact_line(contact) -> str:
 
 
 def _resource_line(resource) -> str:
-    line = f"- {_court_source_marker(resource.key)} {resource.label}: "
+    line = f"- {cited(_court_source_marker(resource.key), resource.label)}: "
     line += resource.url
     if resource.note:
         line += f". {resource.note}"

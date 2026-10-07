@@ -35,9 +35,16 @@ def _variable_line(variable) -> str:
 
 
 def source_marker(flow, key: str) -> str:
-    """The citation marker for one of ``flow``'s blocks. The prompt's
-    evidence rules describe this exact shape, so change both together."""
-    return f"[source:{topic_flow_path(flow)}/{key}]"
+    """The citation marker for one of ``flow``'s blocks, or "" when the
+    block has no key (a migrated-but-unsynced or admin-created row). The
+    prompt's evidence rules describe this exact shape, so change both
+    together."""
+    return f"[source:{topic_flow_path(flow)}/{key}]" if key else ""
+
+
+def cited(marker: str, text: str) -> str:
+    """``text`` prefixed by its marker, or alone when there is none."""
+    return f"{marker} {text}" if marker else text
 
 
 def topic_flow_markdown(flow) -> str:
@@ -49,11 +56,11 @@ def topic_flow_markdown(flow) -> str:
     lines = [f"# {flow.name}", f"Topic: {flow.topic.title}"]
 
     for section in flow.sections.all():
-        lines += [
-            "",
-            f"## {section.heading} {source_marker(flow, section.key)}",
-            section.content.strip(),
-        ]
+        heading = f"## {section.heading}"
+        marker = source_marker(flow, section.key)
+        if marker:
+            heading += f" {marker}"
+        lines += ["", heading, section.content.strip()]
 
     deadlines = list(flow.deadlines.all())
     if deadlines:
@@ -65,7 +72,8 @@ def topic_flow_markdown(flow) -> str:
                 if d.offset_days >= 0
                 else f"{-d.offset_days} days before"
             )
-            line = f"- {source_marker(flow, d.key)} {d.label}: {when} {anchor}"
+            line = f"- {cited(source_marker(flow, d.key), d.label)}: "
+            line += f"{when} {anchor}"
             if d.description:
                 line += f". {d.description}"
             lines.append(line)
@@ -74,7 +82,7 @@ def topic_flow_markdown(flow) -> str:
     if conditions:
         lines += ["", "## Form packet"]
         for c in conditions:
-            line = f"- {source_marker(flow, c.form.slug)} {c.form.name}"
+            line = f"- {cited(source_marker(flow, c.form.slug), c.form.name)}"
             if c.variable:
                 line += (
                     f" (included when {c.variable.name} {c.operator} "
@@ -98,7 +106,7 @@ def topic_flow_markdown(flow) -> str:
     if links:
         lines += ["", "## Links"]
         lines += [
-            f"- {source_marker(flow, link.key)} {link.name}: {link.url}"
+            f"- {cited(source_marker(flow, link.key), link.name)}: {link.url}"
             for link in links
         ]
 
