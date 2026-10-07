@@ -6,7 +6,12 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 
-from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
+from litigant_portal.app.cache import (
+    CONTACT_LIST_CACHE_KEY,
+    RESOURCE_LIST_CACHE_KEY,
+    SITE_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+)
 from litigant_portal.app.models import (
     Contact,
     Form,
@@ -259,7 +264,12 @@ def _sync_flow(
     )
 
 
-@busts_cache(SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY)
+@busts_cache(
+    SITE_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+    CONTACT_LIST_CACHE_KEY,
+    RESOURCE_LIST_CACHE_KEY,
+)
 def corpus_sync(
     *, court: str | None = None, strict: bool = False
 ) -> dict[str, int]:

@@ -11,8 +11,13 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 
+from litigant_portal.app.cache import (
+    CONTACT_LIST_CACHE_KEY,
+    RESOURCE_LIST_CACHE_KEY,
+)
 from litigant_portal.app.models import (
     Contact,
     Form,
@@ -26,6 +31,7 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.selectors.corpus import CorpusSchema
+from litigant_portal.app.selectors.site import contact_list, resource_list
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
 
@@ -343,6 +349,19 @@ class SourceKeyTests(CorpusSyncTests):
                 self.assertTrue(
                     any("'beta_guide'" in line for line in logs.output)
                 )
+
+    def test_sync_drops_the_cached_contact_and_resource_lists(self):
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(
+            [c.key for c in contact_list()], ["alpha_help", "beta_help"]
+        )
+        self.assertEqual(
+            [r.key for r in resource_list()], ["alpha_guide", "beta_guide"]
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            self._sync(_make_corpus(include_beta=False), court=None)
+        for key in (CONTACT_LIST_CACHE_KEY, RESOURCE_LIST_CACHE_KEY):
+            self.assertIsNone(cache.get(key), key)
 
 
 @pytest.mark.postgres
