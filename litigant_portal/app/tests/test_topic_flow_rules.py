@@ -9,8 +9,8 @@ import pytest
 from litigant_portal.app.topic_flow.rules import (
     applying,
     evaluate,
-    gate_answer_replaced,
     gate_facts,
+    replaced_gate_answer,
     revealed,
 )
 from litigant_portal.app.topic_flow.schema import (
@@ -422,29 +422,32 @@ def test_changing_an_earlier_gate_resets_what_shows_after_it():
     assert "marina_steps" in marina.section_ids
 
 
-# --- gate_answer_replaced ---------------------------------------------------
+# --- replaced_gate_answer ---------------------------------------------------
 # Whether a save changed an earlier gate answer, for the toast that says the
 # steps below now match. A first answer isn't a change.
 
 
 def test_a_first_answer_to_a_gate_is_not_a_replacement():
-    assert not gate_answer_replaced(_corpus(), {}, {"poc_path": "renter"})
+    assert not replaced_gate_answer(_corpus(), {}, {"poc_path": "renter"})
 
 
-def test_switching_a_gate_answer_is_a_replacement():
-    assert gate_answer_replaced(
-        _corpus(), {"poc_path": "renter"}, {"poc_path": "marina"}
+def test_switching_a_gate_answer_names_the_gate():
+    assert (
+        replaced_gate_answer(
+            _corpus(), {"poc_path": "renter"}, {"poc_path": "marina"}
+        )
+        == "poc_path"
     )
 
 
 def test_resaving_the_same_gate_answer_is_not_a_replacement():
-    assert not gate_answer_replaced(
+    assert not replaced_gate_answer(
         _corpus(), {"poc_path": "renter"}, {"poc_path": "renter"}
     )
 
 
 def test_changing_an_answer_no_gate_reads_is_not_a_replacement():
-    assert not gate_answer_replaced(
+    assert not replaced_gate_answer(
         _corpus(),
         {"poc_notice_date": "2026-01-01"},
         {"poc_notice_date": "2026-02-01"},

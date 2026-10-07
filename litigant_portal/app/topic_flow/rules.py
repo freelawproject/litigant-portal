@@ -159,18 +159,23 @@ def revealed(corpus, applies: Applying) -> Revealed:
     return Revealed(section_ids=shown, waiting_on=None)
 
 
-def gate_answer_replaced(corpus, stored, saved) -> bool:
-    """True when ``saved`` replaces an existing answer to a gate question
-    with a different one, such as switching the path from renter to marina.
+def replaced_gate_answer(corpus, stored, saved) -> str | None:
+    """The gate question whose existing answer ``saved`` replaces with a
+    different one, such as switching the path from renter to marina, or
+    ``None``.
 
     A first answer to a gate reveals what was promised to follow it, so it
     isn't a change worth telling anyone about; replacing one changes steps
     the visitor may already have read.
     """
     gates = gate_facts(corpus)
-    return any(
-        question_id in gates
-        and stored.get(question_id) not in (None, "")
-        and stored.get(question_id) != value
-        for question_id, value in saved.items()
+    return next(
+        (
+            question_id
+            for question_id, value in saved.items()
+            if question_id in gates
+            and stored.get(question_id) not in (None, "")
+            and stored.get(question_id) != value
+        ),
+        None,
     )

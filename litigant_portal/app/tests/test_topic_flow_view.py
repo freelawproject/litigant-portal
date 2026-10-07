@@ -1349,6 +1349,7 @@ def test_switching_the_path_says_the_steps_were_updated_once(
     assert response.context["gate_changed"] == {
         "path": URL,
         "anchor": "who_are_you",
+        "value": "marina",
     }
     # The line under the gate stands in for the toast.
     assert _toasts(response) == []

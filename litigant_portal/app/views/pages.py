@@ -47,7 +47,7 @@ from litigant_portal.app.topic_flow.renderer import (
 )
 from litigant_portal.app.topic_flow.rules import (
     applying,
-    gate_answer_replaced,
+    replaced_gate_answer,
     revealed,
 )
 from litigant_portal.app.topic_flow.schema import Question, ScreenerSection
@@ -182,13 +182,14 @@ def topic_flow(request, court, topic, role):
                         "shown on this page."
                     ),
                 )
-            elif gate_answer_replaced(corpus, stored, valid):
+            elif replaced := replaced_gate_answer(corpus, stored, valid):
                 # A changed gate answer changes steps the visitor may have
                 # read. The page says so under the gate, in the same dashed
                 # line that held those steps back, instead of a toast.
                 request.session[_GATE_CHANGED_SESSION_KEY] = {
                     "path": request.path,
                     "anchor": submitted_section_anchor(corpus, submitted),
+                    "value": valid[replaced],
                 }
             else:
                 messages.success(request, _("Saved."))
