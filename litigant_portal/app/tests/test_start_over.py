@@ -68,9 +68,9 @@ def test_start_over_clears_the_visitors_chats_and_answers(
     with override_settings(DEPLOYMENT_ENV=env):
         client.post(START_OVER)
 
-    assert list(
-        VariableAnswer.objects.values_list("identity", flat=True)
-    ) == [someone_else.pk]
+    assert list(VariableAnswer.objects.values_list("identity", flat=True)) == [
+        someone_else.pk
+    ]
     assert list(ChatThread.objects.values_list("identity", flat=True)) == [
         someone_else.pk
     ]
