@@ -85,3 +85,92 @@ def applying(corpus, answers) -> Applying:
         question_ids=frozenset(question_ids),
         applying_answers=applying_answers,
     )
+
+
+@dataclass(frozen=True)
+class Revealed:
+    """How far down the page a visitor has unlocked.
+
+    ``section_ids`` are the applying sections shown, in corpus order.
+    ``waiting_on`` is the id of the last one when it holds an unanswered
+    gate, so the page can say more steps follow; ``None`` when nothing is
+    held back.
+    """
+
+    section_ids: list[str]
+    waiting_on: str | None
+
+
+def _conditions(corpus):
+    """Every ``when`` in the corpus: sections, questions, screener outcomes,
+    packet forms and deadlines."""
+    for deadline in corpus.deadlines:
+        yield deadline.when
+    for section in corpus.sections:
+        yield section.when
+        for question in getattr(section, "questions", []):
+            yield question.when
+        for outcome in getattr(section, "outcomes", []):
+            yield outcome.when
+        for form in getattr(section, "forms", []):
+            yield getattr(form, "when", None)
+
+
+def _facts(condition):
+    if condition is None:
+        return
+    if condition.fact:
+        yield condition.fact
+    for child in (*(condition.all or ()), *(condition.any or ())):
+        yield from _facts(child)
+    yield from _facts(condition.not_)
+
+
+def gate_facts(corpus) -> frozenset[str]:
+    """The question ids some ``when`` reads: answering one can change what
+    the page shows, so an unanswered one holds back what follows it."""
+    return frozenset(
+        fact for condition in _conditions(corpus) for fact in _facts(condition)
+    )
+
+
+def revealed(corpus, applies: Applying) -> Revealed:
+    """The applying sections up to and including the first one that holds
+    an unanswered gate question, the way A2J Author reveals an interview.
+
+    Answering that gate reveals sections up to the next one. Changing an
+    earlier gate re-runs this from the top, so whatever follows it is
+    recomputed rather than remembered.
+    """
+    gates = gate_facts(corpus)
+    shown = []
+    for section in corpus.sections:
+        if not applies.section(section):
+            continue
+        shown.append(section.id)
+        unanswered_gate = any(
+            applies.question(question)
+            and question.id in gates
+            and applies.applying_answers.get(question.id) in (None, "")
+            for question in getattr(section, "questions", [])
+        )
+        if unanswered_gate:
+            return Revealed(section_ids=shown, waiting_on=section.id)
+    return Revealed(section_ids=shown, waiting_on=None)
+
+
+def gate_answer_replaced(corpus, stored, saved) -> bool:
+    """True when ``saved`` replaces an existing answer to a gate question
+    with a different one, such as switching the path from renter to marina.
+
+    A first answer to a gate reveals what was promised to follow it, so it
+    isn't a change worth telling anyone about; replacing one changes steps
+    the visitor may already have read.
+    """
+    gates = gate_facts(corpus)
+    return any(
+        question_id in gates
+        and stored.get(question_id) not in (None, "")
+        and stored.get(question_id) != value
+        for question_id, value in saved.items()
+    )

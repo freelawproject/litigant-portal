@@ -1294,17 +1294,11 @@ def _anchors(response):
 
 
 @pytest.mark.django_db
-def test_a_non_applying_section_is_not_rendered_nor_in_the_toc(
-    client, monkeypatch
-):
+def test_the_page_stops_at_the_unanswered_path_question(client, monkeypatch):
     monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
     response = client.get(URL)
-    assert _anchors(response) == [
-        "welcome",
-        "who_are_you",
-        "calendar",
-        "recap",
-    ]
+    assert _anchors(response) == ["welcome", "who_are_you"]
+    assert response.context["waiting_on"] == "who_are_you"
     toc = [entry["anchor"] for entry in response.context["toc"]]
     assert "renter_steps" not in toc
     assert "marina_steps" not in toc
@@ -1320,8 +1314,46 @@ def test_posting_the_path_opens_its_sections_on_the_redirected_get(
     assert response.status_code == 302
     anchors = _anchors(client.get(URL))
     assert "renter_notice" in anchors
-    assert "renter_steps" in anchors
     assert "marina_steps" not in anchors
+    # The notice question is the next gate, so the page stops there.
+    assert "renter_steps" not in anchors
+    client.post(URL, {"poc_received_notice": "no"})
+    assert "renter_steps" in _anchors(client.get(URL))
+
+
+def _toasts(response):
+    return [m["text"] for m in response.context["toast_messages"]]
+
+
+@pytest.mark.django_db
+def test_a_first_path_answer_gets_the_plain_saved_toast(
+    client, monkeypatch, poc_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    client.post(URL, {"poc_path": "renter"})
+    response = client.get(URL)
+    assert _toasts(response) == ["Saved."]
+    assert response.context["gate_changed"] is None
+
+
+@pytest.mark.django_db
+def test_switching_the_path_says_the_steps_were_updated_once(
+    client, monkeypatch, poc_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    client.post(URL, {"poc_path": "renter"})
+    client.get(URL)
+    client.post(URL, {"poc_path": "marina"})
+
+    response = client.get(URL)
+    assert response.context["gate_changed"] == {
+        "path": URL,
+        "anchor": "who_are_you",
+    }
+    # The line under the gate stands in for the toast.
+    assert _toasts(response) == []
+    # Shown once: a reload doesn't repeat it.
+    assert client.get(URL).context["gate_changed"] is None
 
 
 @pytest.mark.django_db

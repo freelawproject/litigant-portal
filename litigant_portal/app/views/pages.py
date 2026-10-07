@@ -45,7 +45,11 @@ from litigant_portal.app.topic_flow.renderer import (
     render_section,
     submitted_section_anchor,
 )
-from litigant_portal.app.topic_flow.rules import applying
+from litigant_portal.app.topic_flow.rules import (
+    applying,
+    gate_answer_replaced,
+    revealed,
+)
 from litigant_portal.app.topic_flow.schema import Question, ScreenerSection
 from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
@@ -100,6 +104,11 @@ def deep_link(request, court, topic):
     return redirect(f"{reverse('pages:chat')}?{query}")
 
 
+# Session key for the one-time "steps updated" line after a save changed an
+# earlier gate answer. Set on the POST, read once by the redirected GET.
+_GATE_CHANGED_SESSION_KEY = "topic_flow_gate_changed"
+
+
 def topic_flow(request, court, topic, role):
     """Topic Flow entry: /t/{court}/{topic}/{role}/ → rendered corpus sections.
 
@@ -125,6 +134,7 @@ def topic_flow(request, court, topic, role):
             if qid in request.POST
         }
         errors = validate_answers(corpus, submitted)
+        stored = topic_flow_answers(request, corpus)
         # Persist only what passes, canonicalized (stripped) to match what
         # validate_answers checked — otherwise a padded-but-valid answer
         # ("Cass  ") stores raw and fails the strict option-selected match on
@@ -172,6 +182,14 @@ def topic_flow(request, court, topic, role):
                         "shown on this page."
                     ),
                 )
+            elif gate_answer_replaced(corpus, stored, valid):
+                # A changed gate answer changes steps the visitor may have
+                # read. The page says so under the gate, in the same dashed
+                # line that held those steps back, instead of a toast.
+                request.session[_GATE_CHANGED_SESSION_KEY] = {
+                    "path": request.path,
+                    "anchor": submitted_section_anchor(corpus, submitted),
+                }
             else:
                 messages.success(request, _("Saved."))
         # PRG back to the section just saved (#anchor) so the litigant keeps
@@ -186,12 +204,20 @@ def topic_flow(request, court, topic, role):
             url = f"{url}#{anchor}"
         return redirect(url)
 
+    gate_changed = request.session.pop(_GATE_CHANGED_SESSION_KEY, None)
+    if gate_changed and gate_changed["path"] != request.path:
+        gate_changed = None
     return _render_topic_flow(
-        request, corpus, topic_flow_answers(request, corpus)
+        request,
+        corpus,
+        topic_flow_answers(request, corpus),
+        gate_changed=gate_changed,
     )
 
 
-def _render_topic_flow(request, corpus, answers, errors=None):
+def _render_topic_flow(
+    request, corpus, answers, errors=None, gate_changed=None
+):
     """Render the full Topic Flow page from resolved answers.
 
     Shared by the GET path and the POST error re-render. ``errors`` (a
@@ -202,12 +228,20 @@ def _render_topic_flow(request, corpus, answers, errors=None):
     renders from the applying answers, so a stored answer to a question that
     is no longer asked shows nowhere (form, summary, deadlines) while its row
     stays in the store for when the gate opens again.
+
+    The page then stops at the first unanswered gate (``revealed``), so a
+    visitor sees the steps up to the question that decides what comes next.
+    ``waiting_on`` tells the template to say more steps follow it.
+    ``gate_changed`` is set on the one GET after a save changed a gate
+    answer: ``anchor`` is the section it was saved from, where the template
+    says the steps below were updated.
     """
     applies = applying(corpus, answers)
+    shown = revealed(corpus, applies)
     rendered_sections = [
         render_section(section, corpus, applies.applying_answers, errors)
         for section in corpus.sections
-        if applies.section(section)
+        if section.id in shown.section_ids
     ]
     # The flow's sections for the frame's left region: one entry per headed
     # section, so a litigant can jump back to re-read or revise.
@@ -223,6 +257,8 @@ def _render_topic_flow(request, corpus, answers, errors=None):
             "corpus": corpus,
             "rendered_sections": rendered_sections,
             "toc": toc,
+            "waiting_on": shown.waiting_on,
+            "gate_changed": gate_changed,
             "frame_left_label": _("Sections"),
             "frame_left_icon": "list-bullet",
             "briefcase_groups": briefcase_answers(request),

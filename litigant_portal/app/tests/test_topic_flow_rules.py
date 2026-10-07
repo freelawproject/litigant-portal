@@ -6,7 +6,13 @@ the whole file is DB-free and runs in the fast suite.
 
 import pytest
 
-from litigant_portal.app.topic_flow.rules import applying, evaluate
+from litigant_portal.app.topic_flow.rules import (
+    applying,
+    evaluate,
+    gate_answer_replaced,
+    gate_facts,
+    revealed,
+)
 from litigant_portal.app.topic_flow.schema import (
     Condition,
     Corpus,
@@ -353,3 +359,93 @@ def test_applying_offers_section_and_question_predicates():
     assert result.section(renter_notice) is True
     assert result.question(renter_notice.questions[0]) is True
     assert result.question(renter_notice.questions[1]) is False
+
+
+# --- revealed ---------------------------------------------------------------
+# Gated reveal: the page shows the applying sections up to the first section
+# holding an unanswered gate (a question some `when` reads), and stops there.
+# Answering the gate reveals sections up to the next one.
+
+
+def _revealed(answers):
+    corpus = _corpus()
+    return revealed(corpus, applying(corpus, answers))
+
+
+def test_gate_facts_are_the_questions_a_when_reads():
+    assert gate_facts(_corpus()) == {"poc_path", "poc_received_notice"}
+
+
+def test_the_page_stops_at_the_unanswered_path_question():
+    result = _revealed({})
+    assert result.section_ids == ["welcome", "who_are_you"]
+    assert result.waiting_on == "who_are_you"
+
+
+def test_answering_the_path_reveals_up_to_the_next_gate():
+    result = _revealed({"poc_path": "renter"})
+    assert result.section_ids == ["welcome", "who_are_you", "renter_notice"]
+    assert result.waiting_on == "renter_notice"
+
+
+def test_clearing_every_gate_reveals_every_applying_section():
+    result = _revealed({"poc_path": "renter", "poc_received_notice": "yes"})
+    assert result.section_ids == [
+        "welcome",
+        "who_are_you",
+        "renter_notice",
+        "renter_steps",
+        "answer_urgent",
+        "recap",
+    ]
+    assert result.waiting_on is None
+
+
+def test_a_path_without_further_gates_reveals_to_the_end():
+    result = _revealed({"poc_path": "marina"})
+    assert result.section_ids == [
+        "welcome",
+        "who_are_you",
+        "marina_steps",
+        "recap",
+    ]
+    assert result.waiting_on is None
+
+
+def test_changing_an_earlier_gate_resets_what_shows_after_it():
+    # Renter with every gate cleared, then the path flips to marina: the
+    # renter's sections go and the marina's appear, with nothing to wait on.
+    renter = _revealed({"poc_path": "renter", "poc_received_notice": "yes"})
+    marina = _revealed({"poc_path": "marina", "poc_received_notice": "yes"})
+    assert "renter_steps" in renter.section_ids
+    assert "renter_steps" not in marina.section_ids
+    assert "marina_steps" in marina.section_ids
+
+
+# --- gate_answer_replaced ---------------------------------------------------
+# Whether a save changed an earlier gate answer, for the toast that says the
+# steps below now match. A first answer isn't a change.
+
+
+def test_a_first_answer_to_a_gate_is_not_a_replacement():
+    assert not gate_answer_replaced(_corpus(), {}, {"poc_path": "renter"})
+
+
+def test_switching_a_gate_answer_is_a_replacement():
+    assert gate_answer_replaced(
+        _corpus(), {"poc_path": "renter"}, {"poc_path": "marina"}
+    )
+
+
+def test_resaving_the_same_gate_answer_is_not_a_replacement():
+    assert not gate_answer_replaced(
+        _corpus(), {"poc_path": "renter"}, {"poc_path": "renter"}
+    )
+
+
+def test_changing_an_answer_no_gate_reads_is_not_a_replacement():
+    assert not gate_answer_replaced(
+        _corpus(),
+        {"poc_notice_date": "2026-01-01"},
+        {"poc_notice_date": "2026-02-01"},
+    )
