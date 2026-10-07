@@ -110,6 +110,8 @@ class Case(Schema):
     facts: list[Fact] = Field(min_length=1)
     acceptable_deferral: str
     requires_escalation: bool = False
+    # The reply ends mid-interview: information first, then one question.
+    expects_one_question: bool = False
     review_status: str = (
         "draft; checked against repository corpus, not court reviewed"
     )
