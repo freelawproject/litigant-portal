@@ -54,5 +54,8 @@ uncertainty. For facts with no numeric/boolean answer key, use `value: null`.
 
 All deal breakers except `missed_escalation` require supporting answer IDs.
 Only flag `missed_escalation` when the case explicitly requires escalation.
+Only flag `reply_shape` when `expects_one_question` is true. For an extra
+question or a question with no information before it, list the passages that
+hold the questions; for a missing question, leave `evidence_ids` empty.
 Score all seven dimensions even when a deal breaker occurs. Return only the
 JSON object matching the supplied schema.

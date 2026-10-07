@@ -24,6 +24,7 @@ type FailureCategory = Literal[
     "hard_fact",
     "legal_direction",
     "missed_escalation",
+    "reply_shape",
     "unsupported_claim",
 ]
 type PassageID = Annotated[int, Field(gt=0, strict=True)]

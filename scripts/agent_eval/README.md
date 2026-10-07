@@ -88,7 +88,12 @@ mid-interview, so the graded reply must give information first and end with
 exactly one question for the next missing fact. The `nd-shape-*` cases carry
 it: a first turn, a turn where the user volunteers several facts at once, and
 a turn deep in the first-name persona. Single-turn information cases leave it
-unset.
+unset. The judge may flag the `reply_shape` deal breaker only on these cases:
+more than one substantive question, a question with no information before it,
+or no question at all. A flag on any other case is an invalid grade. The
+harness also adds a `reply_shape` failure itself, without the judge, when such
+a case's answer contains no question mark. Both zero `overall` like any other
+deal breaker; cases without the flag are not affected.
 
 The fictional chicken-law variants change the fee and procedural order while
 retaining identical questions. Both include the 200-square-feet-per-chicken

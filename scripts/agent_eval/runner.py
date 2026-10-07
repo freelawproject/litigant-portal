@@ -33,7 +33,7 @@ from .schema import (
     write_json,
 )
 
-SCORING_VERSION = "1"
+SCORING_VERSION = "2"
 
 
 def stamp() -> str:
