@@ -61,7 +61,7 @@ because that model did not support the selected chat-completions API endpoint.
 setting; `null` preserves the current setting. Original/effective models are
 recorded, and the setting is restored afterward. Legacy agent code is unchanged.
 
-[cases.yml](cases.yml) contains twelve real-reference and six fictional cases.
+[cases.yml](cases.yml) contains sixteen real-reference cases, two of them multi-turn, and six fictional cases.
 [references/](references/) freezes repository corpus content for answer keys,
 with provenance and draft review status. It is not independently verified law.
 When the corpus changes, copy the source files over the frozen ones and update

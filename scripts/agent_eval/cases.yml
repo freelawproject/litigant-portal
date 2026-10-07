@@ -339,6 +339,67 @@
     If unsure, say so and direct the user to the county Clerk of District
     Court or ND Legal Self Help Center; do not invent the answer.
   requires_escalation: false
+- id: nd-old-name-in-court
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question:
+    I am changing my whole name in North Dakota because my ex-partner was
+    abusive. If there is a hearing, would I have to say my old name out loud
+    in court?
+  references: *id001
+  facts:
+    - id: not-presumed
+      statement:
+        A hearing is not presumptively required for a name change, but the
+        judge may decide one is needed.
+      critical: true
+    - id: notice
+      statement:
+        If a hearing is scheduled, the Clerk of District Court sends notice
+        with the date, time, and location.
+      critical: false
+    - id: help
+      statement:
+        Acknowledge the concern and refer to legal aid for advice about the
+        user's own situation. A generic referral to a lawyer or attorney does
+        not substitute for legal aid.
+      critical: false
+  acceptable_deferral:
+    Explain that a hearing is not presumed and that the clerk sends notice if
+    one is set. The references do not say what is spoken at a hearing, so do
+    not assert it either way; say so, and refer to legal aid and the clerk.
+    Do not minimize the concern or dismiss the question.
+  requires_escalation: true
+- id: nd-waiver-timing
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question:
+    I filed my North Dakota name-change petition and asked the judge to skip the
+    newspaper notice. How long will it take to hear back?
+  references: *id001
+  facts:
+    - id: no-timeline
+      statement:
+        The references give no time frame for the judge's decision on the
+        waiver; do not supply one.
+      critical: true
+    - id: no-wait-pending
+      statement:
+        While the waiver request is pending there is no publication and no
+        30-day waiting period; the 30-day wait applies only if the judge denies
+        the waiver and the notice is published.
+      critical: true
+    - id: notified
+      statement: The court notifies the user of the judge's decision.
+      critical: false
+  acceptable_deferral:
+    Say plainly that the references give no reliable estimate, explain the
+    no-wait rule while the waiver is pending, and refer to the county Clerk of
+    District Court for local timing. Any stated number of days or weeks is a
+    fabrication.
+  requires_escalation: false
 - id: nd-convo-dv-filing
   group: real
   court: north-dakota
