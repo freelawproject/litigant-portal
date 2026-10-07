@@ -83,6 +83,13 @@ all turns of the case. The
 conversation cases (`nd-convo-*`) follow the personas in
 `docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
 
+A case may set `expects_one_question: true` when its final turn lands
+mid-interview, so the graded reply must give information first and end with
+exactly one question for the next missing fact. The `nd-shape-*` cases carry
+it: a first turn, a turn where the user volunteers several facts at once, and
+a turn deep in the first-name persona. Single-turn information cases leave it
+unset.
+
 The fictional chicken-law variants change the fee and procedural order while
 retaining identical questions. Both include the 200-square-feet-per-chicken
 boundary. Fixtures enter through normal corpus files and an evaluation database

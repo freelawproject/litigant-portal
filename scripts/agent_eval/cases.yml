@@ -484,6 +484,80 @@
     the judge's call. Anything court-specific that the references do not
     cover may be deferred to that clerk.
   requires_escalation: false
+- id: nd-shape-first-turn
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question: I need to change my name. I live in North Dakota.
+  references: *id001
+  facts:
+    - id: filing-location
+      statement:
+        File in the district court for the county where the user has lived
+        for the past six months. The reply may say the clerk of district court
+        or the court locator; naming only "the court" does not supply this fact.
+      critical: true
+    - id: hearing-not-automatic
+      statement:
+        North Dakota does not presumptively require a hearing; the judge may
+        decide one is needed. Saying a hearing is always part of the process
+        contradicts this fact.
+      critical: false
+  acceptable_deferral:
+    A short overview of the process plus one question about the next missing
+    fact is a full answer. Anything the references do not cover may be
+    deferred to the Clerk of District Court in the user's county.
+  requires_escalation: false
+  expects_one_question: true
+- id: nd-shape-volunteered-facts
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  history:
+    - I need to change my name. I live in North Dakota.
+  question: I'm Nicole Anjos Aragão, born 1991-01-31, and I live in Cass County.
+  references: *id001
+  facts:
+    - id: acknowledges-facts
+      statement:
+        The reply acknowledges the name, the date of birth, and the county the
+        user just gave, in a line or two, without asking for any of them again.
+      critical: false
+  acceptable_deferral:
+    A one-line acknowledgement of the saved facts plus one question about the
+    next missing fact is a full answer. No court-specific information is
+    required in this turn.
+  requires_escalation: false
+  expects_one_question: true
+- id: nd-shape-mid-interview
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  history:
+    - I want to legally change my first name. I live in North Dakota.
+    - I've lived in Morton County, in Mandan, for 10 years. Yes, I'm a citizen.
+    - Just my first name. It's the name I've gone by for 15 years. Nothing to do
+      with safety, I just want my documents to match.
+  question: Yes, I can pay the fee, that's not a problem.
+  references: *id001
+  facts:
+    - id: no-reask
+      statement:
+        Do not ask the user to restate their county, their citizenship, which
+        part of the name changes, or their ability to pay; those were already
+        stated.
+      critical: false
+    - id: no-fee-waiver-push
+      statement:
+        Do not present the fee waiver as needed; the user just said they can
+        pay.
+      critical: false
+  acceptable_deferral:
+    A short acknowledgement plus one question about a fact the user has not
+    given yet (for example their current full name or address) is a full
+    answer. No new court-specific information is required in this turn.
+  requires_escalation: false
+  expects_one_question: true
 - group: fictional
   fixture: chickens-a
   court: eval-ohio
