@@ -367,6 +367,18 @@ class SourceKeyTests(CorpusSyncTests):
         self.assertEqual(Contact.objects.get(id=row_id).name, "Alpha Desk")
         self.assertFalse(Contact.objects.filter(name="Alpha Help").exists())
 
+    def test_a_contact_with_a_changed_id_keeps_its_row_by_name(self):
+        self._sync(_make_corpus(), court=None)
+        row_id = Contact.objects.get(key="alpha_help").id
+        self._sync(
+            _make_corpus(
+                alpha_contacts=[{"id": "alpha_desk", "name": "Alpha Help"}]
+            ),
+            court=None,
+        )
+        self.assertEqual(Contact.objects.get(id=row_id).key, "alpha_desk")
+        self.assertEqual(Contact.objects.filter(name="Alpha Help").count(), 1)
+
     def test_a_keyless_row_is_adopted_by_name(self):
         row = Contact.objects.create(name="Alpha Help")
         self._sync(_make_corpus(), court=None)

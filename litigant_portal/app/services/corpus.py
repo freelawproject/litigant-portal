@@ -168,17 +168,19 @@ def _reject_shared_names(courts: list[CourtSchema]) -> None:
 
 
 def _upsert_sources(model, entries, *, natural: str) -> list[str]:
-    """Upsert ``entries`` by key. A keyless row (migrated before keys
-    existed, or admin-created) is adopted by its ``natural`` field, the
-    only identity it has. Returns the keys written, in display order."""
+    """Upsert ``entries`` by key. A row whose key no entry claims (a
+    changed id, or a keyless row migrated before keys existed or
+    admin-created) is adopted by its ``natural`` field. Returns the keys
+    written, in display order."""
     rows = list(model.objects.all())
+    authored = {entry.id for entry in entries}
     by_key = {r.key: r for r in rows if r.key}
-    keyless = {getattr(r, natural): r for r in rows if not r.key}
+    unclaimed = {getattr(r, natural): r for r in rows if r.key not in authored}
     keys: list[str] = []
     for order, entry in enumerate(entries):
         row = (
             by_key.get(entry.id)
-            or keyless.pop(getattr(entry, natural), None)
+            or unclaimed.pop(getattr(entry, natural), None)
             or model()
         )
         _apply(row, entry, exclude={"id"})
