@@ -1,0 +1,165 @@
+# Civil traffic (Scottsdale City Court, Arizona), "know my options" flow.
+# Mirrors content/civil-traffic-options.yml, which renders the public page;
+# this copy grounds the chat. Edit both together (#179). Sources and open
+# SME questions are listed in that file's header. LEGAL REVIEW REQUIRED.
+#
+# Gates are info copy for now: the intro gates (civil vs criminal, court date
+# passed) and the defensive driving screen become gated sections once the
+# engine supports them (#970).
+#
+# Content rules: no em-dashes, one line per paragraph, never "official".
+
+name: Know my options
+enabled: true
+order: 0
+sections:
+  - heading: Responding to a civil traffic ticket in Scottsdale
+    content: |
+      This page explains your options for a civil traffic ticket in Scottsdale City Court, what each one costs you, and the dates that matter.
+
+      A civil traffic ticket is not a crime, but ignoring it has real consequences. If you do nothing by your court date, the case goes into default, fees are added, and your driving privileges can be suspended.
+
+      You can resolve a civil ticket online, by phone, by mail, or in person, on or before your court date. You only go to court if you ask for a hearing.
+
+      Nothing on this page is legal advice. It explains the process and the options people in your situation have.
+  - heading: Before you start
+    content: |
+      Check three things on your ticket first.
+
+      - Is it civil or criminal? This page covers civil traffic tickets only. If yours is criminal, see the section on criminal citations near the end of this page.
+      - Has your court date already passed? If it has, skip to the section on missed court dates.
+      - Is your case in the court's system yet? The police usually file a ticket with the court within 10 business days. Until then the court cannot find it, but you can still send paperwork and the court will hold it until the case arrives.
+  - heading: Your three options
+    content: |
+      You choose one of these, on or before your court date:
+
+      - Take defensive driving school. If your ticket is eligible, finishing the class dismisses it.
+      - Pay the fine. You accept responsibility and the case ends.
+      - Request a hearing. You tell the court you are not responsible and a judge decides.
+
+      Check defensive driving school first. Once a hearing starts, you can no longer choose the class.
+  - heading: 'Option 1: Take defensive driving school'
+    content: |
+      Finishing a class at a defensive driving school certified by the Arizona Supreme Court dismisses one eligible ticket.
+
+      You may be able to take defensive driving school if:
+      - Your citation is civil, not criminal.
+      - Your violation is on the list of eligible moving violations (A.R.S. 28-3392).
+      - You haven't taken defensive driving school for a ticket whose violation date is within 12 months of this one.
+      - The violation didn't involve a crash that caused serious injury or death.
+      - You weren't driving a vehicle that requires a commercial driver license (CDL).
+
+      This is a general check. The school you choose checks the state's records, and that check decides whether you're eligible.
+
+      Deadline: you must finish the class at least 7 days before your court date.
+
+      Need more time? Ask the court for a first, one-time extension. If your case meets the criteria, it is granted, and you must then finish the class 7 days before the new date on your notice, and give the school that new date. Any further extension is up to the judge, and you ask for it by filing a motion.
+
+      To sign up, choose a school at azdrive.com or call 1-888-334-5565. Scottsdale is in Maricopa County, and its court number is 0751. The school needs a copy of your citation. If you lost yours, the court can send you a copy.
+
+      What it costs: you pay everything to the school. The total is the school's own fee, a state fee, a $45 state surcharge, and Scottsdale's court diversion fee. Every certified school must post that total on its website. The amounts in effect on your violation date are the ones that apply.
+  - heading: 'Option 2: Pay the fine'
+    content: |
+      Paying means you accept responsibility for the violation, and the case ends. The fine for each violation is on Scottsdale's bond card, linked below.
+
+      To pay online, look up your case with the number part of your citation or your name (not both), choose your name, and enter the amount in the financial section. You can also pay by phone, by mail, or in person with a check, money order, or credit card.
+
+      If you can't pay the full amount at once, ask for a payment plan through the Compliance Assistance Program. Fill out the Payment Plan Request form from the court's forms page, or call the court to set it up with a clerk.
+
+      Paying does not keep the violation off your record. If your ticket is eligible for defensive driving school, that is the option that dismisses it.
+  - heading: 'Option 3: Request a hearing'
+    content: |
+      Requesting a hearing means you tell the court you are not responsible and ask a judge to decide. Make the request in person or in writing, on or before your court date, and the court sets a hearing date and notifies you.
+
+      The hearing is your chance to present evidence: your own testimony, witnesses, written statements, diagrams, photographs, or anything else that matters to your case.
+
+      The court keeps any evidence you submit until the appeal period ends, including a phone or other device if your evidence is on it. Print your photos and documents, or put them on a CD, before the hearing.
+
+      On the day, go straight into the courtroom on your notice at the time listed, take a seat, and wait for your name. Do not take a number or wait in the lobby. Remove hats and sunglasses, and silence your phone.
+
+      The judge decides by the preponderance of the evidence. If the state shows it is more likely than not that the violation happened, you are found responsible, and all fines and fees are due by the end of that day.
+
+      Once the hearing starts, defensive driving school is no longer an option. If your ticket is eligible and you'd rather take the class, tell the hearing officer when your case is called.
+
+      If you are found responsible for running a red light, including a flashing red, the Motor Vehicle Division will order you to complete Traffic Survival School. That is a separate class from defensive driving school.
+
+      The court has a hearing information sheet in English and Spanish. Ask for it if you need it.
+  - heading: If you need more time or a new court date
+    content: |
+      If you can't make your court date, ask the judge for a new one by filing a motion online. Look up your case, choose your name, select Online Motion Submission, and type your request with your phone number and email address.
+
+      A judge usually rules within 48 to 72 hours, and you'll hear back faster if you include an email address. Filing a motion does not guarantee a new date, so file it as early as you can and check that it was ruled on. Your case page shows the status under Register of Actions, or you can call the court.
+  - heading: If your ticket is for no proof of insurance or registration
+    content: |
+      No proof of insurance: if you were insured at the date and time of the ticket, send proof to court@scottsdaleaz.gov and the charge can be dismissed. If you were not insured then, sending proof of 6 months of current insurance and a copy of your 39-month motor vehicle record may reduce the fine.
+
+      No proof of registration: send a copy of your valid vehicle registration to court@scottsdaleaz.gov and the charge can be dismissed.
+
+      The court processes proof within 2 business days, and a judge usually rules at least 4 days after you send it. Send it well before your court date.
+  - heading: If your ticket came from a camera (photo enforcement)
+    content: |
+      Scottsdale uses cameras to catch speeding and red-light violations. The first thing you may get is a Notice of Violation. A notice is not a summons to appear in court. It says a vehicle registered to you was recorded in a violation.
+
+      You can see the photos and video at ViolationInfo.com with the Notice number and PIN printed on your notice. Without internet access, call the Focus on Safety line at (844) 749-5996.
+
+      If a complaint is filed with the court, your complaint packet lists a 30-day acknowledgement date and your court date. Respond by the acknowledgement date. If you don't, you may have to pay the cost of being served in person, your license may be suspended, and a default judgment may be entered.
+
+      Your options for a camera complaint:
+      - Option A, pay in full on or before your court date.
+      - Option B, if you were not the driver, return the Option B coupon on page 2 of the complaint with a clear copy of the driver's government-issued photo ID. If the state agrees, your complaint is dismissed and a new one is sent to the driver. You are not required to identify the driver.
+      - Option C, request a hearing by returning the Option C coupon. Mail it at least 5 working days before your court date. If attending would be a substantial hardship, you can ask in writing for a hearing decided on documents instead.
+      - Option D, take defensive driving school if your ticket is eligible.
+
+      If you only want to acknowledge the complaint and avoid the cost of being served, sign and return the Waiver of Service by email, fax, or mail to the court. You still need to resolve the complaint by your court date.
+
+      If you are found responsible for, or pay, a red-light camera ticket, the Motor Vehicle Division will order you to complete Traffic Survival School.
+  - heading: If your citation is criminal, not civil
+    content: |
+      This page covers civil traffic tickets only. Criminal traffic charges carry higher stakes and different rights, including the right to an attorney, and missing a criminal court date can lead to a warrant.
+
+      Call Scottsdale City Court at (480) 312-2442 to confirm your court date and ask how to proceed. If you can't make the date, file a motion asking for a new one and send a copy to the City of Scottsdale Prosecutor's Office, 3700 North 75th Street, Suite B, fax (480) 312-7795.
+  - heading: If you missed your court date
+    content: |
+      If a civil ticket was not resolved by the court date, the case goes into default. That means a judgment has been entered for the State of Arizona, fees are added, and the court may report it to the Motor Vehicle Division, which can suspend your driving privileges.
+
+      You can still resolve it. Your choices are:
+      - Pay in full online or by phone.
+      - Set up a payment plan through the Compliance Assistance Program. To qualify, make a payment with a clerk at (480) 312-2442 and sign a payment contract.
+      - File a motion asking the judge for other options.
+
+      Act quickly. A case left in default goes to a collection agency, which adds collection fees and can garnish your wages. It can also stop you from re-registering your vehicle in Arizona, and the court can have your Arizona tax refund or lottery winnings taken.
+
+      If your registration won't renew or your license was suspended because of an unpaid ticket, start with the court. Once the court case is resolved, the court notifies the Motor Vehicle Division.
+interview:
+  - title: Your ticket
+    variables:
+      - traffic_violation_date
+      - traffic_arraignment_date
+deadlines:
+  - label: Your court date
+    description: Pay, sign up for defensive driving school, or request a hearing on or before this date. If you do nothing, the case goes into default.
+    offset_days: 0
+    offset_from: traffic_arraignment_date
+  - label: Finish defensive driving school
+    description: If you choose defensive driving school, the class must be finished at least 7 days before your court date. With an extension, it is 7 days before the new date.
+    offset_days: -7
+    offset_from: traffic_arraignment_date
+links:
+  - name: Scottsdale City Court case lookup and payments
+    url: https://eservices.scottsdaleaz.gov/Court/Case/
+  - name: Scottsdale City Court's civil traffic page
+    url: https://www.scottsdaleaz.gov/court/civil-traffic-cases
+  - name: Scottsdale City Court's defensive driving page
+    url: https://www.scottsdaleaz.gov/court/defensive-driving-class
+  - name: Find a certified defensive driving school (azdrive.com)
+    url: https://www.azdrive.com
+  - name: Scottsdale fine amounts (bond card)
+    url: https://www.scottsdaleaz.gov/Assets/ScottsdaleAZ/Court/Bond+Card.pdf
+  - name: Scottsdale City Court forms
+    url: https://www.scottsdaleaz.gov/court/forms
+  - name: Scottsdale City Court's photo enforcement page
+    url: https://www.scottsdaleaz.gov/court/civil-traffic-cases/photo-enforcement
+  - name: See your camera photos and video (ViolationInfo.com)
+    url: https://www.violationinfo.com
+  - name: Scottsdale City Court videos
+    url: https://www.scottsdaleaz.gov/court/court-videos
