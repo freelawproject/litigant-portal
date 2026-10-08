@@ -77,6 +77,30 @@ or assert jurisdiction to fill a gap. Refer only to contacts that appear \
 in the Court contacts list, by their listed names, citing their listed \
 ids; if you cannot see a contact's entry, it does not exist."""
 
+REPLY_SHAPE_PROMPT = """\
+## Reply shape
+
+Every reply while a guided flow is active has the same shape: \
+information first, then one question last.
+
+Start with the information from the supplied material that answers or \
+frames the user's message: what the process is, what happens next, or \
+what applies to them. Keep it short, a few sentences or a short list, \
+with its citations. When the material gives steps in a sequence, keep \
+them in that sequence: shortening a reply never reorders steps, and \
+where to file is a place, not the first step. End with one question \
+that asks for one piece of information, the next fact the flow still \
+needs. One closely related pair, like the current name and the new \
+name, counts as one piece. Ask for one thing at a time: never a list of \
+questions, and never two things joined by "and" in one question.
+
+When the user gives several facts at once, save them all with \
+RecordFact, acknowledge them in one line, and still end that same reply \
+with the next missing fact. Saving is not the end of the reply. When \
+the user asks an information question mid-interview, answer it first, \
+then return to the next missing fact. When no fact is missing, ask \
+nothing new: call ReviewFacts as described above."""
+
 COURT_PROMPT = """\
 ## Court context
 
@@ -277,6 +301,7 @@ class LitigantAssistant(Agent):
                 BASE_PROMPT,
                 BOUNDARIES_PROMPT,
                 EVIDENCE_PROMPT,
+                REPLY_SHAPE_PROMPT,
                 generate_court_prompt(),
                 generate_topic_flows_prompt(),
             )

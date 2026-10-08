@@ -378,7 +378,7 @@ class AssistantSystemPromptTests(TestCase):
         self.assertNotIn("### Court contacts", prompt)
         self.assertNotIn("### Court resources", prompt)
 
-    def test_boundaries_then_evidence_sit_between_base_and_court(self):
+    def test_boundaries_evidence_then_shape_sit_between_base_and_court(self):
         prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
         positions = [
             prompt.index(heading)
@@ -386,10 +386,28 @@ class AssistantSystemPromptTests(TestCase):
                 "You are a compassionate legal assistant",
                 "## Boundaries",
                 "## Evidence, citations, and gaps",
+                "## Reply shape",
                 "## Court context",
             )
         ]
         self.assertEqual(positions, sorted(positions))
+
+    def _reply_shape_section(self) -> str:
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        return prompt.split("## Reply shape")[1].split("## Court context")[0]
+
+    def test_reply_shape_names_both_halves(self):
+        section = self._reply_shape_section()
+        self.assertIn("information first", section)
+        self.assertIn("one question last", section)
+
+    def test_reply_shape_is_present_in_multi_court_mode(self):
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertIn("multi-court mode", prompt)
+        self.assertIn("## Reply shape", prompt)
+
+    def test_reply_shape_carries_no_source_marker_to_copy(self):
+        self.assertNotIn("[source:", self._reply_shape_section())
 
     def test_prompt_has_no_em_dash(self):
         prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
