@@ -14,14 +14,19 @@ from django.db import IntegrityError, transaction
 from django.test import TestCase
 
 from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
-from litigant_portal.app.models import Site, Topic
+from litigant_portal.app.models import Contact, Resource, Site, Topic
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
     DEFAULT_FAST_BEDROCK_MODEL,
     BedrockModel,
 )
 from litigant_portal.app.models.site import SITE_ID
-from litigant_portal.app.selectors.site import site_get, site_get_model
+from litigant_portal.app.selectors.site import (
+    contact_list,
+    resource_list,
+    site_get,
+    site_get_model,
+)
 from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.services.topic_flow import topic_create
@@ -79,6 +84,17 @@ class SiteCacheTests(TestCase):
             # stale copy would be permanent.
             self.assertIsNotNone(cache.get(SITE_CACHE_KEY))
         self.assertEqual(len(callbacks), 1)
+
+    def test_contact_and_resource_lists_are_served_from_cache(self):
+        Contact.objects.create(key="clerk", name="Clerk of Court")
+        Resource.objects.create(
+            key="fees", label="Fee table", url="https://example.test/fees"
+        )
+        contact_list()
+        resource_list()
+        with self.assertNumQueries(0):
+            self.assertEqual([c.key for c in contact_list()], ["clerk"])
+            self.assertEqual([r.key for r in resource_list()], ["fees"])
 
     def test_site_get_model_falls_back_when_unset(self):
         with self.captureOnCommitCallbacks(execute=True):
