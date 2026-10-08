@@ -78,7 +78,7 @@ terminology), add a locale directory earlier in `LOCALE_PATHS`:
 # In settings or a deploy-specific override:
 LOCALE_PATHS = [
     BASE_DIR / "locale_overrides",  # checked first
-    BASE_DIR / "locale",            # project defaults
+    BASE_DIR / "locale",  # project defaults
 ]
 ```
 

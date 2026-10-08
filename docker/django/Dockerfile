@@ -58,9 +58,15 @@ RUN useradd --create-home --shell /bin/bash appuser \
     && chown -R appuser:appuser /app
 USER appuser
 
-# Git SHA of the code being baked in; stamped on chat messages for audit.
+# Provenance of the code being baked in. GIT_SHA is also stamped on chat
+# messages for audit. All three are empty locally, where the source is bind
+# mounted and may carry uncommitted edits that no commit describes.
 ARG GIT_SHA=unknown
 ENV GIT_SHA=${GIT_SHA}
+ARG GIT_BRANCH=""
+ENV GIT_BRANCH=${GIT_BRANCH}
+ARG BUILD_TIME=""
+ENV BUILD_TIME=${BUILD_TIME}
 
 ENTRYPOINT ["docker/django/entrypoint.sh"]
 CMD ["web-prod"]

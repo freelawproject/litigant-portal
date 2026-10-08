@@ -110,6 +110,33 @@ def test_fact_gather_never_prefills_a_protected_question(question_id):
     assert q["value"] == ""
 
 
+@pytest.mark.parametrize("question_id", PROTECTED_IDS)
+def test_fact_gather_flags_a_stored_protected_answer_as_saved(question_id):
+    # The page refuses to echo the value, so "saved" is the only signal the
+    # litigant gets that an answer exists — and the clear checkbox rides on it.
+    section = _fg([Question(id=question_id, label="Protected")])
+    rendered = render_section(
+        section, _corpus(section), {question_id: "stored"}
+    )
+    (q,) = rendered.context["questions"]
+    assert q["saved"] is True
+
+
+def test_fact_gather_unanswered_protected_question_is_not_saved():
+    section = _fg([Question(id="first_name", label="First name")])
+    rendered = render_section(section, _corpus(section), {})
+    (q,) = rendered.context["questions"]
+    assert q["saved"] is False
+
+
+def test_fact_gather_a_plain_answered_question_is_not_flagged_saved():
+    # A plain field shows its value, so blank already means "erase it".
+    section = _fg([Question(id="pubcounty", label="County of publication")])
+    rendered = render_section(section, _corpus(section), {"pubcounty": "Cass"})
+    (q,) = rendered.context["questions"]
+    assert q["saved"] is False
+
+
 def test_fact_gather_carries_choice_metadata():
     section = _fg(
         [
@@ -262,34 +289,56 @@ def test_packet_form_url_reaches_the_template_context():
     }
 
 
-def test_packet_without_interview_url_exposes_none():
-    """No interview_url → context carries None, so the template shows no
-    handoff button. Existing packet corpora are unaffected."""
-    section = PacketOutput(
+def _interview_packet(reference):
+    return PacketOutput(
         kind="output",
         output_type="packet",
         id="forms",
         heading="Your packet",
         forms=["Petition for Name Change"],
+        interview_reference=reference,
     )
+
+
+def test_packet_without_an_interview_offers_no_handoff(settings):
+    # Existing packet corpora are unaffected: plain form list, no button.
+    settings.DOCASSEMBLE_BASE_URL = "http://localhost:8100"
+    section = _interview_packet(None)
     rendered = render_section(section, _corpus(section), {})
-    assert rendered.context["interview_url"] is None
+    assert rendered.context["interview_available"] is False
 
 
-def test_packet_with_interview_url_exposes_it_for_the_button():
-    """interview_url reaches the template context verbatim — that's what drives
-    the 'Fill out your forms' link-out (#543)."""
-    url = "https://da.example/interview?i=docassemble.playground"
+def test_packet_with_an_interview_offers_the_handoff_when_configured(settings):
+    settings.DOCASSEMBLE_BASE_URL = "http://localhost:8100"
+    section = _interview_packet("docassemble.pkg:data/questions/p.yml")
+    rendered = render_section(section, _corpus(section), {})
+    assert rendered.context["interview_available"] is True
+
+
+def test_packet_hides_the_handoff_without_a_configured_docassemble(settings):
+    # The environment, not the corpus, decides whether a handoff exists (#879).
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    section = _interview_packet("docassemble.pkg:data/questions/p.yml")
+    rendered = render_section(section, _corpus(section), {})
+    assert rendered.context["interview_available"] is False
+
+
+def test_packet_context_carries_the_handoff_url_parts():
     section = PacketOutput(
         kind="output",
         output_type="packet",
         id="forms",
         heading="Your packet",
-        forms=["Petition for Name Change"],
-        interview_url=url,
+        forms=["Petition"],
+        interview_reference="docassemble.pkg:data/questions/p.yml",
     )
-    rendered = render_section(section, _corpus(section), {})
-    assert rendered.context["interview_url"] == url
+    context = render_section(section, _corpus(section), {}).context
+    assert (context["court"], context["topic"], context["role"]) == (
+        "c",
+        "t",
+        "r",
+    )
 
 
 # --- dispatch ---------------------------------------------------------------

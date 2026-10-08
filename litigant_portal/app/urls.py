@@ -42,6 +42,16 @@ app_patterns = [
         topic_flow_views.topic_flow_download,
         name="topic_flow_download",
     ),
+    path(
+        "t/<slug:court>/<slug:topic>/<slug:role>/interview/",
+        topic_flow_views.topic_flow_interview,
+        name="topic_flow_interview",
+    ),
+    path(
+        "facts/confirm/",
+        topic_flow_views.topic_flow_confirm,
+        name="topic_flow_confirm",
+    ),
     path("admin/", pages.admin, name="admin_dashboard"),
     path("profile/", pages.ProfileDetailView.as_view(), name="profile"),
     path(
@@ -51,6 +61,21 @@ app_patterns = [
     path("privacy/", pages.privacy, name="privacy"),
     path("accessibility/", pages.accessibility, name="accessibility"),
     path("style-guide/", pages.style_guide, name="style_guide"),
+    path(
+        "style-guide/atomic-design/",
+        pages.atomic_design,
+        name="atomic_design",
+    ),
+    path(
+        "style-guide/accessibility/",
+        pages.a11y_guide,
+        name="a11y_guide",
+    ),
+    path(
+        "style-guide/atomic-design/<slug:stage>/",
+        pages.atomic_design_stage,
+        name="atomic_design_stage",
+    ),
 ]
 
 assistant_patterns = [

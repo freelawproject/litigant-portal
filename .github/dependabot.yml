@@ -1,17 +1,58 @@
 version: 2
 
+# Everything runs monthly, matching the rest of the org (courtlistener,
+# juriscraper, x-ray, courts-db, reporters-db, recap-chrome). Security updates
+# are driven by advisories + the dependency graph and fire regardless of this
+# file; what lives here is version updates, which exist to keep pinned
+# dependencies from going stale.
 updates:
-  # Version updates for GitHub Actions. Security updates already run without this
-  # file (they're driven by advisories + the dependency graph); version updates are
-  # what keep SHA-pinned actions from going stale.
+  # SHA-pinned actions go stale silently — the pin is the point, so nothing
+  # tells us a newer release exists.
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
-      day: monday
-    # One grouped PR per week instead of one per action.
+      interval: monthly
+    # One grouped PR instead of one per action.
     groups:
       github-actions:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: build(deps)
+
+  # Python dependencies. Two uv projects: the app at the root, and the agent
+  # evaluation harness under scripts/, which pins its own deps (litellm,
+  # matplotlib, pydantic, PyYAML) and would otherwise go stale unwatched.
+  #
+  # Deliberately no `ignore` block. Filtering out semver-patch would have cut
+  # the noise, but `ignore` applies to security updates as well as version
+  # updates and takes no `applies-to` key to scope it (that key exists only on
+  # `groups`) — so ignoring patches would silently drop patch-level security
+  # fixes too. Grouping already solves the noise: every update lands as one PR
+  # a month, so dropping patches saved almost nothing and cost real coverage.
+  - package-ecosystem: uv
+    directories:
+      - /
+      - /scripts/agent_eval
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    groups:
+      python:
+        patterns:
+          - '*'
+    commit-message:
+      prefix: build(deps)
+
+  # Pre-commit hook revisions are pinned the same way actions are, and drift the
+  # same way. Version updates only: pre-commit has no security-update support,
+  # and it does not work on private repositories (this one is public).
+  - package-ecosystem: pre-commit
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      pre-commit:
         patterns:
           - '*'
     commit-message:

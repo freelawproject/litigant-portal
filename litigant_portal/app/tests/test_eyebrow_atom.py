@@ -66,9 +66,10 @@ class ChatPageEyebrowTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
-        # Twice each: the desktop aside and the below-lg drawer.
-        self.assertEqual(_heading_count(content, "Recent Activity", "2"), 2)
-        self.assertEqual(_heading_count(content, "Briefcase", "2"), 2)
+        # Once each: the site frame's region is both the desktop column and
+        # the drawer below xl (#988).
+        self.assertEqual(_heading_count(content, "Activity", "2"), 1)
+        self.assertEqual(_heading_count(content, "Briefcase", "2"), 1)
         self.assertEqual(_heading_count(content, "Your files", "4"), 1)
 
 

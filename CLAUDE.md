@@ -6,11 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Access to justice portal for self-represented litigants. Django 6.0 with server-rendered components (Django Cotton), Tailwind CSS v4, and Alpine.js for reactivity.
 
-## Current Focus: Beta Demo — Housing Eviction Flow
+## Current Focus: October SME Review
 
-Building a complete eviction flow from discovery to resolution for court partner demos. One topic, end-to-end, at production quality — every button/link does something, no placeholders. Court-neutral information where partner-specific data isn't available yet.
+Getting each court partner's own instance ready for its subject-matter experts to click through: Franklin County Municipal Court (eviction), Arizona (civil traffic), and North Dakota (name change). Production quality: every button/link does something, no placeholders, and court-neutral information where partner-specific data isn't available yet. The date marks when SME review starts, not a ship date.
 
-- [Milestone](https://github.com/freelawproject/litigant-portal/milestone/3) - Beta Demo: Housing Eviction Flow
+- [Milestone](https://github.com/freelawproject/litigant-portal/milestone/6) - October SME Review
 
 ## Environment Philosophy
 
@@ -28,6 +28,10 @@ The chat model is chosen in the admin settings UI (`BedrockModel` enum), default
 **`make lint`, `make test`, `make pre-commit`** — sandbox restrictions prevent Claude from running these Docker- and Postgres-backed targets. Mitch runs the full lint/test workflow as part of his own process. A single post-commit mention is plenty; don't re-prompt about it across the commit/PR steps.
 
 **DB-free fast tests** — when `.tox/fast` exists _and_ is current, Claude can run a focused test directly with `.tox/fast/bin/pytest <path>`. **Existence is not enough:** the env is built from `uv.lock`, and a stale one fails at import (`ModuleNotFoundError`) rather than reporting a test failure. After any dependency change, `tox -e fast --recreate`. Use that suite for a real RED→GREEN cycle on non-DB units: write the focused test, run it and confirm that it fails for the expected reason, implement the change, then rerun it to green. Tests marked `postgres` require `make test` and Docker. The fast marker filter is not a complete database-isolation boundary: unmarked tests may still use Django's database, so run only focused tests already known to be DB-free through this path.
+
+**Architecture diagrams** — after editing any `docs/architecture/*.drawio`, run `make diagrams` to regenerate its `.drawio.svg` render, and commit both files. It re-exports only sources newer than their render, because draw.io stamps a random id into every SVG and a blanket regenerate is pure diff noise. Claude must run it outside the sandbox: the draw.io CLI is an Electron app, and Electron aborts at startup (`bootstrap_check_in … Permission denied`, then `SIGTRAP`) when the macOS sandbox denies it a Mach port. Before re-exporting, check the source with `xmllint --noout <file>.drawio`. draw.io renders a malformed file (for example, `--` inside an XML comment) only up to the error and reports no failure, so a broken diagram exports looking half-empty.
+
+**Tooling is OS-agnostic.** Scripts and `make` targets must work on both macOS and Linux; the rules are in [CONTRIBUTING.md](CONTRIBUTING.md#dev-tooling-runs-on-macos-and-linux).
 
 ### Local Development (Docker)
 
@@ -108,6 +112,8 @@ CODEOWNERS puts **every** owner on **every** PR, but the ruleset requires only *
 - it has been **waiting on Mitch for more than a day** — his review is the one outstanding and nothing else is blocking it
 
 Everything else is noise. This applies to the morning briefing, board audits, and any PR sweep.
+
+The review hand-off itself — who holds the PR at each step, and who merges — is contributor-facing and lives in [CONTRIBUTING.md](CONTRIBUTING.md#review-the-assignee-is-the-baton). Don't restate it here.
 
 ## Issue creation
 
@@ -231,7 +237,7 @@ When choosing how to implement UI behavior, follow this priority order:
 
 **Layout stability (WCAG + mobile-first):**
 
-Every page follows the same frame: **site header → sub-header (contextual) → content (scrollable)**. The sub-header varies per view (topic cards on home, topic context on chat, etc.) but is always in the same position and never shifts when state changes. Content is the only area that grows and scrolls.
+Chat, home and the topic flow share one frame (`frame_base.html` → `c-organisms.site-frame`, #988): **sticky site header → left region · content · right region**. From `xl` up the regions sit beside the content; below `xl` they're popover drawers opened from the header. The regions keep their place on every framed page and show an empty state when a page has nothing for them yet, so the frame never shifts when state changes.
 
 - **No mode-switching layouts.** Never toggle between completely different DOM structures based on state (e.g., hero vs. chat mode). Users with cognitive or motor disabilities rely on consistent placement of controls and landmarks.
 - **Mobile-first and responsive**, but layout stability for WCAG always wins over visual flair. Buttons, links, and navigation stay in predictable locations across all views and states.
@@ -246,8 +252,8 @@ Components live in `litigant_portal/app/templates/cotton/` using Atomic Design h
 ```
 litigant_portal/app/templates/cotton/
 ├── atoms/      # Basic elements: alert, auto_dismiss, badge, button, checkbox, eyebrow, icon, input, link, nav_link, search_input, select
-├── molecules/  # Combinations: auth_status, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, toast_container, topic_card, user_menu
-└── organisms/  # Complex sections: auth_cta, auth_layout, chat_header, fallback_resources, footer, header, hero, topic_grid
+├── molecules/  # Combinations: auth_status, briefcase_fact, empty_state, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, site_menu, toast_container, topic_card, user_menu
+└── organisms/  # Complex sections: auth_cta, auth_layout, briefcase_panel, fallback_resources, header, hero, site_frame, topic_grid
 ```
 
 **Syntax:** `<c-atoms.button>`, `<c-molecules.logo>`, `<c-organisms.header>`

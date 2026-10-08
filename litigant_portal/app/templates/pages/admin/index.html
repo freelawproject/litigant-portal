@@ -2,10 +2,6 @@
 
 {% load static i18n %}
 
-{% block header %}
-  {% include "cotton/organisms/chat_header.html" %}
-{% endblock header %}
-
 {% block body_class %}h-dvh flex flex-col bg-greyscale-25{% endblock body_class %}
 
 {% block main_class %}min-h-0 flex flex-col{% endblock main_class %}
@@ -82,5 +78,3 @@
   <script src="{% static 'js/admin.js' %}"></script>
 {% endblock extra_js %}
 
-{% block footer %}
-{% endblock footer %}

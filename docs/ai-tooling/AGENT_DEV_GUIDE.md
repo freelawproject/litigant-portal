@@ -127,6 +127,19 @@ def generate_system_prompt(self, *, thread_id) -> str:
 > `refresh_system_prompt=True`). This is what lets state changes show up in the
 > model's instructions instantly.
 
+### Optional: the identity part — `generate_identity_prompt(thread_id)`
+
+`generate_system_prompt` is the **shared** prompt: the engine hashes it and
+stores it in a `PromptArtifact` row that other threads and identities reuse,
+so nothing about the person may go in it. Anything per-person (the litigant
+assistant puts its stored-facts section here) comes from
+`generate_identity_prompt`, which returns an `IdentityPrompt(text, values)` or
+`None` (the default). The engine appends `text` to the shared prompt for the
+model and keeps it with the assistant message, so it is deleted with the
+thread. `values` maps each variable name to the value as it appears in
+`text`, so a later pass can redact by name. Both methods are regenerated
+together on a refresh.
+
 ### Optional: the per-message hook — `prepare_thread(thread_id)`
 
 The engine calls `prepare_thread(thread_id=...)` **once per user message**,
@@ -149,10 +162,12 @@ can **read and manipulate state**.
 ```python
 class CheckWeather(Tool):
     """Check the current weather for a location."""
+
     location: str = Field(description="City or place to check the weather for")
 
     def __call__(self, *, thread_id) -> ToolOutput:
-        ...  # load thread, mutate state, return ToolOutput
+        # load thread, mutate state, return ToolOutput
+        ...
 ```
 
 The engine auto-generates the function schema from the model (`get_schema()`),
@@ -178,15 +193,17 @@ return ToolOutput(
 
 ### 5. Tool rendering — default box, custom template, or nothing
 
-Every tool call and every tool result is rendered in the conversation. You
-control how with two class attributes, `tool_call_template` and
+A tool call or result shows in the conversation only when its tool gives it a
+template. Two class attributes control it, `tool_call_template` and
 `tool_result_template`:
 
-| Value                        | Behavior                                                                |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `None` _(default)_           | The engine renders a **slick JSON box** of the call args / result data. |
-| `False`                      | Render **nothing**.                                                     |
-| `"tools/your_template.html"` | Render a **custom Django template** under `templates/tools/`.           |
+| Value                        | Behavior                                                      |
+| ---------------------------- | ------------------------------------------------------------- |
+| `None` _(default)_ / `False` | Render **nothing**.                                           |
+| `"tools/your_template.html"` | Render a **custom Django template** under `templates/tools/`. |
+
+Raw args and result data are never shown to the user. A call to a tool name the
+agent doesn't have renders nothing too.
 
 The call template receives `{ args }` (the tool's inputs); the result template
 receives `{ data }` (the tool's `render_data`). The engine renders them to HTML
@@ -195,7 +212,7 @@ ordinary Django + cotton.
 
 > The **call** card is transient — the frontend shows it only while that tool is
 > the last thing on screen (perfect for a "working…" spinner). The **result**
-> card persists. Default JSON boxes persist for both.
+> card persists.
 
 ---
 
@@ -220,7 +237,7 @@ class CheckWeather(Tool):
 
     location: str = Field(description="City or place to check the weather for")
 
-    # INGREDIENT 5: custom templates (None → JSON box, False → nothing)
+    # INGREDIENT 5: custom templates (None or False → nothing)
     tool_call_template = "tools/check_weather_call.html"
     tool_result_template = "tools/check_weather_result.html"
 
@@ -269,9 +286,9 @@ class WeatherState(AgentState):
 class WeatherAgent(Agent):
     """A demo agent that can check the weather."""
 
-    completion_args = {"max_tokens": 1000}       # INGREDIENT 1: LLM config
-    state_schema = WeatherState                  # INGREDIENT 2
-    tools = [CheckWeather]                        # INGREDIENT 4
+    completion_args = {"max_tokens": 1000}  # INGREDIENT 1: LLM config
+    state_schema = WeatherState  # INGREDIENT 2
+    tools = [CheckWeather]  # INGREDIENT 4
 
     # INGREDIENT 3: the system prompt, built from the thread (state + user +
     # conversation are all reachable here).
@@ -349,6 +366,7 @@ example — it binds `LitigantAssistant` and adds the upload endpoints:
 # litigant_portal/app/views/assistant.py
 THREAD_TYPE = "user_chat"
 
+
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def stream(request: HttpRequest):
@@ -358,6 +376,7 @@ def stream(request: HttpRequest):
         thread_type=THREAD_TYPE,
         model=site_get_model(role="assistant"),
     )
+
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
@@ -370,7 +389,9 @@ Mount the surface under its own URL namespace in `urls.py`:
 ```python
 path(
     "api/agents/assistant/",
-    include((assistant_patterns, "litigant_portal.app"), namespace="assistant"),
+    include(
+        (assistant_patterns, "litigant_portal.app"), namespace="assistant"
+    ),
 )
 ```
 
@@ -509,8 +530,8 @@ engine already uses for tool data and hidden messages.
 4. Write one `Tool` subclass per action, one file each under `agents/tools/`;
    return `ToolOutput(result, render_data, refresh_system_prompt)`; mutate
    state through the thread.
-5. (Optional) Add `templates/tools/*.html` for custom call/result cards — or
-   leave the default JSON box.
+5. (Optional) Add `templates/tools/*.html` for custom call/result cards;
+   without them the tool runs with nothing shown.
 6. Subclass `Agent`, set `completion_args`, `state_schema`, and `tools`
    (each imported by its module path under `tools/`); export the agent from
    `agents/__init__.py`.

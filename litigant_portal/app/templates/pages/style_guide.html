@@ -1,1185 +1,1245 @@
-{% extends "base.html" %}
+{% extends "pages/internal_base.html" %}
 
-{% load heroicons %}
+{% load heroicons static %}
 
 {% block title %}
   Style Guide - Litigant Portal
 {% endblock title %}
 
-{% block content %}
-  <div class="max-w-content mx-auto px-4 py-8">
-    <div class="flex flex-col md:flex-row gap-8">
-      <nav class="md:w-64 md:flex-shrink-0 md:sticky md:top-8 md:self-start md:max-h-[calc(100vh-4rem)] md:overflow-y-auto"
-           aria-label="Style guide navigation">
-        <details open class="mb-2 nav-accordion">
-          <summary class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-greyscale-500 uppercase tracking-wider hover:text-primary-600 list-none [&::-webkit-details-marker]:hidden">
-            <span class="w-4 h-4 flex-shrink-0 nav-chevron flex items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
-            <a href="#design-tokens" class="hover:text-primary-600">Design Tokens</a>
-          </summary>
-          <ul class="list-none pl-5 mt-1 border-l border-greyscale-200 ml-2">
-            <li>
-              <a href="#colors"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Colors</a>
-            </li>
-            <li>
-              <a href="#typography"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Typography</a>
-            </li>
-            <li>
-              <a href="#layout"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Layout</a>
-            </li>
-          </ul>
-        </details>
-        <details open class="mb-2 nav-accordion">
-          <summary class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-greyscale-500 uppercase tracking-wider hover:text-primary-600 list-none [&::-webkit-details-marker]:hidden">
-            <span class="w-4 h-4 flex-shrink-0 nav-chevron flex items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
-            <a href="#atoms" class="hover:text-primary-600">Atoms</a>
-          </summary>
-          <ul class="list-none pl-5 mt-1 border-l border-greyscale-200 ml-2">
-            <li>
-              <a href="#buttons"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Buttons</a>
-            </li>
-            <li>
-              <a href="#inputs"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Inputs</a>
-            </li>
-            <li>
-              <a href="#search-input"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Search Input</a>
-            </li>
-            <li>
-              <a href="#selects"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Selects</a>
-            </li>
-            <li>
-              <a href="#links"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Links</a>
-            </li>
-            <li>
-              <a href="#icons"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Icons</a>
-            </li>
-            <li>
-              <a href="#alerts"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Alerts</a>
-            </li>
-            <li>
-              <a href="#badges"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Badges</a>
-            </li>
-            <li>
-              <a href="#eyebrow"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Eyebrow</a>
-            </li>
-            <li>
-              <a href="#checkbox"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Checkbox</a>
-            </li>
-            <li>
-              <a href="#nav-link"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Nav Link</a>
-            </li>
-            <li>
-              <a href="#auto-dismiss"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auto Dismiss</a>
-            </li>
-          </ul>
-        </details>
-        <details open class="mb-2 nav-accordion">
-          <summary class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-greyscale-500 uppercase tracking-wider hover:text-primary-600 list-none [&::-webkit-details-marker]:hidden">
-            <span class="w-4 h-4 flex-shrink-0 nav-chevron flex items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
-            <a href="#molecules" class="hover:text-primary-600">Molecules</a>
-          </summary>
-          <ul class="list-none pl-5 mt-1 border-l border-greyscale-200 ml-2">
-            <li>
-              <a href="#logo"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Logo</a>
-            </li>
-            <li>
-              <a href="#search-bar"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Search Bar</a>
-            </li>
-            <li>
-              <a href="#topic-card"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Topic Card</a>
-            </li>
-            <li>
-              <a href="#briefcase-fact"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Briefcase Fact</a>
-            </li>
-            <li>
-              <a href="#form-errors"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Errors</a>
-            </li>
-            <li>
-              <a href="#form-field"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Field</a>
-            </li>
-            <li>
-              <a href="#form-field-select"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Form Field Select</a>
-            </li>
-            <li>
-              <a href="#auth-status"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth Status</a>
-            </li>
-            <li>
-              <a href="#toast-container"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Toast Container</a>
-            </li>
-            <li>
-              <a href="#user-menu"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">User Menu</a>
-            </li>
-          </ul>
-        </details>
-        <details open class="mb-2 nav-accordion">
-          <summary class="flex items-center gap-2 cursor-pointer text-sm font-semibold text-greyscale-500 uppercase tracking-wider hover:text-primary-600 list-none [&::-webkit-details-marker]:hidden">
-            <span class="w-4 h-4 flex-shrink-0 nav-chevron flex items-center justify-center">{% heroicon_outline "chevron-right" size=16 %}</span>
-            <a href="#organisms" class="hover:text-primary-600">Organisms</a>
-          </summary>
-          <ul class="list-none pl-5 mt-1 border-l border-greyscale-200 ml-2">
-            <li>
-              <a href="#header"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Header</a>
-            </li>
-            <li>
-              <a href="#hero"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Hero</a>
-            </li>
-            <li>
-              <a href="#topic-grid"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Topic Grid</a>
-            </li>
-            <li>
-              <a href="#footer"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Footer</a>
-            </li>
-            <li>
-              <a href="#briefcase-panel"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Briefcase Panel</a>
-            </li>
-            <li>
-              <a href="#fallback-resources"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Fallback Resources</a>
-            </li>
-            <li>
-              <a href="#auth-cta"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth CTA</a>
-            </li>
-            <li>
-              <a href="#auth-layout"
-                 class="block py-1 text-sm text-greyscale-600 hover:text-primary-600 pl-2">Auth Layout</a>
-            </li>
-          </ul>
-        </details>
-      </nav>
-      <main class="flex-1 max-w-3xl">
-        <header class="mb-12">
-          <p class="text-sm font-semibold text-primary-600 uppercase mb-2">Litigant Portal</p>
-          <h1>Style Guide</h1>
-          <p class="mt-4 text-greyscale-600">
-            Design tokens and component library for the Litigant Portal.
-            Components use
-            <a href="https://django-cotton.com"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="underline">Django Cotton</a>,
-            <a href="https://alpinejs.dev"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="underline">Alpine.js</a>, and
-            <a href="https://tailwindcss.com"
-               target="_blank"
-               rel="noopener noreferrer"
-               class="underline">Tailwind CSS</a>.
+{% block internal_title %}
+  Style Guide
+{% endblock internal_title %}
+
+{% block internal_lede %}
+  Design tokens and component library for the Litigant Portal. Components use
+  <a href="https://django-cotton.com"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="underline">Django Cotton</a>,
+  <a href="https://alpinejs.dev"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="underline">Alpine.js</a>, and
+  <a href="https://tailwindcss.com"
+     target="_blank"
+     rel="noopener noreferrer"
+     class="underline">Tailwind CSS</a>.
+{% endblock internal_lede %}
+
+{% block internal_body %}
+  {# Sample court art for the Logo and Header entries, until a real court logo comes from Site config (#771). #}
+  {% static 'images/style_guide/sample_court_logo.png' as sample_court_logo %}
+  {% static 'images/style_guide/sample_court_name.png' as sample_court_name_image %}
+  <div class="max-w-workbench mx-auto px-4 py-8">
+    <c-organisms.sidebar-layout nav_label="Style guide navigation">
+      <c-slot name="sidebar">
+        <c-molecules.side-nav-group label="Design Tokens" href="#design-tokens">
+          <li><c-atoms.link href="#colors" variant="unstyled">Colors</c-atoms.link></li>
+          <li><c-atoms.link href="#typography" variant="unstyled">Typography</c-atoms.link></li>
+          <li><c-atoms.link href="#layout" variant="unstyled">Layout</c-atoms.link></li>
+        </c-molecules.side-nav-group>
+        <c-molecules.side-nav-group label="Atoms" href="#atoms">
+          <li><c-atoms.link href="#buttons" variant="unstyled">Buttons</c-atoms.link></li>
+          <li><c-atoms.link href="#inputs" variant="unstyled">Inputs</c-atoms.link></li>
+          <li><c-atoms.link href="#search-input" variant="unstyled">Search Input</c-atoms.link></li>
+          <li><c-atoms.link href="#selects" variant="unstyled">Selects</c-atoms.link></li>
+          <li><c-atoms.link href="#links" variant="unstyled">Links</c-atoms.link></li>
+          <li><c-atoms.link href="#icons" variant="unstyled">Icons</c-atoms.link></li>
+          <li><c-atoms.link href="#alerts" variant="unstyled">Alerts</c-atoms.link></li>
+          <li><c-atoms.link href="#badges" variant="unstyled">Badges</c-atoms.link></li>
+          <li><c-atoms.link href="#eyebrow" variant="unstyled">Eyebrow</c-atoms.link></li>
+          <li><c-atoms.link href="#checkbox" variant="unstyled">Checkbox</c-atoms.link></li>
+          <li><c-atoms.link href="#nav-link" variant="unstyled">Nav Link</c-atoms.link></li>
+          <li><c-atoms.link href="#auto-dismiss" variant="unstyled">Auto Dismiss</c-atoms.link></li>
+          <li><c-atoms.link href="#section-heading" variant="unstyled">Section Heading</c-atoms.link></li>
+          <li><c-atoms.link href="#a11y-demo" variant="unstyled">A11y Demo</c-atoms.link></li>
+        </c-molecules.side-nav-group>
+        <c-molecules.side-nav-group label="Molecules" href="#molecules">
+          <li><c-atoms.link href="#logo" variant="unstyled">Logo</c-atoms.link></li>
+          <li><c-atoms.link href="#search-bar" variant="unstyled">Search Bar</c-atoms.link></li>
+          <li><c-atoms.link href="#topic-card" variant="unstyled">Topic Card</c-atoms.link></li>
+          <li><c-atoms.link href="#briefcase-fact" variant="unstyled">Briefcase Fact</c-atoms.link></li>
+          <li><c-atoms.link href="#form-errors" variant="unstyled">Form Errors</c-atoms.link></li>
+          <li><c-atoms.link href="#form-field" variant="unstyled">Form Field</c-atoms.link></li>
+          <li><c-atoms.link href="#form-field-select" variant="unstyled">Form Field Select</c-atoms.link></li>
+          <li><c-atoms.link href="#auth-status" variant="unstyled">Auth Status</c-atoms.link></li>
+          <li><c-atoms.link href="#toast-container" variant="unstyled">Toast Container</c-atoms.link></li>
+          <li><c-atoms.link href="#user-menu" variant="unstyled">User Menu</c-atoms.link></li>
+          <li><c-atoms.link href="#empty-state" variant="unstyled">Empty State</c-atoms.link></li>
+          <li><c-atoms.link href="#site-menu" variant="unstyled">Site Menu</c-atoms.link></li>
+          <li><c-atoms.link href="#selector-card" variant="unstyled">Selector Card</c-atoms.link></li>
+          <li><c-atoms.link href="#side-nav-group" variant="unstyled">Side Nav Group</c-atoms.link></li>
+          <li><c-atoms.link href="#verdict-card" variant="unstyled">Verdict Card</c-atoms.link></li>
+          <li><c-atoms.link href="#guide-section" variant="unstyled">Guide Section</c-atoms.link></li>
+        </c-molecules.side-nav-group>
+        <c-molecules.side-nav-group label="Organisms" href="#organisms">
+          <li><c-atoms.link href="#header" variant="unstyled">Header</c-atoms.link></li>
+          <li><c-atoms.link href="#hero" variant="unstyled">Hero</c-atoms.link></li>
+          <li><c-atoms.link href="#topic-grid" variant="unstyled">Topic Grid</c-atoms.link></li>
+          <li><c-atoms.link href="#site-frame" variant="unstyled">Site Frame</c-atoms.link></li>
+          <li><c-atoms.link href="#briefcase-panel" variant="unstyled">Briefcase Panel</c-atoms.link></li>
+          <li><c-atoms.link href="#fallback-resources" variant="unstyled">Fallback Resources</c-atoms.link></li>
+          <li><c-atoms.link href="#auth-cta" variant="unstyled">Auth CTA</c-atoms.link></li>
+          <li><c-atoms.link href="#auth-layout" variant="unstyled">Auth Layout</c-atoms.link></li>
+          <li><c-atoms.link href="#sidebar-layout" variant="unstyled">Sidebar Layout</c-atoms.link></li>
+        </c-molecules.side-nav-group>
+      </c-slot>
+      {# The canvas is the content column's width, so components show at the #}
+      {# size they get on litigant pages. #}
+      <section id="design-tokens" aria-labelledby="design-tokens-heading">
+        <c-atoms.section-heading id="design-tokens-heading" class="mb-8">Design Tokens</c-atoms.section-heading>
+        <section id="colors" class="mb-12" aria-labelledby="colors-heading">
+          <h3 id="colors-heading" class="mb-4">Colors</h3>
+          <p class="text-greyscale-600 mb-6">
+            Color tokens defined in <code>litigant_portal/app/src/main.css</code> via
+            Tailwind v4 <code>@theme</code>.
           </p>
-        </header>
-        <section id="design-tokens" aria-labelledby="design-tokens-heading">
-          <h2 id="design-tokens-heading"
-              class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Design Tokens</h2>
-          <section id="colors" class="mb-12" aria-labelledby="colors-heading">
-            <h3 id="colors-heading" class="mb-4">Colors</h3>
-            <p class="text-greyscale-600 mb-6">
-              Color tokens defined in <code>litigant_portal/app/src/main.css</code> via
-              Tailwind v4 <code>@theme</code>.
-            </p>
-            <div class="mb-8">
-              <h4 class="mb-3">Greyscale</h4>
-              <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
-                <div>
-                  <div class="h-12 bg-greyscale-25 rounded border border-greyscale-200"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">25</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-50 rounded border border-greyscale-200"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">50</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-100 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">100</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-200 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">200</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-300 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">300</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-400 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">400</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-500 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">500</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-600 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">600</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-700 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">700</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-800 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">800</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-900 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">900</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-greyscale-950 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">950</p>
-                </div>
+          <div class="mb-8">
+            <h4 class="mb-3">Greyscale</h4>
+            <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+              <div>
+                <div class="h-12 bg-greyscale-25 rounded border border-greyscale-200"></div>
+                <p class="text-xs mt-1 text-greyscale-500">25</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-50 rounded border border-greyscale-200"></div>
+                <p class="text-xs mt-1 text-greyscale-500">50</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-100 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">100</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-200 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">200</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-300 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">300</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-400 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">400</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-500 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">500</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-600 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">600</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-700 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">700</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-800 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">800</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-900 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">900</p>
+              </div>
+              <div>
+                <div class="h-12 bg-greyscale-950 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">950</p>
               </div>
             </div>
-            <div class="mb-8">
-              <h4 class="mb-3">Primary (Coral)</h4>
-              <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
-                <div>
-                  <div class="h-12 bg-primary-25 rounded border border-greyscale-200"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">25</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-50 rounded border border-greyscale-200"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">50</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-100 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">100</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-200 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">200</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-300 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">300</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-400 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">400</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-500 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">500</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-600 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">600</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-700 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">700</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-800 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">800</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-900 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">900</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-primary-950 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">950</p>
-                </div>
+          </div>
+          <div class="mb-8">
+            <h4 class="mb-3">Primary (Coral)</h4>
+            <div class="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+              <div>
+                <div class="h-12 bg-primary-25 rounded border border-greyscale-200"></div>
+                <p class="text-xs mt-1 text-greyscale-500">25</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-50 rounded border border-greyscale-200"></div>
+                <p class="text-xs mt-1 text-greyscale-500">50</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-100 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">100</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-200 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">200</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-300 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">300</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-400 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">400</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-500 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">500</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-600 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">600</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-700 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">700</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-800 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">800</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-900 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">900</p>
+              </div>
+              <div>
+                <div class="h-12 bg-primary-950 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">950</p>
               </div>
             </div>
-            <div class="mb-8">
-              <h4 class="mb-3">Brand (Purple)</h4>
-              <div class="grid grid-cols-4 gap-2 max-w-xs">
-                <div>
-                  <div class="h-12 bg-brand-100 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">100</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-brand-300 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">300</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-brand-600 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">600</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-brand-700 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">700</p>
-                </div>
+          </div>
+          <div class="mb-8">
+            <h4 class="mb-3">Brand (Purple)</h4>
+            <div class="grid grid-cols-4 gap-2 max-w-xs">
+              <div>
+                <div class="h-12 bg-brand-100 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">100</p>
+              </div>
+              <div>
+                <div class="h-12 bg-brand-300 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">300</p>
+              </div>
+              <div>
+                <div class="h-12 bg-brand-600 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">600</p>
+              </div>
+              <div>
+                <div class="h-12 bg-brand-700 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">700</p>
               </div>
             </div>
-            <div>
-              <h4 class="mb-3">Semantic</h4>
-              <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-md">
-                <div>
-                  <div class="h-12 bg-green-600 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">Success</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-yellow-400 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">Warning</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-red-600 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">Danger</p>
-                </div>
-                <div>
-                  <div class="h-12 bg-blue-700 rounded"></div>
-                  <p class="text-xs mt-1 text-greyscale-500">Info</p>
-                </div>
+          </div>
+          <div>
+            <h4 class="mb-3">Semantic</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-md">
+              <div>
+                <div class="h-12 bg-green-600 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">Success</p>
+              </div>
+              <div>
+                <div class="h-12 bg-yellow-400 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">Warning</p>
+              </div>
+              <div>
+                <div class="h-12 bg-red-600 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">Danger</p>
+              </div>
+              <div>
+                <div class="h-12 bg-blue-700 rounded"></div>
+                <p class="text-xs mt-1 text-greyscale-500">Info</p>
               </div>
             </div>
-          </section>
-          <section id="typography" class="mb-12" aria-labelledby="typography-heading">
-            <h3 id="typography-heading" class="mb-4">Typography</h3>
-            <div class="mb-8">
-              <h4 class="mb-3">Font Families</h4>
-              <div class="space-y-3">
-                <div class="p-4 bg-greyscale-50 rounded-lg">
-                  <p class="font-sans text-lg">Inter (font-sans) - Body text, UI</p>
-                </div>
-                <div class="p-4 bg-greyscale-50 rounded-lg">
-                  <p class="font-cooper text-lg font-semibold">Cooper Hewitt (font-cooper) - Headings</p>
-                </div>
-                <div class="p-4 bg-greyscale-50 rounded-lg">
-                  <p class="font-mono text-lg">DM Mono (font-mono) - Code</p>
-                </div>
-              </div>
-            </div>
-            <div class="mb-8">
-              <h4 class="mb-3">Headings</h4>
-              <div class="space-y-3 p-4 bg-greyscale-50 rounded-lg">
-                <h1>Heading 1</h1>
-                <h2>Heading 2</h2>
-                <h3>Heading 3</h3>
-                <h4>Heading 4</h4>
-              </div>
-            </div>
-            <div>
-              <h4 class="mb-3">Text Sizes</h4>
-              <div class="space-y-2">
-                <p class="text-xs">
-                  <code class="mr-2">text-xs</code> 12px
-                </p>
-                <p class="text-sm">
-                  <code class="mr-2">text-sm</code> 14px
-                </p>
-                <p class="text-md">
-                  <code class="mr-2">text-md</code> 16px
-                </p>
-                <p class="text-lg">
-                  <code class="mr-2">text-lg</code> 18px
-                </p>
-                <p class="text-xl">
-                  <code class="mr-2">text-xl</code> 20px
-                </p>
-              </div>
-            </div>
-          </section>
-          <section id="layout" class="mb-12" aria-labelledby="layout-heading">
-            <h3 id="layout-heading" class="mb-4">Layout</h3>
-            <div class="bg-greyscale-100 rounded-xl p-4">
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>max-w-content</code></span>
-                <span class="p-2.5">948px - Main content width</span>
-              </div>
-            </div>
-          </section>
+          </div>
         </section>
-        <section id="atoms" aria-labelledby="atoms-heading">
-          <h2 id="atoms-heading"
-              class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Atoms</h2>
-          <section id="buttons" class="mb-12" aria-labelledby="buttons-heading">
-            <h3 id="buttons-heading" class="mb-4">Buttons</h3>
-            <p class="text-greyscale-600 mb-6">Accessible button component with multiple variants.</p>
-            <div class="flex flex-wrap gap-3 mb-6">
-              <c-atoms.button variant="primary">Primary</c-atoms.button>
-              <c-atoms.button variant="outline">Outline</c-atoms.button>
-              <c-atoms.button variant="subtle">Subtle</c-atoms.button>
-              <c-atoms.button variant="dark">Dark</c-atoms.button>
-              <c-atoms.button variant="ghost">Ghost</c-atoms.button>
-              <c-atoms.button variant="danger">Danger</c-atoms.button>
-            </div>
-            <div class="flex flex-wrap gap-3 mb-6">
-              <c-atoms.button variant="primary" size="sm">Small</c-atoms.button>
-              <c-atoms.button variant="primary">Default</c-atoms.button>
-              <c-atoms.button variant="primary" size="xl">Extra Large</c-atoms.button>
-            </div>
-            <div class="flex flex-wrap gap-3 mb-6">
-              <c-atoms.button variant="primary" disabled>Primary</c-atoms.button>
-              <c-atoms.button variant="outline" disabled>Outline</c-atoms.button>
-              <c-atoms.button variant="subtle" disabled>Subtle</c-atoms.button>
-              <c-atoms.button variant="dark" disabled>Dark</c-atoms.button>
-              <c-atoms.button variant="ghost" disabled>Ghost</c-atoms.button>
-              <c-atoms.button variant="danger" disabled>Danger</c-atoms.button>
-            </div>
-            <div class="flex flex-wrap gap-3 mb-6">
-              <c-atoms.button variant="primary" href="#">Link Button</c-atoms.button>
-              <c-atoms.button variant="primary" href="#" disabled>Disabled Link</c-atoms.button>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
-                <span class="p-2.5">"primary" | "outline" | "subtle" | "dark" | "ghost" | "danger"</span>
+        <section id="typography" class="mb-12" aria-labelledby="typography-heading">
+          <h3 id="typography-heading" class="mb-4">Typography</h3>
+          <div class="mb-8">
+            <h4 class="mb-3">Font Families</h4>
+            <div class="space-y-3">
+              <div class="p-4 bg-greyscale-50 rounded-lg">
+                <p class="font-sans text-lg">Inter (font-sans) - Body text, UI</p>
               </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
-                <span class="p-2.5">"sm" | "" | "xl" | "icon" | "icon-xl"</span>
+              <div class="p-4 bg-greyscale-50 rounded-lg">
+                <p class="font-cooper text-lg font-semibold">Cooper Hewitt (font-cooper) - Headings</p>
               </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
-                <span class="p-2.5">URL string — renders as &lt;a&gt; instead of &lt;button&gt;</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
-                <span class="p-2.5">Boolean — uses <code>aria-disabled</code> for links</span>
+              <div class="p-4 bg-greyscale-50 rounded-lg">
+                <p class="font-mono text-lg">DM Mono (font-mono) - Code</p>
               </div>
             </div>
-            <details class="mt-4">
-              <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
-              <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-lg p-4 overflow-x-auto text-sm"><code>&lt;c-atoms.button variant="primary"&gt;Primary&lt;/c-atoms.button&gt;
+          </div>
+          <div class="mb-8">
+            <h4 class="mb-3">Headings</h4>
+            <div class="space-y-3 p-4 bg-greyscale-50 rounded-lg">
+              <h1>Heading 1</h1>
+              <h2>Heading 2</h2>
+              <h3>Heading 3</h3>
+              <h4>Heading 4</h4>
+            </div>
+          </div>
+          <div>
+            <h4 class="mb-3">Text Sizes</h4>
+            <div class="space-y-2">
+              <p class="text-xs">
+                <code class="mr-2">text-xs</code> 12px
+              </p>
+              <p class="text-sm">
+                <code class="mr-2">text-sm</code> 14px
+              </p>
+              <p class="text-md">
+                <code class="mr-2">text-md</code> 16px
+              </p>
+              <p class="text-lg">
+                <code class="mr-2">text-lg</code> 18px
+              </p>
+              <p class="text-xl">
+                <code class="mr-2">text-xl</code> 20px
+              </p>
+            </div>
+          </div>
+        </section>
+        <section id="layout" class="mb-12" aria-labelledby="layout-heading">
+          <h3 id="layout-heading" class="mb-4">Layout</h3>
+          <div class="bg-greyscale-100 rounded-xl p-4">
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>max-w-content</code></span>
+              <span class="p-2.5">948px - Main content width</span>
+            </div>
+          </div>
+        </section>
+      </section>
+      <section id="atoms" aria-labelledby="atoms-heading">
+        <c-atoms.section-heading id="atoms-heading" class="mb-8">Atoms</c-atoms.section-heading>
+        <section id="buttons" class="mb-12" aria-labelledby="buttons-heading">
+          <h3 id="buttons-heading" class="mb-4">Buttons</h3>
+          <p class="text-greyscale-600 mb-6">Accessible button component with multiple variants.</p>
+          <div class="flex flex-wrap gap-3 mb-6">
+            <c-atoms.button variant="primary">Primary</c-atoms.button>
+            <c-atoms.button variant="outline">Outline</c-atoms.button>
+            <c-atoms.button variant="subtle">Subtle</c-atoms.button>
+            <c-atoms.button variant="dark">Dark</c-atoms.button>
+            <c-atoms.button variant="ghost">Ghost</c-atoms.button>
+            <c-atoms.button variant="danger">Danger</c-atoms.button>
+          </div>
+          <div class="flex flex-wrap gap-3 mb-6">
+            <c-atoms.button variant="primary" size="sm">Small</c-atoms.button>
+            <c-atoms.button variant="primary">Default</c-atoms.button>
+            <c-atoms.button variant="primary" size="xl">Extra Large</c-atoms.button>
+          </div>
+          <div class="flex flex-wrap gap-3 mb-6">
+            <c-atoms.button variant="primary" disabled>Primary</c-atoms.button>
+            <c-atoms.button variant="outline" disabled>Outline</c-atoms.button>
+            <c-atoms.button variant="subtle" disabled>Subtle</c-atoms.button>
+            <c-atoms.button variant="dark" disabled>Dark</c-atoms.button>
+            <c-atoms.button variant="ghost" disabled>Ghost</c-atoms.button>
+            <c-atoms.button variant="danger" disabled>Danger</c-atoms.button>
+          </div>
+          <div class="flex flex-wrap gap-3 mb-6">
+            <c-atoms.button variant="primary" href="#">Link Button</c-atoms.button>
+            <c-atoms.button variant="primary" href="#" disabled>Disabled Link</c-atoms.button>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+              <span class="p-2.5">"primary" | "outline" | "subtle" | "dark" | "ghost" | "danger"</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
+              <span class="p-2.5">"sm" | "" | "xl" | "icon" | "icon-xl"</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+              <span class="p-2.5">URL string — renders as &lt;a&gt; instead of &lt;button&gt;</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
+              <span class="p-2.5">Boolean — uses <code>aria-disabled</code> for links</span>
+            </div>
+          </div>
+          <details class="mt-4">
+            <summary class="cursor-pointer text-sm font-medium text-greyscale-600 hover:text-greyscale-900">Show code</summary>
+            <pre class="mt-2 bg-greyscale-50 border border-greyscale-300 rounded-lg p-4 overflow-x-auto text-sm"><code>&lt;c-atoms.button variant="primary"&gt;Primary&lt;/c-atoms.button&gt;
 &lt;c-atoms.button variant="outline" size="sm"&gt;Small Outline&lt;/c-atoms.button&gt;
 &lt;c-atoms.button variant="danger" disabled&gt;Disabled&lt;/c-atoms.button&gt;</code></pre>
-            </details>
-          </section>
-          <section id="inputs" class="mb-12" aria-labelledby="inputs-heading">
-            <h3 id="inputs-heading" class="mb-4">Inputs</h3>
-            <p class="text-greyscale-600 mb-6">Text input with error and success states.</p>
-            <div class="space-y-4 mb-6 max-w-md">
-              <c-atoms.input placeholder="Default input" />
-              <c-atoms.input placeholder="Error state" error />
-              <c-atoms.input placeholder="Success state" success />
-              <c-atoms.input placeholder="Disabled" disabled />
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type</code></span>
-                <span class="p-2.5">"text" | "email" | "password" | etc.</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>error</code></span>
-                <span class="p-2.5">Boolean - error styling</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>success</code></span>
-                <span class="p-2.5">Boolean - success styling</span>
-              </div>
-            </div>
-          </section>
-          <section id="search-input"
-                   class="mb-12"
-                   aria-labelledby="search-input-heading">
-            <h3 id="search-input-heading" class="mb-4">Search Input</h3>
-            <p class="text-greyscale-600 mb-6">Search input with built-in icon.</p>
-            <div class="max-w-md mb-6">
-              <c-atoms.search-input placeholder="What do you need help with?" />
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>placeholder</code></span>
-                <span class="p-2.5">Placeholder text</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
-                <span class="p-2.5">Form field name</span>
-              </div>
-            </div>
-          </section>
-          <section id="selects" class="mb-12" aria-labelledby="selects-heading">
-            <h3 id="selects-heading" class="mb-4">Selects</h3>
-            <p class="text-greyscale-600 mb-6">Select dropdown with custom styling.</p>
-            <div class="space-y-4 mb-6 max-w-md">
-              <c-atoms.select>
-              <option value="">Select an option</option>
-              <option value="1">Option 1</option>
-              <option value="2">Option 2</option>
-              </c-atoms.select>
-              <c-atoms.select error>
-              <option value="">Error state</option>
-              </c-atoms.select>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
-                <span class="p-2.5">Form field name</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>id</code></span>
-                <span class="p-2.5">Element ID</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>error</code></span>
-                <span class="p-2.5">Boolean — shows error styling</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
-                <span class="p-2.5">Boolean</span>
-              </div>
-            </div>
-          </section>
-          <section id="links" class="mb-12" aria-labelledby="links-heading">
-            <h3 id="links-heading" class="mb-4">Links</h3>
-            <p class="text-greyscale-600 mb-6">Link component with external link handling.</p>
-            <div class="flex flex-wrap gap-6 mb-6">
-              <c-atoms.link href="#" variant="default">Default</c-atoms.link>
-              <c-atoms.link href="#" variant="primary">Primary</c-atoms.link>
-              <c-atoms.link href="#" variant="secondary">Secondary</c-atoms.link>
-              <c-atoms.link href="https://free.law" target="_blank" external_icon>External</c-atoms.link>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
-                <span class="p-2.5">URL string</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
-                <span class="p-2.5">"default" | "primary" | "secondary" | "unstyled"</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>target</code></span>
-                <span class="p-2.5">Link target (e.g., "_blank")</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>external_icon</code></span>
-                <span class="p-2.5">Boolean — shows external link icon</span>
-              </div>
-            </div>
-          </section>
-          <section id="icons" class="mb-12" aria-labelledby="icons-heading">
-            <h3 id="icons-heading" class="mb-4">Icons</h3>
-            <p class="text-greyscale-600 mb-6">
-              <a href="https://heroicons.com"
-                 target="_blank"
-                 rel="noopener noreferrer"
-                 class="underline">Heroicons</a>
-              via django-heroicons.
-            </p>
-            <h4 class="mb-3">Outline</h4>
-            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-greyscale-700 mb-6">
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "magnifying-glass" %}</span>
-                <p class="text-xs mt-1">magnifying-glass</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "chevron-right" %}</span>
-                <p class="text-xs mt-1">chevron-right</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "bars-3" %}</span>
-                <p class="text-xs mt-1">bars-3</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "arrow-top-right-on-square" %}</span>
-                <p class="text-xs mt-1">arrow-top-right-on-square</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "home" %}</span>
-                <p class="text-xs mt-1">home</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "users" %}</span>
-                <p class="text-xs mt-1">users</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "currency-dollar" %}</span>
-                <p class="text-xs mt-1">currency-dollar</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "shield-check" %}</span>
-                <p class="text-xs mt-1">shield-check</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "document-text" %}</span>
-                <p class="text-xs mt-1">document-text</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "truck" %}</span>
-                <p class="text-xs mt-1">truck</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "check-circle" %}</span>
-                <p class="text-xs mt-1">check-circle</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_outline "exclamation-circle" %}</span>
-                <p class="text-xs mt-1">exclamation-circle</p>
-              </div>
-            </div>
-            <h4 class="mb-3">Solid</h4>
-            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-greyscale-700 mb-6">
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "magnifying-glass" %}</span>
-                <p class="text-xs mt-1">magnifying-glass</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "chevron-right" %}</span>
-                <p class="text-xs mt-1">chevron-right</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "bars-3" %}</span>
-                <p class="text-xs mt-1">bars-3</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "arrow-top-right-on-square" %}</span>
-                <p class="text-xs mt-1">arrow-top-right-on-square</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "home" %}</span>
-                <p class="text-xs mt-1">home</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "users" %}</span>
-                <p class="text-xs mt-1">users</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "currency-dollar" %}</span>
-                <p class="text-xs mt-1">currency-dollar</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "shield-check" %}</span>
-                <p class="text-xs mt-1">shield-check</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "document-text" %}</span>
-                <p class="text-xs mt-1">document-text</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "truck" %}</span>
-                <p class="text-xs mt-1">truck</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "check-circle" %}</span>
-                <p class="text-xs mt-1">check-circle</p>
-              </div>
-              <div class="text-center">
-                <span class="w-6 h-6 inline-block">{% heroicon_solid "exclamation-circle" %}</span>
-                <p class="text-xs mt-1">exclamation-circle</p>
-              </div>
-            </div>
-          </section>
-          <section id="alerts" class="mb-12" aria-labelledby="alerts-heading">
-            <h3 id="alerts-heading" class="mb-4">Alerts</h3>
-            <p class="text-greyscale-600 mb-6">Status message alerts.</p>
-            <div class="space-y-4 mb-6">
-              <c-atoms.alert variant="info">Info alert message.</c-atoms.alert>
-              <c-atoms.alert variant="success">Success alert message.</c-atoms.alert>
-              <c-atoms.alert variant="warning">Warning alert message.</c-atoms.alert>
-              <c-atoms.alert variant="danger">Danger alert message.</c-atoms.alert>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
-                <span class="p-2.5">"info" (default) | "success" | "warning" | "danger"</span>
-              </div>
-            </div>
-          </section>
-          <section id="badges" class="mb-12" aria-labelledby="badges-heading">
-            <h3 id="badges-heading" class="mb-4">Badges</h3>
-            <p class="text-greyscale-600 mb-6">Status indicator badges for deadlines and tasks.</p>
-            <div class="flex flex-wrap gap-3 mb-6">
-              <c-atoms.badge variant="urgent">Urgent</c-atoms.badge>
-              <c-atoms.badge variant="pending">Pending</c-atoms.badge>
-              <c-atoms.badge variant="completed">Completed</c-atoms.badge>
-              <c-atoms.badge variant="info">Info</c-atoms.badge>
-            </div>
-            <h4 class="mb-3">Sizes</h4>
-            <div class="flex flex-wrap items-center gap-3 mb-6">
-              <c-atoms.badge variant="info" size="sm">Small (default)</c-atoms.badge>
-              <c-atoms.badge variant="info" size="md">Medium</c-atoms.badge>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
-                <span class="p-2.5">"urgent" | "pending" | "completed" | "info"</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
-                <span class="p-2.5">"sm" (default) | "md"</span>
-              </div>
-            </div>
-          </section>
-          <section id="eyebrow" class="mb-12" aria-labelledby="eyebrow-heading">
-            <h3 id="eyebrow-heading" class="mb-4">Eyebrow</h3>
-            <p class="text-greyscale-600 mb-6">Small caps section label with an optional leading icon. Used for panel and drawer headers.</p>
-            <div class="space-y-3 mb-6 max-w-xs">
-              <c-atoms.eyebrow icon="history" label="Recent Activity" />
-              <c-atoms.eyebrow icon="briefcase" label="Briefcase" />
-              <c-atoms.eyebrow label="No icon" />
-            </div>
-            <h4 class="mb-3">With layout classes</h4>
-            <p class="text-greyscale-600 mb-4">Spacing and borders come from the caller via <code>class</code> — the atom only owns the icon and heading styling.</p>
-            <div class="border border-greyscale-200 rounded-xl mb-6 max-w-xs">
-              <c-atoms.eyebrow icon="document-text"
-                               label="Your files"
-                               class="px-4 pt-4 pb-3 border-b border-greyscale-200" />
-              <p class="px-4 py-3 text-sm text-greyscale-500">Panel content</p>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
-                <span class="p-2.5">Heading text</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
-                <span class="p-2.5">Icon name — optional, omit for a label-only eyebrow</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>level</code></span>
-                <span class="p-2.5">Heading level, <code>2</code>–<code>6</code> (default <code>2</code>) — match the surrounding outline</span>
-              </div>
-            </div>
-          </section>
-          <section id="checkbox" class="mb-12" aria-labelledby="checkbox-heading">
-            <h3 id="checkbox-heading" class="mb-4">Checkbox</h3>
-            <p class="text-greyscale-600 mb-6">Checkbox input with optional label.</p>
-            <div class="space-y-4 mb-6">
-              <c-atoms.checkbox id="demo-cb-1" label="Default checkbox" />
-              <c-atoms.checkbox id="demo-cb-2" label="Checked" checked />
-              <c-atoms.checkbox id="demo-cb-3" label="Disabled" disabled />
-              <c-atoms.checkbox id="demo-cb-4" label="Required" required />
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
-                <span class="p-2.5">Label text</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>checked</code></span>
-                <span class="p-2.5">Boolean — pre-checked state</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
-                <span class="p-2.5">Form field name</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>id</code></span>
-                <span class="p-2.5">Element ID (links label to input)</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
-                <span class="p-2.5">Boolean</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>required</code></span>
-                <span class="p-2.5">Boolean</span>
-              </div>
-            </div>
-          </section>
-          <section id="nav-link" class="mb-12" aria-labelledby="nav-link-heading">
-            <h3 id="nav-link-heading" class="mb-4">Nav Link</h3>
-            <p class="text-greyscale-600 mb-6">Navigation link with icon badge, used in sidebar navigation.</p>
-            <div class="space-y-2 mb-6 max-w-xs">
-              <c-atoms.nav-link icon="home" href="#" icon_bg="bg-primary-50" icon_color="text-primary-600">Home</c-atoms.nav-link>
-              <c-atoms.nav-link icon="document-text" href="#" icon_bg="bg-green-50" icon_color="text-green-600">Documents</c-atoms.nav-link>
-              <c-atoms.nav-link icon="shield-check" href="#" icon_bg="bg-amber-50" icon_color="text-amber-600">Legal Rights</c-atoms.nav-link>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
-                <span class="p-2.5">Heroicon name</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
-                <span class="p-2.5">URL string</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_bg</code></span>
-                <span class="p-2.5">Tailwind bg class for icon badge (default: "bg-primary-50")</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_color</code></span>
-                <span class="p-2.5">Tailwind text class for icon (default: "text-primary-600")</span>
-              </div>
-            </div>
-          </section>
-          <section id="auto-dismiss" class="mb-12" aria-labelledby="auto-dismiss-heading">
-            <h3 id="auto-dismiss-heading" class="mb-4">Auto Dismiss</h3>
-            <p class="text-greyscale-600 mb-6">Wrapper that auto-hides its content after a timeout. Used by toast container for flash messages.</p>
-            <p class="text-sm text-greyscale-500 mb-4">Note: requires the <code>autoDismiss</code> Alpine.js component.</p>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>timeout</code></span>
-                <span class="p-2.5">Duration in ms before dismissing (default: 1500)</span>
-              </div>
-            </div>
-          </section>
+          </details>
         </section>
-        <section id="molecules" aria-labelledby="molecules-heading">
-          <h2 id="molecules-heading"
-              class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Molecules</h2>
-          <section id="logo" class="mb-12" aria-labelledby="logo-heading">
-            <h3 id="logo-heading" class="mb-4">Logo</h3>
-            <p class="text-greyscale-600 mb-6">Portal branding component.</p>
-            <div class="flex flex-col gap-6 mb-6">
-              <c-molecules.logo size="sm" show_image />
-              <c-molecules.logo show_image />
-              <c-molecules.logo size="lg" show_image />
+        <section id="inputs" class="mb-12" aria-labelledby="inputs-heading">
+          <h3 id="inputs-heading" class="mb-4">Inputs</h3>
+          <p class="text-greyscale-600 mb-6">Text input with error and success states.</p>
+          <div class="space-y-4 mb-6 max-w-md">
+            <c-atoms.input placeholder="Default input" />
+            <c-atoms.input placeholder="Error state" error />
+            <c-atoms.input placeholder="Success state" success />
+            <c-atoms.input placeholder="Disabled" disabled />
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type</code></span>
+              <span class="p-2.5">"text" | "email" | "password" | etc.</span>
             </div>
-          </section>
-          <section id="search-bar" class="mb-12" aria-labelledby="search-bar-heading">
-            <h3 id="search-bar-heading" class="mb-4">Search Bar</h3>
-            <p class="text-greyscale-600 mb-6">Search input with submit button.</p>
-            <div class="max-w-xl mb-6">
-              <c-molecules.search-bar />
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>error</code></span>
+              <span class="p-2.5">Boolean - error styling</span>
             </div>
-          </section>
-          <section id="topic-card" class="mb-12" aria-labelledby="topic-card-heading">
-            <h3 id="topic-card-heading" class="mb-4">Topic Card</h3>
-            <p class="text-greyscale-600 mb-6">Navigation card with icon.</p>
-            <div class="grid gap-3 max-w-md mb-6">
-              <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense" href="#" />
-              <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" />
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>success</code></span>
+              <span class="p-2.5">Boolean - success styling</span>
             </div>
-          </section>
-          <section id="briefcase-fact" class="mb-12" aria-labelledby="briefcase-fact-heading">
-            <h3 id="briefcase-fact-heading" class="mb-4">Briefcase Fact</h3>
-            <p class="text-greyscale-600 mb-6">
-              One stored fact as a label over its value, for the briefcase
-              panel. Pass a <code>VariableAnswer</code> via the
-              <code>:answer</code> prop. The label falls back to the
-              variable's name, and the value comes from
-              <code>display_value</code>, so lists and booleans read as words
-              rather than Python literals.
-            </p>
-            <dl class="space-y-2.5 max-w-xs mb-6">
-              {% for answer in briefcase_groups.0.answers %}
-                <c-molecules.briefcase-fact :answer="answer" />
-              {% endfor %}
-            </dl>
-          </section>
-          <section id="form-errors" class="mb-12" aria-labelledby="form-errors-heading">
-            <h3 id="form-errors-heading" class="mb-4">Form Errors</h3>
-            <p class="text-greyscale-600 mb-6">
-              Renders non-field errors from a Django form as a danger alert.
-              Outputs nothing when there are no errors. Pass the form object
-              via the <code>:form</code> prop.
-            </p>
-            <div class="space-y-4 max-w-md mb-6">
-              <c-atoms.alert variant="danger" class="mb-4">
-                Example: Your password must contain at least 8 characters.
-              </c-atoms.alert>
-            </div>
-            <h4 class="mt-8">Usage</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <code>&lt;c-molecules.form-errors :form="form" /&gt;</code>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:form</code></span>
-                <span class="p-2.5">Django form instance (reads <code>form.non_field_errors</code>)</span>
-              </div>
-            </div>
-          </section>
-          <section id="form-field" class="mb-12" aria-labelledby="form-field-heading">
-            <h3 id="form-field-heading" class="mb-4">Form Field</h3>
-            <p class="text-greyscale-600 mb-6">
-              Label + input + error message wrapper. Use for all text inputs in
-              forms.
-            </p>
-            <div class="space-y-4 max-w-md mb-6">
-              <c-molecules.form-field label="Email address" type="email" name="email" id="demo_email" placeholder="you@example.com" help_text="We'll never share your email" />
-              <c-molecules.form-field label="With error" type="text" name="error_demo" id="demo_error" value="Bad value" :errors="['This field is required']" />
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
-                <span class="p-2.5">Field label text</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type</code></span>
-                <span class="p-2.5">"text" | "email" | "tel" | "password" | etc.</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name, id</code></span>
-                <span class="p-2.5">Form field name and ID</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>help_text</code></span>
-                <span class="p-2.5">Optional helper text below input</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:errors</code></span>
-                <span class="p-2.5">Error list (shows first error)</span>
-              </div>
-            </div>
-          </section>
-          <section id="form-field-select"
-                   class="mb-12"
-                   aria-labelledby="form-field-select-heading">
-            <h3 id="form-field-select-heading" class="mb-4">Form Field Select</h3>
-            <p class="text-greyscale-600 mb-6">Label + select + error message wrapper. Use for dropdowns in forms.</p>
-            <div class="space-y-4 max-w-md mb-6">
-              <c-molecules.form-field-select label="State" name="state" id="demo_state">
-              <option value="">Select a state</option>
-              <option value="CA">California</option>
-              <option value="NY">New York</option>
-              <option value="TX">Texas</option>
-              </c-molecules.form-field-select>
-              <c-molecules.form-field-select label="With error" name="error_select" id="demo_error_select" :errors="['Please select an option']">
-              <option value="">Select an option</option>
-              </c-molecules.form-field-select>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
-                <span class="p-2.5">Field label text</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name, id</code></span>
-                <span class="p-2.5">Form field name and ID</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>help_text</code></span>
-                <span class="p-2.5">Optional helper text below select</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:errors</code></span>
-                <span class="p-2.5">Error list (shows first error)</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
-                <span class="p-2.5">Option elements</span>
-              </div>
-            </div>
-          </section>
-          <section id="auth-status" class="mb-12" aria-labelledby="auth-status-heading">
-            <h3 id="auth-status-heading" class="mb-4">Auth Status</h3>
-            <p class="text-greyscale-600 mb-6">
-              Centered status page pattern used across auth flows — icon, heading, description, and CTA slot.
-            </p>
-            <div class="space-y-6">
-              {# Info variant #}
-              <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
-                <c-molecules.auth-status
-                  icon="envelope"
-                  icon_class="text-greyscale-400"
-                  heading="Check your email"
-                  description="We've sent a password reset link to your email address."
-                >
-                  <c-atoms.button href="#" variant="outline" class="justify-center">
-                  Back to sign in
-                  </c-atoms.button>
-                </c-molecules.auth-status>
-              </div>
-              {# Success variant #}
-              <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
-                <c-molecules.auth-status
-                  icon="check-circle"
-                  icon_style="solid"
-                  icon_class="text-green-500"
-                  heading="Password reset complete"
-                  description="Your password has been changed successfully."
-                >
-                  <c-atoms.button href="#" variant="primary" size="xl" full_width class="justify-center">
-                  Sign in
-                  </c-atoms.button>
-                </c-molecules.auth-status>
-              </div>
-              {# Error variant #}
-              <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
-                <c-molecules.auth-status
-                  icon="exclamation-circle"
-                  icon_class="text-red-500"
-                  heading="Invalid reset link"
-                  description="This password reset link is invalid or has expired."
-                >
-                  <c-atoms.button href="#" variant="primary" size="xl" full_width class="justify-center">
-                  Request new reset link
-                  </c-atoms.button>
-                </c-molecules.auth-status>
-              </div>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
-                <span class="p-2.5">Heroicon name (outline by default)</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_style</code></span>
-                <span class="p-2.5">"solid" for filled icon; empty = outline (default)</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_class</code></span>
-                <span class="p-2.5">Color class for the icon (e.g. "text-green-500")</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>heading</code></span>
-                <span class="p-2.5">Status heading text</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>description</code></span>
-                <span class="p-2.5">Descriptive paragraph below the heading</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
-                <span class="p-2.5">CTA area — button, link, or form</span>
-              </div>
-            </div>
-          </section>
-          <section id="toast-container" class="mb-12" aria-labelledby="toast-container-heading">
-            <h3 id="toast-container-heading" class="mb-4">Toast Container</h3>
-            <p class="text-greyscale-600 mb-6">Renders Django flash messages as auto-dismissing toast overlays. Included in <code>base.html</code>.</p>
-            <p class="text-sm text-greyscale-500 mb-4">Composes <code>c-atoms.auto-dismiss</code> (at a 5s timeout, so sentence-length messages stay readable) and <code>c-atoms.alert</code>. No props — reads <code>messages</code> from template context.</p>
-          </section>
-          <section id="user-menu" class="mb-12" aria-labelledby="user-menu-heading">
-            <h3 id="user-menu-heading" class="mb-4">User Menu</h3>
-            <p class="text-greyscale-600 mb-6">Header user menu — shows sign-in link for anonymous users, dropdown with profile/logout for authenticated users. Used inside <code>c-organisms.header</code>.</p>
-            <p class="text-sm text-greyscale-500 mb-4">No props — reads <code>user</code> from template context. Requires the <code>userMenu</code> Alpine.js component.</p>
-          </section>
+          </div>
         </section>
-        <section id="organisms" aria-labelledby="organisms-heading">
-          <h2 id="organisms-heading"
-              class="text-display-xs font-semibold mb-8 pb-2 border-b-2 border-primary-200">Organisms</h2>
-          <section id="header" class="mb-12" aria-labelledby="header-heading">
-            <h3 id="header-heading" class="mb-4">Header</h3>
-            <p class="text-greyscale-600 mb-6">Responsive sticky header.</p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-              <c-organisms.header sticky="" />
+        <section id="search-input"
+                 class="mb-12"
+                 aria-labelledby="search-input-heading">
+          <h3 id="search-input-heading" class="mb-4">Search Input</h3>
+          <p class="text-greyscale-600 mb-6">Search input with built-in icon.</p>
+          <div class="max-w-md mb-6">
+            <c-atoms.search-input placeholder="What do you need help with?" />
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>placeholder</code></span>
+              <span class="p-2.5">Placeholder text</span>
             </div>
-          </section>
-          <section id="hero" class="mb-12" aria-labelledby="hero-heading">
-            <h3 id="hero-heading" class="mb-4">Hero</h3>
-            <p class="text-greyscale-600 mb-6">Hero section with search.</p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-              <c-organisms.hero />
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
+              <span class="p-2.5">Form field name</span>
             </div>
-          </section>
-          <section id="topic-grid" class="mb-12" aria-labelledby="topic-grid-heading">
-            <h3 id="topic-grid-heading" class="mb-4">Topic Grid</h3>
-            <p class="text-greyscale-600 mb-6">Responsive grid of topic cards.</p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-              <c-organisms.topic-grid />
+          </div>
+        </section>
+        <section id="selects" class="mb-12" aria-labelledby="selects-heading">
+          <h3 id="selects-heading" class="mb-4">Selects</h3>
+          <p class="text-greyscale-600 mb-6">Select dropdown with custom styling.</p>
+          <div class="space-y-4 mb-6 max-w-md">
+            <c-atoms.select>
+            <option value="">Select an option</option>
+            <option value="1">Option 1</option>
+            <option value="2">Option 2</option>
+            </c-atoms.select>
+            <c-atoms.select error>
+            <option value="">Error state</option>
+            </c-atoms.select>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
+              <span class="p-2.5">Form field name</span>
             </div>
-          </section>
-          <section id="footer" class="mb-12" aria-labelledby="footer-heading">
-            <h3 id="footer-heading" class="mb-4">Footer</h3>
-            <p class="text-greyscale-600 mb-6">Site footer with navigation.</p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-              <c-organisms.footer />
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>id</code></span>
+              <span class="p-2.5">Element ID</span>
             </div>
-          </section>
-          <section id="briefcase-panel" class="mb-12" aria-labelledby="briefcase-panel-heading">
-            <h3 id="briefcase-panel-heading" class="mb-4">Briefcase Panel</h3>
-            <p class="text-greyscale-600 mb-6">
-              The chat page's right-hand panel: the visitor's stored facts,
-              grouped by interview page. Pass the grouped list via the
-              <code>:groups</code> prop, as built by
-              <code>variable_answer_groups()</code>. Groups with no title render
-              their facts without a heading, which is where unplaced answers
-              land. Used in both the desktop column and the mobile drawer, so
-              the two cannot drift.
-            </p>
-            <p class="text-sm text-greyscale-500 mb-4">
-              Always renders. With no facts it shows its empty state rather
-              than collapsing, because the panel is a fixed part of the chat
-              frame. A raw agent-state disclosure appears at the bottom for
-              users holding <code>manage_developers</code>.
-            </p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
-              <c-organisms.briefcase-panel :groups="briefcase_groups" />
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>error</code></span>
+              <span class="p-2.5">Boolean — shows error styling</span>
             </div>
-            <p class="text-sm text-greyscale-500 mb-2">Empty state:</p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
-              <c-organisms.briefcase-panel />
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
+              <span class="p-2.5">Boolean</span>
             </div>
-          </section>
-          <section id="fallback-resources"
-                   class="mb-12"
-                   aria-labelledby="fallback-resources-heading">
-            <h3 id="fallback-resources-heading" class="mb-4">Fallback Resources</h3>
-            <p class="text-greyscale-600 mb-6">
-              "What if my issue isn't here?" — resource links box and two accordions for self-help content.
-              Shown when no topic matches the user's situation.
-            </p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-              <c-organisms.fallback-resources />
+          </div>
+        </section>
+        <section id="links" class="mb-12" aria-labelledby="links-heading">
+          <h3 id="links-heading" class="mb-4">Links</h3>
+          <p class="text-greyscale-600 mb-6">Link component with external link handling.</p>
+          <div class="flex flex-wrap gap-6 mb-6">
+            <c-atoms.link href="#" variant="default">Default</c-atoms.link>
+            <c-atoms.link href="#" variant="primary">Primary</c-atoms.link>
+            <c-atoms.link href="#" variant="secondary">Secondary</c-atoms.link>
+            <c-atoms.link href="https://free.law" target="_blank" external_icon>External</c-atoms.link>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+              <span class="p-2.5">URL string</span>
             </div>
-          </section>
-          <section id="auth-cta" class="mb-12" aria-labelledby="auth-cta-heading">
-            <h3 id="auth-cta-heading" class="mb-4">Auth CTA</h3>
-            <p class="text-greyscale-600 mb-6">
-              Account sign-up prompt with benefit bullets and Create Account / Sign In buttons.
-              Hidden for authenticated users on the live site.
-            </p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-              <c-organisms.auth-cta preview="true" />
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+              <span class="p-2.5">"default" | "primary" | "secondary" | "unstyled"</span>
             </div>
-          </section>
-          <section id="auth-layout" class="mb-12" aria-labelledby="auth-layout-heading">
-            <h3 id="auth-layout-heading" class="mb-4">Auth Layout</h3>
-            <p class="text-greyscale-600 mb-6">
-              Full-page centered layout used by all auth templates — background, logo link, white card, and optional footer.
-            </p>
-            <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-              <c-organisms.auth-layout class="!min-h-0">
-                <p class="text-greyscale-600 text-center">Card content goes here via the default slot.</p>
-                <c-slot name="footer">
-                  <p class="text-sm text-greyscale-600">
-                    Footer content via the named
-                    <code>footer</code>
-                    slot.
-                  </p>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>target</code></span>
+              <span class="p-2.5">Link target (e.g., "_blank")</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>external_icon</code></span>
+              <span class="p-2.5">Boolean — shows external link icon</span>
+            </div>
+          </div>
+        </section>
+        <section id="icons" class="mb-12" aria-labelledby="icons-heading">
+          <h3 id="icons-heading" class="mb-4">Icons</h3>
+          <p class="text-greyscale-600 mb-6">
+            <a href="https://heroicons.com"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="underline">Heroicons</a>
+            via django-heroicons.
+          </p>
+          <h4 class="mb-3">Outline</h4>
+          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-greyscale-700 mb-6">
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "magnifying-glass" %}</span>
+              <p class="text-xs mt-1">magnifying-glass</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "chevron-right" %}</span>
+              <p class="text-xs mt-1">chevron-right</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "bars-3" %}</span>
+              <p class="text-xs mt-1">bars-3</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "arrow-top-right-on-square" %}</span>
+              <p class="text-xs mt-1">arrow-top-right-on-square</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "home" %}</span>
+              <p class="text-xs mt-1">home</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "users" %}</span>
+              <p class="text-xs mt-1">users</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "currency-dollar" %}</span>
+              <p class="text-xs mt-1">currency-dollar</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "shield-check" %}</span>
+              <p class="text-xs mt-1">shield-check</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "document-text" %}</span>
+              <p class="text-xs mt-1">document-text</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "truck" %}</span>
+              <p class="text-xs mt-1">truck</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "check-circle" %}</span>
+              <p class="text-xs mt-1">check-circle</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_outline "exclamation-circle" %}</span>
+              <p class="text-xs mt-1">exclamation-circle</p>
+            </div>
+          </div>
+          <h4 class="mb-3">Solid</h4>
+          <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-4 text-greyscale-700 mb-6">
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "magnifying-glass" %}</span>
+              <p class="text-xs mt-1">magnifying-glass</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "chevron-right" %}</span>
+              <p class="text-xs mt-1">chevron-right</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "bars-3" %}</span>
+              <p class="text-xs mt-1">bars-3</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "arrow-top-right-on-square" %}</span>
+              <p class="text-xs mt-1">arrow-top-right-on-square</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "home" %}</span>
+              <p class="text-xs mt-1">home</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "users" %}</span>
+              <p class="text-xs mt-1">users</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "currency-dollar" %}</span>
+              <p class="text-xs mt-1">currency-dollar</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "shield-check" %}</span>
+              <p class="text-xs mt-1">shield-check</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "document-text" %}</span>
+              <p class="text-xs mt-1">document-text</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "truck" %}</span>
+              <p class="text-xs mt-1">truck</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "check-circle" %}</span>
+              <p class="text-xs mt-1">check-circle</p>
+            </div>
+            <div class="text-center">
+              <span class="w-6 h-6 inline-block">{% heroicon_solid "exclamation-circle" %}</span>
+              <p class="text-xs mt-1">exclamation-circle</p>
+            </div>
+          </div>
+        </section>
+        <section id="alerts" class="mb-12" aria-labelledby="alerts-heading">
+          <h3 id="alerts-heading" class="mb-4">Alerts</h3>
+          <p class="text-greyscale-600 mb-6">Status message alerts.</p>
+          <div class="space-y-4 mb-6">
+            <c-atoms.alert variant="info">Info alert message.</c-atoms.alert>
+            <c-atoms.alert variant="success">Success alert message.</c-atoms.alert>
+            <c-atoms.alert variant="warning">Warning alert message.</c-atoms.alert>
+            <c-atoms.alert variant="danger">Danger alert message.</c-atoms.alert>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+              <span class="p-2.5">"info" (default) | "success" | "warning" | "danger"</span>
+            </div>
+          </div>
+        </section>
+        <section id="badges" class="mb-12" aria-labelledby="badges-heading">
+          <h3 id="badges-heading" class="mb-4">Badges</h3>
+          <p class="text-greyscale-600 mb-6">Status indicator badges for deadlines and tasks.</p>
+          <div class="flex flex-wrap gap-3 mb-6">
+            <c-atoms.badge variant="urgent">Urgent</c-atoms.badge>
+            <c-atoms.badge variant="pending">Pending</c-atoms.badge>
+            <c-atoms.badge variant="completed">Completed</c-atoms.badge>
+            <c-atoms.badge variant="info">Info</c-atoms.badge>
+          </div>
+          <h4 class="mb-3">Sizes</h4>
+          <div class="flex flex-wrap items-center gap-3 mb-6">
+            <c-atoms.badge variant="info" size="sm">Small (default)</c-atoms.badge>
+            <c-atoms.badge variant="info" size="md">Medium</c-atoms.badge>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>variant</code></span>
+              <span class="p-2.5">"urgent" | "pending" | "completed" | "info"</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
+              <span class="p-2.5">"sm" (default) | "md"</span>
+            </div>
+          </div>
+        </section>
+        <section id="eyebrow" class="mb-12" aria-labelledby="eyebrow-heading">
+          <h3 id="eyebrow-heading" class="mb-4">Eyebrow</h3>
+          <p class="text-greyscale-600 mb-6">Small caps section label with an optional leading icon. Used for panel and drawer headers.</p>
+          <div class="space-y-3 mb-6 max-w-xs">
+            <c-atoms.eyebrow icon="history" label="Recent Activity" />
+            <c-atoms.eyebrow icon="briefcase" label="Briefcase" />
+            <c-atoms.eyebrow label="No icon" />
+          </div>
+          <h4 class="mb-3">With layout classes</h4>
+          <p class="text-greyscale-600 mb-4">Spacing and borders come from the caller via <code>class</code> — the atom only owns the icon and heading styling.</p>
+          <div class="border border-greyscale-200 rounded-xl mb-6 max-w-xs">
+            <c-atoms.eyebrow icon="document-text"
+                             label="Your files"
+                             class="px-4 pt-4 pb-3 border-b border-greyscale-200" />
+            <p class="px-4 py-3 text-sm text-greyscale-500">Panel content</p>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
+              <span class="p-2.5">Heading text</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+              <span class="p-2.5">Icon name — optional, omit for a label-only eyebrow</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>level</code></span>
+              <span class="p-2.5">Heading level, <code>2</code>–<code>6</code> (default <code>2</code>) — match the surrounding outline</span>
+            </div>
+          </div>
+        </section>
+        <section id="checkbox" class="mb-12" aria-labelledby="checkbox-heading">
+          <h3 id="checkbox-heading" class="mb-4">Checkbox</h3>
+          <p class="text-greyscale-600 mb-6">Checkbox input with optional label.</p>
+          <div class="space-y-4 mb-6">
+            <c-atoms.checkbox id="demo-cb-1" label="Default checkbox" />
+            <c-atoms.checkbox id="demo-cb-2" label="Checked" checked />
+            <c-atoms.checkbox id="demo-cb-3" label="Disabled" disabled />
+            <c-atoms.checkbox id="demo-cb-4" label="Required" required />
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
+              <span class="p-2.5">Label text</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>checked</code></span>
+              <span class="p-2.5">Boolean — pre-checked state</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name</code></span>
+              <span class="p-2.5">Form field name</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>id</code></span>
+              <span class="p-2.5">Element ID (links label to input)</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>disabled</code></span>
+              <span class="p-2.5">Boolean</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>required</code></span>
+              <span class="p-2.5">Boolean</span>
+            </div>
+          </div>
+        </section>
+        <section id="nav-link" class="mb-12" aria-labelledby="nav-link-heading">
+          <h3 id="nav-link-heading" class="mb-4">Nav Link</h3>
+          <p class="text-greyscale-600 mb-6">Navigation link with icon badge, used in sidebar navigation.</p>
+          <div class="space-y-2 mb-6 max-w-xs">
+            <c-atoms.nav-link icon="home" href="#" icon_bg="bg-primary-50" icon_color="text-primary-600">Home</c-atoms.nav-link>
+            <c-atoms.nav-link icon="document-text" href="#" icon_bg="bg-green-50" icon_color="text-green-600">Documents</c-atoms.nav-link>
+            <c-atoms.nav-link icon="shield-check" href="#" icon_bg="bg-amber-50" icon_color="text-amber-600">Legal Rights</c-atoms.nav-link>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+              <span class="p-2.5">Heroicon name</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
+              <span class="p-2.5">URL string</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_bg</code></span>
+              <span class="p-2.5">Tailwind bg class for icon badge (default: "bg-primary-50")</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_color</code></span>
+              <span class="p-2.5">Tailwind text class for icon (default: "text-primary-600")</span>
+            </div>
+          </div>
+        </section>
+        <section id="auto-dismiss" class="mb-12" aria-labelledby="auto-dismiss-heading">
+          <h3 id="auto-dismiss-heading" class="mb-4">Auto Dismiss</h3>
+          <p class="text-greyscale-600 mb-6">Wrapper that auto-hides its content after a timeout. Used by toast container for flash messages.</p>
+          <p class="text-sm text-greyscale-500 mb-4">Note: requires the <code>autoDismiss</code> Alpine.js component.</p>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>timeout</code></span>
+              <span class="p-2.5">Duration in ms before dismissing (default: 1500)</span>
+            </div>
+          </div>
+        </section>
+        <section id="section-heading" class="mb-12" aria-labelledby="section-heading-heading">
+          <h3 id="section-heading-heading" class="mb-4">Section Heading</h3>
+          <p class="text-greyscale-600 mb-6">
+            The <code>h2</code> that opens each major section of a long internal page, over a <code>primary-200</code> rule. Used by this page, the Atomic Design page and the Accessibility page, and inside <code>c-molecules.guide-section</code>. Pass <code>id</code> for <code>aria-labelledby</code>, and spacing through <code>class</code>.
+          </p>
+          <div class="mb-6">
+            <c-atoms.section-heading id="section-heading-sample">Contrast</c-atoms.section-heading>
+          </div>
+        </section>
+        <section id="a11y-demo" class="mb-12" aria-labelledby="a11y-demo-heading">
+          <h3 id="a11y-demo-heading" class="mb-4">A11y Demo</h3>
+          <p class="text-greyscale-600 mb-6">
+            One copy of a demo on the Accessibility page. The page loops over the view's <code>demo_copies</code> inside an <code>.a11y-compare</code> wrapper, passing each as <code>:copy</code>: the simulated copy, which the page's vision simulations filter, then a typical-vision copy for the "Compare with typical vision" toggle. The typical copy is <code>aria-hidden</code> and <code>inert</code>, and stays hidden until the toggle is checked. Suffix any id inside the slot with <code>copy.suffix</code>. <code>class</code> styles the demo's own box, such as its grid. Without <code>copy</code>, as here, it renders the simulated copy alone.
+          </p>
+          <div class="mb-6">
+            <c-atoms.a11y-demo class="grid gap-4 sm:grid-cols-2">
+              <c-molecules.verdict-card verdict="pass" label="Colour, icon and words">
+                <p class="text-sm text-greyscale-700">The example goes here.</p>
+              </c-molecules.verdict-card>
+            </c-atoms.a11y-demo>
+          </div>
+        </section>
+      </section>
+      <section id="molecules" aria-labelledby="molecules-heading">
+        <c-atoms.section-heading id="molecules-heading" class="mb-8">Molecules</c-atoms.section-heading>
+        <section id="logo" class="mb-12" aria-labelledby="logo-heading">
+          <h3 id="logo-heading" class="mb-4">Logo</h3>
+          <p class="text-greyscale-600 mb-6">
+            Site brand, linking home. With <code>court_name</code> set it shows the court's logo and name with a "Powered by Free Law Project" line under both; without it, the Free Law Project lockup. <code>court_name_image</code> is optional art for the name, with <code>court_name</code> as its alt text. Sizes: <code>sm</code>, default, <code>lg</code>. The court version responds to the space it is placed in, not the screen: under about 11rem it shows the court logo alone, keeping the name for screen readers. In a flex row it grows into free space, and never shrinks below one court logo. The court shown is sample art.
+          </p>
+          <h4 class="text-sm font-semibold text-greyscale-500 mb-3">Court configured</h4>
+          <div class="flex flex-col gap-6 mb-8">
+            <c-molecules.logo size="sm" court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+            <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+            <c-molecules.logo size="lg" court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+            <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" />
+          </div>
+          <h4 class="text-sm font-semibold text-greyscale-500 mb-3">Same logo, narrow spaces</h4>
+          <div class="flex flex-wrap items-start gap-6 mb-8">
+            <div class="w-64 rounded-lg border border-dashed border-greyscale-300 p-2">
+              <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+            </div>
+            <div class="w-36 rounded-lg border border-dashed border-greyscale-300 p-2">
+              <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+            </div>
+            <div class="flex w-64 items-center gap-2 rounded-lg border border-dashed border-greyscale-300 p-2">
+              <c-molecules.logo court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+              <c-atoms.button type="button" variant="outline" size="sm">Exit</c-atoms.button>
+              <c-atoms.button type="button" variant="outline" size="sm">Account</c-atoms.button>
+            </div>
+          </div>
+          <h4 class="text-sm font-semibold text-greyscale-500 mb-3">No court configured</h4>
+          <div class="flex flex-col gap-6 mb-6">
+            <c-molecules.logo size="sm" />
+            <c-molecules.logo />
+            <c-molecules.logo size="lg" />
+          </div>
+        </section>
+        <section id="search-bar" class="mb-12" aria-labelledby="search-bar-heading">
+          <h3 id="search-bar-heading" class="mb-4">Search Bar</h3>
+          <p class="text-greyscale-600 mb-6">Search input with submit button.</p>
+          <div class="max-w-xl mb-6">
+            <c-molecules.search-bar />
+          </div>
+        </section>
+        <section id="topic-card" class="mb-12" aria-labelledby="topic-card-heading">
+          <h3 id="topic-card-heading" class="mb-4">Topic Card</h3>
+          <p class="text-greyscale-600 mb-6">Navigation card with icon.</p>
+          <div class="grid gap-3 max-w-md mb-6">
+            <c-molecules.topic-card icon="home" title="Housing & Eviction" description="Landlord disputes, eviction defense" href="#" />
+            <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" />
+          </div>
+        </section>
+        <section id="briefcase-fact" class="mb-12" aria-labelledby="briefcase-fact-heading">
+          <h3 id="briefcase-fact-heading" class="mb-4">Briefcase Fact</h3>
+          <p class="text-greyscale-600 mb-6">
+            One stored fact as a label over its value, for the briefcase
+            panel. Pass a <code>VariableAnswer</code> via the
+            <code>:answer</code> prop. The label falls back to the
+            variable's name, and the value comes from
+            <code>display_value</code>, so lists and booleans read as words
+            rather than Python literals.
+          </p>
+          <dl class="space-y-2.5 max-w-xs mb-6">
+            {% for answer in briefcase_groups.0.answers %}
+              <c-molecules.briefcase-fact :answer="answer" />
+            {% endfor %}
+          </dl>
+        </section>
+        <section id="form-errors" class="mb-12" aria-labelledby="form-errors-heading">
+          <h3 id="form-errors-heading" class="mb-4">Form Errors</h3>
+          <p class="text-greyscale-600 mb-6">
+            Renders non-field errors from a Django form as a danger alert.
+            Outputs nothing when there are no errors. Pass the form object
+            via the <code>:form</code> prop.
+          </p>
+          <div class="space-y-4 max-w-md mb-6">
+            <c-atoms.alert variant="danger" class="mb-4">
+              Example: Your password must contain at least 8 characters.
+            </c-atoms.alert>
+          </div>
+          <h4 class="mt-8">Usage</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <code>&lt;c-molecules.form-errors :form="form" /&gt;</code>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:form</code></span>
+              <span class="p-2.5">Django form instance (reads <code>form.non_field_errors</code>)</span>
+            </div>
+          </div>
+        </section>
+        <section id="form-field" class="mb-12" aria-labelledby="form-field-heading">
+          <h3 id="form-field-heading" class="mb-4">Form Field</h3>
+          <p class="text-greyscale-600 mb-6">
+            Label + input + error message wrapper. Use for all text inputs in
+            forms.
+          </p>
+          <div class="space-y-4 max-w-md mb-6">
+            <c-molecules.form-field label="Email address" type="email" name="email" id="demo_email" placeholder="you@example.com" help_text="We'll never share your email" />
+            <c-molecules.form-field label="With error" type="text" name="error_demo" id="demo_error" value="Bad value" :errors="['This field is required']" />
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
+              <span class="p-2.5">Field label text</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>type</code></span>
+              <span class="p-2.5">"text" | "email" | "tel" | "password" | etc.</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name, id</code></span>
+              <span class="p-2.5">Form field name and ID</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>help_text</code></span>
+              <span class="p-2.5">Optional helper text below input</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:errors</code></span>
+              <span class="p-2.5">Error list (shows first error)</span>
+            </div>
+          </div>
+        </section>
+        <section id="form-field-select"
+                 class="mb-12"
+                 aria-labelledby="form-field-select-heading">
+          <h3 id="form-field-select-heading" class="mb-4">Form Field Select</h3>
+          <p class="text-greyscale-600 mb-6">Label + select + error message wrapper. Use for dropdowns in forms.</p>
+          <div class="space-y-4 max-w-md mb-6">
+            <c-molecules.form-field-select label="State" name="state" id="demo_state">
+            <option value="">Select a state</option>
+            <option value="CA">California</option>
+            <option value="NY">New York</option>
+            <option value="TX">Texas</option>
+            </c-molecules.form-field-select>
+            <c-molecules.form-field-select label="With error" name="error_select" id="demo_error_select" :errors="['Please select an option']">
+            <option value="">Select an option</option>
+            </c-molecules.form-field-select>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>label</code></span>
+              <span class="p-2.5">Field label text</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>name, id</code></span>
+              <span class="p-2.5">Form field name and ID</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>help_text</code></span>
+              <span class="p-2.5">Optional helper text below select</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>:errors</code></span>
+              <span class="p-2.5">Error list (shows first error)</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
+              <span class="p-2.5">Option elements</span>
+            </div>
+          </div>
+        </section>
+        <section id="auth-status" class="mb-12" aria-labelledby="auth-status-heading">
+          <h3 id="auth-status-heading" class="mb-4">Auth Status</h3>
+          <p class="text-greyscale-600 mb-6">
+            Centered status page pattern used across auth flows — icon, heading, description, and CTA slot.
+          </p>
+          <div class="space-y-6">
+            {# Info variant #}
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
+              <c-molecules.auth-status
+                icon="envelope"
+                icon_class="text-greyscale-400"
+                heading="Check your email"
+                description="We've sent a password reset link to your email address."
+              >
+                <c-atoms.button href="#" variant="outline" class="justify-center">
+                Back to sign in
+                </c-atoms.button>
+              </c-molecules.auth-status>
+            </div>
+            {# Success variant #}
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
+              <c-molecules.auth-status
+                icon="check-circle"
+                icon_style="solid"
+                icon_class="text-green-500"
+                heading="Password reset complete"
+                description="Your password has been changed successfully."
+              >
+                <c-atoms.button href="#" variant="primary" size="xl" full_width class="justify-center">
+                Sign in
+                </c-atoms.button>
+              </c-molecules.auth-status>
+            </div>
+            {# Error variant #}
+            <div class="border border-greyscale-200 rounded-lg overflow-hidden p-6">
+              <c-molecules.auth-status
+                icon="exclamation-circle"
+                icon_class="text-red-500"
+                heading="Invalid reset link"
+                description="This password reset link is invalid or has expired."
+              >
+                <c-atoms.button href="#" variant="primary" size="xl" full_width class="justify-center">
+                Request new reset link
+                </c-atoms.button>
+              </c-molecules.auth-status>
+            </div>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon</code></span>
+              <span class="p-2.5">Heroicon name (outline by default)</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_style</code></span>
+              <span class="p-2.5">"solid" for filled icon; empty = outline (default)</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>icon_class</code></span>
+              <span class="p-2.5">Color class for the icon (e.g. "text-green-500")</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>heading</code></span>
+              <span class="p-2.5">Status heading text</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>description</code></span>
+              <span class="p-2.5">Descriptive paragraph below the heading</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
+              <span class="p-2.5">CTA area — button, link, or form</span>
+            </div>
+          </div>
+        </section>
+        <section id="toast-container" class="mb-12" aria-labelledby="toast-container-heading">
+          <h3 id="toast-container-heading" class="mb-4">Toast Container</h3>
+          <p class="text-greyscale-600 mb-6">Renders Django flash messages as auto-dismissing toast overlays. Included in <code>base.html</code>.</p>
+          <p class="text-sm text-greyscale-500 mb-4">Composes <code>c-atoms.auto-dismiss</code> (at a 5s timeout, so sentence-length messages stay readable) and <code>c-atoms.alert</code>. No props — reads <code>messages</code> from template context.</p>
+        </section>
+        <section id="user-menu" class="mb-12" aria-labelledby="user-menu-heading">
+          <h3 id="user-menu-heading" class="mb-4">User Menu</h3>
+          <p class="text-greyscale-600 mb-6">Header user menu — shows sign-in link for anonymous users, dropdown with profile/logout for authenticated users. Used inside <code>c-organisms.header</code>.</p>
+          <p class="text-sm text-greyscale-500 mb-4">No props — reads <code>user</code> from template context. Requires the <code>userMenu</code> Alpine.js component.</p>
+        </section>
+        <section id="empty-state" class="mb-12" aria-labelledby="empty-state-heading">
+          <h3 id="empty-state-heading" class="mb-4">Empty State</h3>
+          <p class="text-greyscale-600 mb-6">What fills a site frame region before the visitor has anything to put there: an icon, one sentence on what will collect there, and an optional action. Props: <code>icon</code>, <code>text</code>, <code>action_label</code>, <code>action_href</code>.</p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm bg-greyscale-25">
+            <c-molecules.empty-state icon="chat-bubble-left-right" text="Your chats will show here." action_label="Start a chat" action_href="#empty-state" />
+          </div>
+        </section>
+        <section id="site-menu" class="mb-12" aria-labelledby="site-menu-heading">
+          <h3 id="site-menu-heading" class="mb-4">Site Menu</h3>
+          <p class="text-greyscale-600 mb-6">The header's menu: About, Privacy and Accessibility in every environment, account links on phones (where the user menu is hidden), and a dev-tools group outside production. A native <code>&lt;details&gt;</code> over a plain link list, so it works without JS. No props.</p>
+          <div class="flex justify-end border border-greyscale-200 rounded-lg p-4 mb-6 min-h-80">
+            <c-molecules.site-menu />
+          </div>
+        </section>
+        <section id="selector-card" class="mb-12" aria-labelledby="selector-card-heading">
+          <h3 id="selector-card-heading" class="mb-4">Selector Card</h3>
+          <p class="text-greyscale-600 mb-6">
+            One option in a row of illustrated choices, such as the Atomic Design levels. A plain link, so choosing works without JS. Pass <code>:current</code> to mark the chosen card with <code>aria-current="page"</code>, a tint and a check icon. The <code>thumb</code> slot holds a decorative picture; <code>label</code> names the option. Place each card in an <code>&lt;li&gt;</code> of a <code>list-none pl-0</code> list.
+          </p>
+          <p class="text-sm text-greyscale-500 mb-4">
+            <code>orientation="vertical"</code> (default): picture above label, for a grid of cards. Below md the picture shrinks beside the label.
+          </p>
+          <ul class="grid list-none gap-3 pl-0 sm:grid-cols-3 mb-6">
+            <li>
+              <c-molecules.selector-card href="#selector-card" label="1. Atoms" :current="True">
+                <c-slot name="thumb">
+                  {% include "pages/atomic_design/_level_thumb.html" with stage="atoms" %}
                 </c-slot>
-              </c-organisms.auth-layout>
-            </div>
-            <h4 class="mt-8">Props</h4>
-            <div class="bg-greyscale-100 rounded-xl p-4 my-3">
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
-                <span class="p-2.5">Card body content (default slot)</span>
-              </div>
-              <div class="flex flex-col md:flex-row border-b border-greyscale-200">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>footer</code></span>
-                <span class="p-2.5">Named slot — below-card text; wrapper div omitted when empty</span>
-              </div>
-              <div class="flex flex-col md:flex-row">
-                <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>class</code></span>
-                <span class="p-2.5">Additional classes on the outer container</span>
-              </div>
-            </div>
-          </section>
+              </c-molecules.selector-card>
+            </li>
+            <li>
+              <c-molecules.selector-card href="#selector-card" label="2. Molecules">
+                <c-slot name="thumb">
+                  {% include "pages/atomic_design/_level_thumb.html" with stage="molecules" %}
+                </c-slot>
+              </c-molecules.selector-card>
+            </li>
+            <li>
+              <c-molecules.selector-card href="#selector-card" label="3. Organisms">
+                <c-slot name="thumb">
+                  {% include "pages/atomic_design/_level_thumb.html" with stage="organisms" %}
+                </c-slot>
+              </c-molecules.selector-card>
+            </li>
+          </ul>
+          <p class="text-sm text-greyscale-500 mb-4">
+            <code>orientation="horizontal"</code>: a small picture beside the label, for a stacked list in a sidebar, as on the Atomic Design page. Below md each card becomes a small tile for a row that scrolls sideways.
+          </p>
+          <ul class="mb-6 flex list-none gap-2 overflow-x-auto py-1 pl-0 md:w-64 md:flex-col md:overflow-visible">
+            <li class="w-32 shrink-0 md:w-auto">
+              <c-molecules.selector-card href="#selector-card" label="1. Atoms" :current="True" orientation="horizontal">
+                <c-slot name="thumb">
+                  {% include "pages/atomic_design/_level_thumb.html" with stage="atoms" %}
+                </c-slot>
+              </c-molecules.selector-card>
+            </li>
+            <li class="w-32 shrink-0 md:w-auto">
+              <c-molecules.selector-card href="#selector-card" label="2. Molecules" orientation="horizontal">
+                <c-slot name="thumb">
+                  {% include "pages/atomic_design/_level_thumb.html" with stage="molecules" %}
+                </c-slot>
+              </c-molecules.selector-card>
+            </li>
+          </ul>
         </section>
-      </main>
-    </div>
+        <section id="side-nav-group" class="mb-12" aria-labelledby="side-nav-group-heading">
+          <h3 id="side-nav-group-heading" class="mb-4">Side Nav Group</h3>
+          <p class="text-greyscale-600 mb-6">
+            A collapsible group of in-page links for a sidebar, like the one beside this page. <code>label</code> and <code>href</code> link to the group's own section; the chevron toggles it. Each item is an <code>&lt;li&gt;</code> holding a <code>c-atoms.link variant="unstyled"</code>, and the group styles the links.
+          </p>
+          <div class="w-64 rounded-lg border border-dashed border-greyscale-300 p-3 mb-6">
+            <c-molecules.side-nav-group label="Molecules" href="#side-nav-group">
+              <li><c-atoms.link href="#selector-card" variant="unstyled">Selector Card</c-atoms.link></li>
+              <li><c-atoms.link href="#side-nav-group" variant="unstyled">Side Nav Group</c-atoms.link></li>
+            </c-molecules.side-nav-group>
+          </div>
+        </section>
+        <section id="verdict-card" class="mb-12" aria-labelledby="verdict-card-heading">
+          <h3 id="verdict-card-heading" class="mb-4">Verdict Card</h3>
+          <p class="text-greyscale-600 mb-6">
+            An example that passes or fails a guideline, for the Accessibility page. <code>verdict</code> is <code>pass</code> or <code>fail</code>, shown as a badge with an icon and a word, so it never relies on colour alone. <code>label</code> says what the example shows; the default slot holds the example.
+          </p>
+          <div class="grid gap-4 sm:grid-cols-2 mb-6">
+            <c-molecules.verdict-card verdict="fail" label="Focus outline removed">
+              <p class="text-sm text-greyscale-700">The example goes here.</p>
+            </c-molecules.verdict-card>
+            <c-molecules.verdict-card verdict="pass" label="Visible focus">
+              <p class="text-sm text-greyscale-700">The example goes here.</p>
+            </c-molecules.verdict-card>
+          </div>
+        </section>
+        <section id="guide-section" class="mb-12" aria-labelledby="guide-section-heading">
+          <h3 id="guide-section-heading" class="mb-4">Guide Section</h3>
+          <p class="text-greyscale-600 mb-6">
+            One topic of a guide page: a section heading, the <code>intro</code> slot, the WCAG criteria it maps to, then examples in the default slot. Props: <code>id</code> (the heading gets <code>id</code>-heading), <code>heading</code>, and <code>criteria</code>, plain text shown after a WCAG badge. The examples block is left out when the default slot is empty.
+          </p>
+          <div class="rounded-lg border border-dashed border-greyscale-300 p-4 mb-6">
+            <c-molecules.guide-section id="guide-section-sample" heading="Colour alone" criteria="1.4.1 (A)">
+              <c-slot name="intro">
+                <p>If colour is the only signal, people who can't tell red from green miss it.</p>
+              </c-slot>
+              <c-molecules.verdict-card verdict="pass" label="Colour, icon and words">
+                <p class="text-sm text-greyscale-700">The example goes here.</p>
+              </c-molecules.verdict-card>
+            </c-molecules.guide-section>
+          </div>
+        </section>
+      </section>
+      <section id="organisms" aria-labelledby="organisms-heading">
+        <c-atoms.section-heading id="organisms-heading" class="mb-8">Organisms</c-atoms.section-heading>
+        <section id="header" class="mb-12" aria-labelledby="header-heading">
+          <h3 id="header-heading" class="mb-4">Header</h3>
+          <p class="text-greyscale-600 mb-6">
+            The one site header. Left card: <code>c-molecules.logo</code>, passed <code>court_logo</code>, <code>court_name</code> and <code>court_name_image</code>. Right card: on pages that use the site frame, buttons that open its regions as drawers below <code>xl</code>; then the user menu and the site menu. Source order is tab order, so the cards collapse in place and never reorder with CSS. It spans the full window width on every page.
+          </p>
+          <h4 class="text-sm font-semibold text-greyscale-500 mb-3">Court configured</h4>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-8">
+            <c-organisms.header court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+          </div>
+          <h4 class="text-sm font-semibold text-greyscale-500 mb-3">No court configured</h4>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+            <c-organisms.header />
+          </div>
+        </section>
+        <section id="hero" class="mb-12" aria-labelledby="hero-heading">
+          <h3 id="hero-heading" class="mb-4">Hero</h3>
+          <p class="text-greyscale-600 mb-6">Hero section with search.</p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+            <c-organisms.hero />
+          </div>
+        </section>
+        <section id="topic-grid" class="mb-12" aria-labelledby="topic-grid-heading">
+          <h3 id="topic-grid-heading" class="mb-4">Topic Grid</h3>
+          <p class="text-greyscale-600 mb-6">Responsive grid of topic cards.</p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+            <c-organisms.topic-grid />
+          </div>
+        </section>
+        <section id="site-frame" class="mb-12" aria-labelledby="site-frame-heading">
+          <h3 id="site-frame-heading" class="mb-4">Site Frame</h3>
+          <p class="text-greyscale-600 mb-4">The layout chat, home and the topic flow share (#988): a left region, <code>&lt;main&gt;</code>, and a right region, in that reading order. From <code>xl</code> up the regions sit beside the content, sticky under the header. Below <code>xl</code> each is a native popover drawer, opened by the header's buttons with no JS; the <code>frameDrawer</code> Alpine component moves focus in on open, and closes the drawer when focus leaves or a link inside it is followed.</p>
+          <p class="text-greyscale-600 mb-4">Pages don't use it directly: they extend <code>frame_base.html</code> and fill <code>frame_left</code>, <code>content</code> and <code>frame_right</code>. It isn't rendered live here because it holds the page's one <code>&lt;main&gt;</code>; chat, home and the topic flow show it in place.</p>
+          <p class="text-sm text-greyscale-500 mb-4">Props: <code>left_label</code>, <code>left_icon</code>, <code>right_label</code>, <code>right_icon</code>. Slots: <code>left</code>, <code>right</code>, and the default slot for the content.</p>
+        </section>
+        <section id="briefcase-panel" class="mb-12" aria-labelledby="briefcase-panel-heading">
+          <h3 id="briefcase-panel-heading" class="mb-4">Briefcase Panel</h3>
+          <p class="text-greyscale-600 mb-6">
+            The site frame's right region on every framed page: the visitor's stored facts,
+            grouped by interview page. Pass the grouped list via the
+            <code>:groups</code> prop, as built by
+            <code>variable_answer_groups()</code>. Groups with no title render
+            their facts without a heading, which is where unplaced answers
+            land. The same region is the desktop column and the mobile
+            drawer, so the two cannot drift.
+          </p>
+          <p class="text-sm text-greyscale-500 mb-4">
+            Always renders. With no facts it shows its empty state rather
+            than collapsing, because the panel is a fixed part of the chat
+            frame. A raw agent-state disclosure appears at the bottom for
+            users holding <code>manage_developers</code>.
+          </p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
+            <c-organisms.briefcase-panel :groups="briefcase_groups" />
+          </div>
+          <p class="text-sm text-greyscale-500 mb-2">Empty state:</p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
+            <c-organisms.briefcase-panel />
+          </div>
+        </section>
+        <section id="fallback-resources"
+                 class="mb-12"
+                 aria-labelledby="fallback-resources-heading">
+          <h3 id="fallback-resources-heading" class="mb-4">Fallback Resources</h3>
+          <p class="text-greyscale-600 mb-6">
+            "What if my issue isn't here?" — resource links box and two accordions for self-help content.
+            Shown when no topic matches the user's situation.
+          </p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+            <c-organisms.fallback-resources />
+          </div>
+        </section>
+        <section id="auth-cta" class="mb-12" aria-labelledby="auth-cta-heading">
+          <h3 id="auth-cta-heading" class="mb-4">Auth CTA</h3>
+          <p class="text-greyscale-600 mb-6">
+            Account sign-up prompt with benefit bullets and Create Account / Sign In buttons.
+            Hidden for authenticated users on the live site.
+          </p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+            <c-organisms.auth-cta preview="true" />
+          </div>
+        </section>
+        <section id="auth-layout" class="mb-12" aria-labelledby="auth-layout-heading">
+          <h3 id="auth-layout-heading" class="mb-4">Auth Layout</h3>
+          <p class="text-greyscale-600 mb-6">
+            Full-page centered layout used by all auth templates — background, logo link, white card, and optional footer.
+          </p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
+            <c-organisms.auth-layout class="!min-h-0">
+              <p class="text-greyscale-600 text-center">Card content goes here via the default slot.</p>
+              <c-slot name="footer">
+                <p class="text-sm text-greyscale-600">
+                  Footer content via the named
+                  <code>footer</code>
+                  slot.
+                </p>
+              </c-slot>
+            </c-organisms.auth-layout>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
+              <span class="p-2.5">Card body content (default slot)</span>
+            </div>
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>footer</code></span>
+              <span class="p-2.5">Named slot — below-card text; wrapper div omitted when empty</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>class</code></span>
+              <span class="p-2.5">Additional classes on the outer container</span>
+            </div>
+          </div>
+        </section>
+        <section id="sidebar-layout" class="mb-12" aria-labelledby="sidebar-layout-heading">
+          <h3 id="sidebar-layout-heading" class="mb-4">Sidebar Layout</h3>
+          <p class="text-greyscale-600 mb-6">
+            The frame of this page and the Accessibility page: a 16rem sidebar of in-page links that sticks while the page scrolls, beside the content column. Below <code>md</code> the sidebar stacks above the content. Props: <code>nav_label</code>, the side navigation's accessible name; the <code>sidebar</code> slot holds side nav groups; the optional <code>controls</code> slot sits above the navigation for page controls that aren't links, such as the Accessibility page's simulation switcher; the default slot is the content.
+          </p>
+          <div class="rounded-lg border border-greyscale-200 bg-white p-4 mb-6">
+            <c-organisms.sidebar-layout nav_label="Sidebar layout sample">
+              <c-slot name="sidebar">
+                <c-molecules.side-nav-group label="Sample" href="#sidebar-layout">
+                  <li><c-atoms.link href="#sidebar-layout" variant="unstyled">First section</c-atoms.link></li>
+                  <li><c-atoms.link href="#sidebar-layout" variant="unstyled">Second section</c-atoms.link></li>
+                </c-molecules.side-nav-group>
+              </c-slot>
+              <p class="text-greyscale-600">Content column, at the width litigant pages get.</p>
+            </c-organisms.sidebar-layout>
+          </div>
+        </section>
+      </section>
+    </c-organisms.sidebar-layout>
   </div>
-{% endblock content %}
+{% endblock internal_body %}

@@ -1,0 +1,13 @@
+<c-vars copy="" />
+{# One copy of a demo on the Accessibility page. The page renders each demo #}
+{# twice inside an .a11y-compare wrapper, looping over the view's #}
+{# demo_copies: the simulated copy, which the switcher's simulation filters #}
+{# (.a11y-demo), then a typical-vision copy for the "Compare with typical #}
+{# vision" toggle. The typical copy is aria-hidden and inert, so it is #}
+{# never read twice or focused, and main.css hides it until the toggle is #}
+{# checked. Put ids inside the slot through copy.suffix so the copies don't #}
+{# share them. class styles the demo's own box, such as its grid. #}
+<div class="a11y-demo-pane {% if copy.is_copy %}a11y-demo-typical{% endif %}" {% if copy.is_copy %}aria-hidden="true" inert{% endif %}>
+  <p class="a11y-demo-caption" aria-hidden="true">{{ copy.caption }}</p>
+  <div class="{% if not copy.is_copy %}a11y-demo{% endif %} {{ class }}">{{ slot }}</div>
+</div>

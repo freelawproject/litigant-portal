@@ -1,9 +1,24 @@
+from dataclasses import dataclass, field
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 Field = PydanticField
+
+
+@dataclass(frozen=True)
+class IdentityPrompt:
+    """The per-identity part of a system prompt.
+
+    ``text`` is the rendered section exactly as sent to the model.
+    ``values`` maps each variable name to the personal value as it appears
+    in ``text``; every value must be a literal substring of ``text`` so a
+    later redaction pass can replace it by name.
+    """
+
+    text: str
+    values: dict[str, str] = field(default_factory=dict)
 
 
 class AgentState(BaseModel):
@@ -70,8 +85,22 @@ class Agent:
         """
 
     def generate_system_prompt(self, *, thread_id) -> str:
-        """Build the system prompt for ``thread_id`` from its state."""
+        """Build the shared system prompt for ``thread_id`` from its state.
+
+        Keep anything about the person out of it: this text is hashed and
+        stored in a PromptArtifact shared across threads and identities.
+        """
         raise NotImplementedError
+
+    def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt | None:
+        """Build the per-identity part of the system prompt, or None.
+
+        The engine appends ``text`` to the shared prompt for the model and
+        stores it on the assistant message, never in a PromptArtifact, so
+        it is deleted with the thread. This is where the person's stored
+        facts belong.
+        """
+        return None
 
     @property
     def tools_by_name(self) -> dict[str, type[Tool]]:

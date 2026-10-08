@@ -17,6 +17,12 @@ metadata:
 features:
   css: lp-branding.css
 ---
+# Required for the prefill handoff, and only works from an `initial` block.
+# See the README.
+initial: True
+code: |
+  multi_user = True
+---
 # Re-uses the Topic Flow corpus data points (current/requested name, county)
 # plus the Petition-only extras (residency-since, citizenship, criminal history,
 # publication). Variable names are interview-local; only the attachment field

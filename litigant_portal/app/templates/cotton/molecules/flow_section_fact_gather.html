@@ -4,6 +4,7 @@
 {# Values are prefilled server-side (ctx.questions[].value) — no x-model. The #}
 {# POST handler + deadline recompute land in Item 5; this renders the form. #}
 {% trans "Select…" as choice_placeholder %}
+{% trans "Clear my saved answer (it is not shown, for your privacy)" as clear_label %}
 <form method="post" class="space-y-4">
   {% csrf_token %}
   {% for q in ctx.questions %}
@@ -34,6 +35,16 @@
     :required="q.required"
     :autofocus="q.autofocus"
     :errors="q.errors"
+  />
+  {% endif %}
+  {% if q.saved %}
+  {# A protected field renders blank whatever is stored, so the checkbox is #}
+  {# the only way to erase the saved answer. Typing a new value replaces it #}
+  {# whether or not the box is checked. #}
+  <c-atoms.checkbox
+    name="{{ q.id }}__clear"
+    id="{{ q.id }}__clear"
+    label="{{ clear_label }}"
   />
   {% endif %}
   {% endfor %}

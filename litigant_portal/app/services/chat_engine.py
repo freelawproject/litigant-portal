@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 from collections.abc import Callable, Iterator
+from dataclasses import asdict
 from typing import Any
 
 import litellm
@@ -9,8 +10,11 @@ from django.conf import settings
 from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
+from django.urls import reverse
+from django.utils.translation import gettext as _
 
-from litigant_portal.agents.base import Agent, ToolOutput
+from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
+from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
@@ -26,6 +30,7 @@ from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
     user_upload_render_list,
 )
+from litigant_portal.app.topic_flow.registry import topic_flow_track_find
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +86,7 @@ def chat_message_create(
     meta: bool = False,
     cost: float = 0.0,
     prompt_artifact: PromptArtifact | None = None,
+    identity_prompt: IdentityPrompt | None = None,
 ) -> ChatMessage:
     """Add a message to a thread."""
     if num_tokens is None:
@@ -96,6 +102,7 @@ def chat_message_create(
         cost=cost,
         git_sha=settings.GIT_SHA,
         prompt_artifact=prompt_artifact,
+        identity_prompt=asdict(identity_prompt) if identity_prompt else {},
     )
 
 
@@ -238,6 +245,15 @@ def _to_llm_message(msg: dict[str, Any]) -> dict[str, Any]:
     return {"role": "user", "content": msg.get("content", "")}
 
 
+def _system_prompt_text(
+    shared: str, identity_prompt: IdentityPrompt | None
+) -> str:
+    """The system message the model sees: shared part plus identity part."""
+    if identity_prompt is None:
+        return shared
+    return f"{shared}\n\n{identity_prompt.text}"
+
+
 def _messages_for_llm(
     system_prompt: str,
     history: list[dict[str, Any]],
@@ -260,10 +276,10 @@ def _messages_for_llm(
 
 def _render_tool(template: str | bool | None, context: dict) -> dict[str, Any]:
     """Resolve a tool's render template into a frontend rendering directive."""
-    if template is False:
+    # No template (None or False) renders nothing: raw args and result data
+    # are for developers, not for the person in the conversation.
+    if not template:
         return {"render_mode": "skip"}
-    if template is None:
-        return {"render_mode": "default"}
     return {
         "render_mode": "custom",
         "render_html": render_to_string(template, context),
@@ -289,8 +305,8 @@ def _tool_item(tool_call: dict, results: dict, tools: dict) -> dict[str, Any]:
             tool_class.tool_result_template, {"data": render_data or {}}
         )
     else:
-        call = {"render_mode": "default"}
-        result = {"render_mode": "default"}
+        call = {"render_mode": "skip"}
+        result = {"render_mode": "skip"}
 
     return {
         "kind": "tool",
@@ -356,6 +372,42 @@ def _execute_tool(
         return ToolOutput(result=f"Error: {e}")
 
 
+def _stream_error_event(thread: ChatThread) -> dict[str, str]:
+    """Return safe user-facing copy and the best available guided-flow link."""
+    url, label = "/", _("Browse the help topics")
+    message = _(
+        "The assistant is temporarily unavailable. You can browse "
+        "the help topics instead."
+    )
+    try:
+        active_path = (thread.state or {}).get("active_topic_flow")
+        flow = (
+            topic_flow_from_path(active_path)
+            if isinstance(active_path, str)
+            else None
+        )
+        track = topic_flow_track_find(flow) if flow else None
+        if track:
+            guided_url = reverse(
+                "pages:topic_flow",
+                kwargs={key: track[key] for key in ("court", "topic", "role")},
+            )
+            guided_label = flow.name
+            guided_message = _(
+                "The assistant is temporarily unavailable. You can continue "
+                "with the step-by-step guide instead."
+            )
+            url, label, message = guided_url, guided_label, guided_message
+    except Exception:
+        logger.exception("chat_engine stream fallback resolution failed")
+    return {
+        "type": "error",
+        "message": message,
+        "fallback_url": url,
+        "fallback_label": label,
+    }
+
+
 def chat_stream(
     *,
     identity: UserIdentity,
@@ -403,6 +455,9 @@ def chat_stream(
 
         try:
             system_prompt = agent.generate_system_prompt(thread_id=thread.id)
+            identity_prompt = agent.generate_identity_prompt(
+                thread_id=thread.id
+            )
 
             for _ in range(MAX_STEPS):
                 tool_schemas = agent.tool_schemas or []
@@ -414,7 +469,7 @@ def chat_stream(
                     **agent.completion_args,
                     "model": model,
                     "messages": _messages_for_llm(
-                        system_prompt,
+                        _system_prompt_text(system_prompt, identity_prompt),
                         history,
                         attachment_cache=attachment_cache,
                     ),
@@ -474,6 +529,14 @@ def chat_stream(
                                 tc.function.arguments
                             )
 
+                if not content_parts and not tool_calls:
+                    logger.warning(
+                        "chat_engine model returned an empty response"
+                    )
+                    yield _sse(_stream_error_event(thread))
+                    yield _sse({"type": "done"})
+                    return
+
                 assistant_msg: dict[str, Any] = {
                     "role": "assistant",
                     "content": "".join(content_parts),
@@ -488,6 +551,7 @@ def chat_stream(
                     num_tokens=completion_tokens,
                     cost=cost,
                     prompt_artifact=prompt_artifact,
+                    identity_prompt=identity_prompt,
                 )
 
                 if not tool_calls:
@@ -516,7 +580,7 @@ def chat_stream(
                                     {"args": args},
                                 )
                                 if tool_class is not None
-                                else {"render_mode": "default"}
+                                else {"render_mode": "skip"}
                             ),
                         }
                     )
@@ -557,7 +621,7 @@ def chat_stream(
                                     {"data": output.render_data or {}},
                                 )
                                 if tool_class is not None
-                                else {"render_mode": "default"}
+                                else {"render_mode": "skip"}
                             ),
                         }
                     )
@@ -567,6 +631,9 @@ def chat_stream(
 
                 if refresh:
                     system_prompt = agent.generate_system_prompt(
+                        thread_id=thread.id
+                    )
+                    identity_prompt = agent.generate_identity_prompt(
                         thread_id=thread.id
                     )
 
@@ -589,9 +656,9 @@ def chat_stream(
 
             thread.save(update_fields=["updated_at"])
             yield _sse({"type": "done"})
-        except Exception as e:
+        except Exception:
             logger.exception("chat_engine stream failed")
-            yield _sse({"type": "error", "error": str(e)})
+            yield _sse(_stream_error_event(thread))
             yield _sse({"type": "done"})
 
     response = StreamingHttpResponse(

@@ -16,7 +16,8 @@
 # Bring up:   docker compose -f docker-compose.docassemble.yml up -d
 #             (first run pulls ~20 GB / takes a while)
 # Open:       http://localhost:8100
-# Default login: admin@admin.com / password  — change it immediately on first login
+# Login:      DA_ADMIN_EMAIL / DA_ADMIN_PASSWORD below (seeded on first boot;
+#             docassemble's own stock default is unreliable)
 # Tear down:  docker compose -f docker-compose.docassemble.yml down
 #             (named volumes below persist Playground work across down/up)
 
@@ -30,6 +31,13 @@ services:
       DAHOSTNAME: 'localhost:8100'
       USEHTTPS: 'false'
       TIMEZONE: 'America/New_York'
+      # Seeded on an EMPTY database only — set these before the first boot,
+      # or wipe the volumes (`down -v`) to re-seed. Values come from .env;
+      # the fallbacks keep a bare `make docassemble-up` usable.
+      DA_ADMIN_EMAIL: '${DA_ADMIN_EMAIL:-admin@localhost}'
+      DA_ADMIN_PASSWORD: '${DA_ADMIN_PASSWORD:-docassemble}'
+      # Set this to prefill from LP without hunting for a key in the UI.
+      DA_ADMIN_API_KEY: '${DA_ADMIN_API_KEY:-}'
     stop_grace_period: 600s
     restart: unless-stopped
     volumes:

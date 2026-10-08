@@ -23,7 +23,8 @@
       </div>
     </div>
   </template>
-  <p x-show="showEmpty"
-     x-cloak
-     class="text-xs text-greyscale-400 px-3 py-2">{% trans "No conversations yet." %}</p>
+  {% trans "Your chats will show here once you send a message." as empty_threads_text %}
+  <div x-show="showEmpty" x-cloak>
+    <c-molecules.empty-state icon="chat-bubble-left-right" text="{{ empty_threads_text }}" />
+  </div>
 </div>

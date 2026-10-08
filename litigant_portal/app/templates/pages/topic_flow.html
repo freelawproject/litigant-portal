@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "frame_base.html" %}
 
 {% load i18n %}
 
@@ -6,12 +6,26 @@
   {{ corpus.metadata.title }} - {% trans "Litigant Portal" %}
 {% endblock title %}
 
-{# In a flow, the header menu becomes this flow's table of contents (+ Exit), #}
-{# so wayfinding lives in the consistent header slot instead of a jump-link #}
-{# wall above the content. #}
-{% block header %}
-  <c-organisms.header :toc="toc" />
-{% endblock header %}
+{# The flow's sections fill the frame's left region: jumping between them is #}
+{# the same job the left region does elsewhere (picking up a previous chat). #}
+{% block frame_left %}
+  {% trans "Exit this guide" as exit_label %}
+  <nav aria-label="{{ frame_left_label }}">
+    <ul class="list-none pl-0 py-2">
+      {% for item in toc %}
+        <li>
+          <c-atoms.link href="#{{ item.anchor }}" variant="unstyled" class="block px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100">{{ item.heading }}</c-atoms.link>
+        </li>
+      {% endfor %}
+    </ul>
+    <div class="border-t border-greyscale-200 py-2">
+      <c-atoms.link href="{% url 'pages:home' %}" variant="unstyled" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100">
+        <c-atoms.icon name="home" class="w-5 h-5 text-greyscale-500" />
+        {{ exit_label }}
+      </c-atoms.link>
+    </div>
+  </nav>
+{% endblock frame_left %}
 
 {% block content %}
 <div class="border-b border-greyscale-100 bg-primary-50 px-4 py-4">
@@ -20,7 +34,7 @@
 
 <div class="mx-auto max-w-3xl px-4 py-8">
   {% for section in rendered_sections %}
-  <section id="{{ section.anchor_id }}" class="mb-8 scroll-mt-4">
+  <section id="{{ section.anchor_id }}" class="mb-8">
     {% if section.heading %}
     <h2 class="mb-3 text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
     {% endif %}

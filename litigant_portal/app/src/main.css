@@ -111,6 +111,9 @@
 
   /* Max widths */
   --container-content: 948px;
+  /* Internal design-system pages: a 16rem sidebar, a 2rem gap, and the
+     content column, so a component beside the sidebar sits at its real width. */
+  --container-workbench: calc(var(--container-content) + 18rem);
 }
 
 /* ==========================================================================
@@ -123,6 +126,9 @@
     --mobile-main-padding: 1rem;
     --padded-full-width: calc(100vw - (2 * var(--mobile-main-padding)));
     --content-max-width: 948px;
+    /* The sticky site header's height. Every sticky offset and anchor
+       margin reads this one value (#988). */
+    --header-height: 4.5rem;
   }
 
   /* Alpine.js cloak - hide elements until Alpine initializes */
@@ -138,11 +144,28 @@
 
   /* Anchor scroll offset for sticky header */
   [id] {
-    scroll-margin-top: 5rem;
+    scroll-margin-top: calc(var(--header-height) + 0.5rem);
   }
 
   body {
     @apply font-sans text-greyscale-900 bg-greyscale-25;
+  }
+
+  /* Line breaking: no lone word on a paragraph's last line, and even line
+     lengths on short headings, instead of the browser's greedy default. */
+  p,
+  li,
+  dd,
+  figcaption,
+  blockquote {
+    text-wrap: pretty;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
   }
 
   /* Headings */
@@ -237,22 +260,82 @@
 
 @layer components {
   /* Logo */
+  /* Stacked so the court variant's "Powered by" line sits under both the
+     court logo and its name; the FLP variant is a single image either way. */
   .logo {
-    @apply inline-flex items-center gap-2 no-underline;
+    @apply inline-flex flex-col items-start gap-1 no-underline;
     @apply text-greyscale-900 font-cooper font-semibold;
     @apply hover:text-primary-600 transition-colors;
   }
 
   .logo-image {
-    @apply h-10 w-auto; /* 40px - default */
+    @apply h-12 w-auto; /* 48px - default (header) */
   }
 
   .logo-sm .logo-image {
-    @apply h-8; /* 32px - compact (mobile header) */
+    @apply h-8; /* 32px - compact */
   }
 
   .logo-lg .logo-image {
-    @apply h-15; /* 60px - prominent (footer, hero) */
+    @apply h-15; /* 60px - prominent (auth pages) */
+  }
+
+  .logo-court {
+    @apply flex items-center gap-3;
+  }
+
+  .logo-court-mark {
+    @apply h-12 w-auto shrink-0;
+  }
+
+  .logo-sm .logo-court-mark {
+    @apply h-10;
+  }
+
+  .logo-lg .logo-court-mark {
+    @apply h-15;
+  }
+
+  .logo-court-name-image {
+    @apply h-8 w-auto;
+  }
+
+  .logo-sm .logo-court-name-image {
+    @apply h-7;
+  }
+
+  .logo-lg .logo-court-name-image {
+    @apply h-10;
+  }
+
+  .logo-court-name {
+    @apply text-lg leading-tight;
+  }
+
+  /* The court variant responds to its own frame, not the viewport (see
+     logo.html). Below the width its full lockup needs, it shows the court
+     logo alone; sr-only rather than hidden, so the name stays in the
+     link's accessible name. */
+  .logo-frame-responsive {
+    @apply @container flex-1 min-w-12;
+  }
+
+  .logo-frame-responsive .logo-court-name,
+  .logo-frame-responsive .logo-court-name-image {
+    @apply @max-[11rem]:sr-only;
+  }
+
+  .logo-frame-responsive .logo-court-mark {
+    @apply @max-[11rem]:h-10;
+  }
+
+  .logo-frame-responsive .logo-lg .logo-court-name,
+  .logo-frame-responsive .logo-lg .logo-court-name-image {
+    @apply @max-[13rem]:sr-only;
+  }
+
+  .logo-powered {
+    @apply font-sans font-normal text-xs text-greyscale-600;
   }
 
   /* Search Bar */
@@ -295,16 +378,66 @@
 
   /* Mobile Header */
   .mobile-header {
+    @apply sticky top-0 z-40;
     @apply bg-white border-b border-greyscale-200;
   }
 
-  .mobile-header-sticky {
-    @apply sticky top-0 z-40;
+  /* WCAG 2.4.1 skip link: off screen until a keyboard user tabs to it. */
+  .skip-link {
+    @apply sr-only;
+    @apply focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50;
+    @apply focus:rounded-lg focus:bg-greyscale-900 focus:px-4 focus:py-3 focus:text-white;
+    @apply focus:ring-4 focus:ring-primary-300;
+  }
+
+  /* Accessibility page simulations, applied to its .a11y-demo panels only so
+     the explanations stay readable. Two ways in: the page's switcher radios
+     (#sim-<key>, watched with :has(), so switching needs no reload or JS),
+     scoped to the demos column (.a11y-demos); and an a11y-sim-<key> class,
+     which each switcher thumbnail wraps itself in to preview its own
+     simulation (pages/_a11y_simulation_thumb.html). Approximations, not
+     diagnoses. The colour-vision filters are SVG colour matrices defined in
+     the page (pages/a11y_guide.html); CSP allows a filter that references
+     them. */
+  body:has(#sim-protanopia:checked) .a11y-demos .a11y-demo,
+  .a11y-sim-protanopia .a11y-demo {
+    filter: url(#a11y-protanopia);
+  }
+
+  body:has(#sim-deuteranopia:checked) .a11y-demos .a11y-demo,
+  .a11y-sim-deuteranopia .a11y-demo {
+    filter: url(#a11y-deuteranopia);
+  }
+
+  body:has(#sim-tritanopia:checked) .a11y-demos .a11y-demo,
+  .a11y-sim-tritanopia .a11y-demo {
+    filter: url(#a11y-tritanopia);
+  }
+
+  body:has(#sim-achromatopsia:checked) .a11y-demos .a11y-demo,
+  .a11y-sim-achromatopsia .a11y-demo {
+    filter: grayscale(1);
+  }
+
+  body:has(#sim-blur:checked) .a11y-demos .a11y-demo,
+  .a11y-sim-blur .a11y-demo {
+    filter: blur(2.5px);
+  }
+
+  /* Cataracts: clouded, washed out, and yellowed. */
+  body:has(#sim-cataracts:checked) .a11y-demos .a11y-demo,
+  .a11y-sim-cataracts .a11y-demo {
+    filter: blur(1.5px) contrast(0.55) brightness(1.15) sepia(0.3);
+  }
+
+  /* Glaucoma: vision narrows to the centre of each panel. */
+  body:has(#sim-glaucoma:checked) .a11y-demos .a11y-demo,
+  .a11y-sim-glaucoma .a11y-demo {
+    mask-image: radial-gradient(ellipse at center, #000 25%, transparent 70%);
   }
 
   .mobile-header-inner {
     @apply flex items-center justify-between px-4 py-2;
-    @apply max-w-content mx-auto;
   }
 
   /* Hero Section */
@@ -500,12 +633,6 @@
     @apply max-w-2xl mx-auto px-2 text-xs text-greyscale-400 text-center;
   }
 
-  /* Mobile Footer */
-  .mobile-footer {
-    @apply bg-greyscale-100 border-t border-greyscale-200;
-    @apply px-4 py-2;
-  }
-
   /* Style Guide Navigation Accordion */
   .nav-chevron {
     transition: transform 0.2s ease;
@@ -680,15 +807,15 @@
     @apply hover:border-primary-300 hover:shadow-sm transition-all;
   }
 
-  /* Topic Flow in-header table-of-contents (<details> disclosure).
+  /* Header site menu (<details> disclosure, molecules/site_menu.html).
      Hide the native disclosure triangle so the summary reads as a plain
      hamburger button; flex display handles Chrome/Firefox, the webkit rule
      covers older iOS Safari. */
-  .topic-flow-toc > summary {
+  .site-menu > summary {
     @apply list-none;
   }
 
-  .topic-flow-toc > summary::-webkit-details-marker {
+  .site-menu > summary::-webkit-details-marker {
     display: none;
   }
 
@@ -704,5 +831,168 @@
     .print-section {
       break-inside: avoid;
     }
+  }
+}
+
+/* Accessibility page "Compare with typical vision" toggle (#a11y-compare),
+   watched with :has(). Each demo renders twice inside an .a11y-compare
+   wrapper (atoms/a11y_demo.html): the simulated copy, then an aria-hidden,
+   inert typical-vision copy that stays hidden until the toggle is checked.
+   Checked, the two sit side by side from sm up, typical first, each with
+   its caption, and each copy's own grid drops to one column so the cards
+   line up row by row. Unlayered, so it overrides the demos' grid utilities. */
+.a11y-demo-caption,
+.a11y-demo-typical {
+  display: none;
+}
+
+body:has(#a11y-compare:checked) .a11y-compare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+}
+
+@media (width >= 40rem) {
+  body:has(#a11y-compare:checked) .a11y-compare {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+body:has(#a11y-compare:checked) .a11y-demo-typical {
+  display: block;
+  order: -1;
+}
+
+body:has(#a11y-compare:checked) .a11y-demo-caption {
+  display: block;
+  @apply mb-2 text-xs font-semibold tracking-wider text-greyscale-600 uppercase;
+}
+
+body:has(#a11y-compare:checked) .a11y-demo-pane > :last-child {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+body:has(#a11y-compare:checked) .a11y-demo-pane > :last-child > * {
+  grid-column: auto;
+}
+
+/* Site frame (#988): left region, <main>, right region. Unlayered, so these
+   rules beat the browser's popover styles and Tailwind utilities alike.
+
+   Below xl each region is a native popover drawer: hidden until a header
+   button opens it, then fixed to its side of the screen. From xl up the
+   regions sit beside the content, sticky under the header and scrolling on
+   their own. Only :popover-open styles touch the drawer state, so a browser
+   without popover support ignores them and shows both regions inline. */
+.site-frame {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.site-frame-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.site-frame-region {
+  flex-direction: column;
+  background: var(--color-greyscale-25);
+}
+
+.site-frame-region-head {
+  @apply flex flex-shrink-0 items-center justify-between gap-2 border-b border-greyscale-200 px-4 py-3;
+}
+
+.site-frame-region:popover-open {
+  display: flex;
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(20rem, 100%);
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+}
+
+.site-frame-right:popover-open {
+  inset: 0 0 0 auto;
+}
+
+.site-frame-region::backdrop {
+  background: rgb(0 0 0 / 0.3);
+}
+
+.site-menu-item {
+  @apply flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100;
+}
+
+@media (width >= 80rem) {
+  .site-frame-region,
+  .site-frame-region:popover-open {
+    display: flex;
+    position: sticky;
+    /* inset before top: the shorthand resets top, and sticky with every inset
+       auto never sticks. */
+    inset: auto;
+    top: var(--header-height);
+    align-self: flex-start;
+    flex-shrink: 0;
+    width: clamp(280px, 20vw, 384px);
+    /* Full height, so the region's border runs the whole screen. */
+    height: calc(100dvh - var(--header-height));
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    overflow-y: auto;
+    box-shadow: none;
+  }
+
+  .site-frame-left {
+    border-right: 1px solid var(--color-greyscale-200);
+  }
+
+  .site-frame-right {
+    border-left: 1px solid var(--color-greyscale-200);
+  }
+
+  .site-frame-close,
+  .site-frame-toggle {
+    display: none;
+  }
+}
+
+/* Without popover support (iOS before 17) the drawers can't open, so below
+   xl the regions stack in reading order with the content instead, and the
+   buttons that would open them are hidden. Nothing becomes unreachable. */
+@supports not selector(:popover-open) {
+  @media (width < 80rem) {
+    .site-frame {
+      flex-direction: column;
+    }
+
+    .site-frame-close,
+    .site-frame-toggle {
+      display: none;
+    }
+  }
+}
+
+/* On a short screen (a phone held sideways, 200% zoom) a sticky header
+   would cover too much of the page, so it scrolls away there (WCAG 1.4.10). */
+@media (height < 30rem) {
+  .mobile-header {
+    position: static;
+  }
+
+  .site-frame-region {
+    top: 0;
   }
 }

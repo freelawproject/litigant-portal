@@ -52,6 +52,7 @@ class ChatMessage(BaseModel):
     data = SchemaField(
         schema=MessageSchema, default={"role": "system", "content": ""}
     )
+    identity_prompt = models.JSONField(default=dict, blank=True)
     hidden = models.BooleanField(default=False)
     meta = models.BooleanField(default=False)
     num_tokens = models.PositiveIntegerField(default=0)

@@ -26,18 +26,32 @@ forms (Petition, Declaration, Notice, Confidential, Order), the waiver track 4
 §12 (objections); they fork at entry, matching the Topic Flow corpus's
 standard/waiver split — no in-interview branching.
 
+## `multi_user = True` (prefill prereq)
+
+Both interviews open with an `initial` code block setting `multi_user = True`.
+The Litigant Portal prefill handoff creates a session through the API and
+hands the litigant a one-time resume link; without this flag the session is
+encrypted per-browser and that link cannot decrypt it. It has to be an `initial`
+code block, not a bare `multi_user: True` key, which throws `DASourceError`
+.
+
 ## Test it locally
 
 Prereq: the bench is up. See [`docs/docassemble.md`](../../docs/docassemble.md).
 
 - Start the bench: `make docassemble-up`
-- Open `http://localhost:8100` and log in (fresh box default: `admin@example.com` / `password`)
+- Open `http://localhost:8100` and log in with the `DA_ADMIN_EMAIL` / `DA_ADMIN_PASSWORD` seeded on the bench's first boot (see [`docs/docassemble.md`](../../docs/docassemble.md)).
+  The seed only applies to an empty database: a bench volume that predates these
+  vars keeps its old credentials, and the login fails — `docker compose down -v`
+  and re-seed.
 - Top-right menu → **Playground**
 - Upload the templates: in the Playground, open the **Templates** folder → upload
   `petition.pdf`, `declaration.pdf`, `notice.pdf`, `confidential-info.pdf`, and `order.pdf`
   (each attachment block's `pdf template file:` line resolves against this folder)
-- Upload the interview: in the **Sources** folder (the interview file list at the top of the
-  editor) → upload `petition-standard.yml`, then select it so it loads in the editor
+- Upload the interview: on the Playground's main page (the interview editor, **not**
+  Folders → Sources), use the upload button to add `petition-standard.yml`, then select
+  it so it loads in the editor. Files in Folders → Sources install to `data/sources/`,
+  which is never served as an interview.
 - Run it: click **Save and Run**
 - Walk the screens with the sample data below, then **download the combined
   packet** (and spot-check each form) at the end

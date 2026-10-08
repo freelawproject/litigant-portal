@@ -3,7 +3,7 @@
 	   check migrate shell collectstatic superuser messages compilemessages \
 	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
 	   docassemble-up docassemble-down \
-	   file-issue build-image push-image
+	   file-issue screenshots build-image push-image
 
 # Guard for commands that require the Docker container to be running
 # Holds docker's own stderr rather than swallowing it, and prints it only when
@@ -30,9 +30,12 @@ install: ## Install Python dependencies with dev extras
 lint: ## Run pre-commit hooks to lint and format code
 	pre-commit run --all-files
 
-test: ## Run tests
+test: test-js ## Run tests
 	$(require-docker)
 	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS))
+
+test-js: ## Run the browser JS tests (Node's built-in runner, no install needed)
+	node --test litigant_portal/app/tests/js/*.test.cjs
 
 test-v: ## Run tests — verbose output
 	$(require-docker)
@@ -44,6 +47,17 @@ pre-commit: ## Lint then test — stops if lint fails/fixes anything
 .PHONY: agent-eval
 agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'report ...')
 	uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
+
+# Only sources newer than their render are re-exported: draw.io stamps a random
+# id into every SVG, so regenerating an unchanged diagram is pure diff noise.
+DIAGRAMS := $(wildcard docs/architecture/*.drawio)
+
+.PHONY: diagrams
+diagrams: $(DIAGRAMS:=.svg) ## Regenerate docs/architecture SVG renders whose .drawio changed (needs the draw.io desktop CLI)
+
+docs/architecture/%.drawio.svg: docs/architecture/%.drawio
+	@command -v drawio >/dev/null || { echo "drawio not found — see docs/architecture/README.md"; exit 1; }
+	drawio -x -f svg -e -o $@ $<
 
 css: ## Build Tailwind CSS (one-time)
 	tailwindcss -i $(CSS_SRC) -o $(CSS_OUT)
@@ -127,6 +141,9 @@ docassemble-down: ## Stop the local-dev docassemble bench
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
 	uv run python scripts/file_issue.py $(FILE)
 
+screenshots: ## Full-page captures of the front-end pages at 1440 and 320px (LABEL=before|after; on macOS, run outside the Claude Code sandbox)
+	node scripts/screenshots.mjs $(or $(LABEL),$(error set LABEL, e.g. make screenshots LABEL=before))
+
 # Image build & push — used by .github/workflows/deploy.yml to publish the
 # portal image for the EKS deploy. Requires VERSION (the short git SHA in CI):
 #   make push-image -e VERSION=$(git rev-parse --short HEAD)
@@ -134,8 +151,11 @@ file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdi
 REPO ?= freelawproject/litigant-portal
 DOCKER_TAG_PROD = $(VERSION)-prod
 
+GIT_BRANCH ?= $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)
+BUILD_TIME ?= $(shell date -u +"%Y/%m/%d %H:%M")
+
 build-image: ## Build the prod portal image (requires VERSION=...)
-	docker build -t $(REPO):$(DOCKER_TAG_PROD) --build-arg GIT_SHA=$(VERSION) --file docker/django/Dockerfile .
+	docker build -t $(REPO):$(DOCKER_TAG_PROD) --build-arg GIT_SHA=$(VERSION) --build-arg GIT_BRANCH="$(GIT_BRANCH)" --build-arg BUILD_TIME="$(BUILD_TIME)" --file docker/django/Dockerfile .
 
 push-image: build-image ## Build then push the prod portal image (amd64 only)
 	@if [ "$$(uname -m)" != "x86_64" ]; then \

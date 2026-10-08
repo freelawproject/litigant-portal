@@ -1,6 +1,10 @@
-from .base import Agent, AgentState
+import json
+
+from .base import Agent, AgentState, IdentityPrompt
 from .tools.load_topic_flow import LoadTopicFlow, topic_flow_path
 from .tools.query_document import QueryDocument
+from .tools.record_fact import RecordFact
+from .tools.review_facts import ReviewFacts
 
 BASE_PROMPT = """\
 You are a compassionate legal assistant helping self-represented litigants \
@@ -11,7 +15,11 @@ The user can attach files (documents and images) to their messages. Small \
 files appear directly in the conversation. A note reading [Attached file \
 ...] means the file is available but not shown — use the query_document \
 tool with its upload_id to read or query it. Never guess at the contents \
-of a file you haven't seen."""
+of a file you haven't seen.
+
+When the active topic flow's needed facts are all saved, or when the user \
+asks to review their answers or to finish, call the ReviewFacts tool \
+instead of listing their facts in prose."""
 
 COURT_PROMPT = """\
 ## Court context
@@ -22,6 +30,18 @@ MULTI_COURT_CONTEXT = """\
 This portal is running in multi-court mode: the guided topic flows may \
 belong to different courts. Confirm which court and state the user's case \
 is in before relying on court-specific details."""
+
+FACTS_PROMPT = """\
+## Facts the user has already provided
+
+Never re-ask a fact listed here. Confirmed facts were reviewed by the \
+user. Unconfirmed facts are the user's own statements awaiting their \
+review: treat them as what the user told you, and when the user corrects \
+one, save the new value with RecordFact. If a listed fact may not apply \
+to the current matter, confirm it rather than re-ask it from scratch. \
+Never invent a fact that is not listed here or stated by the user.
+
+{facts}"""
 
 TOPIC_FLOWS_PROMPT = """\
 ## Guided topic flows
@@ -75,6 +95,28 @@ def generate_topic_flows_prompt() -> str:
     )
 
 
+def _fact_values(answers) -> dict[str, str]:
+    """Variable name -> the value exactly as the facts section renders it.
+
+    json.dumps: a value with a newline must not add its own prompt lines.
+    """
+    return {
+        a.variable.name: json.dumps(str(a.display_value), ensure_ascii=False)
+        for a in answers
+    }
+
+
+def _facts_prompt(answers) -> str:
+    values = _fact_values(answers)
+    facts = "\n".join(
+        f"- {a.variable.name} ({a.variable.label or a.variable.name}): "
+        f"{values[a.variable.name]} "
+        f"[{'confirmed' if a.reviewed else 'unconfirmed'}]"
+        for a in answers
+    )
+    return FACTS_PROMPT.format(facts=facts)
+
+
 class LitigantAssistantState(AgentState):
     """Litigant assistant state."""
 
@@ -85,7 +127,7 @@ class LitigantAssistant(Agent):
     """The user-facing assistant for self-represented litigants."""
 
     state_schema = LitigantAssistantState
-    tools = [QueryDocument, LoadTopicFlow]
+    tools = [QueryDocument, LoadTopicFlow, RecordFact, ReviewFacts]
 
     def prepare_thread(self, *, thread_id) -> None:
         """Clear the thread's active topic flow when it no longer names an
@@ -112,7 +154,7 @@ class LitigantAssistant(Agent):
         chat_thread_state_merge(thread_id=thread_id, updates=clear_if_stale)
 
     def generate_system_prompt(self, *, thread_id) -> str:
-        """The non-empty prompt sections, blank-line separated.
+        """The non-empty shared prompt sections, blank-line separated.
 
         The active topic flow is deliberately absent: the model learns it
         from the LoadTopicFlow result in history, which only works while
@@ -128,4 +170,25 @@ class LitigantAssistant(Agent):
                 generate_topic_flows_prompt(),
             )
             if section
+        )
+
+    def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt | None:
+        """The stored-facts section for the thread's identity, or None.
+
+        RecordFact sets refresh_system_prompt when it saves, so a fact stored
+        mid-turn appears here before the model's next step.
+        """
+        from litigant_portal.app.selectors.chat_engine import (
+            chat_thread_identity_get,
+        )
+        from litigant_portal.app.selectors.topic_flow import (
+            variable_answer_list,
+        )
+
+        identity = chat_thread_identity_get(thread_id=thread_id)
+        answers = variable_answer_list(identity=identity, answered_only=True)
+        if not answers:
+            return None
+        return IdentityPrompt(
+            text=_facts_prompt(answers), values=_fact_values(answers)
         )

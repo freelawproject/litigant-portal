@@ -246,6 +246,50 @@ function makeMessage(role, content, attachments) {
   }
 }
 
+function makeErrorMessage(event) {
+  const copy =
+    typeof event.message === 'string' && event.message.trim()
+      ? event.message
+      : 'The assistant is temporarily unavailable.'
+  const message = makeMessage('assistant', copy)
+  const url = event.fallback_url || ''
+  const safeUrl =
+    typeof url === 'string' &&
+    /^\/(?![\/\\])/.test(url) &&
+    !/[\\\u0000-\u001f\u007f]/.test(url)
+      ? url
+      : '/'
+  const label =
+    typeof event.fallback_label === 'string' && event.fallback_label.trim()
+      ? event.fallback_label
+      : 'Browse the help topics'
+  message.html +=
+    '<p class="my-1.5 last:mb-0"><a href="' +
+    escapeHtml(safeUrl) +
+    '" class="text-primary-700 underline hover:no-underline">' +
+    escapeHtml(label) +
+    '</a></p>'
+  return message
+}
+
+const INITIAL_RESPONSE_TIMEOUT_MS = 30000
+const STREAM_STALL_TIMEOUT_MS = 60000
+
+function clearStreamTimers(stream) {
+  clearTimeout(stream.initialResponseTimer)
+  clearTimeout(stream.stallTimer)
+  stream.initialResponseTimer = null
+  stream.stallTimer = null
+}
+
+function resetStallTimer(app, stream) {
+  clearTimeout(stream.stallTimer)
+  stream.stallTimer = setTimeout(
+    () => app.failStream(stream),
+    STREAM_STALL_TIMEOUT_MS
+  )
+}
+
 // Chip data for an attachment shown on a sent user message.
 function messageAttachment(att) {
   return {
@@ -448,9 +492,6 @@ document.addEventListener('alpine:init', () => {
     streaming: false,
     sendDisabled: true,
     menuOpen: false,
-    // Slide-over drawers for the collapsed side panels at narrow widths.
-    historyOpen: false,
-    briefcaseOpen: false,
     confirmingDelete: false,
     thinkingVisible: false,
     // The in-flight stream context, if any. It owns the message array it
@@ -586,29 +627,21 @@ document.addEventListener('alpine:init', () => {
       this.menuOpen = false
     },
 
-    // --- Drawers (collapsed side panels at narrow widths) ---
+    // --- Drawers ---
 
-    openHistory() {
-      this.historyOpen = true
-      this.briefcaseOpen = false
-    },
-
-    closeHistory() {
-      this.historyOpen = false
-    },
-
-    openBriefcase() {
-      this.briefcaseOpen = true
-      this.historyOpen = false
-    },
-
-    closeBriefcase() {
-      this.briefcaseOpen = false
-    },
-
+    // Below xl the site frame's regions are native popover drawers (#988).
+    // Choosing a thread or starting a new chat closes whichever one is open.
     closeDrawers() {
-      this.historyOpen = false
-      this.briefcaseOpen = false
+      for (const id of ['frame-left', 'frame-right']) {
+        const region = document.getElementById(id)
+        if (
+          region &&
+          typeof region.hidePopover === 'function' &&
+          region.matches(':popover-open')
+        ) {
+          region.hidePopover()
+        }
+      }
     },
 
     // Open the delete-confirmation modal for the active thread.
@@ -744,6 +777,12 @@ document.addEventListener('alpine:init', () => {
         messages: this.messages,
         // Index of the assistant text part receiving content, if any.
         openIndex: null,
+        hadAssistantText: false,
+        failureRendered: false,
+        terminal: false,
+        receivedFirstStreamEvent: false,
+        inFlightToolIds: [],
+        controller: new AbortController(),
       }
       this.activeStream = stream
       stream.messages.push(makeMessage('user', message, attachments))
@@ -753,7 +792,13 @@ document.addEventListener('alpine:init', () => {
       this.refreshSendState()
       this.updateThinking()
       this.scrollToBottom()
+      stream.initialResponseTimer = setTimeout(
+        () => this.failStream(stream),
+        INITIAL_RESPONSE_TIMEOUT_MS
+      )
+      resetStallTimer(this, stream)
 
+      let reader
       try {
         const body = new FormData()
         body.append('message', message)
@@ -764,16 +809,20 @@ document.addEventListener('alpine:init', () => {
         const res = await fetch(this.base + 'stream/', {
           method: 'POST',
           body,
+          signal: stream.controller.signal,
         })
         if (!res.ok) throw new Error('Request failed: ' + res.status)
 
-        const reader = res.body.getReader()
+        reader = res.body.getReader()
         const decoder = new TextDecoder()
         let buffer = ''
 
         while (true) {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done) {
+            if (!stream.terminal) this.failStream(stream)
+            break
+          }
 
           buffer += decoder.decode(value, { stream: true })
           const lines = buffer.split('\n')
@@ -788,15 +837,32 @@ document.addEventListener('alpine:init', () => {
             } catch (e) {
               // Ignore parse errors for partial chunks.
             }
+            if (stream.terminal) break
+          }
+          if (stream.terminal) {
+            break
           }
         }
       } catch (e) {
-        console.error('Chat stream failed:', e)
-        this.appendAssistant(
-          stream,
-          'Sorry, something went wrong. Please try again.'
-        )
+        if (!stream.failureRendered && !stream.terminal) {
+          console.error('Chat stream failed:', e)
+          this.failStream(stream)
+        }
       } finally {
+        clearStreamTimers(stream)
+        if (reader) {
+          try {
+            await reader.cancel()
+          } catch {
+            // Cleanup failures do not replace the stream outcome.
+          } finally {
+            try {
+              reader.releaseLock()
+            } catch {
+              // Cleanup failures do not replace the stream outcome.
+            }
+          }
+        }
         this.streaming = false
         // Viewed streams end quietly; backgrounded ones flag their row
         // green until the user opens the thread.
@@ -812,6 +878,17 @@ document.addEventListener('alpine:init', () => {
     },
 
     handleEvent(stream, event) {
+      if (
+        !event ||
+        typeof event !== 'object' ||
+        typeof event.type !== 'string'
+      ) {
+        return
+      }
+      this.markFirstStreamEvent(stream)
+      if (stream.inFlightToolIds.length === 0) {
+        resetStallTimer(this, stream)
+      }
       if (event.type === 'thread') {
         stream.threadId = event.thread_id
         this.setThreadStatus(stream.threadId, 'streaming')
@@ -829,15 +906,61 @@ document.addEventListener('alpine:init', () => {
         // A new tool starts a fresh text run after it.
         stream.openIndex = null
         stream.messages.push(makeToolFromCall(event))
+        if (!stream.inFlightToolIds.includes(event.id)) {
+          stream.inFlightToolIds.push(event.id)
+        }
+        clearTimeout(stream.stallTimer)
+        stream.stallTimer = null
       } else if (event.type === 'tool_response') {
         this.applyToolResponse(stream, event)
+        stream.inFlightToolIds = stream.inFlightToolIds.filter(
+          (id) => id !== event.id
+        )
+        if (stream.inFlightToolIds.length === 0 && !stream.terminal) {
+          resetStallTimer(this, stream)
+        }
       } else if (event.type === 'description') {
         if (this.attached(stream)) this.threadTitle = event.description
       } else if (event.type === 'state') {
         if (this.attached(stream)) this.setState(event.state)
       } else if (event.type === 'error') {
-        this.appendAssistant(stream, event.error || 'Something went wrong.')
+        this.failStream(stream, event)
+      } else if (event.type === 'done') {
+        stream.terminal = true
+        clearStreamTimers(stream)
       }
+      if (this.attached(stream)) {
+        this.updateThinking()
+        this.scrollToBottom()
+      }
+    },
+
+    markFirstStreamEvent(stream) {
+      if (stream.receivedFirstStreamEvent) return
+      stream.receivedFirstStreamEvent = true
+      clearTimeout(stream.initialResponseTimer)
+      stream.initialResponseTimer = null
+    },
+
+    failStream(stream, event = {}) {
+      if (stream.failureRendered || stream.terminal) return
+      stream.failureRendered = true
+      stream.terminal = true
+      clearStreamTimers(stream)
+      stream.controller.abort()
+      stream.messages.forEach((message, index) => {
+        if (message.isTool && message.status === 'calling') {
+          stream.messages[index] = computeToolFlags({
+            ...message,
+            status: 'failed',
+          })
+        }
+      })
+      if (stream.hadAssistantText) {
+        this.appendAssistant(stream, 'This response may be incomplete.')
+      }
+      stream.messages.push(makeErrorMessage(event))
+      stream.openIndex = null
       if (this.attached(stream)) {
         this.updateThinking()
         this.scrollToBottom()
@@ -846,6 +969,7 @@ document.addEventListener('alpine:init', () => {
 
     // Append streamed content to the open assistant part (creating it lazily).
     appendContent(stream, text) {
+      if (text) stream.hadAssistantText = true
       if (stream.openIndex === null) {
         stream.messages.push(makeMessage('assistant', ''))
         stream.openIndex = stream.messages.length - 1
@@ -1198,6 +1322,107 @@ document.addEventListener('alpine:init', () => {
       } catch (e) {
         console.error('Failed to load chat usage:', e)
       }
+    },
+  }))
+
+  // The ReviewFacts tool card: the human-only confirm step. UI flips are
+  // imperative DOM updates, not x-bind/x-show: bindings evaluated while x-html
+  // inserts the card leak into the hosting x-html effect, so the first
+  // reactive write re-renders and resets the card (CSP build 3.14.9).
+  Alpine.data('factReviewCard', () => ({
+    names: [],
+    confirmUrl: '',
+    asOf: '',
+    busy: false,
+    done: false,
+
+    init() {
+      this.names = (this.$root.dataset.names || '').split(',').filter(Boolean)
+      this.confirmUrl = this.$root.dataset.confirmUrl
+      this.asOf = this.$root.dataset.asOf || ''
+      this.armLaunch()
+      if (this.$root.dataset.allReviewed === 'true') this.markConfirmed()
+    },
+
+    // Token in the form body: the X-CSRFToken header is stripped on QA.
+    // as_of is when the card read its answers; the endpoint confirms only
+    // rows unchanged since, so a value this card never showed stays pending.
+    // The response's `pending` list, not its count, decides the outcome: a
+    // short count also happens when an earlier card already confirmed rows.
+    async confirmFacts() {
+      if (this.busy || this.done || this.names.length === 0) return
+      this.busy = true
+      this.showNote('error-note', false)
+      this.showNote('stale-note', false)
+      try {
+        const body = new FormData()
+        body.append('csrfmiddlewaretoken', this.csrfToken())
+        body.append('as_of', this.asOf)
+        for (const name of this.names) body.append('names', name)
+        const res = await fetch(this.confirmUrl, { method: 'POST', body })
+        if (!res.ok) throw new Error('confirm failed: ' + res.status)
+        const { pending } = await res.json()
+        if (Array.isArray(pending) && pending.length > 0) {
+          this.showNote('stale-note', true)
+        } else {
+          this.markConfirmed()
+        }
+      } catch (e) {
+        console.error('Failed to confirm facts:', e)
+        this.showNote('error-note', true)
+      } finally {
+        this.busy = false
+      }
+    },
+
+    markConfirmed() {
+      this.done = true
+      const confirm = this.$root.querySelector('[data-role=confirm]')
+      if (confirm) confirm.disabled = true
+      this.showNote('confirmed-note', true)
+      this.showNote('error-note', false)
+      this.showNote('stale-note', false)
+      this.showAll('badge-pending', false)
+      this.showAll('badge-confirmed', true)
+    },
+
+    showAll(role, show) {
+      for (const el of this.$root.querySelectorAll(
+        '[data-role=' + role + ']'
+      )) {
+        el.hidden = !show
+      }
+    },
+
+    showNote(role, show) {
+      const note = this.$root.querySelector('[data-role=' + role + ']')
+      if (note) note.hidden = !show
+    },
+
+    // The launch form's token input is created here, already filled: an empty
+    // one in the message flow would shadow the page's token for every caller.
+    armLaunch() {
+      const form = this.$root.querySelector('form')
+      if (!form) return
+      const token = this.csrfToken()
+      let input = form.querySelector('input[name=csrfmiddlewaretoken]')
+      if (!input) {
+        input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = 'csrfmiddlewaretoken'
+        form.appendChild(input)
+      }
+      input.value = token
+    },
+
+    // Skips empty inputs: this card's own input precedes the page's in DOM order.
+    csrfToken() {
+      for (const input of document.querySelectorAll(
+        '[name=csrfmiddlewaretoken]'
+      )) {
+        if (input.value) return input.value
+      }
+      return ''
     },
   }))
 })
