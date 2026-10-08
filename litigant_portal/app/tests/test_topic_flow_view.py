@@ -1351,8 +1351,8 @@ def test_switching_the_path_says_the_steps_were_updated_once(
         "anchor": "who_are_you",
         "value": "marina",
     }
-    # The line under the gate stands in for the toast.
-    assert _toasts(response) == []
+    # The card adds to the toast; it doesn't replace it.
+    assert _toasts(response) == ["Saved."]
     # Shown once: a reload doesn't repeat it.
     assert client.get(URL).context["gate_changed"] is None
 

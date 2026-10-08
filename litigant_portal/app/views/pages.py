@@ -182,17 +182,17 @@ def topic_flow(request, court, topic, role):
                         "shown on this page."
                     ),
                 )
-            elif replaced := replaced_gate_answer(corpus, stored, valid):
+            else:
+                messages.success(request, _("Saved."))
+            if replaced := replaced_gate_answer(corpus, stored, valid):
                 # A changed gate answer changes steps the visitor may have
-                # read. The page says so under the gate, in the same dashed
-                # line that held those steps back, instead of a toast.
+                # read, so besides the toast the page says so under the
+                # gate, in the same dashed card that held those steps back.
                 request.session[_GATE_CHANGED_SESSION_KEY] = {
                     "path": request.path,
                     "anchor": submitted_section_anchor(corpus, submitted),
                     "value": valid[replaced],
                 }
-            else:
-                messages.success(request, _("Saved."))
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.
