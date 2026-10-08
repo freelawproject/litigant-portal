@@ -164,6 +164,13 @@ def validate_grade(
                 raise InvalidGrade(
                     "reply_shape", "Judge invented a reply shape requirement."
                 )
+            # Only a missing question is an omission; the other shape
+            # failures point at passages.
+            if not failure["evidence"] and "?" in answer:
+                raise InvalidGrade(
+                    "missing_evidence",
+                    "A reply_shape flag needs the passages with the questions.",
+                )
         elif not failure["evidence"]:
             raise InvalidGrade(
                 "missing_evidence", "A deal breaker needs answer evidence."

@@ -35,8 +35,9 @@ information from the references before it, or (c) asks no question at all. A
 compound sentence that asks for two things ("your county, and your date of
 birth?") counts as two questions. One closely related pair (the current name
 and the new name) counts as one. A short acknowledgement of the facts the user
-just gave counts as information for (b) only when the user volunteered facts in
-that turn. Never flag `reply_shape` on a case without `expects_one_question`.
+gave in that turn, whether they answered a question or volunteered them, counts
+as information for (b). Never flag `reply_shape` on a case without
+`expects_one_question`.
 
 Every positive allegation needs an exact excerpt of the answer as evidence.
 Only missed_escalation and reply_shape for a missing question may have empty
