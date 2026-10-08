@@ -63,6 +63,17 @@ erDiagram
 - **One `CONDITION` entity, many consumers.** Main has the same idea twice, each hard-wired to one consumer: `Variable.asked_when` gates a question, and `TopicFlowFormCondition` gates a form. Both are single-fact equality checks.
 - **Actors are not entities.** The litigant (guided page), the assistant (`RecordFact`) and a future docassemble return trip all write `ANSWER` rows, which is why `source` and `reviewed` live on the answer. Only a person sets `reviewed` (#967).
 
+## Topic flow shape: hard and soft gates
+
+How the rules model lands on the page, settled with the Harbor County proof of concept (PR #998):
+
+- **Hard gates are asked up front.** A hard gate changes which information applies (tenant or landlord). A topic flow may start with an intro section that collects its one to three gate answers, with an optional "I'm not sure" helper that ends in a button the person presses to set the path.
+- **Nothing after the intro is a gate.** A `when` reads intro answers only. Later sections hold fields that feed computed values (deadlines) and the briefcase, never decision-tree questions.
+- **Soft gates are guidance, not gates.** A soft gate is a date or condition the page handles in prose ("if you received a written notice, enter its date"): the deadline computes once the date is in, and nothing is hidden.
+- **Unanswered gates hold the rest back** behind a dashed info card: "More steps for your situation appear here after you answer above."
+- **A changed gate answer says so** in the same card under the gate: "The sections below were updated because your answer changed to `<value>`." The "Saved." toast stays for the save itself.
+- **Several stages of gates means docassemble.** Flows like divorce (gates that multiply) or expungement (eligibility from several answers) link to docassemble interviews for that branching.
+
 ## Players
 
 Everything that touches the rules model: what sets scope, what supplies facts, what the rules gate, where rules come from, and who acts. Each line carries its status on main today, so the gaps are visible.
