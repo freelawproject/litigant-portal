@@ -98,7 +98,7 @@ class Fact(Schema):
 
 class Case(Schema):
     id: Slug
-    group: Literal["real", "fictional"]
+    group: Literal["real", "fictional", "conversation"]
     fixture: Literal["current", "chickens-a", "chickens-b"] = "current"
     court: Slug
     topic: Slug
@@ -121,6 +121,10 @@ class Case(Schema):
             raise ValueError("Fact IDs must be unique within a case.")
         if any(not turn.strip() for turn in self.history):
             raise ValueError("History turns must not be empty.")
+        if bool(self.history) != (self.group == "conversation"):
+            raise ValueError(
+                "Conversation cases need history; other groups take none."
+            )
         return self
 
 

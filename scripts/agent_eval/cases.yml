@@ -401,7 +401,7 @@
     fabrication.
   requires_escalation: false
 - id: nd-convo-dv-filing
-  group: real
+  group: conversation
   court: north-dakota
   topic: adult-name-change
   history:
@@ -444,7 +444,7 @@
     clerk.
   requires_escalation: false
 - id: nd-convo-first-name-filing
-  group: real
+  group: conversation
   court: north-dakota
   topic: adult-name-change
   history:

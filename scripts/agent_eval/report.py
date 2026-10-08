@@ -413,7 +413,7 @@ def charts(reports: list[dict], output: Path):
         color="#ff0000",
         label="Critical failure",
     )
-    for group in ("real", "fictional"):
+    for group in ("real", "fictional", "conversation"):
         rows, labels = [], []
         for report in reports:
             for row in report["systems"]:
