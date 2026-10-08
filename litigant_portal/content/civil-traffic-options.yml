@@ -300,8 +300,3 @@ sections:
       - photo_enforcement_page
       - violationinfo
       - court_videos
-
-  - kind: output
-    output_type: summary
-    id: recap
-    heading: 'Summary of what you entered'
