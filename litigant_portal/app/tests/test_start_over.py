@@ -90,6 +90,14 @@ def test_start_over_returns_to_the_page_it_came_from(client):
 
 
 @override_settings(DEPLOYMENT_ENV="dev")
+def test_start_over_drops_the_query_from_next(client):
+    # /chat/?q= re-sends its question on load, so returning there with the
+    # query would start a new thread right after the reset.
+    response = client.post(START_OVER, {"next": "/chat/?q=my+question"})
+    assert response["Location"] == "/chat/"
+
+
+@override_settings(DEPLOYMENT_ENV="dev")
 def test_start_over_ignores_an_offsite_next(client):
     response = client.post(START_OVER, {"next": "https://example.com/"})
     assert response["Location"] == reverse("pages:home")

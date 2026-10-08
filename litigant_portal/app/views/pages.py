@@ -1,5 +1,6 @@
 import os
 import re
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib import messages
@@ -230,7 +231,9 @@ def start_over(request):
     (#969).
 
     Deletes the visitor's chats, uploads and answers, then returns to
-    ``next`` when it is on this site. The site menu asks for confirmation
+    the path of ``next`` when it is on this site. The query is dropped
+    because ``/chat/?q=`` re-sends its question on load, which would start a
+    new thread right after the reset. The site menu asks for confirmation
     first. Production answers 404 here, whatever the menu shows, so the
     check lives on the server and not only in the template.
     """
@@ -251,7 +254,7 @@ def start_over(request):
         require_https=request.is_secure(),
     ):
         next_url = reverse("pages:home")
-    return redirect(next_url)
+    return redirect(urlsplit(next_url).path)
 
 
 def about(request):
