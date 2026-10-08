@@ -204,6 +204,11 @@ def read_cases(config: Config) -> list[Case]:
     return cases
 
 
+def runs_on(system: str, history: list[str]) -> bool:
+    """The new system takes single-turn cases only; skip rather than error."""
+    return not (system == "new" and history)
+
+
 def write_json(path: Path, value) -> None:
     """
     Replace each artifact atomically so interruptions leave readable JSON.

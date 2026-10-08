@@ -29,6 +29,7 @@ from .schema import (
     Config,
     fingerprint,
     read_cases,
+    runs_on,
     verify_references,
     write_json,
 )
@@ -86,11 +87,6 @@ def source_state(root: Path = ROOT, *, application=False) -> dict:
     }
 
 
-def runs_on(case: Case, system: str) -> bool:
-    """The new system takes single-turn cases only; skip rather than error."""
-    return not (system == "new" and case.history)
-
-
 def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
     cases = read_cases(config)
     output.mkdir(parents=True, exist_ok=True)
@@ -135,7 +131,7 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
         },
         "python": sys.version,
         "planned_attempts": sum(
-            runs_on(case, system)
+            runs_on(system, case.history)
             for case in cases
             for system in config.systems
         )
@@ -340,7 +336,7 @@ def run_suite(config: Config, output: Path) -> Path:
                         config.models,
                         range(1, config.repetitions + 1),
                     )
-                    if runs_on(job[0], job[1])
+                    if runs_on(job[1], job[0].history)
                 ]
                 rng.shuffle(jobs)
                 for case, system, model, repeat in jobs:
