@@ -3,7 +3,7 @@ import logging
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 
-from litigant_portal.app.models import UserIdentity
+from litigant_portal.app.models import UserIdentity, UserUpload
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 
 logger = logging.getLogger(__name__)
@@ -106,8 +106,24 @@ def user_identity_reset(*, identity: UserIdentity) -> None:
     to no identity, so it stays. The identity row stays too, so the session
     or signed-in user keeps working.
     """
-    for upload in identity.uploads.all():
-        upload.file.delete(save=False)
-    identity.uploads.all().delete()
+    uploads = identity.uploads.all()
+    files = [(u.pk, u.file.name) for u in uploads if u.file]
+    uploads.delete()
     identity.chat_threads.all().delete()
     identity.variable_answers.all().delete()
+    transaction.on_commit(lambda: _upload_files_delete(files))
+
+
+def _upload_files_delete(files: list[tuple]) -> None:
+    """Delete stored files once their rows are committed gone. A failure
+    leaves an orphaned file, which is harmless, so it is logged and the
+    rest still go. Logs the upload id, not the name, which may identify
+    the visitor."""
+    storage = UserUpload._meta.get_field("file").storage
+    for upload_id, name in files:
+        try:
+            storage.delete(name)
+        except Exception:
+            logger.exception(
+                "Could not delete stored file of upload %s", upload_id
+            )

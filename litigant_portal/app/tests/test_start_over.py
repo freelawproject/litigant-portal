@@ -5,6 +5,8 @@ and answers go, and nobody else's. Seeded data (topics, flows, variables)
 is the baseline and stays. Production has no such endpoint.
 """
 
+from unittest import mock
+
 import pytest
 from django.test import override_settings
 from django.urls import reverse
@@ -12,10 +14,12 @@ from django.urls import reverse
 from litigant_portal.app.models import (
     ChatThread,
     UserIdentity,
+    UserUpload,
     Variable,
     VariableAnswer,
 )
 from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.services.user import user_identity_reset
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
@@ -90,3 +94,50 @@ def test_start_over_ignores_an_offsite_next(client):
     response = client.post(START_OVER, {"next": "https://example.com/"})
     assert response["Location"] == reverse("pages:home")
 
+
+def _upload(identity, name):
+    return UserUpload.objects.create(
+        identity=identity,
+        file=f"uploads/{identity.pk}/{name}",
+        name=name,
+        content_type="text/plain",
+        size=5,
+    )
+
+
+@pytest.fixture
+def storage_delete():
+    storage = UserUpload._meta.get_field("file").storage
+    with mock.patch.object(storage, "delete") as delete:
+        yield delete
+
+
+def test_start_over_deletes_stored_files_only_once_committed(
+    storage_delete, django_capture_on_commit_callbacks
+):
+    identity = UserIdentity.objects.create(session_key="a-session")
+    _upload(identity, "notes.txt")
+
+    with django_capture_on_commit_callbacks() as callbacks:
+        user_identity_reset(identity=identity)
+        storage_delete.assert_not_called()
+
+    for callback in callbacks:
+        callback()
+    storage_delete.assert_called_once_with(f"uploads/{identity.pk}/notes.txt")
+
+
+def test_a_failed_file_delete_still_clears_the_rest(
+    storage_delete, django_capture_on_commit_callbacks, caplog
+):
+    identity = UserIdentity.objects.create(session_key="a-session")
+    _upload(identity, "a.txt")
+    _upload(identity, "b.txt")
+    storage_delete.side_effect = [OSError("storage down"), None]
+
+    with django_capture_on_commit_callbacks(execute=True):
+        user_identity_reset(identity=identity)
+
+    assert not UserUpload.objects.filter(identity=identity).exists()
+    assert storage_delete.call_count == 2
+    assert [r.levelname for r in caplog.records] == ["ERROR"]
