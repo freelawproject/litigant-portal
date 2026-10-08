@@ -17,7 +17,9 @@ from litigant_portal.agents.tools.load_topic_flow import (
 )
 from litigant_portal.app.models import (
     ChatThread,
+    Contact,
     Form,
+    Resource,
     Topic,
     TopicFlow,
     TopicFlowDeadline,
@@ -104,7 +106,10 @@ class TopicFlowMarkdownTests(TestCase):
     def test_markdown_covers_the_flow_content_graph(self):
         flow = _eviction_flow()
         TopicFlowSection.objects.create(
-            flow=flow, heading="First steps", content="Read the notice."
+            flow=flow,
+            key="first_steps",
+            heading="First steps",
+            content="Read the notice.",
         )
         served = Variable.objects.create(
             name="date_served",
@@ -112,7 +117,11 @@ class TopicFlowMarkdownTests(TestCase):
             data_type=VariableDataType.DATE,
         )
         TopicFlowDeadline.objects.create(
-            flow=flow, label="Answer due", offset_days=28, offset_from=served
+            flow=flow,
+            key="answer_due",
+            label="Answer due",
+            offset_days=28,
+            offset_from=served,
         )
         county = Variable.objects.create(
             name="county",
@@ -142,7 +151,10 @@ class TopicFlowMarkdownTests(TestCase):
             flow=flow, form=fee_waiver, variable=county, value="cass"
         )
         TopicFlowLink.objects.create(
-            flow=flow, name="Court site", url="https://example.com/court"
+            flow=flow,
+            key="court_site",
+            name="Court site",
+            url="https://example.com/court",
         )
 
         markdown = topic_flow_markdown(
@@ -151,14 +163,23 @@ class TopicFlowMarkdownTests(TestCase):
 
         self.assertIn("# Responding to an Eviction", markdown)
         self.assertIn("Topic: Eviction", markdown)
-        self.assertIn("## First steps", markdown)
+        self.assertIn(
+            "## First steps [source:eviction/tenant/first_steps]", markdown
+        )
         self.assertIn("Read the notice.", markdown)
         self.assertIn(
-            "- Answer due: 28 days after Date you were served", markdown
+            "- [source:eviction/tenant/answer_due] Answer due: 28 days after "
+            "Date you were served",
+            markdown,
         )
-        self.assertIn("- Answer Form", markdown)
+        # A packet entry cites its form slug.
         self.assertIn(
-            '- Fee Waiver (included when county equals "cass")', markdown
+            "- [source:eviction/tenant/answer] Answer Form", markdown
+        )
+        self.assertIn(
+            "- [source:eviction/tenant/fee-waiver] Fee Waiver (included when "
+            'county equals "cass")',
+            markdown,
         )
         self.assertIn("### About your case", markdown)
         self.assertIn("- date_served (date): Date you were served", markdown)
@@ -171,7 +192,30 @@ class TopicFlowMarkdownTests(TestCase):
             '(asked when county = "cass")',
             markdown,
         )
-        self.assertIn("- Court site: https://example.com/court", markdown)
+        self.assertIn(
+            "- [source:eviction/tenant/court_site] Court site: "
+            "https://example.com/court",
+            markdown,
+        )
+        self.assertNotIn("[source:court/", markdown)
+        interview = markdown.split("## Facts the guided interview collects")[1]
+        interview = interview.split("## Links")[0]
+        self.assertNotIn("[source:", interview)
+
+    def test_markdown_skips_the_marker_for_a_section_without_a_key(self):
+        flow = _eviction_flow()
+        TopicFlowSection.objects.create(
+            flow=flow, heading="First steps", content="Read the notice."
+        )
+        TopicFlowLink.objects.create(
+            flow=flow, name="Court site", url="https://example.com/court"
+        )
+        markdown = topic_flow_markdown(
+            topic_flow_find(topic_slug="eviction", flow_slug="tenant")
+        )
+        self.assertIn("\n## First steps\nRead the notice.", markdown)
+        self.assertIn("\n- Court site: https://example.com/court", markdown)
+        self.assertNotIn("[source:", markdown)
 
     def test_markdown_omits_empty_sections(self):
         _eviction_flow()
@@ -273,6 +317,101 @@ class AssistantSystemPromptTests(TestCase):
         self.assertIn("## Court context", prompt)
         self.assertIn("multi-court mode", prompt)
         self.assertNotIn("You are operating in", prompt)
+
+    def _court_sources(self):
+        Contact.objects.create(
+            key="clerk",
+            name="Clerk of Court",
+            phone="(701) 555-0100",
+            url="https://alpha.test/clerk",
+            note="Call before filing.",
+        )
+        Contact.objects.create(key="self_help", name="Self Help Center")
+        Resource.objects.create(
+            key="fee_waiver",
+            label="Fee waiver forms",
+            url="https://alpha.test/fees",
+            note="If you cannot afford the fee.",
+        )
+
+    def test_court_contacts_and_resources_are_citable(self):
+        self._court_sources()
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(court_name="Alpha District Court")
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        court = prompt.split("## Court context")[1]
+        self.assertIn(
+            "### Court contacts\n"
+            "- [source:court/clerk] Clerk of Court (phone (701) 555-0100, "
+            "website https://alpha.test/clerk): Call before filing.\n"
+            "- [source:court/self_help] Self Help Center\n",
+            court,
+        )
+        self.assertIn(
+            "### Court resources\n"
+            "- [source:court/fee_waiver] Fee waiver forms: "
+            "https://alpha.test/fees. If you cannot afford the fee.",
+            court,
+        )
+        # Court ids never carry a flow prefix.
+        self.assertNotIn("[source:eviction/", court)
+
+    def test_court_sources_render_in_multi_court_mode_too(self):
+        self._court_sources()
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertIn("multi-court mode", prompt)
+        self.assertIn("- [source:court/clerk] Clerk of Court", prompt)
+        self.assertIn("- [source:court/fee_waiver] Fee waiver forms", prompt)
+
+    def test_court_rows_without_a_key_render_without_a_marker(self):
+        Contact.objects.create(name="Clerk of Court", phone="(701) 555-0100")
+        Resource.objects.create(
+            label="Fee waiver forms", url="https://alpha.test/fees"
+        )
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertIn("\n- Clerk of Court (phone (701) 555-0100)\n", prompt)
+        self.assertIn("\n- Fee waiver forms: https://alpha.test/fees", prompt)
+        self.assertNotIn("[source:court/", prompt)
+
+    def test_court_source_headings_are_omitted_when_empty(self):
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertNotIn("### Court contacts", prompt)
+        self.assertNotIn("### Court resources", prompt)
+
+    def test_boundaries_evidence_then_shape_sit_between_base_and_court(self):
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        positions = [
+            prompt.index(heading)
+            for heading in (
+                "You are a compassionate legal assistant",
+                "## Boundaries",
+                "## Evidence, citations, and gaps",
+                "## Reply shape",
+                "## Court context",
+            )
+        ]
+        self.assertEqual(positions, sorted(positions))
+
+    def _reply_shape_section(self) -> str:
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        return prompt.split("## Reply shape")[1].split("## Court context")[0]
+
+    def test_reply_shape_names_both_halves(self):
+        section = self._reply_shape_section()
+        self.assertIn("information first", section)
+        self.assertIn("one question last", section)
+
+    def test_reply_shape_is_present_in_multi_court_mode(self):
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertIn("multi-court mode", prompt)
+        self.assertIn("## Reply shape", prompt)
+
+    def test_reply_shape_carries_no_source_marker_to_copy(self):
+        self.assertNotIn("[source:", self._reply_shape_section())
+
+    def test_prompt_has_no_em_dash(self):
+        prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
+        self.assertNotIn("—", prompt)
 
     def test_prompt_ignores_the_active_flow(self):
         # The prompt depends only on the enabled-flow list, never on
