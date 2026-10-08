@@ -5,7 +5,7 @@ Versioned benchmark inputs and judge contracts.
 import hashlib
 import json
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, get_args
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -27,6 +27,7 @@ type FailureCategory = Literal[
     "reply_shape",
     "unsupported_claim",
 ]
+FAILURE_CATEGORIES = get_args(FailureCategory.__value__)
 type PassageID = Annotated[int, Field(gt=0, strict=True)]
 
 
