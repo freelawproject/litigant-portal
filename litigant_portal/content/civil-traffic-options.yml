@@ -31,7 +31,7 @@ metadata:
   order: 1
 
 contacts:
-  - id: court
+  - id: scottsdale_court
     name: 'Scottsdale City Court'
     phone: '(480) 312-2442'
     email: 'court@scottsdaleaz.gov'
@@ -69,37 +69,37 @@ deadlines:
     description: 'If you choose defensive driving school, the class must be finished at least 7 days before your court date. With an extension, it is 7 days before the new date.'
 
 resources:
-  - id: case_lookup
+  - id: scottsdale_case_lookup
     label: 'Scottsdale City Court case lookup and payments'
     url: 'https://eservices.scottsdaleaz.gov/Court/Case/'
     note: 'Find your case with the number part of your citation or your name. From your case you can pay, see your court date, and send the judge a motion online.'
-  - id: civil_traffic_page
+  - id: scottsdale_civil_traffic
     label: "Scottsdale City Court's civil traffic page"
     url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases'
     note: 'Your case appears here the same day the police file it with the court.'
-  - id: defensive_driving_page
+  - id: scottsdale_defensive_driving
     label: "Scottsdale City Court's defensive driving page"
     url: 'https://www.scottsdaleaz.gov/court/defensive-driving-class'
   - id: azdrive
     label: 'Find a certified defensive driving school (azdrive.com)'
     url: 'https://www.azdrive.com'
     note: 'Schools certified by the Arizona Supreme Court. You register and pay with the school directly.'
-  - id: bond_card
+  - id: scottsdale_bond_card
     label: 'Scottsdale fine amounts (bond card)'
     url: 'https://www.scottsdaleaz.gov/Assets/ScottsdaleAZ/Court/Bond+Card.pdf'
     note: 'The fine for each violation, including state surcharges and fees.'
-  - id: court_forms
+  - id: scottsdale_court_forms
     label: 'Scottsdale City Court forms'
     url: 'https://www.scottsdaleaz.gov/court/forms'
     note: 'Includes the Payment Plan Request form.'
-  - id: photo_enforcement_page
+  - id: scottsdale_photo_enforcement
     label: "Scottsdale City Court's photo enforcement page"
     url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases/photo-enforcement'
   - id: violationinfo
     label: 'See your camera photos and video (ViolationInfo.com)'
     url: 'https://www.violationinfo.com'
     note: 'Use the Notice number and PIN printed on the front of your notice.'
-  - id: court_videos
+  - id: scottsdale_court_videos
     label: 'Scottsdale City Court videos'
     url: 'https://www.scottsdaleaz.gov/court/court-videos'
     note: 'Short videos from the court on how a case moves forward.'
@@ -281,7 +281,7 @@ sections:
     id: save_contacts
     heading: 'Save these contacts'
     contact_ids:
-      - court
+      - scottsdale_court
       - photo_enforcement
       - driving_school_line
       - mvd
@@ -291,12 +291,12 @@ sections:
     id: resources_links
     heading: 'Scottsdale and Arizona resources'
     resource_ids:
-      - case_lookup
-      - civil_traffic_page
-      - defensive_driving_page
+      - scottsdale_case_lookup
+      - scottsdale_civil_traffic
+      - scottsdale_defensive_driving
       - azdrive
-      - bond_card
-      - court_forms
-      - photo_enforcement_page
+      - scottsdale_bond_card
+      - scottsdale_court_forms
+      - scottsdale_photo_enforcement
       - violationinfo
-      - court_videos
+      - scottsdale_court_videos
