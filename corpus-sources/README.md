@@ -8,13 +8,19 @@ the public flow pages (read by `app/topic_flow/registry.py`); `litigant_portal/c
 syncs to database rows (read by `app/selectors/corpus.py`). Editing one does not update
 the other, and the failure is silent. Which tree retires is an open decision under #179.
 
-**These files are gitignored on purpose.** Everything under `corpus-sources/`
-except this README is excluded from version control:
+**A court's curated sources travel with the repo; the rest stays local.** The
+files needed to update or rebuild a court's corpus (the partner's rules, guides
+and handouts, plus our decision tree for the flow) are tracked, so any machine
+can pick the work up. Everything else from a delivery (the original zip,
+project documents, duplicates, files the corpus doesn't draw on) goes in that
+court's `_local/` folder, which git ignores.
 
-- The durable source of truth will be an internal wiki, not this repo.
-- They are the partner's documents (often large binaries), not our code.
+- Arizona is tracked this way. North Dakota and Franklin County are still
+  local-only, because `.gitignore` re-includes one court at a time.
+- They are the partner's documents, kept exactly as delivered, so the
+  prettier, trailing-whitespace and large-file hooks skip `corpus-sources/`.
 - Court partners deliver them by uploading to a shared Google Drive; this
-  directory is our local working archive of those uploads.
+  directory holds our copy of those uploads.
 
 ## Structure
 
@@ -26,6 +32,7 @@ corpus-sources/
     <topic-slug>/          # matches the topic, e.g. adult-name-change
       *.docx, *.pdf …      # the files exactly as the partner delivered them
       SOURCE.md            # optional: Drive link, date received, who uploaded
+    _local/                # ignored: the rest of a delivery
 ```
 
 Example:
