@@ -80,6 +80,12 @@
             </c-atoms.link>
           </li>
           <li>
+            <c-atoms.link href="{% url 'pages:topic_flow' court='arizona' topic='civil-traffic' role='options' %}" variant="unstyled" class="site-menu-item">
+              <c-atoms.icon name="beaker" class="w-5 h-5 text-greyscale-500" />
+              {% trans "Demo: Civil Traffic, Options" %}
+            </c-atoms.link>
+          </li>
+          <li>
             <c-atoms.link href="{% url 'pages:style_guide' %}" variant="unstyled" class="site-menu-item">
               <c-atoms.icon name="swatch" class="w-5 h-5 text-greyscale-500" />
               {% trans "Style Guide" %}
