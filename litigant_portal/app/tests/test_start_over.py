@@ -43,9 +43,10 @@ def _session_data(identity, variable):
 
 
 @override_settings(DEPLOYMENT_ENV="prod")
-def test_production_has_no_start_over(client, variable):
+@pytest.mark.parametrize("method", ["get", "post"])
+def test_production_has_no_start_over(client, variable, method):
     _session_data(_identity(client), variable)
-    assert client.post(START_OVER).status_code == 404
+    assert getattr(client, method)(START_OVER).status_code == 404
     assert VariableAnswer.objects.count() == 1
     assert ChatThread.objects.count() == 1
 
@@ -88,3 +89,4 @@ def test_start_over_returns_to_the_page_it_came_from(client):
 def test_start_over_ignores_an_offsite_next(client):
     response = client.post(START_OVER, {"next": "https://example.com/"})
     assert response["Location"] == reverse("pages:home")
+

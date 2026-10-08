@@ -5,7 +5,12 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.http import Http404, HttpRequest, HttpResponse
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    HttpResponseNotAllowed,
+)
 from django.shortcuts import redirect, render
 from django.template.loader import get_template
 from django.templatetags.static import static
@@ -13,7 +18,6 @@ from django.urls import reverse, reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
-from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, UpdateView
 
 from litigant_portal.app.forms import UserProfileForm
@@ -221,7 +225,6 @@ def _render_topic_flow(request, corpus, answers, errors=None):
     )
 
 
-@require_POST
 def start_over(request):
     """Dev and QA only: start the session over from the seeded defaults
     (#969).
@@ -231,8 +234,12 @@ def start_over(request):
     first. Production answers 404 here, whatever the menu shows, so the
     check lives on the server and not only in the template.
     """
+    # Before the method check, so every method 404s in production and none
+    # gives away that the endpoint exists.
     if settings.DEPLOYMENT_ENV == "prod":
         raise Http404
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
     user_identity_reset(identity=request.identity)
     messages.success(
         request, _("Started over. Your chats and answers are cleared.")
