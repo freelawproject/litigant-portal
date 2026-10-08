@@ -31,6 +31,42 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
+  // Topic flow autosave (test)
+  // ===========================================================================
+
+  // Submits a topic flow question form in place of a Save button. A chosen
+  // option saves at once. A date doesn't: typing one fires change as soon as
+  // each part is valid, so "2" in the year would save 0002. It saves when
+  // focus leaves the field or Enter is pressed. The save is the same server
+  // POST and redirect as before.
+  Alpine.data('autoSave', () => ({
+    dateChanged: false,
+    onChange(event) {
+      if (event.target.type === 'date') {
+        this.dateChanged = true
+        return
+      }
+      this.save()
+    },
+    onFocusOut(event) {
+      if (event.target.type === 'date') this.saveDate()
+    },
+    onEnter(event) {
+      if (event.target.type !== 'date') return
+      event.preventDefault()
+      this.saveDate()
+    },
+    saveDate() {
+      if (!this.dateChanged) return
+      this.dateChanged = false
+      this.save()
+    },
+    save() {
+      this.$el.requestSubmit()
+    },
+  }))
+
+  // ===========================================================================
   // Site frame drawer (#988)
   // ===========================================================================
 

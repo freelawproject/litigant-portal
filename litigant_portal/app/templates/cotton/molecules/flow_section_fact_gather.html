@@ -5,7 +5,9 @@
 {# POST handler + deadline recompute land in Item 5; this renders the form. #}
 {% trans "Select…" as choice_placeholder %}
 {% trans "Clear my saved answer (it is not shown, for your privacy)" as clear_label %}
-<form method="post" class="space-y-4">
+{# Autosave test (no Save button): a field change submits the form; a date #}
+{# waits until focus leaves it or Enter is pressed (autoSave). #}
+<form method="post" class="space-y-4" x-data="autoSave" x-on:change="onChange" x-on:focusout="onFocusOut" x-on:keydown.enter="onEnter">
   {% csrf_token %}
   {% for q in ctx.questions %}
   {% if q.type == "choice" %}
@@ -48,5 +50,4 @@
   />
   {% endif %}
   {% endfor %}
-  <c-atoms.button type="submit" variant="primary">{% trans "Save answers" %}</c-atoms.button>
 </form>
