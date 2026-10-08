@@ -1,6 +1,6 @@
 {% load i18n %}
 
-<c-vars />
+<c-vars confirm_id="start-over-confirm" />
 {# The header's site menu (#988): the pages the footer used to link, in every #}
 {# environment, plus the account links on phones (where the user menu is #}
 {# hidden) and a dev-tools group outside production. A native <details> #}
@@ -63,7 +63,7 @@
           <li>
             {# Opens the confirmation below as a native popover (#969): no JS, #}
             {# and nothing is cleared by a stray click. #}
-            <c-atoms.button type="button" variant="ghost" full_width="true" popovertarget="start-over-confirm" class="site-menu-item rounded-none">
+            <c-atoms.button type="button" variant="ghost" full_width="true" popovertarget="{{ confirm_id }}" class="site-menu-item rounded-none">
               <c-atoms.icon name="arrow-path" class="w-5 h-5 text-greyscale-500" />
               {% trans "Start over" %}
             </c-atoms.button>
@@ -110,14 +110,14 @@
   {# Escape or a click outside cancels, and autofocus lands on Cancel, the #}
   {# safe choice. Pinned under the header at the right, below the menu it #}
   {# opened from, instead of the browser's default centre. #}
-  <div id="start-over-confirm" popover role="dialog" aria-labelledby="start-over-heading" class="fixed inset-auto top-[calc(var(--header-height)+0.5rem)] right-4 m-0 w-[min(24rem,calc(100%-2rem))] rounded-lg border border-greyscale-200 bg-white p-6 text-left shadow-xl backdrop:bg-black/30">
-    <h2 id="start-over-heading" class="text-lg font-semibold text-greyscale-900">{% trans "Start over?" %}</h2>
+  <div id="{{ confirm_id }}" popover role="dialog" aria-labelledby="{{ confirm_id }}-heading" class="fixed inset-auto top-[calc(var(--header-height)+0.5rem)] right-4 m-0 w-[min(24rem,calc(100%-2rem))] rounded-lg border border-greyscale-200 bg-white p-6 text-left shadow-xl backdrop:bg-black/30">
+    <h2 id="{{ confirm_id }}-heading" class="text-lg font-semibold text-greyscale-900">{% trans "Start over?" %}</h2>
     <p class="mt-2 text-sm text-greyscale-700">{% trans "This clears your session: your chats, uploads and answers, so you can begin again. Topics and court information stay. This can't be undone." %}</p>
     <form method="post" action="{% url 'pages:start_over' %}" class="mt-4 flex flex-wrap gap-3">
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}" />
       <c-atoms.button type="submit" variant="danger">{% trans "Start over" %}</c-atoms.button>
-      <c-atoms.button type="button" variant="outline" popovertarget="start-over-confirm" popovertargetaction="hide" autofocus>{% trans "Cancel" %}</c-atoms.button>
+      <c-atoms.button type="button" variant="outline" popovertarget="{{ confirm_id }}" popovertargetaction="hide" autofocus>{% trans "Cancel" %}</c-atoms.button>
     </form>
   </div>
 {% endif %}
