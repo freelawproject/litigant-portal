@@ -193,6 +193,54 @@ test('links carry noopener and a new-tab target', () => {
 })
 
 // ============================================================================
+// 3b. Citation chips — [source:ID] from grounded answers
+//
+// The id grammar is shared with agents/citations.py. These example strings
+// are the same list that file's tests use, so a grammar change on one side
+// that is not copied to the other fails a test.
+// ============================================================================
+
+const VALID_IDS = ['court/clerk', 'adult-name-change/standard/filing_fee']
+const INVALID_IDS = ['Filing_Fee', 'a', 'a/b/c/d', 'nd.courts.gov']
+const CHIP = 'class="inline-block align-baseline rounded border'
+
+test('a valid source id renders as a chip with the id as text and title', () => {
+  for (const id of VALID_IDS) {
+    const out = renderInline('Fee is $160 [source:' + id + ']')
+    assert.ok(out.includes(CHIP), id)
+    assert.ok(out.includes('title="' + id + '"'), id)
+    assert.ok(out.includes('>' + id + '</span>'), id)
+    assert.ok(!out.includes('[source:'), id)
+  }
+})
+
+test('an id outside the grammar stays as escaped text, never a chip', () => {
+  // A chip makes an id look trustworthy. An invented id must not get one.
+  for (const id of INVALID_IDS) {
+    const out = renderInline('[source:' + id + ']')
+    assert.equal(out, '[source:' + id + ']', id)
+  }
+})
+
+test('a source marker inside a code span is not changed', () => {
+  const out = renderInline('`[source:court/clerk]`')
+  assert.equal(out, '<code>[source:court/clerk]</code>')
+})
+
+test('a link and a chip on the same line both render', () => {
+  const out = renderInline(
+    'See [the court](https://e.com) [source:court/clerk]'
+  )
+  assert.ok(out.includes('href="https://e.com"'))
+  assert.ok(out.includes(CHIP))
+})
+
+test('plain brackets without source: are left alone', () => {
+  assert.equal(renderInline('[like this]'), '[like this]')
+  assert.equal(renderInline('[source: court/clerk]'), '[source: court/clerk]')
+})
+
+// ============================================================================
 // 4. Code spans
 // ============================================================================
 

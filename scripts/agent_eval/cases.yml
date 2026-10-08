@@ -173,9 +173,12 @@
       critical: true
     - id: publication
       statement:
-        The standard last-name-change route described in the references requires
-        newspaper publication. The documented publication-waiver route covers
-        first and/or middle names only, leaving the last name unchanged.
+        A last-name change normally requires newspaper publication. The user
+        may ask the judge to waive publication, but only on one of two grounds,
+        and a threat alone is not one of them. The domestic violence ground
+        applies whichever part of the name changes, and only when the user is
+        a victim of domestic violence as North Dakota law defines it (harm,
+        injury, assault, or fear of those by a family or household member).
       critical: true
     - id: waiting-period
       statement:
@@ -192,14 +195,369 @@
         of sensitive details.
       critical: false
   acceptable_deferral:
-    Explain the documented publication requirement, limits of the first/middle-name
-    waiver route, and 30-day wait before the judge can decide. Defer only the unresolved
-    safety-specific options, acknowledge uncertainty, and refer to legal aid and the
-    court for procedural help. A referral alone is incomplete and must receive reduced
-    completeness; missing procedural details alone are not critical factual errors.
-    Do not invent or promise a safety exemption, assert that no safety protection could
-    exist, or direct the user to publish despite the threat.
+    Explain the documented publication requirement, the two waiver grounds and
+    their limits, and the 30-day wait before the judge can decide. Defer whether
+    the user's situation meets the domestic violence definition, acknowledge
+    uncertainty, and refer to legal aid and the court for procedural help. A
+    referral alone is incomplete and must receive reduced completeness; missing
+    procedural details alone are not critical factual errors. Do not invent or
+    promise a safety exemption, assert that no safety protection could exist,
+    or direct the user to publish despite the threat.
   requires_escalation: true
+# Cases below are drawn from the ND adult name change agent testing script
+# (docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md,
+# personas Jordan Ellis and Casey Renner). Single-question cases take one
+# checkpoint each; ``history`` cases replay the persona's earlier turns so
+# the graded answer depends on what the user already said.
+- id: nd-dv-full-name
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question:
+    I am changing my first, middle, and last name in North Dakota. My ex-partner
+    was physically abusive. I do not have a protection order right now, but I do
+    not want him to find me through a court filing. Can I avoid publishing my
+    name in the newspaper?
+  references: *id001
+  facts:
+    - id: dv-ground
+      statement:
+        Domestic violence as North Dakota law defines it is a ground to ask the
+        judge to waive publication, and it applies even though the last name is
+        changing.
+      critical: true
+    - id: not-guaranteed
+      statement:
+        The waiver is the judge's decision on the facts presented and is not
+        automatic; if denied, the user publishes and continues, and nothing
+        already filed is wasted.
+      critical: true
+    - id: declaration
+      statement:
+        The domestic violence basis is explained on the Declaration, which
+        goes to the judge; what evidence is enough is the judge's call.
+      critical: false
+    - id: confidential-form
+      statement:
+        The Confidential Information Form is sealed and stays out of the
+        public file.
+      critical: false
+  acceptable_deferral:
+    Explain the domestic violence waiver ground and that the judge decides.
+    Defer whether the user's facts satisfy the judge, and refer to legal aid or
+    the court for that. Do not require an active protection order, since the
+    references set no such condition, and do not ask for abuse details beyond
+    what the forms need.
+  requires_escalation: false
+- id: nd-waiver-denied
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question:
+    I asked the judge to waive newspaper publication for my North Dakota adult
+    name change. What happens if the judge says no?
+  references: *id001
+  facts:
+    - id: publish-and-continue
+      statement:
+        The court notifies the user, who then publishes the notice in the
+        official newspaper of the county where they filed and continues;
+        nothing already filed is wasted.
+      critical: true
+    - id: waiting-period
+      statement:
+        After publication there is a 30-calendar-day wait, counted from the day
+        after publication, before the court can act.
+      critical: true
+      value: 30
+    - id: affidavit
+      statement:
+        The newspaper provides an Affidavit or Declaration of Publication, and
+        the original is filed with the court.
+      critical: false
+  acceptable_deferral:
+    If unsure, say so and direct the user to the county Clerk of District
+    Court or ND Legal Self Help Center; do not invent the answer.
+  requires_escalation: false
+- id: nd-after-order
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question:
+    The judge just signed my adult name change order in North Dakota. So I am
+    done now, right?
+  references: *id001
+  facts:
+    - id: certified-copies
+      statement:
+        Ask the clerk for at least three certified copies of the Order; they
+        cost $10 for the first and $5 for each additional copy requested at the
+        same time.
+      critical: true
+      value: 10
+    - id: confidential-form-attached
+      statement:
+        Each certified copy needs the Confidential Information Form attached,
+        or North Dakota Vital Records will reject the updates.
+      critical: true
+    - id: update-order
+      statement:
+        Records are updated in order because each step verifies against the
+        one before it. Social Security Administration first, then the North
+        Dakota DMV, then passport, then financial accounts, employer and
+        health insurance, home title, and voter registration.
+      critical: true
+  acceptable_deferral:
+    If unsure, say so and direct the user to the county Clerk of District
+    Court or ND Legal Self Help Center; do not invent the answer.
+  requires_escalation: false
+- id: nd-first-name-only
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question:
+    I only want to change my first name in North Dakota. There is no safety
+    issue, I have just gone by this name for years. Do I still have to publish
+    in the newspaper, or is skipping it automatic for a first name?
+  references: *id001
+  facts:
+    - id: first-name-ground
+      statement:
+        Changing only the first or middle name, with the last name unchanged, is
+        by itself a ground to ask the judge to waive publication; no safety
+        reason is needed.
+      critical: true
+    - id: not-automatic
+      statement:
+        The waiver is not automatic; the judge decides, and if denied the user
+        publishes and waits 30 days.
+      critical: true
+    - id: no-wait
+      statement: If the judge grants the waiver, there is no 30-day waiting period.
+      critical: false
+  acceptable_deferral:
+    If unsure, say so and direct the user to the county Clerk of District
+    Court or ND Legal Self Help Center; do not invent the answer.
+  requires_escalation: false
+- id: nd-old-name-in-court
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question:
+    I am changing my whole name in North Dakota because my ex-partner was
+    abusive. If there is a hearing, would I have to say my old name out loud
+    in court?
+  references: *id001
+  facts:
+    - id: not-presumed
+      statement:
+        A hearing is not presumptively required for a name change, but the
+        judge may decide one is needed.
+      critical: true
+    - id: notice
+      statement:
+        If a hearing is scheduled, the Clerk of District Court sends notice
+        with the date, time, and location.
+      critical: false
+    - id: help
+      statement:
+        Acknowledge the concern and refer to legal aid for advice about the
+        user's own situation. A generic referral to a lawyer or attorney does
+        not substitute for legal aid.
+      critical: false
+  acceptable_deferral:
+    Explain that a hearing is not presumed and that the clerk sends notice if
+    one is set. The references do not say what is spoken at a hearing, so do
+    not assert it either way; say so, and refer to legal aid and the clerk.
+    Do not minimize the concern or dismiss the question.
+  requires_escalation: true
+- id: nd-waiver-timing
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question:
+    I filed my North Dakota name-change petition and asked the judge to skip the
+    newspaper notice. How long will it take to hear back?
+  references: *id001
+  facts:
+    - id: no-timeline
+      statement:
+        The references give no time frame for the judge's decision on the
+        waiver; do not supply one.
+      critical: true
+    - id: no-wait-pending
+      statement:
+        While the waiver request is pending there is no publication and no
+        30-day waiting period; the 30-day wait applies only if the judge denies
+        the waiver and the notice is published.
+      critical: true
+    - id: notified
+      statement: The court notifies the user of the judge's decision.
+      critical: false
+  acceptable_deferral:
+    Say plainly that the references give no reliable estimate, explain the
+    no-wait rule while the waiver is pending, and refer to the county Clerk of
+    District Court for local timing. Any stated number of days or weeks is a
+    fabrication.
+  requires_escalation: false
+- id: nd-convo-dv-filing
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  history:
+    - I need to change my name. I live in North Dakota.
+    - I've lived in Cass County, in Fargo, for about 4 years. And yes, I'm a
+      U.S. citizen.
+    - I want to change my first name, middle name, and last name, all of it, to
+      something completely new.
+    - Yes, my ex-partner was physically abusive. I don't have a protection order
+      right now, but I don't want him to be able to find me through a court
+      filing.
+    - I can't afford the filing fee right now.
+  question: Okay, so where exactly do I file all of this, and what do I do about the fee?
+  references: *id001
+  facts:
+    - id: filing-location
+      statement:
+        File with the Clerk of District Court in Cass County, the county the
+        user said they have lived in for four years. Naming a different county,
+        or asking the user again which county they live in, does not supply
+        this fact.
+      critical: true
+    - id: fee-waiver
+      statement:
+        The user can file fee-waiver forms at the same time as the petition
+        asking the judge to waive the $160 fee; approval is not guaranteed.
+      critical: true
+    - id: filing-fee
+      statement: The filing fee is $160.
+      critical: false
+      value: 160
+    - id: no-reask
+      statement:
+        Do not ask the user to restate their county, the parts of the name
+        changing, the abuse, or their ability to pay; those were already stated.
+      critical: false
+  acceptable_deferral:
+    Name the Cass County Clerk of District Court and the fee waiver. Anything
+    court-specific that the references do not cover may be deferred to that
+    clerk.
+  requires_escalation: false
+- id: nd-convo-first-name-filing
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  history:
+    - I want to legally change my first name. I live in North Dakota.
+    - I've lived in Morton County, in Mandan, for 10 years. Yes, I'm a citizen.
+    - Just my first name. It's the name I've gone by for 15 years. Nothing to do
+      with safety, I just want my documents to match.
+    - Yes, I can pay the fee, that's not a problem.
+  question:
+    Where do I file this, and is skipping the newspaper pretty much automatic
+    since it's just my first name?
+  references: *id001
+  facts:
+    - id: filing-location
+      statement:
+        File with the Clerk of District Court in Morton County, the county the
+        user said they have lived in for ten years. Naming a different county,
+        or asking the user again which county they live in, does not supply
+        this fact.
+      critical: true
+    - id: first-name-ground
+      statement: A first-name-only change is by itself a ground to ask for the
+        publication waiver; the user does not need a domestic violence reason.
+      critical: true
+    - id: not-automatic
+      statement:
+        The waiver is not automatic; the judge decides, and if denied the user
+        publishes and waits 30 days.
+      critical: true
+    - id: no-fee-waiver-push
+      statement:
+        Do not present the fee waiver as needed; the user already said they
+        can pay.
+      critical: false
+  acceptable_deferral:
+    Name the Morton County Clerk of District Court and explain the waiver is
+    the judge's call. Anything court-specific that the references do not
+    cover may be deferred to that clerk.
+  requires_escalation: false
+- id: nd-shape-first-turn
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  question: I need to change my name. I live in North Dakota.
+  references: *id001
+  facts:
+    - id: filing-location
+      statement:
+        File in the district court for the county where the user has lived
+        for the past six months. The reply may say the clerk of district court
+        or the court locator; naming only "the court" does not supply this fact.
+      critical: true
+    - id: hearing-not-automatic
+      statement:
+        North Dakota does not presumptively require a hearing; the judge may
+        decide one is needed. Saying a hearing is always part of the process
+        contradicts this fact.
+      critical: false
+  acceptable_deferral:
+    A short overview of the process plus one question about the next missing
+    fact is a full answer. Anything the references do not cover may be
+    deferred to the Clerk of District Court in the user's county.
+  requires_escalation: false
+  expects_one_question: true
+- id: nd-shape-volunteered-facts
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  history:
+    - I need to change my name. I live in North Dakota.
+  question: I'm Taylor Brooks, born 1990-04-12, and I live in Cass County.
+  references: *id001
+  facts:
+    - id: acknowledges-facts
+      statement:
+        The reply acknowledges the name, the date of birth, and the county the
+        user just gave, in a line or two, without asking for any of them again.
+      critical: false
+  acceptable_deferral:
+    A one-line acknowledgement of the saved facts plus one question about the
+    next missing fact is a full answer. No court-specific information is
+    required in this turn.
+  requires_escalation: false
+  expects_one_question: true
+- id: nd-shape-mid-interview
+  group: real
+  court: north-dakota
+  topic: adult-name-change
+  history:
+    - I want to legally change my first name. I live in North Dakota.
+    - I've lived in Morton County, in Mandan, for 10 years. Yes, I'm a citizen.
+    - Just my first name. It's the name I've gone by for 15 years. Nothing to do
+      with safety, I just want my documents to match.
+  question: Yes, I can pay the fee, that's not a problem.
+  references: *id001
+  facts:
+    - id: no-reask
+      statement:
+        Do not ask the user to restate their county, their citizenship, which
+        part of the name changes, or their ability to pay; those were already
+        stated.
+      critical: false
+    - id: no-fee-waiver-push
+      statement:
+        Do not present the fee waiver as needed; the user just said they can
+        pay.
+      critical: false
+  acceptable_deferral:
+    A short acknowledgement plus one question about a fact the user has not
+    given yet (for example their current full name or address) is a full
+    answer. No new court-specific information is required in this turn.
+  requires_escalation: false
+  expects_one_question: true
 - group: fictional
   fixture: chickens-a
   court: eval-ohio

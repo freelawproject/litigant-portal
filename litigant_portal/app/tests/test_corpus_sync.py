@@ -11,8 +11,13 @@ from pathlib import Path
 from unittest import mock
 
 import pytest
+from django.core.cache import cache
 from django.test import TestCase, override_settings
 
+from litigant_portal.app.cache import (
+    CONTACT_LIST_CACHE_KEY,
+    RESOURCE_LIST_CACHE_KEY,
+)
 from litigant_portal.app.models import (
     Contact,
     Form,
@@ -26,11 +31,20 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.selectors.corpus import CorpusSchema
+from litigant_portal.app.selectors.site import contact_list, resource_list
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
 
+START_SECTION = {"id": "start", "heading": "Start", "content": "Read."}
 
-def _make_corpus(*, include_beta=True, include_vestigial=True):
+
+def _make_corpus(
+    *,
+    include_beta=True,
+    include_vestigial=True,
+    alpha_sections=None,
+    alpha_contacts=None,
+):
     """A small valid corpus: two courts, two forms, one gated variable."""
     variables = {
         "full_name": {"name": "full_name", "label": "Full name"},
@@ -81,15 +95,22 @@ def _make_corpus(*, include_beta=True, include_vestigial=True):
         "alpha": {
             "name": "Alpha",
             "court_name": "Alpha District Court",
-            "contacts": [{"name": "Alpha Help"}],
-            "resources": [{"label": "Alpha Guide", "url": "https://a.test"}],
+            "contacts": alpha_contacts
+            or [{"id": "alpha_help", "name": "Alpha Help"}],
+            "resources": [
+                {
+                    "id": "alpha_guide",
+                    "label": "Alpha Guide",
+                    "url": "https://a.test",
+                }
+            ],
         }
     }
     topics = {("alpha", "pets"): {"title": "Pets"}}
     flows = {
         ("alpha", "pets", "standard"): {
             "name": "Standard",
-            "sections": [{"heading": "Start", "content": "Read."}],
+            "sections": alpha_sections or [START_SECTION],
             "interview": [
                 {
                     "title": "About your pet",
@@ -108,13 +129,19 @@ def _make_corpus(*, include_beta=True, include_vestigial=True):
         courts["beta"] = {
             "name": "Beta",
             "court_name": "Beta Municipal Court",
-            "contacts": [{"name": "Beta Help"}],
-            "resources": [{"label": "Beta Guide", "url": "https://b.test"}],
+            "contacts": [{"id": "beta_help", "name": "Beta Help"}],
+            "resources": [
+                {
+                    "id": "beta_guide",
+                    "label": "Beta Guide",
+                    "url": "https://b.test",
+                }
+            ],
         }
         topics[("beta", "eviction")] = {"title": "Eviction"}
         flows[("beta", "eviction", "tenant")] = {
             "name": "Tenant",
-            "sections": [{"heading": "Start", "content": "Read."}],
+            "sections": [START_SECTION],
             "interview": [{"title": "About you", "variables": ["full_name"]}],
             "packet": [{"form": "addendum"}],
         }
@@ -252,6 +279,126 @@ class CourtScopingTests(CorpusSyncTests):
     def test_unknown_court_is_rejected(self):
         with self.assertRaises(ValueError):
             self._sync(_make_corpus(), court="gamma")
+
+
+@pytest.mark.postgres
+class SourceKeyTests(CorpusSyncTests):
+    """The authored id lands on the row as ``key`` and survives edits
+    around it; a removed id is reported, since threads may cite it."""
+
+    def _alpha_sections(self):
+        flow = TopicFlow.objects.get(topic__slug="pets", slug="standard")
+        return list(flow.sections.values_list("key", "order"))
+
+    def test_sync_stores_each_sections_authored_id_in_order(self):
+        self._sync(
+            _make_corpus(
+                alpha_sections=[
+                    START_SECTION,
+                    {"id": "fees", "heading": "Fees", "content": "Pay."},
+                ]
+            ),
+            court=None,
+        )
+        self.assertEqual(self._alpha_sections(), [("start", 0), ("fees", 1)])
+
+    def test_sync_stores_contact_and_resource_ids(self):
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(
+            Contact.objects.get(name="Alpha Help").key, "alpha_help"
+        )
+        self.assertEqual(
+            Resource.objects.get(label="Alpha Guide").key, "alpha_guide"
+        )
+
+    def test_inserting_a_section_before_an_old_one_keeps_the_old_key(self):
+        self._sync(_make_corpus(), court=None)
+        self._sync(
+            _make_corpus(
+                alpha_sections=[
+                    {"id": "intro", "heading": "Intro", "content": "Hi."},
+                    START_SECTION,
+                ]
+            ),
+            court=None,
+        )
+        self.assertEqual(self._alpha_sections(), [("intro", 0), ("start", 1)])
+
+    def test_renaming_a_section_key_logs_the_old_key_and_the_flow(self):
+        self._sync(_make_corpus(), court=None)
+        with self.assertLogs(services.logger, level="WARNING") as logs:
+            self._sync(
+                _make_corpus(
+                    alpha_sections=[{**START_SECTION, "id": "begin"}]
+                ),
+                court=None,
+            )
+        (line,) = logs.output
+        self.assertIn("pets/standard", line)
+        self.assertIn("'start'", line)
+        self.assertNotIn("begin", line)
+
+    def test_removing_a_contact_logs_its_key_with_or_without_strict(self):
+        for strict in (True, False):
+            with self.subTest(strict=strict):
+                self._sync(_make_corpus(), court=None, strict=True)
+                with self.assertLogs(services.logger, level="WARNING") as logs:
+                    self._sync(
+                        _make_corpus(include_beta=False),
+                        court=None,
+                        strict=strict,
+                    )
+                self.assertTrue(
+                    any("'beta_help'" in line for line in logs.output)
+                )
+                self.assertTrue(
+                    any("'beta_guide'" in line for line in logs.output)
+                )
+
+    def test_a_renamed_contact_keeps_its_row_by_key(self):
+        self._sync(_make_corpus(), court=None)
+        row_id = Contact.objects.get(key="alpha_help").id
+        self._sync(
+            _make_corpus(
+                alpha_contacts=[{"id": "alpha_help", "name": "Alpha Desk"}]
+            ),
+            court=None,
+        )
+        self.assertEqual(Contact.objects.get(id=row_id).name, "Alpha Desk")
+        self.assertFalse(Contact.objects.filter(name="Alpha Help").exists())
+
+    def test_a_keyless_row_is_adopted_by_name(self):
+        row = Contact.objects.create(name="Alpha Help")
+        self._sync(_make_corpus(), court=None)
+        row.refresh_from_db()
+        self.assertEqual(row.key, "alpha_help")
+        self.assertEqual(Contact.objects.filter(name="Alpha Help").count(), 1)
+
+    def test_two_courts_in_one_sync_sharing_a_contact_name_are_rejected(self):
+        corpus = _make_corpus(
+            alpha_contacts=[{"id": "alpha_help", "name": "Beta Help"}]
+        )
+        with self.assertRaisesRegex(ValueError, r"\['Beta Help'\]"):
+            self._sync(corpus, court=None)
+        self.assertFalse(Contact.objects.exists())
+        # Scoped to one court the name is unique, so the same corpus syncs.
+        self._sync(corpus, court="alpha")
+        self.assertEqual(
+            Contact.objects.get(key="alpha_help").name, "Beta Help"
+        )
+
+    def test_sync_drops_the_cached_contact_and_resource_lists(self):
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(
+            [c.key for c in contact_list()], ["alpha_help", "beta_help"]
+        )
+        self.assertEqual(
+            [r.key for r in resource_list()], ["alpha_guide", "beta_guide"]
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            self._sync(_make_corpus(include_beta=False), court=None)
+        for key in (CONTACT_LIST_CACHE_KEY, RESOURCE_LIST_CACHE_KEY):
+            self.assertIsNone(cache.get(key), key)
 
 
 @pytest.mark.postgres

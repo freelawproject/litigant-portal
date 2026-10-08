@@ -10,6 +10,7 @@ from statistics import mean, median, pstdev
 from .judge import judgment_path, paid_calls, score
 from .schema import (
     DIMENSIONS,
+    FAILURE_CATEGORIES,
     Grade,
     Weights,
     fingerprint,
@@ -655,13 +656,7 @@ def charts(reports: list[dict], output: Path):
         fig.suptitle(f"{group.title()} cases · operational measurements")
         save(fig, "operations")
 
-        categories = (
-            "citation",
-            "hard_fact",
-            "legal_direction",
-            "missed_escalation",
-            "unsupported_claim",
-        )
+        categories = FAILURE_CATEGORIES
         fig, ax = plt.subplots(
             figsize=(10, max(3, len(rows) * 0.6)), layout="constrained"
         )

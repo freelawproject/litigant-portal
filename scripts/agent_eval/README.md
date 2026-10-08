@@ -13,7 +13,8 @@ It does not install evaluation dependencies into the application environment or
 Docker image.
 
 ```bash
-# Full matrix: 3 systems × 2 models × 14 cases × 3 attempts = 252 attempts.
+# Full matrix: 3 systems × 2 models × 22 cases × 3 attempts = 396 attempts,
+# minus the history cases the new system does not run.
 make agent-eval
 
 # Small live run, including the separate Sol judge.
@@ -61,9 +62,38 @@ because that model did not support the selected chat-completions API endpoint.
 setting; `null` preserves the current setting. Original/effective models are
 recorded, and the setting is restored afterward. Legacy agent code is unchanged.
 
-[cases.yml](cases.yml) contains eight real-reference and six fictional cases.
+[cases.yml](cases.yml) contains sixteen real-reference cases, two of them multi-turn, and six fictional cases.
 [references/](references/) freezes repository corpus content for answer keys,
 with provenance and draft review status. It is not independently verified law.
+When the corpus changes, copy the source files over the frozen ones and update
+the hashes in `provenance.json`; a stale reference makes the judge penalize
+answers that follow the current corpus. The frozen files carry the authored
+source ids from #949, which the citation check depends on. Re-freeze only
+from a corpus tree that has them: `main` once #994 merges, not before.
+
+A case may carry `history`: user turns sent on the same thread before
+`question`. Their replies are recorded in the attempt's `detail.transcript`
+and shown to the judge as context; only the final answer is graded. The old
+system continues one chat thread across turns and clears the evaluation
+identity's stored facts before each case, recording what the agent stored as
+`detail.stored_facts`. Raw replays the turns as a message list. The new
+system takes single-turn cases only, so the runner does not schedule it for
+history cases and the planned attempt count excludes them. Timing covers
+all turns of the case. The
+conversation cases (`nd-convo-*`) follow the personas in
+`docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
+
+A case may set `expects_one_question: true` when its final turn lands
+mid-interview, so the graded reply must give information first and end with
+exactly one question for the next missing fact. The `nd-shape-*` cases carry
+it: a first turn, a turn where the user volunteers several facts at once, and
+a turn deep in the first-name persona. Single-turn information cases leave it
+unset. The judge may flag the `reply_shape` deal breaker only on these cases:
+more than one substantive question, a question with no information before it,
+or no question at all. A flag on any other case is an invalid grade. The
+harness also adds a `reply_shape` failure itself, without the judge, when such
+a case's answer contains no question mark. Both zero `overall` like any other
+deal breaker; cases without the flag are not affected.
 
 The fictional chicken-law variants change the fee and procedural order while
 retaining identical questions. Both include the 200-square-feet-per-chicken

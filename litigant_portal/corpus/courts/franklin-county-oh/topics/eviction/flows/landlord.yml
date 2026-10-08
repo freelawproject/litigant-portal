@@ -8,8 +8,10 @@ name: 'Filing an Eviction (Landlord)'
 enabled: true
 order: 1
 
+# Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
-  - heading: 'Evicting a tenant in Franklin County'
+  - id: overview
+    heading: 'Evicting a tenant in Franklin County'
     content: |
       This tool explains how to lawfully end a tenancy and regain possession of your property through Franklin County Municipal Court, from the required notice through the set out.
 
@@ -19,7 +21,8 @@ sections:
 
       Nothing on this page is legal advice. It explains the process; an attorney can help you decide whether eviction is the right step for your situation. The Columbus Bar Association Lawyer Referral Service in the contacts below can help you find one.
 
-  - heading: 'The notice you must give first'
+  - id: notice_requirements
+    heading: 'The notice you must give first'
     content: |
       Before filing, you must give the tenant a written Notice to Leave at least three days before beginning the court action. Deliver it in person, leave it at the property, or send it by certified mail with return receipt requested. A verbal notice does not count.
 
@@ -29,7 +32,8 @@ sections:
 
       Enter the date you served the notice below and your earliest filing date is calculated for you, with a calendar download further down.
 
-  - heading: 'Filing your case and what it costs'
+  - id: filing_and_costs
+    heading: 'Filing your case and what it costs'
     content: |
       File your Eviction Complaint with the Clerk of the Franklin County Municipal Court, Civil Division, 3rd floor, 375 South High Street. The court does not supply the complaint form itself; you can get one from a legal supply store, law library, or online, and it is your responsibility that it meets Ohio law.
 
@@ -39,7 +43,8 @@ sections:
 
       The fee covers ordinary mail service plus one additional service method, bailiff service or certified mail, for up to three defendants or addresses. Additional defendants add charges under the court's fee schedule.
 
-  - heading: 'Service and your hearing'
+  - id: service_and_hearing
+    heading: 'Service and your hearing'
     content: |
       After you file, the clerk mails the summons and complaint to the tenant and completes the service method you chose. The tenant must be served at least seven days before the hearing, and hearings are usually scheduled 14 to 21 days from the filing date.
 
@@ -47,7 +52,8 @@ sections:
 
       If you included a money claim, the tenant has 28 days from service to file an Answer. If they answer, the money claim is heard separately from the eviction unless a counterclaim brings everything into one hearing. If they do not answer in time, you can ask the court for a default judgment on the amount.
 
-  - heading: 'After the judgment'
+  - id: after_judgment
+    heading: 'After the judgment'
     content: |
       If the court grants restitution, you can ask for a Writ of Restitution. That is the order allowing a bailiff to remove the tenant and their belongings, commonly called a set out.
 
@@ -61,7 +67,8 @@ interview:
       - eviction_notice_served_date
 
 deadlines:
-  - label: 'Earliest day to file your eviction case'
+  - id: earliest_filing
+    label: 'Earliest day to file your eviction case'
     description: 'Ohio law requires the Notice to Leave at least three days before you begin the eviction action. If you are unsure how the days count in your situation, ask the clerk before filing.'
     offset_days: 3
     offset_from: eviction_notice_served_date

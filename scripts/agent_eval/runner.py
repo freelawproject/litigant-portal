@@ -33,7 +33,7 @@ from .schema import (
     write_json,
 )
 
-SCORING_VERSION = "1"
+SCORING_VERSION = "2"
 
 
 def stamp() -> str:
@@ -86,6 +86,11 @@ def source_state(root: Path = ROOT, *, application=False) -> dict:
     }
 
 
+def runs_on(case: Case, system: str) -> bool:
+    """The new system takes single-turn cases only; skip rather than error."""
+    return not (system == "new" and case.history)
+
+
 def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
     cases = read_cases(config)
     output.mkdir(parents=True, exist_ok=True)
@@ -129,8 +134,11 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
             for name in ("litellm", "pydantic", "PyYAML", "matplotlib")
         },
         "python": sys.version,
-        "planned_attempts": len(cases)
-        * len(config.systems)
+        "planned_attempts": sum(
+            runs_on(case, system)
+            for case in cases
+            for system in config.systems
+        )
         * len(config.models)
         * config.repetitions,
         "attempts": [],
@@ -324,14 +332,16 @@ def run_suite(config: Config, output: Path) -> Path:
             for variant in dict.fromkeys(case.fixture for case in cases):
                 if remote:
                     remote.request("fixture", variant=variant)
-                jobs = list(
-                    itertools.product(
+                jobs = [
+                    job
+                    for job in itertools.product(
                         [case for case in cases if case.fixture == variant],
                         config.systems,
                         config.models,
                         range(1, config.repetitions + 1),
                     )
-                )
+                    if runs_on(job[0], job[1])
+                ]
                 rng.shuffle(jobs)
                 for case, system, model, repeat in jobs:
                     relative = (

@@ -120,9 +120,17 @@ def install_fixture(root: Path):
         flow.name, flow.enabled = content["name"], True
         flow.save()
         flow.sections.all().delete()
+        # Fixture ids become citation keys where the model has them.
+        has_key = any(f.name == "key" for f in TopicFlowSection._meta.fields)
         TopicFlowSection.objects.bulk_create(
             [
-                TopicFlowSection(flow=flow, order=i, **section)
+                TopicFlowSection(
+                    flow=flow,
+                    order=i,
+                    heading=section["heading"],
+                    content=section["content"],
+                    **({"key": section["id"]} if has_key else {}),
+                )
                 for i, section in enumerate(content["sections"])
             ]
         )

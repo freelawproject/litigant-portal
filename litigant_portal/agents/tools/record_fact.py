@@ -7,9 +7,8 @@ class RecordFact(Tool):
     """Save facts the user states as answers to the portal's variables.
 
     Call this as soon as the user states a fact; do not ask permission
-    first. Save every fact the user volunteers in one call; when asking
-    for more, ask for the next missing fact (a closely related pair like
-    the current and new name is fine), not a list. Use exact variable
+    first. Save every fact the user volunteers in one call; the reply
+    shape rule in the system prompt says what to ask next. Use exact variable
     names (the loaded flow lists them) and typed values (ISO dates,
     listed choice values); a null value clears a saved answer. Saves are
     unconfirmed suggestions the user reviews later; when the user

@@ -41,6 +41,8 @@ TEMPLATE_VARIABLE_PATTERN = re.compile(r"\{([a-z0-9_]+)(?::[^}]*)?\}")
 SlugField = Annotated[str, Field(pattern=SLUG_PATTERN.pattern)]
 VariableNameField = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
 
+COURT_SOURCE_SLUG = "court"
+
 ValueType = bool | int | float | str
 
 
@@ -65,6 +67,19 @@ def _variable_value_problem(value, variable) -> str | None:
 
 class BaseSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
+
+
+class SourceSchema(BaseSchema):
+    """A block the assistant can cite. ``id`` is the citation target stored
+    in user threads, so it is authored by hand and never renamed."""
+
+    id: SlugField
+
+
+def _duplicate_ids(scope: str, ids: list[str]) -> None:
+    duplicates = sorted({i for i in ids if ids.count(i) > 1})
+    if duplicates:
+        raise ValueError(f"duplicate ids in {scope}: {duplicates}")
 
 
 # Variables
@@ -254,7 +269,7 @@ class FormSchema(BaseSchema):
 # Courts
 
 
-class ContactSchema(BaseSchema):
+class ContactSchema(SourceSchema):
     """Populates a ``Contact`` row."""
 
     name: str = Field(min_length=1)
@@ -264,7 +279,7 @@ class ContactSchema(BaseSchema):
     note: str = ""
 
 
-class ResourceSchema(BaseSchema):
+class ResourceSchema(SourceSchema):
     """Populates a ``Resource`` row."""
 
     label: str = Field(min_length=1)
@@ -285,6 +300,29 @@ class CourtSchema(BaseSchema):
     contacts: list[ContactSchema] = []
     resources: list[ResourceSchema] = []
 
+    @property
+    def source_ids(self) -> list[str]:
+        """Contact and resource ids, in document order. One namespace per
+        court because both cite as ``court/<id>``."""
+        return [c.id for c in self.contacts] + [r.id for r in self.resources]
+
+    @model_validator(mode="after")
+    def _unique_source_ids(self):
+        """Validates:
+        - contact and resource ids are unique within the court
+        - contact names and resource labels are unique within the court,
+          since each is a unique column and the sync would merge the rows
+        """
+        _duplicate_ids("court", self.source_ids)
+        for scope, values in (
+            ("contact names", [c.name for c in self.contacts]),
+            ("resource labels", [r.label for r in self.resources]),
+        ):
+            duplicates = sorted({v for v in values if values.count(v) > 1})
+            if duplicates:
+                raise ValueError(f"duplicate {scope} in court: {duplicates}")
+        return self
+
 
 # Topics
 
@@ -304,7 +342,7 @@ class TopicSchema(BaseSchema):
 # Flows
 
 
-class SectionSchema(BaseSchema):
+class SectionSchema(SourceSchema):
     """Populates a ``TopicFlowSection`` row."""
 
     heading: str = Field(min_length=1)
@@ -337,7 +375,7 @@ class PacketEntrySchema(BaseSchema):
     when: WhenSchema | None = None
 
 
-class DeadlineSchema(BaseSchema):
+class DeadlineSchema(SourceSchema):
     """Populates a ``TopicFlowDeadline`` row."""
 
     label: str = Field(min_length=1)
@@ -346,7 +384,7 @@ class DeadlineSchema(BaseSchema):
     offset_from: VariableNameField
 
 
-class LinkSchema(BaseSchema):
+class LinkSchema(SourceSchema):
     """Populates a ``TopicFlowLink`` row."""
 
     name: str = Field(min_length=1)
@@ -364,6 +402,21 @@ class FlowSchema(BaseSchema):
     packet: list[PacketEntrySchema] = []
     deadlines: list[DeadlineSchema] = []
     links: list[LinkSchema] = []
+
+    @model_validator(mode="after")
+    def _unique_source_ids(self):
+        """Validates:
+        - section, deadline, link ids and packet form slugs are unique
+          within the flow (a packet entry cites its form slug)
+        """
+        ids = (
+            [s.id for s in self.sections]
+            + [d.id for d in self.deadlines]
+            + [link.id for link in self.links]
+            + sorted({entry.form for entry in self.packet})
+        )
+        _duplicate_ids("flow", ids)
+        return self
 
     @model_validator(mode="after")
     def _no_duplicate_packet_entries(self):
@@ -592,6 +645,31 @@ class CorpusSchema(BaseSchema):
                         f"be placed before {name}, which only its "
                         f"conditional form consumes"
                     )
+
+    @model_validator(mode="after")
+    def _source_ids_resolve(self):
+        """Validates:
+        - contact and resource ids are unique across every court, because
+          the sync upserts them globally and multi-court mode loads them all
+        - no topic takes the reserved ``court`` slug
+        """
+        owners: dict[str, list[str]] = {}
+        for court_slug, court in sorted(self.courts.items()):
+            for source_id in court.source_ids:
+                owners.setdefault(source_id, []).append(court_slug)
+        for source_id, court_slugs in sorted(owners.items()):
+            if len(court_slugs) > 1:
+                raise ValueError(
+                    f"contact or resource id {source_id!r} is defined by "
+                    f"more than one court: {court_slugs}"
+                )
+        for court_slug, topic_slug in sorted(self.topics):
+            if topic_slug == COURT_SOURCE_SLUG:
+                raise ValueError(
+                    f"court {court_slug}: topic slug {topic_slug!r} is "
+                    "reserved for court-level citations"
+                )
+        return self
 
     @model_validator(mode="after")
     def _no_orphans(self):

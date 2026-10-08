@@ -5,7 +5,7 @@ Versioned benchmark inputs and judge contracts.
 import hashlib
 import json
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, get_args
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -24,8 +24,10 @@ type FailureCategory = Literal[
     "hard_fact",
     "legal_direction",
     "missed_escalation",
+    "reply_shape",
     "unsupported_claim",
 ]
+FAILURE_CATEGORIES = get_args(FailureCategory.__value__)
 type PassageID = Annotated[int, Field(gt=0, strict=True)]
 
 
@@ -103,10 +105,15 @@ class Case(Schema):
     court: Slug
     topic: Slug
     question: str = Field(min_length=1)
+    # User turns sent before ``question`` on the same thread. Their replies
+    # are recorded as context for the judge; only the final answer is graded.
+    history: list[str] = Field(default_factory=list)
     references: list[str] = Field(min_length=1)
     facts: list[Fact] = Field(min_length=1)
     acceptable_deferral: str
     requires_escalation: bool = False
+    # The reply ends mid-interview: information first, then one question.
+    expects_one_question: bool = False
     review_status: str = (
         "draft; checked against repository corpus, not court reviewed"
     )
@@ -116,6 +123,8 @@ class Case(Schema):
         ids = [fact.id for fact in self.facts]
         if len(ids) != len(set(ids)):
             raise ValueError("Fact IDs must be unique within a case.")
+        if any(not turn.strip() for turn in self.history):
+            raise ValueError("History turns must not be empty.")
         return self
 
 

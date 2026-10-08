@@ -53,11 +53,16 @@ class UserMessage(TypedDict):
 
 
 class AssistantMessage(TypedDict, total=False):
-    """A message from the assistant, optionally with tool calls."""
+    """A message from the assistant, optionally with tool calls.
+
+    ``unknown_citations`` records cited ids the thread never supplied. It
+    is review data, stripped before the message goes back to the model.
+    """
 
     role: Literal["assistant"]
     content: str
     tool_calls: list[ToolCall]
+    unknown_citations: list[str]
 
 
 class ToolMessage(TypedDict, total=False):
