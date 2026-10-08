@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import logging
+
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 
-from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
+from litigant_portal.app.cache import (
+    CONTACT_LIST_CACHE_KEY,
+    RESOURCE_LIST_CACHE_KEY,
+    SITE_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+)
 from litigant_portal.app.models import (
     Contact,
     Form,
@@ -32,12 +39,34 @@ from litigant_portal.app.selectors.site import site_get
 
 from .utils import busts_cache
 
+logger = logging.getLogger(__name__)
+
 
 def _apply(row, schema, *, exclude: set[str] = frozenset()) -> None:
     """Set each schema field onto the row. ``exclude`` names the fields
     the caller resolves itself (relations, files, display-only)."""
     for field, value in schema.model_dump(exclude=exclude).items():
         setattr(row, field, value)
+
+
+def _source_row(schema, **fields):
+    """Schema fields plus the authored ``id``, stored as ``key`` because
+    ``id`` is the row's UUID."""
+    return {"key": schema.id, **schema.model_dump(exclude={"id"}), **fields}
+
+
+def _warn_removed_keys(scope: str, stored, authored) -> None:
+    """A stored key that left the corpus may still be cited in threads, so
+    its removal is reported. Removing a block can be correct, so this is
+    a warning, not a failure."""
+    removed = sorted(set(stored) - set(authored) - {""})
+    if removed:
+        logger.warning(
+            "%s: source ids removed from the corpus: %s "
+            "(stored citations to them are now stale)",
+            scope,
+            removed,
+        )
 
 
 def _sync_variables(corpus: CorpusSchema) -> dict[str, Variable]:
@@ -122,30 +151,66 @@ def _sync_site(schema: CourtSchema) -> None:
     )
 
 
+def _reject_shared_names(courts: list[CourtSchema]) -> None:
+    """Contact names and resource labels are unique columns, so two courts
+    in one sync sharing one would collapse into a single row. The schema
+    already rejects a repeat within one court, so any repeat here spans
+    courts."""
+    for scope, values in (
+        ("contact names", [c.name for s in courts for c in s.contacts]),
+        ("resource labels", [r.label for s in courts for r in s.resources]),
+    ):
+        shared = sorted({v for v in values if values.count(v) > 1})
+        if shared:
+            raise ValueError(
+                f"{scope} shared by more than one court in this sync: {shared}"
+            )
+
+
+def _upsert_sources(model, entries, *, natural: str) -> list[str]:
+    """Upsert ``entries`` by key. A row whose key no entry claims (a
+    changed id, or a keyless row migrated before keys existed or
+    admin-created) is adopted by its ``natural`` field. Returns the keys
+    written, in display order."""
+    rows = list(model.objects.all())
+    authored = {entry.id for entry in entries}
+    by_key = {r.key: r for r in rows if r.key}
+    unclaimed = {getattr(r, natural): r for r in rows if r.key not in authored}
+    keys: list[str] = []
+    for order, entry in enumerate(entries):
+        row = (
+            by_key.get(entry.id)
+            or unclaimed.pop(getattr(entry, natural), None)
+            or model()
+        )
+        _apply(row, entry, exclude={"id"})
+        row.key = entry.id
+        row.order = order
+        row.save()
+        keys.append(entry.id)
+    return keys
+
+
 def _sync_contacts(courts: list[CourtSchema], *, strict: bool) -> None:
-    """Upsert every court's contacts and resources by name and label."""
-    contacts = {c.name: c for c in Contact.objects.all()}
-    resources = {r.label: r for r in Resource.objects.all()}
-    names: list[str] = []
-    labels: list[str] = []
-    for schema in courts:
-        for entry in schema.contacts:
-            row = contacts.get(entry.name) or Contact(name=entry.name)
-            _apply(row, entry)
-            row.order = len(names)
-            row.save()
-            contacts[entry.name] = row
-            names.append(entry.name)
-        for entry in schema.resources:
-            row = resources.get(entry.label) or Resource(label=entry.label)
-            _apply(row, entry)
-            row.order = len(labels)
-            row.save()
-            resources[entry.label] = row
-            labels.append(entry.label)
+    """Upsert every court's contacts and resources by key."""
+    _reject_shared_names(courts)
+    _warn_removed_keys(
+        "court contacts and resources",
+        [
+            *Contact.objects.values_list("key", flat=True),
+            *Resource.objects.values_list("key", flat=True),
+        ],
+        [i for schema in courts for i in schema.source_ids],
+    )
+    contact_keys = _upsert_sources(
+        Contact, [c for s in courts for c in s.contacts], natural="name"
+    )
+    resource_keys = _upsert_sources(
+        Resource, [r for s in courts for r in s.resources], natural="label"
+    )
     if strict:
-        Contact.objects.exclude(name__in=names).delete()
-        Resource.objects.exclude(label__in=labels).delete()
+        Contact.objects.exclude(key__in=contact_keys).delete()
+        Resource.objects.exclude(key__in=resource_keys).delete()
 
 
 def _sync_flow(
@@ -166,9 +231,21 @@ def _sync_flow(
         exclude={"sections", "interview", "packet", "deadlines", "links"},
     )
     flow.save()
+    _warn_removed_keys(
+        f"flow {topic.slug}/{slug}",
+        [
+            key
+            for rows in (flow.sections, flow.deadlines, flow.links)
+            for key in rows.values_list("key", flat=True)
+        ],
+        [
+            source.id
+            for source in (*schema.sections, *schema.deadlines, *schema.links)
+        ],
+    )
     flow.sections.all().delete()
     TopicFlowSection.objects.bulk_create(
-        TopicFlowSection(flow=flow, order=order, **row.model_dump())
+        TopicFlowSection(**_source_row(row, flow=flow, order=order))
         for order, row in enumerate(schema.sections)
     )
     flow.interview_pages.all().delete()
@@ -200,21 +277,28 @@ def _sync_flow(
     flow.deadlines.all().delete()
     TopicFlowDeadline.objects.bulk_create(
         TopicFlowDeadline(
-            flow=flow,
-            order=order,
-            offset_from=variables[row.offset_from],
-            **row.model_dump(exclude={"offset_from"}),
+            **_source_row(
+                row,
+                flow=flow,
+                order=order,
+                offset_from=variables[row.offset_from],
+            )
         )
         for order, row in enumerate(schema.deadlines)
     )
     flow.links.all().delete()
     TopicFlowLink.objects.bulk_create(
-        TopicFlowLink(flow=flow, order=order, **row.model_dump())
+        TopicFlowLink(**_source_row(row, flow=flow, order=order))
         for order, row in enumerate(schema.links)
     )
 
 
-@busts_cache(SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY)
+@busts_cache(
+    SITE_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+    CONTACT_LIST_CACHE_KEY,
+    RESOURCE_LIST_CACHE_KEY,
+)
 def corpus_sync(
     *, court: str | None = None, strict: bool = False
 ) -> dict[str, int]:

@@ -14,7 +14,7 @@ class Migration(migrations.Migration):
     """
 
     dependencies = [
-        ("app", "0020_delete_identity_prompt_artifacts"),
+        ("app", "0021_source_keys"),
     ]
 
     operations = [
