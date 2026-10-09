@@ -12,6 +12,11 @@ template needs — prefilled fields, answer labels, form lists. It imports no
 session/request machinery; the one config read is the packet handler asking
 whether this environment has a docassemble to hand off to.
 
+``answers`` is the *applying* answers (``rules.applying``): the view has
+already dropped answers to questions that are no longer asked. Within a
+section the renderer evaluates the remaining ``when`` gates against them, so
+a gated question, packet form or deadline is left out when its gate fails.
+
 Corpus validity is guaranteed upstream at load, so the renderer never
 re-validates data; an unhandled section type is a *code* gap (a union member
 with no registered handler) and fails fast. The ``ics`` and ``vcf`` handlers
@@ -27,7 +32,8 @@ from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.topic_flow.contacts import resolve_vcf_contacts
 from litigant_portal.app.topic_flow.deadlines import resolve_ics_deadlines
 from litigant_portal.app.topic_flow.prefill import interview_reference
-from litigant_portal.app.topic_flow.schema import FactGatherSection
+from litigant_portal.app.topic_flow.rules import evaluate
+from litigant_portal.app.topic_flow.schema import QUESTION_SECTIONS
 
 
 @dataclass(frozen=True)
@@ -73,7 +79,7 @@ def render_section(section, corpus, answers, errors=None):
     if handler is None:
         raise ValueError(f"No SectionRenderer handler registered for {key!r}")
     rendered = handler(section, corpus, answers)
-    if errors and key == "fact_gather":
+    if errors and key in ("fact_gather", "screener"):
         focused = False
         for question in rendered.context["questions"]:
             question["errors"] = errors.get(question["id"], [])
@@ -107,9 +113,9 @@ NEVER_PREFILL = {
 }
 
 
-@renderer("fact_gather")
-def _render_fact_gather(section, corpus, answers):
-    questions = [
+def _question_dicts(section, answers):
+    """Template-ready dicts for the section's questions whose gate holds."""
+    return [
         {
             "id": q.id,
             "label": q.label,
@@ -126,24 +132,55 @@ def _render_fact_gather(section, corpus, answers):
             "autofocus": False,
         }
         for q in section.questions
+        if evaluate(q.when, answers)
     ]
+
+
+@renderer("fact_gather")
+def _render_fact_gather(section, corpus, answers):
     return RenderedSection(
         anchor_id=section.id,
         heading=section.heading or "",
         template=f"{_TEMPLATE_DIR}/flow_section_fact_gather.html",
-        context={"questions": questions},
+        context={"questions": _question_dicts(section, answers)},
+    )
+
+
+@renderer("screener")
+def _render_screener(section, corpus, answers):
+    # The questions render like a fact_gather; ``outcome`` is the first whose
+    # gate holds (or None), rendered as a confirm button that POSTs
+    # ``fact=value`` to the same page. The fact stays an ordinary stored
+    # answer, so the path question and the screener agree by construction.
+    outcome = next(
+        (
+            {"value": o.value, "label": o.label}
+            for o in section.outcomes
+            if evaluate(o.when, answers)
+        ),
+        None,
+    )
+    return RenderedSection(
+        anchor_id=section.id,
+        heading=section.heading or "",
+        template=f"{_TEMPLATE_DIR}/flow_section_screener.html",
+        context={
+            "questions": _question_dicts(section, answers),
+            "fact": section.fact,
+            "outcome": outcome,
+        },
     )
 
 
 def _fact_gather_questions(corpus):
-    """Yield every fact_gather Question, in corpus order.
+    """Yield every asked-by-a-section Question, in corpus order.
 
     The single walk over the section union; ``question_ids`` and the summary
     builder both consume it, so the ``isinstance`` dispatch lives in one place,
     confined to the renderer rather than leaking into the view.
     """
     for section in corpus.sections:
-        if isinstance(section, FactGatherSection):
+        if isinstance(section, QUESTION_SECTIONS):
             yield from section.questions
 
 
@@ -167,7 +204,7 @@ def submitted_section_anchor(corpus, submitted_ids):
     """
     submitted = set(submitted_ids)
     for section in corpus.sections:
-        if isinstance(section, FactGatherSection) and any(
+        if isinstance(section, QUESTION_SECTIONS) and any(
             question.id in submitted for question in section.questions
         ):
             return section.id
@@ -232,7 +269,9 @@ def _render_packet(section, corpus, answers):
         template=f"{_TEMPLATE_DIR}/flow_section_packet.html",
         context={
             "forms": [
-                {"name": form.name, "url": form.url} for form in section.forms
+                {"name": form.name, "url": form.url}
+                for form in section.forms
+                if evaluate(form.when, answers)
             ],
             # Corpus handoff AND a configured docassemble: without either, the
             # packet renders as a plain form list.

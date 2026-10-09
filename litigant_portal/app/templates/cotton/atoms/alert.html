@@ -1,12 +1,18 @@
-<c-vars variant="info" />
+<c-vars variant="info" translucent="" />
 {# Alert variants: info|success|warning|danger #}
+{# translucent: a see-through background with a blur behind it, for alerts #}
+{# that float over the page (the toast). Text keeps its full colour. #}
 {# --- Base --- #}
 {% with base="px-4 py-3 text-base rounded-lg border" %}
 {# --- Variants --- #}
-{% with v_success="bg-green-100 text-green-700 border-green-500" v_warning="text-yellow-700 bg-yellow-50 border-yellow-400" v_danger="bg-red-100 text-red-700 border-red-500" v_info="bg-brand-100 text-brand-700 border-brand-300" %}
+{% with v_success="text-green-700 border-green-500" v_warning="text-yellow-700 border-yellow-400" v_danger="text-red-700 border-red-500" v_info="text-brand-700 border-brand-300" %}
+{% with bg_success="bg-green-100" bg_warning="bg-yellow-50" bg_danger="bg-red-100" bg_info="bg-brand-100" %}
+{% with see_through_success="bg-green-100/80 backdrop-blur-sm" see_through_warning="bg-yellow-50/80 backdrop-blur-sm" see_through_danger="bg-red-100/80 backdrop-blur-sm" see_through_info="bg-brand-100/80 backdrop-blur-sm" %}
 <div role="alert"
-     class="{{ base }} {% if variant == 'success' %}{{ v_success }}{% elif variant == 'warning' %}{{ v_warning }}{% elif variant == 'danger' %}{{ v_danger }}{% else %}{{ v_info }}{% endif %} {{ class }}"
+     class="{{ base }} {% if variant == 'success' %}{{ v_success }} {% if translucent %}{{ see_through_success }}{% else %}{{ bg_success }}{% endif %}{% elif variant == 'warning' %}{{ v_warning }} {% if translucent %}{{ see_through_warning }}{% else %}{{ bg_warning }}{% endif %}{% elif variant == 'danger' %}{{ v_danger }} {% if translucent %}{{ see_through_danger }}{% else %}{{ bg_danger }}{% endif %}{% else %}{{ v_info }} {% if translucent %}{{ see_through_info }}{% else %}{{ bg_info }}{% endif %}{% endif %} {{ class }}"
      {{ attrs }}>{{ slot }}
 </div>
+{% endwith %}
+{% endwith %}
 {% endwith %}
 {% endwith %}

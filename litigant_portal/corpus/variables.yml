@@ -197,3 +197,36 @@ variables:
     label: 'Date you served the Notice to Leave'
     data_type: date
     help_text: 'The day you handed the notice to your tenant, left it at the property, or sent it by certified mail.'
+
+  # ── Rules model POC (#970) ──────────────────────────────────────────────
+  # Facts for the imaginary harbor-county boat-slip flow. Throwaway: these
+  # exist so the POC page can save answers, and leave with the POC branch.
+  # Choice values mirror content/harbor-county-boat-slip.yml.
+
+  - name: poc_path
+    label: 'Your role in the dispute'
+    data_type: choice
+    choices:
+      - value: renter
+        label: 'I rent a slip'
+      - value: marina
+        label: 'I run the marina'
+      - value: neighbor
+        label: 'I share a dock with the other person'
+      - value: not_sure
+        label: "I'm not sure"
+
+  - name: poc_pays_slip_fee
+    label: 'Who pays the slip fee'
+    data_type: choice
+    choices:
+      - value: i_pay
+        label: 'I pay it'
+      - value: i_collect
+        label: 'I collect it'
+      - value: nobody
+        label: 'Nobody pays a slip fee'
+
+  - name: poc_notice_date
+    label: 'Date on the notice'
+    data_type: date

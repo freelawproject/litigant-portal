@@ -12,6 +12,7 @@ from litigant_portal.app.topic_flow.schema import (
     FactGatherSection,
     Metadata,
     Question,
+    ScreenerSection,
 )
 from litigant_portal.app.topic_flow.validation import validate_answers
 
@@ -104,3 +105,45 @@ def test_each_invalid_answer_is_keyed_by_its_question_id():
         _corpus(), {"pub_date": "", "county": "Stark", "note": "fine"}
     )
     assert set(errors) == {"pub_date", "county"}
+
+
+def test_a_screener_question_is_validated_like_a_fact_gather_one():
+    corpus = Corpus(
+        metadata=Metadata(court="c", topic="t", role="r", title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="who",
+                questions=[
+                    Question(
+                        id="poc_path",
+                        label="Role",
+                        type="choice",
+                        choices=["renter", "marina"],
+                    )
+                ],
+            ),
+            ScreenerSection(
+                kind="screener",
+                id="screener",
+                fact="poc_path",
+                questions=[
+                    Question(
+                        id="pays_fee",
+                        label="Who pays?",
+                        type="choice",
+                        choices=["i_pay", "nobody"],
+                    )
+                ],
+                outcomes=[
+                    {
+                        "value": "renter",
+                        "label": "Continue",
+                        "when": {"fact": "pays_fee", "equals": "i_pay"},
+                    }
+                ],
+            ),
+        ],
+    )
+    assert "pays_fee" in validate_answers(corpus, {"pays_fee": "i_steal"})
+    assert validate_answers(corpus, {"pays_fee": "nobody"}) == {}

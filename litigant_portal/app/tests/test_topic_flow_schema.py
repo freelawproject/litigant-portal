@@ -11,9 +11,13 @@ import yaml
 from pydantic import ValidationError
 
 from litigant_portal.app.topic_flow.schema import (
+    Condition,
     Corpus,
+    Deadline,
+    InfoSection,
     PacketForm,
     PacketOutput,
+    Question,
     Resource,
 )
 
@@ -274,6 +278,149 @@ def test_resource_rejects_unknown_key():
         Resource.model_validate(
             {"id": "r", "label": "L", "url": "https://ex", "lable": "typo"}
         )
+
+
+# --- when conditions (#970 rules POC) ---------------------------------------
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"fact": "poc_path", "equals": "renter"},
+        {"fact": "poc_path", "not_equals": "marina"},
+        {"fact": "poc_path", "in": ["renter", "marina"]},
+        {"fact": "poc_path", "answered": True},
+        {"fact": "poc_path", "answered": False},
+    ],
+    ids=["equals", "not-equals", "in", "answered", "not-answered"],
+)
+def test_a_leaf_takes_a_fact_and_one_operator(data):
+    condition = Condition.model_validate(data)
+    assert condition.fact == "poc_path"
+    assert len(condition.operators) == 1
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"fact": "poc_path", "equals": "renter", "not_equals": "marina"},
+        {"fact": "poc_path"},
+        {"equals": "renter"},
+        {
+            "fact": "poc_path",
+            "equals": "renter",
+            "all": [{"fact": "a", "equals": "b"}],
+        },
+        {
+            "all": [{"fact": "a", "equals": "b"}],
+            "any": [{"fact": "a", "equals": "b"}],
+        },
+        {"all": []},
+        {"fact": "poc_path", "in": []},
+        {},
+    ],
+    ids=[
+        "two-operators",
+        "no-operator",
+        "operator-without-fact",
+        "leaf-mixed-with-combinator",
+        "two-combinators",
+        "empty-all",
+        "empty-in",
+        "empty",
+    ],
+)
+def test_a_malformed_condition_is_rejected(data):
+    with pytest.raises(ValidationError):
+        Condition.model_validate(data)
+
+
+def test_combinators_nest():
+    condition = Condition.model_validate(
+        {
+            "all": [
+                {"fact": "poc_path", "equals": "renter"},
+                {
+                    "any": [
+                        {"fact": "poc_received_notice", "equals": "yes"},
+                        {"not": {"fact": "poc_notice_date", "answered": True}},
+                    ]
+                },
+            ]
+        }
+    )
+    assert condition.combinators.keys() == {"all"}
+    (leaf, nested) = condition.all
+    assert leaf.equals == "renter"
+    assert nested.any[1].not_.answered is True
+
+
+def test_when_defaults_to_none_everywhere_it_may_appear():
+    # Absent means "always applies", so every existing corpus is untouched.
+    info = InfoSection(kind="info", id="i", heading="H", body="B")
+    question = Question(id="q", label="Q")
+    form = PacketForm(name="Petition")
+    deadline = Deadline(id="d", label="D", offset_days=1, offset_from="q")
+    assert (info.when, question.when, form.when, deadline.when) == (
+        None,
+        None,
+        None,
+        None,
+    )
+
+
+def test_fixture_corpus_carries_no_when():
+    corpus = Corpus.model_validate(_fixture())
+    assert all(section.when is None for section in corpus.sections)
+
+
+def test_a_packet_form_object_may_carry_a_when():
+    packet = PacketOutput.model_validate(
+        _packet(
+            forms=[
+                {"name": "Answer", "when": {"fact": "p", "equals": "renter"}},
+                "Shared Dock Agreement",
+            ]
+        )
+    )
+    assert packet.forms[0].when.fact == "p"
+    assert packet.forms[1].when is None
+
+
+def test_a_screener_needs_a_fact_questions_and_outcomes():
+    data = _fixture()
+    data["sections"] = [
+        {
+            "kind": "screener",
+            "id": "s",
+            "fact": "poc_path",
+            "questions": [{"id": "q", "label": "Q"}],
+            "outcomes": [],
+        }
+    ]
+    with pytest.raises(ValidationError):
+        Corpus.model_validate(data)
+    del data["sections"][0]["fact"]
+    data["sections"][0]["outcomes"] = [
+        {"value": "v", "label": "L", "when": {"fact": "q", "answered": True}}
+    ]
+    with pytest.raises(ValidationError):
+        Corpus.model_validate(data)
+
+
+def test_an_outcome_requires_a_when():
+    data = _fixture()
+    data["sections"] = [
+        {
+            "kind": "screener",
+            "id": "s",
+            "fact": "poc_path",
+            "questions": [{"id": "q", "label": "Q"}],
+            "outcomes": [{"value": "v", "label": "L"}],
+        }
+    ]
+    with pytest.raises(ValidationError):
+        Corpus.model_validate(data)
 
 
 def test_resources_output_requires_at_least_one_reference():

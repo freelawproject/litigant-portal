@@ -4,11 +4,16 @@ A corpus is one ``(court, topic, role)`` recipe authored as YAML on disk and
 loaded into these typed models. AI-free — nothing here calls an LLM.
 
 Sections are a discriminated union on ``kind`` (``info`` / ``fact_gather`` /
-``output``); ``output`` sections are themselves a sub-union on ``output_type``
+``screener`` / ``output``); ``output`` sections are a sub-union on ``output_type``
 (``ics`` / ``vcf`` / ``packet`` / ``summary``). Pydantic resolves this nested
 discriminated union natively. Id-reference cross-checks (a deadline's
-``offset_from`` pointing at a question, outputs pointing at deadlines/contacts)
-span sibling lists, so they live in ``loader.py`` rather than here.
+``offset_from`` pointing at a question, outputs pointing at deadlines/contacts,
+a ``when`` gate's ``fact`` pointing at an earlier question) span sibling
+lists, so they live in ``loader.py`` rather than here.
+
+Sections, questions, packet forms and deadlines may carry an optional ``when``
+``Condition``. Absent means it always applies, so a corpus without any gate
+renders exactly as before.
 
 These models are the partner-facing corpus contract: this schema
 (``extra="forbid"``), the loader's id cross-reference checks, and the
@@ -20,7 +25,13 @@ downstream. LP depends only on this contract, never on how a corpus was made.
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    model_validator,
+)
 
 # Shared slug shape for court/topic/role and every id — alphanumeric start,
 # then alphanumeric / underscore / hyphen. Mirrors the chat/prompts slug rule.
@@ -48,6 +59,73 @@ class _Base(BaseModel):
     # Reject unknown keys so an author's typo fails loudly instead of silently
     # dropping data.
     model_config = ConfigDict(extra="forbid")
+
+
+class Condition(_Base):
+    """A ``when`` gate: a leaf test on one fact, or a combinator of gates.
+
+    A leaf names a ``fact`` (a question id) plus exactly one operator:
+    ``equals``, ``not_equals``, ``in`` or ``answered``. A combinator is
+    exactly one of ``all``, ``any`` (non-empty lists) or ``not`` (one gate),
+    and they nest. Which question ids exist, and which values a choice
+    question allows, are cross-checks in ``loader.py``.
+    """
+
+    fact: Slug | None = None
+    equals: str | None = None
+    not_equals: str | None = None
+    in_: list[str] | None = Field(default=None, alias="in", min_length=1)
+    answered: bool | None = None
+    all: list["Condition"] | None = Field(default=None, min_length=1)
+    any: list["Condition"] | None = Field(default=None, min_length=1)
+    not_: "Condition | None" = Field(default=None, alias="not")
+
+    @property
+    def operators(self) -> dict:
+        """``{operator name: value}`` for the leaf operators that are set."""
+        return {
+            name: value
+            for name, value in (
+                ("equals", self.equals),
+                ("not_equals", self.not_equals),
+                ("in", self.in_),
+                ("answered", self.answered),
+            )
+            if value is not None
+        }
+
+    @property
+    def combinators(self) -> dict:
+        return {
+            name: value
+            for name, value in (
+                ("all", self.all),
+                ("any", self.any),
+                ("not", self.not_),
+            )
+            if value is not None
+        }
+
+    @model_validator(mode="after")
+    def _leaf_or_combinator(self):
+        operators = self.operators
+        combinators = self.combinators
+        if combinators:
+            if self.fact is not None or operators:
+                raise ValueError(
+                    "a combinator (all/any/not) takes no fact or operator"
+                )
+            if len(combinators) != 1:
+                raise ValueError("use exactly one of all, any or not")
+            return self
+        if self.fact is None:
+            raise ValueError("a condition needs a fact, or all/any/not")
+        if len(operators) != 1:
+            raise ValueError(
+                "a fact takes exactly one of equals, not_equals, in or "
+                "answered"
+            )
+        return self
 
 
 class Metadata(_Base):
@@ -101,6 +179,7 @@ class Deadline(_Base):
     offset_days: int
     offset_from: Slug
     description: str | None = None
+    when: Condition | None = None
 
 
 class Question(_Base):
@@ -112,6 +191,7 @@ class Question(_Base):
     required: bool = False
     choices: list[str] | None = None
     help_text: str | None = None
+    when: Condition | None = None
 
 
 class InfoSection(_Base):
@@ -119,6 +199,7 @@ class InfoSection(_Base):
     id: Slug
     heading: str = Field(min_length=1)
     body: str = Field(min_length=1)
+    when: Condition | None = None
 
 
 class FactGatherSection(_Base):
@@ -126,6 +207,41 @@ class FactGatherSection(_Base):
     id: Slug
     heading: str | None = None
     questions: list[Question] = Field(min_length=1)
+    when: Condition | None = None
+
+
+class Outcome(_Base):
+    """One way a screener can resolve: a ``value`` for the screener's ``fact``.
+
+    The first outcome whose ``when`` holds renders a confirm button labelled
+    ``label`` that stores ``value``. The loader checks ``value`` is one of the
+    fact's choices.
+    """
+
+    value: str = Field(min_length=1)
+    label: str = Field(min_length=1)
+    when: Condition
+
+
+class ScreenerSection(_Base):
+    """A fact_gather whose answers propose a value for an earlier choice fact.
+
+    The screener never derives a fact on its own: the litigant confirms the
+    proposed outcome with a button, which stores it like any other answer.
+    """
+
+    kind: Literal["screener"]
+    id: Slug
+    heading: str | None = None
+    fact: Slug
+    questions: list[Question] = Field(min_length=1)
+    outcomes: list[Outcome] = Field(min_length=1)
+    when: Condition | None = None
+
+
+# The section kinds that ask questions; everything that walks questions
+# corpus-wide (loader, renderer, validation, rules) dispatches on this.
+QUESTION_SECTIONS = (FactGatherSection, ScreenerSection)
 
 
 class IcsOutput(_Base):
@@ -134,6 +250,7 @@ class IcsOutput(_Base):
     id: Slug
     heading: str = Field(min_length=1)
     deadline_ids: list[Slug] = Field(min_length=1)
+    when: Condition | None = None
 
 
 class VcfOutput(_Base):
@@ -142,6 +259,7 @@ class VcfOutput(_Base):
     id: Slug
     heading: str = Field(min_length=1)
     contact_ids: list[Slug] = Field(min_length=1)
+    when: Condition | None = None
 
 
 class PacketForm(_Base):
@@ -154,6 +272,7 @@ class PacketForm(_Base):
 
     name: str = Field(min_length=1)
     url: str | None = None
+    when: Condition | None = None
 
 
 def _as_packet_form(value):
@@ -178,6 +297,7 @@ class PacketOutput(_Base):
     interview_prefill: dict[Slug, InterviewVariable] = Field(
         default_factory=dict
     )
+    when: Condition | None = None
 
 
 class ResourcesOutput(_Base):
@@ -186,6 +306,7 @@ class ResourcesOutput(_Base):
     id: Slug
     heading: str = Field(min_length=1)
     resource_ids: list[Slug] = Field(min_length=1)
+    when: Condition | None = None
 
 
 class SummaryOutput(_Base):
@@ -193,6 +314,7 @@ class SummaryOutput(_Base):
     output_type: Literal["summary"]
     id: Slug
     heading: str = Field(min_length=1)
+    when: Condition | None = None
 
 
 # output sections discriminate on output_type ...
@@ -204,7 +326,7 @@ OutputSection = Annotated[
 # ... and the section list discriminates on kind, with the output sub-union as
 # one branch (all output members share kind="output").
 Section = Annotated[
-    InfoSection | FactGatherSection | OutputSection,
+    InfoSection | FactGatherSection | ScreenerSection | OutputSection,
     Field(discriminator="kind"),
 ]
 

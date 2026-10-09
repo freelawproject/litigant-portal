@@ -37,6 +37,7 @@ from litigant_portal.app.topic_flow.schema import (
     Question,
     Resource,
     ResourcesOutput,
+    ScreenerSection,
     SummaryOutput,
     VcfOutput,
 )
@@ -1173,6 +1174,366 @@ def test_ics_section_hides_download_link_until_a_date_is_entered(
     )
     html = client.get(URL).content.decode()
     assert f'href="{DOWNLOAD_URL}"' not in html
+
+
+# --- when gates (#970 rules POC, needs DB) ----------------------------------
+# The page renders only the sections whose gate holds, from the applying
+# answers, and the .ics download filters the same way. Stored answers to a
+# hidden question stay in the store and show nowhere until the gate reopens.
+
+RENTER = {"fact": "poc_path", "equals": "renter"}
+NOTICE = {"fact": "poc_received_notice", "equals": "yes"}
+GATED_DOWNLOAD_URL = f"/t/{COURT}/{TOPIC}/{ROLE}/download/calendar/"
+
+
+def _gated_corpus():
+    return Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        deadlines=[
+            Deadline(
+                id="answer_due",
+                label="Answer due",
+                offset_days=14,
+                offset_from="poc_notice_date",
+                when={"all": [RENTER, NOTICE]},
+            )
+        ],
+        sections=[
+            InfoSection(
+                kind="info", id="welcome", heading="Welcome", body="Hello."
+            ),
+            FactGatherSection(
+                kind="fact_gather",
+                id="who_are_you",
+                heading="Your role",
+                questions=[
+                    Question(
+                        id="poc_path",
+                        label="Role",
+                        type="choice",
+                        choices=["renter", "marina"],
+                    )
+                ],
+            ),
+            FactGatherSection(
+                kind="fact_gather",
+                id="renter_notice",
+                heading="Your notice",
+                when=RENTER,
+                questions=[
+                    Question(
+                        id="poc_received_notice",
+                        label="Received a notice",
+                        type="choice",
+                        choices=["yes", "no"],
+                    ),
+                    Question(
+                        id="poc_notice_date",
+                        label="Notice date",
+                        type="date",
+                        when=NOTICE,
+                    ),
+                ],
+            ),
+            InfoSection(
+                kind="info",
+                id="renter_steps",
+                heading="Renter steps",
+                body="Keep paying.",
+                when=RENTER,
+            ),
+            InfoSection(
+                kind="info",
+                id="marina_steps",
+                heading="Marina steps",
+                body="File a complaint.",
+                when={"fact": "poc_path", "equals": "marina"},
+            ),
+            IcsOutput(
+                kind="output",
+                output_type="ics",
+                id="calendar",
+                heading="Calendar",
+                deadline_ids=["answer_due"],
+            ),
+            SummaryOutput(
+                kind="output",
+                output_type="summary",
+                id="recap",
+                heading="Recap",
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def poc_variables(db):
+    Variable.objects.create(
+        name="poc_path",
+        data_type=VariableDataType.CHOICE,
+        choices=[
+            {"value": "renter", "label": "Renter"},
+            {"value": "marina", "label": "Marina"},
+        ],
+    )
+    Variable.objects.create(
+        name="poc_received_notice",
+        data_type=VariableDataType.CHOICE,
+        choices=[
+            {"value": "yes", "label": "Yes"},
+            {"value": "no", "label": "No"},
+        ],
+    )
+    Variable.objects.create(
+        name="poc_notice_date", data_type=VariableDataType.DATE
+    )
+
+
+def _anchors(response):
+    return [r.anchor_id for r in response.context["rendered_sections"]]
+
+
+@pytest.mark.django_db
+def test_the_page_stops_at_the_unanswered_path_question(client, monkeypatch):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    response = client.get(URL)
+    assert _anchors(response) == ["welcome", "who_are_you"]
+    assert response.context["waiting_on"] == "who_are_you"
+    toc = [entry["anchor"] for entry in response.context["toc"]]
+    assert "renter_steps" not in toc
+    assert "marina_steps" not in toc
+    assert 'id="renter_steps"' not in response.content.decode()
+
+
+@pytest.mark.django_db
+def test_posting_the_path_opens_its_sections_on_the_redirected_get(
+    client, monkeypatch, poc_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    response = client.post(URL, {"poc_path": "renter"})
+    assert response.status_code == 302
+    anchors = _anchors(client.get(URL))
+    assert "renter_notice" in anchors
+    assert "marina_steps" not in anchors
+    # The notice question is the next gate, so the page stops there.
+    assert "renter_steps" not in anchors
+    client.post(URL, {"poc_received_notice": "no"})
+    assert "renter_steps" in _anchors(client.get(URL))
+
+
+def _toasts(response):
+    return [m["text"] for m in response.context["toast_messages"]]
+
+
+@pytest.mark.django_db
+def test_a_first_path_answer_gets_the_plain_saved_toast(
+    client, monkeypatch, poc_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    client.post(URL, {"poc_path": "renter"})
+    response = client.get(URL)
+    assert _toasts(response) == ["Saved."]
+    assert response.context["gate_changed"] is None
+
+
+@pytest.mark.django_db
+def test_switching_the_path_says_the_steps_were_updated_once(
+    client, monkeypatch, poc_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    client.post(URL, {"poc_path": "renter"})
+    client.get(URL)
+    client.post(URL, {"poc_path": "marina"})
+
+    response = client.get(URL)
+    assert response.context["gate_changed"] == {
+        "path": URL,
+        "anchor": "who_are_you",
+        "value": "marina",
+    }
+    # The card adds to the toast; it doesn't replace it.
+    assert _toasts(response) == ["Saved."]
+    # Shown once: a reload doesn't repeat it.
+    assert client.get(URL).context["gate_changed"] is None
+
+
+@pytest.mark.django_db
+def test_a_gated_question_appears_once_its_fact_is_answered(
+    client, monkeypatch, poc_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    client.post(URL, {"poc_path": "renter"})
+    assert 'name="poc_notice_date"' not in client.get(URL).content.decode()
+    client.post(URL, {"poc_received_notice": "yes"})
+    assert 'name="poc_notice_date"' in client.get(URL).content.decode()
+
+
+@pytest.mark.django_db
+def test_switching_the_path_hides_the_other_paths_answers_everywhere(
+    client, monkeypatch, poc_variables
+):
+    # The path-switch scenario: the renter's rows stay stored and reviewed,
+    # but the form, the summary and the calendar stop showing them.
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    client.post(URL, {"poc_path": "renter"})
+    client.post(URL, {"poc_received_notice": "yes"})
+    client.post(URL, {"poc_notice_date": "2026-02-01"})
+    assert "February 15, 2026" in client.get(URL).content.decode()
+
+    client.post(URL, {"poc_path": "marina"})
+    html = client.get(URL).content.decode()
+    assert "February 15, 2026" not in html
+    assert "2026-02-01" not in html
+    assert "Received a notice" not in html
+    assert _values() == {
+        "poc_path": "marina",
+        "poc_received_notice": "yes",
+        "poc_notice_date": "2026-02-01",
+    }
+    assert all(answer.reviewed for answer in _answers().values())
+
+    client.post(URL, {"poc_path": "renter"})
+    assert "February 15, 2026" in client.get(URL).content.decode()
+
+
+@pytest.mark.django_db
+def test_the_ics_download_leaves_out_a_gated_deadline(
+    client, monkeypatch, poc_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _gated_corpus())
+    _store(client, "poc_path", "marina")
+    _store(client, "poc_received_notice", "yes")
+    _store(client, "poc_notice_date", "2026-02-01")
+    body = client.get(GATED_DOWNLOAD_URL).content.decode()
+    assert "BEGIN:VCALENDAR" in body
+    assert "BEGIN:VEVENT" not in body
+
+    _store(client, "poc_path", "renter")
+    body = client.get(GATED_DOWNLOAD_URL).content.decode()
+    assert "BEGIN:VEVENT" in body
+    assert "20260215" in body
+
+
+# --- screener (#970 rules POC, needs DB) ------------------------------------
+# The screener's confirm button is a plain POST of the path fact, so the
+# existing handler stores it; the redirected GET then hides the screener.
+
+
+def _screener_corpus():
+    return Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="who_are_you",
+                heading="Your role",
+                questions=[
+                    Question(
+                        id="poc_path",
+                        label="Role",
+                        type="choice",
+                        choices=["renter", "marina", "not_sure"],
+                    )
+                ],
+            ),
+            ScreenerSection(
+                kind="screener",
+                id="screener",
+                heading="Working out your role",
+                fact="poc_path",
+                when={"fact": "poc_path", "equals": "not_sure"},
+                questions=[
+                    Question(
+                        id="poc_pays_slip_fee",
+                        label="Who pays the slip fee?",
+                        type="choice",
+                        choices=["i_pay", "i_collect"],
+                    )
+                ],
+                outcomes=[
+                    {
+                        "value": "renter",
+                        "label": "Continue as a renter",
+                        "when": {
+                            "fact": "poc_pays_slip_fee",
+                            "equals": "i_pay",
+                        },
+                    }
+                ],
+            ),
+            InfoSection(
+                kind="info",
+                id="renter_steps",
+                heading="Renter steps",
+                body="Keep paying.",
+                when=RENTER,
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def screener_variables(db):
+    Variable.objects.create(
+        name="poc_path",
+        data_type=VariableDataType.CHOICE,
+        choices=[
+            {"value": "renter", "label": "Renter"},
+            {"value": "marina", "label": "Marina"},
+            {"value": "not_sure", "label": "Not sure"},
+        ],
+    )
+    Variable.objects.create(
+        name="poc_pays_slip_fee",
+        data_type=VariableDataType.CHOICE,
+        choices=[
+            {"value": "i_pay", "label": "I pay"},
+            {"value": "i_collect", "label": "I collect"},
+        ],
+    )
+
+
+@pytest.mark.django_db
+def test_screener_shows_for_not_sure_with_no_button_until_answered(
+    client, monkeypatch, screener_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _screener_corpus())
+    assert 'id="screener"' not in client.get(URL).content.decode()
+    client.post(URL, {"poc_path": "not_sure"})
+    html = client.get(URL).content.decode()
+    assert 'id="screener"' in html
+    assert 'name="poc_pays_slip_fee"' in html
+    assert "Continue as a renter" not in html
+
+
+@pytest.mark.django_db
+def test_screener_offers_the_outcome_as_a_hidden_input_post(
+    client, monkeypatch, screener_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _screener_corpus())
+    client.post(URL, {"poc_path": "not_sure"})
+    client.post(URL, {"poc_pays_slip_fee": "i_pay"})
+    flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
+    assert re.search(
+        r'<input[^>]*type="hidden"[^>]*name="poc_path"[^>]*value="renter"',
+        flat,
+    )
+    assert "Continue as a renter" in flat
+
+
+@pytest.mark.django_db
+def test_confirming_the_outcome_stores_the_path_and_hides_the_screener(
+    client, monkeypatch, screener_variables
+):
+    monkeypatch.setattr(pages.registry, "get", lambda *a: _screener_corpus())
+    client.post(URL, {"poc_path": "not_sure"})
+    client.post(URL, {"poc_pays_slip_fee": "i_pay"})
+    response = client.post(URL, {"poc_path": "renter"})
+    assert response["Location"] == f"{URL}#who_are_you"
+    html = client.get(URL).content.decode()
+    assert 'id="screener"' not in html
+    assert 'id="renter_steps"' in html
+    assert _values()["poc_path"] == "renter"
 
 
 # --- vcf download (#473, needs DB) ------------------------------------------

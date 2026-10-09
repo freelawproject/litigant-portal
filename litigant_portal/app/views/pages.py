@@ -1,6 +1,7 @@
 import os
 import re
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -9,9 +10,10 @@ from django.shortcuts import redirect, render
 from django.template.loader import get_template
 from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
-from django.utils.http import urlencode
+from django.utils.http import url_has_allowed_host_and_scheme, urlencode
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView, UpdateView
 
 from litigant_portal.app.forms import UserProfileForm
@@ -30,6 +32,7 @@ from litigant_portal.app.models.choices import (
 )
 from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
+from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.theme import (
     contrast_level,
     contrast_ratio,
@@ -42,6 +45,12 @@ from litigant_portal.app.topic_flow.renderer import (
     render_section,
     submitted_section_anchor,
 )
+from litigant_portal.app.topic_flow.rules import (
+    applying,
+    replaced_gate_answer,
+    revealed,
+)
+from litigant_portal.app.topic_flow.schema import Question, ScreenerSection
 from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
     briefcase_answers,
@@ -95,6 +104,11 @@ def deep_link(request, court, topic):
     return redirect(f"{reverse('pages:chat')}?{query}")
 
 
+# Session key for the one-time "steps updated" line after a save changed an
+# earlier gate answer. Set on the POST, read once by the redirected GET.
+_GATE_CHANGED_SESSION_KEY = "topic_flow_gate_changed"
+
+
 def topic_flow(request, court, topic, role):
     """Topic Flow entry: /t/{court}/{topic}/{role}/ → rendered corpus sections.
 
@@ -120,6 +134,7 @@ def topic_flow(request, court, topic, role):
             if qid in request.POST
         }
         errors = validate_answers(corpus, submitted)
+        stored = topic_flow_answers(request, corpus)
         # Persist only what passes, canonicalized (stripped) to match what
         # validate_answers checked — otherwise a padded-but-valid answer
         # ("Cass  ") stores raw and fails the strict option-selected match on
@@ -169,6 +184,15 @@ def topic_flow(request, court, topic, role):
                 )
             else:
                 messages.success(request, _("Saved."))
+            if replaced := replaced_gate_answer(corpus, stored, valid):
+                # A changed gate answer changes steps the visitor may have
+                # read, so besides the toast the page says so under the
+                # gate, in the same dashed card that held those steps back.
+                request.session[_GATE_CHANGED_SESSION_KEY] = {
+                    "path": request.path,
+                    "anchor": submitted_section_anchor(corpus, submitted),
+                    "value": valid[replaced],
+                }
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.
@@ -181,21 +205,44 @@ def topic_flow(request, court, topic, role):
             url = f"{url}#{anchor}"
         return redirect(url)
 
+    gate_changed = request.session.pop(_GATE_CHANGED_SESSION_KEY, None)
+    if gate_changed and gate_changed["path"] != request.path:
+        gate_changed = None
     return _render_topic_flow(
-        request, corpus, topic_flow_answers(request, corpus)
+        request,
+        corpus,
+        topic_flow_answers(request, corpus),
+        gate_changed=gate_changed,
     )
 
 
-def _render_topic_flow(request, corpus, answers, errors=None):
+def _render_topic_flow(
+    request, corpus, answers, errors=None, gate_changed=None
+):
     """Render the full Topic Flow page from resolved answers.
 
     Shared by the GET path and the POST error re-render. ``errors`` (a
     ``{question_id: [message]}`` map) threads into ``render_section`` so a
     failed fact_gather submit shows inline errors; ``None`` on a clean render.
+
+    Only the sections whose ``when`` gate holds render, and every section
+    renders from the applying answers, so a stored answer to a question that
+    is no longer asked shows nowhere (form, summary, deadlines) while its row
+    stays in the store for when the gate opens again.
+
+    The page then stops at the first unanswered gate (``revealed``), so a
+    visitor sees the steps up to the question that decides what comes next.
+    ``waiting_on`` tells the template to say more steps follow it.
+    ``gate_changed`` is set on the one GET after a save changed a gate
+    answer: ``anchor`` is the section it was saved from, where the template
+    says the steps below were updated.
     """
+    applies = applying(corpus, answers)
+    shown = revealed(corpus, applies)
     rendered_sections = [
-        render_section(section, corpus, answers, errors)
+        render_section(section, corpus, applies.applying_answers, errors)
         for section in corpus.sections
+        if section.id in shown.section_ids
     ]
     # The flow's sections for the frame's left region: one entry per headed
     # section, so a litigant can jump back to re-read or revise.
@@ -211,11 +258,39 @@ def _render_topic_flow(request, corpus, answers, errors=None):
             "corpus": corpus,
             "rendered_sections": rendered_sections,
             "toc": toc,
+            "waiting_on": shown.waiting_on,
+            "gate_changed": gate_changed,
             "frame_left_label": _("Sections"),
             "frame_left_icon": "list-bullet",
             "briefcase_groups": briefcase_answers(request),
         },
     )
+
+
+@require_POST
+def start_over(request):
+    """Dev and QA only: start the session over from the seeded defaults
+    (#969).
+
+    Deletes the visitor's chats, uploads and answers, then returns to
+    ``next`` when it is on this site. The site menu asks for confirmation
+    first. Production answers 404 here, whatever the menu shows, so the
+    check lives on the server and not only in the template.
+    """
+    if settings.DEPLOYMENT_ENV == "prod":
+        raise Http404
+    user_identity_reset(identity=request.identity)
+    messages.success(
+        request, _("Started over. Your chats and answers are cleared.")
+    )
+    next_url = request.POST.get("next", "")
+    if not url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        next_url = reverse("pages:home")
+    return redirect(next_url)
 
 
 def about(request):
@@ -242,9 +317,35 @@ def style_guide(request):
         {
             "topics": topics,
             "briefcase_groups": _briefcase_sample(),
+            "screener_sample": _screener_sample(),
             "internal_section": "style_guide",
         },
     )
+
+
+def _screener_sample() -> dict:
+    """The screener molecule's context, answered so the confirm button shows."""
+    section = ScreenerSection(
+        kind="screener",
+        id="demo_screener",
+        fact="demo_path",
+        questions=[
+            Question(
+                id="demo_pays_fee",
+                label="Who pays the slip fee?",
+                type="choice",
+                choices=["i_pay", "i_collect", "nobody"],
+            )
+        ],
+        outcomes=[
+            {
+                "value": "renter",
+                "label": "Continue as a renter",
+                "when": {"fact": "demo_pays_fee", "equals": "i_pay"},
+            }
+        ],
+    )
+    return render_section(section, None, {"demo_pays_fee": "i_pay"}).context
 
 
 # Stages the Atomic Design summary page frames, smallest first. The fifth

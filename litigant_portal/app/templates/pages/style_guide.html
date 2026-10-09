@@ -62,6 +62,7 @@
           <li><c-atoms.link href="#form-errors" variant="unstyled">Form Errors</c-atoms.link></li>
           <li><c-atoms.link href="#form-field" variant="unstyled">Form Field</c-atoms.link></li>
           <li><c-atoms.link href="#form-field-select" variant="unstyled">Form Field Select</c-atoms.link></li>
+          <li><c-atoms.link href="#flow-section-screener" variant="unstyled">Flow Section Screener</c-atoms.link></li>
           <li><c-atoms.link href="#auth-status" variant="unstyled">Auth Status</c-atoms.link></li>
           <li><c-atoms.link href="#toast-container" variant="unstyled">Toast Container</c-atoms.link></li>
           <li><c-atoms.link href="#user-menu" variant="unstyled">User Menu</c-atoms.link></li>
@@ -911,6 +912,20 @@
               <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>slot</code></span>
               <span class="p-2.5">Option elements</span>
             </div>
+          </div>
+        </section>
+        <section id="flow-section-screener"
+                 class="mb-12"
+                 aria-labelledby="flow-section-screener-heading">
+          <h3 id="flow-section-screener-heading" class="mb-4">Flow Section Screener</h3>
+          <p class="text-greyscale-600 mb-6">
+            A Topic Flow section body (rules model POC, #970): the fact_gather question form, then a confirm button once the answers point at one outcome. The button POSTs the outcome's value for the screener's fact to the same page, so the path stays an ordinary stored answer.
+          </p>
+          <p class="text-sm text-greyscale-500 mb-4">
+            Rendered by <code>render_section</code> for <code>kind: screener</code> and included with <code>ctx</code>, like the other <code>flow_section_*</code> partials: <code>ctx.questions</code>, <code>ctx.fact</code> and <code>ctx.outcome</code> (<code>{value, label}</code> or None, in which case no button renders). Composes <code>flow_section_fact_gather</code> and <code>c-atoms.button</code>.
+          </p>
+          <div class="border border-greyscale-200 rounded-lg p-6 max-w-md mb-6">
+            {% include "cotton/molecules/flow_section_screener.html" with ctx=screener_sample %}
           </div>
         </section>
         <section id="auth-status" class="mb-12" aria-labelledby="auth-status-heading">

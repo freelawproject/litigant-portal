@@ -1,0 +1,139 @@
+# Rules model POC (#970): an imaginary court and topic, so the `when` gates
+# can be exercised on a page without touching a real corpus. Never shown to
+# a litigant. Throwaway, leaves with the POC branch.
+#
+# Shape under test: an intro that asks the hard gates up front (here one,
+# poc_path, the three-way role plus "not sure" and its helper), then a scroll
+# with no gates of its own. The notice is a soft gate: an optional date the
+# deadline computes from, not a yes/no that hides sections.
+# A section, question, packet form or deadline with no `when` always applies.
+
+metadata:
+  court: harbor-county
+  topic: boat-slip-dispute
+  role: all
+  title: 'Boat Slip Dispute in Harbor County'
+
+deadlines:
+  - id: answer_due
+    label: 'Your written answer is due'
+    offset_days: 14
+    offset_from: poc_notice_date
+    description: 'Harbor County gives a slip renter 14 days from the date on the notice to file a written answer with the harbor clerk.'
+    when: { fact: poc_path, equals: renter }
+
+sections:
+  - kind: info
+    id: welcome
+    heading: 'Settling a dispute over a boat slip'
+    body: |
+      This page walks you through a disagreement about a boat slip in Harbor County: who may use it, who pays for it, and what happens when someone is told to leave.
+
+      Start with the question below. The rest of the page is written for your role in the dispute, and your answers stay saved if you come back.
+
+  # Intro: the hard gates, asked before anything else.
+  - kind: fact_gather
+    id: who_are_you
+    heading: 'Your role in the dispute'
+    questions:
+      - id: poc_path
+        label: 'Which of these best describes you?'
+        type: choice
+        choices: [renter, marina, neighbor, not_sure]
+        help_text: 'Pick "not_sure" and the page will help you work it out.'
+
+  - kind: screener
+    id: screener
+    heading: 'Working out your role'
+    fact: poc_path
+    when: { fact: poc_path, equals: not_sure }
+    questions:
+      - id: poc_pays_slip_fee
+        label: 'Who pays the slip fee for the boat in this dispute?'
+        type: choice
+        choices: [i_pay, i_collect, nobody]
+        help_text: 'If you pay a fee to keep your boat there, you rent the slip. If you collect it, you run the marina. If nobody pays, you share the dock.'
+    outcomes:
+      - value: renter
+        label: 'Continue as a renter'
+        when: { fact: poc_pays_slip_fee, equals: i_pay }
+      - value: marina
+        label: 'Continue as the marina'
+        when: { fact: poc_pays_slip_fee, equals: i_collect }
+      - value: neighbor
+        label: 'Continue as a dock neighbor'
+        when: { fact: poc_pays_slip_fee, equals: nobody }
+
+  # Soft gate: the date is optional. Entered, the answer deadline computes;
+  # blank, nothing is hidden and the deadline asks for the date.
+  - kind: fact_gather
+    id: renter_notice
+    heading: 'If you received a written notice'
+    when: { fact: poc_path, equals: renter }
+    questions:
+      - id: poc_notice_date
+        label: 'What date is printed on the notice to leave your slip?'
+        type: date
+        help_text: 'Use the date printed at the top of the notice, not the day you found it. Leave this blank if the marina has not given you one.'
+
+  - kind: info
+    id: renter_steps
+    heading: 'What a slip renter can do'
+    when: { fact: poc_path, equals: renter }
+    body: |
+      A marina cannot remove your boat or lock you out of your slip without a written notice and a chance to answer it.
+
+      Read your rental agreement for the notice period it promises. Harbor County requires at least 14 days, and your agreement may give you more.
+
+      Keep paying your slip fee while the dispute is open. Stopping payment gives the marina a second reason to end the agreement.
+
+  - kind: info
+    id: marina_steps
+    heading: 'What a marina operator can do'
+    when: { fact: poc_path, equals: marina }
+    body: |
+      To end a slip rental you must give the renter a written notice that states the reason and the date they must leave by.
+
+      If the renter does not leave or answer by that date, you file a Marina Complaint with the harbor clerk. Do not move or chain the boat yourself before the clerk rules.
+
+  - kind: info
+    id: neighbor_steps
+    heading: 'What a dock neighbor can do'
+    when: { fact: poc_path, equals: neighbor }
+    body: |
+      Disputes between two people who share a dock are handled as a shared-use dispute, not as a rental dispute.
+
+      Start by writing down what each of you believes was agreed, with dates. The Shared Dock Agreement form below records that and is what the harbor clerk asks for first.
+
+  - kind: info
+    id: answer_urgent
+    heading: 'When a notice starts the clock'
+    when: { fact: poc_path, equals: renter }
+    body: |
+      Once the marina gives you a written notice, the clock is running. Enter the date on the notice above and your answer deadline appears in the calendar section below.
+
+      If you miss the deadline, the marina can ask the clerk to order your boat removed without hearing your side.
+
+  - kind: output
+    output_type: ics
+    id: calendar
+    heading: 'Add your deadline to your calendar'
+    deadline_ids:
+      - answer_due
+
+  - kind: output
+    output_type: packet
+    id: forms
+    heading: 'Forms you may need'
+    forms:
+      - name: "Renter's Answer"
+        when: { fact: poc_path, equals: renter }
+      - name: 'Marina Complaint'
+        when: { fact: poc_path, equals: marina }
+      - name: 'Shared Dock Agreement'
+        when: { fact: poc_path, equals: neighbor }
+
+  - kind: output
+    output_type: summary
+    id: recap
+    heading: 'Summary of what you entered'

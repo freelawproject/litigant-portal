@@ -94,3 +94,20 @@ def user_identity_merge_anonymous(*, user, session_key: str) -> None:
     user_identity_merge(
         source_identity=anon_identity, target_identity=target_identity
     )
+
+
+@transaction.atomic
+def user_identity_reset(*, identity: UserIdentity) -> None:
+    """Delete everything an identity owns: chat threads (their messages go
+    with them), uploads with their stored files, and answers.
+
+    Backs the dev and QA "Start over" control (#969), which returns a
+    session to the seeded defaults. Seeded data (topics, flows, variables) belongs
+    to no identity, so it stays. The identity row stays too, so the session
+    or signed-in user keeps working.
+    """
+    for upload in identity.uploads.all():
+        upload.file.delete(save=False)
+    identity.uploads.all().delete()
+    identity.chat_threads.all().delete()
+    identity.variable_answers.all().delete()

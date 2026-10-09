@@ -57,12 +57,13 @@
       © {% now "Y" %} <c-atoms.link href="https://free.law" target="_blank" variant="unstyled" class="text-xs text-greyscale-500 hover:text-greyscale-700">Free Law Project</c-atoms.link>
     </p>
     {% if deployment_env != "prod" %}
-      <div x-data="devMenu" class="border-t border-greyscale-200 mt-1 pt-1">
+      <div class="border-t border-greyscale-200 mt-1 pt-1">
         <p class="px-4 py-2 text-xs font-semibold text-greyscale-500">{{ dev_tools_label }}</p>
         <ul class="list-none pl-0">
           <li>
-            {# User-language label: it erases chat + case and reloads. #}
-            <c-atoms.button type="button" variant="ghost" full_width="true" x-on:click="resetDemo" class="site-menu-item rounded-none">
+            {# Opens the confirmation below as a native popover (#969): no JS, #}
+            {# and nothing is cleared by a stray click. #}
+            <c-atoms.button type="button" variant="ghost" full_width="true" popovertarget="start-over-confirm" class="site-menu-item rounded-none">
               <c-atoms.icon name="arrow-path" class="w-5 h-5 text-greyscale-500" />
               {% trans "Start over" %}
             </c-atoms.button>
@@ -103,3 +104,20 @@
     {% endif %}
   </nav>
 </details>
+{% if deployment_env != "prod" %}
+  {# Start over's confirmation, outside the <details> so it renders once #}
+  {# the menu closes. A native popover: it opens and closes without JS, #}
+  {# Escape or a click outside cancels, and autofocus lands on Cancel, the #}
+  {# safe choice. Pinned under the header at the right, below the menu it #}
+  {# opened from, instead of the browser's default centre. #}
+  <div id="start-over-confirm" popover role="dialog" aria-labelledby="start-over-heading" class="fixed inset-auto top-[calc(var(--header-height)+0.5rem)] right-4 m-0 w-[min(24rem,calc(100%-2rem))] rounded-lg border border-greyscale-200 bg-white p-6 text-left shadow-xl backdrop:bg-black/30">
+    <h2 id="start-over-heading" class="text-lg font-semibold text-greyscale-900">{% trans "Start over?" %}</h2>
+    <p class="mt-2 text-sm text-greyscale-700">{% trans "This clears your session: your chats, uploads and answers, so you can begin again. Topics and court information stay. This can't be undone." %}</p>
+    <form method="post" action="{% url 'pages:start_over' %}" class="mt-4 flex flex-wrap gap-3">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+      <c-atoms.button type="submit" variant="danger">{% trans "Start over" %}</c-atoms.button>
+      <c-atoms.button type="button" variant="outline" popovertarget="start-over-confirm" popovertargetaction="hide" autofocus>{% trans "Cancel" %}</c-atoms.button>
+    </form>
+  </div>
+{% endif %}

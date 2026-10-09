@@ -4,6 +4,9 @@
 {# and JS-off (#494). Each deadline shows its concrete date once the source date #}
 {# is entered, else a "fill the date first" hint. The add-to-calendar (.ics) #}
 {# download link (#504) appears once at least one deadline has a computed date. #}
+{# A gated deadline that doesn't apply is filtered out, so the list can be #}
+{# empty; the section keeps its place with a sentence instead. #}
+{% if ctx.deadlines %}
 <ul class="space-y-4">
   {% for deadline in ctx.deadlines %}
   <li>
@@ -23,6 +26,9 @@
   </li>
   {% endfor %}
 </ul>
+{% else %}
+<p class="text-greyscale-600">{% trans "There are no deadlines for your situation." %}</p>
+{% endif %}
 
 {% if ctx.has_dates %}
 <div class="mt-4">

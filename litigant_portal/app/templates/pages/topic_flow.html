@@ -17,6 +17,12 @@
           <c-atoms.link href="#{{ item.anchor }}" variant="unstyled" class="block px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100">{{ item.heading }}</c-atoms.link>
         </li>
       {% endfor %}
+      {# Matches the placeholder in the content: more sections follow the #}
+      {# unanswered gate, so the list doesn't read as complete. Not a link: #}
+      {# there is nothing to jump to yet. #}
+      {% if waiting_on %}
+        <li class="px-4 py-2 text-sm text-greyscale-600">{% trans "More after you answer" %}</li>
+      {% endif %}
     </ul>
     <div class="border-t border-greyscale-200 py-2">
       <c-atoms.link href="{% url 'pages:home' %}" variant="unstyled" class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100">
@@ -40,6 +46,22 @@
     {% endif %}
     {% include section.template with ctx=section.context %}
   </section>
+  {# After a changed gate answer: the same dashed line that held the steps #}
+  {# back says they were updated, once, where the save landed. #}
+  {% if gate_changed and gate_changed.anchor == section.anchor_id %}
+  <div class="mb-8 flex items-start gap-2 rounded-lg border border-dashed border-greyscale-300 px-4 py-3 text-greyscale-600">
+    <c-atoms.icon name="information-circle" class="mt-0.5 h-5 w-5 flex-shrink-0 text-greyscale-500" />
+    <p>{% blocktrans with value=gate_changed.value %}The sections below were updated because your answer changed to {{ value }}.{% endblocktrans %}</p>
+  </div>
+  {% endif %}
   {% endfor %}
+  {# The page stops at the first unanswered gate (rules.revealed). Without #}
+  {# this line it reads as complete, especially on a phone. #}
+  {% if waiting_on %}
+  <div class="flex items-start gap-2 rounded-lg border border-dashed border-greyscale-300 px-4 py-3 text-greyscale-600">
+    <c-atoms.icon name="information-circle" class="mt-0.5 h-5 w-5 flex-shrink-0 text-greyscale-500" />
+    <p>{% trans "More steps for your situation appear here after you answer above." %}</p>
+  </div>
+  {% endif %}
 </div>
 {% endblock content %}

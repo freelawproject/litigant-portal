@@ -31,8 +31,40 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
-  // Dev menu (header dropdown — visible in dev + QA only)
+  // Topic flow autosave (test)
   // ===========================================================================
+
+  // Submits a topic flow question form in place of a Save button. A chosen
+  // option saves at once. A date doesn't: typing one fires change as soon as
+  // each part is valid, so "2" in the year would save 0002. It saves when
+  // focus leaves the field or Enter is pressed. The save is the same server
+  // POST and redirect as before.
+  Alpine.data('autoSave', () => ({
+    dateChanged: false,
+    onChange(event) {
+      if (event.target.type === 'date') {
+        this.dateChanged = true
+        return
+      }
+      this.save()
+    },
+    onFocusOut(event) {
+      if (event.target.type === 'date') this.saveDate()
+    },
+    onEnter(event) {
+      if (event.target.type !== 'date') return
+      event.preventDefault()
+      this.saveDate()
+    },
+    saveDate() {
+      if (!this.dateChanged) return
+      this.dateChanged = false
+      this.save()
+    },
+    save() {
+      this.$el.requestSubmit()
+    },
+  }))
 
   // ===========================================================================
   // Site frame drawer (#988)
@@ -93,27 +125,6 @@ document.addEventListener('alpine:init', () => {
       if (!section.hasAttribute('tabindex'))
         section.setAttribute('tabindex', '-1')
       section.focus()
-    },
-  }))
-
-  // The site menu's dev-tools group (molecules/site_menu.html).
-  Alpine.data('devMenu', () => ({
-    async resetDemo() {
-      const csrfToken =
-        document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-        document.cookie
-          .split(';')
-          .find((c) => c.trim().startsWith('csrftoken='))
-          ?.split('=')[1] ||
-        ''
-      const formData = new FormData()
-      formData.append('csrfmiddlewaretoken', csrfToken)
-      try {
-        await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
-      } catch (e) {
-        console.error('Failed to reset demo:', e)
-      }
-      location.reload()
     },
   }))
 

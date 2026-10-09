@@ -229,6 +229,328 @@ def test_problems_aggregate_into_one_error(tmp_path):
     assert len(problems) >= 2
 
 
+# --- when cross-checks (#970 rules POC) -------------------------------------
+# A gate may only name a question declared earlier in the corpus, and may only
+# compare a choice question against one of its choices.
+
+
+def _gated_corpus(*sections, deadlines=None):
+    data = {
+        "metadata": {"court": "c", "topic": "t", "role": "r", "title": "T"},
+        "sections": [
+            {
+                "kind": "fact_gather",
+                "id": "who",
+                "questions": [
+                    {
+                        "id": "poc_path",
+                        "label": "Role",
+                        "type": "choice",
+                        "choices": ["renter", "marina"],
+                    }
+                ],
+            },
+            *sections,
+        ],
+    }
+    if deadlines is not None:
+        data["deadlines"] = deadlines
+    return data
+
+
+def _info(id, when):
+    return {
+        "kind": "info",
+        "id": id,
+        "heading": "H",
+        "body": "B",
+        "when": when,
+    }
+
+
+def test_when_on_a_section_names_an_earlier_question(tmp_path):
+    data = _gated_corpus(
+        _info("steps", {"fact": "poc_path", "equals": "renter"})
+    )
+    corpus = CorpusLoader.load(_write(tmp_path, data))
+    assert corpus.sections[1].when.equals == "renter"
+
+
+def test_when_naming_an_unknown_fact_is_a_problem(tmp_path):
+    data = _gated_corpus(_info("steps", {"fact": "ghost", "equals": "x"}))
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "section 'steps' when" in p and "'ghost'" in p
+        for p in exc.value.problems
+    )
+
+
+def test_when_naming_a_later_question_is_a_problem(tmp_path):
+    data = _gated_corpus(
+        _info("early", {"fact": "later_q", "answered": True}),
+        {
+            "kind": "fact_gather",
+            "id": "later",
+            "questions": [{"id": "later_q", "label": "L"}],
+        },
+    )
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "section 'early' when" in p and "'later_q'" in p
+        for p in exc.value.problems
+    )
+
+
+def test_a_question_when_sees_earlier_questions_of_its_own_section(tmp_path):
+    data = _gated_corpus(
+        {
+            "kind": "fact_gather",
+            "id": "notice",
+            "questions": [
+                {
+                    "id": "received",
+                    "label": "R",
+                    "type": "choice",
+                    "choices": ["yes", "no"],
+                },
+                {
+                    "id": "notice_date",
+                    "label": "D",
+                    "type": "date",
+                    "when": {"fact": "received", "equals": "yes"},
+                },
+            ],
+        }
+    )
+    corpus = CorpusLoader.load(_write(tmp_path, data))
+    assert corpus.sections[1].questions[1].when.fact == "received"
+
+
+def test_a_question_when_may_not_name_itself_or_a_later_sibling(tmp_path):
+    data = _gated_corpus(
+        {
+            "kind": "fact_gather",
+            "id": "notice",
+            "questions": [
+                {
+                    "id": "notice_date",
+                    "label": "D",
+                    "when": {"fact": "received", "answered": True},
+                },
+                {"id": "received", "label": "R"},
+            ],
+        }
+    )
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "question 'notice_date' when" in p and "'received'" in p
+        for p in exc.value.problems
+    )
+
+
+@pytest.mark.parametrize(
+    "when",
+    [
+        {"fact": "poc_path", "equals": "neighbor"},
+        {"fact": "poc_path", "not_equals": "neighbor"},
+        {"fact": "poc_path", "in": ["renter", "neighbor"]},
+        {"all": [{"fact": "poc_path", "equals": "neighbor"}]},
+    ],
+    ids=["equals", "not-equals", "in", "nested"],
+)
+def test_a_value_outside_a_choice_list_is_a_problem(tmp_path, when):
+    data = _gated_corpus(_info("steps", when))
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "'neighbor' is not a choice of 'poc_path'" in p
+        for p in exc.value.problems
+    )
+
+
+def test_a_text_question_accepts_any_compared_value(tmp_path):
+    data = _gated_corpus(
+        {
+            "kind": "fact_gather",
+            "id": "name",
+            "questions": [{"id": "county", "label": "County"}],
+        },
+        _info("steps", {"fact": "county", "equals": "Cass"}),
+    )
+    corpus = CorpusLoader.load(_write(tmp_path, data))
+    assert corpus.sections[2].when.equals == "Cass"
+
+
+def test_a_packet_form_when_is_checked(tmp_path):
+    data = _gated_corpus(
+        {
+            "kind": "output",
+            "output_type": "packet",
+            "id": "forms",
+            "heading": "H",
+            "forms": [
+                {"name": "Answer", "when": {"fact": "ghost", "equals": "x"}}
+            ],
+        }
+    )
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "output 'forms' form 'Answer' when" in p and "'ghost'" in p
+        for p in exc.value.problems
+    )
+
+
+def test_a_deadline_when_may_name_any_question(tmp_path):
+    # Deadlines are corpus-level and resolve after every section, so corpus
+    # order does not constrain them.
+    data = _gated_corpus(
+        {
+            "kind": "fact_gather",
+            "id": "dates",
+            "questions": [{"id": "notice_date", "label": "D", "type": "date"}],
+        },
+        deadlines=[
+            {
+                "id": "answer_due",
+                "label": "Due",
+                "offset_days": 14,
+                "offset_from": "notice_date",
+                "when": {"fact": "poc_path", "equals": "renter"},
+            }
+        ],
+    )
+    corpus = CorpusLoader.load(_write(tmp_path, data))
+    assert corpus.deadlines[0].when.fact == "poc_path"
+
+
+def test_a_deadline_when_naming_an_unknown_fact_is_a_problem(tmp_path):
+    data = _gated_corpus(
+        deadlines=[
+            {
+                "id": "answer_due",
+                "label": "Due",
+                "offset_days": 14,
+                "offset_from": "poc_path",
+                "when": {"fact": "ghost", "answered": True},
+            }
+        ],
+    )
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "deadline 'answer_due' when" in p and "'ghost'" in p
+        for p in exc.value.problems
+    )
+
+
+def test_the_poc_corpus_loads():
+    corpus = CorpusLoader.load(CONTENT / "harbor-county-boat-slip.yml")
+    assert corpus.metadata.court == "harbor-county"
+    gated = [s.id for s in corpus.sections if s.when is not None]
+    assert gated == [
+        "screener",
+        "renter_notice",
+        "renter_steps",
+        "marina_steps",
+        "neighbor_steps",
+        "answer_urgent",
+    ]
+
+
+# --- screener (#970 rules POC) ----------------------------------------------
+# A screener's ``fact`` is an earlier choice question and each outcome value
+# one of its choices; its outcomes may read the screener's own questions.
+
+
+def _screener(fact="poc_path", outcome_value="renter", **extra):
+    return {
+        "kind": "screener",
+        "id": "screener",
+        "fact": fact,
+        "questions": [
+            {
+                "id": "pays_fee",
+                "label": "Who pays?",
+                "type": "choice",
+                "choices": ["i_pay", "nobody"],
+            }
+        ],
+        "outcomes": [
+            {
+                "value": outcome_value,
+                "label": "Continue",
+                "when": {"fact": "pays_fee", "equals": "i_pay"},
+            }
+        ],
+        **extra,
+    }
+
+
+def test_a_screener_loads_and_its_outcomes_see_its_own_questions(tmp_path):
+    corpus = CorpusLoader.load(_write(tmp_path, _gated_corpus(_screener())))
+    screener = corpus.sections[1]
+    assert screener.kind == "screener"
+    assert screener.outcomes[0].when.fact == "pays_fee"
+
+
+def test_a_screener_question_is_declared_for_later_gates(tmp_path):
+    data = _gated_corpus(
+        _screener(), _info("after", {"fact": "pays_fee", "equals": "nobody"})
+    )
+    corpus = CorpusLoader.load(_write(tmp_path, data))
+    assert corpus.sections[2].when.fact == "pays_fee"
+
+
+def test_a_screener_outcome_value_outside_the_facts_choices_is_a_problem(
+    tmp_path,
+):
+    data = _gated_corpus(_screener(outcome_value="neighbor"))
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "screener 'screener' outcome 'neighbor' is not a choice of 'poc_path'"
+        in p
+        for p in exc.value.problems
+    )
+
+
+@pytest.mark.parametrize(
+    "fact",
+    ["ghost", "pays_fee"],
+    ids=["unknown", "its-own-question"],
+)
+def test_a_screener_fact_must_be_an_earlier_question(tmp_path, fact):
+    data = _gated_corpus(_screener(fact=fact))
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        f"screener 'screener' fact {fact!r} is not a question declared "
+        "earlier" in p
+        for p in exc.value.problems
+    )
+
+
+def test_a_screener_fact_must_be_a_choice_question(tmp_path):
+    data = _gated_corpus(
+        {
+            "kind": "fact_gather",
+            "id": "name",
+            "questions": [{"id": "county", "label": "County"}],
+        },
+        _screener(fact="county", outcome_value="Cass"),
+    )
+    with pytest.raises(CorpusValidationError) as exc:
+        CorpusLoader.load(_write(tmp_path, data))
+    assert any(
+        "screener 'screener' fact 'county' is not a choice" in p
+        for p in exc.value.problems
+    )
+
+
 # The cross-reference and schema tests above run against tmp_path fixtures; this
 # one loads the real shipped ND corpora so a typo'd resource_id (or any dangling
 # reference) in the live YAML fails CI, not just at runtime. Loading succeeds
