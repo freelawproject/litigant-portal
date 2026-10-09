@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-v pre-commit \
+.PHONY: help install lint test test-v test-failed test-fo pre-commit \
 	   css css-watch css-minify clean \
 	   check migrate shell collectstatic superuser messages compilemessages \
 	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
@@ -30,12 +30,22 @@ install: ## Install Python dependencies with dev extras
 lint: ## Run pre-commit hooks to lint and format code
 	pre-commit run --all-files
 
+# pytest's failure record lives in the bind mount, so test-failed still has it
+# after the container is rebuilt or recreated.
+PYTEST_CACHE := -o cache_dir=/app/litigant_portal/.pytest_cache
+
 test: test-js ## Run tests
 	$(require-docker)
-	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(filter-out $@,$(MAKECMDGOALS))
+	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(PYTEST_CACHE) $(filter-out $@,$(MAKECMDGOALS))
 
 test-js: ## Run the browser JS tests (Node's built-in runner, no install needed)
 	node --test litigant_portal/app/tests/js/*.test.cjs
+
+test-failed: ## Rerun only the tests that failed last run (pytest --lf); CI runs the full suite
+	$(require-docker)
+	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short --lf $(PYTEST_CACHE) $(filter-out test-failed test-fo,$(MAKECMDGOALS))
+
+test-fo: test-failed ## Short form of test-failed
 
 test-v: ## Run tests — verbose output
 	$(require-docker)
