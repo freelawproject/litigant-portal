@@ -11,6 +11,14 @@ state: AZ
 official_url: 'https://www.scottsdaleaz.gov/court'
 official_resources_url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases'
 
+# Header art (#979): the Arizona Supreme Court seal, resized from the SME
+# delivery (corpus-sources/arizona/branding/). The flow launches under the
+# AOC's name, so the seal and header name are the state's, not Scottsdale's;
+# court_name stays Scottsdale City Court, the court handling the case.
+branding:
+  name: 'Arizona Supreme Court'
+  logo: branding/logo.png
+
 contacts:
   - id: scottsdale_court
     name: 'Scottsdale City Court'

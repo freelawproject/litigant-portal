@@ -57,6 +57,25 @@ def test_unrecognized_file(corpus_dir):
         check_corpus_directory_structure()
 
 
+def _branding_dir(corpus_dir):
+    court = corpus_dir / "courts" / "alpha"
+    (court / "branding").mkdir(parents=True)
+    (court / "court.yml").write_text("name: Alpha\ncourt_name: Alpha Court")
+    return court / "branding"
+
+
+@pytest.mark.parametrize("name", ["logo.svg", "logo.png"])
+def test_a_court_branding_image_is_recognized(corpus_dir, name):
+    (_branding_dir(corpus_dir) / name).write_text("art")
+    check_corpus_directory_structure()
+
+
+def test_another_file_in_branding_is_unrecognized(corpus_dir):
+    (_branding_dir(corpus_dir) / "logo.gif").write_text("art")
+    with pytest.raises(ValueError, match="unrecognized file"):
+        check_corpus_directory_structure()
+
+
 def test_non_slug_name(corpus_dir):
     (corpus_dir / "forms").mkdir()
     (corpus_dir / "forms" / "Bad_Name.yml").write_text("name: Bad\nfields: []")

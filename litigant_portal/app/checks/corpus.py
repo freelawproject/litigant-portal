@@ -15,7 +15,8 @@ from litigant_portal.app.selectors.corpus import (
 def check_corpus_directory_structure():
     """Validates:
     - variables.yml exists
-    - every file under forms/ and courts/ is a recognized document
+    - every file under forms/ and courts/ is a recognized document or
+      court branding image
     - every path segment is a valid slug
     - every court directory carries a court.yml
     - every topic directory carries a topic.yml
@@ -29,6 +30,8 @@ def check_corpus_directory_structure():
         *COURTS_DIR.glob("*/court.yml"),
         *COURTS_DIR.glob("*/topics/*/topic.yml"),
         *COURTS_DIR.glob("*/topics/*/flows/*.yml"),
+        *COURTS_DIR.glob("*/branding/*.svg"),
+        *COURTS_DIR.glob("*/branding/*.png"),
     }
     for root in (FORMS_DIR, COURTS_DIR):
         if not root.is_dir():
