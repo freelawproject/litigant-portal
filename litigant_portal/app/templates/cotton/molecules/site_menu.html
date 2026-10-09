@@ -1,9 +1,9 @@
 {% load i18n %}
 
 <c-vars />
-{# The header's site menu (#988): the pages the footer used to link, in every #}
-{# environment, plus the account links on phones (where the user menu is #}
-{# hidden) and a dev-tools group outside production. A native <details> #}
+{# The header's site menu (#988): Get help and the pages the footer used to #}
+{# link, in every environment, plus the account links on phones (where the #}
+{# user menu is hidden) and a dev-tools group outside production. A native <details> #}
 {# disclosure over a plain link list, so it works without JS and carries no #}
 {# role="menu" promise of arrow-key navigation. #}
 {% trans "Menu" as menu_label %}
@@ -42,7 +42,19 @@
             {% trans "Sign in" %}
           </c-atoms.link>
         </li>
+        <li class="sm:hidden">
+          <c-atoms.link href="{% url 'account_signup' %}" variant="unstyled" class="site-menu-item">
+            <c-atoms.icon name="user-plus" class="w-5 h-5 text-greyscale-500" />
+            {% trans "Sign up" %}
+          </c-atoms.link>
+        </li>
       {% endif %}
+      <li>
+        <c-atoms.link href="{% url 'pages:help' %}" variant="unstyled" class="site-menu-item">
+          <c-atoms.icon name="question-mark-circle" class="w-5 h-5 text-greyscale-500" />
+          {% trans "Get help" %}
+        </c-atoms.link>
+      </li>
       <li>
         <c-atoms.link href="{% url 'pages:about' %}" variant="unstyled" class="site-menu-item">{% trans "About" %}</c-atoms.link>
       </li>

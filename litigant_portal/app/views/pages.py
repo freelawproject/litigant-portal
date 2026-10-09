@@ -28,6 +28,7 @@ from litigant_portal.app.models.choices import (
     State,
     VariableDataType,
 )
+from litigant_portal.app.selectors.site import contact_help_list, site_get
 from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.theme import (
@@ -226,6 +227,17 @@ def about(request):
 def privacy(request):
     """Privacy page - data practices and user rights."""
     return render(request, "pages/privacy.html")
+
+
+def get_help(request):
+    """Get help (#1022): the court's own details and the contacts its corpus
+    marks with a help kind. Only what the corpus knows, so a court with no
+    legal-aid contact shows no legal-aid line."""
+    return render(
+        request,
+        "pages/help.html",
+        {"site": site_get(), "help_contacts": contact_help_list()},
+    )
 
 
 def accessibility(request):

@@ -59,6 +59,7 @@
           <li><c-atoms.link href="#search-bar" variant="unstyled">Search Bar</c-atoms.link></li>
           <li><c-atoms.link href="#topic-card" variant="unstyled">Topic Card</c-atoms.link></li>
           <li><c-atoms.link href="#briefcase-fact" variant="unstyled">Briefcase Fact</c-atoms.link></li>
+          <li><c-atoms.link href="#contact-card" variant="unstyled">Contact Card</c-atoms.link></li>
           <li><c-atoms.link href="#form-errors" variant="unstyled">Form Errors</c-atoms.link></li>
           <li><c-atoms.link href="#form-field" variant="unstyled">Form Field</c-atoms.link></li>
           <li><c-atoms.link href="#form-field-select" variant="unstyled">Form Field Select</c-atoms.link></li>
@@ -78,8 +79,6 @@
           <li><c-atoms.link href="#topic-grid" variant="unstyled">Topic Grid</c-atoms.link></li>
           <li><c-atoms.link href="#site-frame" variant="unstyled">Site Frame</c-atoms.link></li>
           <li><c-atoms.link href="#briefcase-panel" variant="unstyled">Briefcase Panel</c-atoms.link></li>
-          <li><c-atoms.link href="#fallback-resources" variant="unstyled">Fallback Resources</c-atoms.link></li>
-          <li><c-atoms.link href="#auth-cta" variant="unstyled">Auth CTA</c-atoms.link></li>
           <li><c-atoms.link href="#auth-layout" variant="unstyled">Auth Layout</c-atoms.link></li>
           <li><c-atoms.link href="#sidebar-layout" variant="unstyled">Sidebar Layout</c-atoms.link></li>
         </c-molecules.side-nav-group>
@@ -799,6 +798,18 @@
             <c-molecules.topic-card icon="users" title="Family & Divorce" description="Divorce, custody, child support" href="#" />
           </div>
         </section>
+        <section id="contact-card" class="mb-12" aria-labelledby="contact-card-heading">
+          <h3 id="contact-card-heading" class="mb-4">Contact Card</h3>
+          <p class="text-greyscale-600 mb-6">
+            One contact's details for the Get help page and a topic flow's
+            contacts section. Pass a <code>Contact</code> row or a resolved
+            flow contact via <code>:contact</code>; each line (phone, email,
+            website, address, hours, note) shows only when the contact has it.
+          </p>
+          <div class="max-w-sm mb-6">
+            <c-molecules.contact-card :contact="{'name': 'Clerk of Court', 'phone': '(555) 010-0100', 'url': 'https://court.example', 'note': 'Call with your case number.'}" />
+          </div>
+        </section>
         <section id="briefcase-fact" class="mb-12" aria-labelledby="briefcase-fact-heading">
           <h3 id="briefcase-fact-heading" class="mb-4">Briefcase Fact</h3>
           <p class="text-greyscale-600 mb-6">
@@ -1165,28 +1176,6 @@
           <p class="text-sm text-greyscale-500 mb-2">Empty state:</p>
           <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
             <c-organisms.briefcase-panel />
-          </div>
-        </section>
-        <section id="fallback-resources"
-                 class="mb-12"
-                 aria-labelledby="fallback-resources-heading">
-          <h3 id="fallback-resources-heading" class="mb-4">Fallback Resources</h3>
-          <p class="text-greyscale-600 mb-6">
-            "What if my issue isn't here?" — resource links box and two accordions for self-help content.
-            Shown when no topic matches the user's situation.
-          </p>
-          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-            <c-organisms.fallback-resources />
-          </div>
-        </section>
-        <section id="auth-cta" class="mb-12" aria-labelledby="auth-cta-heading">
-          <h3 id="auth-cta-heading" class="mb-4">Auth CTA</h3>
-          <p class="text-greyscale-600 mb-6">
-            Account sign-up prompt with benefit bullets and Create Account / Sign In buttons.
-            Hidden for authenticated users on the live site.
-          </p>
-          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6">
-            <c-organisms.auth-cta preview="true" />
           </div>
         </section>
         <section id="auth-layout" class="mb-12" aria-labelledby="auth-layout-heading">

@@ -15,11 +15,13 @@ official_resources_url: 'https://www.fcmcclerk.com/forms/civil'
 contacts:
   - id: court_clerk
     name: 'Franklin County Municipal Court Clerk'
+    kind: clerk
     phone: '(614) 645-8186'
     url: 'https://www.fcmcclerk.com'
     note: '375 South High Street, Columbus. Filing questions, the fee schedule, and the public case search.'
   - id: self_help_center
     name: 'Franklin County Municipal Court Self Help Center'
+    kind: self_help
     phone: '(614) 645-7381'
     note: '375 South High Street, 16th Floor, Columbus. Help with court forms and the process for people who do not have a lawyer.'
   - id: service_bailiff
@@ -28,6 +30,7 @@ contacts:
     note: 'Arranges the set out after a judgment. The clerk sends your paperwork here; call to schedule.'
   - id: lasco
     name: 'Legal Aid of Southeast and Central Ohio (LASCO)'
+    kind: legal_aid
     phone: '1-888-246-4420'
     url: 'https://www.lasco.org'
     note: 'Free legal help with noncriminal issues for people with low incomes, seniors, and veterans in 36 Ohio counties, including Franklin County. Apply by phone or through their website.'
@@ -37,6 +40,7 @@ contacts:
     note: "The court's FAQ points tenants here for information about tenant rights."
   - id: cba_referral
     name: 'Columbus Bar Association Lawyer Referral Service'
+    kind: referral
     phone: '(614) 221-0754'
     note: 'The court points filers here to locate an attorney. Required if the property is owned by a corporation, LLC, or trust.'
 

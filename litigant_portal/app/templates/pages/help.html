@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Get help" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block meta_description %}
+  {% trans "Where to get help with your case: the court's own website and self-help pages, the clerk, and free legal aid." %}
+{% endblock meta_description %}
+
+{% block content %}
+  <div class="max-w-2xl mx-auto px-4 py-8 sm:py-12">
+    <h1 class="text-3xl font-bold text-greyscale-900">{% trans "Get help" %}</h1>
+    {% if site.court_name %}
+      <section class="mt-8" aria-labelledby="help-court-heading">
+        <h2 id="help-court-heading" class="text-xl font-semibold text-greyscale-900">{{ site.court_name }}</h2>
+        <ul class="mt-3 space-y-2 list-none pl-0">
+          {% if site.official_url %}
+            <li>
+              <c-atoms.link href="{{ site.official_url }}" target="_blank">{% trans "The court's website" %}</c-atoms.link>
+            </li>
+          {% endif %}
+          {% if site.official_resources_url %}
+            <li>
+              <c-atoms.link href="{{ site.official_resources_url }}" target="_blank">{% trans "The court's self-help resources" %}</c-atoms.link>
+            </li>
+          {% endif %}
+        </ul>
+      </section>
+    {% endif %}
+    {% if help_contacts %}
+      <section class="mt-8" aria-labelledby="help-contacts-heading">
+        <h2 id="help-contacts-heading" class="text-xl font-semibold text-greyscale-900">{% trans "Who to contact" %}</h2>
+        <ul class="mt-3 space-y-4 list-none pl-0">
+          {% for contact in help_contacts %}
+            <li>
+              <c-molecules.contact-card :contact="contact" />
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+    {% if not site.court_name and not help_contacts %}
+      {% trans "Help for your court will show here once this site is set up for a court." as empty_help_text %}
+      <c-molecules.empty-state icon="question-mark-circle" text="{{ empty_help_text }}" class="mt-8" />
+    {% endif %}
+  </div>
+{% endblock content %}

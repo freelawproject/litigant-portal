@@ -22,6 +22,7 @@ branding:
 contacts:
   - id: scottsdale_court
     name: 'Scottsdale City Court'
+    kind: clerk
     phone: '(480) 312-2442'
     url: 'https://www.scottsdaleaz.gov/court'
     note: '3700 North 75th Street, Scottsdale (court #0751). Fax (480) 312-2764. Email court@scottsdaleaz.gov. Walk-in hours Monday to Friday 8:30 to 11:30 and 1:30 to 4:30. Handles arraignments, payments, hearings, and payment-plan (Compliance Assistance Program) requests.'

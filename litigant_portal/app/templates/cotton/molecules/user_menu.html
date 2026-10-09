@@ -46,11 +46,14 @@
     </div>
   </div>
 {% else %}
-  {# Not logged in: show sign in link #}
-  <a href="{% url 'account_login' %}"
-     class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-greyscale-700 hover:bg-greyscale-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600 {{ class }}"
-     {{ attrs }}>
-    <c-atoms.icon name="arrow-right-end-on-rectangle" class="w-5 h-5" />
-    <span>{% trans "Sign in" %}</span>
-  </a>
+  {# Not logged in: sign in, plus sign up for a new account. Sign up's page #}
+  {# lists what an account is for (#1022). #}
+  <div class="items-center gap-2 {{ class }}" {{ attrs }}>
+    <a href="{% url 'account_login' %}"
+       class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-greyscale-700 hover:bg-greyscale-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600">
+      <c-atoms.icon name="arrow-right-end-on-rectangle" class="w-5 h-5" />
+      <span>{% trans "Sign in" %}</span>
+    </a>
+    <c-atoms.button href="{% url 'account_signup' %}" variant="primary" size="sm">{% trans "Sign up" %}</c-atoms.button>
+  </div>
 {% endif %}

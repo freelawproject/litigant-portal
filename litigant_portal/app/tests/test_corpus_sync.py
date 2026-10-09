@@ -329,6 +329,20 @@ class BrandingSyncTests(CorpusSyncTests):
 
 
 @pytest.mark.postgres
+class ContactKindSyncTests(CorpusSyncTests):
+    def test_a_contacts_kind_is_stored(self):
+        self._sync(
+            _make_corpus(
+                alpha_contacts=[
+                    {"id": "alpha_help", "name": "Alpha Help", "kind": "clerk"}
+                ]
+            ),
+            court="alpha",
+        )
+        self.assertEqual(Contact.objects.get(key="alpha_help").kind, "clerk")
+
+
+@pytest.mark.postgres
 class SourceKeyTests(CorpusSyncTests):
     """The authored id lands on the row as ``key`` and survives edits
     around it; a removed id is reported, since threads may cite it."""
