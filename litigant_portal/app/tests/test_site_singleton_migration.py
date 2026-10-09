@@ -5,7 +5,9 @@ test_site_singleton.py checks the state they leave behind rather than the
 steps themselves. These drive the migration for real.
 
 TransactionTestCase because migrating is DDL and cannot be rolled back.
-Each test rewinds to 0011, plants rows, migrates forward, asserts. tearDown
+Each test rewinds to 0011, plants rows, migrates forward to 0012, and
+asserts through the historical models at 0012: the current models carry
+columns added by later migrations, which do not exist yet at 0012. tearDown
 always returns to head -- it runs before the flush, so the flush and its
 post_migrate receivers see the current schema.
 """
@@ -21,6 +23,8 @@ from django.utils import timezone
 from litigant_portal.app.models import Site, Topic
 from litigant_portal.app.models.site import SITE_ID
 
+APP = "app"
+
 MIGRATE_FROM = ("app", "0011_site_permissions_delete_sitemembership")
 MIGRATE_TO = ("app", "0012_site_singleton")
 
@@ -28,13 +32,20 @@ MIGRATE_TO = ("app", "0012_site_singleton")
 @pytest.mark.postgres
 class SiteSingletonMigrationTests(TransactionTestCase):
     def tearDown(self):
-        self._migrate(MIGRATE_TO)
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes(APP))
 
     def _migrate(self, target):
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
         executor.migrate([target])
         return executor
+
+    def _forward(self):
+        """Apply 0012 and hand back the historical models at 0012."""
+        executor = self._migrate(MIGRATE_TO)
+        apps = executor.loader.project_state([MIGRATE_TO]).apps
+        return apps.get_model(APP, "Site"), apps.get_model(APP, "Topic")
 
     def _rewind(self):
         """Unapply 0012 and hand back the historical models at 0011.
@@ -70,14 +81,14 @@ class SiteSingletonMigrationTests(TransactionTestCase):
         )
         self.assertNotEqual(live.id, SITE_ID)
 
-        self._migrate(MIGRATE_TO)
+        new_site, new_topic = self._forward()
 
-        self.assertEqual(Site.objects.count(), 1)
-        self.assertEqual(Site.objects.get().id, SITE_ID)
+        self.assertEqual(new_site.objects.count(), 1)
+        self.assertEqual(new_site.objects.get().id, SITE_ID)
         # The slug collided across the two sites, so this also pins the
         # ordering: pruning has to happen before slug goes unique.
         self.assertEqual(
-            list(Topic.objects.values_list("title", flat=True)),
+            list(new_topic.objects.values_list("title", flat=True)),
             ["Live Evictions"],
         )
 
@@ -94,16 +105,16 @@ class SiteSingletonMigrationTests(TransactionTestCase):
         self._backdate(old_site, first.pk, days=2)
         self._backdate(old_site, second.pk, days=1)
 
-        self._migrate(MIGRATE_TO)
+        new_site, new_topic = self._forward()
 
-        self.assertEqual(Site.objects.count(), 1)
-        self.assertEqual(Topic.objects.get().title, "First")
+        self.assertEqual(new_site.objects.count(), 1)
+        self.assertEqual(new_topic.objects.get().title, "First")
 
     def test_an_empty_table_gets_the_singleton_row(self):
         old_site, _ = self._rewind()
         self.assertEqual(old_site.objects.count(), 0)
 
-        self._migrate(MIGRATE_TO)
+        new_site, _ = self._forward()
 
-        self.assertEqual(Site.objects.count(), 1)
-        self.assertEqual(Site.objects.get().id, SITE_ID)
+        self.assertEqual(new_site.objects.count(), 1)
+        self.assertEqual(new_site.objects.get().id, SITE_ID)
