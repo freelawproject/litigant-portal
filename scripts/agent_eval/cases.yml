@@ -474,11 +474,6 @@
         The waiver is not automatic; the judge decides, and if denied the user
         publishes and waits 30 days.
       critical: true
-    - id: no-fee-waiver-push
-      statement:
-        Do not present the fee waiver as needed; the user already said they
-        can pay.
-      critical: false
   acceptable_deferral:
     Name the Morton County Clerk of District Court and explain the waiver is
     the judge's call. Anything court-specific that the references do not
