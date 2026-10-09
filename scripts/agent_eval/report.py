@@ -13,6 +13,7 @@ from .schema import (
     Grade,
     Weights,
     fingerprint,
+    runs_on,
     verify_references,
     write_json,
 )
@@ -173,9 +174,15 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                     == (system, model, group)
                 ]
                 planned = (
-                    sum(case["group"] == group for case in manifest["cases"])
+                    sum(
+                        case["group"] == group
+                        and runs_on(system, case.get("history", []))
+                        for case in manifest["cases"]
+                    )
                     * manifest["config"]["repetitions"]
                 )
+                if not planned:
+                    continue
                 graded = [row for row in rows if row["score"] is not None]
                 scores = [
                     row["overall"]
@@ -406,7 +413,7 @@ def charts(reports: list[dict], output: Path):
         color="#ff0000",
         label="Critical failure",
     )
-    for group in ("real", "fictional"):
+    for group in ("real", "fictional", "conversation"):
         rows, labels = [], []
         for report in reports:
             for row in report["systems"]:

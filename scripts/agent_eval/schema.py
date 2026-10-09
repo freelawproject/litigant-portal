@@ -98,11 +98,14 @@ class Fact(Schema):
 
 class Case(Schema):
     id: Slug
-    group: Literal["real", "fictional"]
+    group: Literal["real", "fictional", "conversation"]
     fixture: Literal["current", "chickens-a", "chickens-b"] = "current"
     court: Slug
     topic: Slug
     question: str = Field(min_length=1)
+    # User turns sent before ``question`` on the same thread. Their replies
+    # are recorded as context for the judge; only the final answer is graded.
+    history: list[str] = Field(default_factory=list)
     references: list[str] = Field(min_length=1)
     facts: list[Fact] = Field(min_length=1)
     acceptable_deferral: str
@@ -116,6 +119,12 @@ class Case(Schema):
         ids = [fact.id for fact in self.facts]
         if len(ids) != len(set(ids)):
             raise ValueError("Fact IDs must be unique within a case.")
+        if any(not turn.strip() for turn in self.history):
+            raise ValueError("History turns must not be empty.")
+        if bool(self.history) != (self.group == "conversation"):
+            raise ValueError(
+                "Conversation cases need history; other groups take none."
+            )
         return self
 
 
@@ -197,6 +206,11 @@ def read_cases(config: Config) -> list[Case]:
             raise ValueError("Select at least one known case ID.")
         cases = [case for case in cases if case.id in config.cases]
     return cases
+
+
+def runs_on(system: str, history: list[str]) -> bool:
+    """The new system takes single-turn cases only; skip rather than error."""
+    return not (system == "new" and history)
 
 
 def write_json(path: Path, value) -> None:
