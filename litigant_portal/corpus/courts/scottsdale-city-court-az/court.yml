@@ -41,19 +41,17 @@ resources:
   - id: scottsdale_case_lookup
     label: 'Scottsdale City Court case lookup and payments'
     url: 'https://eservices.scottsdaleaz.gov/Court/Case/'
-    note: 'Find your case with the number part of your citation or your name. From your case you can pay, see your court date, and send the judge a motion online. Payment plans (Compliance Assistance Program) use the Payment Plan Request form or a call to a clerk.'
+    note: 'Find your case with the number part of your citation or your name. From your case you can pay, see your court date, and send the judge a motion online.'
+  - id: scottsdale_civil_traffic
+    label: "Scottsdale City Court's civil traffic page"
+    url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases'
+  - id: scottsdale_defensive_driving
+    label: "Scottsdale City Court's defensive driving page"
+    url: 'https://www.scottsdaleaz.gov/court/defensive-driving-class'
   - id: azdrive
-    label: 'Find and register for a defensive driving school (azdrive.com)'
+    label: 'Find a certified defensive driving school (azdrive.com)'
     url: 'https://www.azdrive.com'
-    note: 'Certified schools you can filter by location, language, and schedule. You register directly, not through the court.'
-  - id: violationinfo
-    label: 'View your photo-enforcement violation (ViolationInfo.com)'
-    url: 'https://www.violationinfo.com'
-    note: 'For camera citations: view the photos and video and resolve the notice online using the notice number and PIN.'
-  - id: scottsdale_court_videos
-    label: 'Scottsdale City Court videos'
-    url: 'https://www.scottsdaleaz.gov/court/court-videos'
-    note: 'Short videos from the court explaining how a case proceeds.'
+    note: 'Schools certified by the Arizona Supreme Court. You register and pay with the school directly.'
   - id: scottsdale_bond_card
     label: 'Scottsdale fine amounts (bond card)'
     url: 'https://www.scottsdaleaz.gov/Assets/ScottsdaleAZ/Court/Bond+Card.pdf'
@@ -62,3 +60,14 @@ resources:
     label: 'Scottsdale City Court forms'
     url: 'https://www.scottsdaleaz.gov/court/forms'
     note: 'Includes the Payment Plan Request form.'
+  - id: scottsdale_photo_enforcement
+    label: "Scottsdale City Court's photo enforcement page"
+    url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases/photo-enforcement'
+  - id: violationinfo
+    label: 'See your camera photos and video (ViolationInfo.com)'
+    url: 'https://www.violationinfo.com'
+    note: 'Use the Notice number and PIN printed on the front of your notice.'
+  - id: scottsdale_court_videos
+    label: 'Scottsdale City Court videos'
+    url: 'https://www.scottsdaleaz.gov/court/court-videos'
+    note: 'Short videos from the court on how a case moves forward.'
