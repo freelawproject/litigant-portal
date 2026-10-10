@@ -1,10 +1,10 @@
 # Civil traffic corpus, Scottsdale City Court (Arizona), "know my options"
 # role. First corpus on the civil traffic vertical (#894). Mirrors
-# corpus/courts/arizona/topics/civil-traffic/flows/options.yml, which grounds
+# corpus/courts/scottsdale-city-court-az/topics/civil-traffic/flows/options.yml, which grounds
 # the chat; edit both together (#179).
 #
 # CONTENT STATUS: drafted 2026-10-08 from the SME delivery tracked in
-# corpus-sources/arizona/ (SOURCE.md lists it): Scottsdale's LiveHelp canned
+# corpus-sources/scottsdale-city-court-az/ (SOURCE.md lists it): Scottsdale's LiveHelp canned
 # responses (Rev. April 2022, so contacts and URLs need a re-check), the
 # Civil Traffic Hearing Information sheet, PE Options, How Will My Case
 # Proceed, ACJA 7-205 (defensive driving eligibility, (F)(24)(d)(1)), and
@@ -24,7 +24,7 @@
 # never label resources or forms "official".
 
 metadata:
-  court: arizona
+  court: scottsdale-city-court-az
   topic: civil-traffic
   role: options
   title: 'Responding to a Civil Traffic Ticket in Scottsdale, Arizona'
@@ -61,7 +61,7 @@ deadlines:
     label: 'Your court date'
     offset_days: 0
     offset_from: traffic_arraignment_date
-    description: 'Pay, sign up for defensive driving school, or request a hearing on or before this date. If you do nothing, the case goes into default.'
+    description: 'Pay or request a hearing on or before this date. Defensive driving school has an earlier deadline: the class must be finished 7 days before this date. If you do nothing, the case goes into default.'
   - id: school_deadline
     label: 'Finish defensive driving school'
     offset_days: -7
@@ -76,7 +76,6 @@ resources:
   - id: scottsdale_civil_traffic
     label: "Scottsdale City Court's civil traffic page"
     url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases'
-    note: 'Your case appears here the same day the police file it with the court.'
   - id: scottsdale_defensive_driving
     label: "Scottsdale City Court's defensive driving page"
     url: 'https://www.scottsdaleaz.gov/court/defensive-driving-class'
@@ -187,6 +186,8 @@ sections:
 
       Paying does not keep the violation off your record. If your ticket is eligible for defensive driving school, that is the option that dismisses it.
 
+      If your ticket is for running a red light, including a flashing red, paying it means the Motor Vehicle Division will order you to complete Traffic Survival School. That is a separate class from defensive driving school.
+
   - kind: info
     id: hearing
     heading: 'Option 3: Request a hearing'
@@ -201,7 +202,7 @@ sections:
 
       The judge decides by the preponderance of the evidence. If the state shows it is more likely than not that the violation happened, you are found responsible, and all fines and fees are due by the end of that day.
 
-      Once the hearing starts, defensive driving school is no longer an option. If your ticket is eligible and you'd rather take the class, tell the hearing officer when your case is called.
+      Once the hearing starts, defensive driving school is no longer an option. If your ticket is eligible and you'd rather take the class, tell the judge when your case is called.
 
       If you are found responsible for running a red light, including a flashing red, the Motor Vehicle Division will order you to complete Traffic Survival School. That is a separate class from defensive driving school.
 
