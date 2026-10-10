@@ -1,0 +1,82 @@
+# Scottsdale (AZ) court-level content, scoped to the site data models (court
+# fields on Site, Contact, Resource). Sources: corpus-sources/scottsdale-city-court-az/SOURCE.md
+# lists them (Scottsdale Municipal Information: PE Options, How Will My Case
+# Proceed, Civil Traffic Hearing Information, Canned responses - Live Help,
+# Courtroom Etiquette) and the ACJA 7-205 admin orders. Contacts match
+# content/civil-traffic-options.yml; edit both together (#179). LEGAL REVIEW
+# REQUIRED.
+
+name: 'Scottsdale, Arizona'
+court_name: 'Scottsdale City Court'
+jurisdiction_level: municipal
+state: AZ
+official_url: 'https://www.scottsdaleaz.gov/court'
+official_resources_url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases'
+
+# Header art (#979): the Arizona Supreme Court seal, resized from the SME
+# delivery (corpus-sources/scottsdale-city-court-az/branding/). The flow launches under the
+# AOC's name, so the seal and header name are the state's, not Scottsdale's;
+# court_name stays Scottsdale City Court, the court handling the case.
+branding:
+  name: 'Arizona Supreme Court'
+  logo: branding/logo.png
+
+contacts:
+  - id: scottsdale_court
+    name: 'Scottsdale City Court'
+    kind: clerk
+    phone: '(480) 312-2442'
+    email: 'court@scottsdaleaz.gov'
+    url: 'https://www.scottsdaleaz.gov/court'
+    note: '3700 North 75th Street, Scottsdale, AZ 85251. Monday to Friday, 8:00 a.m. to 5:00 p.m. Walk-in hours 8:30 to 11:30 a.m. and 1:30 to 4:30 p.m. Fax (480) 312-2764. Payments, payment plans, extensions, proof of insurance or registration, and questions about your case. Have your citation number ready, or your name and date of birth.'
+  - id: photo_enforcement
+    name: 'Scottsdale Police Department Photo Enforcement Unit'
+    phone: '(480) 312-7014'
+    email: 'photoenforce@scottsdaleaz.gov'
+    note: '7601 East McKellips Road, Building A, Scottsdale, AZ 85257. Questions about a Notice of Violation from a camera. To see your photos without internet access, call the Focus on Safety line at (844) 749-5996.'
+  - id: driving_school_line
+    name: 'Arizona defensive driving school line'
+    phone: '1-888-334-5565'
+    url: 'https://www.azdrive.com'
+    note: 'An automated line listing the defensive driving schools certified by the Arizona Supreme Court. When a school asks, Scottsdale is in Maricopa County and its court number is 0751.'
+  - id: mvd
+    name: 'Arizona Motor Vehicle Division'
+    phone: '(602) 255-0072'
+    url: 'https://azdot.gov/motor-vehicles'
+    note: 'Traffic Survival School is ordered by the Motor Vehicle Division, not the court. Call them if you have been ordered to take it.'
+  # TODO(source): an Arizona legal-aid / self-help contact (e.g. AZLawHelp, Community Legal Services) is not in the bundle; confirm before adding.
+
+resources:
+  - id: scottsdale_case_lookup
+    label: 'Scottsdale City Court case lookup and payments'
+    url: 'https://eservices.scottsdaleaz.gov/Court/Case/'
+    note: 'Find your case with the number part of your citation or your name. From your case you can pay, see your court date, and send the judge a motion online.'
+  - id: scottsdale_civil_traffic
+    label: "Scottsdale City Court's civil traffic page"
+    url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases'
+  - id: scottsdale_defensive_driving
+    label: "Scottsdale City Court's defensive driving page"
+    url: 'https://www.scottsdaleaz.gov/court/defensive-driving-class'
+  - id: azdrive
+    label: 'Find a certified defensive driving school (azdrive.com)'
+    url: 'https://www.azdrive.com'
+    note: 'Schools certified by the Arizona Supreme Court. You register and pay with the school directly.'
+  - id: scottsdale_bond_card
+    label: 'Scottsdale fine amounts (bond card)'
+    url: 'https://www.scottsdaleaz.gov/Assets/ScottsdaleAZ/Court/Bond+Card.pdf'
+    note: 'The fine for each violation, including state surcharges and fees.'
+  - id: scottsdale_court_forms
+    label: 'Scottsdale City Court forms'
+    url: 'https://www.scottsdaleaz.gov/court/forms'
+    note: 'Includes the Payment Plan Request form.'
+  - id: scottsdale_photo_enforcement
+    label: "Scottsdale City Court's photo enforcement page"
+    url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases/photo-enforcement'
+  - id: violationinfo
+    label: 'See your camera photos and video (ViolationInfo.com)'
+    url: 'https://www.violationinfo.com'
+    note: 'Use the Notice number and PIN printed on the front of your notice.'
+  - id: scottsdale_court_videos
+    label: 'Scottsdale City Court videos'
+    url: 'https://www.scottsdaleaz.gov/court/court-videos'
+    note: 'Short videos from the court on how a case moves forward.'
