@@ -1,8 +1,10 @@
 # Scottsdale (AZ) court-level content, scoped to the site data models (court
-# fields on Site, Contact, Resource). Sources: corpus-sources/Arizona Court
-# Resources (Scottsdale Municipal Information: PE Options, How Will My Case
+# fields on Site, Contact, Resource). Sources: corpus-sources/arizona/SOURCE.md
+# lists them (Scottsdale Municipal Information: PE Options, How Will My Case
 # Proceed, Civil Traffic Hearing Information, Canned responses - Live Help,
-# Courtroom Etiquette) and the ACJA 7-205 admin orders. LEGAL REVIEW REQUIRED.
+# Courtroom Etiquette) and the ACJA 7-205 admin orders. Contacts match
+# content/civil-traffic-options.yml; edit both together (#179). LEGAL REVIEW
+# REQUIRED.
 
 name: 'Scottsdale, Arizona'
 court_name: 'Scottsdale City Court'
@@ -15,22 +17,24 @@ contacts:
   - id: scottsdale_court
     name: 'Scottsdale City Court'
     phone: '(480) 312-2442'
+    email: 'court@scottsdaleaz.gov'
     url: 'https://www.scottsdaleaz.gov/court'
-    note: '3700 North 75th Street, Scottsdale (court #0751). Fax (480) 312-2764. Email court@scottsdaleaz.gov. Walk-in hours Monday to Friday 8:30 to 11:30 and 1:30 to 4:30. Handles arraignments, payments, hearings, and payment-plan (Compliance Assistance Program) requests.'
+    note: '3700 North 75th Street, Scottsdale, AZ 85251. Monday to Friday, 8:00 a.m. to 5:00 p.m. Walk-in hours 8:30 to 11:30 a.m. and 1:30 to 4:30 p.m. Fax (480) 312-2764. Payments, payment plans, extensions, proof of insurance or registration, and questions about your case. Have your citation number ready, or your name and date of birth.'
   - id: photo_enforcement
     name: 'Scottsdale Police Department Photo Enforcement Unit'
     phone: '(480) 312-7014'
-    note: '7601 E. McKellips Road, Bldg A, Scottsdale. Email photoenforce@scottsdaleaz.gov. Questions about a camera (photo-enforcement) citation. Focus on Safety program support: (844) 749-5996.'
+    email: 'photoenforce@scottsdaleaz.gov'
+    note: '7601 East McKellips Road, Building A, Scottsdale, AZ 85257. Questions about a Notice of Violation from a camera. To see your photos without internet access, call the Focus on Safety line at (844) 749-5996.'
   - id: driving_school_line
-    name: 'Certified defensive driving schools (statewide list)'
-    phone: '(888) 334-5565'
+    name: 'Arizona defensive driving school line'
+    phone: '1-888-334-5565'
     url: 'https://www.azdrive.com'
-    note: 'The automated line and site list Arizona Supreme Court certified schools you register with directly. Use court #0751 when registering for a Scottsdale citation. The court cannot favor one school over another.'
+    note: 'An automated line listing the defensive driving schools certified by the Arizona Supreme Court. When a school asks, Scottsdale is in Maricopa County and its court number is 0751.'
   - id: mvd
-    name: 'Arizona Motor Vehicle Division (Traffic Survival School)'
+    name: 'Arizona Motor Vehicle Division'
     phone: '(602) 255-0072'
-    url: 'https://azdot.gov'
-    note: 'Traffic Survival School (TSS) is ordered by MVD, separate from defensive driving school. Required for a red-light violation if you are found or plead responsible.'
+    url: 'https://azdot.gov/motor-vehicles'
+    note: 'Traffic Survival School is ordered by the Motor Vehicle Division, not the court. Call them if you have been ordered to take it.'
   # TODO(source): an Arizona legal-aid / self-help contact (e.g. AZLawHelp, Community Legal Services) is not in the bundle; confirm before adding.
 
 resources:
