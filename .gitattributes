@@ -31,3 +31,8 @@
 *.pdf binary
 *.xls binary
 *.wpd binary
+
+# Partner source documents are kept byte-for-byte as delivered, whatever the
+# extension's case (.PDF) or type (.xlsx). Our own notes there stay text.
+corpus-sources/** -text
+corpus-sources/**/*.md text eol=lf
