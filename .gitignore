@@ -188,7 +188,7 @@ dmypy.json
 # curated sources are tracked; everything else, and any _local/ folder, stays local.
 /corpus-sources/*
 !/corpus-sources/README.md
-!/corpus-sources/arizona/
+!/corpus-sources/scottsdale-city-court-az/
 /corpus-sources/*/_local/
 
 # Before/after captures from scripts/screenshots.mjs

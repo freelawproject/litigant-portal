@@ -12,7 +12,7 @@ repos:
     hooks:
       - id: check-added-large-files
         # Partner source documents are kept exactly as delivered.
-        exclude: ^corpus-sources/
+        exclude: (?i)^corpus-sources/.*\.(pdf|xlsx?|docx?|jpe?g|png|gif)$
       - id: check-ast
       - id: check-json
       - id: check-merge-conflict
