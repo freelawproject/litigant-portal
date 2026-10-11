@@ -47,7 +47,8 @@
   </div>
 {% else %}
   {# Not logged in: sign in, plus sign up for a new account. Sign up's page #}
-  {# lists what an account is for (#1022). #}
+  {# lists what an account is for (#1022). The caller sets display: the #}
+  {# header passes "hidden sm:flex", and a base flex would fight its hidden. #}
   <div class="items-center gap-2 {{ class }}" {{ attrs }}>
     <a href="{% url 'account_login' %}"
        class="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-greyscale-700 hover:bg-greyscale-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-600">
