@@ -1,10 +1,10 @@
 # Civil traffic corpus, Scottsdale City Court (Arizona), "know my options"
 # role. First corpus on the civil traffic vertical (#894). Mirrors
-# corpus/courts/scottsdale-city-court-az/topics/civil-traffic/flows/options.yml, which grounds
+# corpus/courts/arizona/topics/civil-traffic/flows/options.yml, which grounds
 # the chat; edit both together (#179).
 #
 # CONTENT STATUS: drafted 2026-10-08 from the SME delivery tracked in
-# corpus-sources/scottsdale-city-court-az/ (SOURCE.md lists it): Scottsdale's LiveHelp canned
+# corpus-sources/arizona/ (SOURCE.md lists it): Scottsdale's LiveHelp canned
 # responses (Rev. April 2022, so contacts and URLs need a re-check), the
 # Civil Traffic Hearing Information sheet, PE Options, How Will My Case
 # Proceed, ACJA 7-205 (defensive driving eligibility, (F)(24)(d)(1)), and
@@ -24,7 +24,7 @@
 # never label resources or forms "official".
 
 metadata:
-  court: scottsdale-city-court-az
+  court: arizona
   topic: civil-traffic
   role: options
   title: 'Responding to a Civil Traffic Ticket in Scottsdale, Arizona'
