@@ -3,7 +3,7 @@ import logging
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 
-from litigant_portal.app.models import UserIdentity
+from litigant_portal.app.models import UserIdentity, UserUpload
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 
 logger = logging.getLogger(__name__)
@@ -94,3 +94,36 @@ def user_identity_merge_anonymous(*, user, session_key: str) -> None:
     user_identity_merge(
         source_identity=anon_identity, target_identity=target_identity
     )
+
+
+@transaction.atomic
+def user_identity_reset(*, identity: UserIdentity) -> None:
+    """Delete everything an identity owns: chat threads (their messages go
+    with them), uploads with their stored files, and answers.
+
+    Backs the dev and QA "Start over" control (#969), which returns a
+    session to the seeded defaults. Seeded data (topics, flows, variables) belongs
+    to no identity, so it stays. The identity row stays too, so the session
+    or signed-in user keeps working.
+    """
+    uploads = identity.uploads.all()
+    files = [(u.pk, u.file.name) for u in uploads if u.file]
+    uploads.delete()
+    identity.chat_threads.all().delete()
+    identity.variable_answers.all().delete()
+    transaction.on_commit(lambda: _upload_files_delete(files))
+
+
+def _upload_files_delete(files: list[tuple]) -> None:
+    """Delete stored files once their rows are committed gone. A failure
+    leaves an orphaned file, which is harmless, so it is logged and the
+    rest still go. Logs the upload id, not the name, which may identify
+    the visitor."""
+    storage = UserUpload._meta.get_field("file").storage
+    for upload_id, name in files:
+        try:
+            storage.delete(name)
+        except Exception:
+            logger.exception(
+                "Could not delete stored file of upload %s", upload_id
+            )
