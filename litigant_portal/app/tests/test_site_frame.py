@@ -12,8 +12,8 @@ from django.urls import reverse
 # The header's drawer buttons point at the frame's two regions by id.
 LEFT_DRAWER_BUTTON = 'popovertarget="frame-left"'
 RIGHT_DRAWER_BUTTON = 'popovertarget="frame-right"'
-# The dev-only group's "Start over" control calls this devMenu method.
-DEV_GROUP_MARKER = 'x-on:click="resetDemo"'
+# The dev-only group's "Start over" opens its confirmation popover.
+DEV_GROUP_MARKER = 'popovertarget="start-over-confirm"'
 TOPIC_FLOW_KWARGS = {
     "court": "franklin-county-oh",
     "topic": "eviction",
