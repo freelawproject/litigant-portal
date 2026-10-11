@@ -15,8 +15,8 @@ can pick the work up. Everything else from a delivery (the original zip,
 project documents, duplicates, files the corpus doesn't draw on) goes in that
 court's `_local/` folder, which git ignores.
 
-- Scottsdale City Court is tracked this way. North Dakota and Franklin County
-  are still local-only, because `.gitignore` re-includes one court at a time.
+- Arizona is tracked this way. North Dakota and Franklin County are still
+  local-only, because `.gitignore` re-includes one court at a time.
 - They are the partner's documents, kept exactly as delivered: git stores
   them as binary (`.gitattributes`), the prettier and trailing-whitespace
   hooks skip `corpus-sources/`, and the large-file hook skips the partner
@@ -36,12 +36,6 @@ corpus-sources/
       SOURCE.md            # optional: Drive link, date received, who uploaded
     _local/                # ignored: the rest of a delivery
 ```
-
-**A court's slug is the court's own name.** Add the two-letter state
-abbreviation only when the name doesn't already say the state:
-`scottsdale-city-court-az`, but `north-dakota-court-system`. The slug shows up
-in URLs and in the partner's own presentations, so it should read the way the
-court names itself. (`franklin-county-oh` and `north-dakota` predate this rule.)
 
 Example:
 
