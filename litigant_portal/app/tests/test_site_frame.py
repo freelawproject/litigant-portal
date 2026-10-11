@@ -70,7 +70,12 @@ class SiteMenuTests(TestCase):
     """The footer is gone, so its links live in the header's site menu, in
     every environment. Dev tools join them only outside production."""
 
-    PAGE_LINKS = ("pages:about", "pages:privacy", "pages:accessibility")
+    PAGE_LINKS = (
+        "pages:help",
+        "pages:about",
+        "pages:privacy",
+        "pages:accessibility",
+    )
     FREE_LAW_LINK = 'href="https://free.law"'
 
     @override_settings(DEPLOYMENT_ENV="prod")

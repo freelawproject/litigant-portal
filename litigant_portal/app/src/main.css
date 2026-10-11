@@ -538,6 +538,19 @@
     @apply text-xs font-semibold uppercase tracking-wider text-greyscale-500;
   }
   /* ==========================================================================
+     INFO PAGES (pages/info_base.html)
+     ========================================================================== */
+
+  .info-page-body > section > p,
+  .info-page-body > section > ul {
+    @apply mt-3 text-greyscale-700;
+  }
+
+  .info-page-body > section > ul {
+    @apply list-disc pl-5 space-y-1;
+  }
+
+  /* ==========================================================================
      CHAT PAGE LAYOUT
      ========================================================================== */
 
