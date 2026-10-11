@@ -683,7 +683,14 @@ def test_non_mapping_document_is_rejected(tmp_path):
     ["branding/logo.svg", "branding/court-name_2.png"],
 )
 def test_branding_accepts_an_svg_or_png_in_the_branding_folder(path):
-    BrandingSchema(logo=path, name_image=path)
+    BrandingSchema(name="Alpha Courts", logo=path, name_image=path)
+
+
+def test_a_name_image_without_the_name_it_shows_is_rejected():
+    # The header uses the name as the image's alt text (WCAG 1.1.1, 2.5.3);
+    # falling back to court_name voices words the image doesn't show.
+    with pytest.raises(ValidationError, match="name_image"):
+        BrandingSchema(name_image="branding/name.png")
 
 
 @pytest.mark.parametrize(
