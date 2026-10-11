@@ -1,5 +1,5 @@
 # Scottsdale (AZ) court-level content, scoped to the site data models (court
-# fields on Site, Contact, Resource). Sources: corpus-sources/scottsdale-city-court-az/SOURCE.md
+# fields on Site, Contact, Resource). Sources: corpus-sources/arizona/SOURCE.md
 # lists them (Scottsdale Municipal Information: PE Options, How Will My Case
 # Proceed, Civil Traffic Hearing Information, Canned responses - Live Help,
 # Courtroom Etiquette) and the ACJA 7-205 admin orders. Contacts match
@@ -14,7 +14,7 @@ official_url: 'https://www.scottsdaleaz.gov/court'
 official_resources_url: 'https://www.scottsdaleaz.gov/court/civil-traffic-cases'
 
 # Header art (#979): the Arizona Supreme Court seal, resized from the SME
-# delivery (corpus-sources/scottsdale-city-court-az/branding/). The flow launches under the
+# delivery (corpus-sources/arizona/branding/). The flow launches under the
 # AOC's name, so the seal and header name are the state's, not Scottsdale's;
 # court_name stays Scottsdale City Court, the court handling the case.
 branding:

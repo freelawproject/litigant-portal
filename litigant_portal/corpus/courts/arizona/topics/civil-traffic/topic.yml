@@ -1,6 +1,6 @@
 # Civil Traffic topic metadata (Topic model fields). The folder name is the
 # topic slug. Scottsdale City Court, general civil traffic with a
-# photo-enforcement section. Sources: corpus-sources/scottsdale-city-court-az/SOURCE.md.
+# photo-enforcement section. Sources: corpus-sources/arizona/SOURCE.md.
 
 title: 'Civil Traffic'
 subtitle: 'Responding to a civil traffic ticket: pay, defensive driving, or a hearing'
