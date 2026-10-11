@@ -197,3 +197,16 @@ variables:
     label: 'Date you served the Notice to Leave'
     data_type: date
     help_text: 'The day you handed the notice to your tenant, left it at the property, or sent it by certified mail.'
+
+  # Arizona civil traffic. Scoped to the topic: an arraignment date and a
+  # citation date mean something only inside a traffic case.
+
+  - name: traffic_violation_date
+    label: 'Date of the violation'
+    data_type: date
+    help_text: 'Printed on your ticket. For a camera ticket, use the violation date on the notice, not the day it arrived in the mail.'
+
+  - name: traffic_arraignment_date
+    label: 'Your court date'
+    data_type: date
+    help_text: 'Printed on your ticket, sometimes called the arraignment date. Not sure? Look up your case online or call the court.'

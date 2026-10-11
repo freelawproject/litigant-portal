@@ -11,6 +11,8 @@ repos:
     rev: v6.0.0
     hooks:
       - id: check-added-large-files
+        # Partner source documents are kept exactly as delivered.
+        exclude: (?i)^corpus-sources/.*\.(pdf|xlsx?|docx?|jpe?g|png|gif)$
       - id: check-ast
       - id: check-json
       - id: check-merge-conflict
@@ -23,6 +25,7 @@ repos:
       - id: fix-byte-order-marker
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
+        exclude: ^corpus-sources/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.9
@@ -38,7 +41,7 @@ repos:
         entry: prettier --write --ignore-unknown --log-level warn
         language: node
         types_or: [javascript, json, markdown, yaml, css]
-        exclude: ^(node_modules/|\.venv/|staticfiles/|static/css/main\.built\.css|package-lock\.json|uv\.lock)
+        exclude: ^(node_modules/|\.venv/|staticfiles/|static/css/main\.built\.css|package-lock\.json|uv\.lock|corpus-sources/)
         additional_dependencies: ['prettier@3.8.1']
 
   - repo: https://github.com/djlint/djLint

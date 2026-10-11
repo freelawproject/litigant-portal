@@ -184,9 +184,12 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# Court-partner corpus source docs — local archive only (see corpus-sources/README.md)
+# Court-partner corpus source docs (see corpus-sources/README.md). A court's
+# curated sources are tracked; everything else, and any _local/ folder, stays local.
 /corpus-sources/*
 !/corpus-sources/README.md
+!/corpus-sources/arizona/
+/corpus-sources/*/_local/
 
 # Before/after captures from scripts/screenshots.mjs
 /.screenshots/
