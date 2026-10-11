@@ -24,6 +24,7 @@ branding:
 contacts:
   - id: scottsdale_court
     name: 'Scottsdale City Court'
+    kind: clerk
     phone: '(480) 312-2442'
     email: 'court@scottsdaleaz.gov'
     url: 'https://www.scottsdaleaz.gov/court'

@@ -739,3 +739,19 @@ def test_a_branding_file_that_exists_loads(tmp_path):
     with mock.patch.object(selectors, "COURTS_DIR", tmp_path):
         courts = corpus_load_courts()
     assert courts["alpha"].branding.logo == "branding/logo.svg"
+
+
+# Contact kinds
+
+
+def test_a_contact_takes_a_help_kind():
+    data = _corpus_data()
+    data["courts"]["north-dakota"]["contacts"][0]["kind"] = "legal_aid"
+    CorpusSchema.model_validate(data)
+
+
+def test_an_unknown_contact_kind_is_rejected():
+    data = _corpus_data()
+    data["courts"]["north-dakota"]["contacts"][0]["kind"] = "bailiff"
+    with pytest.raises(ValidationError):
+        CorpusSchema.model_validate(data)

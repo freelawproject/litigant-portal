@@ -20,6 +20,17 @@ DEFAULT_BEDROCK_MODEL = BedrockModel.GPT_5_6_LUNA
 DEFAULT_FAST_BEDROCK_MODEL = BedrockModel.CLAUDE_HAIKU_4_5
 
 
+class ContactKind(models.TextChoices):
+    """What a contact does for a litigant, so the help page can pick the
+    clerk or legal aid out of a court's contacts (#1022). Declaration order
+    is the order the help page lists them in."""
+
+    CLERK = "clerk"
+    SELF_HELP = "self_help"
+    LEGAL_AID = "legal_aid"
+    REFERRAL = "referral"
+
+
 class JurisdictionLevel(models.TextChoices):
     STATE = "state"
     COUNTY = "county"

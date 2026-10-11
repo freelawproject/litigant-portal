@@ -17,6 +17,7 @@ from pydantic import (
 from pypdf import PdfReader
 
 from litigant_portal.app.models.choices import (
+    ContactKind,
     JurisdictionLevel,
     State,
     TopicFlowFormConditionOperator,
@@ -277,6 +278,7 @@ class ContactSchema(SourceSchema):
     email: str = ""
     url: str = ""
     note: str = ""
+    kind: ContactKind | Literal[""] = ""
 
 
 class ResourceSchema(SourceSchema):

@@ -4,7 +4,7 @@ from django.core.files.storage import storages
 from django.db import models
 
 from .base import BaseModel
-from .choices import BedrockModel, JurisdictionLevel, State
+from .choices import BedrockModel, ContactKind, JurisdictionLevel, State
 
 SITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -70,6 +70,11 @@ class Contact(BaseModel):
     email = models.EmailField(blank=True)
     url = models.URLField(max_length=500, blank=True)
     note = models.TextField(blank=True)
+    # Blank for a contact the help page doesn't list (a bailiff's office,
+    # a community group).
+    kind = models.CharField(
+        max_length=16, blank=True, choices=ContactKind.choices
+    )
     order = models.PositiveIntegerField(default=0)
 
     class Meta:

@@ -20,25 +20,30 @@ branding:
 contacts:
   - id: clerk
     name: 'Clerk of District Court (your county)'
+    kind: clerk
     url: 'https://www.ndcourts.gov/court-locations'
     note: "You file in the district court for the county where you have lived the past 6 months. Use the court locator to find your county's clerk, then call before filing to ask whether the judge requires the criminal history background check before or after you file. Timing varies by judge. This is the one call to make first."
   - id: self_help
     name: 'North Dakota Legal Self Help Center'
+    kind: self_help
     phone: '(701) 328-1852'
     email: 'ndselfhelp@ndcourts.gov'
     url: 'https://www.ndcourts.gov/legal-self-help'
     note: 'A division of the ND Supreme Court Law Library. Provides information about the civil court process for self-represented filers. They cannot give legal advice or help with criminal matters.'
   - id: legal_aid
     name: 'Legal Services of North Dakota'
+    kind: legal_aid
     phone: '(800) 634-5263'
     url: 'https://lsnd.org'
     note: 'Free civil legal help for North Dakotans who qualify by income. Useful if your name change touches a divorce or other family-law matter. They can also screen you for the Volunteer Lawyers low-cost program.'
   - id: dakota_plains
     name: 'Dakota Plains Legal Services'
+    kind: legal_aid
     url: 'https://www.dpls.org'
     note: 'Free legal assistance for low-income individuals, older Americans, veterans, and nine tribal nations across North and South Dakota.'
   - id: state_bar_referral
     name: 'State Bar Association of North Dakota (Lawyer Referral)'
+    kind: referral
     phone: '(866) 450-9579'
     url: 'https://www.sband.org'
     note: 'Matches you with a lawyer for paid legal services. Ask about limited (unbundled) representation: hiring a lawyer for just part of your case, like reviewing your paperwork, while you handle the rest.'

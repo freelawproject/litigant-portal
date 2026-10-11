@@ -9,6 +9,7 @@ from litigant_portal.app.models import Contact, Resource, Site
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
     DEFAULT_FAST_BEDROCK_MODEL,
+    ContactKind,
 )
 
 _ROLE_DEFAULT_MODELS = {"fast": DEFAULT_FAST_BEDROCK_MODEL}
@@ -39,6 +40,16 @@ def _cached_list(key: str, model) -> list:
 def contact_list() -> list[Contact]:
     """The court's contacts, in display order, served from cache."""
     return _cached_list(CONTACT_LIST_CACHE_KEY, Contact)
+
+
+def contact_help_list() -> list[Contact]:
+    """The contacts the help page lists: those with a help kind, grouped in
+    ``ContactKind`` order, each kind in display order."""
+    rank = {kind: i for i, kind in enumerate(ContactKind.values)}
+    return sorted(
+        (c for c in contact_list() if c.kind in rank),
+        key=lambda c: rank[c.kind],
+    )
 
 
 def resource_list() -> list[Resource]:

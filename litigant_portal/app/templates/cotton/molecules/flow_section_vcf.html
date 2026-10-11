@@ -7,31 +7,7 @@
 <ul class="space-y-4">
   {% for contact in ctx.contacts %}
   <li>
-    <div class="font-medium text-greyscale-900">{{ contact.name }}</div>
-    {% if contact.phone %}
-    <p class="text-sm text-greyscale-700">
-      <c-atoms.link href="tel:{{ contact.phone }}">{{ contact.phone }}</c-atoms.link>
-    </p>
-    {% endif %}
-    {% if contact.email %}
-    <p class="text-sm text-greyscale-700">
-      <c-atoms.link href="mailto:{{ contact.email }}">{{ contact.email }}</c-atoms.link>
-    </p>
-    {% endif %}
-    {% if contact.url %}
-    <p class="text-sm text-greyscale-700">
-      <c-atoms.link href="{{ contact.url }}" target="_blank">{{ contact.url }}</c-atoms.link>
-    </p>
-    {% endif %}
-    {% if contact.address %}
-    <p class="text-sm text-greyscale-700">{{ contact.address }}</p>
-    {% endif %}
-    {% if contact.hours %}
-    <p class="text-sm text-greyscale-500">{% trans "Hours" %}: {{ contact.hours }}</p>
-    {% endif %}
-    {% if contact.note %}
-    <p class="text-sm text-greyscale-500">{{ contact.note }}</p>
-    {% endif %}
+    <c-molecules.contact-card :contact="contact" />
   </li>
   {% endfor %}
 </ul>
