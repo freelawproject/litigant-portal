@@ -20,8 +20,8 @@
 
 {% block page_body %}
   {% if site.court_name %}
-    <section>
-      <c-atoms.section-heading>{{ site.court_name }}</c-atoms.section-heading>
+    <section aria-labelledby="help-court-heading">
+      <c-atoms.section-heading id="help-court-heading">{{ site.court_name }}</c-atoms.section-heading>
       <ul class="list-none pl-0 space-y-2">
         {% if site.official_url %}
           <li>
@@ -37,8 +37,8 @@
     </section>
   {% endif %}
   {% if help_contacts %}
-    <section>
-      <c-atoms.section-heading>{% trans "Who to contact" %}</c-atoms.section-heading>
+    <section aria-labelledby="help-contacts-heading">
+      <c-atoms.section-heading id="help-contacts-heading">{% trans "Who to contact" %}</c-atoms.section-heading>
       <ul class="list-none pl-0 space-y-4">
         {% for contact in help_contacts %}
           <li>
