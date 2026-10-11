@@ -31,10 +31,6 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
-  // Dev menu (header dropdown — visible in dev + QA only)
-  // ===========================================================================
-
-  // ===========================================================================
   // Site frame drawer (#988)
   // ===========================================================================
 
@@ -93,27 +89,6 @@ document.addEventListener('alpine:init', () => {
       if (!section.hasAttribute('tabindex'))
         section.setAttribute('tabindex', '-1')
       section.focus()
-    },
-  }))
-
-  // The site menu's dev-tools group (molecules/site_menu.html).
-  Alpine.data('devMenu', () => ({
-    async resetDemo() {
-      const csrfToken =
-        document.querySelector('[name=csrfmiddlewaretoken]')?.value ||
-        document.cookie
-          .split(';')
-          .find((c) => c.trim().startsWith('csrftoken='))
-          ?.split('=')[1] ||
-        ''
-      const formData = new FormData()
-      formData.append('csrfmiddlewaretoken', csrfToken)
-      try {
-        await fetch('/api/chat/case/clear/', { method: 'POST', body: formData })
-      } catch (e) {
-        console.error('Failed to reset demo:', e)
-      }
-      location.reload()
     },
   }))
 

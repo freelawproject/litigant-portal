@@ -1018,9 +1018,9 @@
         </section>
         <section id="site-menu" class="mb-12" aria-labelledby="site-menu-heading">
           <h3 id="site-menu-heading" class="mb-4">Site Menu</h3>
-          <p class="text-greyscale-600 mb-6">The header's menu: About, Privacy and Accessibility in every environment, account links on phones (where the user menu is hidden), and a dev-tools group outside production. A native <code>&lt;details&gt;</code> over a plain link list, so it works without JS. No props.</p>
+          <p class="text-greyscale-600 mb-6">The header's menu: About, Privacy and Accessibility in every environment, account links on phones (where the user menu is hidden), and a dev-tools group outside production. A native <code>&lt;details&gt;</code> over a plain link list, so it works without JS. One prop, <code>confirm_id</code>, gives the Start over confirmation its own id when two menus share a page, as here.</p>
           <div class="flex justify-end border border-greyscale-200 rounded-lg p-4 mb-6 min-h-80">
-            <c-molecules.site-menu />
+            <c-molecules.site-menu confirm_id="start-over-confirm-sample" />
           </div>
         </section>
         <section id="selector-card" class="mb-12" aria-labelledby="selector-card-heading">
