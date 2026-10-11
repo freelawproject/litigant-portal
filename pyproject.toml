@@ -102,6 +102,8 @@ litigant_portal = [
   "content/**/*.yaml",
   "corpus/**/*.yml",
   "corpus/**/*.pdf",
+  "corpus/courts/*/branding/*.svg",
+  "corpus/courts/*/branding/*.png",
   "prompts/**/*.json",
   "prompts/**/*.md",
 ]

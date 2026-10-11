@@ -4,16 +4,21 @@ These lock the authoring rules the corpus validates at the boundary, so a
 typo in a court form fails the check rather than printing a wrong PDF.
 """
 
+from unittest import mock
+
 import pytest
 from pydantic import ValidationError
 
+from litigant_portal.app.selectors import corpus as selectors
 from litigant_portal.app.selectors.corpus import (
+    BrandingSchema,
     CorpusSchema,
     FlowSchema,
     FormFieldMappingSchema,
     VariableSchema,
     VariablesSchema,
     corpus_load,
+    corpus_load_courts,
     corpus_parse_yaml,
 )
 
@@ -668,3 +673,69 @@ def test_non_mapping_document_is_rejected(tmp_path):
     path.write_text("- 1\n- 2\n")
     with pytest.raises(ValueError, match="top level must be a mapping"):
         corpus_parse_yaml(path, FlowSchema)
+
+
+# Court branding
+
+
+@pytest.mark.parametrize(
+    "path",
+    ["branding/logo.svg", "branding/court-name_2.png"],
+)
+def test_branding_accepts_an_svg_or_png_in_the_branding_folder(path):
+    BrandingSchema(name="Alpha Courts", logo=path, name_image=path)
+
+
+def test_a_name_image_without_the_name_it_shows_is_rejected():
+    # The header uses the name as the image's alt text (WCAG 1.1.1, 2.5.3);
+    # falling back to court_name voices words the image doesn't show.
+    with pytest.raises(ValidationError, match="name_image"):
+        BrandingSchema(name_image="branding/name.png")
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "logo.svg",
+        "branding/../court.yml",
+        "branding/art/logo.svg",
+        "/branding/logo.svg",
+        "branding/logo.gif",
+    ],
+    ids=[
+        "outside-folder",
+        "climbs-out",
+        "nested",
+        "absolute",
+        "not-svg-or-png",
+    ],
+)
+def test_branding_rejects_a_path_outside_the_folder_or_another_format(path):
+    with pytest.raises(ValidationError):
+        BrandingSchema(logo=path)
+
+
+def _court_folder(root, branding):
+    folder = root / "alpha"
+    (folder / "branding").mkdir(parents=True)
+    (folder / "court.yml").write_text(
+        "name: Alpha\ncourt_name: Alpha Court\n" + branding
+    )
+    return folder
+
+
+def test_a_branding_file_that_does_not_exist_is_rejected(tmp_path):
+    _court_folder(tmp_path, "branding:\n  logo: branding/logo.svg\n")
+    with (
+        mock.patch.object(selectors, "COURTS_DIR", tmp_path),
+        pytest.raises(ValueError, match="branding/logo.svg"),
+    ):
+        corpus_load_courts()
+
+
+def test_a_branding_file_that_exists_loads(tmp_path):
+    folder = _court_folder(tmp_path, "branding:\n  logo: branding/logo.svg\n")
+    (folder / "branding" / "logo.svg").write_text("<svg/>")
+    with mock.patch.object(selectors, "COURTS_DIR", tmp_path):
+        courts = corpus_load_courts()
+    assert courts["alpha"].branding.logo == "branding/logo.svg"

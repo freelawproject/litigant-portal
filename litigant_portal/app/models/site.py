@@ -1,11 +1,18 @@
 import uuid
 
+from django.core.files.storage import storages
 from django.db import models
 
 from .base import BaseModel
 from .choices import BedrockModel, JurisdictionLevel, State
 
 SITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
+
+def _public_storage():
+    """Court art is shown to every visitor, so it lives in public storage.
+    A callable, so the storage choice stays out of migrations."""
+    return storages["public"]
 
 
 class Site(BaseModel):
@@ -19,6 +26,15 @@ class Site(BaseModel):
     state = models.CharField(max_length=2, blank=True, choices=State.choices)
     official_url = models.URLField(blank=True)
     official_resources_url = models.URLField(blank=True)
+    # Written by sync_corpus from the court's branding block (#979).
+    # branding_name, when set, replaces court_name in the header.
+    branding_name = models.CharField(max_length=255, blank=True)
+    logo = models.FileField(
+        upload_to="branding/", storage=_public_storage, blank=True
+    )
+    name_image = models.FileField(
+        upload_to="branding/", storage=_public_storage, blank=True
+    )
     fast_model = models.CharField(
         max_length=128,
         blank=True,

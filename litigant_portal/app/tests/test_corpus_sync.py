@@ -44,6 +44,7 @@ def _make_corpus(
     include_vestigial=True,
     alpha_sections=None,
     alpha_contacts=None,
+    alpha_branding=None,
 ):
     """A small valid corpus: two courts, two forms, one gated variable."""
     variables = {
@@ -106,6 +107,8 @@ def _make_corpus(
             ],
         }
     }
+    if alpha_branding is not None:
+        courts["alpha"]["branding"] = alpha_branding
     topics = {("alpha", "pets"): {"title": "Pets"}}
     flows = {
         ("alpha", "pets", "standard"): {
@@ -165,11 +168,19 @@ class CorpusSyncTests(TestCase):
         self.forms_dir = Path(tmp.name)
         for slug in ("license", "addendum"):
             (self.forms_dir / f"{slug}.pdf").write_bytes(b"%PDF-stand-in")
+        courts = tempfile.TemporaryDirectory()
+        self.addCleanup(courts.cleanup)
+        self.courts_dir = Path(courts.name)
+        branding = self.courts_dir / "alpha" / "branding"
+        branding.mkdir(parents=True)
+        (branding / "logo.svg").write_bytes(b"<svg>logo</svg>")
+        (branding / "name.png").write_bytes(b"png-name")
 
     def _sync(self, corpus, **kwargs):
         with (
             mock.patch.object(services, "corpus_load", return_value=corpus),
             mock.patch.object(services, "FORMS_DIR", self.forms_dir),
+            mock.patch.object(services, "COURTS_DIR", self.courts_dir),
         ):
             return corpus_sync(**kwargs)
 
@@ -279,6 +290,42 @@ class CourtScopingTests(CorpusSyncTests):
     def test_unknown_court_is_rejected(self):
         with self.assertRaises(ValueError):
             self._sync(_make_corpus(), court="gamma")
+
+
+BRANDING = {
+    "name": "Alpha State Courts",
+    "logo": "branding/logo.svg",
+    "name_image": "branding/name.png",
+}
+
+
+@pytest.mark.postgres
+class BrandingSyncTests(CorpusSyncTests):
+    def test_court_branding_is_stored_on_the_site(self):
+        self._sync(_make_corpus(alpha_branding=BRANDING), court="alpha")
+        site = Site.objects.get()
+        self.assertEqual(site.branding_name, "Alpha State Courts")
+        self.assertEqual(site.logo.read(), b"<svg>logo</svg>")
+        self.assertEqual(site.name_image.read(), b"png-name")
+
+    def test_a_resync_replaces_the_file_under_the_same_name(self):
+        self._sync(_make_corpus(alpha_branding=BRANDING), court="alpha")
+        first = Site.objects.get().logo.name
+        self._sync(_make_corpus(alpha_branding=BRANDING), court="alpha")
+        self.assertEqual(Site.objects.get().logo.name, first)
+
+    def test_dropping_branding_from_the_court_clears_it(self):
+        self._sync(_make_corpus(alpha_branding=BRANDING), court="alpha")
+        self._sync(_make_corpus(), court="alpha")
+        site = Site.objects.get()
+        self.assertEqual(site.branding_name, "")
+        self.assertFalse(site.logo)
+        self.assertFalse(site.name_image)
+
+    def test_a_multi_court_sync_leaves_the_site_branding_alone(self):
+        self._sync(_make_corpus(alpha_branding=BRANDING), court="alpha")
+        self._sync(_make_corpus(), court=None)
+        self.assertTrue(Site.objects.get().logo)
 
 
 @pytest.mark.postgres

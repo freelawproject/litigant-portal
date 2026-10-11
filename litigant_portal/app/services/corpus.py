@@ -29,6 +29,7 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import TopicFlowFormConditionOperator
 from litigant_portal.app.selectors.corpus import (
+    COURTS_DIR,
     FORMS_DIR,
     CorpusSchema,
     CourtSchema,
@@ -104,6 +105,20 @@ def _form_field(
     )
 
 
+def _file_replace(field_file, name: str, content: bytes) -> None:
+    """Store ``content`` as ``name`` in place of the field's current file.
+
+    Also clears the target name: a stray file there (an orphan from a
+    prior sync) would otherwise suffix the new name on every sync, since
+    storage never overwrites."""
+    if field_file:
+        field_file.delete(save=False)
+    target = field_file.field.generate_filename(field_file.instance, name)
+    if field_file.storage.exists(target):
+        field_file.storage.delete(target)
+    field_file.save(name, ContentFile(content), save=False)
+
+
 def _sync_forms(
     corpus: CorpusSchema, variables: dict[str, Variable]
 ) -> dict[str, Form]:
@@ -113,17 +128,10 @@ def _sync_forms(
     for slug, schema in corpus.forms.items():
         form = rows.get(slug) or Form(slug=slug)
         _apply(form, schema, exclude={"fields"})
-        if form.file:
-            form.file.delete(save=False)
-        # Also clear the target name: a stray file there (an orphan from a
-        # prior sync) would otherwise suffix the new name on every sync.
-        target = f"forms/{slug}.pdf"
-        if form.file.storage.exists(target):
-            form.file.storage.delete(target)
-        form.file.save(
+        _file_replace(
+            form.file,
             f"{slug}.pdf",
-            ContentFile((FORMS_DIR / f"{slug}.pdf").read_bytes()),
-            save=False,
+            (FORMS_DIR / f"{slug}.pdf").read_bytes(),
         )
         form.save()
         form.fields.all().delete()
@@ -135,10 +143,25 @@ def _sync_forms(
     return rows
 
 
-def _sync_site(schema: CourtSchema) -> None:
-    """Write the court's fields onto the Site singleton."""
+def _sync_site(slug: str, schema: CourtSchema) -> None:
+    """Write the court's fields and branding onto the Site singleton. A
+    branding file the court no longer names is deleted from storage."""
     site = site_get()
-    _apply(site, schema, exclude={"name", "contacts", "resources"})
+    _apply(site, schema, exclude={"name", "contacts", "resources", "branding"})
+    site.branding_name = schema.branding.name
+    for field, path in (
+        ("logo", schema.branding.logo),
+        ("name_image", schema.branding.name_image),
+    ):
+        field_file = getattr(site, field)
+        if path is None:
+            if field_file:
+                field_file.delete(save=False)
+            continue
+        source = COURTS_DIR / slug / path
+        _file_replace(
+            field_file, f"{slug}-{field}{source.suffix}", source.read_bytes()
+        )
     site.save(
         update_fields=[
             "court_name",
@@ -146,6 +169,9 @@ def _sync_site(schema: CourtSchema) -> None:
             "state",
             "official_url",
             "official_resources_url",
+            "branding_name",
+            "logo",
+            "name_image",
             "updated_at",
         ]
     )
@@ -335,7 +361,7 @@ def corpus_sync(
             flow_slugs.setdefault(topic_slug, []).append(flow_slug)
             flow_count += 1
         if court is not None:
-            _sync_site(corpus.courts[court])
+            _sync_site(court, corpus.courts[court])
         in_scope = [court] if court is not None else sorted(corpus.courts)
         _sync_contacts(
             [corpus.courts[slug] for slug in in_scope], strict=strict

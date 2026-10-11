@@ -287,9 +287,45 @@ class ResourceSchema(SourceSchema):
     note: str = ""
 
 
+# A file in the court's own ``branding/`` folder: a slug name (the directory
+# check holds every corpus path to that), no subfolders, no way out of the
+# folder, and SVG or PNG only.
+BrandingPathField = Annotated[
+    str, Field(pattern=r"^branding/[a-z0-9][a-z0-9_-]*\.(svg|png)$")
+]
+
+
+class BrandingSchema(BaseSchema):
+    """Populates the ``Site`` singleton's header branding. Every key is
+    optional. ``name`` replaces ``court_name`` in the header only, for an
+    instance branded under a different body than the court that handles
+    the case. Without a logo the header shows the name as text, and a name
+    image takes the name as its alt text, so it requires one."""
+
+    name: str = ""
+    logo: BrandingPathField | None = None
+    name_image: BrandingPathField | None = None
+
+    @model_validator(mode="after")
+    def _name_image_has_its_name(self):
+        """Validates:
+        - a name_image comes with the name it shows, its alt text
+        """
+        if self.name_image is not None and not self.name:
+            raise ValueError(
+                "branding name_image needs name: the words in the image, "
+                "used as its alt text"
+            )
+        return self
+
+    @property
+    def paths(self) -> list[str]:
+        return [p for p in (self.logo, self.name_image) if p is not None]
+
+
 class CourtSchema(BaseSchema):
-    """Populates the ``Site`` singleton's court fields, ``Contact``, and
-    ``Resource`` rows."""
+    """Populates the ``Site`` singleton's court fields and branding,
+    ``Contact``, and ``Resource`` rows."""
 
     name: str = Field(min_length=1)
     court_name: str = Field(min_length=1)
@@ -299,6 +335,7 @@ class CourtSchema(BaseSchema):
     official_resources_url: str = ""
     contacts: list[ContactSchema] = []
     resources: list[ResourceSchema] = []
+    branding: BrandingSchema = Field(default_factory=BrandingSchema)
 
     @property
     def source_ids(self) -> list[str]:
@@ -745,11 +782,18 @@ def corpus_load_form_acro_fields() -> dict[str, dict[str, str]]:
 
 
 def corpus_load_courts() -> dict[str, CourtSchema]:
-    """Every court document, by court slug."""
-    return {
-        path.parts[-2]: corpus_parse_yaml(path, CourtSchema)
-        for path in sorted(COURTS_DIR.glob("*/court.yml"))
-    }
+    """Every court document, by court slug. Each branding path must name a
+    file in that court's folder, since the sync copies it to storage."""
+    courts = {}
+    for path in sorted(COURTS_DIR.glob("*/court.yml")):
+        court = corpus_parse_yaml(path, CourtSchema)
+        missing = [
+            p for p in court.branding.paths if not (path.parent / p).is_file()
+        ]
+        if missing:
+            raise ValueError(f"{path}: branding files not found: {missing}")
+        courts[path.parts[-2]] = court
+    return courts
 
 
 def corpus_load_topics() -> dict[tuple[str, str], TopicSchema]:
