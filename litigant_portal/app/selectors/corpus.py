@@ -302,11 +302,23 @@ class BrandingSchema(BaseSchema):
     optional. ``name`` replaces ``court_name`` in the header only, for an
     instance branded under a different body than the court that handles
     the case. Without a logo the header shows the name as text, and a name
-    image takes the name as its alt text."""
+    image takes the name as its alt text, so it requires one."""
 
     name: str = ""
     logo: BrandingPathField | None = None
     name_image: BrandingPathField | None = None
+
+    @model_validator(mode="after")
+    def _name_image_has_its_name(self):
+        """Validates:
+        - a name_image comes with the name it shows, its alt text
+        """
+        if self.name_image is not None and not self.name:
+            raise ValueError(
+                "branding name_image needs name: the words in the image, "
+                "used as its alt text"
+            )
+        return self
 
     @property
     def paths(self) -> list[str]:

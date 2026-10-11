@@ -12,6 +12,7 @@ official_resources_url: 'https://www.ndcourts.gov/legal-self-help'
 # Header art (#979). The wordmark is the black version; the court's white
 # one disappears on the white header.
 branding:
+  name: 'State of North Dakota Courts'
   logo: branding/logo.png
   name_image: branding/name.png
 
