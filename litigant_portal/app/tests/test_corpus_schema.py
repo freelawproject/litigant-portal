@@ -248,6 +248,28 @@ def test_form_url_fits_the_column():
         FormSchema(name="Pet license", fields=[], url=url)
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "a.test/f.pdf",
+        "/forms/f.pdf",
+        "htps://a.test/f.pdf",
+        "https:///f.pdf",
+        "javascript:alert(1)",
+        "mailto:clerk@a.test",
+    ],
+    ids=["no-scheme", "relative", "misspelled", "no-host", "script", "mailto"],
+)
+def test_form_url_must_be_absolute_http(url):
+    with pytest.raises(ValidationError, match="absolute, http or https"):
+        FormSchema(name="Pet license", fields=[], url=url)
+
+
+def test_form_url_takes_http_and_https():
+    for url in ("http://a.test/f.pdf", "https://a.test/f.pdf?v=2"):
+        assert FormSchema(name="Pet license", fields=[], url=url).url == url
+
+
 def test_duplicate_pdf_field_is_rejected():
     data = _corpus_data()
     data["forms"]["license"]["fields"].append(

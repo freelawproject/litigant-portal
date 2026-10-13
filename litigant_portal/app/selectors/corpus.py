@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 import yaml
 from django.conf import settings
@@ -284,6 +285,19 @@ class FormSchema(BaseSchema):
     name: str = Field(min_length=1)
     url: str = Field(default="", max_length=500)
     fields: list[FormFieldMappingSchema]
+
+    @field_validator("url")
+    @classmethod
+    def _absolute_http(cls, value):
+        """Blank or an absolute http(s) url: the row's ``URLField`` never
+        runs on sync, so the schema is the only check before the page
+        shows it as a link."""
+        if value == "":
+            return value
+        parts = urlsplit(value)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise ValueError("url must be absolute, http or https")
+        return value
 
     @model_validator(mode="after")
     def _unique_pdf_fields(self):
