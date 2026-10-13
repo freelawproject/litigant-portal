@@ -75,6 +75,7 @@ def _make_corpus(
     forms = {
         "license": {
             "name": "Pet license",
+            "url": "https://a.test/license.pdf",
             "fields": [
                 {"pdf_field": "Name", "template": "{full_name}"},
                 {
@@ -217,6 +218,12 @@ class IdempotencyTests(CorpusSyncTests):
         self._sync(corpus, court=None)
         for form in Form.objects.all():
             self.assertEqual(form.file.name, f"forms/{form.slug}.pdf")
+
+    def test_form_url_is_stored_and_blank_when_absent(self):
+        self._sync(_make_corpus(), court=None)
+        urls = dict(Form.objects.values_list("slug", "url"))
+        self.assertEqual(urls["license"], "https://a.test/license.pdf")
+        self.assertEqual(urls["addendum"], "")
 
     def test_gate_wiring(self):
         self._sync(_make_corpus(), court=None)

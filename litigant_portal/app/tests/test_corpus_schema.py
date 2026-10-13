@@ -15,6 +15,7 @@ from litigant_portal.app.selectors.corpus import (
     CorpusSchema,
     FlowSchema,
     FormFieldMappingSchema,
+    FormSchema,
     VariableSchema,
     VariablesSchema,
     corpus_load,
@@ -185,6 +186,15 @@ def test_constant_off_and_checked_when_do_not_combine():
 def test_string_checked_when_is_rejected():
     with pytest.raises(ValidationError):
         FormFieldMappingSchema(pdf_field="Check Box1", checked_when="dog")
+
+
+def test_form_url_is_optional():
+    form = FormSchema(name="Pet license", fields=[])
+    assert form.url == ""
+    form = FormSchema(
+        name="Pet license", fields=[], url="https://a.test/f.pdf"
+    )
+    assert form.url == "https://a.test/f.pdf"
 
 
 def test_duplicate_pdf_field_is_rejected():

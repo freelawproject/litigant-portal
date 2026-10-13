@@ -250,9 +250,11 @@ class FormFieldMappingSchema(BaseSchema):
 
 
 class FormSchema(BaseSchema):
-    """Populates a ``Form`` row."""
+    """Populates a ``Form`` row. ``url`` is the court's own copy of the
+    blank form, for a litigant who wants it from the source."""
 
     name: str = Field(min_length=1)
+    url: str = ""
     fields: list[FormFieldMappingSchema]
 
     @model_validator(mode="after")

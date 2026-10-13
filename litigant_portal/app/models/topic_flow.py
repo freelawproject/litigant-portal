@@ -203,6 +203,7 @@ class Form(BaseModel):
     slug = models.SlugField(max_length=64, unique=True)
     name = models.CharField(max_length=255)
     file = models.FileField(upload_to="forms/")
+    url = models.URLField(max_length=500, blank=True)
 
     class Meta:
         ordering = ["slug"]
