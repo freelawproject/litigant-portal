@@ -18,13 +18,13 @@ contacts:
     kind: clerk
     phone: '(614) 645-8186'
     url: 'https://www.fcmcclerk.com'
-    address: '375 South High Street, Columbus'
+    address: '375 South High Street, Columbus, OH 43215'
     note: 'Filing questions, the fee schedule, and the public case search.'
   - id: self_help_center
     name: 'Franklin County Municipal Court Self Help Center'
     kind: self_help
     phone: '(614) 645-7381'
-    address: '375 South High Street, 16th Floor, Columbus'
+    address: '375 South High Street, 16th Floor, Columbus, OH 43215'
     note: 'Help with court forms and the process for people who do not have a lawyer.'
   - id: service_bailiff
     name: "FCMC Service Bailiff's Office"
