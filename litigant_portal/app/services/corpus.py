@@ -254,8 +254,16 @@ def _sync_flow(
     _apply(
         flow,
         schema,
-        exclude={"sections", "interview", "packet", "deadlines", "links"},
+        exclude={
+            "sections",
+            "layout",
+            "interview",
+            "packet",
+            "deadlines",
+            "links",
+        },
     )
+    flow.layout = schema.resolved_layout
     flow.save()
     _warn_removed_keys(
         f"flow {topic.slug}/{slug}",

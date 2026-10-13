@@ -45,6 +45,7 @@ class TopicFlow(BaseModel):
     name = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
+    layout = models.JSONField(default=list, blank=True)
 
     class Meta:
         ordering = ["order", "created_at"]

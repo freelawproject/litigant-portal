@@ -432,23 +432,38 @@ class LinkSchema(SourceSchema):
     url: str = Field(min_length=1)
 
 
+LAYOUT_BLOCKS = ("interview", "packet", "calendar", "contacts", "resources")
+
+
 class FlowSchema(BaseSchema):
-    """Populates a ``TopicFlow`` row."""
+    """Populates a ``TopicFlow`` row. ``layout`` orders the page: section
+    ids and block names, every section exactly once. Absent, the page is
+    every section in order and then the blocks."""
 
     name: str = Field(min_length=1)
     enabled: bool = False
     order: int = 0
     sections: list[SectionSchema] = Field(min_length=1)
+    layout: list[SlugField] = []
     interview: list[InterviewPageSchema] = []
     packet: list[PacketEntrySchema] = []
     deadlines: list[DeadlineSchema] = []
     links: list[LinkSchema] = []
+
+    @property
+    def resolved_layout(self) -> list[str]:
+        """The authored layout, or the default when none is authored."""
+        return list(self.layout) or [
+            *(s.id for s in self.sections),
+            *LAYOUT_BLOCKS,
+        ]
 
     @model_validator(mode="after")
     def _unique_source_ids(self):
         """Validates:
         - section, deadline, link ids and packet form slugs are unique
           within the flow (a packet entry cites its form slug)
+        - no section takes a block name, since layout names both
         """
         ids = (
             [s.id for s in self.sections]
@@ -457,6 +472,35 @@ class FlowSchema(BaseSchema):
             + sorted({entry.form for entry in self.packet})
         )
         _duplicate_ids("flow", ids)
+        reserved = sorted({s.id for s in self.sections} & set(LAYOUT_BLOCKS))
+        if reserved:
+            raise ValueError(
+                f"section ids reserved for layout blocks: {reserved}"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _layout_resolves(self):
+        """Validates, when a layout is authored:
+        - every name is a section id or a block name
+        - every section id appears exactly once
+        - every block name appears at most once
+        """
+        if not self.layout:
+            return self
+        section_ids = {s.id for s in self.sections}
+        known = section_ids | set(LAYOUT_BLOCKS)
+        unknown = sorted(set(self.layout) - known)
+        if unknown:
+            raise ValueError(f"layout names unknown entries: {unknown}")
+        repeated = sorted(
+            {name for name in self.layout if self.layout.count(name) > 1}
+        )
+        if repeated:
+            raise ValueError(f"layout places more than once: {repeated}")
+        missing = sorted(section_ids - set(self.layout))
+        if missing:
+            raise ValueError(f"layout is missing sections: {missing}")
         return self
 
     @model_validator(mode="after")

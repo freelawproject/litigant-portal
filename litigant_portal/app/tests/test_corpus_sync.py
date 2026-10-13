@@ -43,6 +43,7 @@ def _make_corpus(
     include_beta=True,
     include_vestigial=True,
     alpha_sections=None,
+    alpha_layout=None,
     alpha_contacts=None,
     alpha_branding=None,
 ):
@@ -115,6 +116,7 @@ def _make_corpus(
         ("alpha", "pets", "standard"): {
             "name": "Standard",
             "sections": alpha_sections or [START_SECTION],
+            "layout": alpha_layout or [],
             "interview": [
                 {
                     "title": "About your pet",
@@ -347,6 +349,38 @@ class ContactKindSyncTests(CorpusSyncTests):
             court="alpha",
         )
         self.assertEqual(Contact.objects.get(key="alpha_help").kind, "clerk")
+
+
+@pytest.mark.postgres
+class LayoutSyncTests(CorpusSyncTests):
+    def _alpha_layout(self):
+        return TopicFlow.objects.get(
+            topic__slug="pets", slug="standard"
+        ).layout
+
+    def test_an_absent_layout_stores_the_default_order(self):
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(
+            self._alpha_layout(),
+            [
+                "start",
+                "interview",
+                "packet",
+                "calendar",
+                "contacts",
+                "resources",
+            ],
+        )
+
+    def test_an_authored_layout_is_stored_as_written(self):
+        layout = ["packet", "start", "interview"]
+        self._sync(_make_corpus(alpha_layout=layout), court=None)
+        self.assertEqual(self._alpha_layout(), layout)
+
+    def test_dropping_the_layout_restores_the_default_order(self):
+        self._sync(_make_corpus(alpha_layout=["packet", "start"]), court=None)
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(self._alpha_layout()[:2], ["start", "interview"])
 
 
 @pytest.mark.postgres

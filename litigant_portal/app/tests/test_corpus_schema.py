@@ -415,11 +415,63 @@ def test_variable_placed_on_two_pages_is_rejected():
         )
 
 
-# Source ids: the citation targets stored in user threads
-
-
 def _section(id, heading="H"):
     return {"id": id, "heading": heading, "content": "Read."}
+
+
+# Layout: the page's order of sections and blocks
+
+
+def test_layout_defaults_to_sections_then_blocks():
+    flow = _flow_doc(sections=[_section("start"), _section("fees")])
+    assert flow.layout == []
+    assert flow.resolved_layout == [
+        "start",
+        "fees",
+        "interview",
+        "packet",
+        "calendar",
+        "contacts",
+        "resources",
+    ]
+
+
+def test_authored_layout_is_kept_as_written():
+    layout = ["start", "packet", "fees", "interview"]
+    flow = _flow_doc(
+        sections=[_section("start"), _section("fees")], layout=layout
+    )
+    assert flow.resolved_layout == layout
+
+
+def test_layout_must_place_every_section():
+    with pytest.raises(ValidationError, match="missing section.*fees"):
+        _flow_doc(
+            sections=[_section("start"), _section("fees")], layout=["start"]
+        )
+
+
+def test_layout_places_a_section_once():
+    with pytest.raises(ValidationError, match="more than once.*start"):
+        _flow_doc(layout=["start", "start"])
+
+
+def test_layout_places_a_block_at_most_once():
+    with pytest.raises(ValidationError, match="more than once.*packet"):
+        _flow_doc(layout=["start", "packet", "packet"])
+
+
+def test_layout_rejects_an_unknown_name():
+    with pytest.raises(ValidationError, match="unknown.*summary"):
+        _flow_doc(layout=["start", "summary"])
+
+
+def test_section_id_may_not_be_a_block_name():
+    with pytest.raises(ValidationError, match="reserved.*packet"):
+        _flow_doc(sections=[_section("packet")])
+
+
+# Source ids: the citation targets stored in user threads
 
 
 def test_section_without_an_id_is_rejected():
