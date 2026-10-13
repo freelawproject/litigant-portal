@@ -139,6 +139,18 @@ def test_shipped_corpus_validates():
     corpus_load()
 
 
+def test_shipped_flows_carry_their_page_content():
+    corpus = corpus_load()
+    for key, flow in corpus.flows.items():
+        assert flow.layout, f"{key} has no authored layout"
+    nd = corpus.flows[("north-dakota", "adult-name-change", "standard")]
+    assert nd.handoff.interview_reference.endswith("petition-standard.yml")
+    assert "name_change_publication_date" in nd.handoff.interview_prefill
+    for slug, form in corpus.forms.items():
+        if slug.startswith("nd-"):
+            assert form.url, f"{slug} has no url"
+
+
 # One mapping, one mode
 
 
