@@ -139,16 +139,49 @@ def test_shipped_corpus_validates():
     corpus_load()
 
 
+ND_TOPIC = ("north-dakota", "adult-name-change")
+
+
 def test_shipped_flows_carry_their_page_content():
     corpus = corpus_load()
     for key, flow in corpus.flows.items():
         assert flow.layout, f"{key} has no authored layout"
-    nd = corpus.flows[("north-dakota", "adult-name-change", "standard")]
-    assert nd.handoff.interview_reference.endswith("petition-standard.yml")
-    assert "name_change_publication_date" in nd.handoff.interview_prefill
+        if flow.packet:
+            assert "packet" in flow.layout, f"{key} does not place packet"
+        if flow.deadlines:
+            assert "calendar" in flow.layout, f"{key} does not place calendar"
+    standard = corpus.flows[(*ND_TOPIC, "standard")]
+    waiver = corpus.flows[(*ND_TOPIC, "waiver")]
+    assert standard.handoff is not None, "ND standard flow has no handoff"
+    assert waiver.handoff is not None, "ND waiver flow has no handoff"
+    assert standard.handoff.interview_reference.endswith(
+        "petition-standard.yml"
+    )
+    assert waiver.handoff.interview_reference.endswith("petition-waiver.yml")
+    assert "name_change_publication_date" in standard.handoff.interview_prefill
+    assert waiver.handoff.interview_prefill == {
+        key: value
+        for key, value in standard.handoff.interview_prefill.items()
+        if key != "name_change_publication_date"
+    }
     for slug, form in corpus.forms.items():
         if slug.startswith("nd-"):
             assert form.url, f"{slug} has no url"
+
+
+def test_shipped_nd_links_repeat_the_form_urls():
+    """The ND ``links`` lists stay until the render piece decides whether
+    they survive forms carrying a url (#1012). Until then both copies of
+    each court PDF url must agree."""
+    corpus = corpus_load()
+    form_urls = {
+        form.url
+        for slug, form in corpus.forms.items()
+        if slug.startswith("nd-")
+    }
+    for slug in ("standard", "waiver"):
+        for link in corpus.flows[(*ND_TOPIC, slug)].links:
+            assert link.url in form_urls, f"{slug} link {link.id} has no form"
 
 
 # One mapping, one mode
