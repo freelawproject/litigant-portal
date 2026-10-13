@@ -547,6 +547,8 @@ class FlowSchema(BaseSchema):
         - every name is a section id or a block name
         - every section id appears exactly once
         - every block name appears at most once
+        - a block the flow has content for (interview pages, packet
+          entries, deadlines) appears, or that content never renders
         """
         if not self.layout:
             return self
@@ -563,6 +565,20 @@ class FlowSchema(BaseSchema):
         missing = sorted(section_ids - set(self.layout))
         if missing:
             raise ValueError(f"layout is missing sections: {missing}")
+        filled = {
+            "interview": self.interview,
+            "packet": self.packet,
+            "calendar": self.deadlines,
+        }
+        unplaced = sorted(
+            block
+            for block, content in filled.items()
+            if content and block not in self.layout
+        )
+        if unplaced:
+            raise ValueError(
+                f"layout is missing blocks with content: {unplaced}"
+            )
         return self
 
     @model_validator(mode="after")

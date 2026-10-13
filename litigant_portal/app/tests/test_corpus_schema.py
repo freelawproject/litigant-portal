@@ -556,6 +556,38 @@ def test_layout_rejects_an_unknown_name():
         _flow_doc(layout=["start", "summary"])
 
 
+_FILLED_BLOCKS = {
+    "interview": {"interview": [{"title": "About you", "variables": ["age"]}]},
+    "packet": {"packet": [{"form": "license"}]},
+    "calendar": {
+        "deadlines": [
+            {
+                "id": "due",
+                "label": "Due",
+                "offset_days": 30,
+                "offset_from": "adopted_on",
+            }
+        ]
+    },
+}
+
+
+@pytest.mark.parametrize("block", sorted(_FILLED_BLOCKS))
+def test_layout_must_place_a_block_the_flow_fills(block):
+    with pytest.raises(ValidationError, match=f"missing blocks.*{block}"):
+        _flow_doc(layout=["start"], **_FILLED_BLOCKS[block])
+
+
+@pytest.mark.parametrize("block", sorted(_FILLED_BLOCKS))
+def test_layout_places_a_block_the_flow_fills(block):
+    flow = _flow_doc(layout=["start", block], **_FILLED_BLOCKS[block])
+    assert flow.resolved_layout == ["start", block]
+
+
+def test_layout_may_omit_an_empty_block():
+    assert _flow_doc(layout=["start"]).resolved_layout == ["start"]
+
+
 def test_section_id_may_not_be_a_block_name():
     with pytest.raises(ValidationError, match="reserved.*packet"):
         _flow_doc(sections=[_section("packet")])
