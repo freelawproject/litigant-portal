@@ -128,6 +128,8 @@ def _contact_line(contact) -> str:
             ("phone", contact.phone),
             ("email", contact.email),
             ("website", contact.url),
+            ("address", contact.address),
+            ("hours", contact.hours),
         )
         if value
     ]
