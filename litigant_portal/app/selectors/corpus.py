@@ -12,6 +12,7 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
+    field_validator,
     model_validator,
 )
 from pypdf import PdfReader
@@ -432,6 +433,22 @@ class LinkSchema(SourceSchema):
     url: str = Field(min_length=1)
 
 
+class HandoffSchema(BaseSchema):
+    """Populates ``TopicFlow.interview_reference`` and
+    ``interview_prefill``: the docassemble interview the packet opens, and
+    which glossary variables are sent as which interview variables."""
+
+    interview_reference: str = Field(min_length=1)
+    interview_prefill: dict[VariableNameField, VariableNameField] = Field(
+        default_factory=dict
+    )
+
+    @field_validator("interview_prefill", mode="before")
+    @classmethod
+    def _none_is_empty(cls, value):
+        return {} if value is None else value
+
+
 LAYOUT_BLOCKS = ("interview", "packet", "calendar", "contacts", "resources")
 
 
@@ -445,6 +462,7 @@ class FlowSchema(BaseSchema):
     order: int = 0
     sections: list[SectionSchema] = Field(min_length=1)
     layout: list[SlugField] = []
+    handoff: HandoffSchema | None = None
     interview: list[InterviewPageSchema] = []
     packet: list[PacketEntrySchema] = []
     deadlines: list[DeadlineSchema] = []
@@ -622,6 +640,7 @@ class CorpusSchema(BaseSchema):
         """Validates, per flow:
         - packet entries name known forms
         - interview pages place known variables
+        - handoff prefill keys are known variables
         - condition variables exist and their values are legal
         - deadline offset_from names a date variable
         - every consumed variable is placed in the interview
@@ -650,6 +669,15 @@ class CorpusSchema(BaseSchema):
             if name not in variables:
                 raise ValueError(
                     f"flow {label}: interview places unknown variable {name}"
+                )
+        if flow.handoff is not None:
+            unknown = sorted(
+                set(flow.handoff.interview_prefill) - set(variables)
+            )
+            if unknown:
+                raise ValueError(
+                    f"flow {label}: handoff prefill names unknown "
+                    f"variables {unknown}"
                 )
 
         consumed: set[str] = set()

@@ -471,6 +471,60 @@ def test_section_id_may_not_be_a_block_name():
         _flow_doc(sections=[_section("packet")])
 
 
+# Handoff: the docassemble interview a flow's packet opens
+
+
+def _handoff(**overrides):
+    return {
+        "interview_reference": "docassemble.pets:data/questions/license.yml",
+        "interview_prefill": {"full_name": "owner_name"},
+        **overrides,
+    }
+
+
+def test_handoff_is_optional():
+    assert _flow_doc().handoff is None
+
+
+def test_handoff_keeps_its_reference_and_prefill():
+    flow = _flow_doc(handoff=_handoff())
+    assert flow.handoff.interview_reference.startswith("docassemble.pets:")
+    assert flow.handoff.interview_prefill == {"full_name": "owner_name"}
+
+
+def test_handoff_prefill_defaults_to_nothing():
+    flow = _flow_doc(handoff=_handoff(interview_prefill=None))
+    assert flow.handoff.interview_prefill == {}
+
+
+def test_handoff_reference_may_not_be_blank():
+    with pytest.raises(ValidationError, match="at least 1 character"):
+        _flow_doc(handoff=_handoff(interview_reference=""))
+
+
+@pytest.mark.parametrize("name", ["Owner Name", "1st", ""])
+def test_handoff_prefill_names_are_snake_case(name):
+    with pytest.raises(ValidationError, match="interview_prefill"):
+        _flow_doc(handoff=_handoff(interview_prefill={"full_name": name}))
+    with pytest.raises(ValidationError, match="interview_prefill"):
+        _flow_doc(handoff=_handoff(interview_prefill={name: "owner_name"}))
+
+
+def test_handoff_prefill_key_must_be_a_known_variable():
+    data = _corpus_data()
+    data["flows"][FLOW_KEY]["handoff"] = _handoff(
+        interview_prefill={"full_name": "owner_name", "pet_age": "age"}
+    )
+    with pytest.raises(ValidationError, match="prefill.*unknown.*pet_age"):
+        CorpusSchema.model_validate(data)
+
+
+def test_handoff_prefill_of_known_variables_validates():
+    data = _corpus_data()
+    data["flows"][FLOW_KEY]["handoff"] = _handoff()
+    CorpusSchema.model_validate(data)
+
+
 # Source ids: the citation targets stored in user threads
 
 

@@ -46,6 +46,8 @@ class TopicFlow(BaseModel):
     enabled = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
     layout = models.JSONField(default=list, blank=True)
+    interview_reference = models.CharField(max_length=255, blank=True)
+    interview_prefill = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["order", "created_at"]

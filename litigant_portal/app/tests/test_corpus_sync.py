@@ -44,6 +44,7 @@ def _make_corpus(
     include_vestigial=True,
     alpha_sections=None,
     alpha_layout=None,
+    alpha_handoff=None,
     alpha_contacts=None,
     alpha_branding=None,
 ):
@@ -117,6 +118,7 @@ def _make_corpus(
             "name": "Standard",
             "sections": alpha_sections or [START_SECTION],
             "layout": alpha_layout or [],
+            "handoff": alpha_handoff,
             "interview": [
                 {
                     "title": "About your pet",
@@ -381,6 +383,38 @@ class LayoutSyncTests(CorpusSyncTests):
         self._sync(_make_corpus(alpha_layout=["packet", "start"]), court=None)
         self._sync(_make_corpus(), court=None)
         self.assertEqual(self._alpha_layout()[:2], ["start", "interview"])
+
+
+@pytest.mark.postgres
+class HandoffSyncTests(CorpusSyncTests):
+    HANDOFF = {
+        "interview_reference": "docassemble.pets:data/questions/license.yml",
+        "interview_prefill": {"full_name": "owner_name"},
+    }
+
+    def _alpha(self):
+        return TopicFlow.objects.get(topic__slug="pets", slug="standard")
+
+    def test_a_handoff_is_stored(self):
+        self._sync(_make_corpus(alpha_handoff=self.HANDOFF), court=None)
+        flow = self._alpha()
+        self.assertEqual(
+            flow.interview_reference, self.HANDOFF["interview_reference"]
+        )
+        self.assertEqual(flow.interview_prefill, {"full_name": "owner_name"})
+
+    def test_an_absent_handoff_is_blank(self):
+        self._sync(_make_corpus(), court=None)
+        flow = self._alpha()
+        self.assertEqual(flow.interview_reference, "")
+        self.assertEqual(flow.interview_prefill, {})
+
+    def test_dropping_the_handoff_clears_it(self):
+        self._sync(_make_corpus(alpha_handoff=self.HANDOFF), court=None)
+        self._sync(_make_corpus(), court=None)
+        flow = self._alpha()
+        self.assertEqual(flow.interview_reference, "")
+        self.assertEqual(flow.interview_prefill, {})
 
 
 @pytest.mark.postgres

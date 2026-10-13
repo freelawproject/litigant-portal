@@ -257,6 +257,7 @@ def _sync_flow(
         exclude={
             "sections",
             "layout",
+            "handoff",
             "interview",
             "packet",
             "deadlines",
@@ -264,6 +265,9 @@ def _sync_flow(
         },
     )
     flow.layout = schema.resolved_layout
+    handoff = schema.handoff
+    flow.interview_reference = handoff.interview_reference if handoff else ""
+    flow.interview_prefill = handoff.interview_prefill if handoff else {}
     flow.save()
     _warn_removed_keys(
         f"flow {topic.slug}/{slug}",
