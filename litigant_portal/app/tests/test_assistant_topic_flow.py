@@ -344,8 +344,8 @@ class AssistantSystemPromptTests(TestCase):
         court = prompt.split("## Court context")[1]
         self.assertIn(
             "### Court contacts\n"
-            "- [source:court/clerk] Clerk of Court (phone (701) 555-0100, "
-            "website https://alpha.test/clerk, address 100 Main St, Alpha, "
+            "- [source:court/clerk] Clerk of Court (phone (701) 555-0100; "
+            "website https://alpha.test/clerk; address 100 Main St, Alpha; "
             "hours Mon-Fri 8am-4pm): Call before filing.\n"
             "- [source:court/self_help] Self Help Center\n",
             court,

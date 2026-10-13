@@ -135,7 +135,7 @@ def _contact_line(contact) -> str:
     ]
     line = f"- {cited(_court_source_marker(contact.key), contact.name)}"
     if details:
-        line += f" ({', '.join(details)})"
+        line += f" ({'; '.join(details)})"
     if contact.note:
         line += f": {contact.note}"
     return line
