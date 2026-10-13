@@ -377,19 +377,18 @@ class LayoutSyncTests(CorpusSyncTests):
             topic__slug="pets", slug="standard"
         ).layout
 
+    DEFAULT_LAYOUT = [
+        "start",
+        "interview",
+        "packet",
+        "calendar",
+        "contacts",
+        "resources",
+    ]
+
     def test_an_absent_layout_stores_the_default_order(self):
         self._sync(_make_corpus(), court=None)
-        self.assertEqual(
-            self._alpha_layout(),
-            [
-                "start",
-                "interview",
-                "packet",
-                "calendar",
-                "contacts",
-                "resources",
-            ],
-        )
+        self.assertEqual(self._alpha_layout(), self.DEFAULT_LAYOUT)
 
     def test_an_authored_layout_is_stored_as_written(self):
         layout = ["packet", "start", "interview"]
@@ -399,7 +398,7 @@ class LayoutSyncTests(CorpusSyncTests):
     def test_dropping_the_layout_restores_the_default_order(self):
         self._sync(_make_corpus(alpha_layout=["packet", "start"]), court=None)
         self._sync(_make_corpus(), court=None)
-        self.assertEqual(self._alpha_layout()[:2], ["start", "interview"])
+        self.assertEqual(self._alpha_layout(), self.DEFAULT_LAYOUT)
 
 
 @pytest.mark.postgres

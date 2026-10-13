@@ -197,6 +197,12 @@ def test_form_url_is_optional():
     assert form.url == "https://a.test/f.pdf"
 
 
+def test_form_url_fits_the_column():
+    url = "https://a.test/" + "f" * 486
+    with pytest.raises(ValidationError, match="url"):
+        FormSchema(name="Pet license", fields=[], url=url)
+
+
 def test_duplicate_pdf_field_is_rejected():
     data = _corpus_data()
     data["forms"]["license"]["fields"].append(
@@ -455,6 +461,12 @@ def test_authored_layout_is_kept_as_written():
     assert flow.resolved_layout == layout
 
 
+def test_blank_layout_means_the_default_order():
+    flow = _flow_doc(layout=None)
+    assert flow.layout == []
+    assert flow.resolved_layout[:2] == ["start", "interview"]
+
+
 def test_layout_must_place_every_section():
     with pytest.raises(ValidationError, match="missing section.*fees"):
         _flow_doc(
@@ -508,17 +520,38 @@ def test_handoff_prefill_defaults_to_nothing():
     assert flow.handoff.interview_prefill == {}
 
 
-def test_handoff_reference_may_not_be_blank():
-    with pytest.raises(ValidationError, match="at least 1 character"):
-        _flow_doc(handoff=_handoff(interview_reference=""))
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "",
+        "docassemble.pets:license.yml",
+        "license.yml",
+        "https://da.test/interview?i=docassemble.pets:data/questions/l.yml",
+        "docassemble.pets:data/questions/" + "f" * 230 + ".yml",
+    ],
+    ids=["blank", "short-alias", "bare-file", "url", "over-column"],
+)
+def test_handoff_reference_is_the_full_docassemble_path(reference):
+    with pytest.raises(ValidationError, match="interview_reference"):
+        _flow_doc(handoff=_handoff(interview_reference=reference))
+
+
+@pytest.mark.parametrize("name", ["Owner Name", "1st", "", "Full_name"])
+def test_handoff_prefill_keys_are_glossary_names(name):
+    with pytest.raises(ValidationError, match="interview_prefill"):
+        _flow_doc(handoff=_handoff(interview_prefill={name: "owner_name"}))
 
 
 @pytest.mark.parametrize("name", ["Owner Name", "1st", ""])
-def test_handoff_prefill_names_are_snake_case(name):
+def test_handoff_prefill_values_are_identifiers(name):
     with pytest.raises(ValidationError, match="interview_prefill"):
         _flow_doc(handoff=_handoff(interview_prefill={"full_name": name}))
-    with pytest.raises(ValidationError, match="interview_prefill"):
-        _flow_doc(handoff=_handoff(interview_prefill={name: "owner_name"}))
+
+
+@pytest.mark.parametrize("name", ["ownerName", "_owner", "Owner1"])
+def test_handoff_prefill_values_take_any_identifier(name):
+    flow = _flow_doc(handoff=_handoff(interview_prefill={"full_name": name}))
+    assert flow.handoff.interview_prefill == {"full_name": name}
 
 
 def test_handoff_prefill_key_must_be_a_known_variable():
@@ -527,6 +560,17 @@ def test_handoff_prefill_key_must_be_a_known_variable():
         interview_prefill={"full_name": "owner_name", "pet_age": "age"}
     )
     with pytest.raises(ValidationError, match="prefill.*unknown.*pet_age"):
+        CorpusSchema.model_validate(data)
+
+
+def test_handoff_prefill_key_must_be_placed_in_the_flow():
+    data = _corpus_data()
+    flow = data["flows"][FLOW_KEY]
+    flow["interview"][0]["variables"].remove("licensed")
+    flow["handoff"] = _handoff(interview_prefill={"licensed": "has_license"})
+    with pytest.raises(
+        ValidationError, match="not on any interview page.*licensed"
+    ):
         CorpusSchema.model_validate(data)
 
 
