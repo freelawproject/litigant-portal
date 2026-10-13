@@ -369,6 +369,24 @@ class ContactKindSyncTests(CorpusSyncTests):
         )
         self.assertEqual(Contact.objects.get(key="alpha_help").kind, "clerk")
 
+    def test_a_contacts_address_and_hours_are_stored(self):
+        self._sync(
+            _make_corpus(
+                alpha_contacts=[
+                    {
+                        "id": "alpha_help",
+                        "name": "Alpha Help",
+                        "address": "100 Main St",
+                        "hours": "Mon-Fri 8am-4pm",
+                    }
+                ]
+            ),
+            court="alpha",
+        )
+        row = Contact.objects.get(key="alpha_help")
+        self.assertEqual(row.address, "100 Main St")
+        self.assertEqual(row.hours, "Mon-Fri 8am-4pm")
+
 
 @pytest.mark.postgres
 class LayoutSyncTests(CorpusSyncTests):

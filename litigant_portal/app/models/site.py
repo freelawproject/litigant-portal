@@ -69,6 +69,8 @@ class Contact(BaseModel):
     phone = models.CharField(max_length=32, blank=True)
     email = models.EmailField(blank=True)
     url = models.URLField(max_length=500, blank=True)
+    address = models.CharField(max_length=255, blank=True)
+    hours = models.CharField(max_length=255, blank=True)
     note = models.TextField(blank=True)
     # Blank for a contact the help page doesn't list (a bailiff's office,
     # a community group).

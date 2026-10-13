@@ -307,6 +307,8 @@ class ContactSchema(SourceSchema):
     phone: str = ""
     email: str = ""
     url: str = ""
+    address: str = ""
+    hours: str = ""
     note: str = ""
     kind: ContactKind | Literal[""] = ""
 
