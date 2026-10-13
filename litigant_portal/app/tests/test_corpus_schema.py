@@ -945,3 +945,11 @@ def test_a_contacts_address_and_hours_default_to_empty():
     court = CorpusSchema.model_validate(_corpus_data()).courts["north-dakota"]
     assert court.contacts[0].address == ""
     assert court.contacts[0].hours == ""
+
+
+@pytest.mark.parametrize("field", ["address", "hours"])
+def test_a_contact_field_longer_than_its_column_is_rejected(field):
+    data = _corpus_data()
+    data["courts"]["north-dakota"]["contacts"][0][field] = "x" * 256
+    with pytest.raises(ValidationError):
+        CorpusSchema.model_validate(data)
