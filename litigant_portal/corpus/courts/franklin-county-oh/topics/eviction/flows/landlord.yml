@@ -1,12 +1,24 @@
 # Eviction (Franklin County, OH), LANDLORD role. The directory locates the
 # court and topic; the file name is the flow slug. The complaint forms live
 # behind the clerk's eviction FAQ (a packet may come with #610), so there is
-# no packet and no links. Ported from the wip library flow config; source
-# copy: content/eviction-landlord.yml.
+# no packet and no links. Ported from the wip library flow config; the
+# content/ copy retires once the page renders from these rows (#1012).
 
 name: 'Filing an Eviction (Landlord)'
 enabled: true
 order: 1
+
+# The page in the order content/ shows it. No `packet`: no forms yet (#610).
+layout:
+  - overview
+  - notice_requirements
+  - interview
+  - filing_and_costs
+  - service_and_hearing
+  - after_judgment
+  - calendar
+  - contacts
+  - resources
 
 # Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
