@@ -314,6 +314,17 @@ def test_default_must_be_legal_for_the_data_type():
         )
 
 
+def test_help_text_and_required_are_optional_glossary_fields():
+    variable = VariableSchema(name="age", label="Age")
+    assert variable.help_text == ""
+    assert variable.required is False
+    variable = VariableSchema(
+        name="age", label="Age", help_text="In years.", required=True
+    )
+    assert variable.help_text == "In years."
+    assert variable.required is True
+
+
 # Glossary rules
 
 

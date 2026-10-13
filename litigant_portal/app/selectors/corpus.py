@@ -102,7 +102,9 @@ class AskedWhenSchema(BaseSchema):
 
 
 class VariableSchema(BaseSchema):
-    """Populates a ``Variable`` row."""
+    """Populates a ``Variable`` row. ``help_text`` and ``required`` are
+    glossary facts, not page ones: a variable means the same wherever it
+    is asked, so the pages that place it share both (#1014)."""
 
     name: VariableNameField
     label: str = Field(min_length=1)

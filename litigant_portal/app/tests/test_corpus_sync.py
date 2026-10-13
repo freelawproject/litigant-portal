@@ -50,7 +50,12 @@ def _make_corpus(
 ):
     """A small valid corpus: two courts, two forms, one gated variable."""
     variables = {
-        "full_name": {"name": "full_name", "label": "Full name"},
+        "full_name": {
+            "name": "full_name",
+            "label": "Full name",
+            "help_text": "As it appears on your ID.",
+            "required": True,
+        },
         "pet_kind": {
             "name": "pet_kind",
             "label": "Kind of pet",
@@ -188,6 +193,18 @@ class CorpusSyncTests(TestCase):
             mock.patch.object(services, "COURTS_DIR", self.courts_dir),
         ):
             return corpus_sync(**kwargs)
+
+
+@pytest.mark.postgres
+class VariableFieldSyncTests(CorpusSyncTests):
+    def test_help_text_and_required_reach_the_row(self):
+        self._sync(_make_corpus(), court=None)
+        full_name = Variable.objects.get(name="full_name")
+        self.assertEqual(full_name.help_text, "As it appears on your ID.")
+        self.assertTrue(full_name.required)
+        pet_kind = Variable.objects.get(name="pet_kind")
+        self.assertEqual(pet_kind.help_text, "")
+        self.assertFalse(pet_kind.required)
 
 
 @pytest.mark.postgres
