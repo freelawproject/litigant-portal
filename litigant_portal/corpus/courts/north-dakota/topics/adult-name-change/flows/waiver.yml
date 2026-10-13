@@ -12,6 +12,37 @@ name: 'Adult Name Change (Publication Waiver)'
 enabled: true
 order: 1
 
+# The page in the order content/ shows it. No `calendar`: this track has no
+# deadlines. The summary output is dropped (#1012).
+layout:
+  - overview
+  - eligibility
+  - costs
+  - criminal_history
+  - your_information_privacy
+  - interview
+  - packet
+  - publication_waiver
+  - waiver_denied
+  - form_gotchas
+  - hearing
+  - contacts
+  - resources
+  - after_order
+
+# Warm handoff to the docassemble interview that fills these forms (#547,
+# #531). Which docassemble it is sent to comes from the environment (#879).
+# Always the full data/questions path: the API accepts the short alias but
+# keys the session under the canonical path. Only reviewed answers are sent.
+# No publication date on this track.
+handoff:
+  interview_reference: 'docassemble.ndnamechange:data/questions/petition-waiver.yml'
+  interview_prefill:
+    first_name: current_first
+    middle_name: current_middle
+    last_name: current_last
+    county: residence_county
+
 # Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
   - id: overview
@@ -105,6 +136,7 @@ sections:
 # lives on the page description.
 interview:
   - title: 'Your current legal name'
+    description: 'As it appears on your ID.'
     variables:
       - first_name
       - middle_name
@@ -115,6 +147,7 @@ interview:
       - name_change_requested_middle
       - name_change_requested_last
   - title: 'Where you live'
+    description: 'The county where you have lived for the past 6 months is the county you file in.'
     variables:
       - street_address
       - city
