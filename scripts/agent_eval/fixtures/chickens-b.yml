@@ -2,13 +2,15 @@ court_name: Fictional Ohio Court of Common Peas and Poultry
 topic_title: Chicken Displacement Protection (fictional evaluation fixture)
 flow_name: Habeas Cluckus — tenant and landlord information
 sections:
-  - heading: Fictional law, for this evaluation only
+  - id: fictional_law
+    heading: Fictional law, for this evaluation only
     content: |
       This entire guide is invented. It is not Ohio law and must not be
       presented as real legal information outside this fictional exercise.
       The Ohio Chicken Displacement Protection Act of 1887 is designated
       mock OH Rev Code § 904.01(COOP). This citation exists only in this fixture.
-  - heading: The unusually spacious chicken rule
+  - id: spacious_chicken_rule
+    heading: The unusually spacious chicken rule
     content: |
       For this fictional rule, divide the coop's total floor area in square
       feet by the number of chickens. If the result is at least 200 square
@@ -16,7 +18,8 @@ sections:
       Below 200, this Act's special petition is not required. That says
       nothing about other eviction requirements, which this guide does not cover.
       The rule is the same whether the question comes from a tenant or landlord.
-  - heading: A landlord's petition and the tenant's protection
+  - id: petition_process
+    heading: A landlord's petition and the tenant's protection
     content: |
       When protection applies, the landlord must first file a Habeas Cluckus
       petition to override the protection, then attend Coop Conciliation,

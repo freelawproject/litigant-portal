@@ -10,8 +10,10 @@ name: 'Adult Name Change (Publication Required)'
 enabled: true
 order: 0
 
+# Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
-  - heading: 'Changing your legal name in North Dakota'
+  - id: overview
+    heading: 'Changing your legal name in North Dakota'
     content: |
       This tool gives you the forms you need, explains what to expect, and shows you what comes next.
 
@@ -33,13 +35,15 @@ sections:
 
       This process follows North Dakota Century Code Chapter 32-28, linked in the resources at the end of this page.
 
-  - heading: 'Filing fee'
+  - id: filing_fee
+    heading: 'Filing fee'
     content: |
       Filing this petition costs $160. If you cannot pay this fee, you can ask the court to waive it. The fee-waiver forms and instructions are linked in the resources at the end of this page.
 
       File the fee-waiver request at the same time as your name-change documents, and keep a copy for your records.
 
-  - heading: 'Criminal history background check'
+  - id: criminal_history
+    heading: 'Criminal history background check'
     content: |
       The judge assigned to your case must determine whether you have a criminal record before granting a name change, and may require you to complete a criminal history background check at your own cost. Some judges require this for every petitioner. Others decide after reviewing your Petition and Declaration.
 
@@ -47,27 +51,67 @@ sections:
 
       If a background check is required, you can go to edo.cjis.gov to complete it. If you have a felony conviction, North Dakota law presumes your request is not made in good faith unless you show the judge clear and convincing evidence otherwise. This does not mean your petition will be denied. The Declaration form asks you to address this directly.
 
-  - heading: 'Where to file'
+  - id: where_to_file
+    heading: 'Where to file'
     content: |
       File in the district court for the county where you have lived for the past 6 months. Your driver's license, lease, or a utility bill usually shows this. The court locator link in the contacts at the end of this page can also help.
 
-  - heading: 'Before you sign'
+  - id: publication_waiver
+    heading: 'Asking the judge to skip the newspaper notice'
+    content: |
+      North Dakota law requires you to publish notice of your name change and wait 30 days before a judge can decide. Before you publish, you can ask the judge to skip that step.
+
+      There are two reasons the law allows, and only these two:
+      - You are changing only your first or middle name, and your last name stays the same.
+      - You are a victim of domestic violence, as North Dakota law defines it.
+
+      You can give both reasons if both are true. Changing your last name does not rule out the second reason.
+
+      North Dakota law defines domestic violence as physical harm, bodily injury, sexual activity compelled by physical force, assault, or being put in fear of any of those, not committed in self-defense, by a family or household member.
+
+      You ask for this on the Petition, and the Declaration carries your explanation if you ask on the basis of domestic violence. The Declaration says you must give evidence that satisfies the judge. North Dakota's materials do not say what evidence is enough, so this one is the judge's call on your particular facts rather than a rule you can check yourself.
+
+      The packet this page builds assumes you are publishing, so it does not request the waiver. To ask for it, use the publication waiver version of this tool. That one builds the Petition that makes the request, whichever part of your name you are changing.
+
+      If the judge grants the waiver, you skip publication and the 30-day wait. If the judge denies it, the court notifies you, and you publish the notice and continue from there. Nothing you have already filed is wasted.
+
+  - id: publishing_your_notice
+    heading: 'Publishing your notice'
+    content: |
+      If you are publishing, this step comes first, before you fill out the rest of your forms.
+
+      How it works:
+      - You arrange the publication yourself. Contact the official newspaper of the county where you will file.
+      - The notice can run in a print edition, an e-edition, or both.
+      - After it runs, the newspaper gives you an Affidavit of Publication or a Declaration of Publication. Keep a copy and file the original with the court.
+      - Then wait 30 calendar days, counting from the day after publication, before you complete the rest of your forms. The Petition and Declaration ask whether anyone objected during that window, so you cannot answer them accurately until it has passed.
+
+      Your filing is not complete without the Affidavit or Declaration of Publication. It is the document that proves you met the 30-day requirement.
+
+      North Dakota law does not say how many times the notice has to run. The statute requires only that 30 days of notice be given before a judge can act. The North Dakota Legal Self Help Center cannot interpret this, so ask the newspaper and the Clerk of Court what your county expects before you pay for publication. Newspapers handle these notices routinely and can tell you what they normally run.
+
+  - id: form_gotchas
+    heading: 'Before you sign'
     content: |
       A few things in North Dakota's process are easy to miss, and each one has a real consequence if it is missed:
 
       - The case number stays blank. The clerk assigns it when you file.
       - Only the judge signs the Proposed Order.
       - The Confidential Information Form is sealed and stays out of the public file. A copy must be attached to every certified copy of your Order, or North Dakota Vital Records will reject your updates later. Keep copies.
+      - If you published, the newspaper's Affidavit or Declaration of Publication is filed with everything else. Without it, the court has nothing showing the 30-day requirement was met.
 
-  - heading: 'Will there be a hearing?'
+  - id: hearing
+    heading: 'Will there be a hearing?'
     content: |
       North Dakota does not presumptively require a hearing for a name change, but the judge may decide one is needed. If a hearing is scheduled, the Clerk of District Court will send notice with the date, time, and location.
 
-  - heading: 'If someone objects to your petition'
+  - id: objections
+    heading: 'If someone objects to your petition'
     content: |
       During the 30 days after publication, someone may serve a written objection to your name change on you. If that happens, keep a copy for your records and file the original along with your other documents. The clerk will tell you how the judge wants it handled from there.
 
-  - heading: 'After the judge signs your Order'
+  - id: after_order
+    heading: 'After the judge signs your Order'
     content: |
       Ask the clerk for at least three certified copies of your Order. Certified copies cost $10 for the first and $5 for each additional copy requested at the same time, and each one needs the Confidential Information Form attached.
 
@@ -136,19 +180,25 @@ packet:
       value: true
 
 deadlines:
-  - label: '30-day publication waiting period ends'
+  - id: publication_wait
+    label: '30-day publication waiting period ends'
     description: 'Under North Dakota law the judge may not consider your petition until 30 days after the notice is published. After this date, check with the clerk about judge review.'
     offset_days: 30
     offset_from: name_change_publication_date
 
 links:
-  - name: 'Notice of Petition for Name Change'
+  - id: notice_pdf
+    name: 'Notice of Petition for Name Change'
     url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Notice-of-name-change-adult.pdf'
-  - name: 'Petition for Name Change'
+  - id: petition_pdf
+    name: 'Petition for Name Change'
     url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Petition-Name-Change-Adult.pdf'
-  - name: 'Declaration in Support of Petition'
+  - id: declaration_pdf
+    name: 'Declaration in Support of Petition'
     url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Declaration-name-change-adult.pdf'
-  - name: 'Confidential Information Form'
+  - id: confidential_info_pdf
+    name: 'Confidential Information Form'
     url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Confidential-info-form-adult.pdf'
-  - name: 'Proposed Order for Name Change'
+  - id: order_pdf
+    name: 'Proposed Order for Name Change'
     url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Name%20Change/Order-name-change-adult.pdf'

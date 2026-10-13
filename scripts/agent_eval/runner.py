@@ -29,6 +29,7 @@ from .schema import (
     Config,
     fingerprint,
     read_cases,
+    runs_on,
     verify_references,
     write_json,
 )
@@ -129,8 +130,11 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
             for name in ("litellm", "pydantic", "PyYAML", "matplotlib")
         },
         "python": sys.version,
-        "planned_attempts": len(cases)
-        * len(config.systems)
+        "planned_attempts": sum(
+            runs_on(system, case.history)
+            for case in cases
+            for system in config.systems
+        )
         * len(config.models)
         * config.repetitions,
         "attempts": [],
@@ -324,14 +328,16 @@ def run_suite(config: Config, output: Path) -> Path:
             for variant in dict.fromkeys(case.fixture for case in cases):
                 if remote:
                     remote.request("fixture", variant=variant)
-                jobs = list(
-                    itertools.product(
+                jobs = [
+                    job
+                    for job in itertools.product(
                         [case for case in cases if case.fixture == variant],
                         config.systems,
                         config.models,
                         range(1, config.repetitions + 1),
                     )
-                )
+                    if runs_on(job[1], job[0].history)
+                ]
                 rng.shuffle(jobs)
                 for case, system, model, repeat in jobs:
                     relative = (
