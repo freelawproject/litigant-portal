@@ -131,12 +131,13 @@ sections:
 
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
-# One page per docassemble interview page. The waiver-reasons page replaces
-# the standard track's publication page; its select-every-reason instruction
-# lives on the page description.
+# One page per docassemble interview page (title = the page's question,
+# description = its subquestion, or the ND context content/ carried as
+# help text). The waiver-reasons page replaces the standard track's
+# publication page; its select-every-reason instruction lives on the page
+# description.
 interview:
   - title: 'Your current legal name'
-    description: 'As it appears on your ID.'
     variables:
       - first_name
       - middle_name
@@ -147,7 +148,7 @@ interview:
       - name_change_requested_middle
       - name_change_requested_last
   - title: 'Where you live'
-    description: 'The county where you have lived for the past 6 months is the county you file in.'
+    description: 'The North Dakota county where you have lived for the past 6 months is the county you file in.'
     variables:
       - street_address
       - city
