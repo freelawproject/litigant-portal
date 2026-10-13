@@ -15,6 +15,7 @@ from litigant_portal.app.selectors.corpus import (
     CorpusSchema,
     FlowSchema,
     FormFieldMappingSchema,
+    FormSchema,
     VariableSchema,
     VariablesSchema,
     corpus_load,
@@ -187,6 +188,21 @@ def test_string_checked_when_is_rejected():
         FormFieldMappingSchema(pdf_field="Check Box1", checked_when="dog")
 
 
+def test_form_url_is_optional():
+    form = FormSchema(name="Pet license", fields=[])
+    assert form.url == ""
+    form = FormSchema(
+        name="Pet license", fields=[], url="https://a.test/f.pdf"
+    )
+    assert form.url == "https://a.test/f.pdf"
+
+
+def test_form_url_fits_the_column():
+    url = "https://a.test/" + "f" * 486
+    with pytest.raises(ValidationError, match="url"):
+        FormSchema(name="Pet license", fields=[], url=url)
+
+
 def test_duplicate_pdf_field_is_rejected():
     data = _corpus_data()
     data["forms"]["license"]["fields"].append(
@@ -304,6 +320,17 @@ def test_default_must_be_legal_for_the_data_type():
         )
 
 
+def test_help_text_and_required_are_optional_glossary_fields():
+    variable = VariableSchema(name="age", label="Age")
+    assert variable.help_text == ""
+    assert variable.required is False
+    variable = VariableSchema(
+        name="age", label="Age", help_text="In years.", required=True
+    )
+    assert variable.help_text == "In years."
+    assert variable.required is True
+
+
 # Glossary rules
 
 
@@ -405,11 +432,155 @@ def test_variable_placed_on_two_pages_is_rejected():
         )
 
 
-# Source ids: the citation targets stored in user threads
-
-
 def _section(id, heading="H"):
     return {"id": id, "heading": heading, "content": "Read."}
+
+
+# Layout: the page's order of sections and blocks
+
+
+def test_layout_defaults_to_sections_then_blocks():
+    flow = _flow_doc(sections=[_section("start"), _section("fees")])
+    assert flow.layout == []
+    assert flow.resolved_layout == [
+        "start",
+        "fees",
+        "interview",
+        "packet",
+        "calendar",
+        "contacts",
+        "resources",
+    ]
+
+
+def test_authored_layout_is_kept_as_written():
+    layout = ["start", "packet", "fees", "interview"]
+    flow = _flow_doc(
+        sections=[_section("start"), _section("fees")], layout=layout
+    )
+    assert flow.resolved_layout == layout
+
+
+def test_blank_layout_means_the_default_order():
+    flow = _flow_doc(layout=None)
+    assert flow.layout == []
+    assert flow.resolved_layout[:2] == ["start", "interview"]
+
+
+def test_layout_must_place_every_section():
+    with pytest.raises(ValidationError, match="missing section.*fees"):
+        _flow_doc(
+            sections=[_section("start"), _section("fees")], layout=["start"]
+        )
+
+
+def test_layout_places_a_section_once():
+    with pytest.raises(ValidationError, match="more than once.*start"):
+        _flow_doc(layout=["start", "start"])
+
+
+def test_layout_places_a_block_at_most_once():
+    with pytest.raises(ValidationError, match="more than once.*packet"):
+        _flow_doc(layout=["start", "packet", "packet"])
+
+
+def test_layout_rejects_an_unknown_name():
+    with pytest.raises(ValidationError, match="unknown.*summary"):
+        _flow_doc(layout=["start", "summary"])
+
+
+def test_section_id_may_not_be_a_block_name():
+    with pytest.raises(ValidationError, match="reserved.*packet"):
+        _flow_doc(sections=[_section("packet")])
+
+
+# Handoff: the docassemble interview a flow's packet opens
+
+
+def _handoff(**overrides):
+    return {
+        "interview_reference": "docassemble.pets:data/questions/license.yml",
+        "interview_prefill": {"full_name": "owner_name"},
+        **overrides,
+    }
+
+
+def test_handoff_is_optional():
+    assert _flow_doc().handoff is None
+
+
+def test_handoff_keeps_its_reference_and_prefill():
+    flow = _flow_doc(handoff=_handoff())
+    assert flow.handoff.interview_reference.startswith("docassemble.pets:")
+    assert flow.handoff.interview_prefill == {"full_name": "owner_name"}
+
+
+def test_handoff_prefill_defaults_to_nothing():
+    flow = _flow_doc(handoff=_handoff(interview_prefill=None))
+    assert flow.handoff.interview_prefill == {}
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        "",
+        "docassemble.pets:license.yml",
+        "license.yml",
+        "https://da.test/interview?i=docassemble.pets:data/questions/l.yml",
+        "docassemble.pets:data/questions/" + "f" * 230 + ".yml",
+    ],
+    ids=["blank", "short-alias", "bare-file", "url", "over-column"],
+)
+def test_handoff_reference_is_the_full_docassemble_path(reference):
+    with pytest.raises(ValidationError, match="interview_reference"):
+        _flow_doc(handoff=_handoff(interview_reference=reference))
+
+
+@pytest.mark.parametrize("name", ["Owner Name", "1st", "", "Full_name"])
+def test_handoff_prefill_keys_are_glossary_names(name):
+    with pytest.raises(ValidationError, match="interview_prefill"):
+        _flow_doc(handoff=_handoff(interview_prefill={name: "owner_name"}))
+
+
+@pytest.mark.parametrize("name", ["Owner Name", "1st", ""])
+def test_handoff_prefill_values_are_identifiers(name):
+    with pytest.raises(ValidationError, match="interview_prefill"):
+        _flow_doc(handoff=_handoff(interview_prefill={"full_name": name}))
+
+
+@pytest.mark.parametrize("name", ["ownerName", "_owner", "Owner1"])
+def test_handoff_prefill_values_take_any_identifier(name):
+    flow = _flow_doc(handoff=_handoff(interview_prefill={"full_name": name}))
+    assert flow.handoff.interview_prefill == {"full_name": name}
+
+
+def test_handoff_prefill_key_must_be_a_known_variable():
+    data = _corpus_data()
+    data["flows"][FLOW_KEY]["handoff"] = _handoff(
+        interview_prefill={"full_name": "owner_name", "pet_age": "age"}
+    )
+    with pytest.raises(ValidationError, match="prefill.*unknown.*pet_age"):
+        CorpusSchema.model_validate(data)
+
+
+def test_handoff_prefill_key_must_be_placed_in_the_flow():
+    data = _corpus_data()
+    flow = data["flows"][FLOW_KEY]
+    flow["interview"][0]["variables"].remove("licensed")
+    flow["handoff"] = _handoff(interview_prefill={"licensed": "has_license"})
+    with pytest.raises(
+        ValidationError, match="not on any interview page.*licensed"
+    ):
+        CorpusSchema.model_validate(data)
+
+
+def test_handoff_prefill_of_known_variables_validates():
+    data = _corpus_data()
+    data["flows"][FLOW_KEY]["handoff"] = _handoff()
+    CorpusSchema.model_validate(data)
+
+
+# Source ids: the citation targets stored in user threads
 
 
 def test_section_without_an_id_is_rejected():

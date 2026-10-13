@@ -43,12 +43,19 @@ def _make_corpus(
     include_beta=True,
     include_vestigial=True,
     alpha_sections=None,
+    alpha_layout=None,
+    alpha_handoff=None,
     alpha_contacts=None,
     alpha_branding=None,
 ):
     """A small valid corpus: two courts, two forms, one gated variable."""
     variables = {
-        "full_name": {"name": "full_name", "label": "Full name"},
+        "full_name": {
+            "name": "full_name",
+            "label": "Full name",
+            "help_text": "As it appears on your ID.",
+            "required": True,
+        },
         "pet_kind": {
             "name": "pet_kind",
             "label": "Kind of pet",
@@ -75,6 +82,7 @@ def _make_corpus(
     forms = {
         "license": {
             "name": "Pet license",
+            "url": "https://a.test/license.pdf",
             "fields": [
                 {"pdf_field": "Name", "template": "{full_name}"},
                 {
@@ -114,6 +122,8 @@ def _make_corpus(
         ("alpha", "pets", "standard"): {
             "name": "Standard",
             "sections": alpha_sections or [START_SECTION],
+            "layout": alpha_layout or [],
+            "handoff": alpha_handoff,
             "interview": [
                 {
                     "title": "About your pet",
@@ -186,6 +196,18 @@ class CorpusSyncTests(TestCase):
 
 
 @pytest.mark.postgres
+class VariableFieldSyncTests(CorpusSyncTests):
+    def test_help_text_and_required_reach_the_row(self):
+        self._sync(_make_corpus(), court=None)
+        full_name = Variable.objects.get(name="full_name")
+        self.assertEqual(full_name.help_text, "As it appears on your ID.")
+        self.assertTrue(full_name.required)
+        pet_kind = Variable.objects.get(name="pet_kind")
+        self.assertEqual(pet_kind.help_text, "")
+        self.assertFalse(pet_kind.required)
+
+
+@pytest.mark.postgres
 class IdempotencyTests(CorpusSyncTests):
     def _snapshot(self):
         return {
@@ -217,6 +239,12 @@ class IdempotencyTests(CorpusSyncTests):
         self._sync(corpus, court=None)
         for form in Form.objects.all():
             self.assertEqual(form.file.name, f"forms/{form.slug}.pdf")
+
+    def test_form_url_is_stored_and_blank_when_absent(self):
+        self._sync(_make_corpus(), court=None)
+        urls = dict(Form.objects.values_list("slug", "url"))
+        self.assertEqual(urls["license"], "https://a.test/license.pdf")
+        self.assertEqual(urls["addendum"], "")
 
     def test_gate_wiring(self):
         self._sync(_make_corpus(), court=None)
@@ -340,6 +368,69 @@ class ContactKindSyncTests(CorpusSyncTests):
             court="alpha",
         )
         self.assertEqual(Contact.objects.get(key="alpha_help").kind, "clerk")
+
+
+@pytest.mark.postgres
+class LayoutSyncTests(CorpusSyncTests):
+    def _alpha_layout(self):
+        return TopicFlow.objects.get(
+            topic__slug="pets", slug="standard"
+        ).layout
+
+    DEFAULT_LAYOUT = [
+        "start",
+        "interview",
+        "packet",
+        "calendar",
+        "contacts",
+        "resources",
+    ]
+
+    def test_an_absent_layout_stores_the_default_order(self):
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(self._alpha_layout(), self.DEFAULT_LAYOUT)
+
+    def test_an_authored_layout_is_stored_as_written(self):
+        layout = ["packet", "start", "interview"]
+        self._sync(_make_corpus(alpha_layout=layout), court=None)
+        self.assertEqual(self._alpha_layout(), layout)
+
+    def test_dropping_the_layout_restores_the_default_order(self):
+        self._sync(_make_corpus(alpha_layout=["packet", "start"]), court=None)
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(self._alpha_layout(), self.DEFAULT_LAYOUT)
+
+
+@pytest.mark.postgres
+class HandoffSyncTests(CorpusSyncTests):
+    HANDOFF = {
+        "interview_reference": "docassemble.pets:data/questions/license.yml",
+        "interview_prefill": {"full_name": "owner_name"},
+    }
+
+    def _alpha(self):
+        return TopicFlow.objects.get(topic__slug="pets", slug="standard")
+
+    def test_a_handoff_is_stored(self):
+        self._sync(_make_corpus(alpha_handoff=self.HANDOFF), court=None)
+        flow = self._alpha()
+        self.assertEqual(
+            flow.interview_reference, self.HANDOFF["interview_reference"]
+        )
+        self.assertEqual(flow.interview_prefill, {"full_name": "owner_name"})
+
+    def test_an_absent_handoff_is_blank(self):
+        self._sync(_make_corpus(), court=None)
+        flow = self._alpha()
+        self.assertEqual(flow.interview_reference, "")
+        self.assertEqual(flow.interview_prefill, {})
+
+    def test_dropping_the_handoff_clears_it(self):
+        self._sync(_make_corpus(alpha_handoff=self.HANDOFF), court=None)
+        self._sync(_make_corpus(), court=None)
+        flow = self._alpha()
+        self.assertEqual(flow.interview_reference, "")
+        self.assertEqual(flow.interview_prefill, {})
 
 
 @pytest.mark.postgres

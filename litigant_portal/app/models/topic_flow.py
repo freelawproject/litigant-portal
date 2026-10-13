@@ -45,6 +45,9 @@ class TopicFlow(BaseModel):
     name = models.CharField(max_length=255)
     enabled = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
+    layout = models.JSONField(default=list, blank=True)
+    interview_reference = models.CharField(max_length=255, blank=True)
+    interview_prefill = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ["order", "created_at"]
@@ -203,6 +206,7 @@ class Form(BaseModel):
     slug = models.SlugField(max_length=64, unique=True)
     name = models.CharField(max_length=255)
     file = models.FileField(upload_to="forms/")
+    url = models.URLField(max_length=500, blank=True)
 
     class Meta:
         ordering = ["slug"]

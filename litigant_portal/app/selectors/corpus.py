@@ -12,6 +12,7 @@ from pydantic import (
     ConfigDict,
     Field,
     ValidationError,
+    field_validator,
     model_validator,
 )
 from pypdf import PdfReader
@@ -41,6 +42,31 @@ TEMPLATE_VARIABLE_PATTERN = re.compile(r"\{([a-z0-9_]+)(?::[^}]*)?\}")
 
 SlugField = Annotated[str, Field(pattern=SLUG_PATTERN.pattern)]
 VariableNameField = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$")]
+
+
+InterviewReferenceField = Annotated[
+    str,
+    Field(
+        pattern=r"^docassemble\.[A-Za-z_][A-Za-z0-9_]*"
+        r":data/questions/[A-Za-z0-9_\-./]+\.yml$",
+        max_length=255,
+    ),
+]
+
+InterviewVariableField = Annotated[
+    str, Field(pattern=r"^[A-Za-z_][A-Za-z0-9_]*$")
+]
+
+
+def _none_is_empty(empty):
+    """A before-validator: a bare YAML key (``layout:``) reads as None and
+    means the same as leaving it out."""
+
+    def validate(cls, value):
+        return empty() if value is None else value
+
+    return classmethod(validate)
+
 
 COURT_SOURCE_SLUG = "court"
 
@@ -101,7 +127,9 @@ class AskedWhenSchema(BaseSchema):
 
 
 class VariableSchema(BaseSchema):
-    """Populates a ``Variable`` row."""
+    """Populates a ``Variable`` row. ``help_text`` and ``required`` are
+    glossary facts, not page ones: a variable means the same wherever it
+    is asked, so the pages that place it share both (#1014)."""
 
     name: VariableNameField
     label: str = Field(min_length=1)
@@ -250,9 +278,11 @@ class FormFieldMappingSchema(BaseSchema):
 
 
 class FormSchema(BaseSchema):
-    """Populates a ``Form`` row."""
+    """Populates a ``Form`` row. ``url`` is the court's own copy of the
+    blank form, for a litigant who wants it from the source."""
 
     name: str = Field(min_length=1)
+    url: str = Field(default="", max_length=500)
     fields: list[FormFieldMappingSchema]
 
     @model_validator(mode="after")
@@ -430,23 +460,58 @@ class LinkSchema(SourceSchema):
     url: str = Field(min_length=1)
 
 
+class HandoffSchema(BaseSchema):
+    """Populates ``TopicFlow.interview_reference`` and
+    ``interview_prefill``: the docassemble interview the packet opens, and
+    which glossary variables are sent as which interview variables."""
+
+    interview_reference: InterviewReferenceField
+    interview_prefill: dict[VariableNameField, InterviewVariableField] = Field(
+        default_factory=dict
+    )
+
+    _prefill_none = field_validator("interview_prefill", mode="before")(
+        _none_is_empty(dict)
+    )
+
+
+LAYOUT_BLOCKS = ("interview", "packet", "calendar", "contacts", "resources")
+
+
 class FlowSchema(BaseSchema):
-    """Populates a ``TopicFlow`` row."""
+    """Populates a ``TopicFlow`` row. ``layout`` orders the page: section
+    ids and block names, every section exactly once. Absent, the page is
+    every section in order and then the blocks."""
 
     name: str = Field(min_length=1)
     enabled: bool = False
     order: int = 0
     sections: list[SectionSchema] = Field(min_length=1)
+    layout: list[SlugField] = []
+    handoff: HandoffSchema | None = None
     interview: list[InterviewPageSchema] = []
     packet: list[PacketEntrySchema] = []
     deadlines: list[DeadlineSchema] = []
     links: list[LinkSchema] = []
+
+    _layout_none = field_validator("layout", mode="before")(
+        _none_is_empty(list)
+    )
+
+    @property
+    def resolved_layout(self) -> list[str]:
+        """The authored layout, or the default when none is authored."""
+        return list(self.layout) or [
+            *(s.id for s in self.sections),
+            *LAYOUT_BLOCKS,
+        ]
 
     @model_validator(mode="after")
     def _unique_source_ids(self):
         """Validates:
         - section, deadline, link ids and packet form slugs are unique
           within the flow (a packet entry cites its form slug)
+        - no section takes a block name, since layout names both
         """
         ids = (
             [s.id for s in self.sections]
@@ -455,6 +520,35 @@ class FlowSchema(BaseSchema):
             + sorted({entry.form for entry in self.packet})
         )
         _duplicate_ids("flow", ids)
+        reserved = sorted({s.id for s in self.sections} & set(LAYOUT_BLOCKS))
+        if reserved:
+            raise ValueError(
+                f"section ids reserved for layout blocks: {reserved}"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _layout_resolves(self):
+        """Validates, when a layout is authored:
+        - every name is a section id or a block name
+        - every section id appears exactly once
+        - every block name appears at most once
+        """
+        if not self.layout:
+            return self
+        section_ids = {s.id for s in self.sections}
+        known = section_ids | set(LAYOUT_BLOCKS)
+        unknown = sorted(set(self.layout) - known)
+        if unknown:
+            raise ValueError(f"layout names unknown entries: {unknown}")
+        repeated = sorted(
+            {name for name in self.layout if self.layout.count(name) > 1}
+        )
+        if repeated:
+            raise ValueError(f"layout places more than once: {repeated}")
+        missing = sorted(section_ids - set(self.layout))
+        if missing:
+            raise ValueError(f"layout is missing sections: {missing}")
         return self
 
     @model_validator(mode="after")
@@ -576,9 +670,11 @@ class CorpusSchema(BaseSchema):
         """Validates, per flow:
         - packet entries name known forms
         - interview pages place known variables
+        - handoff prefill keys are known variables
         - condition variables exist and their values are legal
         - deadline offset_from names a date variable
-        - every consumed variable is placed in the interview
+        - every consumed variable (by a form, a deadline or the handoff
+          prefill) is placed in the interview
         - gate variables are placed before the variables they gate
         - condition variables are placed before variables only their
           conditional forms consume
@@ -605,10 +701,19 @@ class CorpusSchema(BaseSchema):
                 raise ValueError(
                     f"flow {label}: interview places unknown variable {name}"
                 )
-
         consumed: set[str] = set()
         unconditional: set[str] = set()
         conditional: list[tuple[str, set[str]]] = []
+        if flow.handoff is not None:
+            prefilled = set(flow.handoff.interview_prefill)
+            unknown = sorted(prefilled - set(variables))
+            if unknown:
+                raise ValueError(
+                    f"flow {label}: handoff prefill names unknown "
+                    f"variables {unknown}"
+                )
+            consumed |= prefilled
+            unconditional |= prefilled
         for entry in flow.packet:
             form_names: set[str] = set()
             for mapping in self.forms[entry.form].fields:
