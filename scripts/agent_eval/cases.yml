@@ -505,7 +505,7 @@
   requires_escalation: false
   expects_one_question: true
 - id: nd-shape-volunteered-facts
-  group: real
+  group: conversation
   court: north-dakota
   topic: adult-name-change
   history:
@@ -525,7 +525,7 @@
   requires_escalation: false
   expects_one_question: true
 - id: nd-shape-mid-interview
-  group: real
+  group: conversation
   court: north-dakota
   topic: adult-name-change
   history:
