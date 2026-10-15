@@ -141,6 +141,14 @@ def contains_evidence(answer: str, evidence: str) -> bool:
     return not evidence or found
 
 
+def ends_with_question(answer: str) -> bool:
+    """
+    Whether the last line asks a question, ignoring markdown emphasis.
+    """
+    lines = [line.strip() for line in answer.splitlines() if line.strip()]
+    return bool(lines) and lines[-1].rstrip("*_` ").endswith("?")
+
+
 def validate_grade(
     grade: Grade, case: Case, answer: str, *, evidence_verified=False
 ) -> list[dict]:
@@ -164,9 +172,9 @@ def validate_grade(
                 raise InvalidGrade(
                     "reply_shape", "Judge invented a reply shape requirement."
                 )
-            # Only a missing question is an omission; the other shape
-            # failures point at passages.
-            if not failure["evidence"] and "?" in answer:
+            # Only a missing closing question is an omission; the other
+            # shape failures point at passages.
+            if not failure["evidence"] and ends_with_question(answer):
                 raise InvalidGrade(
                     "missing_evidence",
                     "A reply_shape flag needs the passages with the questions.",
@@ -182,12 +190,12 @@ def validate_grade(
                 "deal_breaker_evidence",
                 "Deal-breaker evidence is not in the answer.",
             )
-    if case.expects_one_question and "?" not in answer:
+    if case.expects_one_question and not ends_with_question(answer):
         failures.append(
             {
                 "category": "reply_shape",
                 "evidence": "",
-                "explanation": "The reply asks no question.",
+                "explanation": "The reply does not end with a question.",
                 "check": "question presence",
             }
         )
