@@ -59,6 +59,9 @@ deadlines:
     description: 'If you choose defensive driving school, the class must be finished at least 7 days before your court date. With an extension, it is 7 days before the new date.'
 
 resources:
+  - id: azcourts_drive
+    label: "The Arizona Supreme Court's defensive driving program page"
+    url: 'https://www.azcourts.gov/drive'
   - id: azdrive
     label: 'Find a certified defensive driving school (azdrive.com)'
     url: 'https://www.azdrive.com'
@@ -106,7 +109,7 @@ sections:
       - id: traffic_arraignment_date
         label: 'Your court date'
         type: date
-        help_text: 'Printed on your ticket, sometimes called the arraignment date. Not sure? Look up your case online or call the court.'
+        help_text: 'Printed on your ticket, sometimes called the arraignment date. Not sure? Ask the court named on your ticket.'
 
   - kind: info
     id: your_options
@@ -244,5 +247,6 @@ sections:
     id: resources_links
     heading: 'Arizona resources'
     resource_ids:
+      - azcourts_drive
       - azdrive
       - violationinfo

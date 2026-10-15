@@ -11,11 +11,12 @@ name: 'Arizona'
 court_name: 'Arizona courts'
 jurisdiction_level: state
 state: AZ
-official_url: 'https://www.azcourts.gov/drive'
+# No official_url: the Help page and the chat present it as the handling
+# court's website, and the handling court varies by ticket.
 
 # Header art (#979): the Arizona Supreme Court seal, resized from the SME
 # delivery (corpus-sources/arizona/branding/). The flow launches under the
-# AOC's name at azcourts.gov/drive.
+# AOC's name.
 branding:
   name: 'Arizona Supreme Court'
   logo: branding/logo.png
@@ -34,6 +35,9 @@ contacts:
   # TODO(source): an Arizona legal-aid / self-help contact (e.g. AZLawHelp, Community Legal Services) is not in the bundle; confirm before adding.
 
 resources:
+  - id: azcourts_drive
+    label: "The Arizona Supreme Court's defensive driving program page"
+    url: 'https://www.azcourts.gov/drive'
   - id: azdrive
     label: 'Find a certified defensive driving school (azdrive.com)'
     url: 'https://www.azdrive.com'
