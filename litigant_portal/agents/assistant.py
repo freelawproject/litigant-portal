@@ -128,12 +128,14 @@ def _contact_line(contact) -> str:
             ("phone", contact.phone),
             ("email", contact.email),
             ("website", contact.url),
+            ("address", contact.address),
+            ("hours", contact.hours),
         )
         if value
     ]
     line = f"- {cited(_court_source_marker(contact.key), contact.name)}"
     if details:
-        line += f" ({', '.join(details)})"
+        line += f" ({'; '.join(details)})"
     if contact.note:
         line += f": {contact.note}"
     return line
