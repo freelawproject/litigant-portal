@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 from typing import Annotated, Literal
+from urllib.parse import urlsplit
 
 import yaml
 from django.conf import settings
@@ -285,6 +286,19 @@ class FormSchema(BaseSchema):
     url: str = Field(default="", max_length=500)
     fields: list[FormFieldMappingSchema]
 
+    @field_validator("url")
+    @classmethod
+    def _absolute_http(cls, value):
+        """Blank or an absolute http(s) url: the row's ``URLField`` never
+        runs on sync, so the schema is the only check before the page
+        shows it as a link."""
+        if value == "":
+            return value
+        parts = urlsplit(value)
+        if parts.scheme not in ("http", "https") or not parts.netloc:
+            raise ValueError("url must be absolute, http or https")
+        return value
+
     @model_validator(mode="after")
     def _unique_pdf_fields(self):
         """Validates:
@@ -535,6 +549,8 @@ class FlowSchema(BaseSchema):
         - every name is a section id or a block name
         - every section id appears exactly once
         - every block name appears at most once
+        - a block the flow has content for (interview pages, packet
+          entries, deadlines) appears, or that content never renders
         """
         if not self.layout:
             return self
@@ -551,6 +567,20 @@ class FlowSchema(BaseSchema):
         missing = sorted(section_ids - set(self.layout))
         if missing:
             raise ValueError(f"layout is missing sections: {missing}")
+        filled = {
+            "interview": self.interview,
+            "packet": self.packet,
+            "calendar": self.deadlines,
+        }
+        unplaced = sorted(
+            block
+            for block, content in filled.items()
+            if content and block not in self.layout
+        )
+        if unplaced:
+            raise ValueError(
+                f"layout is missing blocks with content: {unplaced}"
+            )
         return self
 
     @model_validator(mode="after")

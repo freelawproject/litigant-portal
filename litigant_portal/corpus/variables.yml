@@ -25,6 +25,7 @@ variables:
     label: 'First name'
     global: true
     required: true
+    help_text: 'Your current legal name, as it appears on your ID.'
 
   - name: middle_name
     label: 'Middle name(s) (if any)'

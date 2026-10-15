@@ -10,6 +10,39 @@ name: 'Adult Name Change (Publication Required)'
 enabled: true
 order: 0
 
+# The page in the order content/ shows it: the two fact-gather blocks fold
+# into `interview`, the summary output is dropped (#1012).
+layout:
+  - overview
+  - filing_fee
+  - criminal_history
+  - where_to_file
+  - publication_waiver
+  - publishing_your_notice
+  - your_information_privacy
+  - interview
+  - packet
+  - form_gotchas
+  - hearing
+  - objections
+  - calendar
+  - contacts
+  - resources
+  - after_order
+
+# Warm handoff to the docassemble interview that fills these forms (#547,
+# #531). Which docassemble it is sent to comes from the environment (#879).
+# Always the full data/questions path: the API accepts the short alias but
+# keys the session under the canonical path. Only reviewed answers are sent.
+handoff:
+  interview_reference: 'docassemble.ndnamechange:data/questions/petition-standard.yml'
+  interview_prefill:
+    first_name: current_first
+    middle_name: current_middle
+    last_name: current_last
+    county: residence_county
+    name_change_publication_date: publication_date
+
 # Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
   - id: overview
@@ -123,9 +156,9 @@ sections:
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
 # One page per docassemble interview page (title = the page's question,
-# description = its subquestion). Pages place glossary variables by name;
-# the gated conviction variables sit with their gate and only appear when
-# it is satisfied.
+# description = its subquestion, or the ND context content/ carried as
+# help text). Pages place glossary variables by name; the gated conviction
+# variables sit with their gate and only appear when it is satisfied.
 interview:
   - title: 'Your current legal name'
     variables:
@@ -138,6 +171,7 @@ interview:
       - name_change_requested_middle
       - name_change_requested_last
   - title: 'Where you live'
+    description: 'The North Dakota county where you have lived for the past 6 months is the county you file in.'
     variables:
       - street_address
       - city

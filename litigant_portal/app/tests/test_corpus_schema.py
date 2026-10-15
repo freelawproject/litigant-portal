@@ -139,6 +139,51 @@ def test_shipped_corpus_validates():
     corpus_load()
 
 
+ND_TOPIC = ("north-dakota", "adult-name-change")
+
+
+def test_shipped_flows_carry_their_page_content():
+    corpus = corpus_load()
+    for key, flow in corpus.flows.items():
+        assert flow.layout, f"{key} has no authored layout"
+        if flow.packet:
+            assert "packet" in flow.layout, f"{key} does not place packet"
+        if flow.deadlines:
+            assert "calendar" in flow.layout, f"{key} does not place calendar"
+    standard = corpus.flows[(*ND_TOPIC, "standard")]
+    waiver = corpus.flows[(*ND_TOPIC, "waiver")]
+    assert standard.handoff is not None, "ND standard flow has no handoff"
+    assert waiver.handoff is not None, "ND waiver flow has no handoff"
+    assert standard.handoff.interview_reference.endswith(
+        "petition-standard.yml"
+    )
+    assert waiver.handoff.interview_reference.endswith("petition-waiver.yml")
+    assert "name_change_publication_date" in standard.handoff.interview_prefill
+    assert waiver.handoff.interview_prefill == {
+        key: value
+        for key, value in standard.handoff.interview_prefill.items()
+        if key != "name_change_publication_date"
+    }
+    for slug, form in corpus.forms.items():
+        if slug.startswith("nd-"):
+            assert form.url, f"{slug} has no url"
+
+
+def test_shipped_nd_links_repeat_the_form_urls():
+    """The ND ``links`` lists stay until the render piece decides whether
+    they survive forms carrying a url (#1012). Until then both copies of
+    each court PDF url must agree."""
+    corpus = corpus_load()
+    form_urls = {
+        form.url
+        for slug, form in corpus.forms.items()
+        if slug.startswith("nd-")
+    }
+    for slug in ("standard", "waiver"):
+        for link in corpus.flows[(*ND_TOPIC, slug)].links:
+            assert link.url in form_urls, f"{slug} link {link.id} has no form"
+
+
 # One mapping, one mode
 
 
@@ -201,6 +246,28 @@ def test_form_url_fits_the_column():
     url = "https://a.test/" + "f" * 486
     with pytest.raises(ValidationError, match="url"):
         FormSchema(name="Pet license", fields=[], url=url)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "a.test/f.pdf",
+        "/forms/f.pdf",
+        "htps://a.test/f.pdf",
+        "https:///f.pdf",
+        "javascript:alert(1)",
+        "mailto:clerk@a.test",
+    ],
+    ids=["no-scheme", "relative", "misspelled", "no-host", "script", "mailto"],
+)
+def test_form_url_must_be_absolute_http(url):
+    with pytest.raises(ValidationError, match="absolute, http or https"):
+        FormSchema(name="Pet license", fields=[], url=url)
+
+
+def test_form_url_takes_http_and_https():
+    for url in ("http://a.test/f.pdf", "https://a.test/f.pdf?v=2"):
+        assert FormSchema(name="Pet license", fields=[], url=url).url == url
 
 
 def test_duplicate_pdf_field_is_rejected():
@@ -487,6 +554,38 @@ def test_layout_places_a_block_at_most_once():
 def test_layout_rejects_an_unknown_name():
     with pytest.raises(ValidationError, match="unknown.*summary"):
         _flow_doc(layout=["start", "summary"])
+
+
+_FILLED_BLOCKS = {
+    "interview": {"interview": [{"title": "About you", "variables": ["age"]}]},
+    "packet": {"packet": [{"form": "license"}]},
+    "calendar": {
+        "deadlines": [
+            {
+                "id": "due",
+                "label": "Due",
+                "offset_days": 30,
+                "offset_from": "adopted_on",
+            }
+        ]
+    },
+}
+
+
+@pytest.mark.parametrize("block", sorted(_FILLED_BLOCKS))
+def test_layout_must_place_a_block_the_flow_fills(block):
+    with pytest.raises(ValidationError, match=f"missing blocks.*{block}"):
+        _flow_doc(layout=["start"], **_FILLED_BLOCKS[block])
+
+
+@pytest.mark.parametrize("block", sorted(_FILLED_BLOCKS))
+def test_layout_places_a_block_the_flow_fills(block):
+    flow = _flow_doc(layout=["start", block], **_FILLED_BLOCKS[block])
+    assert flow.resolved_layout == ["start", block]
+
+
+def test_layout_may_omit_an_empty_block():
+    assert _flow_doc(layout=["start"]).resolved_layout == ["start"]
 
 
 def test_section_id_may_not_be_a_block_name():

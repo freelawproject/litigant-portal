@@ -8,11 +8,15 @@
 # Fee Waiver Instructions and Forms", downloaded 2026-08-21 from
 # https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Other%20Forms/Fee%20Waiver/All%20Petition%20for%20Fee%20Waiver%20Instructions%20%20Forms.pdf).
 #
+# The url is that instructions-and-forms packet, not the petition on its
+# own: the packet is what the self-help page offers for download.
+#
 # No mappings yet, deliberately: the packet centers on a financial statement
 # (income, assets, expenses) the interview does not collect, so the litigant
 # completes it by hand. Caption fields can be mapped after a bench-confirmed
 # fill of the downloaded PDF.
 
 name: 'Petition for Fee Waiver'
+url: 'https://www.ndcourts.gov/Media/Default/Legal%20Resources/Legal%20Self%20Help/Other%20Forms/Fee%20Waiver/All%20Petition%20for%20Fee%20Waiver%20Instructions%20%20Forms.pdf'
 
 fields: []
