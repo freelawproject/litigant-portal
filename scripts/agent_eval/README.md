@@ -97,7 +97,8 @@ more than one substantive question, a question with no information before it,
 or no question at all. A flag on any other case is an invalid grade. The
 harness also adds a `reply_shape` failure itself, without the judge, when such
 a case's answer does not end with a question (a `?` in a heading or in an
-echo of the user's words does not count). Both zero `overall` like any other
+echo of the user's words does not count; a `[source:ID]` citation, quote, or
+bracket after the question is ignored). Both zero `overall` like any other
 deal breaker; cases without the flag are not affected.
 
 The fictional chicken-law variants change the fee and procedural order while
