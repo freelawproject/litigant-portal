@@ -1,16 +1,19 @@
 """Tests for the agent eval harness under scripts/agent_eval.
 
-All tests are DB-free and run in the fast suite.
+All tests are DB-free and run in the fast suite. The Docker test image
+ships without scripts/, so the module is skipped there.
 """
 
 import pytest
 
-from scripts.agent_eval.judge import (
+pytest.importorskip("scripts.agent_eval.schema")
+
+from scripts.agent_eval.judge import (  # noqa: E402
     InvalidGrade,
     ends_with_question,
     validate_grade,
 )
-from scripts.agent_eval.schema import (
+from scripts.agent_eval.schema import (  # noqa: E402
     DIMENSIONS,
     Case,
     Config,
