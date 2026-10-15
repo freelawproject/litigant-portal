@@ -77,7 +77,11 @@ def test_every_case_in_cases_yml_loads():
     [
         ("File in your county. Which county do you live in?", True),
         ("File in your county.\n\n**Which county do you live in?**  \n", True),
+        ("Six months there is required. Which county? [source:nd/x]", True),
+        ('Which county?"', True),
+        ("Which county?)", True),
         (HEADING_ONLY, False),
+        (HEADING_ONLY + " [source:nd/x]", False),
         ('You asked "do I need a hearing?" The answer is no.', False),
         ("File in your county.", False),
         ("", False),
@@ -85,7 +89,11 @@ def test_every_case_in_cases_yml_loads():
     ids=[
         "plain-closing-question",
         "bold-closing-question-with-trailing-space",
+        "closing-question-then-citation",
+        "closing-question-in-quotes",
+        "closing-question-in-parentheses",
         "question-mark-only-in-heading",
+        "question-mark-only-in-heading-with-citation",
         "echoed-user-question",
         "no-question-mark",
         "empty",

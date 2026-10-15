@@ -143,10 +143,14 @@ def contains_evidence(answer: str, evidence: str) -> bool:
 
 def ends_with_question(answer: str) -> bool:
     """
-    Whether the last line asks a question, ignoring markdown emphasis.
+    Whether the last line asks a question, ignoring markdown emphasis,
+    closing quotes or brackets, and trailing [source:ID] citations.
     """
     lines = [line.strip() for line in answer.splitlines() if line.strip()]
-    return bool(lines) and lines[-1].rstrip("*_` ").endswith("?")
+    if not lines:
+        return False
+    last = re.sub(r"(\s*\[source:[^\]]+\])+\s*$", "", lines[-1])
+    return last.rstrip("*_`\"'”’)]} ").endswith("?")
 
 
 def validate_grade(
