@@ -28,12 +28,15 @@ contacts:
     phone: '(480) 312-2442'
     email: 'court@scottsdaleaz.gov'
     url: 'https://www.scottsdaleaz.gov/court'
-    note: '3700 North 75th Street, Scottsdale, AZ 85251. Monday to Friday, 8:00 a.m. to 5:00 p.m. Walk-in hours 8:30 to 11:30 a.m. and 1:30 to 4:30 p.m. Fax (480) 312-2764. Payments, payment plans, extensions, proof of insurance or registration, and questions about your case. Have your citation number ready, or your name and date of birth.'
+    address: '3700 North 75th Street, Scottsdale, AZ 85251'
+    hours: 'Monday to Friday, 8:00 a.m. to 5:00 p.m. Walk-in hours 8:30 to 11:30 a.m. and 1:30 to 4:30 p.m.'
+    note: 'Fax (480) 312-2764. Payments, payment plans, extensions, proof of insurance or registration, and questions about your case. Have your citation number ready, or your name and date of birth.'
   - id: photo_enforcement
     name: 'Scottsdale Police Department Photo Enforcement Unit'
     phone: '(480) 312-7014'
     email: 'photoenforce@scottsdaleaz.gov'
-    note: '7601 East McKellips Road, Building A, Scottsdale, AZ 85257. Questions about a Notice of Violation from a camera. To see your photos without internet access, call the Focus on Safety line at (844) 749-5996.'
+    address: '7601 East McKellips Road, Building A, Scottsdale, AZ 85257'
+    note: 'Questions about a Notice of Violation from a camera. To see your photos without internet access, call the Focus on Safety line at (844) 749-5996.'
   - id: driving_school_line
     name: 'Arizona defensive driving school line'
     phone: '1-888-334-5565'

@@ -926,3 +926,30 @@ def test_an_unknown_contact_kind_is_rejected():
     data["courts"]["north-dakota"]["contacts"][0]["kind"] = "bailiff"
     with pytest.raises(ValidationError):
         CorpusSchema.model_validate(data)
+
+
+# Contact address and hours
+
+
+def test_a_contact_takes_an_address_and_hours():
+    data = _corpus_data()
+    contact = data["courts"]["north-dakota"]["contacts"][0]
+    contact["address"] = "100 Main St, Bismarck"
+    contact["hours"] = "Mon-Fri 8am-4pm"
+    court = CorpusSchema.model_validate(data).courts["north-dakota"]
+    assert court.contacts[0].address == "100 Main St, Bismarck"
+    assert court.contacts[0].hours == "Mon-Fri 8am-4pm"
+
+
+def test_a_contacts_address_and_hours_default_to_empty():
+    court = CorpusSchema.model_validate(_corpus_data()).courts["north-dakota"]
+    assert court.contacts[0].address == ""
+    assert court.contacts[0].hours == ""
+
+
+@pytest.mark.parametrize("field", ["address", "hours"])
+def test_a_contact_field_longer_than_its_column_is_rejected(field):
+    data = _corpus_data()
+    data["courts"]["north-dakota"]["contacts"][0][field] = "x" * 256
+    with pytest.raises(ValidationError):
+        CorpusSchema.model_validate(data)
