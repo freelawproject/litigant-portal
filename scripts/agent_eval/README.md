@@ -62,10 +62,11 @@ because that model did not support the selected chat-completions API endpoint.
 setting; `null` preserves the current setting. Original/effective models are
 recorded, and the setting is restored afterward. Legacy agent code is unchanged.
 
-[cases.yml](cases.yml) contains fourteen real-reference cases, six fictional
-cases, and two multi-turn conversation cases. Conversation cases have their own
-group because the new system does not run them; keeping them out of `real`
-keeps that group comparable across all three systems.
+[cases.yml](cases.yml) contains fifteen real-reference cases, six fictional
+cases, and four multi-turn conversation cases. Every case with `history` takes
+the `conversation` group, because the new system does not run history cases;
+keeping them out of `real` keeps that group comparable across all three
+systems.
 [references/](references/) freezes repository corpus content for answer keys,
 with provenance and draft review status. It is not independently verified law.
 When the corpus changes, copy the source files over the frozen ones and update
@@ -85,6 +86,20 @@ history cases and the planned attempt count excludes them. Timing covers
 all turns of the case. The
 conversation cases (`nd-convo-*`) follow the personas in
 `docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
+
+A case may set `expects_one_question: true` when its final turn lands
+mid-interview, so the graded reply must give information first and end with
+exactly one question for the next missing fact. The `nd-shape-*` cases carry
+it: a first turn, a turn where the user volunteers several facts at once, and
+a turn deep in the first-name persona. Single-turn information cases leave it
+unset. The judge may flag the `reply_shape` deal breaker only on these cases:
+more than one substantive question, a question with no information before it,
+or no question at all. A flag on any other case is an invalid grade. The
+harness also adds a `reply_shape` failure itself, without the judge, when such
+a case's answer does not end with a question (a `?` in a heading or in an
+echo of the user's words does not count; a `[source:ID]` citation, quote, or
+bracket after the question is ignored). Both zero `overall` like any other
+deal breaker; cases without the flag are not affected.
 
 The fictional chicken-law variants change the fee and procedural order while
 retaining identical questions. Both include the 200-square-feet-per-chicken
