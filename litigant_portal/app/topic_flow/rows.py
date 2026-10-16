@@ -114,6 +114,24 @@ def asked_names(pages, answers) -> list[str]:
     ]
 
 
+def stale_gated_names(pages, answers, valid) -> list[str]:
+    """Gated variables whose gate will not match once ``valid`` is written,
+    and that have an answer to clear."""
+    after = {
+        name: value
+        for name, value in {**answers, **valid}.items()
+        if value is not None
+    }
+    return [
+        variable.name
+        for _page, variables in pages
+        for variable in variables
+        if variable.asked_when is not None
+        and not is_asked(variable, after)
+        and variable.name in after
+    ]
+
+
 def _form_value(value) -> str:
     """A stored (typed) answer as the string the form field shows."""
     if value is None:

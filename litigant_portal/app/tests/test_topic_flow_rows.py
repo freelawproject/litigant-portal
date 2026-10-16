@@ -155,6 +155,43 @@ def test_asked_names_spans_every_page():
     ]
 
 
+GATED_PAGES = [
+    (TopicFlowInterviewPage(title="A"), [FULL_NAME]),
+    (TopicFlowInterviewPage(title="B"), [LICENSED, VACCINATED]),
+]
+
+
+@pytest.mark.parametrize(
+    ("answers", "valid", "stale"),
+    [
+        (
+            {"licensed": True, "vaccinated": True},
+            {"licensed": False},
+            ["vaccinated"],
+        ),
+        (
+            {"licensed": True, "vaccinated": True},
+            {"licensed": False, "vaccinated": False},
+            ["vaccinated"],
+        ),
+        ({"licensed": True, "vaccinated": True}, {"full_name": "Sam"}, []),
+        ({"licensed": True}, {"licensed": False}, []),
+        ({"licensed": False, "vaccinated": None}, {"full_name": "Sam"}, []),
+    ],
+    ids=[
+        "gate-flipped-clears-the-stored-gated-answer",
+        "gate-flipped-and-gated-field-posted-together-clears-it",
+        "gate-unchanged-leaves-it-alone",
+        "gated-variable-with-no-answer-is-not-listed",
+        "already-cleared-gated-answer-is-not-listed",
+    ],
+)
+def test_stale_gated_names_lists_answers_whose_gate_stops_matching(
+    answers, valid, stale
+):
+    assert rows.stale_gated_names(GATED_PAGES, answers, valid) == stale
+
+
 # --- questions --------------------------------------------------------------
 
 

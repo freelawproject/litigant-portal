@@ -258,6 +258,10 @@ def topic_flow_rows(request, court, topic, role):
             lambda s: rows.validate_answers(variables.values(), s),
             lambda name, raw: rows.coerce_value(variables[name], raw),
         )
+        # A gated answer whose gate stops matching is cleared with the save,
+        # so the briefcase and the prefill agree with the page.
+        for name in rows.stale_gated_names(pages, answers, valid):
+            valid[name] = None
         if valid:
             variable_answer_set_many(
                 identity=request.identity, values=valid, reviewed=True

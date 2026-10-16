@@ -532,6 +532,33 @@ def test_post_accepts_a_gated_name_once_its_gate_is_stored(client, synced):
     assert _values() == {"licensed": True, "vaccinated": False}
 
 
+def _briefcase_names(client):
+    groups = client.get(URL).context["briefcase_groups"]
+    return [a.variable.name for g in groups for a in g["answers"]]
+
+
+@pytest.mark.postgres
+def test_flipping_a_gate_on_a_later_save_clears_the_gated_answer(
+    client, synced
+):
+    client.post(URL, {"licensed": "true"})
+    client.post(URL, {"licensed": "true", "vaccinated": "true"})
+    assert "vaccinated" in _briefcase_names(client)
+    client.post(URL, {"licensed": "false"})
+    assert _values() == {"licensed": False, "vaccinated": None}
+    assert "vaccinated" not in _briefcase_names(client)
+
+
+@pytest.mark.postgres
+def test_flipping_a_gate_and_posting_the_gated_field_together_clears_it(
+    client, synced
+):
+    client.post(URL, {"licensed": "true", "vaccinated": "true"})
+    client.post(URL, {"licensed": "false", "vaccinated": "true"})
+    assert _values() == {"licensed": False, "vaccinated": None}
+    assert "vaccinated" not in _briefcase_names(client)
+
+
 @pytest.mark.postgres
 def test_post_empty_required_rerenders_in_place_with_aria_invalid(
     client, synced
