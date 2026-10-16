@@ -22,7 +22,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.models.choices import VariableDataType
-from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
+from litigant_portal.app.selectors.corpus import default_layout
 from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.app.topic_flow.renderer import (
     NEVER_PREFILL,
@@ -70,10 +70,9 @@ PLACEHOLDER_TEXT = _("This part of the page is coming soon.")
 
 def flow_layout(flow, sections) -> list[str]:
     """The stored layout, or every section key then the blocks when empty."""
-    return list(flow.layout) or [
-        *(section.key for section in sections),
-        *LAYOUT_BLOCKS,
-    ]
+    return list(flow.layout) or default_layout(
+        section.key for section in sections
+    )
 
 
 def flow_pages(flow) -> list[tuple]:

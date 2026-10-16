@@ -494,6 +494,12 @@ class HandoffSchema(BaseSchema):
 LAYOUT_BLOCKS = ("interview", "packet", "calendar", "contacts", "resources")
 
 
+def default_layout(section_keys) -> list[str]:
+    """Every section in order, then the output blocks: the page order when
+    a flow authors no layout."""
+    return [*section_keys, *LAYOUT_BLOCKS]
+
+
 class FlowSchema(BaseSchema):
     """Populates a ``TopicFlow`` row. ``layout`` orders the page: section
     ids and block names, every section exactly once. Absent, the page is
@@ -517,10 +523,7 @@ class FlowSchema(BaseSchema):
     @property
     def resolved_layout(self) -> list[str]:
         """The authored layout, or the default when none is authored."""
-        return list(self.layout) or [
-            *(s.id for s in self.sections),
-            *LAYOUT_BLOCKS,
-        ]
+        return list(self.layout) or default_layout(s.id for s in self.sections)
 
     @model_validator(mode="after")
     def _unique_source_ids(self):
