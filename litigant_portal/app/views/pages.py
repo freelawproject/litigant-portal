@@ -36,7 +36,10 @@ from litigant_portal.app.models.choices import (
     VariableDataType,
 )
 from litigant_portal.app.selectors.site import contact_help_list, site_get
-from litigant_portal.app.selectors.topic_flow import topic_list
+from litigant_portal.app.selectors.topic_flow import (
+    topic_flow_find,
+    topic_list,
+)
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.theme import (
@@ -51,6 +54,7 @@ from litigant_portal.app.topic_flow.renderer import (
     render_section,
     submitted_section_anchor,
 )
+from litigant_portal.app.topic_flow.rows import render_flow
 from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
     briefcase_answers,
@@ -118,6 +122,9 @@ def topic_flow(request, court, topic, role):
     confirms what the assistant guessed, and only reviewed answers may
     reach the docassemble prefill.
     """
+    if settings.TOPIC_FLOW_SOURCE == "corpus":
+        return topic_flow_rows(request, court, topic, role)
+
     corpus = registry.get(court, topic, role)
     if corpus is None:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
@@ -206,9 +213,36 @@ def _render_topic_flow(request, corpus, answers, errors=None):
         render_section(section, corpus, answers, errors)
         for section in corpus.sections
     ]
-    # The flow's sections for the frame's left region: one entry per headed
-    # section, so a litigant can jump back to re-read or revise.
-    toc = [
+    return _render_flow_page(
+        request, corpus.metadata.title, rendered_sections, corpus=corpus
+    )
+
+
+def topic_flow_rows(request, court, topic, role):
+    """The guided page built from TopicFlow rows (``TOPIC_FLOW_SOURCE=corpus``,
+    #1016).
+
+    The sibling of ``topic_flow`` that reads the rows ``sync_corpus`` writes.
+    ``court`` is checked the way ``agent_scope_choices`` does: when
+    ``CORPUS_COURT`` is set it must match, otherwise any court is accepted
+    (dev syncs every court). The lookup itself is by topic and flow slug.
+    """
+    if settings.CORPUS_COURT is not None and court != settings.CORPUS_COURT:
+        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+    flow = topic_flow_find(topic_slug=topic, flow_slug=role)
+    if flow is None:
+        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+
+    sections = list(flow.sections.all())
+    return _render_flow_page(
+        request, flow.name, render_flow(flow, sections, {})
+    )
+
+
+def _render_flow_page(request, page_title, rendered_sections, **extra):
+    """Render ``pages/topic_flow.html`` from an ordered ``RenderedSection``
+    list, whichever source built it."""
+    section_links = [
         {"anchor": section.anchor_id, "heading": section.heading}
         for section in rendered_sections
         if section.heading
@@ -217,12 +251,13 @@ def _render_topic_flow(request, corpus, answers, errors=None):
         request,
         "pages/topic_flow.html",
         {
-            "corpus": corpus,
+            "page_title": page_title,
             "rendered_sections": rendered_sections,
-            "toc": toc,
+            "section_links": section_links,
             "frame_left_label": _("Sections"),
             "frame_left_icon": "list-bullet",
             "briefcase_groups": briefcase_answers(request),
+            **extra,
         },
     )
 

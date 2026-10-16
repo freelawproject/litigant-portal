@@ -42,6 +42,7 @@ services:
       - SUPERUSER_EMAIL=${SUPERUSER_EMAIL}
       - SUPERUSER_PASSWORD=${SUPERUSER_PASSWORD}
       - CORPUS_COURT=${CORPUS_COURT}
+      - TOPIC_FLOW_SOURCE=${TOPIC_FLOW_SOURCE}
       # docassemble prefill. Unset means no prefill: the packet button links
       # out to the plain interview.
       - DOCASSEMBLE_BASE_URL=${DOCASSEMBLE_BASE_URL}
