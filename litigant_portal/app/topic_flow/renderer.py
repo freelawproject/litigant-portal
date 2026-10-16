@@ -115,7 +115,7 @@ def _render_fact_gather(section, corpus, answers):
             "label": q.label,
             "type": q.type,
             "required": q.required,
-            "choices": q.choices,
+            "choices": [{"value": c, "label": c} for c in q.choices or []],
             "help_text": q.help_text,
             "value": "" if q.id in NEVER_PREFILL else answers.get(q.id, ""),
             # The blanked-out fields need an explicit clear affordance: the

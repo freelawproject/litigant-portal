@@ -29,6 +29,12 @@ def topic_flow_answers(request, corpus) -> dict:
     return _answer_map(request, question_ids(corpus))
 
 
+def topic_flow_row_answers(request, names: list[str]) -> dict:
+    """``{variable_name: value}`` for the given names, for the page built
+    from TopicFlow rows (#1016). Same read as ``topic_flow_answers``."""
+    return _answer_map(request, names)
+
+
 def topic_flow_reviewed_answers(request, names: list[str]) -> dict:
     """``{question_id: value}`` for confirmed answers only, for the prefill."""
     return _answer_map(request, names, reviewed_only=True)

@@ -13,11 +13,18 @@ from unittest import mock
 
 import pytest
 
-from litigant_portal.app.models import UserIdentity
+from litigant_portal.app.models import UserIdentity, Variable
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
-from litigant_portal.app.topic_flow.schema import Corpus, InfoSection, Metadata
+from litigant_portal.app.services.topic_flow import variable_answer_set
+from litigant_portal.app.topic_flow.schema import (
+    Corpus,
+    FactGatherSection,
+    InfoSection,
+    Metadata,
+    Question,
+)
 from litigant_portal.app.views import pages
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
@@ -32,12 +39,25 @@ LAYOUT = [
     "contacts",
     "resources",
 ]
+# The anchors the layout renders as: the interview block is one section
+# per interview page, numbered in page order.
+ANCHORS = [
+    "fees",
+    "interview-1",
+    "interview-2",
+    "overview",
+    "packet",
+    "calendar",
+    "contacts",
+    "resources",
+]
 
 
 def _corpus():
     """One court, one topic, an enabled flow with an authored layout and a
-    disabled sibling."""
+    disabled sibling. ``first_name`` is in NEVER_PREFILL."""
     variables = {
+        "first_name": {"name": "first_name", "label": "First name"},
         "full_name": {
             "name": "full_name",
             "label": "Full name",
@@ -75,10 +95,14 @@ def _corpus():
     ]
     interview = [
         {
+            "title": "About you",
+            "variables": ["first_name", "full_name"],
+        },
+        {
             "title": "About your pet",
             "description": "A few facts the license needs.",
-            "variables": ["full_name", "pet_kind", "licensed", "vaccinated"],
-        }
+            "variables": ["pet_kind", "licensed", "vaccinated"],
+        },
     ]
     return CorpusSchema.model_validate(
         {
@@ -121,6 +145,44 @@ def _section_ids(html):
     return re.findall(r'<section id="([^"]+)"', html)
 
 
+def _flat(response):
+    """The page with whitespace collapsed, so a multi-line tag matches as
+    one string."""
+    return re.sub(r"\s+", " ", response.content.decode())
+
+
+def _field_tag(flat, name):
+    """The <input>/<select> element whose name == ``name``."""
+    match = re.search(
+        rf'<(?:input|select)\b[^>]*name="{re.escape(name)}"[^>]*>', flat
+    )
+    return match.group(0) if match else ""
+
+
+def _has_option(flat, value, label):
+    """Whether an <option> with this value shows this label."""
+    return bool(
+        re.search(
+            rf'<option value="{re.escape(value)}"[^>]*>{re.escape(label)}</option>',
+            flat,
+        )
+    )
+
+
+def _store(client, name, value, reviewed=False):
+    """Store an answer the way another surface would (the assistant, say),
+    on the identity the middleware will resolve for this client."""
+    identity, _ = UserIdentity.objects.get_or_create(
+        user=None, session_key=client.session.session_key
+    )
+    variable_answer_set(
+        identity=identity,
+        variable=Variable.objects.get(name=name),
+        value=value,
+        reviewed=reviewed,
+    )
+
+
 # --- GET render -------------------------------------------------------------
 
 
@@ -139,7 +201,7 @@ def test_corpus_source_renders_the_synced_flow(client, synced):
 def test_corpus_source_emits_an_anchor_per_section_key_in_layout_order(
     client, synced
 ):
-    assert _section_ids(client.get(URL).content.decode()) == LAYOUT
+    assert _section_ids(client.get(URL).content.decode()) == ANCHORS
 
 
 @pytest.mark.postgres
@@ -150,10 +212,128 @@ def test_corpus_source_renders_each_section_body(client, synced):
 
 
 @pytest.mark.postgres
-def test_corpus_source_lists_every_section_in_the_toc(client, synced):
+def test_corpus_source_lists_every_section_in_the_left_region(client, synced):
     html = client.get(URL).content.decode()
-    for anchor in LAYOUT:
+    for anchor in ANCHORS:
         assert f'href="#{anchor}"' in html
+
+
+# --- interview pages as forms -----------------------------------------------
+
+
+@pytest.mark.postgres
+def test_each_interview_page_renders_a_post_form_with_a_field_per_variable(
+    client, synced
+):
+    flat = _flat(client.get(URL))
+    assert flat.count('method="post"') == 2
+    assert "csrfmiddlewaretoken" in flat
+    for name in ("first_name", "full_name", "pet_kind", "licensed"):
+        assert _field_tag(flat, name), name
+    assert re.search(r"<h2[^>]*>\s*About your pet\s*</h2>", flat)
+
+
+@pytest.mark.postgres
+def test_choice_field_renders_option_values_and_labels(client, synced):
+    flat = _flat(client.get(URL))
+    assert _has_option(flat, "dog", "Dog")
+    assert _has_option(flat, "cat", "Cat")
+
+
+@pytest.mark.postgres
+def test_boolean_field_renders_a_yes_no_select(client, synced):
+    flat = _flat(client.get(URL))
+    assert _field_tag(flat, "licensed").startswith("<select")
+    assert _has_option(flat, "true", "Yes")
+    assert _has_option(flat, "false", "No")
+
+
+@pytest.mark.postgres
+def test_required_variable_marks_the_field_required_and_optional_stays_unmarked(
+    client, synced
+):
+    flat = _flat(client.get(URL))
+    assert re.search(r"\brequired\b", _field_tag(flat, "full_name"))
+    assert not re.search(r"\brequired\b", _field_tag(flat, "pet_kind"))
+
+
+@pytest.mark.postgres
+def test_help_text_renders_beside_the_field(client, synced):
+    flat = _flat(client.get(URL))
+    assert 'aria-describedby="full_name-help"' in _field_tag(flat, "full_name")
+    assert re.search(
+        r'<p id="full_name-help"[^>]*>As it appears on your ID\.</p>', flat
+    )
+
+
+@pytest.mark.postgres
+def test_page_description_renders_above_the_fields(client, synced):
+    flat = _flat(client.get(URL))
+    description = flat.index("A few facts the license needs.")
+    assert description < flat.index('name="pet_kind"')
+    # The page without a description renders no empty paragraph.
+    assert flat.count('<p class="mb-4 text-greyscale-700">') == 1
+
+
+@pytest.mark.postgres
+def test_stored_answer_prefills_the_field(client, synced):
+    _store(client, "pet_kind", "dog")
+    _store(client, "licensed", False)
+    flat = _flat(client.get(URL))
+    assert re.search(r'<option value="dog"[^>]*selected', flat)
+    assert re.search(r'<option value="false"[^>]*selected', flat)
+
+
+@pytest.mark.postgres
+def test_gated_field_appears_after_the_gate_answer_is_stored(client, synced):
+    assert not _field_tag(_flat(client.get(URL)), "vaccinated")
+    _store(client, "licensed", False)
+    assert not _field_tag(_flat(client.get(URL)), "vaccinated")
+    _store(client, "licensed", True)
+    assert _field_tag(_flat(client.get(URL)), "vaccinated")
+
+
+@pytest.mark.postgres
+def test_protected_field_never_echoes_the_stored_value(client, synced):
+    before = _flat(client.get(URL))
+    assert 'name="first_name__clear"' not in before
+    _store(client, "first_name", "Sandra")
+    after = _flat(client.get(URL))
+    assert "Sandra" not in after
+    assert re.search(
+        r'<input[^>]*type="checkbox"[^>]*name="first_name__clear"', after
+    )
+
+
+@pytest.mark.postgres
+def test_content_path_choice_options_are_unchanged(
+    client, synced, settings, monkeypatch
+):
+    # The content renderer now hands the template {value, label} dicts; its
+    # options must read exactly as before the shape change.
+    settings.TOPIC_FLOW_SOURCE = "content"
+    registry_corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="key_dates",
+                heading="Your dates",
+                questions=[
+                    Question(
+                        id="filing_county",
+                        label="County",
+                        type="choice",
+                        choices=["Cass", "Burleigh"],
+                    )
+                ],
+            )
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    flat = _flat(client.get(URL))
+    assert _has_option(flat, "Cass", "Cass")
+    assert _has_option(flat, "Burleigh", "Burleigh")
 
 
 # --- 404s and the court check -----------------------------------------------

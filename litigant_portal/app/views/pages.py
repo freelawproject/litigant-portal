@@ -54,11 +54,16 @@ from litigant_portal.app.topic_flow.renderer import (
     render_section,
     submitted_section_anchor,
 )
-from litigant_portal.app.topic_flow.rows import render_flow
+from litigant_portal.app.topic_flow.rows import (
+    flow_pages,
+    flow_variable_names,
+    render_flow,
+)
 from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
     briefcase_answers,
     topic_flow_answers,
+    topic_flow_row_answers,
 )
 
 
@@ -234,8 +239,10 @@ def topic_flow_rows(request, court, topic, role):
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
 
     sections = list(flow.sections.all())
+    pages = flow_pages(flow)
+    answers = topic_flow_row_answers(request, flow_variable_names(pages))
     return _render_flow_page(
-        request, flow.name, render_flow(flow, sections, {})
+        request, flow.name, render_flow(flow, sections, pages, answers)
     )
 
 
