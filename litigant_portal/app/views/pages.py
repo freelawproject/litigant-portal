@@ -47,17 +47,13 @@ from litigant_portal.app.theme import (
     contrast_ratio,
     theme_colors,
 )
+from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.registry import registry
 from litigant_portal.app.topic_flow.renderer import (
     NEVER_PREFILL,
     question_ids,
     render_section,
     submitted_section_anchor,
-)
-from litigant_portal.app.topic_flow.rows import (
-    flow_pages,
-    flow_variable_names,
-    render_flow,
 )
 from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
@@ -180,16 +176,7 @@ def topic_flow(request, court, topic, role):
         if valid:
             # A NEVER_PREFILL field re-renders blank even after a successful
             # save, so without a toast the save looks like it failed (#803).
-            if any(valid.get(qid) for qid in NEVER_PREFILL):
-                messages.success(
-                    request,
-                    _(
-                        "Saved. For your privacy, your answers are not "
-                        "shown on this page."
-                    ),
-                )
-            else:
-                messages.success(request, _("Saved."))
+            _flash_saved(request, valid)
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.
@@ -205,6 +192,21 @@ def topic_flow(request, court, topic, role):
     return _render_topic_flow(
         request, corpus, topic_flow_answers(request, corpus)
     )
+
+
+def _flash_saved(request, valid):
+    """The toast after a save. A NEVER_PREFILL field re-renders blank even
+    after a successful save, so without the longer message the save looks
+    like it failed (#803). Shared by both page sources."""
+    if any(valid.get(name) for name in NEVER_PREFILL):
+        messages.success(
+            request,
+            _(
+                "Saved. For your privacy, your answers are not shown on this page."
+            ),
+        )
+    else:
+        messages.success(request, _("Saved."))
 
 
 def _render_topic_flow(request, corpus, answers, errors=None):
@@ -239,10 +241,59 @@ def topic_flow_rows(request, court, topic, role):
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
 
     sections = list(flow.sections.all())
-    pages = flow_pages(flow)
-    answers = topic_flow_row_answers(request, flow_variable_names(pages))
+    pages = rows.flow_pages(flow)
+    names = rows.flow_variable_names(pages)
+    answers = topic_flow_row_answers(request, names)
+
+    if request.method == "POST":
+        # Same rules as the content path's POST above, over glossary rows.
+        # Only currently asked variables are read, so a gated field whose
+        # gate is unmet is ignored even if posted.
+        variables = {v.name: v for _page, placed in pages for v in placed}
+        submitted = {
+            name: request.POST[name]
+            for name in rows.asked_names(pages, answers)
+            if name in request.POST
+        }
+        errors = rows.validate_answers(variables.values(), submitted)
+        valid = {}
+        for name, raw in submitted.items():
+            if name in errors:
+                continue
+            value = rows.coerce_value(variables[name], raw)
+            if (
+                value is None
+                and name in NEVER_PREFILL
+                and f"{name}__clear" not in request.POST
+            ):
+                continue
+            valid[name] = value
+        if valid:
+            variable_answer_set_many(
+                identity=request.identity, values=valid, reviewed=True
+            )
+        if errors:
+            # Re-read: the valid siblings just saved, and the gate they may
+            # have set decides which fields the re-render shows.
+            answers = topic_flow_row_answers(request, names)
+            return _render_flow_page(
+                request,
+                flow.name,
+                rows.render_flow(flow, sections, pages, answers, errors),
+            )
+        if valid:
+            _flash_saved(request, valid)
+        url = reverse(
+            "pages:topic_flow",
+            kwargs={"court": court, "topic": topic, "role": role},
+        )
+        anchor = rows.submitted_section_anchor(pages, submitted)
+        if anchor:
+            url = f"{url}#{anchor}"
+        return redirect(url)
+
     return _render_flow_page(
-        request, flow.name, render_flow(flow, sections, pages, answers)
+        request, flow.name, rows.render_flow(flow, sections, pages, answers)
     )
 
 

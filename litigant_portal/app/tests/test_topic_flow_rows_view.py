@@ -13,7 +13,7 @@ from unittest import mock
 
 import pytest
 
-from litigant_portal.app.models import UserIdentity, Variable
+from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
@@ -84,6 +84,16 @@ def _corpus():
             "data_type": "boolean",
             "asked_when": {"variable": "licensed", "value": True},
         },
+        "pet_count": {
+            "name": "pet_count",
+            "label": "How many pets",
+            "data_type": "number",
+        },
+        "license_date": {
+            "name": "license_date",
+            "label": "Date licensed",
+            "data_type": "date",
+        },
     }
     sections = [
         {
@@ -101,7 +111,13 @@ def _corpus():
         {
             "title": "About your pet",
             "description": "A few facts the license needs.",
-            "variables": ["pet_kind", "licensed", "vaccinated"],
+            "variables": [
+                "pet_kind",
+                "licensed",
+                "vaccinated",
+                "pet_count",
+                "license_date",
+            ],
         },
     ]
     return CorpusSchema.model_validate(
@@ -401,3 +417,229 @@ def test_content_source_still_uses_the_registry(
 def test_corpus_source_first_time_visitor_creates_no_identity(client, synced):
     assert client.get(URL).status_code == 200
     assert UserIdentity.objects.count() == 0
+
+
+# --- POST: saving answers ---------------------------------------------------
+
+
+def _rows():
+    """``{variable_name: (value, reviewed)}`` for the single visitor."""
+    return {
+        answer.variable.name: (answer.value, answer.reviewed)
+        for answer in VariableAnswer.objects.select_related("variable")
+    }
+
+
+def _values():
+    return {name: value for name, (value, _reviewed) in _rows().items()}
+
+
+PET_PAGE = {"pet_kind": "dog", "licensed": "true", "pet_count": "2"}
+
+
+@pytest.mark.postgres
+def test_post_persists_answers_and_redirects_to_the_section_anchor(
+    client, synced
+):
+    response = client.post(URL, PET_PAGE)
+    assert response.status_code == 302
+    assert response["Location"] == f"{URL}#interview-2"
+    assert _values() == {"pet_kind": "dog", "licensed": True, "pet_count": 2}
+
+
+@pytest.mark.postgres
+def test_post_marks_saved_answers_reviewed(client, synced):
+    client.post(URL, PET_PAGE)
+    assert all(reviewed for _value, reviewed in _rows().values())
+
+
+@pytest.mark.postgres
+def test_post_stores_typed_values(client, synced):
+    client.post(URL, {**PET_PAGE, "license_date": "2026-02-01"})
+    values = _values()
+    assert values["pet_count"] == 2 and type(values["pet_count"]) is int
+    assert values["licensed"] is True
+    assert values["license_date"] == "2026-02-01"
+
+
+@pytest.mark.postgres
+def test_post_writes_the_same_rows_the_content_path_writes(
+    client, synced, settings, monkeypatch
+):
+    # DoD item 2: one submission, both page sources, identical rows. Shaped
+    # like the ND flow: a text, a choice and a date answer.
+    answers = {
+        "full_name": "Jane Doe",
+        "pet_kind": "dog",
+        "license_date": "2026-02-01",
+    }
+    client.post(URL, answers)
+    from_rows = _rows()
+    VariableAnswer.objects.all().delete()
+
+    settings.TOPIC_FLOW_SOURCE = "content"
+    registry_corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="facts",
+                heading="Facts",
+                questions=[
+                    Question(id="full_name", label="Full name"),
+                    Question(
+                        id="pet_kind",
+                        label="Kind",
+                        type="choice",
+                        choices=["dog", "cat"],
+                    ),
+                    Question(id="license_date", label="When", type="date"),
+                ],
+            )
+        ],
+    )
+    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    client.post(URL, answers)
+    assert _rows() == from_rows
+    assert from_rows == {
+        name: (value, True) for name, value in answers.items()
+    }
+
+
+@pytest.mark.postgres
+def test_post_ignores_names_that_are_not_asked(client, synced):
+    # vaccinated is gated on licensed=True, which is not stored yet, and
+    # not_a_variable is a stray key.
+    client.post(
+        URL, {"pet_kind": "dog", "vaccinated": "true", "not_a_variable": "x"}
+    )
+    assert _values() == {"pet_kind": "dog"}
+
+
+@pytest.mark.postgres
+def test_post_accepts_a_gated_name_once_its_gate_is_stored(client, synced):
+    client.post(URL, {"licensed": "true"})
+    client.post(URL, {"licensed": "true", "vaccinated": "false"})
+    assert _values() == {"licensed": True, "vaccinated": False}
+
+
+@pytest.mark.postgres
+def test_post_empty_required_rerenders_in_place_with_aria_invalid(
+    client, synced
+):
+    response = client.post(URL, {"first_name": "", "full_name": ""})
+    assert response.status_code == 200
+    assert re.search(
+        r'name="full_name"[^>]*aria-invalid="true"', _flat(response)
+    )
+    assert not VariableAnswer.objects.exists()
+
+
+@pytest.mark.postgres
+def test_post_saves_valid_fields_even_when_a_sibling_is_invalid(
+    client, synced
+):
+    response = client.post(URL, {**PET_PAGE, "pet_count": "two"})
+    assert response.status_code == 200
+    assert "Enter a number" in response.content.decode()
+    assert _values() == {"pet_kind": "dog", "licensed": True}
+
+
+@pytest.mark.postgres
+def test_post_choice_outside_list_is_rejected_not_stored(client, synced):
+    response = client.post(URL, {**PET_PAGE, "pet_kind": "bird"})
+    assert response.status_code == 200
+    assert "bird" not in response.content.decode()
+    assert "pet_kind" not in _values()
+
+
+@pytest.mark.postgres
+def test_post_unparseable_date_soft_gates_instead_of_erroring(client, synced):
+    response = client.post(URL, {"license_date": "01/02/2026"})
+    assert response.status_code == 200
+    assert re.search(
+        r'name="license_date"[^>]*aria-invalid="true"', _flat(response)
+    )
+    assert not VariableAnswer.objects.exists()
+
+
+@pytest.mark.postgres
+def test_post_persists_stripped_value(client, synced):
+    client.post(URL, {"full_name": "  Jane Doe ", "first_name": ""})
+    assert _values() == {"full_name": "Jane Doe"}
+
+
+@pytest.mark.postgres
+def test_posted_answers_prefill_on_the_redirected_get(client, synced):
+    client.post(URL, PET_PAGE)
+    flat = _flat(client.get(URL))
+    assert re.search(r'<option value="dog"[^>]*selected', flat)
+    assert re.search(r'<option value="true"[^>]*selected', flat)
+    assert 'value="2"' in _field_tag(flat, "pet_count")
+
+
+@pytest.mark.postgres
+def test_blank_protected_field_keeps_the_stored_answer(client, synced):
+    client.post(URL, {"first_name": "Sandra", "full_name": "Sandra Doe"})
+    client.post(URL, {"first_name": "", "full_name": "Sandra Roe"})
+    assert _values() == {"first_name": "Sandra", "full_name": "Sandra Roe"}
+
+
+@pytest.mark.postgres
+def test_blank_protected_field_keeps_an_unreviewed_answer_unreviewed(
+    client, synced
+):
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(URL, {"first_name": "", "full_name": "Sandra Doe"})
+    assert _rows()["first_name"] == ("Sandra", False)
+
+
+@pytest.mark.postgres
+def test_checking_clear_erases_a_protected_answer(client, synced):
+    client.post(URL, {"first_name": "Sandra", "full_name": "Sandra Doe"})
+    client.post(
+        URL,
+        {"first_name": "", "first_name__clear": "on", "full_name": "S. Doe"},
+    )
+    assert _values()["first_name"] is None
+
+
+@pytest.mark.postgres
+def test_a_typed_value_wins_over_the_clear_checkbox(client, synced):
+    client.post(URL, {"first_name": "Sandra", "full_name": "Sandra Doe"})
+    client.post(
+        URL,
+        {"first_name": "Alex", "first_name__clear": "on", "full_name": "A."},
+    )
+    assert _values()["first_name"] == "Alex"
+
+
+@pytest.mark.postgres
+def test_blank_optional_field_clears_its_answer(client, synced):
+    client.post(URL, PET_PAGE)
+    client.post(URL, {**PET_PAGE, "pet_count": ""})
+    assert _values()["pet_count"] is None
+
+
+# --- toasts -----------------------------------------------------------------
+
+
+@pytest.mark.postgres
+def test_post_save_flashes_a_saved_toast(client, synced):
+    html = client.post(URL, PET_PAGE, follow=True).content.decode()
+    assert "Saved." in html
+    assert "For your privacy" not in html
+
+
+@pytest.mark.postgres
+def test_post_of_a_protected_answer_explains_the_privacy_blank(client, synced):
+    response = client.post(
+        URL, {"first_name": "Sandra", "full_name": "Sandra Doe"}, follow=True
+    )
+    assert "For your privacy" in response.content.decode()
+
+
+@pytest.mark.postgres
+def test_post_with_errors_flashes_no_toast(client, synced):
+    response = client.post(URL, {"license_date": "not-a-date"})
+    assert "Saved." not in response.content.decode()

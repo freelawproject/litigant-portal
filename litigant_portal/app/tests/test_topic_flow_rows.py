@@ -248,3 +248,115 @@ def test_protected_question_renders_blank_and_marks_saved():
     assert question["value"] == ""
     assert question["saved"] is True
     assert _question(first_name)["saved"] is False
+
+
+# --- coercion ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("data_type", "raw", "expected"),
+    [
+        (VariableDataType.TEXT, "  Jane ", "Jane"),
+        (VariableDataType.TEXT, "   ", None),
+        (VariableDataType.NUMBER, " 3 ", 3),
+        (VariableDataType.NUMBER, "2.5", 2.5),
+        (VariableDataType.BOOLEAN, "true", True),
+        (VariableDataType.BOOLEAN, "false", False),
+        (VariableDataType.DATE, "2026-02-01", "2026-02-01"),
+        (VariableDataType.CHOICE, "dog ", "dog"),
+    ],
+    ids=[
+        "text-strips",
+        "blank-is-none",
+        "number-int",
+        "number-float",
+        "boolean-true",
+        "boolean-false",
+        "date-stays-string",
+        "choice-strips",
+    ],
+)
+def test_coerce_value(data_type, raw, expected):
+    value = rows.coerce_value(_variable("fact", data_type=data_type), raw)
+    assert value == expected
+    assert type(value) is type(expected)
+
+
+@pytest.mark.parametrize(
+    ("data_type", "raw"),
+    [(VariableDataType.NUMBER, "ten"), (VariableDataType.BOOLEAN, "maybe")],
+    ids=["number-rejects-letters", "boolean-rejects-other"],
+)
+def test_coerce_value_rejects_what_the_type_cannot_hold(data_type, raw):
+    with pytest.raises(ValueError):
+        rows.coerce_value(_variable("fact", data_type=data_type), raw)
+
+
+# --- validation -------------------------------------------------------------
+
+COUNT = _variable("pet_count", data_type=VariableDataType.NUMBER)
+LICENSE_DATE = _variable("license_date", data_type=VariableDataType.DATE)
+VARIABLES = [FULL_NAME, PET_KIND, LICENSED, COUNT, LICENSE_DATE]
+
+
+@pytest.mark.parametrize(
+    ("submitted", "expected"),
+    [
+        ({"full_name": "  "}, {"full_name": [rows.REQUIRED_ERROR]}),
+        ({"pet_kind": ""}, {}),
+        ({"pet_kind": "bird"}, {"pet_kind": [rows.INVALID_CHOICE_ERROR]}),
+        ({"pet_kind": " dog "}, {}),
+        (
+            {"license_date": "01/02/2026"},
+            {"license_date": [rows.INVALID_DATE_ERROR]},
+        ),
+        ({"license_date": "2026-02-01"}, {}),
+        ({"pet_count": "ten"}, {"pet_count": [rows.INVALID_NUMBER_ERROR]}),
+        ({"pet_count": "2"}, {}),
+        ({"licensed": "maybe"}, {"licensed": [rows.INVALID_CHOICE_ERROR]}),
+        ({"pet_kind": "dog"}, {}),
+    ],
+    ids=[
+        "required-blank-errors",
+        "optional-blank-ok",
+        "choice-outside-list-errors",
+        "choice-is-checked-stripped",
+        "bad-date-errors",
+        "iso-date-ok",
+        "bad-number-errors",
+        "number-ok",
+        "bad-boolean-errors",
+        "not-submitted-is-skipped",
+    ],
+)
+def test_validate_answers(submitted, expected):
+    # The last case leaves the required full_name out of the submission: a
+    # field from a page that was not posted is not an error.
+    assert rows.validate_answers(VARIABLES, submitted) == expected
+
+
+# --- redirect anchor --------------------------------------------------------
+
+
+def test_submitted_section_anchor_names_the_owning_page():
+    pages = [
+        (TopicFlowInterviewPage(title="A"), [FULL_NAME]),
+        (TopicFlowInterviewPage(title="B"), [PET_KIND, LICENSED]),
+    ]
+    assert rows.submitted_section_anchor(pages, ["licensed"]) == "interview-2"
+    assert rows.submitted_section_anchor(pages, ["full_name"]) == "interview-1"
+    assert rows.submitted_section_anchor(pages, ["stray"]) is None
+
+
+# --- errors on the re-render ------------------------------------------------
+
+
+def test_errors_land_on_their_question_and_focus_the_first_invalid_one():
+    flow = TopicFlow(layout=["interview"])
+    pages = [(TopicFlowInterviewPage(title="A"), [FULL_NAME, PET_KIND])]
+    errors = {"pet_kind": [rows.INVALID_CHOICE_ERROR]}
+    (section,) = rows.render_flow(flow, [], pages, {}, errors)
+    full_name, pet_kind = section.context["questions"]
+    assert full_name["errors"] == [] and full_name["autofocus"] is False
+    assert pet_kind["errors"] == [rows.INVALID_CHOICE_ERROR]
+    assert pet_kind["autofocus"] is True

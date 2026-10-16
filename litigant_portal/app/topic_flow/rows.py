@@ -18,14 +18,23 @@ client-side show/hide: the litigant saves the gate, the page reloads, and the
 gated fields appear.
 """
 
+from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
+from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.app.topic_flow.renderer import (
     NEVER_PREFILL,
     RenderedSection,
 )
+from litigant_portal.app.topic_flow.validation import (
+    INVALID_CHOICE_ERROR,
+    INVALID_DATE_ERROR,
+    REQUIRED_ERROR,
+)
+
+INVALID_NUMBER_ERROR = _("Enter a number, using digits only.")
 
 _TEMPLATE_DIR = "cotton/molecules"
 
@@ -165,7 +174,21 @@ def render_flow(
             )
         else:
             rendered.append(_render_placeholder(name))
+    if errors:
+        _apply_errors(rendered, errors)
     return rendered
+
+
+def _apply_errors(rendered, errors):
+    """Put each inline error on its question and focus the first one, as
+    ``render_section`` does for the content path (WCAG 2.4.3 / 3.3.1)."""
+    focused = False
+    for section in rendered:
+        for question in section.context.get("questions", ()):
+            question["errors"] = errors.get(question["id"], [])
+            if question["errors"] and not focused:
+                question["autofocus"] = True
+                focused = True
 
 
 def _render_page(number, page, variables, answers):
@@ -196,3 +219,73 @@ def _render_placeholder(block):
         template=f"{_TEMPLATE_DIR}/flow_section_placeholder.html",
         context={"text": PLACEHOLDER_TEXT},
     )
+
+
+def coerce_value(variable, raw: str):
+    """The form string as the typed value the glossary stores.
+
+    Strips; blank is None (clears the answer). A number becomes int or
+    float, a boolean select's ``true``/``false`` becomes bool, everything
+    else stays a string. Raises ValueError when the string cannot be read
+    as the type.
+    """
+    value = raw.strip()
+    if not value:
+        return None
+    if variable.data_type == VariableDataType.NUMBER:
+        try:
+            return int(value)
+        except ValueError:
+            return float(value)
+    if variable.data_type == VariableDataType.BOOLEAN:
+        if value not in ("true", "false"):
+            raise ValueError(f"not a boolean: {value!r}")
+        return value == "true"
+    return value
+
+
+def validate_answers(variables, submitted) -> dict:
+    """``{name: [error]}`` for invalid submitted answers, over glossary rows.
+
+    The sibling of ``validation.validate_answers``. Scoped to what was
+    submitted: a page POSTs only its own fields, so a variable absent from
+    ``submitted`` is skipped. The type check is ``variable_value_validate``,
+    the same rule the answer-writing service applies, so nothing passes
+    here that the store would reject.
+    """
+    errors: dict[str, list] = {}
+    for variable in variables:
+        name = variable.name
+        if name not in submitted:
+            continue
+        if variable.required and not submitted[name].strip():
+            errors[name] = [REQUIRED_ERROR]
+            continue
+        try:
+            value = coerce_value(variable, submitted[name])
+            variable_value_validate(
+                data_type=variable.data_type,
+                choices=variable.choices,
+                value=value,
+            )
+        except (ValueError, ValidationError):
+            errors[name] = [_type_error(variable.data_type)]
+    return errors
+
+
+def _type_error(data_type):
+    if data_type == VariableDataType.NUMBER:
+        return INVALID_NUMBER_ERROR
+    if data_type in (VariableDataType.DATE, VariableDataType.DATETIME):
+        return INVALID_DATE_ERROR
+    return INVALID_CHOICE_ERROR
+
+
+def submitted_section_anchor(pages, submitted_names) -> str | None:
+    """The ``interview-N`` anchor of the page that owns the submitted
+    answers, for the redirect after POST; None when nothing matches."""
+    submitted = set(submitted_names)
+    for number, (_page, variables) in enumerate(pages, 1):
+        if any(variable.name in submitted for variable in variables):
+            return f"interview-{number}"
+    return None
