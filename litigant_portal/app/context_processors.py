@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.messages import get_messages
 
+from litigant_portal.app.features import features
 from litigant_portal.app.selectors.site import site_get
 
 
@@ -8,6 +9,7 @@ def app_meta(request):
     """App-level metadata available in every template."""
     return {
         "deployment_env": settings.DEPLOYMENT_ENV,
+        "features": features(),
         "app_build_time": settings.APP_BUILD_TIME,
         "app_git_sha": settings.GIT_SHA,
         "app_git_branch": settings.GIT_BRANCH,

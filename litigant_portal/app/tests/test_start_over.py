@@ -1,4 +1,4 @@
-"""Postgres tests: the dev and QA "Start over" control (#969).
+"""Postgres tests: the dev, QA and pilot "Start over" control (#969, #1037).
 
 Start over returns a session to where it began: the visitor's chats, uploads
 and answers go, and nobody else's. Seeded data (topics, flows, variables)
@@ -46,7 +46,7 @@ def _session_data(identity, variable):
     ChatThread.objects.create(identity=identity, thread_type="user_chat")
 
 
-@override_settings(DEPLOYMENT_ENV="prod")
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=False)
 @pytest.mark.parametrize("method", ["get", "post"])
 def test_production_has_no_start_over(client, variable, method):
     _session_data(_identity(client), variable)
@@ -62,15 +62,19 @@ def test_start_over_only_accepts_a_post(client, variable):
     assert VariableAnswer.objects.count() == 1
 
 
-@pytest.mark.parametrize("env", ["dev", "qa"])
+@pytest.mark.parametrize(
+    ("env", "pilot"),
+    [("dev", False), ("qa", False), ("prod", True)],
+    ids=["dev", "qa", "pilot"],
+)
 def test_start_over_clears_the_visitors_chats_and_answers(
-    client, variable, env
+    client, variable, env, pilot
 ):
     _session_data(_identity(client), variable)
     someone_else = UserIdentity.objects.create(session_key="another-session")
     _session_data(someone_else, variable)
 
-    with override_settings(DEPLOYMENT_ENV=env):
+    with override_settings(DEPLOYMENT_ENV=env, PILOT=pilot):
         client.post(START_OVER)
 
     assert list(VariableAnswer.objects.values_list("identity", flat=True)) == [

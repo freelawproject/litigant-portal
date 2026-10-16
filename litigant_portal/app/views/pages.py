@@ -2,7 +2,6 @@ import os
 import re
 from urllib.parse import urlsplit
 
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -21,6 +20,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView, UpdateView
 
+from litigant_portal.app.features import features
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import (
     UserProfile,
@@ -228,19 +228,19 @@ def _render_topic_flow(request, corpus, answers, errors=None):
 
 
 def start_over(request):
-    """Dev and QA only: start the session over from the seeded defaults
-    (#969).
+    """Tester tool: start the session over from the seeded defaults
+    (#969). On wherever ``features().start_over`` is (#1037).
 
     Deletes the visitor's chats, uploads and answers, then returns to
     the path of ``next`` when it is on this site. The query is dropped
     because ``/chat/?q=`` re-sends its question on load, which would start a
     new thread right after the reset. The site menu asks for confirmation
-    first. Production answers 404 here, whatever the menu shows, so the
-    check lives on the server and not only in the template.
+    first. Where the feature is off, this answers 404 whatever the menu
+    shows, so the check lives on the server and not only in the template.
     """
-    # Before the method check, so every method 404s in production and none
+    # Before the method check, so every method 404s where it's off and none
     # gives away that the endpoint exists.
-    if settings.DEPLOYMENT_ENV == "prod":
+    if not features().start_over:
         raise Http404
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])

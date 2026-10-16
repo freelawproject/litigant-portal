@@ -29,7 +29,11 @@ services:
     command: web-dev
     environment:
       - DEBUG=true
-      - DEPLOYMENT_ENV=dev
+      # Unset runs as prod (#1037): set DEPLOYMENT_ENV=dev in .env for the
+      # tester tools, and PILOT=true to preview what a court pilot sees.
+      - DEPLOYMENT_ENV=${DEPLOYMENT_ENV}
+      - PILOT=${PILOT}
+      - FEEDBACK_EMAIL=${FEEDBACK_EMAIL}
       - LP_AGENT_DEV_ENABLED=true
       - SECRET_KEY=dev
       - POSTGRES_HOST=postgres
