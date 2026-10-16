@@ -8,11 +8,12 @@
 # LEGAL REVIEW REQUIRED.
 
 name: 'Arizona'
-court_name: 'Arizona courts'
+court_name: 'Arizona Judicial Branch'
 jurisdiction_level: state
 state: AZ
-# No official_url: the Help page and the chat present it as the handling
-# court's website, and the handling court varies by ticket.
+# The Judicial Branch's own site, not a handling court's: that court varies
+# by ticket and is the traffic_court fact.
+official_url: 'https://www.azcourts.gov'
 
 # Header art (#979): the Arizona Supreme Court seal, resized from the SME
 # delivery (corpus-sources/arizona/branding/). The flow launches under the
