@@ -202,6 +202,10 @@ variables:
   # Arizona civil traffic. Scoped to the topic: an arraignment date and a
   # citation date mean something only inside a traffic case.
 
+  - name: traffic_court
+    label: 'The court named on your ticket'
+    help_text: "Printed on your ticket, for example a city's municipal court or a county justice court. This court handles your case."
+
   - name: traffic_violation_date
     label: 'Date of the violation'
     data_type: date
@@ -210,4 +214,4 @@ variables:
   - name: traffic_arraignment_date
     label: 'Your court date'
     data_type: date
-    help_text: 'Printed on your ticket, sometimes called the arraignment date. Not sure? Look up your case online or call the court.'
+    help_text: 'Printed on your ticket, sometimes called the arraignment date. Not sure? Ask the court named on your ticket.'
