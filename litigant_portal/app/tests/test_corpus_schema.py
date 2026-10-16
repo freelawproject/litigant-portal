@@ -1052,3 +1052,31 @@ def test_a_contact_field_longer_than_its_column_is_rejected(field):
     data["courts"]["north-dakota"]["contacts"][0][field] = "x" * 256
     with pytest.raises(ValidationError):
         CorpusSchema.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    ("corpus_court", "court", "known"),
+    [
+        ("north-dakota", "north-dakota", True),
+        ("north-dakota", "arizona", False),
+        (None, "north-dakota", True),
+        (None, "arizona", False),
+    ],
+    ids=[
+        "set-accepts-the-configured-court",
+        "set-rejects-another-court-even-if-authored",
+        "unset-accepts-a-court-authoring-the-topic",
+        "unset-rejects-a-court-the-corpus-lacks",
+    ],
+)
+def test_corpus_court_known_follows_the_setting_then_the_topic_index(
+    settings, corpus_court, court, known
+):
+    settings.CORPUS_COURT = corpus_court
+    topics = {("north-dakota", "adult-name-change"): object()}
+    with mock.patch.object(
+        selectors, "corpus_load_topics", return_value=topics
+    ):
+        assert (
+            selectors.corpus_court_known(court, "adult-name-change") is known
+        )

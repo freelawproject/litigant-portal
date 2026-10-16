@@ -943,6 +943,15 @@ def corpus_load_topics() -> dict[tuple[str, str], TopicSchema]:
     }
 
 
+def corpus_court_known(court: str, topic: str) -> bool:
+    """Whether a page URL's court is one this deployment serves: the
+    ``CORPUS_COURT`` setting when set (as ``agent_scope_choices`` reads
+    it), otherwise any court authoring ``topic`` in the corpus."""
+    if settings.CORPUS_COURT is not None:
+        return court == settings.CORPUS_COURT
+    return (court, topic) in corpus_load_topics()
+
+
 def corpus_load_flows() -> dict[tuple[str, str, str], FlowSchema]:
     """Every flow document, by (court, topic, flow) slug."""
     return {

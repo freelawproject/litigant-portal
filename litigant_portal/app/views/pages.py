@@ -35,6 +35,7 @@ from litigant_portal.app.models.choices import (
     State,
     VariableDataType,
 )
+from litigant_portal.app.selectors.corpus import corpus_court_known
 from litigant_portal.app.selectors.site import contact_help_list, site_get
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
@@ -232,11 +233,10 @@ def topic_flow_rows(request, court, topic, role):
     #1016).
 
     The sibling of ``topic_flow`` that reads the rows ``sync_corpus`` writes.
-    ``court`` is checked the way ``agent_scope_choices`` does: when
-    ``CORPUS_COURT`` is set it must match, otherwise any court is accepted
-    (dev syncs every court). The lookup itself is by topic and flow slug.
+    ``court`` is checked through ``corpus_court_known``; the lookup itself
+    is by topic and flow slug.
     """
-    if settings.CORPUS_COURT is not None and court != settings.CORPUS_COURT:
+    if not corpus_court_known(court, topic):
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
     flow = topic_flow_find(topic_slug=topic, flow_slug=role)
     if flow is None:

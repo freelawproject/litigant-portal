@@ -14,6 +14,7 @@ from unittest import mock
 import pytest
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
+from litigant_portal.app.selectors import corpus as selectors
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
@@ -152,8 +153,15 @@ def synced(db, settings):
     """The corpus above in the database, with the page reading rows."""
     settings.TOPIC_FLOW_SOURCE = "corpus"
     settings.CORPUS_COURT = None
-    with mock.patch.object(services, "corpus_load", return_value=_corpus()):
+    corpus = _corpus()
+    with mock.patch.object(services, "corpus_load", return_value=corpus):
         corpus_sync()
+    # The view's court check reads the topic index from disk; keep it on
+    # the fake corpus so ``alpha`` is a known court for every test here.
+    with mock.patch.object(
+        selectors, "corpus_load_topics", return_value=corpus.topics
+    ):
+        yield
 
 
 def _section_ids(html):
@@ -375,10 +383,11 @@ def test_corpus_source_404s_the_wrong_court_when_corpus_court_is_set(
 
 
 @pytest.mark.postgres
-def test_corpus_source_accepts_any_court_when_corpus_court_is_unset(
+def test_corpus_source_404s_a_court_the_corpus_lacks_when_corpus_court_is_unset(
     client, synced
 ):
-    assert client.get(f"/t/beta/{TOPIC}/{ROLE}/").status_code == 200
+    assert client.get(URL).status_code == 200
+    assert client.get(f"/t/beta/{TOPIC}/{ROLE}/").status_code == 404
 
 
 # --- the default setting ----------------------------------------------------
