@@ -131,35 +131,12 @@ def topic_flow(request, court, topic, role):
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
 
     if request.method == "POST":
-        submitted = {
-            qid: request.POST[qid]
-            for qid in question_ids(corpus)
-            if qid in request.POST
-        }
-        errors = validate_answers(corpus, submitted)
-        # Persist only what passes, canonicalized (stripped) to match what
-        # validate_answers checked — otherwise a padded-but-valid answer
-        # ("Cass  ") stores raw and fails the strict option-selected match on
-        # re-render, and a padded date breaks date.fromisoformat in the
-        # deadline compute. A blank required field or an out-of-list choice
-        # never lands in the store; valid siblings still save. A blank
-        # optional field stores None, which clears the answer — except for a
-        # NEVER_PREFILL field, which renders blank whatever is stored, so a
-        # blank submission there means "never shown", not "erase it". Erasing
-        # one takes its explicit clear checkbox; a typed value wins over the
-        # checkbox, since replacing is the stronger intent.
-        valid = {}
-        for qid, raw in submitted.items():
-            if qid in errors:
-                continue
-            value = raw.strip() or None
-            if (
-                value is None
-                and qid in NEVER_PREFILL
-                and f"{qid}__clear" not in request.POST
-            ):
-                continue
-            valid[qid] = value
+        submitted, errors, valid = _accepted_answers(
+            request.POST,
+            question_ids(corpus),
+            lambda s: validate_answers(corpus, s),
+            lambda _name, raw: raw.strip() or None,
+        )
         if valid:
             variable_answer_set_many(
                 identity=request.identity, values=valid, reviewed=True
@@ -192,6 +169,31 @@ def topic_flow(request, court, topic, role):
     return _render_topic_flow(
         request, corpus, topic_flow_answers(request, corpus)
     )
+
+
+def _accepted_answers(post, names, validate, coerce):
+    """``(submitted, errors, valid)`` for a fact form POST.
+
+    ``submitted`` is the posted strings for ``names``; ``errors`` is
+    ``{name: [message]}``; ``valid`` is the typed values to store. A blank
+    NEVER_PREFILL field is skipped unless its clear checkbox was posted (a
+    blank there means "not shown", not "erase").
+    """
+    submitted = {name: post[name] for name in names if name in post}
+    errors = validate(submitted)
+    valid = {}
+    for name, raw in submitted.items():
+        if name in errors:
+            continue
+        value = coerce(name, raw)
+        if (
+            value is None
+            and name in NEVER_PREFILL
+            and f"{name}__clear" not in post
+        ):
+            continue
+        valid[name] = value
+    return submitted, errors, valid
 
 
 def _flash_saved(request, valid):
@@ -250,24 +252,12 @@ def topic_flow_rows(request, court, topic, role):
         # Only currently asked variables are read, so a gated field whose
         # gate is unmet is ignored even if posted.
         variables = {v.name: v for _page, placed in pages for v in placed}
-        submitted = {
-            name: request.POST[name]
-            for name in rows.asked_names(pages, answers)
-            if name in request.POST
-        }
-        errors = rows.validate_answers(variables.values(), submitted)
-        valid = {}
-        for name, raw in submitted.items():
-            if name in errors:
-                continue
-            value = rows.coerce_value(variables[name], raw)
-            if (
-                value is None
-                and name in NEVER_PREFILL
-                and f"{name}__clear" not in request.POST
-            ):
-                continue
-            valid[name] = value
+        submitted, errors, valid = _accepted_answers(
+            request.POST,
+            rows.asked_names(pages, answers),
+            lambda s: rows.validate_answers(variables.values(), s),
+            lambda name, raw: rows.coerce_value(variables[name], raw),
+        )
         if valid:
             variable_answer_set_many(
                 identity=request.identity, values=valid, reviewed=True
