@@ -10,7 +10,9 @@
 {% if ctx.description %}
 <p class="mb-4 text-greyscale-700">{{ ctx.description }}</p>
 {% endif %}
-<form method="post" class="space-y-4">
+{# Named by the section heading when there is one, so seven interview forms #}
+{# do not read as seven identical entries in a screen reader's form list. #}
+<form method="post" class="space-y-4"{% if heading %} aria-labelledby="{{ anchor_id }}-heading"{% endif %}>
   {% csrf_token %}
   {% for q in ctx.questions %}
   {% if q.type == "choice" or q.type == "boolean" %}

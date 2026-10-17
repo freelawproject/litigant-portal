@@ -258,6 +258,17 @@ def test_each_interview_page_renders_a_post_form_with_a_field_per_variable(
 
 
 @pytest.mark.postgres
+def test_each_interview_form_is_named_by_its_section_heading(client, synced):
+    flat = _flat(client.get(URL))
+    assert re.search(
+        r'<h2 id="interview-2-heading"[^>]*>\s*About your pet\s*</h2>', flat
+    )
+    assert re.search(
+        r'<form[^>]*aria-labelledby="interview-2-heading"[^>]*>', flat
+    )
+
+
+@pytest.mark.postgres
 def test_choice_field_renders_option_values_and_labels(client, synced):
     flat = _flat(client.get(URL))
     assert _has_option(flat, "dog", "Dog")
@@ -407,13 +418,22 @@ def test_content_source_still_uses_the_registry(
         sections=[
             InfoSection(
                 kind="info", id="intro", heading="Intro", body="Hello."
-            )
+            ),
+            FactGatherSection(
+                kind="fact_gather",
+                id="facts",
+                heading="Your facts",
+                questions=[Question(id="filing_county", label="County")],
+            ),
         ],
     )
     monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
     response = client.get(URL)
     assert response.context["page_title"] == "From YAML"
-    assert _section_ids(response.content.decode()) == ["intro"]
+    flat = _flat(response)
+    assert _section_ids(flat) == ["intro", "facts"]
+    # The shared form names itself by the heading on this path too.
+    assert re.search(r'<form[^>]*aria-labelledby="facts-heading"', flat)
 
     monkeypatch.setattr(pages.registry, "get", lambda *a: None)
     assert client.get(URL).status_code == 404

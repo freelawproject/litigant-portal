@@ -36,9 +36,9 @@
   {% for section in rendered_sections %}
   <section id="{{ section.anchor_id }}" class="mb-8">
     {% if section.heading %}
-    <h2 class="mb-3 text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
+    <h2 id="{{ section.anchor_id }}-heading" class="mb-3 text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
     {% endif %}
-    {% include section.template with ctx=section.context %}
+    {% include section.template with ctx=section.context anchor_id=section.anchor_id heading=section.heading %}
   </section>
   {% endfor %}
 </div>
