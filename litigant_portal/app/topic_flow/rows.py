@@ -73,10 +73,17 @@ BLOCK_HEADINGS = {
 PLACEHOLDER_TEXT = _("This part of the page is coming soon.")
 
 
+def section_anchor(section, number: int) -> str:
+    """The section's key, or ``section-N`` for a row without one (the schema
+    requires a key, but an older or admin-edited row may lack it)."""
+    return section.key or f"section-{number}"
+
+
 def flow_layout(flow, sections) -> list[str]:
     """The stored layout, or every section key then the blocks when empty."""
     return list(flow.layout) or default_layout(
-        section.key for section in sections
+        section_anchor(section, number)
+        for number, section in enumerate(sections, 1)
     )
 
 
@@ -184,18 +191,22 @@ def render_flow(
 ) -> list[RenderedSection]:
     """One ``RenderedSection`` per layout entry, in layout order; the
     ``interview`` entry expands to one per page."""
-    by_key = {section.key: section for section in sections}
+    by_key = {
+        section_anchor(section, number): section
+        for number, section in enumerate(sections, 1)
+    }
     rendered = []
     for name in flow_layout(flow, sections):
         if name in by_key:
-            rendered.append(_render_info(by_key[name]))
+            rendered.append(_render_info(name, by_key[name]))
         elif name == "interview":
             rendered.extend(
                 _render_page(number, page, variables, answers)
                 for number, (page, variables) in enumerate(pages, 1)
             )
-        else:
+        elif name in BLOCK_HEADINGS:
             rendered.append(_render_placeholder(name))
+        # else: a name the schema would have rejected; leave it out
     if errors:
         _apply_errors(rendered, errors)
     return rendered
@@ -225,9 +236,9 @@ def _render_page(number, page, variables, answers):
     )
 
 
-def _render_info(section):
+def _render_info(anchor, section):
     return RenderedSection(
-        anchor_id=section.key,
+        anchor_id=anchor,
         heading=section.heading,
         template=f"{_TEMPLATE_DIR}/flow_section_info.html",
         context={"body": section.content},

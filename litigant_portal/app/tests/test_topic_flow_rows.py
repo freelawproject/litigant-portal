@@ -119,6 +119,28 @@ def test_interview_block_expands_to_one_section_per_page_in_order():
     assert [q["id"] for q in rendered[1].context["questions"]] == ["pet_kind"]
 
 
+def test_section_without_a_key_gets_a_positional_anchor():
+    # The schema requires a key, but an older or admin-edited row may lack
+    # one; an empty id would send the left-region link to the page top.
+    sections = [*SECTIONS, _section("", "Untitled", "Anything.")]
+    assert rows.flow_layout(TopicFlow(layout=[]), sections)[:3] == [
+        "overview",
+        "fees",
+        "section-3",
+    ]
+    rendered = rows.render_flow(TopicFlow(layout=[]), sections, [], {})
+    assert rendered[2].anchor_id == "section-3"
+    assert rendered[2].heading == "Untitled"
+
+
+def test_render_flow_leaves_out_a_layout_name_the_schema_would_reject():
+    # Only an admin edit to the layout column can get here; a 500 for every
+    # visitor is the wrong answer to a typo.
+    flow = TopicFlow(layout=["overview", "stray", "packet"])
+    rendered = rows.render_flow(flow, SECTIONS[:1], [], {})
+    assert [r.anchor_id for r in rendered] == ["overview", "packet"]
+
+
 # --- gating -----------------------------------------------------------------
 
 
