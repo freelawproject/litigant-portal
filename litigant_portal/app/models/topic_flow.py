@@ -130,6 +130,13 @@ class Variable(BaseModel):
             ),
         ]
 
+    def is_asked(self, answers: dict) -> bool:
+        """Whether this variable's question currently applies, given
+        ``{name: value}`` answers. Callers prefetch ``asked_when``."""
+        if self.asked_when is None:
+            return True
+        return answers.get(self.asked_when.name) == self.asked_when_value
+
 
 class VariableAnswer(BaseModel):
     """An identity's stored answer to a glossary variable."""

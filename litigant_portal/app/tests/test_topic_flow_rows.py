@@ -123,16 +123,16 @@ def test_interview_block_expands_to_one_section_per_page_in_order():
 
 
 def test_ungated_variable_is_always_asked():
-    assert rows.is_asked(LICENSED, {}) is True
+    assert LICENSED.is_asked({}) is True
 
 
 def test_gated_variable_is_asked_only_when_the_gate_answer_matches():
-    assert rows.is_asked(VACCINATED, {"licensed": True}) is True
-    assert rows.is_asked(VACCINATED, {"licensed": False}) is False
+    assert VACCINATED.is_asked({"licensed": True}) is True
+    assert VACCINATED.is_asked({"licensed": False}) is False
 
 
 def test_gated_variable_is_hidden_while_the_gate_is_unanswered():
-    assert rows.is_asked(VACCINATED, {}) is False
+    assert VACCINATED.is_asked({}) is False
 
 
 def test_page_questions_leave_out_a_gated_variable_until_its_gate_is_met():

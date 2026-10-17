@@ -101,13 +101,6 @@ def flow_variable_names(pages) -> list[str]:
     return list(dict.fromkeys(names))
 
 
-def is_asked(variable, answers) -> bool:
-    """Whether a variable's question currently applies."""
-    if variable.asked_when is None:
-        return True
-    return answers.get(variable.asked_when.name) == variable.asked_when_value
-
-
 def asked_names(pages, answers) -> list[str]:
     """Every variable currently asked, across all pages in order. The POST
     keys the entry view accepts."""
@@ -115,7 +108,7 @@ def asked_names(pages, answers) -> list[str]:
         variable.name
         for _page, variables in pages
         for variable in variables
-        if is_asked(variable, answers)
+        if variable.is_asked(answers)
     ]
 
 
@@ -132,7 +125,7 @@ def stale_gated_names(pages, answers, valid) -> list[str]:
         for _page, variables in pages
         for variable in variables
         if variable.asked_when is not None
-        and not is_asked(variable, after)
+        and not variable.is_asked(after)
         and variable.name in after
     ]
 
@@ -151,7 +144,7 @@ def page_questions(variables, answers) -> list[dict]:
     the fact-gather template reads."""
     questions = []
     for variable in variables:
-        if not is_asked(variable, answers):
+        if not variable.is_asked(answers):
             continue
         name = variable.name
         protected = name in NEVER_PREFILL
