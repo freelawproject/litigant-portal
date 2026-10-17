@@ -224,6 +224,12 @@ def test_question_type_follows_the_data_type(data_type, expected):
     assert question["type"] == expected
 
 
+def test_number_question_takes_any_step_and_the_others_take_none():
+    number = _variable("count", data_type=VariableDataType.NUMBER)
+    assert _question(number)["step"] == "any"
+    assert _question(FULL_NAME)["step"] == ""
+
+
 def test_question_carries_the_glossary_metadata():
     question = _question(
         _variable(
@@ -296,6 +302,8 @@ def test_protected_question_renders_blank_and_marks_saved():
         (VariableDataType.TEXT, "  Jane ", "Jane"),
         (VariableDataType.TEXT, "   ", None),
         (VariableDataType.NUMBER, " 3 ", 3),
+        (VariableDataType.NUMBER, "7", 7),
+        (VariableDataType.NUMBER, " -3 ", -3),
         (VariableDataType.NUMBER, "2.5", 2.5),
         (VariableDataType.BOOLEAN, "true", True),
         (VariableDataType.BOOLEAN, "false", False),
@@ -306,7 +314,9 @@ def test_protected_question_renders_blank_and_marks_saved():
         "text-strips",
         "blank-is-none",
         "number-int",
-        "number-float",
+        "number-digits",
+        "number-negative",
+        "number-decimal",
         "boolean-true",
         "boolean-false",
         "date-stays-string",
@@ -321,8 +331,24 @@ def test_coerce_value(data_type, raw, expected):
 
 @pytest.mark.parametrize(
     ("data_type", "raw"),
-    [(VariableDataType.NUMBER, "ten"), (VariableDataType.BOOLEAN, "maybe")],
-    ids=["number-rejects-letters", "boolean-rejects-other"],
+    [
+        (VariableDataType.NUMBER, "ten"),
+        (VariableDataType.NUMBER, "2."),
+        (VariableDataType.NUMBER, "nan"),
+        (VariableDataType.NUMBER, "inf"),
+        (VariableDataType.NUMBER, "1_000"),
+        (VariableDataType.NUMBER, "1e3"),
+        (VariableDataType.BOOLEAN, "maybe"),
+    ],
+    ids=[
+        "number-rejects-letters",
+        "number-rejects-a-trailing-point",
+        "number-rejects-nan",
+        "number-rejects-inf",
+        "number-rejects-underscores",
+        "number-rejects-exponent",
+        "boolean-rejects-other",
+    ],
 )
 def test_coerce_value_rejects_what_the_type_cannot_hold(data_type, raw):
     with pytest.raises(ValueError):

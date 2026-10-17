@@ -35,6 +35,7 @@
     name="{{ q.id }}"
     id="{{ q.id }}"
     value="{{ q.value }}"
+    step="{{ q.step }}"
     autocomplete="off"
     help_text="{{ q.help_text|default:'' }}"
     :required="q.required"

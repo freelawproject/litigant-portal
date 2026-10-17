@@ -1,4 +1,4 @@
-<c-vars type="text" :required="False" :autofocus="False" />
+<c-vars type="text" step="" :required="False" :autofocus="False" />
 {# --- Base --- #}
 {% with base="w-full text-md font-normal py-3 px-4 rounded-lg border bg-white text-greyscale-900 placeholder:text-greyscale-500 transition-colors duration-200 focus:outline-none focus:ring-2 disabled:bg-greyscale-100 disabled:text-greyscale-500 disabled:cursor-not-allowed" %}
 {# --- States --- #}
@@ -9,6 +9,7 @@
        {% if value %}value="{{ value }}"{% endif %}
        {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
        {% if autocomplete %}autocomplete="{{ autocomplete }}"{% endif %}
+       {% if step %}step="{{ step }}"{% endif %}
        {% if disabled %}disabled{% endif %}
        {% if readonly %}readonly{% endif %}
        {% if required %}required{% endif %}

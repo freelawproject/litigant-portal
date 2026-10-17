@@ -18,6 +18,8 @@ client-side show/hide: the litigant saves the gate, the page reloads, and the
 gated fields appear.
 """
 
+import re
+
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
@@ -34,7 +36,10 @@ from litigant_portal.app.topic_flow.validation import (
     REQUIRED_ERROR,
 )
 
-INVALID_NUMBER_ERROR = _("Enter a number, using digits only.")
+INVALID_NUMBER_ERROR = _("Enter a number, like 3 or 2.5.")
+# Digits with an optional decimal part. ``float()`` is wider (``nan``,
+# ``inf``, ``1e3``, ``1_000``), and the first two break the JSON column.
+_NUMBER = re.compile(r"^-?\d+(\.\d+)?$")
 
 _TEMPLATE_DIR = "cotton/molecules"
 
@@ -156,6 +161,13 @@ def page_questions(variables, answers) -> list[dict]:
                 "id": name,
                 "label": variable.label or name,
                 "type": _QUESTION_TYPES[variable.data_type],
+                # The browser's default step rejects decimals, which the
+                # store allows, so a number field takes any step.
+                "step": (
+                    "any"
+                    if variable.data_type == VariableDataType.NUMBER
+                    else ""
+                ),
                 "required": variable.required,
                 "choices": (
                     BOOLEAN_CHOICES
@@ -241,19 +253,19 @@ def _render_placeholder(block):
 def coerce_value(variable, raw: str):
     """The form string as the typed value the glossary stores.
 
-    Strips; blank is None (clears the answer). A number becomes int or
-    float, a boolean select's ``true``/``false`` becomes bool, everything
-    else stays a string. Raises ValueError when the string cannot be read
-    as the type.
+    Strips; blank is None (clears the answer). A number becomes int, or
+    float when it has a decimal part (the store accepts both, and another
+    writer may have stored a float the form must round-trip), a boolean
+    select's ``true``/``false`` becomes bool, everything else stays a
+    string. Raises ValueError when the string cannot be read as the type.
     """
     value = raw.strip()
     if not value:
         return None
     if variable.data_type == VariableDataType.NUMBER:
-        try:
-            return int(value)
-        except ValueError:
-            return float(value)
+        if not _NUMBER.match(value):
+            raise ValueError(f"not a number: {value!r}")
+        return float(value) if "." in value else int(value)
     if variable.data_type == VariableDataType.BOOLEAN:
         if value not in ("true", "false"):
             raise ValueError(f"not a boolean: {value!r}")

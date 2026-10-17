@@ -472,6 +472,24 @@ def test_post_stores_typed_values(client, synced):
 
 
 @pytest.mark.postgres
+def test_post_decimal_number_stores_a_float_and_prefills_it(client, synced):
+    # The assistant may store a float; the page must round-trip it rather
+    # than reject a value the litigant never typed.
+    client.post(URL, {"pet_count": "2.5"})
+    assert _values()["pet_count"] == 2.5
+    assert 'value="2.5"' in _field_tag(_flat(client.get(URL)), "pet_count")
+
+
+@pytest.mark.postgres
+def test_number_field_takes_any_step_so_a_stored_decimal_resubmits(
+    client, synced
+):
+    flat = _flat(client.get(URL))
+    assert 'step="any"' in _field_tag(flat, "pet_count")
+    assert "step=" not in _field_tag(flat, "full_name")
+
+
+@pytest.mark.postgres
 def test_post_writes_the_same_rows_the_content_path_writes(
     client, synced, settings, monkeypatch
 ):
@@ -595,6 +613,18 @@ def test_post_unparseable_date_soft_gates_instead_of_erroring(client, synced):
     assert response.status_code == 200
     assert re.search(
         r'name="license_date"[^>]*aria-invalid="true"', _flat(response)
+    )
+    assert not VariableAnswer.objects.exists()
+
+
+@pytest.mark.postgres
+def test_post_nan_number_soft_gates_instead_of_erroring(client, synced):
+    # float("nan") parses, and Postgres rejects NaN in jsonb: without the
+    # whole-digits rule this POST was a 500, not an inline error.
+    response = client.post(URL, {"pet_count": "nan"})
+    assert response.status_code == 200
+    assert re.search(
+        r'name="pet_count"[^>]*aria-invalid="true"', _flat(response)
     )
     assert not VariableAnswer.objects.exists()
 
