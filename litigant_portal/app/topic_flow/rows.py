@@ -71,6 +71,9 @@ BLOCK_HEADINGS = {
 }
 
 PLACEHOLDER_TEXT = _("This part of the page is coming soon.")
+GATE_HINT = _(
+    "Depending on your answer, more questions may appear after you save."
+)
 
 
 def section_anchor(section, number: int) -> str:
@@ -146,9 +149,23 @@ def _form_value(value) -> str:
     return str(value)
 
 
-def page_questions(variables, answers) -> list[dict]:
+def gate_names(pages) -> set[str]:
+    """The variables that gate another one, across every page: a gate's
+    dependents may sit on a later page than the gate itself."""
+    return {
+        variable.asked_when.name
+        for _page, variables in pages
+        for variable in variables
+        if variable.asked_when is not None
+    }
+
+
+def page_questions(variables, answers, gates=frozenset()) -> list[dict]:
     """One question dict per asked variable, in placement order, in the shape
-    the fact-gather template reads."""
+    the fact-gather template reads. ``gates`` is ``gate_names`` of the whole
+    flow."""
+    # A gated field appears only after its gate is saved and the page
+    # reloads, so the gate question says so (WCAG 3.3.2).
     questions = []
     for variable in variables:
         if not variable.is_asked(answers):
@@ -156,6 +173,9 @@ def page_questions(variables, answers) -> list[dict]:
         name = variable.name
         protected = name in NEVER_PREFILL
         stored = answers.get(name, variable.default)
+        help_text = variable.help_text
+        if name in gates:
+            help_text = f"{help_text} {GATE_HINT}" if help_text else GATE_HINT
         questions.append(
             {
                 "id": name,
@@ -174,7 +194,7 @@ def page_questions(variables, answers) -> list[dict]:
                     if variable.data_type == VariableDataType.BOOLEAN
                     else variable.choices
                 ),
-                "help_text": variable.help_text,
+                "help_text": help_text,
                 # Same leak guard as the content renderer: a protected field
                 # renders blank and gets the clear checkbox instead (#638).
                 "value": "" if protected else _form_value(stored),
@@ -195,13 +215,14 @@ def render_flow(
         section_anchor(section, number): section
         for number, section in enumerate(sections, 1)
     }
+    gates = gate_names(pages)
     rendered = []
     for name in flow_layout(flow, sections):
         if name in by_key:
             rendered.append(_render_info(name, by_key[name]))
         elif name == "interview":
             rendered.extend(
-                _render_page(number, page, variables, answers)
+                _render_page(number, page, variables, answers, gates)
                 for number, (page, variables) in enumerate(pages, 1)
             )
         elif name in BLOCK_HEADINGS:
@@ -224,14 +245,14 @@ def _apply_errors(rendered, errors):
                 focused = True
 
 
-def _render_page(number, page, variables, answers):
+def _render_page(number, page, variables, answers, gates):
     return RenderedSection(
         anchor_id=f"interview-{number}",
         heading=page.title,
         template=f"{_TEMPLATE_DIR}/flow_section_fact_gather.html",
         context={
             "description": page.description,
-            "questions": page_questions(variables, answers),
+            "questions": page_questions(variables, answers, gates),
         },
     )
 

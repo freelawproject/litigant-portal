@@ -164,6 +164,46 @@ def test_page_questions_leave_out_a_gated_variable_until_its_gate_is_met():
     assert [q["id"] for q in asked] == ["licensed", "vaccinated"]
 
 
+def test_a_gate_question_says_more_questions_may_appear_after_saving():
+    questions = {
+        q["id"]: q
+        for q in rows.page_questions(
+            [LICENSED, VACCINATED, PET_KIND], {"licensed": True}, {"licensed"}
+        )
+    }
+    assert questions["licensed"]["help_text"] == rows.GATE_HINT
+    assert questions["vaccinated"]["help_text"] == ""
+    assert questions["pet_kind"]["help_text"] == ""
+
+
+def test_the_gate_hint_follows_the_gate_questions_own_help_text():
+    gate = _variable(
+        "licensed", data_type=VariableDataType.BOOLEAN, help_text="Yes or no."
+    )
+    gated = _variable("vaccinated", asked_when=gate, asked_when_value=True)
+    (question,) = rows.page_questions([gate, gated], {}, {"licensed"})
+    assert question["help_text"] == f"Yes or no. {rows.GATE_HINT}"
+
+
+def test_gate_names_spans_every_page():
+    pages = [
+        (TopicFlowInterviewPage(title="A"), [LICENSED]),
+        (TopicFlowInterviewPage(title="B"), [VACCINATED, PET_KIND]),
+    ]
+    assert rows.gate_names(pages) == {"licensed"}
+
+
+def test_a_gate_on_an_earlier_page_than_its_dependents_still_carries_the_hint():
+    flow = TopicFlow(layout=["interview"])
+    pages = [
+        (TopicFlowInterviewPage(title="A"), [LICENSED]),
+        (TopicFlowInterviewPage(title="B"), [VACCINATED]),
+    ]
+    first, _second = rows.render_flow(flow, [], pages, {})
+    (question,) = first.context["questions"]
+    assert question["help_text"] == rows.GATE_HINT
+
+
 def test_asked_names_spans_every_page():
     pages = [
         (TopicFlowInterviewPage(title="A"), [FULL_NAME]),

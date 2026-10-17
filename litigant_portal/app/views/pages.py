@@ -197,19 +197,27 @@ def _accepted_answers(post, names, validate, coerce):
     return submitted, errors, valid
 
 
-def _flash_saved(request, valid):
+def _flash_saved(request, valid, revealed=()):
     """The toast after a save. A NEVER_PREFILL field re-renders blank even
     after a successful save, so without the longer message the save looks
-    like it failed (#803). Shared by both page sources."""
-    if any(valid.get(name) for name in NEVER_PREFILL):
-        messages.success(
-            request,
-            _(
-                "Saved. For your privacy, your answers are not shown on this page."
-            ),
+    like it failed (#803). ``revealed`` names the questions the save
+    uncovered, so a screen reader hears that the page is not done (WCAG
+    4.1.3). Shared by both page sources."""
+    private = any(valid.get(name) for name in NEVER_PREFILL)
+    if revealed and private:
+        text = _(
+            "Saved. More questions appeared below. For your privacy, your "
+            "answers are not shown on this page."
+        )
+    elif revealed:
+        text = _("Saved. More questions appeared below.")
+    elif private:
+        text = _(
+            "Saved. For your privacy, your answers are not shown on this page."
         )
     else:
-        messages.success(request, _("Saved."))
+        text = _("Saved.")
+    messages.success(request, text)
 
 
 def _render_topic_flow(request, corpus, answers, errors=None):
@@ -252,9 +260,10 @@ def topic_flow_rows(request, court, topic, role):
         # Only currently asked variables are read, so a gated field whose
         # gate is unmet is ignored even if posted.
         variables = {v.name: v for _page, placed in pages for v in placed}
+        asked = rows.asked_names(pages, answers)
         submitted, errors, valid = _accepted_answers(
             request.POST,
-            rows.asked_names(pages, answers),
+            asked,
             lambda s: rows.validate_answers(variables.values(), s),
             lambda name, raw: rows.coerce_value(variables[name], raw),
         )
@@ -262,26 +271,38 @@ def topic_flow_rows(request, court, topic, role):
         # so the briefcase and the prefill agree with the page.
         for name in rows.stale_gated_names(pages, answers, valid):
             valid[name] = None
+        revealed = []
         if valid:
             variable_answer_set_many(
                 identity=request.identity, values=valid, reviewed=True
             )
-        if errors:
-            # Re-read: the valid siblings just saved, and the gate they may
-            # have set decides which fields the re-render shows.
+            # Re-read: a gate just saved decides which fields show next,
+            # and the ones it uncovered get the toast and the anchor.
             answers = topic_flow_row_answers(request, names)
+            revealed = [
+                name
+                for name in rows.asked_names(pages, answers)
+                if name not in asked
+            ]
+        if errors:
             return _render_flow_page(
                 request,
                 flow.name,
                 rows.render_flow(flow, sections, pages, answers, errors),
             )
         if valid:
-            _flash_saved(request, valid)
+            _flash_saved(request, valid, revealed)
         url = reverse(
             "pages:topic_flow",
             kwargs={"court": court, "topic": topic, "role": role},
         )
-        anchor = rows.submitted_section_anchor(pages, submitted)
+        # Field ids are variable names, so landing on the first revealed
+        # question puts focus in it; otherwise back to the section saved.
+        anchor = (
+            revealed[0]
+            if revealed
+            else rows.submitted_section_anchor(pages, submitted)
+        )
         if anchor:
             url = f"{url}#{anchor}"
         return redirect(url)

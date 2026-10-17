@@ -450,10 +450,21 @@ PET_PAGE = {"pet_kind": "dog", "licensed": "true", "pet_count": "2"}
 def test_post_persists_answers_and_redirects_to_the_section_anchor(
     client, synced
 ):
-    response = client.post(URL, PET_PAGE)
+    # licensed=false reveals nothing, so the anchor is the section's own.
+    response = client.post(URL, {**PET_PAGE, "licensed": "false"})
     assert response.status_code == 302
     assert response["Location"] == f"{URL}#interview-2"
-    assert _values() == {"pet_kind": "dog", "licensed": True, "pet_count": 2}
+    assert _values() == {"pet_kind": "dog", "licensed": False, "pet_count": 2}
+
+
+@pytest.mark.postgres
+def test_a_save_that_reveals_a_question_redirects_to_that_field(
+    client, synced
+):
+    response = client.post(URL, {"licensed": "true"})
+    assert response["Location"] == f"{URL}#vaccinated"
+    response = client.post(URL, {"licensed": "false"})
+    assert response["Location"] == f"{URL}#interview-2"
 
 
 @pytest.mark.postgres
@@ -703,6 +714,26 @@ def test_post_of_a_protected_answer_explains_the_privacy_blank(client, synced):
         URL, {"first_name": "Sandra", "full_name": "Sandra Doe"}, follow=True
     )
     assert "For your privacy" in response.content.decode()
+
+
+@pytest.mark.postgres
+def test_a_save_that_reveals_a_question_says_so_in_the_toast(client, synced):
+    html = client.post(URL, {"licensed": "true"}, follow=True).content.decode()
+    assert "More questions appeared" in html
+    html = client.post(
+        URL, {"licensed": "false"}, follow=True
+    ).content.decode()
+    assert "Saved." in html
+    assert "More questions appeared" not in html
+
+
+@pytest.mark.postgres
+def test_the_gate_question_carries_the_more_questions_hint(client, synced):
+    flat = _flat(client.get(URL))
+    assert re.search(
+        r'<p id="licensed-help"[^>]*>[^<]*more questions may appear', flat
+    )
+    assert not re.search(r'<p id="pet_kind-help"', flat)
 
 
 @pytest.mark.postgres
