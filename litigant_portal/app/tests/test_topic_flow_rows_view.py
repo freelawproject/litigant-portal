@@ -631,6 +631,20 @@ def test_post_saves_valid_fields_even_when_a_sibling_is_invalid(
 
 
 @pytest.mark.postgres
+def test_error_rerender_shows_a_field_gated_by_a_sibling_saved_in_the_same_post(
+    client, synced
+):
+    # The re-render reads the answers back after the partial save, so the
+    # gate that just landed decides which fields show beside the error.
+    response = client.post(URL, {"licensed": "true", "pet_count": "two"})
+    assert response.status_code == 200
+    flat = _flat(response)
+    assert _field_tag(flat, "vaccinated")
+    assert re.search(r'name="pet_count"[^>]*aria-invalid="true"', flat)
+    assert _values() == {"licensed": True}
+
+
+@pytest.mark.postgres
 def test_post_choice_outside_list_is_rejected_not_stored(client, synced):
     response = client.post(URL, {**PET_PAGE, "pet_kind": "bird"})
     assert response.status_code == 200
