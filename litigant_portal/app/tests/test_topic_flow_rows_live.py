@@ -1,15 +1,17 @@
 """The guided page built from rows, against the real corpus.
 
 One postgres test: sync ``litigant_portal/corpus/`` for real (no fake), then
-render every enabled flow under ``TOPIC_FLOW_SOURCE=corpus``. A corpus change
-the page cannot render fails here, in CI, rather than on a partner's instance.
-The Python-built corpus tests live in ``test_topic_flow_rows_view.py``.
+render every enabled flow under ``TOPIC_FLOW_SOURCE=corpus`` and save one
+North Dakota page through real glossary rows. A corpus change the page
+cannot render fails here, in CI, rather than on a partner's instance. The
+Python-built corpus tests live in ``test_topic_flow_rows_view.py``.
 """
 
 import re
 
 import pytest
 
+from litigant_portal.app.models import VariableAnswer
 from litigant_portal.app.selectors.corpus import corpus_load_topics
 from litigant_portal.app.selectors.topic_flow import topic_flow_list
 from litigant_portal.app.services.corpus import corpus_sync
@@ -50,3 +52,26 @@ def test_every_live_flow_renders_with_an_anchor_per_section_key(
         assert set(flow.sections.values_list("key", flat=True)) <= set(
             anchors
         ), url
+
+    # Save the "The name you want" page of the ND standard flow: three text
+    # variables, two required, none gated or in NEVER_PREFILL. The anchor is
+    # not hard-coded, since page order in standard.yml can change.
+    url = "/t/north-dakota/adult-name-change/standard/"
+    posted = {
+        "name_change_requested_first": " Jane ",
+        "name_change_requested_middle": "",
+        "name_change_requested_last": "Doe",
+    }
+    response = client.post(url, posted)
+    assert response.status_code == 302
+    assert response["Location"].startswith(f"{url}#interview-")
+    stored = dict(
+        VariableAnswer.objects.filter(reviewed=True).values_list(
+            "variable__name", "value"
+        )
+    )
+    assert stored == {
+        "name_change_requested_first": "Jane",
+        "name_change_requested_middle": None,
+        "name_change_requested_last": "Doe",
+    }
