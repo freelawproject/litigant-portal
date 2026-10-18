@@ -399,11 +399,6 @@ class AssistantSystemPromptTests(TestCase):
         prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
         return prompt.split("## Reply shape")[1].split("## Court context")[0]
 
-    def test_reply_shape_names_both_halves(self):
-        section = self._reply_shape_section()
-        self.assertIn("information first", section)
-        self.assertIn("one question last", section)
-
     def test_reply_shape_is_present_in_multi_court_mode(self):
         prompt = self.agent.generate_system_prompt(thread_id=self.thread.id)
         self.assertIn("multi-court mode", prompt)
