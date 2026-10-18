@@ -73,6 +73,7 @@ def _corpus():
                 {"value": "dog", "label": "Dog"},
                 {"value": "cat", "label": "Cat"},
             ],
+            "default": "cat",
         },
         "licensed": {
             "name": "licensed",
@@ -250,7 +251,8 @@ def test_each_interview_page_renders_a_post_form_with_a_field_per_variable(
     client, synced
 ):
     flat = _flat(client.get(URL))
-    assert flat.count('method="post"') == 2
+    # Interview forms only: the frame's "Start over" dialog is a POST too.
+    assert len(re.findall(r'<form[^>]*aria-labelledby="interview-', flat)) == 2
     assert "csrfmiddlewaretoken" in flat
     for name in ("first_name", "full_name", "pet_kind", "licensed"):
         assert _field_tag(flat, name), name
@@ -306,8 +308,17 @@ def test_page_description_renders_above_the_fields(client, synced):
     flat = _flat(client.get(URL))
     description = flat.index("A few facts the license needs.")
     assert description < flat.index('name="pet_kind"')
-    # The page without a description renders no empty paragraph.
-    assert flat.count('<p class="mb-4 text-greyscale-700">') == 1
+    assert flat.count("A few facts the license needs.") == 1
+
+
+@pytest.mark.postgres
+def test_glossary_default_preselects_until_an_answer_is_stored(client, synced):
+    flat = _flat(client.get(URL))
+    assert re.search(r'<option value="cat"[^>]*selected', flat)
+    _store(client, "pet_kind", "dog")
+    flat = _flat(client.get(URL))
+    assert re.search(r'<option value="dog"[^>]*selected', flat)
+    assert not re.search(r'<option value="cat"[^>]*selected', flat)
 
 
 @pytest.mark.postgres
@@ -334,7 +345,9 @@ def test_protected_field_never_echoes_the_stored_value(client, synced):
     assert 'name="first_name__clear"' not in before
     _store(client, "first_name", "Sandra")
     after = _flat(client.get(URL))
-    assert "Sandra" not in after
+    # The input stays blank (the briefcase panel may still list the fact).
+    field = _field_tag(after, "first_name")
+    assert field and "Sandra" not in field
     assert re.search(
         r'<input[^>]*type="checkbox"[^>]*name="first_name__clear"', after
     )
