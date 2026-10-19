@@ -8,7 +8,7 @@
 {# role="menu" promise of arrow-key navigation. #}
 {% trans "Menu" as menu_label %}
 {% trans "Dev tools" as dev_tools_label %}
-<details class="site-menu relative {{ class }}" {{ attrs }}>
+<details x-data="siteMenu" x-on:click.outside="close" x-on:keydown.escape="close" class="site-menu relative {{ class }}" {{ attrs }}>
   <summary class="flex items-center justify-center p-2 rounded-lg cursor-pointer hover:bg-greyscale-100 list-none" aria-label="{{ menu_label }}">
     <c-atoms.icon name="bars-3" class="w-6 h-6" />
   </summary>

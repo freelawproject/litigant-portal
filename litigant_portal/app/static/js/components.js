@@ -17,6 +17,18 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
+  // Site menu (#988): a native <details>, so it opens and shuts without JS.
+  // This adds the closes people expect from a menu, wired in the template:
+  // a click outside it, and Escape.
+  // ===========================================================================
+
+  Alpine.data('siteMenu', () => ({
+    close() {
+      this.$root.open = false
+    },
+  }))
+
+  // ===========================================================================
   // User menu dropdown
   // ===========================================================================
 
