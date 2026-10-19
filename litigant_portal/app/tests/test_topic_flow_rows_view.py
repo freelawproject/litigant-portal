@@ -673,6 +673,21 @@ def test_error_rerender_shows_a_field_gated_by_a_sibling_saved_in_the_same_post(
 
 
 @pytest.mark.postgres
+def test_an_error_on_a_field_the_same_save_hides_is_dropped_not_lost(
+    client, synced
+):
+    # The flipped gate hides vaccinated, so its error has nowhere to show;
+    # the save lands and the page says so instead of reloading in silence.
+    client.post(URL, {"licensed": "true"})
+    response = client.post(
+        URL, {"licensed": "false", "vaccinated": "maybe"}, follow=True
+    )
+    assert response.redirect_chain == [(f"{URL}#interview-2", 302)]
+    assert "Saved." in response.content.decode()
+    assert _values() == {"licensed": False}
+
+
+@pytest.mark.postgres
 def test_post_choice_outside_list_is_rejected_not_stored(client, synced):
     response = client.post(URL, {**PET_PAGE, "pet_kind": "bird"})
     assert response.status_code == 200

@@ -284,11 +284,16 @@ def topic_flow_rows(request, court, topic, role):
             # and the ones it uncovered get the toast and the anchor.
             answers = topic_flow_row_answers(request, names)
             cleared = topic_flow_row_cleared_names(request, names)
-            revealed = [
-                name
-                for name in rows.asked_names(pages, answers)
-                if name not in asked
-            ]
+            asked_after = rows.asked_names(pages, answers)
+            revealed = [name for name in asked_after if name not in asked]
+            # A gate flipped by this save hides its dependents, so an error
+            # on one has no field to land on: drop it rather than re-render
+            # a page that shows no message.
+            errors = {
+                name: found
+                for name, found in errors.items()
+                if name in asked_after
+            }
         if errors:
             return _render_flow_page(
                 request,
