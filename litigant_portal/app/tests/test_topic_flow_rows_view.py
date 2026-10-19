@@ -83,6 +83,7 @@ def _corpus():
         "licensed": {
             "name": "licensed",
             "label": "Already licensed",
+            "question": "Is your pet already licensed?",
             "data_type": "boolean",
         },
         "vaccinated": {
@@ -297,6 +298,15 @@ def test_required_variable_marks_the_field_required_and_optional_stays_unmarked(
     flat = _flat(client.get(URL))
     assert re.search(r"\brequired\b", _field_tag(flat, "full_name"))
     assert not re.search(r"\brequired\b", _field_tag(flat, "pet_kind"))
+
+
+@pytest.mark.postgres
+def test_an_authored_question_is_the_fields_label(client, synced):
+    flat = _flat(client.get(URL))
+    assert re.search(
+        r'<label for="licensed"[^>]*>\s*Is your pet already licensed\?', flat
+    )
+    assert "Already licensed" not in flat
 
 
 @pytest.mark.postgres

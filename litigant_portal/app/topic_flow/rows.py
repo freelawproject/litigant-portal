@@ -199,7 +199,9 @@ def page_questions(
         questions.append(
             {
                 "id": name,
-                "label": variable.label or name,
+                # The authored question is the wording the litigant is
+                # asked; the label names the fact in the briefcase.
+                "label": variable.question or variable.label or name,
                 "type": _QUESTION_TYPES[variable.data_type],
                 # The browser's default step rejects decimals, which the
                 # store allows, so a number field takes any step.

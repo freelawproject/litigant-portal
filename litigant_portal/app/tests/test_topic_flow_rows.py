@@ -314,6 +314,18 @@ def test_question_carries_the_glossary_metadata():
     assert question["choices"] == PET_CHOICES
 
 
+def test_question_text_is_asked_over_the_label_when_authored():
+    variable = _variable(
+        "convicted",
+        label="Convicted",
+        question="Have you ever been convicted of a crime?",
+    )
+    assert (
+        _question(variable)["label"]
+        == "Have you ever been convicted of a crime?"
+    )
+
+
 def test_boolean_question_offers_yes_and_no():
     question = _question(LICENSED)
     assert [c["value"] for c in question["choices"]] == ["true", "false"]
