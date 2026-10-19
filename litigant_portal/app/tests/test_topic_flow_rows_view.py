@@ -773,6 +773,19 @@ def test_blank_optional_field_clears_its_answer(client, synced):
     assert _values()["pet_count"] is None
 
 
+@pytest.mark.postgres
+def test_a_cleared_field_stays_blank_instead_of_showing_its_default(
+    client, synced
+):
+    # Otherwise the next save of the page posts the default back as a
+    # reviewed fact the litigant had removed.
+    client.post(URL, PET_PAGE)
+    client.post(URL, {**PET_PAGE, "pet_kind": ""})
+    assert _values()["pet_kind"] is None
+    flat = _flat(client.get(URL))
+    assert not re.search(r'<option value="cat"[^>]*selected', flat)
+
+
 # --- toasts -----------------------------------------------------------------
 
 

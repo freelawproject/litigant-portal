@@ -163,10 +163,13 @@ def gate_names(pages) -> set[str]:
     }
 
 
-def page_questions(variables, answers, gates=frozenset()) -> list[dict]:
+def page_questions(
+    variables, answers, gates=frozenset(), cleared=frozenset()
+) -> list[dict]:
     """One question dict per asked variable, in placement order, in the shape
     the fact-gather template reads. ``gates`` is ``gate_names`` of the whole
-    flow."""
+    flow; ``cleared`` names the variables the litigant blanked, which must
+    not fall back to the glossary default."""
     # A gated field appears only after its gate is saved and the page
     # reloads, so the gate question says so (WCAG 3.3.2).
     questions = []
@@ -176,7 +179,8 @@ def page_questions(variables, answers, gates=frozenset()) -> list[dict]:
         name = variable.name
         protected = name in NEVER_PREFILL
         saved = protected and name in answers
-        stored = answers.get(name, variable.default)
+        default = None if name in cleared else variable.default
+        stored = answers.get(name, default)
         help_text = variable.help_text
         if name in gates:
             help_text = f"{help_text} {GATE_HINT}" if help_text else GATE_HINT
@@ -213,10 +217,11 @@ def page_questions(variables, answers, gates=frozenset()) -> list[dict]:
 
 
 def render_flow(
-    flow, sections, pages, answers, errors=None
+    flow, sections, pages, answers, errors=None, cleared=frozenset()
 ) -> list[RenderedSection]:
     """One ``RenderedSection`` per layout entry, in layout order; the
-    ``interview`` entry expands to one per page."""
+    ``interview`` entry expands to one per page. ``cleared`` is passed to
+    ``page_questions``."""
     by_key = {
         section_anchor(section, number): section
         for number, section in enumerate(sections, 1)
@@ -228,7 +233,7 @@ def render_flow(
             rendered.append(_render_info(name, by_key[name]))
         elif name == "interview":
             rendered.extend(
-                _render_page(number, page, variables, answers, gates)
+                _render_page(number, page, variables, answers, gates, cleared)
                 for number, (page, variables) in enumerate(pages, 1)
             )
         elif name in BLOCK_HEADINGS:
@@ -251,14 +256,14 @@ def _apply_errors(rendered, errors):
                 focused = True
 
 
-def _render_page(number, page, variables, answers, gates):
+def _render_page(number, page, variables, answers, gates, cleared):
     return RenderedSection(
         anchor_id=f"interview-{number}",
         heading=page.title,
         template=f"{_TEMPLATE_DIR}/flow_section_fact_gather.html",
         context={
             "description": page.description,
-            "questions": page_questions(variables, answers, gates),
+            "questions": page_questions(variables, answers, gates, cleared),
         },
     )
 

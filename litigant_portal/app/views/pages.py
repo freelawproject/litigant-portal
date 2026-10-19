@@ -61,6 +61,7 @@ from litigant_portal.app.views.utils import (
     briefcase_answers,
     topic_flow_answers,
     topic_flow_row_answers,
+    topic_flow_row_cleared_names,
 )
 
 
@@ -254,6 +255,7 @@ def topic_flow_rows(request, court, topic, role):
     pages = rows.flow_pages(flow)
     names = rows.flow_variable_names(pages)
     answers = topic_flow_row_answers(request, names)
+    cleared = topic_flow_row_cleared_names(request, names)
 
     if request.method == "POST":
         # Same rules as the content path's POST above, over glossary rows.
@@ -281,6 +283,7 @@ def topic_flow_rows(request, court, topic, role):
             # Re-read: a gate just saved decides which fields show next,
             # and the ones it uncovered get the toast and the anchor.
             answers = topic_flow_row_answers(request, names)
+            cleared = topic_flow_row_cleared_names(request, names)
             revealed = [
                 name
                 for name in rows.asked_names(pages, answers)
@@ -290,7 +293,9 @@ def topic_flow_rows(request, court, topic, role):
             return _render_flow_page(
                 request,
                 flow.name,
-                rows.render_flow(flow, sections, pages, answers, errors),
+                rows.render_flow(
+                    flow, sections, pages, answers, errors, cleared
+                ),
             )
         if valid:
             _flash_saved(request, valid, revealed)
@@ -310,7 +315,9 @@ def topic_flow_rows(request, court, topic, role):
         return redirect(url)
 
     return _render_flow_page(
-        request, flow.name, rows.render_flow(flow, sections, pages, answers)
+        request,
+        flow.name,
+        rows.render_flow(flow, sections, pages, answers, cleared=cleared),
     )
 
 

@@ -341,6 +341,17 @@ def test_question_value_falls_back_to_the_default():
     assert _question(PET_KIND)["value"] == ""
 
 
+def test_a_cleared_answer_renders_blank_not_the_default():
+    variable = _variable(
+        "pet_kind",
+        data_type=VariableDataType.CHOICE,
+        choices=PET_CHOICES,
+        default="cat",
+    )
+    (question,) = rows.page_questions([variable], {}, cleared={"pet_kind"})
+    assert question["value"] == ""
+
+
 @pytest.mark.parametrize(
     ("stored", "expected"),
     [(True, "true"), (False, "false"), (3, "3"), ("2026-03-15", "2026-03-15")],
