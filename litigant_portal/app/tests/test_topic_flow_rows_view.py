@@ -58,7 +58,12 @@ def _corpus():
     """One court, one topic, an enabled flow with an authored layout and a
     disabled sibling. ``first_name`` is in NEVER_PREFILL."""
     variables = {
-        "first_name": {"name": "first_name", "label": "First name"},
+        # Required and protected, as in the real glossary.
+        "first_name": {
+            "name": "first_name",
+            "label": "First name",
+            "required": True,
+        },
         "full_name": {
             "name": "full_name",
             "label": "Full name",
@@ -707,6 +712,19 @@ def test_blank_protected_field_keeps_the_stored_answer(client, synced):
     client.post(URL, {"first_name": "Sandra", "full_name": "Sandra Doe"})
     client.post(URL, {"first_name": "", "full_name": "Sandra Roe"})
     assert _values() == {"first_name": "Sandra", "full_name": "Sandra Roe"}
+
+
+@pytest.mark.postgres
+def test_a_stored_protected_field_renders_without_required(client, synced):
+    # It renders blank whatever is stored, so `required` would make the
+    # browser refuse every later save of the page.
+    assert re.search(
+        r"\brequired\b", _field_tag(_flat(client.get(URL)), "first_name")
+    )
+    client.post(URL, {"first_name": "Sandra", "full_name": "Sandra Doe"})
+    assert not re.search(
+        r"\brequired\b", _field_tag(_flat(client.get(URL)), "first_name")
+    )
 
 
 @pytest.mark.postgres

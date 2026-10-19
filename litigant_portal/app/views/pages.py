@@ -258,13 +258,15 @@ def topic_flow_rows(request, court, topic, role):
     if request.method == "POST":
         # Same rules as the content path's POST above, over glossary rows.
         # Only currently asked variables are read, so a gated field whose
-        # gate is unmet is ignored even if posted.
+        # gate is unmet is ignored even if posted. A stored protected
+        # field renders blank, so a blank there is "keep", not "missing".
         variables = {v.name: v for _page, placed in pages for v in placed}
         asked = rows.asked_names(pages, answers)
+        keep = {n for n in asked if n in NEVER_PREFILL and n in answers}
         submitted, errors, valid = _accepted_answers(
             request.POST,
             asked,
-            lambda s: rows.validate_answers(variables.values(), s),
+            lambda s: rows.validate_answers(variables.values(), s, keep),
             lambda name, raw: rows.coerce_value(variables[name], raw),
         )
         # A gated answer whose gate stops matching is cleared with the save,

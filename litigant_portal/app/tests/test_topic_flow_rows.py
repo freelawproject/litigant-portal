@@ -355,6 +355,12 @@ def test_protected_question_renders_blank_and_marks_saved():
     assert _question(first_name)["saved"] is False
 
 
+def test_a_stored_protected_field_drops_required_since_it_renders_blank():
+    first_name = _variable("first_name", required=True)
+    assert _question(first_name)["required"] is True
+    assert _question(first_name, {"first_name": "Sandra"})["required"] is False
+
+
 # --- coercion ---------------------------------------------------------------
 
 
@@ -458,6 +464,15 @@ def test_validate_answers(submitted, expected):
     # The last case leaves the required full_name out of the submission: a
     # field from a page that was not posted is not an error.
     assert rows.validate_answers(VARIABLES, submitted) == expected
+
+
+def test_a_blank_kept_protected_field_is_not_a_missing_required_answer():
+    first_name = _variable("first_name", required=True)
+    blank = {"first_name": ""}
+    assert rows.validate_answers([first_name], blank) == {
+        "first_name": [rows.REQUIRED_ERROR]
+    }
+    assert rows.validate_answers([first_name], blank, {"first_name"}) == {}
 
 
 # --- redirect anchor --------------------------------------------------------

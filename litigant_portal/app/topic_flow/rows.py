@@ -172,6 +172,7 @@ def page_questions(variables, answers, gates=frozenset()) -> list[dict]:
             continue
         name = variable.name
         protected = name in NEVER_PREFILL
+        saved = protected and name in answers
         stored = answers.get(name, variable.default)
         help_text = variable.help_text
         if name in gates:
@@ -188,7 +189,9 @@ def page_questions(variables, answers, gates=frozenset()) -> list[dict]:
                     if variable.data_type == VariableDataType.NUMBER
                     else ""
                 ),
-                "required": variable.required,
+                # A protected field renders blank even when stored, so
+                # ``required`` would block every later save of its page.
+                "required": variable.required and not saved,
                 "choices": (
                     BOOLEAN_CHOICES
                     if variable.data_type == VariableDataType.BOOLEAN
@@ -198,7 +201,7 @@ def page_questions(variables, answers, gates=frozenset()) -> list[dict]:
                 # Same leak guard as the content renderer: a protected field
                 # renders blank and gets the clear checkbox instead (#638).
                 "value": "" if protected else _form_value(stored),
-                "saved": protected and name in answers,
+                "saved": saved,
                 "errors": [],
                 "autofocus": False,
             }
@@ -298,21 +301,24 @@ def coerce_value(variable, raw: str):
     return value
 
 
-def validate_answers(variables, submitted) -> dict:
+def validate_answers(variables, submitted, keep=frozenset()) -> dict:
     """``{name: [error]}`` for invalid submitted answers, over glossary rows.
 
     The sibling of ``validation.validate_answers``. Scoped to what was
     submitted: a page POSTs only its own fields, so a variable absent from
-    ``submitted`` is skipped. The type check is ``variable_value_validate``,
-    the same rule the answer-writing service applies, so nothing passes
-    here that the store would reject.
+    ``submitted`` is skipped. ``keep`` names the protected fields with a
+    stored answer: they render blank, so a blank there means "keep what is
+    stored", not a missing required answer. The type check is
+    ``variable_value_validate``, the same rule the answer-writing service
+    applies, so nothing passes here that the store would reject.
     """
     errors: dict[str, list] = {}
     for variable in variables:
         name = variable.name
         if name not in submitted:
             continue
-        if variable.required and not submitted[name].strip():
+        blank = not submitted[name].strip()
+        if variable.required and blank and name not in keep:
             errors[name] = [REQUIRED_ERROR]
             continue
         try:
