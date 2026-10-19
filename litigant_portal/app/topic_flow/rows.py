@@ -123,8 +123,10 @@ def asked_names(pages, answers) -> list[str]:
 
 
 def stale_gated_names(pages, answers, valid) -> list[str]:
-    """Gated variables whose gate will not match once ``valid`` is written,
-    and that have an answer to clear."""
+    """Gated variables whose gate is written by ``valid`` and will not match
+    afterwards, and that have an answer to clear. A gate this POST does not
+    touch leaves its dependents alone: the assistant may store a dependent
+    before the gate is answered, and an unrelated save must not erase it."""
     after = {
         name: value
         for name, value in {**answers, **valid}.items()
@@ -135,6 +137,7 @@ def stale_gated_names(pages, answers, valid) -> list[str]:
         for _page, variables in pages
         for variable in variables
         if variable.asked_when is not None
+        and variable.asked_when.name in valid
         and not variable.is_asked(after)
         and variable.name in after
     ]

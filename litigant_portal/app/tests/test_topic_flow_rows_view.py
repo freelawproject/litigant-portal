@@ -627,6 +627,16 @@ def test_flipping_a_gate_and_posting_the_gated_field_together_clears_it(
 
 
 @pytest.mark.postgres
+def test_an_unrelated_save_keeps_a_gated_fact_stored_before_its_gate(
+    client, synced
+):
+    # The assistant may store a dependent before the gate is answered.
+    _store(client, "vaccinated", True)
+    client.post(URL, {"full_name": "Sandra Doe"})
+    assert _values()["vaccinated"] is True
+
+
+@pytest.mark.postgres
 def test_post_empty_required_rerenders_in_place_with_aria_invalid(
     client, synced
 ):

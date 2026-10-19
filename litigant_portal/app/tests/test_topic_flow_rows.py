@@ -239,6 +239,9 @@ GATED_PAGES = [
         ({"licensed": True, "vaccinated": True}, {"full_name": "Sam"}, []),
         ({"licensed": True}, {"licensed": False}, []),
         ({"licensed": False, "vaccinated": None}, {"full_name": "Sam"}, []),
+        ({"vaccinated": True}, {"full_name": "Sam"}, []),
+        ({"vaccinated": True}, {"licensed": True}, []),
+        ({"vaccinated": True}, {"licensed": False}, ["vaccinated"]),
     ],
     ids=[
         "gate-flipped-clears-the-stored-gated-answer",
@@ -246,6 +249,9 @@ GATED_PAGES = [
         "gate-unchanged-leaves-it-alone",
         "gated-variable-with-no-answer-is-not-listed",
         "already-cleared-gated-answer-is-not-listed",
+        "unanswered-gate-untouched-keeps-a-pre-stored-dependent",
+        "unanswered-gate-now-matching-keeps-it",
+        "unanswered-gate-now-mismatching-clears-it",
     ],
 )
 def test_stale_gated_names_lists_answers_whose_gate_stops_matching(
