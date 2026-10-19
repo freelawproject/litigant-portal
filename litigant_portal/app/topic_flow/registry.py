@@ -13,6 +13,7 @@ as startup errors.
 
 import logging
 from pathlib import Path
+from typing import NamedTuple
 
 from litigant_portal.app.topic_flow.loader import (
     CorpusLoader,
@@ -21,6 +22,14 @@ from litigant_portal.app.topic_flow.loader import (
 from litigant_portal.app.topic_flow.schema import Corpus
 
 logger = logging.getLogger(__name__)
+
+
+class FlowEntry(NamedTuple):
+    court: str
+    topic: str
+    role: str
+    title: str
+
 
 CONTENT_DIR = Path(__file__).resolve().parents[2] / "content"
 
@@ -61,6 +70,16 @@ class CorpusRegistry:
     def get(self, court: str, topic: str, role: str) -> Corpus | None:
         self.load()
         return self._index.get((court, topic, role))
+
+    def flows(self, court: str | None = None) -> list[FlowEntry]:
+        """Every indexed flow, or one court's, in (court, topic, role)
+        order: the tester menu's flow links (#1037)."""
+        self.load()
+        return [
+            FlowEntry(*key, title=corpus.metadata.title)
+            for key, corpus in sorted(self._index.items())
+            if court is None or key[0] == court
+        ]
 
     def keys(self) -> list[tuple[str, str, str]]:
         self.load()

@@ -46,6 +46,32 @@ class Features:
     court_switcher: bool
     citation_chips: bool
 
+    @property
+    def feedback_by_email(self) -> bool:
+        """A mailto link opens the mail app, not a new tab."""
+        return self.feedback_url.startswith("mailto:")
+
+    @property
+    def feedback_address(self) -> str:
+        """The address alone, shown as text: a mailto link only helps
+        people with a mail app set up."""
+        if not self.feedback_by_email:
+            return ""
+        return self.feedback_url.removeprefix("mailto:")
+
+    @property
+    def tester_menu(self) -> bool:
+        """Whether the site menu's tester section has anything to show."""
+        return any(
+            (
+                self.build_stamp,
+                self.start_over,
+                self.flow_links,
+                self.style_guide,
+                self.feedback_url,
+            )
+        )
+
 
 def parse_deployment_env(raw: str | None) -> str:
     """The deployment env, or prod when it's unset or not a known value."""

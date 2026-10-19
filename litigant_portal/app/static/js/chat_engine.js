@@ -36,6 +36,15 @@ function escapeHtml(s) {
     .replace(/"/g, '&quot;')
 }
 
+// Citation chips are a tester tool (#1037): the page's data-citation-chips
+// says whether this deployment shows them. Elsewhere the [source:ID] markers
+// are dropped from the rendered text; the stored message keeps them.
+let showCitationChips = false
+
+function setCitationChips(on) {
+  showCitationChips = on
+}
+
 function renderInline(text) {
   // Split on inline code spans so their contents are never treated as markdown.
   const parts = escapeHtml(text).split(/(`[^`]+`)/)
@@ -53,14 +62,21 @@ function renderInline(text) {
           // gets a chip. The text is already escaped and the grammar has no
           // quotes, so the id is safe inside the title attribute. Runs before
           // the link rule so that rule never sees these brackets.
+          // Without chips, the marker and the spaces before it go, so the
+          // sentence's own punctuation closes it up.
           .replace(
-            /\[source:([a-z0-9_-]+(?:\/[a-z0-9_-]+){1,2})\]/g,
-            (_m, id) =>
-              '<span class="inline-block align-baseline rounded border border-greyscale-200 bg-greyscale-100 px-1 text-xs font-mono text-greyscale-600" title="' +
-              id +
-              '">' +
-              id +
-              '</span>'
+            /([ \t]*)\[source:([a-z0-9_-]+(?:\/[a-z0-9_-]+){1,2})\]/g,
+            (_m, space, id) => {
+              if (!showCitationChips) return ''
+              return (
+                space +
+                '<span class="inline-block align-baseline rounded border border-greyscale-200 bg-greyscale-100 px-1 text-xs font-mono text-greyscale-600" title="' +
+                id +
+                '">' +
+                id +
+                '</span>'
+              )
+            }
           )
           .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
             const safe = /^(https?:|mailto:)/i.test(url) ? url : '#'
@@ -545,6 +561,7 @@ document.addEventListener('alpine:init', () => {
 
     init() {
       this.base = this.$root.dataset.agentBase
+      setCitationChips(this.$root.dataset.citationChips === 'true')
       this.loadThreads()
       this.consumeQueryMessage()
     },

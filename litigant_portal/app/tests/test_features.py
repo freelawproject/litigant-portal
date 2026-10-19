@@ -116,6 +116,9 @@ def test_pilots_send_feedback_by_email_and_everyone_else_by_github(
 ):
     result = features_for(env, pilot, feedback_email="lp@example.org")
     assert result.feedback_url == expected
+    assert result.feedback_by_email is expected.startswith("mailto:")
+    by_email = expected.startswith("mailto:")
+    assert result.feedback_address == ("lp@example.org" if by_email else "")
 
 
 def test_a_pilot_without_a_feedback_address_shows_no_feedback_link():
@@ -127,3 +130,12 @@ def test_features_reads_the_current_settings():
     result = features()
     assert result.start_over is True
     assert result.feedback_url == "mailto:x@y.z"
+
+
+@pytest.mark.parametrize(
+    ("env", "pilot", "shown"),
+    [("prod", False, False), ("prod", True, True), ("dev", False, True)],
+    ids=["prod", "pilot", "dev"],
+)
+def test_the_tester_menu_shows_when_any_of_its_tools_is_on(env, pilot, shown):
+    assert features_for(env, pilot, feedback_email="").tester_menu is shown

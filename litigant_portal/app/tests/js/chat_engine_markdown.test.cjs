@@ -44,7 +44,7 @@ const context = { window: {}, document: { addEventListener() {} } }
 vm.createContext(context)
 vm.runInContext(source, context)
 
-const { escapeHtml, renderInline, renderMarkdown } = context
+const { escapeHtml, renderInline, renderMarkdown, setCitationChips } = context
 
 // The class attributes the renderer emits. Kept here so a styling change
 // touches one place, and so the assertions below read as behaviour rather than
@@ -204,7 +204,11 @@ const VALID_IDS = ['court/clerk', 'adult-name-change/standard/filing_fee']
 const INVALID_IDS = ['Filing_Fee', 'a', 'a/b/c/d', 'nd.courts.gov']
 const CHIP = 'class="inline-block align-baseline rounded border'
 
+// Chips are a tester tool (#1037), off unless the page turns them on. These
+// tests turn them on; the last one checks what everyone else sees.
+
 test('a valid source id renders as a chip with the id as text and title', () => {
+  setCitationChips(true)
   for (const id of VALID_IDS) {
     const out = renderInline('Fee is $160 [source:' + id + ']')
     assert.ok(out.includes(CHIP), id)
@@ -228,11 +232,24 @@ test('a source marker inside a code span is not changed', () => {
 })
 
 test('a link and a chip on the same line both render', () => {
+  setCitationChips(true)
   const out = renderInline(
     'See [the court](https://e.com) [source:court/clerk]'
   )
   assert.ok(out.includes('href="https://e.com"'))
   assert.ok(out.includes(CHIP))
+})
+
+test('with chips off, a marker and the space before it are dropped', () => {
+  setCitationChips(false)
+  assert.equal(
+    renderInline(
+      'Fee is $160. [source:court/clerk] Call [source:court/clerk].'
+    ),
+    'Fee is $160. Call.'
+  )
+  // An id outside the grammar is still not a marker, so it stays as text.
+  assert.equal(renderInline('[source:Filing_Fee]'), '[source:Filing_Fee]')
 })
 
 test('plain brackets without source: are left alone', () => {
