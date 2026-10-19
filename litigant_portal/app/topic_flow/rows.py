@@ -19,6 +19,7 @@ gated fields appear.
 """
 
 import re
+from datetime import date, datetime
 
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
@@ -143,12 +144,23 @@ def stale_gated_names(pages, answers, valid) -> list[str]:
     ]
 
 
-def _form_value(value) -> str:
-    """A stored (typed) answer as the string the form field shows."""
+def _form_value(variable, value) -> str:
+    """A stored (typed) answer as the string the form field shows.
+
+    A date input displays one ISO form and shows blank for any other the
+    store accepts (a basic ``20260315``, seconds, an offset), and a blank
+    is erased on the next save of its page. So dates are reformatted; a
+    datetime-local input has no zone, so an offset is dropped.
+    """
     if value is None:
         return ""
     if isinstance(value, bool):
         return "true" if value else "false"
+    if variable.data_type == VariableDataType.DATE:
+        return date.fromisoformat(value).isoformat()
+    if variable.data_type == VariableDataType.DATETIME:
+        parsed = datetime.fromisoformat(value).replace(tzinfo=None)
+        return parsed.isoformat(timespec="minutes")
     return str(value)
 
 
@@ -207,7 +219,7 @@ def page_questions(
                 "help_text": help_text,
                 # Same leak guard as the content renderer: a protected field
                 # renders blank and gets the clear checkbox instead (#638).
-                "value": "" if protected else _form_value(stored),
+                "value": "" if protected else _form_value(variable, stored),
                 "saved": saved,
                 "errors": [],
                 "autofocus": False,

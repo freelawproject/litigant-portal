@@ -364,6 +364,34 @@ def test_question_value_is_the_form_string_of_the_stored_answer(
     assert _question(variable, {"fact": stored})["value"] == expected
 
 
+@pytest.mark.parametrize(
+    ("data_type", "stored", "expected"),
+    [
+        (VariableDataType.DATE, "20260315", "2026-03-15"),
+        (VariableDataType.DATETIME, "2026-03-15T09:30:00", "2026-03-15T09:30"),
+        (
+            VariableDataType.DATETIME,
+            "2026-03-15 09:30+02:00",
+            "2026-03-15T09:30",
+        ),
+        (VariableDataType.DATETIME, "2026-03-15", "2026-03-15T00:00"),
+    ],
+    ids=[
+        "date-basic-form",
+        "datetime-seconds",
+        "datetime-offset",
+        "date-only",
+    ],
+)
+def test_a_stored_date_renders_in_the_inputs_own_format(
+    data_type, stored, expected
+):
+    # Another writer may store any ISO form the validator accepts; the
+    # input shows only one, and a blank would be erased on the next save.
+    variable = _variable("fact", data_type=data_type)
+    assert _question(variable, {"fact": stored})["value"] == expected
+
+
 def test_protected_question_renders_blank_and_marks_saved():
     first_name = _variable("first_name")
     question = _question(first_name, {"first_name": "Sandra"})
