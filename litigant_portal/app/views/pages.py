@@ -203,15 +203,16 @@ def _flash_saved(request, valid, revealed=()):
     after a successful save, so without the longer message the save looks
     like it failed (#803). ``revealed`` names the questions the save
     uncovered, so a screen reader hears that the page is not done (WCAG
-    4.1.3). Shared by both page sources."""
+    4.1.3); a gate can reveal a question on an earlier page, so the toast
+    does not say where. Shared by both page sources."""
     private = any(valid.get(name) for name in NEVER_PREFILL)
     if revealed and private:
         text = _(
-            "Saved. More questions appeared below. For your privacy, your "
-            "answers are not shown on this page."
+            "Saved. More questions appeared on this page. For your privacy, "
+            "your answers are not shown here."
         )
     elif revealed:
-        text = _("Saved. More questions appeared below.")
+        text = _("Saved. More questions appeared on this page.")
     elif private:
         text = _(
             "Saved. For your privacy, your answers are not shown on this page."
