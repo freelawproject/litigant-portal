@@ -155,3 +155,17 @@ def test_tracks_for_ordered_tracks_precede_unordered(tmp_path):
     registry = CorpusRegistry(content_dir=tmp_path)
     roles = [t["role"] for t in registry.tracks_for("test_topic")]
     assert roles == ["respondent", "petitioner"]
+
+
+def test_registry_lists_one_courts_flows_or_every_court(tmp_path):
+    (tmp_path / "one.yml").write_text(VALID)
+    (tmp_path / "two.yml").write_text(
+        VALID.replace("test-court", "other-court")
+    )
+    registry = CorpusRegistry(content_dir=tmp_path)
+
+    every = [(f.court, f.topic, f.role) for f in registry.flows()]
+    assert every == [("other-court", *FIXTURE_KEY[1:]), FIXTURE_KEY]
+    one = [(f.court, f.topic, f.role) for f in registry.flows("test-court")]
+    assert one == [FIXTURE_KEY]
+    assert registry.flows("test-court")[0].title

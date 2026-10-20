@@ -11,7 +11,7 @@
 {# chatApp spans the whole page: the thread list in the frame's left region, #}
 {# the conversation, and the briefcase in the right region all share its state. #}
 {# The component is agent-agnostic: point it at any agent's API mount. #}
-{% block body_attrs %}x-data="chatApp" data-agent-base="/api/agents/assistant/"{% endblock body_attrs %}
+{% block body_attrs %}x-data="chatApp" data-agent-base="/api/agents/assistant/" data-citation-chips="{{ features.citation_chips|yesno:'true,false' }}"{% endblock body_attrs %}
 
 {% block frame_left %}
   {% include "pages/chat/partials/_thread_list.html" %}

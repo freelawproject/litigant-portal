@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
@@ -95,6 +95,7 @@ class AdminPageEyebrowTests(TestCase):
 
 
 @pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="dev")
 class StyleGuideEyebrowTests(TestCase):
     """The style guide renders — it instantiates every component, so a
     renamed atom or a bad prop takes it down."""

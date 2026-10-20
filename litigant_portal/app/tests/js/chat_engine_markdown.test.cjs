@@ -44,7 +44,13 @@ const context = { window: {}, document: { addEventListener() {} } }
 vm.createContext(context)
 vm.runInContext(source, context)
 
-const { escapeHtml, renderInline, renderMarkdown } = context
+const {
+  copyableText,
+  escapeHtml,
+  renderInline,
+  renderMarkdown,
+  setCitationChips,
+} = context
 
 // The class attributes the renderer emits. Kept here so a styling change
 // touches one place, and so the assertions below read as behaviour rather than
@@ -204,7 +210,11 @@ const VALID_IDS = ['court/clerk', 'adult-name-change/standard/filing_fee']
 const INVALID_IDS = ['Filing_Fee', 'a', 'a/b/c/d', 'nd.courts.gov']
 const CHIP = 'class="inline-block align-baseline rounded border'
 
+// Chips are a tester tool (#1037), off unless the page turns them on. These
+// tests turn them on; the last one checks what everyone else sees.
+
 test('a valid source id renders as a chip with the id as text and title', () => {
+  setCitationChips(true)
   for (const id of VALID_IDS) {
     const out = renderInline('Fee is $160 [source:' + id + ']')
     assert.ok(out.includes(CHIP), id)
@@ -228,11 +238,39 @@ test('a source marker inside a code span is not changed', () => {
 })
 
 test('a link and a chip on the same line both render', () => {
+  setCitationChips(true)
   const out = renderInline(
     'See [the court](https://e.com) [source:court/clerk]'
   )
   assert.ok(out.includes('href="https://e.com"'))
   assert.ok(out.includes(CHIP))
+})
+
+test('with chips off, a marker and the space before it are dropped', () => {
+  setCitationChips(false)
+  assert.equal(
+    renderInline(
+      'Fee is $160. [source:court/clerk] Call [source:court/clerk].'
+    ),
+    'Fee is $160. Call.'
+  )
+  // An id outside the grammar is still not a marker, so it stays as text.
+  assert.equal(renderInline('[source:Filing_Fee]'), '[source:Filing_Fee]')
+})
+
+test('with chips off, copied text drops the markers the page hid', () => {
+  setCitationChips(false)
+  assert.equal(
+    copyableText('Fee is $160 [source:north-dakota/filing_fee].'),
+    'Fee is $160.'
+  )
+})
+
+test('with chips on, copied text keeps the markers the page shows', () => {
+  // Testers paste answers into feedback; the id names the source.
+  setCitationChips(true)
+  const text = 'Fee is $160 [source:north-dakota/filing_fee].'
+  assert.equal(copyableText(text), text)
 })
 
 test('plain brackets without source: are left alone', () => {

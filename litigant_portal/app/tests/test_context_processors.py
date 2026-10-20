@@ -7,6 +7,7 @@ from django.test import RequestFactory, SimpleTestCase, TestCase
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.context_processors import app_meta, court_branding
 from litigant_portal.app.models import Site
+from litigant_portal.app.topic_flow.registry import registry
 
 
 class AppMetaTests(SimpleTestCase):
@@ -15,10 +16,9 @@ class AppMetaTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
 
-    def test_exposes_deployment_env_and_build_provenance(self):
+    def test_exposes_build_provenance(self):
         result = app_meta(self.factory.get("/"))
 
-        self.assertEqual(result["deployment_env"], settings.DEPLOYMENT_ENV)
         self.assertEqual(result["app_build_time"], settings.APP_BUILD_TIME)
         self.assertEqual(result["app_git_sha"], settings.GIT_SHA)
         self.assertEqual(result["app_git_branch"], settings.GIT_BRANCH)
@@ -46,6 +46,34 @@ class AppMetaTests(SimpleTestCase):
         self.assertEqual(result["app_git_branch"], "936-version-section")
         self.assertEqual(result["app_git_sha"], "abc1234")
         self.assertEqual(result["app_build_time"], "2026/09/23 09:14")
+
+    def test_production_gets_no_tester_tools_or_flow_links(self):
+        with self.settings(DEPLOYMENT_ENV="prod", PILOT=False):
+            result = app_meta(self.factory.get("/"))
+
+        self.assertFalse(result["features"].start_over)
+        self.assertEqual(result["tester_flow_links"], [])
+
+    def test_flow_links_cover_every_court_when_no_court_is_set(self):
+        with self.settings(DEPLOYMENT_ENV="dev", CORPUS_COURT=None):
+            result = app_meta(self.factory.get("/"))
+
+        keys = registry.keys()
+        expected = {
+            f"/t/{court}/{topic}/{role}/" for court, topic, role in keys
+        }
+        urls = {link["url"] for link in result["tester_flow_links"]}
+        self.assertEqual(urls, expected)
+
+    def test_flow_links_cover_only_the_instances_court(self):
+        with self.settings(
+            DEPLOYMENT_ENV="prod", PILOT=True, CORPUS_COURT="arizona"
+        ):
+            result = app_meta(self.factory.get("/"))
+
+        urls = [link["url"] for link in result["tester_flow_links"]]
+        self.assertTrue(urls)
+        self.assertTrue(all(url.startswith("/t/arizona/") for url in urls))
 
 
 @pytest.mark.postgres
