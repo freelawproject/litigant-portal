@@ -404,6 +404,22 @@ def test_a_stored_date_renders_in_the_inputs_own_format(
     assert _question(variable, {"fact": stored})["value"] == expected
 
 
+@pytest.mark.parametrize(
+    ("data_type", "stored"),
+    [
+        (VariableDataType.DATE, "March 15, 2026"),
+        (VariableDataType.DATE, ["2026-03-15"]),
+        (VariableDataType.DATETIME, "yesterday"),
+    ],
+    ids=["date-prose", "date-not-a-string", "datetime-prose"],
+)
+def test_an_unparseable_stored_date_still_renders(data_type, stored):
+    # Nothing re-validates stored answers when the glossary changes a
+    # variable's type, so the page must not 500 on a value it can't parse.
+    variable = _variable("fact", data_type=data_type)
+    assert _question(variable, {"fact": stored})["value"] == str(stored)
+
+
 def test_protected_question_renders_blank_and_marks_saved():
     first_name = _variable("first_name")
     question = _question(first_name, {"first_name": "Sandra"})

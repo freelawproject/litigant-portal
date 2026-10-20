@@ -151,17 +151,24 @@ def _form_value(variable, value) -> str:
     store accepts (a basic ``20260315``, seconds, an offset), and a blank
     is erased on the next save of its page. So dates are reformatted; a
     datetime-local input has no zone, so an offset is dropped.
+
+    A value that doesn't parse (stored before the glossary made the
+    variable temporal) renders as stored, the way the briefcase shows it.
     """
     if value is None:
         return ""
     if isinstance(value, bool):
         return "true" if value else "false"
-    if variable.data_type == VariableDataType.DATE:
-        return date.fromisoformat(value).isoformat()
-    if variable.data_type == VariableDataType.DATETIME:
-        parsed = datetime.fromisoformat(value).replace(tzinfo=None)
-        return parsed.isoformat(timespec="minutes")
-    return str(value)
+    raw = str(value)
+    try:
+        if variable.data_type == VariableDataType.DATE:
+            return date.fromisoformat(raw).isoformat()
+        if variable.data_type == VariableDataType.DATETIME:
+            parsed = datetime.fromisoformat(raw).replace(tzinfo=None)
+            return parsed.isoformat(timespec="minutes")
+    except ValueError:
+        pass
+    return raw
 
 
 def gate_names(pages) -> set[str]:
