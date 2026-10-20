@@ -65,8 +65,9 @@ PILOT_TOOLS = {
     "court_user_admin",
     "flow_links",
     "style_guide",
+    "citation_chips",
 }
-FLP_TOOLS = {"court_switcher", "citation_chips"}
+FLP_TOOLS = {"court_switcher"}
 
 
 @pytest.mark.parametrize(

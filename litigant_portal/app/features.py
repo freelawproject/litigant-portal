@@ -4,9 +4,9 @@ The layers are additive, from two settings:
 
 - prod, or ``DEPLOYMENT_ENV`` unset or unknown: no tools (#1008).
 - ``PILOT=true``: adds the pilot tools a court tests with.
-- dev and qa: the pilot tools plus FLP's own (court switcher, citation
-  chips), so there's no reason to set ``PILOT`` there; the pilot tools can
-  be tested directly.
+- dev and qa: the pilot tools plus FLP's own (the court switcher), so
+  there's no reason to set ``PILOT`` there; the pilot tools can be tested
+  directly.
 
 Templates and views check a feature here, never the environment, so a
 tool's layer changes in one place and the server and the page can't
@@ -40,11 +40,11 @@ class Features:
     court_user_admin: bool
     flow_links: bool
     style_guide: bool
+    citation_chips: bool
     # Blank when there's no feedback link.
     feedback_url: str
     # FLP tools, dev and qa only.
     court_switcher: bool
-    citation_chips: bool
 
     @property
     def feedback_by_email(self) -> bool:
@@ -116,9 +116,9 @@ def features_for(env: str, pilot: bool, *, feedback_email: str) -> Features:
         court_user_admin=pilot_tools,
         flow_links=pilot_tools,
         style_guide=pilot_tools,
+        citation_chips=pilot_tools,
         feedback_url=_feedback_url(flp, pilot, feedback_email),
         court_switcher=flp,
-        citation_chips=flp,
     )
 
 
