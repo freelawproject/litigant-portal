@@ -29,11 +29,12 @@ services:
     command: web-dev
     environment:
       - DEBUG=true
-      # Unset runs as prod (#1037): set DEPLOYMENT_ENV=dev in .env for the
-      # tester tools, and PILOT=true to preview what a court pilot sees.
-      - DEPLOYMENT_ENV=${DEPLOYMENT_ENV}
-      - PILOT=${PILOT}
-      - FEEDBACK_EMAIL=${FEEDBACK_EMAIL}
+      # Unset runs as prod in the app (#1037), so compose defaults local to
+      # dev. Set DEPLOYMENT_ENV=prod and PILOT=true in .env to preview what
+      # a court pilot sees.
+      - DEPLOYMENT_ENV=${DEPLOYMENT_ENV:-dev}
+      - PILOT=${PILOT:-}
+      - FEEDBACK_EMAIL=${FEEDBACK_EMAIL:-}
       - LP_AGENT_DEV_ENABLED=true
       - SECRET_KEY=dev
       - POSTGRES_HOST=postgres
