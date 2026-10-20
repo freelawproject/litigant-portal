@@ -26,6 +26,12 @@ document.addEventListener('alpine:init', () => {
     close() {
       this.$root.open = false
     },
+    // Escape: the focused link stops rendering once the menu shuts, so
+    // focus goes back to the summary instead of the top of the page.
+    dismiss() {
+      this.close()
+      this.$root.querySelector('summary').focus()
+    },
   }))
 
   // ===========================================================================
