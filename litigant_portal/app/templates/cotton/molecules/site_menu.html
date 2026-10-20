@@ -7,7 +7,7 @@
 {# disclosure over a plain link list, so it works without JS and carries no #}
 {# role="menu" promise of arrow-key navigation. #}
 {% trans "Menu" as menu_label %}
-{% trans "Dev tools" as dev_tools_label %}
+{% trans "Tester tools" as tester_tools_label %}
 <details x-data="siteMenu" x-on:click.outside="close" x-on:keydown.escape="dismiss" class="site-menu relative {{ class }}" {{ attrs }}>
   <summary class="flex items-center justify-center p-2 rounded-lg cursor-pointer hover:bg-greyscale-100 list-none" aria-label="{{ menu_label }}">
     <c-atoms.icon name="bars-3" class="w-6 h-6" />
@@ -70,7 +70,7 @@
     </p>
     {% if features.tester_menu %}
       <div class="border-t border-greyscale-200 mt-1 pt-1">
-        <p class="px-4 py-2 text-xs font-semibold text-greyscale-500">{{ dev_tools_label }}</p>
+        <p class="px-4 py-2 text-xs font-semibold text-greyscale-500">{{ tester_tools_label }}</p>
         <ul class="list-none pl-0">
           {% if features.start_over %}
             <li>
@@ -103,10 +103,14 @@
             <li>
               {% if features.feedback_by_email %}
                 {# The address as text, not a mailto: many testers use webmail, #}
-                {# and a mailto only opens a configured mail app. #}
-                <div class="site-menu-item">
-                  <c-atoms.icon name="chat-bubble-left-ellipsis" class="w-5 h-5 text-greyscale-500" />
-                  <span class="min-w-0 select-all break-all">{{ features.feedback_address }}</span>
+                {# and a mailto only opens a configured mail app. Not a site-menu-item: #}
+                {# it isn't clickable, so it takes no hover. #}
+                <div class="flex items-start gap-2 px-4 py-2 text-sm text-greyscale-700">
+                  <c-atoms.icon name="chat-bubble-left-ellipsis" class="w-5 h-5 shrink-0 text-greyscale-500" />
+                  <span class="min-w-0">
+                    {% trans "Send feedback to" %}
+                    <span class="block select-all break-all">{{ features.feedback_address }}</span>
+                  </span>
                 </div>
               {% else %}
                 <c-atoms.link href="{{ features.feedback_url }}" target="_blank" variant="unstyled" class="site-menu-item">

@@ -68,7 +68,7 @@ class FramedPagesTests(TestCase):
 @pytest.mark.postgres
 class SiteMenuTests(TestCase):
     """The footer is gone, so its links live in the header's site menu, in
-    every environment. Dev tools join them only outside production."""
+    every environment. Tester tools join them wherever features allow."""
 
     PAGE_LINKS = (
         "pages:help",
