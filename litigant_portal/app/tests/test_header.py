@@ -6,7 +6,12 @@ header takes from the page context.
 import pytest
 from django.contrib.auth.models import AnonymousUser
 from django.template.loader import render_to_string
-from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.test import (
+    RequestFactory,
+    SimpleTestCase,
+    TestCase,
+    override_settings,
+)
 from django.urls import reverse
 from django_cotton.utils import render_component
 
@@ -62,6 +67,7 @@ class LogoTests(SimpleTestCase):
 
 
 @pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="dev")
 class HeaderCourtContextTests(TestCase):
     def test_header_takes_court_props_from_the_page_context(self):
         """base.html hands court_logo and court_name to the header; the

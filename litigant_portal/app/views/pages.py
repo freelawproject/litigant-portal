@@ -1,5 +1,6 @@
 import os
 import re
+from functools import wraps
 from urllib.parse import urlsplit
 
 from django.contrib import messages
@@ -284,6 +285,21 @@ def accessibility(request):
     return render(request, "pages/accessibility.html")
 
 
+def _style_guide_required(view):
+    """The design-system pages are a tester tool (#1037): on wherever
+    ``features().style_guide`` is, a 404 everywhere else, so the gate
+    holds by URL and not only in the menu."""
+
+    @wraps(view)
+    def gated(request, *args, **kwargs):
+        if not features().style_guide:
+            raise Http404
+        return view(request, *args, **kwargs)
+
+    return gated
+
+
+@_style_guide_required
 def style_guide(request):
     """Design tokens and component library"""
     topics = {t.slug: t for t in topic_list()}
@@ -419,6 +435,7 @@ def _sample_components(template_name: str) -> list[str]:
     return list(dict.fromkeys(names))
 
 
+@_style_guide_required
 def atomic_design(request):
     """Atomic Design: the five levels in a sidebar, one level's live sample
     beside them.
@@ -525,6 +542,7 @@ _A11Y_DEMO_COPIES = (
 )
 
 
+@_style_guide_required
 def a11y_guide(request):
     """Accessibility (A11y): what WCAG protects against, shown on our own
     components, seen through a vision simulation.
@@ -603,6 +621,7 @@ def a11y_guide(request):
 
 
 @xframe_options_sameorigin
+@_style_guide_required
 def atomic_design_stage(request, stage):
     """One column of the Atomic Design summary, rendered to be framed.
 

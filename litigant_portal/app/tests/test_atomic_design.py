@@ -5,7 +5,7 @@ Tests for the Atomic Design summary page and the stage pages it frames.
 import re
 
 import pytest
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from litigant_portal.app.views.pages import (
@@ -29,6 +29,7 @@ class SampleComponentsTests(SimpleTestCase):
 
 
 @pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="dev")
 class AtomicDesignStageTests(TestCase):
     def test_unknown_stage_is_404(self):
         response = self.client.get(
@@ -67,6 +68,7 @@ class AtomicDesignStageTests(TestCase):
 
 
 @pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="dev")
 class AtomicDesignLevelSelectionTests(TestCase):
     """The level selector is plain links with a query string, so the view
     decides which level is shown and how its sample is framed."""
@@ -138,6 +140,7 @@ class AtomicDesignLevelSelectionTests(TestCase):
 
 
 @pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="dev")
 class InternalPageFrameTests(TestCase):
     def test_internal_pages_have_a_single_main_landmark(self):
         """Every internal page renders inside base.html's <main>; a second
@@ -151,3 +154,30 @@ class InternalPageFrameTests(TestCase):
                 response = self.client.get(reverse(name))
 
                 self.assertEqual(response.content.decode().count("<main"), 1)
+
+
+# The design-system pages, gated like Start over: on wherever
+# ``features().style_guide`` is (#1037), a 404 everywhere else.
+DESIGN_SYSTEM_URLS = (
+    ("pages:style_guide", []),
+    ("pages:atomic_design", []),
+    ("pages:a11y_guide", []),
+    ("pages:atomic_design_stage", ["template"]),
+)
+
+
+@pytest.mark.postgres
+class DesignSystemPagesGateTests(TestCase):
+    @override_settings(DEPLOYMENT_ENV="prod", PILOT=False)
+    def test_production_answers_404(self):
+        for name, args in DESIGN_SYSTEM_URLS:
+            with self.subTest(name=name):
+                response = self.client.get(reverse(name, args=args))
+                self.assertEqual(response.status_code, 404)
+
+    @override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
+    def test_a_pilot_serves_them(self):
+        for name, args in DESIGN_SYSTEM_URLS:
+            with self.subTest(name=name):
+                response = self.client.get(reverse(name, args=args))
+                self.assertEqual(response.status_code, 200)
