@@ -44,7 +44,13 @@ const context = { window: {}, document: { addEventListener() {} } }
 vm.createContext(context)
 vm.runInContext(source, context)
 
-const { escapeHtml, renderInline, renderMarkdown, setCitationChips } = context
+const {
+  copyableText,
+  escapeHtml,
+  renderInline,
+  renderMarkdown,
+  setCitationChips,
+} = context
 
 // The class attributes the renderer emits. Kept here so a styling change
 // touches one place, and so the assertions below read as behaviour rather than
@@ -250,6 +256,21 @@ test('with chips off, a marker and the space before it are dropped', () => {
   )
   // An id outside the grammar is still not a marker, so it stays as text.
   assert.equal(renderInline('[source:Filing_Fee]'), '[source:Filing_Fee]')
+})
+
+test('with chips off, copied text drops the markers the page hid', () => {
+  setCitationChips(false)
+  assert.equal(
+    copyableText('Fee is $160 [source:north-dakota/filing_fee].'),
+    'Fee is $160.'
+  )
+})
+
+test('with chips on, copied text keeps the markers the page shows', () => {
+  // Testers paste answers into feedback; the id names the source.
+  setCitationChips(true)
+  const text = 'Fee is $160 [source:north-dakota/filing_fee].'
+  assert.equal(copyableText(text), text)
 })
 
 test('plain brackets without source: are left alone', () => {

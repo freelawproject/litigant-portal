@@ -41,8 +41,21 @@ function escapeHtml(s) {
 // are dropped from the rendered text; the stored message keeps them.
 let showCitationChips = false
 
+// A marker and the spaces before it. The grammar is exactly one or two
+// slash-joined slugs (court/key, topic/flow/key), the same pattern as
+// CITATION_PATTERN in agents/citations.py; change both together.
+const CITATION_MARKER =
+  /([ \t]*)\[source:([a-z0-9_-]+(?:\/[a-z0-9_-]+){1,2})\]/g
+
 function setCitationChips(on) {
   showCitationChips = on
+}
+
+// A message's text as Copy puts it on the clipboard: the markers stay where
+// the page shows them as chips, and go where the page hid them.
+function copyableText(content) {
+  if (showCitationChips) return content
+  return content.replace(CITATION_MARKER, '')
 }
 
 function renderInline(text) {
@@ -55,29 +68,24 @@ function renderInline(text) {
       }
       return (
         part
-          // Citation chips: [source:ID] from grounded answers. The grammar is
-          // exactly one or two slash-joined slugs (court/key, topic/flow/key),
-          // the same pattern as CITATION_PATTERN in agents/citations.py; change
-          // both together. An id outside it stays text, so an invented id never
-          // gets a chip. The text is already escaped and the grammar has no
+          // Citation chips: [source:ID] from grounded answers, matched by
+          // CITATION_MARKER. An id outside its grammar stays text, so an
+          // invented id never gets a chip. The text is already escaped and the grammar has no
           // quotes, so the id is safe inside the title attribute. Runs before
           // the link rule so that rule never sees these brackets.
           // Without chips, the marker and the spaces before it go, so the
           // sentence's own punctuation closes it up.
-          .replace(
-            /([ \t]*)\[source:([a-z0-9_-]+(?:\/[a-z0-9_-]+){1,2})\]/g,
-            (_m, space, id) => {
-              if (!showCitationChips) return ''
-              return (
-                space +
-                '<span class="inline-block align-baseline rounded border border-greyscale-200 bg-greyscale-100 px-1 text-xs font-mono text-greyscale-600" title="' +
-                id +
-                '">' +
-                id +
-                '</span>'
-              )
-            }
-          )
+          .replace(CITATION_MARKER, (_m, space, id) => {
+            if (!showCitationChips) return ''
+            return (
+              space +
+              '<span class="inline-block align-baseline rounded border border-greyscale-200 bg-greyscale-100 px-1 text-xs font-mono text-greyscale-600" title="' +
+              id +
+              '">' +
+              id +
+              '</span>'
+            )
+          })
           .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, label, url) => {
             const safe = /^(https?:|mailto:)/i.test(url) ? url : '#'
             return (
@@ -1075,7 +1083,8 @@ document.addEventListener('alpine:init', () => {
       const id = Number(e.currentTarget.dataset.messageId)
       const message = this.messages.find((m) => m.id === id)
       if (!message) return
-      if (navigator.clipboard) navigator.clipboard.writeText(message.content)
+      if (navigator.clipboard)
+        navigator.clipboard.writeText(copyableText(message.content))
       message.copied = true
       message.notCopied = false
       setTimeout(() => {
