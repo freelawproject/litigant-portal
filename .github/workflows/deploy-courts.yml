@@ -1,0 +1,134 @@
+name: Deploy to Court Accounts
+
+on:
+  workflow_run:
+    workflows: ["Build and Push to Docker Hub"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Short SHA of an image already on Docker Hub (without -prod)
+        required: true
+      courts:
+        description: Comma-separated court names, or all
+        required: true
+        default: all
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  EKS_NAMESPACE: litigant
+  IMAGE: freelawproject/litigant-portal
+
+jobs:
+  plan:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: Resolve image tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ github.event.inputs.image_tag }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -n "$INPUT_TAG" ]; then TAG="$INPUT_TAG"; else TAG="${HEAD_SHA::7}"; fi
+          if ! docker manifest inspect "$IMAGE:$TAG-prod" > /dev/null 2>&1; then
+            echo "::notice::$IMAGE:$TAG-prod is not published, nothing to deploy"
+            TAG=""
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Pick courts
+        id: matrix
+        env:
+          SELECTED: ${{ github.event.inputs.courts || 'all' }}
+          NORTH_DAKOTA: ${{ vars.NORTH_DAKOTA_AWS_ACCOUNT_ID }}
+          ARIZONA: ${{ vars.ARIZONA_AWS_ACCOUNT_ID }}
+          FRANKLIN_COUNTY_OH: ${{ vars.FRANKLIN_COUNTY_OH_AWS_ACCOUNT_ID }}
+          PORTSMOUTH_VA: ${{ vars.PORTSMOUTH_VA_AWS_ACCOUNT_ID }}
+        run: |
+          MATRIX=$(jq -cn \
+            --arg selected "$SELECTED" \
+            --arg nd "$NORTH_DAKOTA" --arg az "$ARIZONA" \
+            --arg fc "$FRANKLIN_COUNTY_OH" --arg pv "$PORTSMOUTH_VA" '
+            [
+              {court: "north-dakota", account: $nd, region: "us-east-2"},
+              {court: "arizona", account: $az, region: "us-west-2"},
+              {court: "franklin-county-oh", account: $fc, region: "us-west-2"},
+              {court: "portsmouth-va", account: $pv, region: "us-west-2"}
+            ]
+            | map(select(.account != ""))
+            | map(select($selected == "all" or (.court as $c | $selected | split(",") | map(gsub(" "; "")) | index($c))))')
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "Courts: $MATRIX"
+
+  deploy:
+    needs: plan
+    if: ${{ needs.plan.outputs.tag != '' && needs.plan.outputs.matrix != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    concurrency:
+      group: litigant-court-${{ matrix.court }}
+      cancel-in-progress: false
+    env:
+      TAG: ${{ needs.plan.outputs.tag }}
+      TEMP_POD: temp-pod-${{ needs.plan.outputs.tag }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::${{ matrix.account }}:role/${{ matrix.court }}-github-deploy
+          aws-region: ${{ matrix.region }}
+
+      - name: Create kubeconfig
+        run: aws eks update-kubeconfig --region "${{ matrix.region }}" --name "${{ matrix.court }}-litigant"
+
+      - name: Refresh environment
+        run: |
+          kubectl annotate es litigant-env force-sync=$(date +%s) --overwrite -n "$EKS_NAMESPACE"
+          kubectl wait es litigant-env -n "$EKS_NAMESPACE" --for=jsonpath="{.status.conditions[?(@.reason=='SecretSynced')].status}"=True --timeout=30s
+
+      - name: Reap stale temporary pods
+        run: kubectl delete pod -n "$EKS_NAMESPACE" -l app=litigant-deploy-temp --ignore-not-found --timeout=60s
+
+      - name: Launch temporary pod
+        run: |
+          kubectl run "$TEMP_POD" -n "$EKS_NAMESPACE" --labels=app=litigant-deploy-temp \
+            --image="$IMAGE:$TAG-prod" --restart Never --pod-running-timeout=120s --overrides="
+          {
+            \"spec\": {
+              \"nodeSelector\": {\"eks.amazonaws.com/nodegroup\": \"litigant-node-group\"},
+              \"containers\": [{
+                \"name\": \"temp-pod\",
+                \"image\": \"$IMAGE:$TAG-prod\",
+                \"command\": [\"/bin/sh\", \"-c\", \"trap : TERM INT; sleep 3600 & wait\"],
+                \"envFrom\": [{\"secretRef\": {\"name\": \"litigant-env\"}}]
+              }]
+            }
+          }"
+
+      - name: Wait for temporary pod
+        run: kubectl wait pods -n "$EKS_NAMESPACE" --for condition=Ready --timeout=300s "$TEMP_POD"
+
+      - name: Collect static assets
+        run: kubectl exec -n "$EKS_NAMESPACE" "$TEMP_POD" -- manage collectstatic --noinput --clear
+
+      - name: Apply migrations
+        run: kubectl exec -n "$EKS_NAMESPACE" "$TEMP_POD" -- manage migrate --noinput
+
+      - name: Delete temporary pod
+        run: kubectl delete pod -n "$EKS_NAMESPACE" "$TEMP_POD"
+
+      - name: Roll out litigant-web
+        run: |
+          kubectl set image -n "$EKS_NAMESPACE" deployment/litigant-web web="$IMAGE:$TAG-prod"
+          kubectl rollout status -n "$EKS_NAMESPACE" deployment/litigant-web --timeout=10m
