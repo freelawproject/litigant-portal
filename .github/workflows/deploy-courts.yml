@@ -2,7 +2,7 @@ name: Deploy to Court Accounts
 
 on:
   workflow_run:
-    workflows: ["Build and Push to Docker Hub"]
+    workflows: ['Build and Push to Docker Hub']
     types: [completed]
     branches: [main]
   workflow_dispatch:
