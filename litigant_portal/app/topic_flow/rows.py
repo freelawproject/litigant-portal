@@ -18,6 +18,7 @@ client-side show/hide: the litigant saves the gate, the page reloads, and the
 gated fields appear.
 """
 
+import math
 import re
 from datetime import date, datetime
 
@@ -332,7 +333,14 @@ def coerce_value(variable, raw: str):
     if variable.data_type == VariableDataType.NUMBER:
         if not _NUMBER.match(value):
             raise ValueError(f"not a number: {value!r}")
-        return float(value) if "." in value else int(value)
+        if "." not in value:
+            return int(value)
+        number = float(value)
+        # A long enough decimal overflows to inf, which the JSON column
+        # rejects, so it is an inline error rather than a 500.
+        if not math.isfinite(number):
+            raise ValueError(f"number overflows: {value[:20]!r}...")
+        return number
     if variable.data_type == VariableDataType.BOOLEAN:
         if value not in ("true", "false"):
             raise ValueError(f"not a boolean: {value!r}")

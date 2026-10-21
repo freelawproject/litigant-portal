@@ -491,6 +491,7 @@ def test_coerce_value(data_type, raw, expected):
         (VariableDataType.NUMBER, "inf"),
         (VariableDataType.NUMBER, "1_000"),
         (VariableDataType.NUMBER, "1e3"),
+        (VariableDataType.NUMBER, "9" * 400 + ".0"),
         (VariableDataType.BOOLEAN, "maybe"),
     ],
     ids=[
@@ -500,6 +501,7 @@ def test_coerce_value(data_type, raw, expected):
         "number-rejects-inf",
         "number-rejects-underscores",
         "number-rejects-exponent",
+        "number-rejects-a-decimal-that-overflows",
         "boolean-rejects-other",
     ],
 )

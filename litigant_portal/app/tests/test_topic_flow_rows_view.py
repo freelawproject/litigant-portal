@@ -729,6 +729,20 @@ def test_post_nan_number_soft_gates_instead_of_erroring(client, synced):
 
 
 @pytest.mark.postgres
+def test_post_overflowing_decimal_soft_gates_instead_of_erroring(
+    client, synced
+):
+    # Matches the digits rule, but float() gives inf, which Postgres
+    # rejects in jsonb.
+    response = client.post(URL, {"pet_count": "9" * 400 + ".0"})
+    assert response.status_code == 200
+    assert re.search(
+        r'name="pet_count"[^>]*aria-invalid="true"', _flat(response)
+    )
+    assert not VariableAnswer.objects.exists()
+
+
+@pytest.mark.postgres
 def test_post_persists_stripped_value(client, synced):
     client.post(URL, {"full_name": "  Jane Doe ", "first_name": ""})
     assert _values() == {"full_name": "Jane Doe"}
