@@ -420,16 +420,28 @@ def test_an_unparseable_stored_date_still_renders(data_type, stored):
     assert _question(variable, {"fact": stored})["value"] == str(stored)
 
 
-def test_protected_question_renders_blank_and_marks_saved():
-    first_name = _variable("first_name")
+def test_private_question_renders_blank_and_marks_saved():
+    first_name = _variable("first_name", is_private=True)
     question = _question(first_name, {"first_name": "Sandra"})
     assert question["value"] == ""
     assert question["saved"] is True
     assert _question(first_name)["saved"] is False
 
 
-def test_a_stored_protected_field_drops_required_since_it_renders_blank():
-    first_name = _variable("first_name", required=True)
+def test_the_glossary_flag_decides_privacy_not_the_content_trees_set():
+    # ``first_name`` is in NEVER_PREFILL; the rows path reads the row.
+    first_name = _variable("first_name")
+    assert _question(first_name, {"first_name": "Sandra"})["value"] == "Sandra"
+
+
+def test_private_names_spans_every_page():
+    dob = _variable("date_of_birth", is_private=True)
+    pages = [("p1", [FULL_NAME]), ("p2", [dob, PET_KIND])]
+    assert rows.private_names(pages) == {"date_of_birth"}
+
+
+def test_a_stored_private_field_drops_required_since_it_renders_blank():
+    first_name = _variable("first_name", required=True, is_private=True)
     assert _question(first_name)["required"] is True
     assert _question(first_name, {"first_name": "Sandra"})["required"] is False
 

@@ -138,6 +138,7 @@ def topic_flow(request, court, topic, role):
             question_ids(corpus),
             lambda s: validate_answers(corpus, s),
             lambda _name, raw: raw.strip() or None,
+            NEVER_PREFILL,
         )
         if valid:
             variable_answer_set_many(
@@ -155,7 +156,7 @@ def topic_flow(request, court, topic, role):
         if valid:
             # A NEVER_PREFILL field re-renders blank even after a successful
             # save, so without a toast the save looks like it failed (#803).
-            _flash_saved(request, valid)
+            _flash_saved(request, valid, NEVER_PREFILL)
         # PRG back to the section just saved (#anchor) so the litigant keeps
         # their place and sees the recomputed deadlines, instead of the browser
         # jumping to the top of the page on the redirected GET.
@@ -173,13 +174,15 @@ def topic_flow(request, court, topic, role):
     )
 
 
-def _accepted_answers(post, names, validate, coerce):
+def _accepted_answers(post, names, validate, coerce, protected):
     """``(submitted, errors, valid)`` for a fact form POST.
 
     ``submitted`` is the posted strings for ``names``; ``errors`` is
-    ``{name: [message]}``; ``valid`` is the typed values to store. A blank
-    NEVER_PREFILL field is skipped unless its clear checkbox was posted (a
-    blank there means "not shown", not "erase").
+    ``{name: [message]}``; ``valid`` is the typed values to store.
+    ``protected`` names the fields that render blank even when stored
+    (``NEVER_PREFILL`` on the content path, the glossary's private flag on
+    the rows path): a blank one is skipped unless its clear checkbox was
+    posted (a blank there means "not shown", not "erase").
     """
     submitted = {name: post[name] for name in names if name in post}
     errors = validate(submitted)
@@ -190,7 +193,7 @@ def _accepted_answers(post, names, validate, coerce):
         value = coerce(name, raw)
         if (
             value is None
-            and name in NEVER_PREFILL
+            and name in protected
             and f"{name}__clear" not in post
         ):
             continue
@@ -198,14 +201,14 @@ def _accepted_answers(post, names, validate, coerce):
     return submitted, errors, valid
 
 
-def _flash_saved(request, valid, revealed=()):
-    """The toast after a save. A NEVER_PREFILL field re-renders blank even
+def _flash_saved(request, valid, protected, revealed=()):
+    """The toast after a save. A ``protected`` field re-renders blank even
     after a successful save, so without the longer message the save looks
     like it failed (#803). ``revealed`` names the questions the save
     uncovered, so a screen reader hears that the page is not done (WCAG
     4.1.3); a gate can reveal a question on an earlier page, so the toast
     does not say where. Shared by both page sources."""
-    private = any(valid.get(name) for name in NEVER_PREFILL)
+    private = any(valid.get(name) for name in protected)
     if revealed and private:
         text = _(
             "Saved. More questions appeared on this page. For your privacy, "
@@ -261,16 +264,18 @@ def topic_flow_rows(request, court, topic, role):
     if request.method == "POST":
         # Same rules as the content path's POST above, over glossary rows.
         # Only currently asked variables are read, so a gated field whose
-        # gate is unmet is ignored even if posted. A stored protected
-        # field renders blank, so a blank there is "keep", not "missing".
+        # gate is unmet is ignored even if posted. A stored private field
+        # renders blank, so a blank there is "keep", not "missing".
         variables = {v.name: v for _page, placed in pages for v in placed}
         asked = rows.asked_names(pages, answers)
-        keep = {n for n in asked if n in NEVER_PREFILL and n in answers}
+        private = rows.private_names(pages)
+        keep = {n for n in asked if n in private and n in answers}
         submitted, errors, valid = _accepted_answers(
             request.POST,
             asked,
             lambda s: rows.validate_answers(variables.values(), s, keep),
             lambda name, raw: rows.coerce_value(variables[name], raw),
+            private,
         )
         # A gated answer whose gate stops matching is cleared with the save,
         # so the briefcase and the prefill agree with the page.
@@ -304,7 +309,7 @@ def topic_flow_rows(request, court, topic, role):
                 ),
             )
         if valid:
-            _flash_saved(request, valid, revealed)
+            _flash_saved(request, valid, private, revealed)
         url = reverse(
             "pages:topic_flow",
             kwargs={"court": court, "topic": topic, "role": role},

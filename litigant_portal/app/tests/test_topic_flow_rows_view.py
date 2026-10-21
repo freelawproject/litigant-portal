@@ -56,13 +56,14 @@ ANCHORS = [
 
 def _corpus():
     """One court, one topic, an enabled flow with an authored layout and a
-    disabled sibling. ``first_name`` is in NEVER_PREFILL."""
+    disabled sibling. ``first_name`` is private."""
     variables = {
-        # Required and protected, as in the real glossary.
+        # Required and private, as in the real glossary.
         "first_name": {
             "name": "first_name",
             "label": "First name",
             "required": True,
+            "private": True,
         },
         "full_name": {
             "name": "full_name",

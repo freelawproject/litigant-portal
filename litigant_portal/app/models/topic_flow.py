@@ -97,6 +97,7 @@ class Variable(BaseModel):
     choices = models.JSONField(default=list, blank=True)
     default = models.JSONField(null=True, blank=True)
     is_global = models.BooleanField(default=False)
+    is_private = models.BooleanField(default=False)
     in_schema = models.BooleanField(default=True)
     asked_when = models.ForeignKey(
         "self",

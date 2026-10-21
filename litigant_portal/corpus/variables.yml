@@ -15,6 +15,10 @@
 # scoped; promote a variable to global only when a second topic asks the
 # identical question.
 #
+# A private variable identifies the person (a name, an address, a birth
+# date, a conviction). Its answer is never shown back in a form, so a shared
+# terminal can't replay one litigant's answer to the next.
+#
 # Labels and help text ported from the wip library flow configs, which took
 # them from docassemble/nd-name-change/petition-*.yml and the legacy corpus.
 
@@ -23,66 +27,79 @@ variables:
 
   - name: first_name
     label: 'First name'
+    private: true
     global: true
     required: true
     help_text: 'Your current legal name, as it appears on your ID.'
 
   - name: middle_name
     label: 'Middle name(s) (if any)'
+    private: true
     global: true
 
   - name: last_name
     label: 'Last name'
+    private: true
     global: true
     required: true
 
   - name: street_address
     label: 'Street address'
+    private: true
     global: true
     required: true
 
   - name: city
     label: 'City'
+    private: true
     global: true
     required: true
 
   - name: county
     label: 'County'
+    private: true
     global: true
     required: true
 
   - name: zip_code
     label: 'ZIP code'
+    private: true
     global: true
     required: true
 
   - name: date_of_birth
     label: 'Date of birth'
+    private: true
     data_type: date
     global: true
     required: true
 
   - name: place_of_birth
     label: 'Place of birth'
+    private: true
     help_text: 'e.g. Fargo, North Dakota'
     global: true
     required: true
 
   - name: phone_number
     label: 'Phone number'
+    private: true
     global: true
 
   # ── Adult name change ───────────────────────────────────────────────────
 
   - name: name_change_requested_first
     label: 'Requested first name'
+    private: true
     required: true
 
   - name: name_change_requested_middle
     label: 'Requested middle name(s) (if any)'
+    private: true
 
   - name: name_change_requested_last
     label: 'Requested last name'
+    private: true
     required: true
 
   - name: name_change_residence_since
@@ -102,6 +119,7 @@ variables:
 
   - name: name_change_criminal_history
     label: 'Criminal history'
+    private: true
     question: 'Have you ever been convicted of a crime?'
     data_type: choice
     required: true
@@ -116,24 +134,28 @@ variables:
   # conviction complete rows 2-6 of the table by hand.
   - name: name_change_conviction_charge
     label: 'Charge you were convicted of'
+    private: true
     asked_when:
       variable: name_change_criminal_history
       value: convicted
 
   - name: name_change_conviction_class
     label: 'Class (felony or misdemeanor)'
+    private: true
     asked_when:
       variable: name_change_criminal_history
       value: convicted
 
   - name: name_change_conviction_court
     label: 'Court that convicted you'
+    private: true
     asked_when:
       variable: name_change_criminal_history
       value: convicted
 
   - name: name_change_conviction_year
     label: 'Year of conviction'
+    private: true
     data_type: number
     asked_when:
       variable: name_change_criminal_history
@@ -153,6 +175,7 @@ variables:
   # Standard (publication) track only.
   - name: name_change_publication_date
     label: 'Date the notice was published'
+    private: true
     data_type: date
     help_text: 'Leave blank until your notice runs in the newspaper. Then enter it here and your deadline updates. Found on the affidavit of publication from the paper.'
 
@@ -172,6 +195,7 @@ variables:
 
   - name: name_change_waiver_domestic_violence
     label: 'I am a victim of domestic violence'
+    private: true
     data_type: boolean
 
   # Drives the fee-waiver form condition in both flows.

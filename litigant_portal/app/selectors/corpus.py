@@ -141,6 +141,7 @@ class VariableSchema(BaseSchema):
     choices: list[ChoiceSchema] = []
     default: ValueType | None = None
     is_global: bool = Field(default=False, alias="global")
+    is_private: bool = Field(default=False, alias="private")
     asked_when: AskedWhenSchema | None = None
 
     @model_validator(mode="after")

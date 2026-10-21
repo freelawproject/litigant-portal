@@ -27,10 +27,7 @@ from django.utils.translation import gettext_lazy as _
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.corpus import default_layout
 from litigant_portal.app.services.topic_flow import variable_value_validate
-from litigant_portal.app.topic_flow.renderer import (
-    NEVER_PREFILL,
-    RenderedSection,
-)
+from litigant_portal.app.topic_flow.renderer import RenderedSection
 from litigant_portal.app.topic_flow.validation import (
     INVALID_CHOICE_ERROR,
     INVALID_DATE_ERROR,
@@ -98,6 +95,17 @@ def flow_pages(flow) -> list[tuple]:
         (page, [placed.variable for placed in page.variables.all()])
         for page in flow.interview_pages.all()
     ]
+
+
+def private_names(pages) -> set[str]:
+    """The placed variables the glossary marks private: the rows path's
+    protected set, the sibling of the content renderer's ``NEVER_PREFILL``."""
+    return {
+        variable.name
+        for _page, variables in pages
+        for variable in variables
+        if variable.is_private
+    }
 
 
 def flow_variable_names(pages) -> list[str]:
@@ -196,7 +204,7 @@ def page_questions(
         if not variable.is_asked(answers):
             continue
         name = variable.name
-        protected = name in NEVER_PREFILL
+        protected = variable.is_private
         saved = protected and name in answers
         default = None if name in cleared else variable.default
         stored = answers.get(name, default)
@@ -226,8 +234,10 @@ def page_questions(
                     else variable.choices
                 ),
                 "help_text": help_text,
-                # Same leak guard as the content renderer: a protected field
-                # renders blank and gets the clear checkbox instead (#638).
+                # Same leak guard as the content renderer's NEVER_PREFILL,
+                # read from the glossary row so the set can't drift from
+                # the corpus: a private field renders blank and gets the
+                # clear checkbox instead (#638).
                 "value": "" if protected else _form_value(variable, stored),
                 "saved": saved,
                 "errors": [],

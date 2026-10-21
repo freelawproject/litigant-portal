@@ -387,6 +387,46 @@ def test_default_must_be_legal_for_the_data_type():
         )
 
 
+def test_private_is_an_optional_glossary_flag_authored_as_private():
+    assert VariableSchema(name="age", label="Age").is_private is False
+    variable = VariableSchema.model_validate(
+        {"name": "age", "label": "Age", "private": True}
+    )
+    assert variable.is_private is True
+    assert variable.model_dump()["is_private"] is True
+
+
+# Drift guard, the sibling of test_content_never_prefill: the facts the ND
+# interview asks that identify a person never echo back on the rows path.
+@pytest.mark.parametrize(
+    "name",
+    [
+        "first_name",
+        "middle_name",
+        "last_name",
+        "street_address",
+        "city",
+        "county",
+        "zip_code",
+        "date_of_birth",
+        "place_of_birth",
+        "phone_number",
+        "name_change_requested_first",
+        "name_change_requested_middle",
+        "name_change_requested_last",
+        "name_change_criminal_history",
+        "name_change_conviction_charge",
+        "name_change_conviction_class",
+        "name_change_conviction_court",
+        "name_change_conviction_year",
+        "name_change_publication_date",
+        "name_change_waiver_domestic_violence",
+    ],
+)
+def test_shipped_identity_variable_is_private(name):
+    assert corpus_load().variables[name].is_private is True
+
+
 def test_help_text_and_required_are_optional_glossary_fields():
     variable = VariableSchema(name="age", label="Age")
     assert variable.help_text == ""

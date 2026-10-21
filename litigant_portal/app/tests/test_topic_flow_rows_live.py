@@ -54,8 +54,9 @@ def test_every_live_flow_renders_with_an_anchor_per_section_key(
         ), url
 
     # Save the "The name you want" page of the ND standard flow: three text
-    # variables, two required, none gated or in NEVER_PREFILL. The anchor is
-    # not hard-coded, since page order in standard.yml can change.
+    # variables, two required, none gated, all private, so the blank middle
+    # name is "keep", not "erase", and writes no row. The anchor is not
+    # hard-coded, since page order in standard.yml can change.
     url = "/t/north-dakota/adult-name-change/standard/"
     posted = {
         "name_change_requested_first": " Jane ",
@@ -72,6 +73,5 @@ def test_every_live_flow_renders_with_an_anchor_per_section_key(
     )
     assert stored == {
         "name_change_requested_first": "Jane",
-        "name_change_requested_middle": None,
         "name_change_requested_last": "Doe",
     }
