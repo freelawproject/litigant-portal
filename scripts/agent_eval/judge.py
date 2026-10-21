@@ -144,17 +144,16 @@ def contains_evidence(answer: str, evidence: str) -> bool:
 def ends_with_question(answer: str) -> bool:
     """
     Whether the last line asks a question, ignoring markdown emphasis,
-    closing quotes or brackets, and trailing [source:ID] citations on
-    the same line or on lines of their own.
+    closing quotes or brackets, and [source:ID] citations, in any order
+    after the question or on lines of their own.
     """
-    citations = re.compile(r"(\s*\[source:[^\]]+\])+\s*$")
+    trailing = re.compile(r"(\[source:[^\]]+\]|[*_`\"'”’)\]}.\s])+$")
     lines = [line.strip() for line in answer.splitlines() if line.strip()]
-    while lines and not citations.sub("", lines[-1]):
+    while lines and not trailing.sub("", lines[-1]):
         lines.pop()
     if not lines:
         return False
-    last = citations.sub("", lines[-1])
-    return last.rstrip("*_`\"'”’)]} ").endswith("?")
+    return trailing.sub("", lines[-1]).endswith("?")
 
 
 def validate_grade(
