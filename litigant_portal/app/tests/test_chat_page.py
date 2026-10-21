@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from litigant_portal.app.permissions import DEVELOPERS_GROUP
@@ -60,6 +60,25 @@ class ChatPageRouteTests(TestCase):
         response = self.client.get(reverse("pages:chat"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "pages/chat/index.html")
+
+
+@pytest.mark.postgres
+class ChatPageCitationChipsTests(TestCase):
+    """The page tells chat_engine.js whether to show citation chips: on
+    wherever ``features().citation_chips`` is (#1037), pilots included."""
+
+    def _chips_attr(self):
+        html = self.client.get(reverse("pages:chat")).content.decode()
+        match = re.search(r'data-citation-chips="(\w+)"', html)
+        return match and match.group(1)
+
+    @override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
+    def test_a_pilot_shows_citation_chips(self):
+        self.assertEqual(self._chips_attr(), "true")
+
+    @override_settings(DEPLOYMENT_ENV="prod", PILOT=False)
+    def test_production_hides_citation_chips(self):
+        self.assertEqual(self._chips_attr(), "false")
 
 
 @pytest.mark.postgres

@@ -6,6 +6,8 @@ from urllib.parse import urlsplit
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
 
+from litigant_portal.app.features import parse_deployment_env, parse_pilot
+
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -13,16 +15,17 @@ BEDROCK_API_KEY = os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "")
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
-# Deployment environment label. Distinguishes QA from prod (both run DEBUG=false).
-# Used by template context processor to gate non-prod-only UI (build-time chip).
-# Invalid values are kept as-is (fail-closed: non-prod UI won't match and stays hidden).
-DEPLOYMENT_ENV = os.environ.get("DEPLOYMENT_ENV", "dev")
-if DEPLOYMENT_ENV not in {"dev", "qa", "prod"}:
-    logger.warning(
-        "DEPLOYMENT_ENV=%r is not one of {'dev', 'qa', 'prod'}; "
-        "non-prod UI gates may not behave as expected.",
-        DEPLOYMENT_ENV,
-    )
+# Deployment environment (dev, qa, prod) and the court pilot marker. Together
+# they decide which tester tools show; app/features.py holds the tiers.
+# Unset or unknown falls closed to prod, so local dev sets
+# DEPLOYMENT_ENV=dev itself.
+DEPLOYMENT_ENV = parse_deployment_env(os.environ.get("DEPLOYMENT_ENV"))
+PILOT = parse_pilot(os.environ.get("PILOT"))
+
+# Where a pilot's Feedback link sends mail. Court partners mostly have no
+# GitHub account, so pilots get email; dev and QA keep the GitHub link.
+# `or`, not a default: compose passes an unset variable through as blank.
+FEEDBACK_EMAIL = os.environ.get("FEEDBACK_EMAIL") or "LpFeedback@free.law"
 
 # The new agent's development page also requires developer permission. QA
 # exists to test it, so the label turns it on without a second variable.

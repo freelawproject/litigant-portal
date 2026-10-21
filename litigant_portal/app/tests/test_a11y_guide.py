@@ -4,13 +4,14 @@ explains.
 """
 
 import pytest
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from litigant_portal.app.theme import contrast_ratio, theme_colors
 
 
 @pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="dev")
 class A11yGuideSimulationTests(TestCase):
     """The switcher is radios that CSS watches, so the server's only job is
     to pre-check one from ?simulate=, for links that open the page with a
@@ -74,6 +75,7 @@ class A11yGuideSimulationTests(TestCase):
 
 
 @pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="dev")
 class A11yGuideContrastTests(TestCase):
     def test_contrast_samples_are_measured_from_the_theme(self):
         """The ratios on the page come from src/main.css, so they stay true

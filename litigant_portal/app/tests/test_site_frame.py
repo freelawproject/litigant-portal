@@ -68,7 +68,7 @@ class FramedPagesTests(TestCase):
 @pytest.mark.postgres
 class SiteMenuTests(TestCase):
     """The footer is gone, so its links live in the header's site menu, in
-    every environment. Dev tools join them only outside production."""
+    every environment. Tester tools join them wherever features allow."""
 
     PAGE_LINKS = (
         "pages:help",
@@ -78,7 +78,7 @@ class SiteMenuTests(TestCase):
     )
     FREE_LAW_LINK = 'href="https://free.law"'
 
-    @override_settings(DEPLOYMENT_ENV="prod")
+    @override_settings(DEPLOYMENT_ENV="prod", PILOT=False)
     def test_production_menu_has_the_page_links_and_no_dev_tools(self):
         html = self.client.get(reverse("pages:home")).content.decode()
 
@@ -94,3 +94,10 @@ class SiteMenuTests(TestCase):
         for name in self.PAGE_LINKS:
             self.assertIn(f'href="{reverse(name)}"', html)
         self.assertIn(DEV_GROUP_MARKER, html)
+
+    @override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
+    def test_a_pilot_gets_the_tester_tools_on_production(self):
+        html = self.client.get(reverse("pages:home")).content.decode()
+
+        self.assertIn(DEV_GROUP_MARKER, html)
+        self.assertIn(f'action="{reverse("pages:start_over")}"', html)
