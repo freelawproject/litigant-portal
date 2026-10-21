@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
   id-token: write
 
 env:
@@ -29,20 +30,55 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
+      skip_web: ${{ steps.tag.outputs.skip_web }}
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
+      - name: Read merged PR labels
+        id: labels
+        if: ${{ github.event_name == 'workflow_run' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          LABELS=$(gh api "repos/$GITHUB_REPOSITORY/commits/$HEAD_SHA/pulls" --jq '[.[].labels[].name] | join(",")')
+          echo "labels=$LABELS" >> "$GITHUB_OUTPUT"
+          echo "Labels: $LABELS"
+
       - name: Resolve image tag
         id: tag
         env:
+          GH_TOKEN: ${{ github.token }}
           INPUT_TAG: ${{ github.event.inputs.image_tag }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          LABELS: ${{ steps.labels.outputs.labels }}
         run: |
-          if [ -n "$INPUT_TAG" ]; then TAG="$INPUT_TAG"; else TAG="${HEAD_SHA::7}"; fi
-          if ! docker manifest inspect "$IMAGE:$TAG-prod" > /dev/null 2>&1; then
-            echo "::notice::$IMAGE:$TAG-prod is not published, nothing to deploy"
-            TAG=""
+          if [[ ",$LABELS," == *",skip-deploy,"* ]]; then
+            echo "::notice::skip-deploy label: no image was published, nothing to deploy"
+            exit 0
           fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          if [[ ",$LABELS," == *",skip-web-deploy,"* ]]; then
+            echo "::notice::skip-web-deploy label: migrations only, litigant-web keeps its image"
+            echo "skip_web=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+            STATUS=$(gh api "repos/$GITHUB_REPOSITORY/compare/$TAG...main" --jq .status || true)
+            if [ "$STATUS" != "ahead" ] && [ "$STATUS" != "identical" ]; then
+              echo "::error::$TAG is not a commit on main"
+              exit 1
+            fi
+          else
+            TAG="${HEAD_SHA::7}"
+          fi
+          for attempt in 1 2 3; do
+            if docker manifest inspect "$IMAGE:$TAG-prod" > /dev/null; then
+              echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::could not read $IMAGE:$TAG-prod from Docker Hub"
+          exit 1
 
       - name: Pick courts
         id: matrix
@@ -53,8 +89,7 @@ jobs:
           FRANKLIN_COUNTY_OH: ${{ vars.FRANKLIN_COUNTY_OH_AWS_ACCOUNT_ID }}
           PORTSMOUTH_VA: ${{ vars.PORTSMOUTH_VA_AWS_ACCOUNT_ID }}
         run: |
-          MATRIX=$(jq -cn \
-            --arg selected "$SELECTED" \
+          ALL=$(jq -cn \
             --arg nd "$NORTH_DAKOTA" --arg az "$ARIZONA" \
             --arg fc "$FRANKLIN_COUNTY_OH" --arg pv "$PORTSMOUTH_VA" '
             [
@@ -62,9 +97,28 @@ jobs:
               {court: "arizona", account: $az, region: "us-west-2"},
               {court: "franklin-county-oh", account: $fc, region: "us-west-2"},
               {court: "portsmouth-va", account: $pv, region: "us-west-2"}
-            ]
-            | map(select(.account != ""))
-            | map(select($selected == "all" or (.court as $c | $selected | split(",") | map(gsub(" "; "")) | index($c))))')
+            ]')
+          if [ "$SELECTED" = "all" ]; then
+            MATRIX=$(jq -c 'map(select(.account != ""))' <<< "$ALL")
+          else
+            MATRIX='[]'
+            for COURT in $(tr ',' ' ' <<< "$SELECTED"); do
+              ENTRY=$(jq -c --arg c "$COURT" '.[] | select(.court == $c)' <<< "$ALL")
+              if [ -z "$ENTRY" ]; then
+                echo "::error::unknown court $COURT"
+                exit 1
+              fi
+              if [ -z "$(jq -r .account <<< "$ENTRY")" ]; then
+                echo "::error::$COURT has no AWS account ID variable"
+                exit 1
+              fi
+              MATRIX=$(jq -c --argjson e "$ENTRY" '. + [$e]' <<< "$MATRIX")
+            done
+          fi
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] && [ "$MATRIX" = "[]" ]; then
+            echo "::error::no court has an AWS account ID variable"
+            exit 1
+          fi
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "Courts: $MATRIX"
 
@@ -129,6 +183,7 @@ jobs:
         run: kubectl delete pod -n "$EKS_NAMESPACE" "$TEMP_POD"
 
       - name: Roll out litigant-web
+        if: ${{ needs.plan.outputs.skip_web != 'true' }}
         run: |
           kubectl set image -n "$EKS_NAMESPACE" deployment/litigant-web web="$IMAGE:$TAG-prod"
           kubectl rollout status -n "$EKS_NAMESPACE" deployment/litigant-web --timeout=10m
