@@ -5,6 +5,7 @@ from django.urls import reverse
 from litigant_portal.app.features import features
 from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.topic_flow.registry import registry
+from litigant_portal.app.views.utils import admin_tabs
 
 
 def _tester_flow_links(court: str | None) -> list[dict]:
@@ -27,6 +28,11 @@ def app_meta(request):
     tools = features()
     return {
         "features": tools,
+        # Drives the Admin menu link and the dashboard's tabs. Requests
+        # built outside the middleware stack carry no user.
+        "admin_tabs": (
+            admin_tabs(request.user) if hasattr(request, "user") else []
+        ),
         "tester_flow_links": (
             _tester_flow_links(settings.CORPUS_COURT)
             if tools.flow_links

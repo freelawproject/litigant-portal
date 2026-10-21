@@ -46,18 +46,18 @@ class PermissionGroupTests(TestCase):
         self.assertTrue(Group.objects.filter(name=ADMINS_GROUP).exists())
         self.assertTrue(Group.objects.filter(name=DEVELOPERS_GROUP).exists())
 
-    def test_admins_can_manage_site_only(self):
+    def test_admins_manage_the_site_and_app_users(self):
         group = Group.objects.get(name=ADMINS_GROUP)
         self.assertEqual(
             sorted(p.codename for p in group.permissions.all()),
-            ["manage_site"],
+            ["manage_app_users", "manage_site"],
         )
 
     def test_developers_are_a_superset_of_admins(self):
         group = Group.objects.get(name=DEVELOPERS_GROUP)
         self.assertEqual(
             sorted(p.codename for p in group.permissions.all()),
-            ["manage_developers", "manage_site"],
+            ["manage_app_users", "manage_developers", "manage_site"],
         )
 
     def test_permissions_belong_to_the_app_label(self):
@@ -65,9 +65,13 @@ class PermissionGroupTests(TestCase):
         # another content type would never match.
         codenames = Permission.objects.filter(
             content_type__app_label="app",
-            codename__in=["manage_site", "manage_developers"],
+            codename__in=[
+                "manage_site",
+                "manage_developers",
+                "manage_app_users",
+            ],
         ).count()
-        self.assertEqual(codenames, 2)
+        self.assertEqual(codenames, 3)
 
 
 @pytest.mark.postgres

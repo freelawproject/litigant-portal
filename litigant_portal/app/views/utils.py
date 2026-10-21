@@ -3,6 +3,7 @@ from functools import wraps
 from django.http import JsonResponse
 from django.utils.translation import gettext as _
 
+from litigant_portal.app.features import features
 from litigant_portal.app.selectors.topic_flow import (
     variable_answer_groups,
     variable_answer_map,
@@ -75,3 +76,43 @@ Developers groups and, implicitly, superusers)."""
 manage_developers_required = _perm_required("app.manage_developers")
 """JSON guard: requires ``app.manage_developers`` (held by the Developers
 group and, implicitly, superusers)."""
+
+
+def can_manage_app_users(user) -> bool:
+    """Whether ``user`` reaches app user management on this deployment.
+
+    Off where the ``user_admin`` feature is off (plain prod), so the User
+    admins group grants nothing there (#1043).
+    """
+    return features().user_admin and user.has_perm("app.manage_app_users")
+
+
+ADMIN_TABS = ["settings", "users", "knowledge", "simulate"]
+
+
+def admin_tabs(user) -> list[str]:
+    """The admin dashboard tabs ``user`` may open; empty means no dashboard.
+
+    A user admin gets the Users tab alone: the Site and Topics rows are
+    FLP's, and ``sync_corpus`` overwrites them on every deploy anyway.
+    """
+    if user.has_perm("app.manage_site"):
+        return ADMIN_TABS
+    if can_manage_app_users(user):
+        return ["users"]
+    return []
+
+
+def app_user_admin_required(view):
+    """JSON guard for the app user account actions: not found where the
+    feature is off, forbidden without ``app.manage_app_users``."""
+
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        if not features().user_admin:
+            return JsonResponse({"error": _("Not found")}, status=404)
+        if not request.user.has_perm("app.manage_app_users"):
+            return JsonResponse({"error": _("Forbidden")}, status=403)
+        return view(request, *args, **kwargs)
+
+    return wrapped

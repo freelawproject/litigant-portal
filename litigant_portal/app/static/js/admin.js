@@ -88,11 +88,20 @@ document.addEventListener('alpine:init', () => {
     usersPageLabel: '',
     usersCountLabel: '',
     usersFetchSeq: 0,
+    usersActionError: '',
+    // App user accounts (#1043): one dialog open at a time.
+    userDialogId: null,
+    userDialogEmail: '',
+    userDialogError: '',
 
+    // The server renders only the tabs this user may open (data-tabs), so
+    // a user admin's dashboard opens on Users and never fetches the rest.
     init() {
-      this.loadSite()
-      this.loadUsers()
-      this.loadTopics()
+      const tabs = (this.$el.dataset.tabs || '').split(',').filter(Boolean)
+      if (tabs.length) this.applyTab(tabs[0])
+      if (tabs.includes('settings')) this.loadSite()
+      if (tabs.includes('users')) this.loadUsers()
+      if (tabs.includes('knowledge')) this.loadTopics()
     },
 
     // Click handler for a sidebar tab — the tab id rides on the element.
@@ -368,12 +377,18 @@ document.addEventListener('alpine:init', () => {
         ...u,
         notAdmin: !u.is_admin,
         notDeveloper: !u.is_developer,
+        notUserAdmin: !u.is_user_admin,
+        notActive: !u.is_active,
+        canDisable: u.can_lock_out && u.is_active,
+        canEnable: u.can_lock_out && !u.is_active,
         adminToggleClass: u.is_admin ? PILL_ON : PILL_OFF,
         devToggleClass: u.is_developer ? PILL_ON : PILL_OFF,
+        userAdminToggleClass: u.is_user_admin ? PILL_ON : PILL_OFF,
         // Self-revocation guard mirrors the server: you can't drop your
         // own highest permission, so those toggles render disabled.
         adminToggleDisabled: !u.can_toggle_admin,
         devToggleDisabled: !u.can_toggle_developer,
+        userAdminToggleDisabled: !u.can_lock_out,
       }
     },
 
@@ -420,6 +435,137 @@ document.addEventListener('alpine:init', () => {
       } catch (err) {
         console.error('Failed to toggle developer status:', err)
       }
+    },
+
+    // Toggle membership in the User admins group.
+    async toggleUserUserAdmin(e) {
+      const userId = e.currentTarget.dataset.userId
+      const { ok, data } = await this.postUserAction(
+        userId,
+        'user-admin/toggle'
+      )
+      if (ok) this.patchUser(userId, { is_user_admin: data.is_user_admin })
+    },
+
+    // POST an app user account action. Resolves to the parsed body and
+    // whether it succeeded; the server's error message rides on data.error.
+    async postUserForm(url, body) {
+      try {
+        const res = await fetch(url, { method: 'POST', body })
+        const data = await res.json()
+        return { ok: res.ok, data }
+      } catch (err) {
+        console.error('Account request failed:', err)
+        return {
+          ok: false,
+          data: { error: 'Something went wrong. Try again.' },
+        }
+      }
+    },
+
+    // An action with no form of its own (disable, enable, delete, toggles).
+    async postUserAction(userId, action) {
+      const body = new FormData()
+      body.append('csrfmiddlewaretoken', this.csrfToken())
+      const result = await this.postUserForm(
+        '/api/admin/users/' + userId + '/' + action + '/',
+        body
+      )
+      this.usersActionError = result.ok ? '' : result.data.error
+      return result
+    },
+
+    findUser(userId) {
+      return this.users.find((u) => String(u.id) === String(userId))
+    },
+
+    // Open one of the account dialogs with a clean form and no old error.
+    openUserDialog(ref, user) {
+      this.userDialogId = user ? user.id : null
+      this.userDialogEmail = user ? user.email : ''
+      this.userDialogError = ''
+      const dialog = this.$refs[ref]
+      const form = dialog.querySelector('form')
+      if (form) form.reset()
+      dialog.showModal()
+    },
+
+    closeUserDialogs() {
+      for (const ref of [
+        'userCreateDialog',
+        'userPasswordDialog',
+        'userDeleteDialog',
+      ]) {
+        if (this.$refs[ref]) this.$refs[ref].close()
+      }
+    },
+
+    openUserCreate() {
+      this.openUserDialog('userCreateDialog', null)
+    },
+
+    openUserPassword(e) {
+      this.openUserDialog(
+        'userPasswordDialog',
+        this.findUser(e.currentTarget.dataset.userId)
+      )
+    },
+
+    openUserDelete(e) {
+      this.openUserDialog(
+        'userDeleteDialog',
+        this.findUser(e.currentTarget.dataset.userId)
+      )
+    },
+
+    async createUser(e) {
+      const { ok, data } = await this.postUserForm(
+        '/api/admin/users/create/',
+        new FormData(e.currentTarget)
+      )
+      if (!ok) {
+        this.userDialogError = data.error
+        return
+      }
+      this.closeUserDialogs()
+      await this.loadUsers()
+    },
+
+    async setUserPassword(e) {
+      const { ok, data } = await this.postUserForm(
+        '/api/admin/users/' + this.userDialogId + '/password/',
+        new FormData(e.currentTarget)
+      )
+      if (!ok) {
+        this.userDialogError = data.error
+        return
+      }
+      this.closeUserDialogs()
+    },
+
+    async disableUser(e) {
+      const userId = e.currentTarget.dataset.userId
+      const { ok, data } = await this.postUserAction(userId, 'disable')
+      if (ok) this.patchUser(userId, data)
+    },
+
+    async enableUser(e) {
+      const userId = e.currentTarget.dataset.userId
+      const { ok, data } = await this.postUserAction(userId, 'enable')
+      if (ok) this.patchUser(userId, data)
+    },
+
+    async deleteUser() {
+      const { ok, data } = await this.postUserAction(
+        this.userDialogId,
+        'delete'
+      )
+      if (!ok) {
+        this.userDialogError = data.error
+        return
+      }
+      this.closeUserDialogs()
+      await this.loadUsers()
     },
   }))
 })

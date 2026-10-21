@@ -15,12 +15,13 @@ provisioned by [`signals.py`](../../litigant_portal/app/signals.py)
 (`ensure_permission_groups`) ·
 granted through the admin panel's Users tab.
 
-## The two permissions
+## The three permissions
 
 | Permission              | Who it's for                                       | Grants                                                    |
 | ----------------------- | -------------------------------------------------- | --------------------------------------------------------- |
 | `app.manage_site`       | Court partners and administrators running the site | Access to the admin panel and everything configured there |
 | `app.manage_developers` | Free Law Project developers working on the portal  | Ability to grant and revoke developer access              |
+| `app.manage_app_users`  | Whoever runs the test accounts on an instance      | The Users tab's account actions (see User admins below)   |
 
 The split is about **who the person is to the project**, not how much they
 are trusted. A court partner configuring their own jurisdiction's content is
@@ -29,7 +30,7 @@ for the people the portal is built for. `manage_developers` is narrower in a
 different direction: it is for FLP staff building and operating the portal,
 and its only power is deciding who else counts as a developer.
 
-Both are declared on `Site.Meta.permissions`, which is why they carry the
+All three are declared on `Site.Meta.permissions`, which is why they carry the
 `app.` prefix. That prefix is the app label, not the model — a permission
 lives on some model by necessity, but these gate the application, not the
 `Site` row.
@@ -39,14 +40,15 @@ permissions Django generates for every model. Those gate Django admin at
 `/django-admin/`. A user can hold `manage_site` and have no Django-admin
 access at all, and that is the normal case.
 
-## The two groups
+## The groups
 
 Permissions are granted through groups, never assigned to users directly.
 
-| Group        | Who belongs to it                                 | Holds                              |
-| ------------ | ------------------------------------------------- | ---------------------------------- |
-| `Admins`     | Court partners and site administrators            | `manage_site`                      |
-| `Developers` | Free Law Project developers working on the portal | `manage_site`, `manage_developers` |
+| Group         | Who belongs to it                                 | Holds                                                  |
+| ------------- | ------------------------------------------------- | ------------------------------------------------------ |
+| `Admins`      | Court partners and site administrators            | `manage_site`, `manage_app_users`                      |
+| `Developers`  | Free Law Project developers working on the portal | `manage_site`, `manage_developers`, `manage_app_users` |
+| `User admins` | The account that runs an instance's test accounts | `manage_app_users`                                     |
 
 `Developers` is a superset: a developer can do anything an admin can, plus
 promote other developers. FLP developers need the admin panel to build and
@@ -55,7 +57,7 @@ also being added to `Admins`. A consequence worth knowing: removing someone
 from `Admins` does not remove their admin access if they are also a
 developer.
 
-Both groups are created and stocked by a `post_migrate` receiver, so every
+Every group is created and stocked by a `post_migrate` receiver, so every
 environment converges on the same definition after `migrate` — a fresh
 database, a restored dump, and a long-running deployment all end up
 identical. The receiver is additive: permissions granted to a group by hand
@@ -65,6 +67,38 @@ are left alone.
 for them without any group membership, so a superuser never needs to be
 added to `Admins` or `Developers`.
 
+## User admins
+
+A user admin manages the app users on their own instance (#1043): add an
+account with a password, set a new password, disable or re-enable it,
+delete it, and make another app user a user admin. It's the same role on
+QA (an FLP test account, such as one Jessica uses to create a Jane Martin
+for a demo) and on a court's pilot (the court's own account). The instance
+decides whose accounts it covers, and the account is also an ordinary test
+user that logs in to the app.
+
+- **Scope is every app user on the instance**, whether an admin added it or
+  it signed up. Staff are out of reach: superusers are managed only by
+  superusers, developers only by holders of `manage_developers`, and admins
+  only by holders of `manage_site`. `user_is_manageable` in
+  `selectors/user.py` holds the rule.
+- **Users tab only.** A user admin doesn't hold `manage_site`, so the Site
+  and Topics endpoints refuse them and the dashboard renders only the Users
+  tab.
+- **Gated by the `user_admin` feature,** on for dev, QA, and pilots
+  (`app/features.py`). Where it's off (plain prod), the account actions
+  answer 404 and `manage_app_users` grants nothing on its own.
+- **No email.** The pilots send none, so the admin sets every password,
+  entered twice, and shares it directly.
+- **Disable** sets `is_active=False`: the account can't log in, keeps its
+  history, and stays listed so it can be enabled again. **Delete** is
+  permanent and removes the account's chats, uploads, and answers.
+- **Self-guards:** a user admin can reset their own password, but can't
+  disable, delete, or demote themselves.
+- **Setting one up:** a superuser adds the account and puts it in
+  `User admins`, from the Users tab or `/django-admin/`. In Django admin,
+  fill in the email too: the app logs in by email, not username.
+
 ## Checking a permission
 
 ### In views — use a decorator
@@ -72,7 +106,8 @@ added to `Admins` or `Developers`.
 This is the expected pattern. Guard at the boundary: the view or endpoint is
 where a permission is enforced, never a selector or service.
 
-**Page views** use Django's built-in decorator:
+**Page views** use Django's built-in decorator (the admin dashboard is the
+exception, below):
 
 ```python
 from django.contrib.auth.decorators import login_required, permission_required
@@ -82,6 +117,11 @@ from django.contrib.auth.decorators import login_required, permission_required
 @permission_required("app.manage_site", raise_exception=True)
 def admin(request): ...
 ```
+
+The admin dashboard checks `admin_tabs(request.user)` instead, because two
+permissions open it with different tabs: `manage_site` gets every tab, and a
+user admin gets Users alone. The same helper feeds the `admin_tabs` context
+variable that the Admin menu links check.
 
 `raise_exception=True` produces a 403 for a signed-in user who lacks the
 permission. Without it, Django redirects them to the login page, which is
@@ -155,7 +195,10 @@ only part of the behavior changes.
 
 **Do not wrap `has_perm` in a helper.** A selector like
 `user_can_manage_site(user=...)` adds a layer over a one-line call, and
-hides which permission is actually being checked at the call site.
+hides which permission is actually being checked at the call site. The one
+exception is `can_manage_app_users` in `views/utils.py`, because it also
+checks the `user_admin` feature: the permission alone isn't the
+answer there.
 
 ## Granting and revoking
 
@@ -167,13 +210,15 @@ the services in
 from litigant_portal.app.services.user import (
     user_admin_toggle,
     user_developer_toggle,
+    user_user_admin_toggle,
 )
 
 user_admin_toggle(user=target)  # -> new state, True if now in Admins
 user_developer_toggle(user=target)  # -> new state, True if now a Developer
+user_user_admin_toggle(user=target)  # -> True if now a User admin
 ```
 
-Both are idempotent toggles that return the resulting state.
+All three are toggles that return the resulting state.
 
 Two self-revocation guards are enforced server-side, so nobody locks
 themselves out:
