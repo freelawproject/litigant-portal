@@ -405,6 +405,17 @@ def test_a_stored_date_renders_in_the_inputs_own_format(
 
 
 @pytest.mark.parametrize(
+    ("stored", "expected"),
+    [(1e-05, "0.00001"), (1e20, "100000000000000000000"), (2.5, "2.5")],
+    ids=["small", "large", "plain"],
+)
+def test_a_stored_float_renders_in_full_not_in_exponent_form(stored, expected):
+    # str(1e-05) is "1e-05", which the number rule rejects on resubmit.
+    variable = _variable("fact", data_type=VariableDataType.NUMBER)
+    assert _question(variable, {"fact": stored})["value"] == expected
+
+
+@pytest.mark.parametrize(
     ("data_type", "stored"),
     [
         (VariableDataType.DATE, "March 15, 2026"),
@@ -508,6 +519,55 @@ def test_coerce_value(data_type, raw, expected):
 def test_coerce_value_rejects_what_the_type_cannot_hold(data_type, raw):
     with pytest.raises(ValueError):
         rows.coerce_value(_variable("fact", data_type=data_type), raw)
+
+
+# --- unchanged answers ------------------------------------------------------
+
+BY_NAME = {
+    "when": _variable("when", data_type=VariableDataType.DATETIME),
+    "pet_count": _variable("pet_count", data_type=VariableDataType.NUMBER),
+    "secret": _variable("secret", is_private=True),
+}
+
+
+def _restored(submitted, answers):
+    valid = {
+        name: rows.coerce_value(BY_NAME[name], raw)
+        for name, raw in submitted.items()
+    }
+    return rows.restore_unchanged(BY_NAME, submitted, answers, valid)
+
+
+def test_an_unchanged_datetime_re_saves_its_stored_zone_and_seconds():
+    stored = {"when": "2026-03-15T15:00:00+00:00"}
+    assert _restored({"when": "2026-03-15T15:00"}, stored) == stored
+
+
+def test_an_unchanged_float_re_saves_its_stored_type():
+    assert _restored({"pet_count": "2.5"}, {"pet_count": 2.5}) == {
+        "pet_count": 2.5
+    }
+    assert _restored({"pet_count": "2"}, {"pet_count": 2.0}) == {
+        "pet_count": 2
+    }
+
+
+def test_a_changed_value_is_written_as_posted():
+    stored = {"when": "2026-03-15T15:00:00+00:00"}
+    assert _restored({"when": "2026-03-16T15:00"}, stored) == {
+        "when": "2026-03-16T15:00"
+    }
+
+
+def test_a_first_answer_is_written_as_posted():
+    assert _restored({"when": "2026-03-15T15:00"}, {}) == {
+        "when": "2026-03-15T15:00"
+    }
+
+
+def test_a_private_value_is_never_unchanged():
+    # Renders blank, so a blank with the clear checkbox must stay None.
+    assert _restored({"secret": ""}, {"secret": "x"}) == {"secret": None}
 
 
 # --- validation -------------------------------------------------------------

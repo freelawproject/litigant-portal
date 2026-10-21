@@ -21,6 +21,7 @@ gated fields appear.
 import math
 import re
 from datetime import date, datetime
+from decimal import Decimal
 
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
@@ -163,11 +164,16 @@ def _form_value(variable, value) -> str:
 
     A value that doesn't parse (stored before the glossary made the
     variable temporal) renders as stored, the way the briefcase shows it.
+
+    A float is written out in full: ``str()`` gives ``1e-05`` for a small
+    one, which the number rule rejects on the next save.
     """
     if value is None:
         return ""
     if isinstance(value, bool):
         return "true" if value else "false"
+    if isinstance(value, float):
+        return format(Decimal(repr(value)), "f")
     raw = str(value)
     try:
         if variable.data_type == VariableDataType.DATE:
@@ -178,6 +184,31 @@ def _form_value(variable, value) -> str:
     except ValueError:
         pass
     return raw
+
+
+def restore_unchanged(variables, submitted, answers, valid) -> dict:
+    """``valid`` with each answer the litigant left as the form showed it
+    put back to its stored value.
+
+    The form string is narrower than the store: a datetime input drops
+    the zone and seconds, a number input the float type. Writing the
+    posted string back would quietly rewrite an answer the litigant never
+    touched, so an unchanged field re-saves what is stored. The row is
+    still written, so it is marked reviewed. A private field renders blank,
+    so a blank there is skipped upstream and a typed value is never
+    "unchanged".
+    """
+    restored = {}
+    for name, value in valid.items():
+        variable = variables[name]
+        if (
+            name in answers
+            and not variable.is_private
+            and submitted[name].strip() == _form_value(variable, answers[name])
+        ):
+            value = answers[name]
+        restored[name] = value
+    return restored
 
 
 def gate_names(pages) -> set[str]:

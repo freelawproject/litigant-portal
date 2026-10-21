@@ -541,6 +541,15 @@ def test_post_decimal_number_stores_a_float_and_prefills_it(client, synced):
 
 
 @pytest.mark.postgres
+def test_resaving_an_untouched_float_keeps_its_stored_value(client, synced):
+    # The form shows 1e-05 as "0.00001"; posting that back unchanged must
+    # not rewrite the answer, and must still mark it reviewed.
+    _store(client, "pet_count", 1e-05)
+    client.post(URL, {**PET_PAGE, "pet_count": "0.00001"})
+    assert _rows()["pet_count"] == (1e-05, True)
+
+
+@pytest.mark.postgres
 def test_number_field_takes_any_step_so_a_stored_decimal_resubmits(
     client, synced
 ):
