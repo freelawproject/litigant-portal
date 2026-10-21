@@ -3,6 +3,7 @@ import re
 from functools import wraps
 from urllib.parse import urlsplit
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin
