@@ -152,11 +152,28 @@ def _corpus():
             ],
         },
     ]
+    # A form with the court's PDF url and one without; the checklist joins
+    # the packet only once the pet is licensed.
+    forms = {
+        "petition": {
+            "name": "License petition",
+            "url": "https://alpha.example/petition.pdf",
+            "fields": [{"pdf_field": "Name", "template": "{full_name}"}],
+        },
+        "checklist": {"name": "Licensed pet checklist", "fields": []},
+    }
+    packet = [
+        {"form": "petition"},
+        {
+            "form": "checklist",
+            "when": {"variable": "licensed", "value": True},
+        },
+    ]
     return CorpusSchema.model_validate(
         {
             "variables": variables,
-            "forms": {},
-            "form_acro_fields": {},
+            "forms": forms,
+            "form_acro_fields": {"petition": {"Name": "/Tx"}, "checklist": {}},
             "courts": {
                 COURT: {
                     "name": "Alpha",
@@ -173,6 +190,7 @@ def _corpus():
                     "sections": sections,
                     "layout": LAYOUT,
                     "interview": interview,
+                    "packet": packet,
                 },
                 (COURT, TOPIC, "retired"): {
                     "name": "Retired",
@@ -185,12 +203,18 @@ def _corpus():
 
 
 @pytest.fixture
-def synced(db, settings):
-    """The corpus above in the database, with the page reading rows."""
+def synced(db, settings, tmp_path):
+    """The corpus above in the database, with the page reading rows. The
+    forms directory holds stand-in PDF bytes for the sync's file writes."""
     settings.TOPIC_FLOW_SOURCE = "corpus"
     settings.CORPUS_COURT = None
     corpus = _corpus()
-    with mock.patch.object(services, "corpus_load", return_value=corpus):
+    for slug in corpus.forms:
+        (tmp_path / f"{slug}.pdf").write_bytes(b"%PDF-stand-in")
+    with (
+        mock.patch.object(services, "corpus_load", return_value=corpus),
+        mock.patch.object(services, "FORMS_DIR", tmp_path),
+    ):
         corpus_sync()
     # The view's court check reads the topic index from disk; keep it on
     # the fake corpus so ``alpha`` is a known court for every test here.
@@ -426,6 +450,60 @@ def test_content_path_choice_options_are_unchanged(
     flat = _flat(client.get(URL))
     assert _has_option(flat, "Cass", "Cass")
     assert _has_option(flat, "Burleigh", "Burleigh")
+
+
+# --- packet -----------------------------------------------------------------
+
+
+def _packet(client):
+    """The packet block's HTML, whitespace collapsed."""
+    flat = _flat(client.get(URL))
+    block = flat[flat.index('<section id="packet"') :]
+    return block[: block.index("<section id=", 1)]
+
+
+@pytest.mark.postgres
+def test_packet_lists_each_form_in_order(client, synced):
+    _store(client, "licensed", True)
+    block = _packet(client)
+    assert block.index("License petition") < block.index(
+        "Licensed pet checklist"
+    )
+
+
+@pytest.mark.postgres
+def test_packet_form_with_a_url_is_a_link_and_without_is_plain_text(
+    client, synced
+):
+    _store(client, "licensed", True)
+    block = _packet(client)
+    assert re.search(
+        r'<a [^>]*href="https://alpha.example/petition.pdf"[^>]*target="_blank"'
+        r"[^>]*>\s*License petition",
+        block,
+    )
+    assert re.search(r"<li>\s*Licensed pet checklist\s*</li>", block)
+
+
+@pytest.mark.postgres
+def test_conditional_form_is_hidden_until_its_answer_is_stored(client, synced):
+    assert "Licensed pet checklist" not in _packet(client)
+    _store(client, "licensed", False)
+    assert "Licensed pet checklist" not in _packet(client)
+
+
+@pytest.mark.postgres
+def test_conditional_form_appears_once_the_answer_matches(client, synced):
+    _store(client, "licensed", True)
+    assert "Licensed pet checklist" in _packet(client)
+
+
+@pytest.mark.postgres
+def test_packet_has_no_interview_button_without_a_handoff(client, synced):
+    block = _packet(client)
+    assert "License petition" in block
+    assert "Fill out your forms" not in block
+    assert f"{URL}interview/" not in block
 
 
 # --- contacts and resources blocks ------------------------------------------

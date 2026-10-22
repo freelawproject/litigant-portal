@@ -9,10 +9,12 @@ nothing here touches the database or the request.
 The flow's ``layout`` orders the page. A section key renders as an info
 section anchored on that key, so chat citations can link to it. The
 ``interview`` block renders one fact-gather form per interview page, anchored
-``interview-1``, ``interview-2``, ... in page order. The ``contacts`` and
-``resources`` blocks list the court's whole ``Contact`` and ``Resource``
-lists in stored order, and are skipped when the court has none; the other
-block names render as placeholders until #1017 fills them in.
+``interview-1``, ``interview-2``, ... in page order. The ``packet`` block
+lists the flow's forms whose condition holds against the stored answers;
+the ``contacts`` and ``resources`` blocks list the court's whole ``Contact``
+and ``Resource`` lists in stored order. A block with nothing to show is
+skipped; the remaining block name renders as a placeholder until #1017
+fills it in.
 
 A gated variable (``asked_when``) is asked only while the stored answer to
 its gate matches, the same rule the review-facts tool applies. There is no
@@ -29,6 +31,7 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.models.topic_flow import condition_holds
 from litigant_portal.app.selectors.corpus import default_layout
 from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.app.topic_flow.contacts import contact_dicts
@@ -114,16 +117,41 @@ def private_names(pages) -> set[str]:
     }
 
 
-def flow_variable_names(pages) -> list[str]:
-    """Every variable the pages place, plus the gates they depend on: the
-    names whose answers the page needs to decide what to show."""
+def flow_variable_names(pages, form_conditions=()) -> list[str]:
+    """Every variable the pages place, plus the gates they depend on and the
+    variables the packet's conditions read: the names whose answers the page
+    needs to decide what to show. A condition's variable may be asked on no
+    page of this flow and stored by the chat."""
     names = []
     for _page, variables in pages:
         for variable in variables:
             names.append(variable.name)
             if variable.asked_when is not None:
                 names.append(variable.asked_when.name)
+    for condition in form_conditions:
+        if condition.variable is not None:
+            names.append(condition.variable.name)
     return list(dict.fromkeys(names))
+
+
+def form_condition_holds(condition, answers) -> bool:
+    """Whether a packet entry shows: always without a variable; ``equals``
+    when the stored answer is the value; ``not_equals`` when it is anything
+    else, unanswered included."""
+    if condition.variable is None:
+        return True
+    return condition_holds(
+        answers, condition.variable.name, condition.value, condition.operator
+    )
+
+
+def packet_forms(form_conditions, answers) -> list[dict]:
+    """``{name, url}`` per form whose condition holds, in stored order."""
+    return [
+        {"name": condition.form.name, "url": condition.form.url}
+        for condition in form_conditions
+        if form_condition_holds(condition, answers)
+    ]
 
 
 def asked_names(pages, answers) -> list[str]:
@@ -291,6 +319,7 @@ def render_flow(
     errors=None,
     cleared=frozenset(),
     *,
+    form_conditions=(),
     contacts=(),
     resources=(),
     court="",
@@ -299,8 +328,9 @@ def render_flow(
 ) -> list[RenderedSection]:
     """One ``RenderedSection`` per layout entry, in layout order; the
     ``interview`` entry expands to one per page. ``cleared`` is passed to
-    ``page_questions``. ``contacts`` and ``resources`` are the court's rows;
-    the URL parts name the flow for the download links."""
+    ``page_questions``. ``form_conditions`` are the flow's packet rows,
+    ``contacts`` and ``resources`` the court's; the URL parts name the flow
+    for the download and interview links."""
     by_key = {
         section_anchor(section, number): section
         for number, section in enumerate(sections, 1)
@@ -315,6 +345,10 @@ def render_flow(
                 _render_page(number, page, variables, answers, gates, cleared)
                 for number, (page, variables) in enumerate(pages, 1)
             )
+        elif name == "packet":
+            forms = packet_forms(form_conditions, answers)
+            if forms:
+                rendered.append(_render_packet(forms, court, topic, role))
         elif name == "contacts":
             if contacts:
                 rendered.append(_render_contacts(contacts, court, topic, role))
@@ -359,6 +393,23 @@ def _render_info(anchor, section):
         heading=section.heading,
         template=f"{_TEMPLATE_DIR}/flow_section_info.html",
         context={"body": section.content},
+    )
+
+
+def _render_packet(forms, court, topic, role):
+    # Same context as the content renderer's _render_packet. The handoff
+    # button waits on the interview reference (#1017, next piece).
+    return RenderedSection(
+        anchor_id="packet",
+        heading=BLOCK_HEADINGS["packet"],
+        template=f"{_TEMPLATE_DIR}/flow_section_packet.html",
+        context={
+            "forms": forms,
+            "interview_available": False,
+            "court": court,
+            "topic": topic,
+            "role": role,
+        },
     )
 
 

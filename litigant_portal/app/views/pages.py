@@ -238,12 +238,14 @@ def topic_flow_rows(request, court, topic, role):
     flow = topic_flow_row_get(court, topic, role)
     sections = list(flow.sections.all())
     pages = rows.flow_pages(flow)
-    names = rows.flow_variable_names(pages)
+    form_conditions = list(flow.form_conditions.all())
+    names = rows.flow_variable_names(pages, form_conditions)
     answers = topic_flow_row_answers(request, names)
     cleared = topic_flow_row_cleared_names(request, names)
-    # The court's whole lists, not a per-flow pick, and the URL parts the
-    # download links need.
-    court_rows = {
+    # The output blocks' rows (the court's whole contact and resource lists,
+    # not a per-flow pick) and the URL parts their links need.
+    block_rows = {
+        "form_conditions": form_conditions,
         "contacts": contact_list(),
         "resources": resource_list(),
         "court": court,
@@ -304,7 +306,7 @@ def topic_flow_rows(request, court, topic, role):
                     answers,
                     errors,
                     cleared,
-                    **court_rows,
+                    **block_rows,
                 ),
             )
         if valid:
@@ -328,7 +330,7 @@ def topic_flow_rows(request, court, topic, role):
         request,
         flow.name,
         rows.render_flow(
-            flow, sections, pages, answers, cleared=cleared, **court_rows
+            flow, sections, pages, answers, cleared=cleared, **block_rows
         ),
     )
 

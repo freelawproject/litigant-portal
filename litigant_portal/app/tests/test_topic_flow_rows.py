@@ -10,13 +10,18 @@ import pytest
 
 from litigant_portal.app.models import (
     Contact,
+    Form,
     Resource,
     TopicFlow,
+    TopicFlowFormCondition,
     TopicFlowInterviewPage,
     TopicFlowSection,
     Variable,
 )
-from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.models.choices import (
+    TopicFlowFormConditionOperator,
+    VariableDataType,
+)
 from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.renderer import RenderedSection
@@ -89,12 +94,12 @@ def test_render_flow_gives_one_info_section_per_key_in_layout_order():
 
 
 def test_render_flow_gives_a_placeholder_per_block():
-    # Still the packet and calendar blocks (#1017 fills them next); the
-    # contacts and resources blocks are skipped when the court has none.
+    # Still the calendar block (#1017 fills it next); the packet, contacts
+    # and resources blocks are skipped when they have no rows.
     flow = TopicFlow(layout=["overview", *LAYOUT_BLOCKS])
     rendered = rows.render_flow(flow, SECTIONS[:1], [], {})
     blocks = rendered[1:]
-    placeholders = ["packet", "calendar"]
+    placeholders = ["calendar"]
     assert [r.anchor_id for r in blocks] == placeholders
     assert [r.heading for r in blocks] == [
         rows.BLOCK_HEADINGS[name] for name in placeholders
@@ -185,6 +190,138 @@ def test_render_flow_skips_contacts_and_resources_blocks_when_empty():
     assert [r.anchor_id for r in rendered] == ["overview"]
 
 
+# --- packet -----------------------------------------------------------------
+
+PETITION = Form(
+    slug="petition", name="Petition", url="https://x.example/p.pdf"
+)
+CHECKLIST = Form(slug="checklist", name="Checklist")
+WAIVER = Form(slug="waiver", name="Fee waiver")
+
+
+def _condition(form, variable=None, operator="equals", value=None):
+    return TopicFlowFormCondition(
+        form=form,
+        variable=variable,
+        operator=TopicFlowFormConditionOperator(operator),
+        value=value,
+    )
+
+
+@pytest.mark.parametrize(
+    ("condition", "answers", "holds"),
+    [
+        (_condition(PETITION), {}, True),
+        (
+            _condition(WAIVER, LICENSED, "equals", True),
+            {"licensed": True},
+            True,
+        ),
+        (
+            _condition(WAIVER, LICENSED, "equals", True),
+            {"licensed": False},
+            False,
+        ),
+        (_condition(WAIVER, LICENSED, "equals", True), {}, False),
+        (
+            _condition(WAIVER, LICENSED, "not_equals", True),
+            {"licensed": False},
+            True,
+        ),
+        (_condition(WAIVER, LICENSED, "not_equals", True), {}, True),
+        (
+            _condition(WAIVER, LICENSED, "not_equals", True),
+            {"licensed": True},
+            False,
+        ),
+    ],
+    ids=[
+        "no-variable-always",
+        "equals-matches",
+        "equals-other-value",
+        "equals-unanswered",
+        "not-equals-other-value",
+        "not-equals-unanswered",
+        "not-equals-matching-value",
+    ],
+)
+def test_form_condition_holds(condition, answers, holds):
+    assert rows.form_condition_holds(condition, answers) is holds
+
+
+def test_packet_forms_keep_order_and_drop_unmet_conditions():
+    conditions = [
+        _condition(CHECKLIST),
+        _condition(WAIVER, LICENSED, "equals", True),
+        _condition(PETITION),
+    ]
+    assert rows.packet_forms(conditions, {}) == [
+        {"name": "Checklist", "url": ""},
+        {"name": "Petition", "url": "https://x.example/p.pdf"},
+    ]
+    assert [
+        f["name"] for f in rows.packet_forms(conditions, {"licensed": True})
+    ] == [
+        "Checklist",
+        "Fee waiver",
+        "Petition",
+    ]
+
+
+def test_render_flow_packet_lists_the_forms_without_an_interview_button():
+    flow = TopicFlow(layout=["packet"])
+    conditions = [_condition(PETITION), _condition(CHECKLIST)]
+    (section,) = rows.render_flow(
+        flow, [], [], {}, form_conditions=conditions, **URL_PARTS
+    )
+    assert section.anchor_id == "packet"
+    assert section.heading == rows.BLOCK_HEADINGS["packet"]
+    assert section.template == "cotton/molecules/flow_section_packet.html"
+    assert section.context == {
+        "forms": [
+            {"name": "Petition", "url": "https://x.example/p.pdf"},
+            {"name": "Checklist", "url": ""},
+        ],
+        "interview_available": False,
+        **URL_PARTS,
+    }
+
+
+def test_flow_variable_names_include_form_condition_variables():
+    # The chat may store the answer a condition reads, and no page of this
+    # flow asks it; the page must still read it to show the form.
+    waiver_needed = _variable(
+        "waiver_needed", data_type=VariableDataType.BOOLEAN
+    )
+    pages = [(TopicFlowInterviewPage(title="A"), [FULL_NAME, LICENSED])]
+    conditions = [
+        _condition(PETITION),
+        _condition(WAIVER, waiver_needed, "equals", True),
+        _condition(CHECKLIST, LICENSED, "equals", True),
+    ]
+    assert rows.flow_variable_names(pages, conditions) == [
+        "full_name",
+        "licensed",
+        "waiver_needed",
+    ]
+
+
+def test_render_flow_skips_the_packet_block_without_forms():
+    flow = TopicFlow(layout=["overview", "packet"])
+    assert [
+        r.anchor_id
+        for r in rows.render_flow(flow, SECTIONS[:1], [], {}, **URL_PARTS)
+    ] == ["overview"]
+    # Every form conditional and unmet is the same as no forms at all.
+    gated = [_condition(WAIVER, LICENSED, "equals", True)]
+    assert [
+        r.anchor_id
+        for r in rows.render_flow(
+            flow, SECTIONS[:1], [], {}, form_conditions=gated, **URL_PARTS
+        )
+    ] == ["overview"]
+
+
 def test_interview_block_expands_to_one_section_per_page_in_order():
     flow = TopicFlow(layout=["interview", "overview"])
     pages = [
@@ -220,9 +357,9 @@ def test_section_without_a_key_gets_a_positional_anchor():
 def test_render_flow_leaves_out_a_layout_name_the_schema_would_reject():
     # Only an admin edit to the layout column can get here; a 500 for every
     # visitor is the wrong answer to a typo.
-    flow = TopicFlow(layout=["overview", "stray", "packet"])
-    rendered = rows.render_flow(flow, SECTIONS[:1], [], {})
-    assert [r.anchor_id for r in rendered] == ["overview", "packet"]
+    flow = TopicFlow(layout=["overview", "stray", "fees"])
+    rendered = rows.render_flow(flow, SECTIONS, [], {})
+    assert [r.anchor_id for r in rendered] == ["overview", "fees"]
 
 
 # --- gating -----------------------------------------------------------------
