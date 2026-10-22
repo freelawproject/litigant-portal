@@ -6,6 +6,8 @@ model instances built in memory. The view tests that drive these through
 the page live in ``test_topic_flow_rows_view.py``.
 """
 
+from datetime import date
+
 import pytest
 
 from litigant_portal.app.models import (
@@ -13,6 +15,7 @@ from litigant_portal.app.models import (
     Form,
     Resource,
     TopicFlow,
+    TopicFlowDeadline,
     TopicFlowFormCondition,
     TopicFlowInterviewPage,
     TopicFlowSection,
@@ -91,23 +94,6 @@ def test_render_flow_gives_one_info_section_per_key_in_layout_order():
         "Read this first.",
     ]
     assert rendered[0].template == "cotton/molecules/flow_section_info.html"
-
-
-def test_render_flow_gives_a_placeholder_per_block():
-    # Still the calendar block (#1017 fills it next); the packet, contacts
-    # and resources blocks are skipped when they have no rows.
-    flow = TopicFlow(layout=["overview", *LAYOUT_BLOCKS])
-    rendered = rows.render_flow(flow, SECTIONS[:1], [], {})
-    blocks = rendered[1:]
-    placeholders = ["calendar"]
-    assert [r.anchor_id for r in blocks] == placeholders
-    assert [r.heading for r in blocks] == [
-        rows.BLOCK_HEADINGS[name] for name in placeholders
-    ]
-    assert all(
-        r.template == "cotton/molecules/flow_section_placeholder.html"
-        for r in blocks
-    )
 
 
 # --- contacts and resources blocks ------------------------------------------
@@ -320,6 +306,101 @@ def test_render_flow_skips_the_packet_block_without_forms():
             flow, SECTIONS[:1], [], {}, form_conditions=gated, **URL_PARTS
         )
     ] == ["overview"]
+
+
+# --- calendar ---------------------------------------------------------------
+
+LICENSE_DATE_VAR = _variable("license_date", data_type=VariableDataType.DATE)
+RENEWAL = TopicFlowDeadline(
+    key="renewal",
+    label="License renewal due",
+    description="One year on.",
+    offset_days=365,
+    offset_from=LICENSE_DATE_VAR,
+)
+INSPECTION = TopicFlowDeadline(
+    key="inspection",
+    label="Inspection",
+    offset_days=30,
+    offset_from=LICENSE_DATE_VAR,
+)
+
+
+def test_flow_deadlines_use_the_row_key_as_id_and_the_variable_name_as_source():
+    resolved = rows.flow_deadlines(
+        [RENEWAL, INSPECTION], {"license_date": "2026-02-01"}
+    )
+    assert resolved == [
+        {
+            "id": "renewal",
+            "label": "License renewal due",
+            "description": "One year on.",
+            "date": date(2027, 2, 1),
+        },
+        {
+            "id": "inspection",
+            "label": "Inspection",
+            "description": "",
+            "date": date(2026, 3, 3),
+        },
+    ]
+    assert [d["date"] for d in rows.flow_deadlines([RENEWAL], {})] == [None]
+
+
+def test_render_flow_calendar_has_dates_only_once_a_date_is_stored():
+    flow = TopicFlow(layout=["calendar"])
+    (pending,) = rows.render_flow(
+        flow, [], [], {}, deadlines=[RENEWAL], **URL_PARTS
+    )
+    assert pending.anchor_id == "calendar"
+    assert pending.heading == rows.BLOCK_HEADINGS["calendar"]
+    assert pending.template == "cotton/molecules/flow_section_ics.html"
+    assert pending.context["has_dates"] is False
+    assert pending.context["deadlines"] == [
+        {
+            "label": "License renewal due",
+            "description": "One year on.",
+            "date_display": None,
+            "date_iso": None,
+        }
+    ]
+    assert pending.context["output_id"] == "calendar"
+    assert {k: pending.context[k] for k in ("court", "topic", "role")} == (
+        URL_PARTS
+    )
+
+    (stored,) = rows.render_flow(
+        flow,
+        [],
+        [],
+        {"license_date": "2026-02-01"},
+        deadlines=[RENEWAL],
+        **URL_PARTS,
+    )
+    assert stored.context["has_dates"] is True
+    assert stored.context["deadlines"][0]["date_iso"] == "2027-02-01"
+    assert (
+        stored.context["deadlines"][0]["date_display"]
+        == "Monday, February 1, 2027"
+    )
+
+
+def test_render_flow_skips_the_calendar_block_without_deadlines():
+    flow = TopicFlow(layout=["overview", "calendar"])
+    rendered = rows.render_flow(flow, SECTIONS[:1], [], {}, **URL_PARTS)
+    assert [r.anchor_id for r in rendered] == ["overview"]
+
+
+def test_flow_variable_names_include_deadline_sources():
+    # A deadline's source date may be stored by the chat and asked on no
+    # page of this flow.
+    pages = [(TopicFlowInterviewPage(title="A"), [FULL_NAME])]
+    assert rows.flow_variable_names(
+        pages, deadlines=[RENEWAL, INSPECTION]
+    ) == [
+        "full_name",
+        "license_date",
+    ]
 
 
 def test_interview_block_expands_to_one_section_per_page_in_order():

@@ -12,8 +12,12 @@ normal state, not an error.
 from datetime import date
 from types import SimpleNamespace
 
+import pytest
+
 from litigant_portal.app.topic_flow.deadlines import (
     compute_deadline,
+    deadline_date,
+    deadline_display,
     resolve_ics_deadlines,
 )
 from litigant_portal.app.topic_flow.schema import Deadline
@@ -69,6 +73,52 @@ def test_unparseable_date_returns_none_without_raising():
         )
         is None
     )
+
+
+# --- deadline_date (shared by both paths) -----------------------------------
+# The math on its own, keyed by the source variable's name, so the rows path
+# (``rows.py``) can feed a TopicFlowDeadline through the same function.
+
+
+def test_deadline_date_adds_the_offset_to_the_stored_iso_date():
+    answers = {"license_date": "2026-02-01"}
+    assert deadline_date(30, "license_date", answers) == date(2026, 3, 3)
+    assert deadline_date(-10, "license_date", answers) == date(2026, 1, 22)
+
+
+@pytest.mark.parametrize(
+    "answers",
+    [
+        {},
+        {"license_date": ""},
+        {"license_date": None},
+        {"license_date": "March 3"},
+        {"license_date": ["2026-03-03"]},
+    ],
+    ids=["absent", "blank", "none", "prose", "not-a-string"],
+)
+def test_deadline_date_is_none_when_the_source_is_missing_or_unparseable(
+    answers,
+):
+    # The chat may store any shape; the page must not 500 on it.
+    assert deadline_date(30, "license_date", answers) is None
+
+
+def test_deadline_display_formats_a_computed_date_and_leaves_none_blank():
+    resolved = {
+        "id": "d1",
+        "label": "L",
+        "description": "D",
+        "date": date(2026, 3, 3),
+    }
+    assert deadline_display(resolved) == {
+        "label": "L",
+        "description": "D",
+        "date_display": "Tuesday, March 3, 2026",
+        "date_iso": "2026-03-03",
+    }
+    pending = deadline_display({**resolved, "date": None})
+    assert pending["date_display"] is None and pending["date_iso"] is None
 
 
 # --- resolve_ics_deadlines --------------------------------------------------

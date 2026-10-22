@@ -239,13 +239,15 @@ def topic_flow_rows(request, court, topic, role):
     sections = list(flow.sections.all())
     pages = rows.flow_pages(flow)
     form_conditions = list(flow.form_conditions.all())
-    names = rows.flow_variable_names(pages, form_conditions)
+    deadlines = list(flow.deadlines.all())
+    names = rows.flow_variable_names(pages, form_conditions, deadlines)
     answers = topic_flow_row_answers(request, names)
     cleared = topic_flow_row_cleared_names(request, names)
     # The output blocks' rows (the court's whole contact and resource lists,
     # not a per-flow pick) and the URL parts their links need.
     block_rows = {
         "form_conditions": form_conditions,
+        "deadlines": deadlines,
         "contacts": contact_list(),
         "resources": resource_list(),
         "court": court,

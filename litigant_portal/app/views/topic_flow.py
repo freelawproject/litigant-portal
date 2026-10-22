@@ -20,10 +20,12 @@ from litigant_portal.app.services.docassemble import (
     interview_launch_url,
 )
 from litigant_portal.app.services.topic_flow import variable_answer_confirm
+from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
     find_downloadable,
+    ics_artifact,
     vcf_artifact,
 )
 from litigant_portal.app.topic_flow.prefill import (
@@ -35,6 +37,7 @@ from litigant_portal.app.views.utils import (
     has_identity,
     topic_flow_answers,
     topic_flow_reviewed_answers,
+    topic_flow_row_answers,
     topic_flow_row_get,
 )
 
@@ -77,14 +80,27 @@ def topic_flow_download(request, court, topic, role, output_id):
 
 
 def _row_download(request, court, topic, role, output_id):
-    """The ``contacts`` block as a ``.vcf``, from the court's Contact rows.
-    Any other id is 404, as a non-downloadable section is on the content
-    path. The UID segment is the block name where the section id was."""
-    topic_flow_row_get(court, topic, role)
+    """The ``calendar`` block as a ``.ics`` from the flow's deadline rows and
+    the visitor's stored answers, or the ``contacts`` block as a ``.vcf``
+    from the court's Contact rows. Any other id is 404, as a non-downloadable
+    section is on the content path. The UID segment is the block name where
+    the section id was."""
+    flow = topic_flow_row_get(court, topic, role)
+    uid_prefix = f"{court}-{topic}-{role}-{output_id}"
+    if output_id == "calendar":
+        deadlines = list(flow.deadlines.all())
+        names = rows.flow_variable_names([], deadlines=deadlines)
+        return ics_artifact(
+            rows.flow_deadlines(
+                deadlines, topic_flow_row_answers(request, names)
+            ),
+            uid_prefix=uid_prefix,
+            filename="calendar.ics",
+        )
     if output_id == "contacts":
         return vcf_artifact(
-            contact_dicts(contact_list(), id_attr="key"),
-            uid_prefix=f"{court}-{topic}-{role}-contacts",
+            contact_dicts(contact_list(), id_attr="ref"),
+            uid_prefix=uid_prefix,
             filename="contacts.vcf",
         )
     raise Http404(f"No downloadable output {output_id!r}")

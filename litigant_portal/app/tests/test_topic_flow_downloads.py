@@ -11,6 +11,7 @@ the same ``resolve_ics_deadlines`` the page renders with, so the download can't
 drift from what's on screen.
 """
 
+import re
 from datetime import date
 
 import vobject
@@ -18,6 +19,7 @@ import vobject
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
     find_downloadable,
+    ics_artifact,
     vcf_artifact,
 )
 from litigant_portal.app.topic_flow.schema import (
@@ -162,6 +164,61 @@ def test_uid_is_stable_across_downloads():
         vobject.readOne(first.body).vevent.uid.value
         == vobject.readOne(again.body).vevent.uid.value
     )
+
+
+def test_content_ics_output_is_unchanged():
+    # The handler now goes through the shared ics_artifact; the bytes the
+    # content path served before the split are pinned here, DTSTAMP aside.
+    corpus = _corpus()
+    artifact = build_download(_ics_section(corpus), corpus, ANSWERS)
+    assert artifact.filename == "deadlines_calendar.ics"
+    body = re.sub(r"DTSTAMP:\d{8}T\d{6}Z", "DTSTAMP:<now>", artifact.body)
+    assert body == (
+        "BEGIN:VCALENDAR\r\n"
+        "VERSION:2.0\r\n"
+        "PRODID:-//Free Law Project//Litigant Portal Topic Flow//EN\r\n"
+        "BEGIN:VEVENT\r\n"
+        "UID:test-court-test_topic-petitioner-deadlines_calendar-"
+        "publication_wait@li\r\n tigantportal.com\r\n"
+        "DTSTART;VALUE=DATE:20260303\r\n"
+        "DESCRIPTION:Judge may review after this.\r\n"
+        "DTSTAMP:<now>\r\n"
+        "SUMMARY:30-day publication wait\r\n"
+        "END:VEVENT\r\n"
+        "END:VCALENDAR\r\n"
+    )
+
+
+# --- ics_artifact (shared by both paths) ------------------------------------
+
+
+def test_ics_artifact_prefixes_each_uid_and_skips_dateless_deadlines():
+    artifact = ics_artifact(
+        [
+            {
+                "id": "answer_due",
+                "label": "Answer due",
+                "description": "",
+                "date": date(2026, 3, 3),
+            },
+            {
+                "id": "hearing",
+                "label": "Hearing",
+                "description": "",
+                "date": None,
+            },
+        ],
+        uid_prefix="alpha-pets-standard-calendar",
+        filename="calendar.ics",
+    )
+    assert artifact.filename == "calendar.ics"
+    assert artifact.content_type == "text/calendar; charset=utf-8"
+    cal = vobject.readOne(artifact.body)
+    events = cal.contents.get("vevent", [])
+    assert [e.uid.value for e in events] == [
+        "alpha-pets-standard-calendar-answer_due@litigantportal.com"
+    ]
+    assert events[0].dtstart.value == date(2026, 3, 3)
 
 
 # --- build_download (vcf) ---------------------------------------------------

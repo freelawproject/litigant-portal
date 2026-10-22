@@ -9,6 +9,7 @@ pure row-to-section functions are covered DB-free in
 """
 
 import re
+from datetime import date
 from unittest import mock
 
 import pytest
@@ -191,6 +192,15 @@ def _corpus():
                     "layout": LAYOUT,
                     "interview": interview,
                     "packet": packet,
+                    "deadlines": [
+                        {
+                            "id": "renewal",
+                            "label": "License renewal due",
+                            "description": "One year after licensing.",
+                            "offset_days": 365,
+                            "offset_from": "license_date",
+                        }
+                    ],
                 },
                 (COURT, TOPIC, "retired"): {
                     "name": "Retired",
@@ -504,6 +514,85 @@ def test_packet_has_no_interview_button_without_a_handoff(client, synced):
     assert "License petition" in block
     assert "Fill out your forms" not in block
     assert f"{URL}interview/" not in block
+
+
+# --- calendar ---------------------------------------------------------------
+
+
+def _calendar(client):
+    """The calendar block's HTML, whitespace collapsed."""
+    flat = _flat(client.get(URL))
+    block = flat[flat.index('<section id="calendar"') :]
+    return block[: block.index("<section id=", 1)]
+
+
+@pytest.mark.postgres
+def test_calendar_shows_the_hint_until_the_source_date_is_stored(
+    client, synced
+):
+    block = _calendar(client)
+    assert "License renewal due" in block
+    assert "One year after licensing." in block
+    assert "Enter your dates above" in block
+    assert "<time" not in block
+    assert f"{DOWNLOAD_URL}calendar/" not in block
+
+
+@pytest.mark.postgres
+def test_calendar_shows_the_computed_date_and_the_download_link_once_stored(
+    client, synced
+):
+    _store(client, "license_date", "2026-02-01")
+    block = _calendar(client)
+    assert re.search(
+        r'<time datetime="2027-02-01">\s*Monday, February 1, 2027\s*</time>',
+        block,
+    )
+    assert "Enter your dates above" not in block
+    assert f'href="{DOWNLOAD_URL}calendar/"' in block
+    assert "Add to calendar" in block
+
+
+@pytest.mark.postgres
+def test_calendar_download_streams_the_computed_deadline_as_an_event(
+    client, synced
+):
+    _store(client, "license_date", "2026-02-01")
+    response = client.get(f"{DOWNLOAD_URL}calendar/")
+    assert response.status_code == 200
+    assert "text/calendar" in response["Content-Type"]
+    assert (
+        'attachment; filename="calendar.ics"'
+        in response["Content-Disposition"]
+    )
+    cal = vobject.readOne(response.content.decode())
+    assert cal.vevent.summary.value == "License renewal due"
+    assert cal.vevent.description.value == "One year after licensing."
+    assert cal.vevent.dtstart.value == date(2027, 2, 1)
+
+
+@pytest.mark.postgres
+def test_calendar_download_without_dates_is_an_empty_but_valid_calendar(
+    client, synced
+):
+    response = client.get(f"{DOWNLOAD_URL}calendar/")
+    assert response.status_code == 200
+    cal = vobject.readOne(response.content.decode())
+    assert "vevent" not in cal.contents
+
+
+@pytest.mark.postgres
+def test_calendar_download_uid_names_the_flow_and_the_deadline_key(
+    client, synced
+):
+    _store(client, "license_date", "2026-02-01")
+    cal = vobject.readOne(
+        client.get(f"{DOWNLOAD_URL}calendar/").content.decode()
+    )
+    assert (
+        cal.vevent.uid.value
+        == f"{COURT}-{TOPIC}-{ROLE}-calendar-renewal@litigantportal.com"
+    )
 
 
 # --- contacts and resources blocks ------------------------------------------

@@ -72,40 +72,46 @@ def build_download(section, corpus, answers):
     return handler(section, corpus, answers)
 
 
-@download_handler("ics")
-def _build_ics(section, corpus, answers):
-    """An ``ics`` output section's computed deadlines → a ``.ics`` calendar.
+def ics_artifact(resolved, *, uid_prefix, filename):
+    """Resolved deadline dicts → a ``.ics`` calendar.
 
+    Shared by the content handler below and the rows path (``rows.py``).
     Only deadlines with a computable date become events — an unanswered date
     question yields no event (the "enter your dates first" state), so an
-    all-pending section downloads an empty but valid calendar. The per-deadline
-    ``UID`` is stable across re-downloads (keyed by the flow + section + deadline
-    ids) so a calendar app updates the event instead of duplicating it.
+    all-pending list downloads an empty but valid calendar. The per-deadline
+    ``UID`` is ``{uid_prefix}-{id}@litigantportal.com``, stable across
+    re-downloads so a calendar app updates the event instead of duplicating
+    it.
     """
-    meta = corpus.metadata
-    events = []
-    for resolved in resolve_ics_deadlines(section, corpus, answers):
-        if resolved["date"] is None:
-            continue
-        uid = (
-            f"{meta.court}-{meta.topic}-{meta.role}-"
-            f"{section.id}-{resolved['id']}@litigantportal.com"
-        )
-        events.append(
-            {
-                "uid": uid,
-                "summary": resolved["label"],
-                "description": resolved["description"],
-                "date": resolved["date"],
-            }
-        )
+    events = [
+        {
+            "uid": f"{uid_prefix}-{deadline['id']}@litigantportal.com",
+            "summary": deadline["label"],
+            "description": deadline["description"],
+            "date": deadline["date"],
+        }
+        for deadline in resolved
+        if deadline["date"] is not None
+    ]
     return DownloadArtifact(
-        filename=f"{section.id}.ics",
+        filename=filename,
         # Declare UTF-8 explicitly: deadline labels/descriptions are author-
         # supplied and may carry non-ASCII. RFC 5545 defaults text/calendar to
         # UTF-8, but stating it beats relying on the client to honor the default.
         content_type="text/calendar; charset=utf-8",
         body=deadlines_to_ics(events),
+    )
+
+
+@download_handler("ics")
+def _build_ics(section, corpus, answers):
+    """An ``ics`` output section's computed deadlines → a ``.ics`` calendar.
+    The UID is keyed by the flow + section + deadline ids."""
+    meta = corpus.metadata
+    return ics_artifact(
+        resolve_ics_deadlines(section, corpus, answers),
+        uid_prefix=f"{meta.court}-{meta.topic}-{meta.role}-{section.id}",
+        filename=f"{section.id}.ics",
     )
 
 
