@@ -416,3 +416,8 @@ class TopicFlowDeadline(BaseModel):
 
     class Meta:
         ordering = ["order", "created_at"]
+
+    @property
+    def ref(self) -> str:
+        """The authored key, or the row id for a row that has none."""
+        return self.key or str(self.pk)

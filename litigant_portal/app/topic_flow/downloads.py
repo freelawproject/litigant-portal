@@ -125,38 +125,47 @@ def _contact_note(resolved):
     return "\n".join(parts) or None
 
 
-@download_handler("vcf")
-def _build_vcf(section, corpus, answers):
-    """A ``vcf`` output section's contacts → a ``.vcf`` vCard file.
+def vcf_artifact(resolved, *, uid_prefix, filename):
+    """Resolved contact dicts → a ``.vcf`` vCard file.
 
-    Contacts are static corpus data (no user input), so ``answers`` is unused —
-    the section always downloads the same card set. The per-contact ``UID`` is
-    stable across re-downloads (keyed by the flow + section + contact ids) so a
-    phone updates the saved contact instead of duplicating it.
+    Shared by the content handler below and the rows path (``rows.py``). The
+    per-contact ``UID`` is ``{uid_prefix}-{id}@litigantportal.com``, stable
+    across re-downloads so a phone updates the saved contact instead of
+    duplicating it.
     """
-    meta = corpus.metadata
-    cards = []
-    for resolved in resolve_vcf_contacts(section, corpus):
-        uid = (
-            f"{meta.court}-{meta.topic}-{meta.role}-"
-            f"{section.id}-{resolved['id']}@litigantportal.com"
-        )
-        cards.append(
-            {
-                "uid": uid,
-                "name": resolved["name"],
-                "phone": resolved["phone"],
-                "email": resolved["email"],
-                "url": resolved["url"],
-                "address": resolved["address"],
-                "note": _contact_note(resolved),
-            }
-        )
+    cards = [
+        {
+            "uid": f"{uid_prefix}-{contact['id']}@litigantportal.com",
+            "name": contact["name"],
+            "phone": contact["phone"],
+            "email": contact["email"],
+            "url": contact["url"],
+            "address": contact["address"],
+            "note": _contact_note(contact),
+        }
+        for contact in resolved
+    ]
     return DownloadArtifact(
-        filename=f"{section.id}.vcf",
+        filename=filename,
         # Declare UTF-8 explicitly (see _build_ics): contact names/notes are
         # author-supplied and may carry non-ASCII. RFC 6350 mandates UTF-8 for
         # vCard, so stating it keeps strict importers happy.
         content_type="text/vcard; charset=utf-8",
         body=contacts_to_vcf(cards),
+    )
+
+
+@download_handler("vcf")
+def _build_vcf(section, corpus, answers):
+    """A ``vcf`` output section's contacts → a ``.vcf`` vCard file.
+
+    Contacts are static corpus data (no user input), so ``answers`` is unused —
+    the section always downloads the same card set. The UID is keyed by the
+    flow + section + contact ids.
+    """
+    meta = corpus.metadata
+    return vcf_artifact(
+        resolve_vcf_contacts(section, corpus),
+        uid_prefix=f"{meta.court}-{meta.topic}-{meta.role}-{section.id}",
+        filename=f"{section.id}.vcf",
     )

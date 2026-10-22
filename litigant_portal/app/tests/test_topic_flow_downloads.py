@@ -18,6 +18,7 @@ import vobject
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
     find_downloadable,
+    vcf_artifact,
 )
 from litigant_portal.app.topic_flow.schema import (
     Contact,
@@ -211,3 +212,51 @@ def test_vcf_uid_is_stable_across_downloads():
         vobject.readOne(first.body).uid.value
         == vobject.readOne(again.body).uid.value
     )
+
+
+def test_content_vcf_output_is_unchanged():
+    # The handler now goes through the shared vcf_artifact; the bytes the
+    # content path served before the split are pinned here.
+    corpus = _corpus()
+    artifact = build_download(_vcf_section(corpus), corpus, {})
+    assert artifact.filename == "contacts_card.vcf"
+    assert artifact.body == (
+        "BEGIN:VCARD\r\n"
+        "VERSION:3.0\r\n"
+        "UID:test-court-test_topic-petitioner-contacts_card-clerk"
+        "@litigantportal.com\r\n"
+        "FN:Clerk of Court\r\n"
+        "NOTE:Window 3\\nHours: 9-4 M-F\r\n"
+        "ORG:Clerk of Court\r\n"
+        "TEL:555-1234\r\n"
+        "END:VCARD\r\n"
+    )
+
+
+# --- vcf_artifact (shared by both paths) ------------------------------------
+
+
+def _resolved_contact(id, name, **fields):
+    blank = dict.fromkeys(
+        ("phone", "email", "url", "address", "hours", "note"), None
+    )
+    return {"id": id, "name": name, **blank, **fields}
+
+
+def test_vcf_artifact_prefixes_each_uid_with_the_given_prefix():
+    artifact = vcf_artifact(
+        [
+            _resolved_contact("clerk", "Clerk", phone="555-1234"),
+            _resolved_contact("aid", "Legal Aid"),
+        ],
+        uid_prefix="alpha-pets-standard-contacts",
+        filename="contacts.vcf",
+    )
+    assert artifact.filename == "contacts.vcf"
+    assert artifact.content_type == "text/vcard; charset=utf-8"
+    cards = list(vobject.readComponents(artifact.body))
+    assert [card.uid.value for card in cards] == [
+        "alpha-pets-standard-contacts-clerk@litigantportal.com",
+        "alpha-pets-standard-contacts-aid@litigantportal.com",
+    ]
+    assert [card.fn.value for card in cards] == ["Clerk", "Legal Aid"]

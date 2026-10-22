@@ -9,6 +9,8 @@ the page live in ``test_topic_flow_rows_view.py``.
 import pytest
 
 from litigant_portal.app.models import (
+    Contact,
+    Resource,
     TopicFlow,
     TopicFlowInterviewPage,
     TopicFlowSection,
@@ -87,10 +89,12 @@ def test_render_flow_gives_one_info_section_per_key_in_layout_order():
 
 
 def test_render_flow_gives_a_placeholder_per_block():
+    # Still the packet and calendar blocks (#1017 fills them next); the
+    # contacts and resources blocks are skipped when the court has none.
     flow = TopicFlow(layout=["overview", *LAYOUT_BLOCKS])
     rendered = rows.render_flow(flow, SECTIONS[:1], [], {})
     blocks = rendered[1:]
-    placeholders = [name for name in LAYOUT_BLOCKS if name != "interview"]
+    placeholders = ["packet", "calendar"]
     assert [r.anchor_id for r in blocks] == placeholders
     assert [r.heading for r in blocks] == [
         rows.BLOCK_HEADINGS[name] for name in placeholders
@@ -99,6 +103,86 @@ def test_render_flow_gives_a_placeholder_per_block():
         r.template == "cotton/molecules/flow_section_placeholder.html"
         for r in blocks
     )
+
+
+# --- contacts and resources blocks ------------------------------------------
+
+URL_PARTS = {"court": "alpha", "topic": "pets", "role": "standard"}
+CONTACTS = [
+    Contact(key="clerk", name="Clerk of Court", phone="555-1234"),
+    Contact(key="aid", name="Legal Aid", hours="9-4 M-F"),
+]
+RESOURCES = [
+    Resource(key="self-help", label="Self Help", url="https://help.example"),
+    Resource(
+        key="rules", label="Rules", url="https://rules.example", note="Ch. 3"
+    ),
+]
+
+
+def test_render_flow_lists_court_resources_under_the_resources_block():
+    flow = TopicFlow(layout=["resources"])
+    (section,) = rows.render_flow(
+        flow, [], [], {}, resources=RESOURCES, **URL_PARTS
+    )
+    assert section.anchor_id == "resources"
+    assert section.heading == rows.BLOCK_HEADINGS["resources"]
+    assert section.template == "cotton/molecules/flow_section_resources.html"
+    assert section.context == {
+        "resources": [
+            {
+                "id": "self-help",
+                "label": "Self Help",
+                "url": "https://help.example",
+                "note": "",
+            },
+            {
+                "id": "rules",
+                "label": "Rules",
+                "url": "https://rules.example",
+                "note": "Ch. 3",
+            },
+        ]
+    }
+
+
+def test_render_flow_lists_court_contacts_with_the_download_id():
+    flow = TopicFlow(layout=["contacts"])
+    (section,) = rows.render_flow(
+        flow, [], [], {}, contacts=CONTACTS, **URL_PARTS
+    )
+    assert section.anchor_id == "contacts"
+    assert section.heading == rows.BLOCK_HEADINGS["contacts"]
+    assert section.template == "cotton/molecules/flow_section_vcf.html"
+    assert [c["id"] for c in section.context["contacts"]] == ["clerk", "aid"]
+    assert section.context["contacts"][1]["hours"] == "9-4 M-F"
+    assert {k: section.context[k] for k in ("court", "topic", "role")} == (
+        URL_PARTS
+    )
+    assert section.context["output_id"] == "contacts"
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        Contact(name="Bailiff"),
+        Resource(label="Statutes", url="https://law.example"),
+        TopicFlowDeadline(label="Answer due"),
+    ],
+    ids=["contact", "resource", "deadline"],
+)
+def test_a_row_without_a_key_is_referenced_by_its_id(row):
+    # A row synced before keys existed and adopted by no authored entry
+    # keeps a blank key; the vCard and calendar UIDs must still be distinct.
+    assert row.ref == str(row.pk)
+    row.key = "clerk"
+    assert row.ref == "clerk"
+
+
+def test_render_flow_skips_contacts_and_resources_blocks_when_empty():
+    flow = TopicFlow(layout=["overview", "contacts", "resources"])
+    rendered = rows.render_flow(flow, SECTIONS[:1], [], {}, **URL_PARTS)
+    assert [r.anchor_id for r in rendered] == ["overview"]
 
 
 def test_interview_block_expands_to_one_section_per_page_in_order():

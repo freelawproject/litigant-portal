@@ -9,8 +9,10 @@ nothing here touches the database or the request.
 The flow's ``layout`` orders the page. A section key renders as an info
 section anchored on that key, so chat citations can link to it. The
 ``interview`` block renders one fact-gather form per interview page, anchored
-``interview-1``, ``interview-2``, ... in page order; the other block names
-(``LAYOUT_BLOCKS``) render as placeholders until #1017 fills them in.
+``interview-1``, ``interview-2``, ... in page order. The ``contacts`` and
+``resources`` blocks list the court's whole ``Contact`` and ``Resource``
+lists in stored order, and are skipped when the court has none; the other
+block names render as placeholders until #1017 fills them in.
 
 A gated variable (``asked_when``) is asked only while the stored answer to
 its gate matches, the same rule the review-facts tool applies. There is no
@@ -29,7 +31,9 @@ from django.utils.translation import gettext_lazy as _
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.corpus import default_layout
 from litigant_portal.app.services.topic_flow import variable_value_validate
+from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.renderer import RenderedSection
+from litigant_portal.app.topic_flow.resources import resource_dicts
 from litigant_portal.app.topic_flow.validation import (
     INVALID_CHOICE_ERROR,
     INVALID_DATE_ERROR,
@@ -280,11 +284,23 @@ def page_questions(
 
 
 def render_flow(
-    flow, sections, pages, answers, errors=None, cleared=frozenset()
+    flow,
+    sections,
+    pages,
+    answers,
+    errors=None,
+    cleared=frozenset(),
+    *,
+    contacts=(),
+    resources=(),
+    court="",
+    topic="",
+    role="",
 ) -> list[RenderedSection]:
     """One ``RenderedSection`` per layout entry, in layout order; the
     ``interview`` entry expands to one per page. ``cleared`` is passed to
-    ``page_questions``."""
+    ``page_questions``. ``contacts`` and ``resources`` are the court's rows;
+    the URL parts name the flow for the download links."""
     by_key = {
         section_anchor(section, number): section
         for number, section in enumerate(sections, 1)
@@ -299,6 +315,12 @@ def render_flow(
                 _render_page(number, page, variables, answers, gates, cleared)
                 for number, (page, variables) in enumerate(pages, 1)
             )
+        elif name == "contacts":
+            if contacts:
+                rendered.append(_render_contacts(contacts, court, topic, role))
+        elif name == "resources":
+            if resources:
+                rendered.append(_render_resources(resources))
         elif name in BLOCK_HEADINGS:
             rendered.append(_render_placeholder(name))
         # else: a name the schema would have rejected; leave it out
@@ -337,6 +359,32 @@ def _render_info(anchor, section):
         heading=section.heading,
         template=f"{_TEMPLATE_DIR}/flow_section_info.html",
         context={"body": section.content},
+    )
+
+
+def _render_contacts(contacts, court, topic, role):
+    # Same context as the content renderer's _render_vcf: the template owns
+    # {% url %}, and the download id is the block name.
+    return RenderedSection(
+        anchor_id="contacts",
+        heading=BLOCK_HEADINGS["contacts"],
+        template=f"{_TEMPLATE_DIR}/flow_section_vcf.html",
+        context={
+            "contacts": contact_dicts(contacts, id_attr="ref"),
+            "court": court,
+            "topic": topic,
+            "role": role,
+            "output_id": "contacts",
+        },
+    )
+
+
+def _render_resources(resources):
+    return RenderedSection(
+        anchor_id="resources",
+        heading=BLOCK_HEADINGS["resources"],
+        template=f"{_TEMPLATE_DIR}/flow_section_resources.html",
+        context={"resources": resource_dicts(resources, id_attr="ref")},
     )
 
 

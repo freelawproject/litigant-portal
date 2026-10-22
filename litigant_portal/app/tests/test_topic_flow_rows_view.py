@@ -12,6 +12,7 @@ import re
 from unittest import mock
 
 import pytest
+import vobject
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
 from litigant_portal.app.selectors import corpus as selectors
@@ -30,6 +31,27 @@ from litigant_portal.app.views import pages
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
+DOWNLOAD_URL = f"{URL}download/"
+
+CONTACTS = [
+    {
+        "id": "clerk",
+        "name": "Clerk of Court",
+        "phone": "555-1234",
+        "address": "100 Main St",
+        "hours": "9-4 M-F",
+    },
+    {"id": "aid", "name": "Legal Aid", "email": "help@aid.example"},
+]
+RESOURCES = [
+    {"id": "self-help", "label": "Self Help", "url": "https://help.example"},
+    {
+        "id": "rules",
+        "label": "Rules",
+        "url": "https://rules.example",
+        "note": "Chapter 3.",
+    },
+]
 
 LAYOUT = [
     "fees",
@@ -55,8 +77,9 @@ ANCHORS = [
 
 
 def _corpus():
-    """One court, one topic, an enabled flow with an authored layout and a
-    disabled sibling. ``first_name`` is private."""
+    """One court with two contacts and two resources, one topic, an enabled
+    flow with an authored layout and a disabled sibling. ``first_name`` is
+    private."""
     variables = {
         # Required and private, as in the real glossary.
         "first_name": {
@@ -135,7 +158,12 @@ def _corpus():
             "forms": {},
             "form_acro_fields": {},
             "courts": {
-                COURT: {"name": "Alpha", "court_name": "Alpha District Court"}
+                COURT: {
+                    "name": "Alpha",
+                    "court_name": "Alpha District Court",
+                    "contacts": CONTACTS,
+                    "resources": RESOURCES,
+                }
             },
             "topics": {(COURT, TOPIC): {"title": "Pets"}},
             "flows": {
@@ -398,6 +426,84 @@ def test_content_path_choice_options_are_unchanged(
     flat = _flat(client.get(URL))
     assert _has_option(flat, "Cass", "Cass")
     assert _has_option(flat, "Burleigh", "Burleigh")
+
+
+# --- contacts and resources blocks ------------------------------------------
+
+
+@pytest.mark.postgres
+def test_resources_block_renders_each_court_resource_as_a_link(client, synced):
+    flat = _flat(client.get(URL))
+    block = flat[flat.index('<section id="resources"') :]
+    links = re.findall(r'<a [^>]*href="([^"]+)"[^>]*>', block)
+    assert links[:2] == ["https://help.example", "https://rules.example"]
+    assert re.search(
+        r'<a [^>]*href="https://rules.example"[^>]*target="_blank"', block
+    )
+    assert "Chapter 3." in block
+
+
+@pytest.mark.postgres
+def test_contacts_block_renders_a_card_per_court_contact(client, synced):
+    flat = _flat(client.get(URL))
+    block = flat[flat.index('<section id="contacts"') :]
+    block = block[: block.index('<section id="resources"')]
+    assert block.index("Clerk of Court") < block.index("Legal Aid")
+    assert 'href="tel:555-1234"' in block
+    assert 'href="mailto:help@aid.example"' in block
+    assert "100 Main St" in block
+    assert "Hours: 9-4 M-F" in block
+
+
+@pytest.mark.postgres
+def test_contacts_block_links_to_the_contacts_download(client, synced):
+    flat = _flat(client.get(URL))
+    assert f'href="{DOWNLOAD_URL}contacts/"' in flat
+    assert "Add to contacts" in flat
+
+
+@pytest.mark.postgres
+def test_contacts_download_streams_a_vcard_per_court_contact(client, synced):
+    response = client.get(f"{DOWNLOAD_URL}contacts/")
+    assert response.status_code == 200
+    assert "text/vcard" in response["Content-Type"]
+    assert (
+        'attachment; filename="contacts.vcf"'
+        in response["Content-Disposition"]
+    )
+    cards = list(vobject.readComponents(response.content.decode()))
+    assert [card.fn.value for card in cards] == ["Clerk of Court", "Legal Aid"]
+    assert cards[0].tel.value == "555-1234"
+    assert "Hours: 9-4 M-F" in cards[0].note.value
+    assert cards[1].email.value == "help@aid.example"
+
+
+@pytest.mark.postgres
+def test_contacts_download_uid_names_the_flow_and_the_contact_key(
+    client, synced
+):
+    cards = list(
+        vobject.readComponents(
+            client.get(f"{DOWNLOAD_URL}contacts/").content.decode()
+        )
+    )
+    assert [card.uid.value for card in cards] == [
+        f"{COURT}-{TOPIC}-{ROLE}-contacts-clerk@litigantportal.com",
+        f"{COURT}-{TOPIC}-{ROLE}-contacts-aid@litigantportal.com",
+    ]
+
+
+@pytest.mark.postgres
+def test_download_of_an_unknown_output_is_404_on_the_corpus_path(
+    client, synced
+):
+    # The content section ids are not ids here, and nor is a section key.
+    for output_id in ("save_contacts", "overview", "nope"):
+        assert client.get(f"{DOWNLOAD_URL}{output_id}/").status_code == 404
+    assert (
+        client.get(f"/t/{COURT}/{TOPIC}/nope/download/contacts/").status_code
+        == 404
+    )
 
 
 # --- 404s and the court check -----------------------------------------------

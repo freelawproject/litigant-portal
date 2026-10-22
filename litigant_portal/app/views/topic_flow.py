@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve
@@ -9,6 +10,7 @@ from django.utils.translation import gettext as _
 from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_POST
 
+from litigant_portal.app.selectors.site import contact_list
 from litigant_portal.app.selectors.topic_flow import (
     variable_answer_unreviewed_names,
 )
@@ -18,9 +20,11 @@ from litigant_portal.app.services.docassemble import (
     interview_launch_url,
 )
 from litigant_portal.app.services.topic_flow import variable_answer_confirm
+from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
     find_downloadable,
+    vcf_artifact,
 )
 from litigant_portal.app.topic_flow.prefill import (
     interview_target,
@@ -31,6 +35,7 @@ from litigant_portal.app.views.utils import (
     has_identity,
     topic_flow_answers,
     topic_flow_reviewed_answers,
+    topic_flow_row_get,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,23 +51,43 @@ def topic_flow_download(request, court, topic, role, output_id):
     The view stays thin — file bytes come from the download handlers in
     downloads.py, computed from the same stored answers the page renders, so
     the download matches what's on screen.
+
+    Under ``TOPIC_FLOW_SOURCE=corpus`` the output ids are the layout block
+    names, and the file is built from rows (#1017).
     """
-    corpus = registry.get(court, topic, role)
-    if corpus is None:
-        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+    if settings.TOPIC_FLOW_SOURCE == "corpus":
+        artifact = _row_download(request, court, topic, role, output_id)
+    else:
+        corpus = registry.get(court, topic, role)
+        if corpus is None:
+            raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
 
-    section = find_downloadable(corpus, output_id)
-    if section is None:
-        raise Http404(f"No downloadable output {output_id!r}")
+        section = find_downloadable(corpus, output_id)
+        if section is None:
+            raise Http404(f"No downloadable output {output_id!r}")
 
-    artifact = build_download(
-        section, corpus, topic_flow_answers(request, corpus)
-    )
+        artifact = build_download(
+            section, corpus, topic_flow_answers(request, corpus)
+        )
     response = HttpResponse(artifact.body, content_type=artifact.content_type)
     response["Content-Disposition"] = (
         f'attachment; filename="{artifact.filename}"'
     )
     return response
+
+
+def _row_download(request, court, topic, role, output_id):
+    """The ``contacts`` block as a ``.vcf``, from the court's Contact rows.
+    Any other id is 404, as a non-downloadable section is on the content
+    path. The UID segment is the block name where the section id was."""
+    topic_flow_row_get(court, topic, role)
+    if output_id == "contacts":
+        return vcf_artifact(
+            contact_dicts(contact_list(), id_attr="key"),
+            uid_prefix=f"{court}-{topic}-{role}-contacts",
+            filename="contacts.vcf",
+        )
+    raise Http404(f"No downloadable output {output_id!r}")
 
 
 @require_POST
