@@ -78,7 +78,8 @@ decides whose accounts it covers, and the account is also an ordinary test
 user that logs in to the app.
 
 - **Scope is every app user on the instance**, whether an admin added it or
-  it signed up. Staff are out of reach: superusers are managed only by
+  it signed up. Staff are out of reach: superusers and Django admin staff
+  (`is_staff`, which can read every transcript there) are managed only by
   superusers, developers only by holders of `manage_developers`, and admins
   only by holders of `manage_site`. `user_is_manageable` in
   `selectors/user.py` holds the rule.
@@ -93,6 +94,9 @@ user that logs in to the app.
 - **Disable** sets `is_active=False`: the account can't log in, keeps its
   history, and stays listed so it can be enabled again. **Delete** is
   permanent and removes the account's chats, uploads, and answers.
+- **User admins don't manage each other.** Only a superuser can reset,
+  disable, delete, or demote a user admin, so one can't remove another. A
+  user admin can still promote an app user.
 - **Self-guards:** a user admin can reset their own password, but can't
   disable, delete, or demote themselves.
 - **Setting one up:** a superuser adds the account and puts it in

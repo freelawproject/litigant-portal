@@ -8,12 +8,22 @@ admin must never reach staff (superusers, Admins, Developers) or the Site
 and Topics endpoints.
 """
 
+from unittest import mock
+
 import pytest
+from allauth.account.models import EmailAddress
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
 
-from litigant_portal.app.models import UserIdentity
+from litigant_portal.app.models import (
+    ChatThread,
+    UserIdentity,
+    UserUpload,
+    Variable,
+    VariableAnswer,
+)
+from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.permissions import USER_ADMINS_GROUP
 from litigant_portal.app.services.user import (
     user_admin_toggle,
@@ -70,6 +80,13 @@ class UserAdminSetup(TestCase):
         self.developer = reload(self.developer)
         self.superuser = User.objects.create_superuser(
             username="s", email="s@free.law", password=PASSWORD
+        )
+        # Django admin access with no group: staff all the same.
+        self.staff = User.objects.create_user(
+            username="st",
+            email="st@free.law",
+            password=PASSWORD,
+            is_staff=True,
         )
         self.client = client_for(self.user_admin)
 
@@ -158,6 +175,7 @@ class UserListTests(UserAdminSetup):
                 "d@free.law",
                 "jane@example.com",
                 "s@free.law",
+                "st@free.law",
                 "ua@court.gov",
             ],
         )
@@ -204,6 +222,33 @@ class UserCreateTests(UserAdminSetup):
         response = self.create(password_confirm="something-else-entirely")
         self.assertEqual(response.status_code, 400)
         self.assertFalse(User.objects.filter(email="new@example.com").exists())
+
+    def test_email_is_trimmed_and_lowercased(self):
+        self.assertEqual(
+            self.create(email="  New@Example.COM ").status_code, 200
+        )
+        self.assertTrue(User.objects.filter(email="new@example.com").exists())
+
+    def test_email_taken_as_a_username_is_refused(self):
+        User.objects.create_user(username="taken@example.com", email="")
+        self.assertEqual(
+            self.create(email="taken@example.com").status_code, 400
+        )
+
+    def test_email_left_on_another_account_by_allauth_is_refused(self):
+        # A superuser changed this account's email in Django admin; allauth
+        # still holds the old address.
+        EmailAddress.objects.create(
+            user=self.app_user, email="old@example.com", primary=False
+        )
+        self.assertEqual(self.create(email="old@example.com").status_code, 400)
+
+    def test_email_too_long_for_a_username_is_refused(self):
+        # Valid (no part over its own limit) but 156 characters long, past
+        # User.username's 150.
+        email = "a" * 60 + "@" + "b" * 60 + "." + "c" * 30 + ".com"
+        self.assertEqual(self.create(email=email).status_code, 400)
+        self.assertFalse(User.objects.filter(email=email).exists())
 
     def test_existing_email_is_refused_in_any_case(self):
         self.assertEqual(
@@ -265,22 +310,49 @@ class UserActionTests(UserAdminSetup):
 
     def test_delete_removes_the_account_and_what_it_owns(self):
         identity = UserIdentity.objects.create(user=self.app_user)
-        self.assertEqual(self.post("delete").status_code, 200)
+        variable = Variable.objects.create(
+            name="county", data_type=VariableDataType.TEXT
+        )
+        VariableAnswer.objects.create(
+            identity=identity, variable=variable, value="Cass"
+        )
+        ChatThread.objects.create(identity=identity, thread_type="user_chat")
+        file_name = f"uploads/{identity.pk}/ticket.txt"
+        UserUpload.objects.create(
+            identity=identity,
+            file=file_name,
+            name="ticket.txt",
+            content_type="text/plain",
+            size=5,
+        )
+        storage = UserUpload._meta.get_field("file").storage
+        with (
+            mock.patch.object(storage, "delete") as storage_delete,
+            self.captureOnCommitCallbacks(execute=True),
+        ):
+            self.assertEqual(self.post("delete").status_code, 200)
+
         self.assertFalse(User.objects.filter(pk=self.app_user.pk).exists())
         self.assertFalse(UserIdentity.objects.filter(pk=identity.pk).exists())
+        self.assertFalse(ChatThread.objects.exists())
+        self.assertFalse(VariableAnswer.objects.exists())
+        self.assertFalse(UserUpload.objects.exists())
+        # The rows cascade on their own; the stored file only goes because
+        # the delete runs the identity reset first.
+        storage_delete.assert_called_once_with(file_name)
 
     def test_user_admin_can_make_an_app_user_a_user_admin(self):
         self.assertTrue(self.post("user-admin/toggle").json()["is_user_admin"])
         self.assertTrue(reload(self.app_user).has_perm("app.manage_app_users"))
-        self.assertFalse(
-            self.post("user-admin/toggle").json()["is_user_admin"]
-        )
 
-    def test_user_admin_can_reset_their_own_password(self):
+    def test_user_admin_can_reset_their_own_password_and_stay_signed_in(
+        self,
+    ):
         response = self.client.post(
             f"/api/admin/users/{self.user_admin.pk}/password/", new_password()
         )
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.client.get("/api/admin/users/").status_code, 200)
 
     def test_user_admin_cannot_lock_themselves_out(self):
         for action in ("disable", "delete", "user-admin/toggle"):
@@ -296,12 +368,13 @@ class UserActionTests(UserAdminSetup):
 @override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
 class UserAdminRefusalTests(UserAdminSetup):
     def test_staff_accounts_are_refused(self):
-        for target in (self.admin, self.developer, self.superuser):
+        staff = (self.admin, self.developer, self.superuser, self.staff)
+        for target in staff:
             for path in action_paths(target.pk):
                 with self.subTest(target=target.email, path=path):
                     response = self.client.post(path, new_password())
                     self.assertEqual(response.status_code, 403)
-        for target in (self.admin, self.developer, self.superuser):
+        for target in staff:
             target = reload(target)
             self.assertTrue(target.is_active)
             self.assertTrue(target.check_password(PASSWORD))
@@ -329,6 +402,26 @@ class UserAdminRefusalTests(UserAdminSetup):
             f"/api/admin/users/{self.superuser.pk}/password/", new_password()
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_user_admins_cannot_act_on_each_other(self):
+        other = user_admin("ua2", "ua2@court.gov")
+        for path in action_paths(other.pk):
+            with self.subTest(path=path):
+                response = self.client.post(path, new_password())
+                self.assertEqual(response.status_code, 403)
+        other = reload(other)
+        self.assertTrue(other.is_active)
+        self.assertTrue(other.check_password(PASSWORD))
+        self.assertTrue(other.has_perm("app.manage_app_users"))
+
+    def test_only_a_superuser_acts_on_a_user_admin(self):
+        path = f"/api/admin/users/{self.user_admin.pk}/password/"
+        for viewer in (self.admin, self.developer):
+            with self.subTest(viewer=viewer.email):
+                response = client_for(viewer).post(path, new_password())
+                self.assertEqual(response.status_code, 403)
+        response = client_for(self.superuser).post(path, new_password())
+        self.assertEqual(response.status_code, 200)
 
     def test_developer_can_act_on_an_admin(self):
         response = client_for(self.developer).post(

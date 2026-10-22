@@ -1,5 +1,6 @@
 import json
 
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -349,13 +350,17 @@ def _managed_user_payload(user: User, *, viewer: User) -> dict:
 @app_user_admin_required
 def user_create_view(request: HttpRequest) -> JsonResponse:
     """Add an app user with the password an admin sets."""
-    email = (request.POST.get("email") or "").strip()
+    # Lowercased the way allauth stores signup addresses.
+    email = (request.POST.get("email") or "").strip().lower()
     try:
         validate_email(email)
     except ValidationError:
         return JsonResponse(
             {"error": _("Enter a valid email address")}, status=400
         )
+    # The email is also the username, which is shorter than an email can be.
+    if len(email) > User._meta.get_field("username").max_length:
+        return JsonResponse({"error": _("That email is too long")}, status=400)
     if user_email_taken(email=email):
         return JsonResponse(
             {"error": _("Another account already uses that email")},
@@ -380,6 +385,9 @@ def user_password_view(request: HttpRequest, user_id: int) -> JsonResponse:
     if error:
         return JsonResponse({"error": error}, status=400)
     user_password_set(user=target, password=password)
+    # A new password ends every session; keep the admin's own one going.
+    if target.id == request.user.id:
+        update_session_auth_hash(request, target)
     return JsonResponse({"id": target.id})
 
 
