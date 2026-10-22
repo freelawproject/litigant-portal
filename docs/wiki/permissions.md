@@ -81,7 +81,9 @@ user that logs in to the app.
   it signed up. Staff are out of reach: superusers and Django admin staff
   (`is_staff`, which can read every transcript there) are managed only by
   superusers, developers only by holders of `manage_developers`, and admins
-  only by holders of `manage_site`. `user_is_manageable` in
+  only by holders of `manage_site`. An account in more than one of those
+  carries every protection at once, so adding a user admin to `Admins`
+  doesn't open them up to site admins. `user_is_manageable` in
   `selectors/user.py` holds the rule.
 - **Users tab only.** A user admin doesn't hold `manage_site`, so the Site
   and Topics endpoints refuse them and the dashboard renders only the Users

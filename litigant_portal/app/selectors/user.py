@@ -67,17 +67,22 @@ def user_is_manageable(*, viewer: User, target: User) -> bool:
     by superusers; developers by those who manage developers; admins by
     those who manage the site. Every other account is an app user, open to
     anyone holding ``manage_app_users``.
+
+    Every protection the target carries applies at once, not just the first
+    one found: otherwise a site admin could add a user admin to Admins and
+    then reach them through the Admins rule (#1073).
     """
-    if target.is_superuser or target.is_staff:
-        return viewer.is_superuser
     groups = set(target.groups.values_list("name", flat=True))
+    rules = [viewer.has_perm("app.manage_app_users")]
+    if target.is_superuser or target.is_staff:
+        rules.append(viewer.is_superuser)
     if DEVELOPERS_GROUP in groups:
-        return viewer.has_perm("app.manage_developers")
+        rules.append(viewer.has_perm("app.manage_developers"))
     if ADMINS_GROUP in groups:
-        return viewer.has_perm("app.manage_site")
+        rules.append(viewer.has_perm("app.manage_site"))
     if USER_ADMINS_GROUP in groups:
-        # Only a superuser touches a user admin, so one can't remove another
-        # (#1073). Their own password is the exception; the views refuse the
-        # rest as self-lockout.
-        return viewer.is_superuser or viewer.pk == target.pk
-    return viewer.has_perm("app.manage_app_users")
+        # Only a superuser touches a user admin, so one can't remove another.
+        # Their own password is the exception; the views refuse the rest as
+        # self-lockout.
+        rules.append(viewer.is_superuser or viewer.pk == target.pk)
+    return all(rules)

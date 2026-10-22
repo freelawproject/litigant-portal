@@ -423,6 +423,16 @@ class UserAdminRefusalTests(UserAdminSetup):
         response = client_for(self.superuser).post(path, new_password())
         self.assertEqual(response.status_code, 200)
 
+    def test_adding_a_user_admin_to_admins_does_not_open_them_up(self):
+        # A site admin can grant Admins, but that mustn't let them past the
+        # superuser-only rule for user admins: every protection applies.
+        user_admin_toggle(user=self.user_admin)
+        response = client_for(self.admin).post(
+            f"/api/admin/users/{self.user_admin.pk}/password/", new_password()
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(reload(self.user_admin).check_password(PASSWORD))
+
     def test_developer_can_act_on_an_admin(self):
         response = client_for(self.developer).post(
             f"/api/admin/users/{self.admin.pk}/password/", new_password()
