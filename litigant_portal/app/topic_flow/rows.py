@@ -10,11 +10,12 @@ The flow's ``layout`` orders the page. A section key renders as an info
 section anchored on that key, so chat citations can link to it. The
 ``interview`` block renders one fact-gather form per interview page, anchored
 ``interview-1``, ``interview-2``, ... in page order. The ``packet`` block
-lists the flow's forms whose condition holds against the stored answers;
-the ``calendar`` block its deadlines, each computed from the stored answer
-to its source variable; the ``contacts`` and ``resources`` blocks list the
-court's whole ``Contact`` and ``Resource`` lists in stored order. A block
-with nothing to show is skipped.
+lists the flow's forms whose condition holds against the stored answers,
+with the docassemble handoff when the flow has one and the environment
+serves it; the ``calendar`` block its deadlines, each computed from the
+stored answer to its source variable; the ``contacts`` and ``resources``
+blocks list the court's whole ``Contact`` and ``Resource`` lists in stored
+order. A block with nothing to show is skipped.
 
 A gated variable (``asked_when``) is asked only while the stored answer to
 its gate matches, the same rule the review-facts tool applies. There is no
@@ -33,6 +34,7 @@ from django.utils.translation import gettext_lazy as _
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.models.topic_flow import condition_holds
 from litigant_portal.app.selectors.corpus import default_layout
+from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.deadlines import (
@@ -370,8 +372,16 @@ def render_flow(
             )
         elif name == "packet":
             forms = packet_forms(form_conditions, answers)
-            if forms:
-                rendered.append(_render_packet(forms, court, topic, role))
+            # Same rule as the content renderer's _render_packet: the row's
+            # handoff AND a configured docassemble, else a plain form list.
+            interview = bool(
+                flow.interview_reference
+                and interview_launch_url(flow.interview_reference)
+            )
+            if forms or interview:
+                rendered.append(
+                    _render_packet(forms, interview, court, topic, role)
+                )
         elif name == "calendar" and deadlines:
             rendered.append(
                 _render_calendar(deadlines, answers, court, topic, role)
@@ -420,16 +430,15 @@ def _render_info(anchor, section):
     )
 
 
-def _render_packet(forms, court, topic, role):
-    # Same context as the content renderer's _render_packet. The handoff
-    # button waits on the interview reference (#1017, next piece).
+def _render_packet(forms, interview_available, court, topic, role):
+    # Same context as the content renderer's _render_packet.
     return RenderedSection(
         anchor_id="packet",
         heading=BLOCK_HEADINGS["packet"],
         template=f"{_TEMPLATE_DIR}/flow_section_packet.html",
         context={
             "forms": forms,
-            "interview_available": False,
+            "interview_available": interview_available,
             "court": court,
             "topic": topic,
             "role": role,

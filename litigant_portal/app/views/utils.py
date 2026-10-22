@@ -24,14 +24,15 @@ def has_identity(request) -> bool:
     return bool(request.user.is_authenticated or request.session.session_key)
 
 
-def topic_flow_row_get(court, topic, role):
+def topic_flow_row_get(court, topic, role, *, graph=True):
     """The enabled ``TopicFlow`` row behind a ``/t/<court>/<topic>/<role>/``
-    URL, with its content graph prefetched, for the ``TOPIC_FLOW_SOURCE=corpus``
-    views. ``court`` is checked through ``corpus_court_known``; the lookup
-    itself is by topic and flow slug. Raises ``Http404`` on either miss."""
+    URL, for the ``TOPIC_FLOW_SOURCE=corpus`` views; ``graph`` is passed to
+    ``topic_flow_find``. ``court`` is checked through ``corpus_court_known``;
+    the lookup itself is by topic and flow slug. Raises ``Http404`` on
+    either miss."""
     if not corpus_court_known(court, topic):
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-    flow = topic_flow_find(topic_slug=topic, flow_slug=role)
+    flow = topic_flow_find(topic_slug=topic, flow_slug=role, graph=graph)
     if flow is None:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
     return flow

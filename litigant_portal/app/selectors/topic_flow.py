@@ -32,15 +32,17 @@ def topic_flow_list() -> list[TopicFlow]:
     )
 
 
-def topic_flow_find(*, topic_slug: str, flow_slug: str) -> TopicFlow | None:
-    """The enabled flow at (topic_slug, flow_slug) with its whole content
-    graph prefetched, or None."""
-    return (
-        TopicFlow.objects.filter(
-            topic__slug=topic_slug, slug=flow_slug, enabled=True
-        )
-        .select_related("topic")
-        .prefetch_related(
+def topic_flow_find(
+    *, topic_slug: str, flow_slug: str, graph: bool = True
+) -> TopicFlow | None:
+    """The enabled flow at (topic_slug, flow_slug), or None. With ``graph``
+    its whole content graph is prefetched, for the page; without, only the
+    row and its topic, for a caller that reads a field or one relation."""
+    flows = TopicFlow.objects.filter(
+        topic__slug=topic_slug, slug=flow_slug, enabled=True
+    ).select_related("topic")
+    if graph:
+        flows = flows.prefetch_related(
             "sections",
             "links",
             "deadlines__offset_from",
@@ -48,8 +50,7 @@ def topic_flow_find(*, topic_slug: str, flow_slug: str) -> TopicFlow | None:
             "form_conditions__variable",
             "interview_pages__variables__variable__asked_when",
         )
-        .first()
-    )
+    return flows.first()
 
 
 def variable_answer_list(

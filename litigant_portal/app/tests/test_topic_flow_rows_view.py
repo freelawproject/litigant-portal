@@ -14,25 +14,45 @@ from unittest import mock
 
 import pytest
 import vobject
+from django.test import Client
 
-from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
+from litigant_portal.app.models import (
+    TopicFlow,
+    UserIdentity,
+    Variable,
+    VariableAnswer,
+)
 from litigant_portal.app.selectors import corpus as selectors
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
+from litigant_portal.app.services.docassemble import DocassembleError
 from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.topic_flow.schema import (
     Corpus,
     FactGatherSection,
     InfoSection,
     Metadata,
+    PacketOutput,
     Question,
 )
 from litigant_portal.app.views import pages
+from litigant_portal.app.views import topic_flow as topic_flow_views
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
 DOWNLOAD_URL = f"{URL}download/"
+INTERVIEW_URL = f"{URL}interview/"
+
+# The docassemble handoff, shaped like the ND flow's: one private
+# variable and one plain one, renamed for the interview.
+REFERENCE = "docassemble.test:data/questions/petition.yml"
+PREFILL = {"full_name": "petitioner_name", "license_date": "licensed_on"}
+DA_BASE = "https://da.example.gov/interview"
+DA_LAUNCH = (
+    f"{DA_BASE}/interview?i=docassemble.test%3Adata%2Fquestions%2Fpetition.yml"
+)
+DA_RESUME = "https://da.example.gov/interview/launch?c=token"
 
 CONTACTS = [
     {
@@ -192,6 +212,10 @@ def _corpus():
                     "layout": LAYOUT,
                     "interview": interview,
                     "packet": packet,
+                    "handoff": {
+                        "interview_reference": REFERENCE,
+                        "interview_prefill": PREFILL,
+                    },
                     "deadlines": [
                         {
                             "id": "renewal",
@@ -514,6 +538,194 @@ def test_packet_has_no_interview_button_without_a_handoff(client, synced):
     assert "License petition" in block
     assert "Fill out your forms" not in block
     assert f"{URL}interview/" not in block
+
+
+# --- the docassemble handoff ------------------------------------------------
+
+
+class _DocassembleClient:
+    """Stands in for docassemble_session_create, recording its payload."""
+
+    def __init__(self, error=None):
+        self.error = error
+        self.calls = []
+
+    def __call__(self, *, interview, variables):
+        self.calls.append({"interview": interview, "variables": variables})
+        if self.error:
+            raise self.error
+        return DA_RESUME
+
+
+@pytest.fixture
+def docassemble(settings, monkeypatch):
+    settings.DOCASSEMBLE_BASE_URL = DA_BASE
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    client = _DocassembleClient()
+    monkeypatch.setattr(topic_flow_views, "docassemble_session_create", client)
+    return client
+
+
+@pytest.mark.postgres
+def test_packet_posts_the_handoff_when_the_flow_has_a_reference(
+    client, synced, docassemble
+):
+    block = _packet(client)
+    assert re.search(
+        rf'<form[^>]*method="post"[^>]*action="{re.escape(INTERVIEW_URL)}"',
+        block,
+    )
+    assert "Fill out your forms" in block
+
+
+@pytest.mark.postgres
+def test_packet_hides_the_handoff_without_docassemble_configured(
+    client, synced, settings
+):
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    block = _packet(client)
+    assert "License petition" in block
+    assert "Fill out your forms" not in block
+    assert INTERVIEW_URL not in block
+
+
+@pytest.mark.postgres
+def test_interview_post_sends_reviewed_answers_under_their_interview_names(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    _store(client, "license_date", "2026-02-01", reviewed=True)
+    _store(client, "pet_kind", "dog", reviewed=True)
+    response = client.post(INTERVIEW_URL)
+    assert response.status_code == 302
+    assert response["Location"] == DA_RESUME
+    assert docassemble.calls == [
+        {
+            "interview": REFERENCE,
+            # pet_kind is reviewed but unmapped, so it stays home.
+            "variables": {
+                "petitioner_name": "Jane Doe",
+                "licensed_on": "2026-02-01",
+            },
+        }
+    ]
+
+
+@pytest.mark.postgres
+def test_interview_post_never_sends_an_unreviewed_answer(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    _store(client, "license_date", "2026-02-01", reviewed=False)
+    client.post(INTERVIEW_URL)
+    assert docassemble.calls[0]["variables"] == {"petitioner_name": "Jane Doe"}
+
+
+@pytest.mark.postgres
+def test_interview_post_with_nothing_to_prefill_goes_to_the_plain_link(
+    client, synced, docassemble
+):
+    _store(client, "pet_kind", "dog", reviewed=True)
+    assert client.post(INTERVIEW_URL)["Location"] == DA_LAUNCH
+    assert docassemble.calls == []
+
+
+@pytest.mark.postgres
+def test_interview_post_falls_back_to_the_plain_link_when_the_session_fails(
+    client, synced, settings, monkeypatch
+):
+    settings.DOCASSEMBLE_BASE_URL = DA_BASE
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    monkeypatch.setattr(
+        topic_flow_views,
+        "docassemble_session_create",
+        _DocassembleClient(error=DocassembleError("down")),
+    )
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    response = client.post(INTERVIEW_URL)
+    assert response.status_code == 302
+    assert response["Location"] == DA_LAUNCH
+
+
+@pytest.mark.postgres
+def test_interview_post_on_a_flow_without_a_reference_is_404(
+    client, synced, docassemble
+):
+    TopicFlow.objects.filter(slug=ROLE).update(interview_reference="")
+    assert client.post(INTERVIEW_URL).status_code == 404
+    assert (
+        client.post(f"/t/{COURT}/{TOPIC}/nope/interview/").status_code == 404
+    )
+    assert docassemble.calls == []
+
+
+@pytest.mark.postgres
+def test_interview_target_reads_the_flow_row_without_its_graph(
+    synced, django_assert_num_queries
+):
+    # The handoff needs two columns of the flow row, not the sections,
+    # pages and forms the page prefetches.
+    with django_assert_num_queries(1):
+        target = topic_flow_views._interview_target(COURT, TOPIC, ROLE)
+    assert target == (REFERENCE, PREFILL)
+
+
+@pytest.mark.postgres
+def test_csrf_failure_on_the_corpus_path_falls_back_to_the_plain_link(
+    synced, docassemble
+):
+    response = Client(enforce_csrf_checks=True).post(INTERVIEW_URL)
+    assert response.status_code == 302
+    assert response["Location"] == DA_LAUNCH
+
+
+@pytest.mark.postgres
+def test_interview_payload_matches_the_content_path(
+    client, synced, docassemble, settings, monkeypatch
+):
+    # DoD item 1, the automated half: the same reviewed answers and the same
+    # handoff reach docassemble as the same payload under both settings.
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    _store(client, "license_date", "2026-02-01", reviewed=True)
+    _store(client, "pet_kind", "dog", reviewed=False)
+    client.post(INTERVIEW_URL)
+
+    settings.TOPIC_FLOW_SOURCE = "content"
+    registry_corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="facts",
+                heading="Facts",
+                questions=[
+                    Question(id="full_name", label="Full name"),
+                    Question(id="license_date", label="When", type="date"),
+                ],
+            ),
+            PacketOutput(
+                kind="output",
+                output_type="packet",
+                id="filing_packet",
+                heading="Your forms",
+                forms=["License petition"],
+                interview_reference=REFERENCE,
+                interview_prefill=PREFILL,
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
+    client.post(INTERVIEW_URL)
+
+    from_rows, from_content = docassemble.calls
+    assert from_rows == from_content
+    assert from_rows["variables"] == {
+        "petitioner_name": "Jane Doe",
+        "licensed_on": "2026-02-01",
+    }
 
 
 # --- calendar ---------------------------------------------------------------

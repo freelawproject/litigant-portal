@@ -29,6 +29,7 @@ from litigant_portal.app.topic_flow.downloads import (
     vcf_artifact,
 )
 from litigant_portal.app.topic_flow.prefill import (
+    flow_interview_target,
     interview_target,
     prefill_variables,
 )
@@ -85,10 +86,10 @@ def _row_download(request, court, topic, role, output_id):
     from the court's Contact rows. Any other id is 404, as a non-downloadable
     section is on the content path. The UID segment is the block name where
     the section id was."""
-    flow = topic_flow_row_get(court, topic, role)
+    flow = topic_flow_row_get(court, topic, role, graph=False)
     uid_prefix = f"{court}-{topic}-{role}-{output_id}"
     if output_id == "calendar":
-        deadlines = list(flow.deadlines.all())
+        deadlines = list(flow.deadlines.select_related("offset_from"))
         names = rows.flow_variable_names([], deadlines=deadlines)
         return ics_artifact(
             rows.flow_deadlines(
@@ -116,14 +117,31 @@ def topic_flow_interview(request, court, topic, role):
 
     Any failure redirects to the plain interview link instead. Unprefilled is a
     worse handoff than prefilled, but a dead button is worse than both.
+
+    The handoff is read from the TopicFlow row under
+    ``TOPIC_FLOW_SOURCE=corpus``; everything after the target is found is
+    the same on both paths.
     """
+    target = _interview_target(court, topic, role)
+    if target is None:
+        raise Http404(f"No interview handoff for {court}/{topic}/{role}")
+    return _interview_redirect(request, court, topic, role, target)
+
+
+def _interview_target(court, topic, role):
+    """``(interview, mapping)`` for the flow at this URL, or None without a
+    handoff. 404 for a flow that does not exist on the configured source."""
+    if settings.TOPIC_FLOW_SOURCE == "corpus":
+        return flow_interview_target(
+            topic_flow_row_get(court, topic, role, graph=False)
+        )
     corpus = registry.get(court, topic, role)
     if corpus is None:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+    return interview_target(corpus)
 
-    target = interview_target(corpus)
-    if target is None:
-        raise Http404(f"No interview handoff for {court}/{topic}/{role}")
+
+def _interview_redirect(request, court, topic, role, target):
     interview, mapping = target
     launch_url = interview_launch_url(interview)
     if launch_url is None:
@@ -217,9 +235,10 @@ def csrf_failure(request, reason=""):
     except Resolver404:
         match = None
     if match and match.url_name == "topic_flow_interview":
-        kwargs = match.kwargs
-        corpus = registry.get(kwargs["court"], kwargs["topic"], kwargs["role"])
-        target = interview_target(corpus) if corpus else None
+        try:
+            target = _interview_target(**match.kwargs)
+        except Http404:
+            target = None
         launch_url = interview_launch_url(target[0]) if target else None
         if launch_url is not None:
             return redirect(launch_url)

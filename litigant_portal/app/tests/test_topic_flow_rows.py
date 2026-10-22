@@ -273,6 +273,53 @@ def test_render_flow_packet_lists_the_forms_without_an_interview_button():
     }
 
 
+def test_packet_offers_the_interview_only_with_a_reference_and_a_docassemble(
+    settings,
+):
+    # Same rule as the content renderer: both the row's reference and a
+    # configured docassemble, else a plain form list.
+    conditions = [_condition(PETITION)]
+    with_reference = TopicFlow(
+        layout=["packet"], interview_reference="docassemble.x:q.yml"
+    )
+
+    def available(flow):
+        (section,) = rows.render_flow(
+            flow, [], [], {}, form_conditions=conditions, **URL_PARTS
+        )
+        return section.context["interview_available"]
+
+    settings.DOCASSEMBLE_BASE_URL = "https://da.example.gov/interview"
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    assert available(with_reference) is True
+    assert available(TopicFlow(layout=["packet"])) is False
+    settings.DOCASSEMBLE_BASE_URL = None
+    assert available(with_reference) is False
+
+
+def test_packet_with_a_handoff_renders_for_the_button_alone(settings):
+    # Every form gated and unmet, but the interview still fills them: the
+    # content path renders its packet unconditionally, so this one must
+    # not hide the button with the list.
+    flow = TopicFlow(
+        layout=["packet"], interview_reference="docassemble.x:q.yml"
+    )
+    gated = [_condition(WAIVER, LICENSED, "equals", True)]
+    settings.DOCASSEMBLE_BASE_URL = "https://da.example.gov/interview"
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    (section,) = rows.render_flow(
+        flow, [], [], {}, form_conditions=gated, **URL_PARTS
+    )
+    assert section.context["forms"] == []
+    assert section.context["interview_available"] is True
+
+    settings.DOCASSEMBLE_BASE_URL = None
+    assert (
+        rows.render_flow(flow, [], [], {}, form_conditions=gated, **URL_PARTS)
+        == []
+    )
+
+
 def test_flow_variable_names_include_form_condition_variables():
     # The chat may store the answer a condition reads, and no page of this
     # flow asks it; the page must still read it to show the form.
