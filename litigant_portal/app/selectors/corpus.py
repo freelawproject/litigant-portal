@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 
 import yaml
 from django.conf import settings
+from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from pydantic import (
     BaseModel,
@@ -18,6 +19,7 @@ from pydantic import (
 )
 from pypdf import PdfReader
 
+from litigant_portal.app.cache import CORPUS_TOPIC_KEYS_CACHE_KEY
 from litigant_portal.app.models.choices import (
     ContactKind,
     JurisdictionLevel,
@@ -950,10 +952,15 @@ def corpus_load_topics() -> dict[tuple[str, str], TopicSchema]:
 def corpus_court_known(court: str, topic: str) -> bool:
     """Whether a page URL's court is one this deployment serves: the
     ``CORPUS_COURT`` setting when set (as ``agent_scope_choices`` reads
-    it), otherwise any court authoring ``topic`` in the corpus."""
+    it), otherwise any court authoring ``topic`` in the corpus. The topic
+    index is served from cache, as every rows-path request reads it."""
     if settings.CORPUS_COURT is not None:
         return court == settings.CORPUS_COURT
-    return (court, topic) in corpus_load_topics()
+    keys = cache.get(CORPUS_TOPIC_KEYS_CACHE_KEY)
+    if keys is None:
+        keys = list(corpus_load_topics())
+        cache.set(CORPUS_TOPIC_KEYS_CACHE_KEY, keys, timeout=None)
+    return (court, topic) in keys
 
 
 def corpus_load_flows() -> dict[tuple[str, str, str], FlowSchema]:

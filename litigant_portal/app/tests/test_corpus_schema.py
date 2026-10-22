@@ -1120,3 +1120,16 @@ def test_corpus_court_known_follows_the_setting_then_the_topic_index(
         assert (
             selectors.corpus_court_known(court, "adult-name-change") is known
         )
+
+
+def test_corpus_court_known_reads_the_topic_index_from_disk_once(settings):
+    settings.CORPUS_COURT = None
+    topics = {("north-dakota", "adult-name-change"): object()}
+    with mock.patch.object(
+        selectors, "corpus_load_topics", return_value=topics
+    ) as load:
+        assert selectors.corpus_court_known(
+            "north-dakota", "adult-name-change"
+        )
+        assert not selectors.corpus_court_known("arizona", "adult-name-change")
+    assert load.call_count == 1
