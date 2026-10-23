@@ -55,7 +55,29 @@ jobs:
         run: uv pip install --system tox tox-uv
 
       - name: Run tox targets for ${{ matrix.python-version }}
-        run: tox run -f py$(echo ${{ matrix.python-version }} | tr -d .)
+        run: |
+          set -o pipefail
+          tox run -f py$(echo ${{ matrix.python-version }} | tr -d .) -- \
+            --verbosity=1 --cov --cov-report=term-missing | tee tox.log
+
+      # The coverage table from the terminal report, so a drop shows on
+      # the PR without opening the log.
+      - name: Publish coverage summary
+        if: always()
+        run: |
+          {
+            echo '## Coverage'
+            echo '```'
+            sed -n '/^[-_]* coverage:/,/^TOTAL/p' tox.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # Reads the .coverage file the test run wrote. Kept apart from the
+      # test step so a coverage drop is not mistaken for a test failure.
+      - name: Coverage floor
+        env:
+          COVERAGE_FLOOR: 85
+        run: .tox/py313/bin/coverage report --format=total --fail-under="$COVERAGE_FLOOR"
 
       - name: Test agent without Django
         run: tox run -e agent

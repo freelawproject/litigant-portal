@@ -23,7 +23,7 @@ This document is the **canonical bar for every PR and issue**. Ticket-specific a
 
 - All ticket-specific acceptance criteria on the issue are met.
 - Known bugs are either fixed or tracked in their own issue, with team acknowledgment that they're deferred.
-- **Test our code, not libraries.** Tests fail when our logic breaks, not because they assert static copy or re-verify Django/framework behavior. `make test` is the bar; if coverage feels thin, the team explicitly agrees it's sufficient rather than leaving it unspoken.
+- **Test our code, not libraries.** Tests fail when our logic breaks, not because they assert static copy or re-verify Django/framework behavior. `make test` is the bar; if coverage feels thin, the team explicitly agrees it's sufficient rather than leaving it unspoken. CI also fails `tests.yml` below the coverage floor (`COVERAGE_FLOOR` in the workflow). The floor is a guard against drift, not a target: it sits well below the real total because pushing coverage past 90% tends to reward tests of code that doesn't matter.
 - **WCAG 2.2 AA is met, not treated as a target.** See [wcag-strategy.md](wcag-strategy.md). Automated checks (axe/Lighthouse per CI) plus a manual pass (keyboard-only, zoom to 200%, color-only-info check) for anything touching UI.
 - **CSP compliance:** no inline event handlers, Alpine.js CSP-build patterns only (dot-paths, no inline expressions), enforced by `csp-inline-check` but worth a manual look for anything hand-rolled.
 - **Progressive enhancement holds:** base workflows still work without JavaScript. Our users are on flaky courthouse wifi and old devices, not just modern browsers.
