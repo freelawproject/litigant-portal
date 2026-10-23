@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 from typing import Annotated, Literal
@@ -949,17 +950,35 @@ def corpus_load_topics() -> dict[tuple[str, str], TopicSchema]:
     }
 
 
+def _corpus_topic_tree_fingerprint() -> str:
+    """A hash of the topic document paths on this process's disk. The
+    cached topic index carries it, so a process never serves a list built
+    from another release's tree (an old pod refilling the key after the
+    bust on deploy, for example)."""
+    paths = sorted(
+        str(p.relative_to(COURTS_DIR))
+        for p in COURTS_DIR.glob("*/topics/*/topic.yml")
+    )
+    return hashlib.sha256("\n".join(paths).encode()).hexdigest()
+
+
 def corpus_court_known(court: str, topic: str) -> bool:
     """Whether a page URL's court is one this deployment serves: the
     ``CORPUS_COURT`` setting when set (as ``agent_scope_choices`` reads
     it), otherwise any court authoring ``topic`` in the corpus. The topic
-    index is served from cache, as every rows-path request reads it."""
+    index is served from cache, as every rows-path request reads it; a
+    cached index from a different tree counts as a miss."""
     if settings.CORPUS_COURT is not None:
         return court == settings.CORPUS_COURT
-    keys = cache.get(CORPUS_TOPIC_KEYS_CACHE_KEY)
-    if keys is None:
+    fingerprint = _corpus_topic_tree_fingerprint()
+    cached = cache.get(CORPUS_TOPIC_KEYS_CACHE_KEY)
+    if isinstance(cached, tuple) and cached[0] == fingerprint:
+        keys = cached[1]
+    else:
         keys = list(corpus_load_topics())
-        cache.set(CORPUS_TOPIC_KEYS_CACHE_KEY, keys, timeout=None)
+        cache.set(
+            CORPUS_TOPIC_KEYS_CACHE_KEY, (fingerprint, keys), timeout=None
+        )
     return (court, topic) in keys
 
 
