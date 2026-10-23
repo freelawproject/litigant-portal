@@ -34,7 +34,7 @@ app_patterns = [
     ),
     path(
         "t/<slug:court>/<slug:topic>/<slug:role>/",
-        pages.topic_flow,
+        topic_flow_views.topic_flow,
         name="topic_flow",
     ),
     path(
