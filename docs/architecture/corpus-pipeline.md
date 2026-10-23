@@ -35,7 +35,6 @@ publication, our flow prose carried one, and no check noticed.
 | -------------------------- | ------------------------------------------------------- | ----------------------------------------- |
 | `litigant_portal/corpus/`  | variables, court, topic, flows, forms (`.yml` + `.pdf`) | `selectors/corpus.py`, then `sync_corpus` |
 | `litigant_portal/content/` | the older flat corpus                                   | `app/topic_flow/registry.py`              |
-| `litigant_portal/prompts/` | `courts/<court>/prompt.md`, `topics/<topic>/prompt.md`  | nothing; left from the prompt-backed chat |
 | `litigant_portal/agents/`  | `BASE_PROMPT` and the court, flow and facts templates   | the chat assistant, assembled per turn    |
 
 `corpus/` is the contract boundary. It is schema-validated and checked at startup, so
@@ -43,9 +42,6 @@ it is the right emit target for a build tool.
 
 `content/` still renders the live public flow pages at `/t/<court>/<topic>/<role>/`.
 Which tree retires is open under #179.
-
-`prompts/` is not corpus. Its `prompt.md` files are left from the earlier prompt-backed
-chat, and no route or code path reads them anymore (#1049).
 
 ## Layer 3: build step
 
