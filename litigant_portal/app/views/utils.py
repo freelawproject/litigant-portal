@@ -4,6 +4,7 @@ from django.http import JsonResponse
 from django.utils.translation import gettext as _
 
 from litigant_portal.app.selectors.topic_flow import (
+    variable_answer_cleared_names,
     variable_answer_groups,
     variable_answer_map,
 )
@@ -27,6 +28,22 @@ def topic_flow_answers(request, corpus) -> dict:
     here too. Empty for a visitor with no identity yet.
     """
     return _answer_map(request, question_ids(corpus))
+
+
+def topic_flow_row_answers(request, names: list[str]) -> dict:
+    """``{variable_name: value}`` for the given names, for the page built
+    from TopicFlow rows (#1016). Same read as ``topic_flow_answers``."""
+    return _answer_map(request, names)
+
+
+def topic_flow_row_cleared_names(request, names: list[str]) -> set[str]:
+    """The given names this visitor has cleared, so the rows page shows a
+    blank there instead of the glossary default. Empty without an identity."""
+    if not has_identity(request):
+        return set()
+    return set(
+        variable_answer_cleared_names(identity=request.identity, names=names)
+    )
 
 
 def topic_flow_reviewed_answers(request, names: list[str]) -> dict:

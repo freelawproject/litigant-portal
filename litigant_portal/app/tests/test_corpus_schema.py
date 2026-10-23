@@ -387,6 +387,46 @@ def test_default_must_be_legal_for_the_data_type():
         )
 
 
+def test_private_is_an_optional_glossary_flag_authored_as_private():
+    assert VariableSchema(name="age", label="Age").is_private is False
+    variable = VariableSchema.model_validate(
+        {"name": "age", "label": "Age", "private": True}
+    )
+    assert variable.is_private is True
+    assert variable.model_dump()["is_private"] is True
+
+
+# Drift guard, the sibling of test_content_never_prefill: the facts the ND
+# interview asks that identify a person never echo back on the rows path.
+@pytest.mark.parametrize(
+    "name",
+    [
+        "first_name",
+        "middle_name",
+        "last_name",
+        "street_address",
+        "city",
+        "county",
+        "zip_code",
+        "date_of_birth",
+        "place_of_birth",
+        "phone_number",
+        "name_change_requested_first",
+        "name_change_requested_middle",
+        "name_change_requested_last",
+        "name_change_criminal_history",
+        "name_change_conviction_charge",
+        "name_change_conviction_class",
+        "name_change_conviction_court",
+        "name_change_conviction_year",
+        "name_change_publication_date",
+        "name_change_waiver_domestic_violence",
+    ],
+)
+def test_shipped_identity_variable_is_private(name):
+    assert corpus_load().variables[name].is_private is True
+
+
 def test_help_text_and_required_are_optional_glossary_fields():
     variable = VariableSchema(name="age", label="Age")
     assert variable.help_text == ""
@@ -1052,3 +1092,31 @@ def test_a_contact_field_longer_than_its_column_is_rejected(field):
     data["courts"]["north-dakota"]["contacts"][0][field] = "x" * 256
     with pytest.raises(ValidationError):
         CorpusSchema.model_validate(data)
+
+
+@pytest.mark.parametrize(
+    ("corpus_court", "court", "known"),
+    [
+        ("north-dakota", "north-dakota", True),
+        ("north-dakota", "arizona", False),
+        (None, "north-dakota", True),
+        (None, "arizona", False),
+    ],
+    ids=[
+        "set-accepts-the-configured-court",
+        "set-rejects-another-court-even-if-authored",
+        "unset-accepts-a-court-authoring-the-topic",
+        "unset-rejects-a-court-the-corpus-lacks",
+    ],
+)
+def test_corpus_court_known_follows_the_setting_then_the_topic_index(
+    settings, corpus_court, court, known
+):
+    settings.CORPUS_COURT = corpus_court
+    topics = {("north-dakota", "adult-name-change"): object()}
+    with mock.patch.object(
+        selectors, "corpus_load_topics", return_value=topics
+    ):
+        assert (
+            selectors.corpus_court_known(court, "adult-name-change") is known
+        )

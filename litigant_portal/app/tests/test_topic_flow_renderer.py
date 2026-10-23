@@ -151,7 +151,10 @@ def test_fact_gather_carries_choice_metadata():
     rendered = render_section(section, _corpus(section), {})
     (q,) = rendered.context["questions"]
     assert q["type"] == "choice"
-    assert q["choices"] == ["standard", "waiver"]
+    assert q["choices"] == [
+        {"value": "standard", "label": "standard"},
+        {"value": "waiver", "label": "waiver"},
+    ]
 
 
 def test_fact_gather_heading_optional():

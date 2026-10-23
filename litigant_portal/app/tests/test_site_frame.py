@@ -49,8 +49,8 @@ class FramedPagesTests(TestCase):
         )
         left = _left_region(response.content.decode())
 
-        self.assertTrue(response.context["toc"])
-        for item in response.context["toc"]:
+        self.assertTrue(response.context["section_links"])
+        for item in response.context["section_links"]:
             self.assertIn(f'href="#{item["anchor"]}"', left)
 
     def test_framed_pages_get_drawer_buttons_and_others_do_not(self):

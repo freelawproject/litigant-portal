@@ -20,13 +20,6 @@ def _flow_variables(flow) -> list:
     return variables
 
 
-def _is_asked(variable, values: dict) -> bool:
-    """Whether a gated variable's question currently applies."""
-    if variable.asked_when is None:
-        return True
-    return values.get(variable.asked_when.name) == variable.asked_when_value
-
-
 class ReviewFacts(Tool):
     """Show the user a card to review and confirm their saved facts.
 
@@ -95,7 +88,7 @@ class ReviewFacts(Tool):
                         "reviewed": answer.reviewed,
                     }
                 )
-            elif variable.required and _is_asked(variable, values):
+            elif variable.required and variable.is_asked(values):
                 missing.append(
                     {
                         "name": variable.name,
