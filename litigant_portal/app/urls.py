@@ -15,6 +15,7 @@ from litigant_portal.app.views import (
 )
 from litigant_portal.app.views import (
     assistant,
+    design_system,
     health,
     pages,
 )
@@ -61,20 +62,20 @@ app_patterns = [
     path("privacy/", pages.privacy, name="privacy"),
     path("help/", pages.get_help, name="help"),
     path("accessibility/", pages.accessibility, name="accessibility"),
-    path("style-guide/", pages.style_guide, name="style_guide"),
+    path("style-guide/", design_system.style_guide, name="style_guide"),
     path(
         "style-guide/atomic-design/",
-        pages.atomic_design,
+        design_system.atomic_design,
         name="atomic_design",
     ),
     path(
         "style-guide/accessibility/",
-        pages.a11y_guide,
+        design_system.a11y_guide,
         name="a11y_guide",
     ),
     path(
         "style-guide/atomic-design/<slug:stage>/",
-        pages.atomic_design_stage,
+        design_system.atomic_design_stage,
         name="atomic_design_stage",
     ),
 ]
