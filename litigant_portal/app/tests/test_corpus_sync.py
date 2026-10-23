@@ -309,10 +309,15 @@ class CourtScopingTests(CorpusSyncTests):
             {"pets", "eviction"},
         )
         self.assertEqual(Site.objects.get().court_name, court_name)
-        # Both courts' contacts land; flow-level linking (#815) scopes them.
+        # Both courts' contacts land, each stamped with its court so the
+        # guided page can pick its own.
         self.assertEqual(
-            set(Contact.objects.values_list("name", flat=True)),
-            {"Alpha Help", "Beta Help"},
+            set(Contact.objects.values_list("court", "name")),
+            {("alpha", "Alpha Help"), ("beta", "Beta Help")},
+        )
+        self.assertEqual(
+            set(Resource.objects.values_list("court", "label")),
+            {("alpha", "Alpha Guide"), ("beta", "Beta Guide")},
         )
 
     def test_unknown_court_is_rejected(self):

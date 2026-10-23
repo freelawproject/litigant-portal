@@ -32,14 +32,21 @@ def _cached_list(key: str, model) -> list:
     return rows
 
 
-# Neither list is scoped by court: the rows belong to the Site singleton's
-# one court, and a multi-court sync (CORPUS_COURT unset) pools every
-# court's rows into them.
+# Neither cached list is scoped by court: the rows belong to the Site
+# singleton's one court, and a multi-court sync (CORPUS_COURT unset) pools
+# every court's rows into them. ``court`` narrows a list to the rows one
+# court's sync stamped, for a page that serves that court's URL.
 
 
-def contact_list() -> list[Contact]:
+def _court_rows(rows: list, court: str | None) -> list:
+    if court is None:
+        return rows
+    return [row for row in rows if row.court == court]
+
+
+def contact_list(*, court: str | None = None) -> list[Contact]:
     """The court's contacts, in display order, served from cache."""
-    return _cached_list(CONTACT_LIST_CACHE_KEY, Contact)
+    return _court_rows(_cached_list(CONTACT_LIST_CACHE_KEY, Contact), court)
 
 
 def contact_help_list() -> list[Contact]:
@@ -52,9 +59,9 @@ def contact_help_list() -> list[Contact]:
     )
 
 
-def resource_list() -> list[Resource]:
+def resource_list(*, court: str | None = None) -> list[Resource]:
     """The court's resources, in display order, served from cache."""
-    return _cached_list(RESOURCE_LIST_CACHE_KEY, Resource)
+    return _court_rows(_cached_list(RESOURCE_LIST_CACHE_KEY, Resource), court)
 
 
 def site_get_model(*, role: str) -> str:

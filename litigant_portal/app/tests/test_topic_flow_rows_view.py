@@ -9,27 +9,77 @@ pure row-to-section functions are covered DB-free in
 """
 
 import re
+from datetime import date
 from unittest import mock
 
 import pytest
+import vobject
+from django.test import Client
 
-from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
+from litigant_portal.app.models import (
+    TopicFlow,
+    UserIdentity,
+    Variable,
+    VariableAnswer,
+)
 from litigant_portal.app.selectors import corpus as selectors
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
+from litigant_portal.app.services.docassemble import DocassembleError
 from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.topic_flow.schema import (
     Corpus,
     FactGatherSection,
     InfoSection,
     Metadata,
+    PacketOutput,
     Question,
 )
-from litigant_portal.app.views import pages
+from litigant_portal.app.views import topic_flow as topic_flow_views
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
+DOWNLOAD_URL = f"{URL}download/"
+INTERVIEW_URL = f"{URL}interview/"
+
+# The docassemble handoff, shaped like the ND flow's: one private
+# variable and one plain one, renamed for the interview.
+REFERENCE = "docassemble.test:data/questions/petition.yml"
+PREFILL = {"full_name": "petitioner_name", "license_date": "licensed_on"}
+DA_BASE = "https://da.example.gov/interview"
+DA_LAUNCH = (
+    f"{DA_BASE}/interview?i=docassemble.test%3Adata%2Fquestions%2Fpetition.yml"
+)
+DA_RESUME = "https://da.example.gov/interview/launch?c=token"
+
+CONTACTS = [
+    {
+        "id": "clerk",
+        "name": "Clerk of Court",
+        "phone": "555-1234",
+        "address": "100 Main St",
+        "hours": "9-4 M-F",
+    },
+    {"id": "aid", "name": "Legal Aid", "email": "help@aid.example"},
+]
+# A second court's rows, synced alongside (CORPUS_COURT unset); the alpha
+# page and its download must leave them out.
+BETA_CONTACTS = [
+    {"id": "beta-clerk", "name": "Beta Clerk", "phone": "555-9999"}
+]
+BETA_RESOURCES = [
+    {"id": "beta-help", "label": "Beta Help", "url": "https://beta.example"}
+]
+RESOURCES = [
+    {"id": "self-help", "label": "Self Help", "url": "https://help.example"},
+    {
+        "id": "rules",
+        "label": "Rules",
+        "url": "https://rules.example",
+        "note": "Chapter 3.",
+    },
+]
 
 LAYOUT = [
     "fees",
@@ -55,8 +105,9 @@ ANCHORS = [
 
 
 def _corpus():
-    """One court, one topic, an enabled flow with an authored layout and a
-    disabled sibling. ``first_name`` is private."""
+    """One court with two contacts and two resources, one topic, an enabled
+    flow with an authored layout and a disabled sibling, plus a second court
+    with a contact and a resource of its own. ``first_name`` is private."""
     variables = {
         # Required and private, as in the real glossary.
         "first_name": {
@@ -129,13 +180,41 @@ def _corpus():
             ],
         },
     ]
+    # A form with the court's PDF url and one without; the checklist joins
+    # the packet only once the pet is licensed.
+    forms = {
+        "petition": {
+            "name": "License petition",
+            "url": "https://alpha.example/petition.pdf",
+            "fields": [{"pdf_field": "Name", "template": "{full_name}"}],
+        },
+        "checklist": {"name": "Licensed pet checklist", "fields": []},
+    }
+    packet = [
+        {"form": "petition"},
+        {
+            "form": "checklist",
+            "when": {"variable": "licensed", "value": True},
+        },
+    ]
     return CorpusSchema.model_validate(
         {
             "variables": variables,
-            "forms": {},
-            "form_acro_fields": {},
+            "forms": forms,
+            "form_acro_fields": {"petition": {"Name": "/Tx"}, "checklist": {}},
             "courts": {
-                COURT: {"name": "Alpha", "court_name": "Alpha District Court"}
+                COURT: {
+                    "name": "Alpha",
+                    "court_name": "Alpha District Court",
+                    "contacts": CONTACTS,
+                    "resources": RESOURCES,
+                },
+                "beta": {
+                    "name": "Beta",
+                    "court_name": "Beta Municipal Court",
+                    "contacts": BETA_CONTACTS,
+                    "resources": BETA_RESOURCES,
+                },
             },
             "topics": {(COURT, TOPIC): {"title": "Pets"}},
             "flows": {
@@ -145,6 +224,20 @@ def _corpus():
                     "sections": sections,
                     "layout": LAYOUT,
                     "interview": interview,
+                    "packet": packet,
+                    "handoff": {
+                        "interview_reference": REFERENCE,
+                        "interview_prefill": PREFILL,
+                    },
+                    "deadlines": [
+                        {
+                            "id": "renewal",
+                            "label": "License renewal due",
+                            "description": "One year after licensing.",
+                            "offset_days": 365,
+                            "offset_from": "license_date",
+                        }
+                    ],
                 },
                 (COURT, TOPIC, "retired"): {
                     "name": "Retired",
@@ -157,12 +250,18 @@ def _corpus():
 
 
 @pytest.fixture
-def synced(db, settings):
-    """The corpus above in the database, with the page reading rows."""
+def synced(db, settings, tmp_path):
+    """The corpus above in the database, with the page reading rows. The
+    forms directory holds stand-in PDF bytes for the sync's file writes."""
     settings.TOPIC_FLOW_SOURCE = "corpus"
     settings.CORPUS_COURT = None
     corpus = _corpus()
-    with mock.patch.object(services, "corpus_load", return_value=corpus):
+    for slug in corpus.forms:
+        (tmp_path / f"{slug}.pdf").write_bytes(b"%PDF-stand-in")
+    with (
+        mock.patch.object(services, "corpus_load", return_value=corpus),
+        mock.patch.object(services, "FORMS_DIR", tmp_path),
+    ):
         corpus_sync()
     # The view's court check reads the topic index from disk; keep it on
     # the fake corpus so ``alpha`` is a known court for every test here.
@@ -394,10 +493,422 @@ def test_content_path_choice_options_are_unchanged(
             )
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     flat = _flat(client.get(URL))
     assert _has_option(flat, "Cass", "Cass")
     assert _has_option(flat, "Burleigh", "Burleigh")
+
+
+# --- packet -----------------------------------------------------------------
+
+
+def _packet(client):
+    """The packet block's HTML, whitespace collapsed."""
+    flat = _flat(client.get(URL))
+    block = flat[flat.index('<section id="packet"') :]
+    return block[: block.index("<section id=", 1)]
+
+
+@pytest.mark.postgres
+def test_packet_lists_each_form_in_order(client, synced):
+    _store(client, "licensed", True)
+    block = _packet(client)
+    assert block.index("License petition") < block.index(
+        "Licensed pet checklist"
+    )
+
+
+@pytest.mark.postgres
+def test_packet_form_with_a_url_is_a_link_and_without_is_plain_text(
+    client, synced
+):
+    _store(client, "licensed", True)
+    block = _packet(client)
+    assert re.search(
+        r'<a [^>]*href="https://alpha.example/petition.pdf"[^>]*target="_blank"'
+        r"[^>]*>\s*License petition",
+        block,
+    )
+    assert re.search(r"<li>\s*Licensed pet checklist\s*</li>", block)
+
+
+@pytest.mark.postgres
+def test_conditional_form_is_hidden_until_its_answer_is_stored(client, synced):
+    assert "Licensed pet checklist" not in _packet(client)
+    _store(client, "licensed", False)
+    assert "Licensed pet checklist" not in _packet(client)
+
+
+@pytest.mark.postgres
+def test_conditional_form_appears_once_the_answer_matches(client, synced):
+    _store(client, "licensed", True)
+    assert "Licensed pet checklist" in _packet(client)
+
+
+@pytest.mark.postgres
+def test_packet_has_no_interview_button_without_a_handoff(client, synced):
+    block = _packet(client)
+    assert "License petition" in block
+    assert "Fill out your forms" not in block
+    assert f"{URL}interview/" not in block
+
+
+# --- the docassemble handoff ------------------------------------------------
+
+
+class _DocassembleClient:
+    """Stands in for docassemble_session_create, recording its payload."""
+
+    def __init__(self, error=None):
+        self.error = error
+        self.calls = []
+
+    def __call__(self, *, interview, variables):
+        self.calls.append({"interview": interview, "variables": variables})
+        if self.error:
+            raise self.error
+        return DA_RESUME
+
+
+@pytest.fixture
+def docassemble(settings, monkeypatch):
+    settings.DOCASSEMBLE_BASE_URL = DA_BASE
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    client = _DocassembleClient()
+    monkeypatch.setattr(topic_flow_views, "docassemble_session_create", client)
+    return client
+
+
+@pytest.mark.postgres
+def test_packet_posts_the_handoff_when_the_flow_has_a_reference(
+    client, synced, docassemble
+):
+    block = _packet(client)
+    assert re.search(
+        rf'<form[^>]*method="post"[^>]*action="{re.escape(INTERVIEW_URL)}"',
+        block,
+    )
+    assert "Fill out your forms" in block
+
+
+@pytest.mark.postgres
+def test_packet_hides_the_handoff_without_docassemble_configured(
+    client, synced, settings
+):
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    block = _packet(client)
+    assert "License petition" in block
+    assert "Fill out your forms" not in block
+    assert INTERVIEW_URL not in block
+
+
+@pytest.mark.postgres
+def test_interview_post_sends_reviewed_answers_under_their_interview_names(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    _store(client, "license_date", "2026-02-01", reviewed=True)
+    _store(client, "pet_kind", "dog", reviewed=True)
+    response = client.post(INTERVIEW_URL)
+    assert response.status_code == 302
+    assert response["Location"] == DA_RESUME
+    assert docassemble.calls == [
+        {
+            "interview": REFERENCE,
+            # pet_kind is reviewed but unmapped, so it stays home.
+            "variables": {
+                "petitioner_name": "Jane Doe",
+                "licensed_on": "2026-02-01",
+            },
+        }
+    ]
+
+
+@pytest.mark.postgres
+def test_interview_post_never_sends_an_unreviewed_answer(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    _store(client, "license_date", "2026-02-01", reviewed=False)
+    client.post(INTERVIEW_URL)
+    assert docassemble.calls[0]["variables"] == {"petitioner_name": "Jane Doe"}
+
+
+@pytest.mark.postgres
+def test_interview_post_with_nothing_to_prefill_goes_to_the_plain_link(
+    client, synced, docassemble
+):
+    _store(client, "pet_kind", "dog", reviewed=True)
+    assert client.post(INTERVIEW_URL)["Location"] == DA_LAUNCH
+    assert docassemble.calls == []
+
+
+@pytest.mark.postgres
+def test_interview_post_falls_back_to_the_plain_link_when_the_session_fails(
+    client, synced, settings, monkeypatch
+):
+    settings.DOCASSEMBLE_BASE_URL = DA_BASE
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    monkeypatch.setattr(
+        topic_flow_views,
+        "docassemble_session_create",
+        _DocassembleClient(error=DocassembleError("down")),
+    )
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    response = client.post(INTERVIEW_URL)
+    assert response.status_code == 302
+    assert response["Location"] == DA_LAUNCH
+
+
+@pytest.mark.postgres
+def test_interview_post_on_a_flow_without_a_reference_is_404(
+    client, synced, docassemble
+):
+    TopicFlow.objects.filter(slug=ROLE).update(interview_reference="")
+    assert client.post(INTERVIEW_URL).status_code == 404
+    assert (
+        client.post(f"/t/{COURT}/{TOPIC}/nope/interview/").status_code == 404
+    )
+    assert docassemble.calls == []
+
+
+@pytest.mark.postgres
+def test_interview_target_reads_the_flow_row_without_its_graph(
+    synced, django_assert_num_queries
+):
+    # The handoff needs two columns of the flow row, not the sections,
+    # pages and forms the page prefetches.
+    with django_assert_num_queries(1):
+        target = topic_flow_views._interview_target(COURT, TOPIC, ROLE)
+    assert target == (REFERENCE, PREFILL)
+
+
+@pytest.mark.postgres
+def test_csrf_failure_on_the_corpus_path_falls_back_to_the_plain_link(
+    synced, docassemble
+):
+    response = Client(enforce_csrf_checks=True).post(INTERVIEW_URL)
+    assert response.status_code == 302
+    assert response["Location"] == DA_LAUNCH
+
+
+@pytest.mark.postgres
+def test_interview_payload_matches_the_content_path(
+    client, synced, docassemble, settings, monkeypatch
+):
+    # DoD item 1, the automated half: the same reviewed answers and the same
+    # handoff reach docassemble as the same payload under both settings.
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    _store(client, "license_date", "2026-02-01", reviewed=True)
+    _store(client, "pet_kind", "dog", reviewed=False)
+    client.post(INTERVIEW_URL)
+
+    settings.TOPIC_FLOW_SOURCE = "content"
+    registry_corpus = Corpus(
+        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
+        sections=[
+            FactGatherSection(
+                kind="fact_gather",
+                id="facts",
+                heading="Facts",
+                questions=[
+                    Question(id="full_name", label="Full name"),
+                    Question(id="license_date", label="When", type="date"),
+                ],
+            ),
+            PacketOutput(
+                kind="output",
+                output_type="packet",
+                id="filing_packet",
+                heading="Your forms",
+                forms=["License petition"],
+                interview_reference=REFERENCE,
+                interview_prefill=PREFILL,
+            ),
+        ],
+    )
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
+    client.post(INTERVIEW_URL)
+
+    from_rows, from_content = docassemble.calls
+    assert from_rows == from_content
+    assert from_rows["variables"] == {
+        "petitioner_name": "Jane Doe",
+        "licensed_on": "2026-02-01",
+    }
+
+
+# --- calendar ---------------------------------------------------------------
+
+
+def _calendar(client):
+    """The calendar block's HTML, whitespace collapsed."""
+    flat = _flat(client.get(URL))
+    block = flat[flat.index('<section id="calendar"') :]
+    return block[: block.index("<section id=", 1)]
+
+
+@pytest.mark.postgres
+def test_calendar_shows_the_hint_until_the_source_date_is_stored(
+    client, synced
+):
+    block = _calendar(client)
+    assert "License renewal due" in block
+    assert "One year after licensing." in block
+    assert "Enter your dates above" in block
+    assert "<time" not in block
+    assert f"{DOWNLOAD_URL}calendar/" not in block
+
+
+@pytest.mark.postgres
+def test_calendar_shows_the_computed_date_and_the_download_link_once_stored(
+    client, synced
+):
+    _store(client, "license_date", "2026-02-01")
+    block = _calendar(client)
+    assert re.search(
+        r'<time datetime="2027-02-01">\s*Monday, February 1, 2027\s*</time>',
+        block,
+    )
+    assert "Enter your dates above" not in block
+    assert f'href="{DOWNLOAD_URL}calendar/"' in block
+    assert "Add to calendar" in block
+
+
+@pytest.mark.postgres
+def test_calendar_download_streams_the_computed_deadline_as_an_event(
+    client, synced
+):
+    _store(client, "license_date", "2026-02-01")
+    response = client.get(f"{DOWNLOAD_URL}calendar/")
+    assert response.status_code == 200
+    assert "text/calendar" in response["Content-Type"]
+    assert (
+        'attachment; filename="calendar.ics"'
+        in response["Content-Disposition"]
+    )
+    cal = vobject.readOne(response.content.decode())
+    assert cal.vevent.summary.value == "License renewal due"
+    assert cal.vevent.description.value == "One year after licensing."
+    assert cal.vevent.dtstart.value == date(2027, 2, 1)
+
+
+@pytest.mark.postgres
+def test_calendar_download_without_dates_is_an_empty_but_valid_calendar(
+    client, synced
+):
+    response = client.get(f"{DOWNLOAD_URL}calendar/")
+    assert response.status_code == 200
+    cal = vobject.readOne(response.content.decode())
+    assert "vevent" not in cal.contents
+
+
+@pytest.mark.postgres
+def test_calendar_download_uid_names_the_flow_and_the_deadline_key(
+    client, synced
+):
+    _store(client, "license_date", "2026-02-01")
+    cal = vobject.readOne(
+        client.get(f"{DOWNLOAD_URL}calendar/").content.decode()
+    )
+    assert (
+        cal.vevent.uid.value
+        == f"{COURT}-{TOPIC}-{ROLE}-calendar-renewal@litigantportal.com"
+    )
+
+
+# --- contacts and resources blocks ------------------------------------------
+
+
+@pytest.mark.postgres
+def test_resources_block_renders_each_court_resource_as_a_link(client, synced):
+    flat = _flat(client.get(URL))
+    block = flat[flat.index('<section id="resources"') :]
+    links = re.findall(r'<a [^>]*href="([^"]+)"[^>]*>', block)
+    assert links[:2] == ["https://help.example", "https://rules.example"]
+    assert re.search(
+        r'<a [^>]*href="https://rules.example"[^>]*target="_blank"', block
+    )
+    assert "Chapter 3." in block
+
+
+@pytest.mark.postgres
+def test_contacts_block_renders_a_card_per_court_contact(client, synced):
+    flat = _flat(client.get(URL))
+    block = flat[flat.index('<section id="contacts"') :]
+    block = block[: block.index('<section id="resources"')]
+    assert block.index("Clerk of Court") < block.index("Legal Aid")
+    assert 'href="tel:555-1234"' in block
+    assert 'href="mailto:help@aid.example"' in block
+    assert "100 Main St" in block
+    assert "Hours: 9-4 M-F" in block
+
+
+@pytest.mark.postgres
+def test_contacts_and_resources_blocks_leave_out_another_courts_rows(
+    client, synced
+):
+    flat = _flat(client.get(URL))
+    assert "Clerk of Court" in flat
+    assert "Beta Clerk" not in flat
+    assert "https://beta.example" not in flat
+
+
+@pytest.mark.postgres
+def test_contacts_block_links_to_the_contacts_download(client, synced):
+    flat = _flat(client.get(URL))
+    assert f'href="{DOWNLOAD_URL}contacts/"' in flat
+    assert "Add to contacts" in flat
+
+
+@pytest.mark.postgres
+def test_contacts_download_streams_a_vcard_per_court_contact(client, synced):
+    response = client.get(f"{DOWNLOAD_URL}contacts/")
+    assert response.status_code == 200
+    assert "text/vcard" in response["Content-Type"]
+    assert (
+        'attachment; filename="contacts.vcf"'
+        in response["Content-Disposition"]
+    )
+    cards = list(vobject.readComponents(response.content.decode()))
+    # The other court's clerk is synced too but is not in this court's file.
+    assert [card.fn.value for card in cards] == ["Clerk of Court", "Legal Aid"]
+    assert cards[0].tel.value == "555-1234"
+    assert "Hours: 9-4 M-F" in cards[0].note.value
+    assert cards[1].email.value == "help@aid.example"
+
+
+@pytest.mark.postgres
+def test_contacts_download_uid_names_the_flow_and_the_contact_key(
+    client, synced
+):
+    cards = list(
+        vobject.readComponents(
+            client.get(f"{DOWNLOAD_URL}contacts/").content.decode()
+        )
+    )
+    assert [card.uid.value for card in cards] == [
+        f"{COURT}-{TOPIC}-{ROLE}-contacts-clerk@litigantportal.com",
+        f"{COURT}-{TOPIC}-{ROLE}-contacts-aid@litigantportal.com",
+    ]
+
+
+@pytest.mark.postgres
+def test_download_of_an_unknown_output_is_404_on_the_corpus_path(
+    client, synced
+):
+    # The content section ids are not ids here, and nor is a section key.
+    for output_id in ("save_contacts", "overview", "nope"):
+        assert client.get(f"{DOWNLOAD_URL}{output_id}/").status_code == 404
+    assert (
+        client.get(f"/t/{COURT}/{TOPIC}/nope/download/contacts/").status_code
+        == 404
+    )
 
 
 # --- 404s and the court check -----------------------------------------------
@@ -456,7 +967,9 @@ def test_content_source_still_uses_the_registry(
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     response = client.get(URL)
     assert response.context["page_title"] == "From YAML"
     flat = _flat(response)
@@ -464,7 +977,7 @@ def test_content_source_still_uses_the_registry(
     # The shared form names itself by the heading on this path too.
     assert re.search(r'<form[^>]*aria-labelledby="facts-heading"', flat)
 
-    monkeypatch.setattr(pages.registry, "get", lambda *a: None)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: None)
     assert client.get(URL).status_code == 404
 
 
@@ -594,7 +1107,9 @@ def test_post_writes_the_same_rows_the_content_path_writes(
             )
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     client.post(URL, answers)
     assert _rows() == from_rows
     assert from_rows == {
