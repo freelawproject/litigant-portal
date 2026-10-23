@@ -17,7 +17,7 @@ from django.shortcuts import redirect, render
 from django.template.loader import get_template
 from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
-from django.utils.http import url_has_allowed_host_and_scheme, urlencode
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView, UpdateView
@@ -93,24 +93,6 @@ def chat_view(request):
         "pages/chat/index.html",
         {"briefcase_groups": briefcase_answers(request)},
     )
-
-
-def deep_link(request, court, topic):
-    """Deep-link entry: /t/{court}/{topic}/ → chat with both pre-set.
-
-    Validates the pair against the prompt registries. Unknown court or
-    topic returns 404. On success, 302 to /chat/?topic=X&court=Y so the
-    existing chat page handles the heavy lifting.
-    """
-    from litigant_portal.prompts import is_known_court, is_known_topic
-
-    if not is_known_topic(topic):
-        raise Http404(f"Topic '{topic}' not registered")
-    if not is_known_court(court):
-        raise Http404(f"Court '{court}' not registered")
-
-    query = urlencode({"topic": topic.lower(), "court": court.lower()})
-    return redirect(f"{reverse('pages:chat')}?{query}")
 
 
 def topic_flow(request, court, topic, role):
