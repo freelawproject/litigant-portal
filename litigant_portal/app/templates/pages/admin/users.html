@@ -1,9 +1,28 @@
 {% load i18n %}
 
+{% trans "Email" as email_label %}
+{% trans "Password" as password_label %}
+{% trans "New password" as new_password_label %}
+{% trans "Confirm password" as confirm_password_label %}
+{% trans "Add an account" as add_title %}
+{% trans "Set a new password" as password_title %}
+{% trans "Delete this account?" as delete_title %}
+{% trans "Share it with them directly. They can sign in with it right away." as add_password_help %}
+{% trans "Share it with them directly. Their old password stops working." as reset_password_help %}
+
 <div class="max-w-4xl">
-  <div class="mb-4">
-    <h3 class="text-base font-semibold text-greyscale-900">{% trans "Users" %}</h3>
-    <p class="text-sm text-greyscale-500">{% trans "All registered users." %}</p>
+  <div class="mb-4 flex items-start justify-between gap-4">
+    <div>
+      <h3 class="text-base font-semibold text-greyscale-900">{% trans "Users" %}</h3>
+      {% if perms.app.manage_site %}
+        <p class="text-sm text-greyscale-500">{% trans "All registered users." %}</p>
+      {% else %}
+        <p class="text-sm text-greyscale-500">{% trans "Everyone who signs in to the app here." %}</p>
+      {% endif %}
+    </div>
+    {% if features.user_admin and perms.app.manage_app_users %}
+      <c-atoms.button size="sm" x-on:click="openUserCreate">{% trans "Add account" %}</c-atoms.button>
+    {% endif %}
   </div>
 
   {# Live email filter — debounced, refetches as you type. #}
@@ -17,32 +36,41 @@
       <thead>
         <tr class="border-b border-greyscale-200 text-left text-xs font-semibold uppercase tracking-wider text-greyscale-400">
           <th class="px-4 py-2.5">{% trans "Email" %}</th>
-          <th class="px-4 py-2.5">{% trans "Name" %}</th>
           <th class="px-4 py-2.5">{% trans "Joined" %}</th>
-          <th class="px-4 py-2.5">{% trans "Admin" %}</th>
+          {% if perms.app.manage_site %}
+            <th class="px-4 py-2.5">{% trans "Admin" %}</th>
+          {% endif %}
           {% if perms.app.manage_developers %}
             <th class="px-4 py-2.5">{% trans "Developer" %}</th>
+          {% endif %}
+          {% if features.user_admin and perms.app.manage_app_users %}
+            <th class="px-4 py-2.5">{% trans "User admin" %}</th>
+            <th class="px-4 py-2.5"><span class="sr-only">{% trans "Actions" %}</span></th>
           {% endif %}
         </tr>
       </thead>
       <tbody>
         <template x-for="user in users" :key="user.id">
           <tr class="border-b border-greyscale-100 last:border-b-0">
-            <td class="px-4 py-2.5 text-greyscale-900" x-text="user.email"></td>
-            <td class="px-4 py-2.5 text-greyscale-600" x-text="user.name"></td>
-            <td class="px-4 py-2.5 text-greyscale-500" x-text="user.joined"></td>
-            {# Membership in the Admins group #}
-            <td class="px-4 py-2.5">
-              <button type="button"
-                      x-bind:data-user-id="user.id"
-                      x-on:click="toggleUserAdmin"
-                      x-bind:class="user.adminToggleClass"
-                      x-bind:disabled="user.adminToggleDisabled"
-                      class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-default disabled:pointer-events-none">
-                <span x-show="user.is_admin">{% trans "On" %}</span>
-                <span x-show="user.notAdmin">{% trans "Off" %}</span>
-              </button>
+            <td class="px-4 py-2.5 text-greyscale-900">
+              <span x-text="user.email"></span>
+              <span x-show="user.notActive" class="ml-2 rounded-full bg-greyscale-100 px-2 py-0.5 text-xs text-greyscale-600">{% trans "Disabled" %}</span>
             </td>
+            <td class="px-4 py-2.5 text-greyscale-500" x-text="user.joined"></td>
+            {% if perms.app.manage_site %}
+              {# Membership in the Admins group #}
+              <td class="px-4 py-2.5">
+                <button type="button"
+                        x-bind:data-user-id="user.id"
+                        x-on:click="toggleUserAdmin"
+                        x-bind:class="user.adminToggleClass"
+                        x-bind:disabled="user.adminToggleDisabled"
+                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-default disabled:pointer-events-none">
+                  <span x-show="user.is_admin">{% trans "On" %}</span>
+                  <span x-show="user.notAdmin">{% trans "Off" %}</span>
+                </button>
+              </td>
+            {% endif %}
             {% if perms.app.manage_developers %}
               <td class="px-4 py-2.5">
                 <button type="button"
@@ -54,6 +82,28 @@
                   <span x-show="user.is_developer">{% trans "On" %}</span>
                   <span x-show="user.notDeveloper">{% trans "Off" %}</span>
                 </button>
+              </td>
+            {% endif %}
+            {% if features.user_admin and perms.app.manage_app_users %}
+              {# Membership in the User admins group #}
+              <td class="px-4 py-2.5">
+                <button type="button"
+                        x-bind:data-user-id="user.id"
+                        x-on:click="toggleUserUserAdmin"
+                        x-bind:class="user.userAdminToggleClass"
+                        x-bind:disabled="user.userAdminToggleDisabled"
+                        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium cursor-pointer transition-colors disabled:opacity-60 disabled:cursor-default disabled:pointer-events-none">
+                  <span x-show="user.is_user_admin">{% trans "On" %}</span>
+                  <span x-show="user.notUserAdmin">{% trans "Off" %}</span>
+                </button>
+              </td>
+              <td class="px-4 py-2.5">
+                <div x-show="user.can_manage" class="flex justify-end gap-1">
+                  <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserPassword">{% trans "Password" %}</c-atoms.button>
+                  <c-atoms.button variant="ghost" size="sm" x-show="user.canDisable" x-bind:data-user-id="user.id" x-on:click="disableUser">{% trans "Disable" %}</c-atoms.button>
+                  <c-atoms.button variant="ghost" size="sm" x-show="user.canEnable" x-bind:data-user-id="user.id" x-on:click="enableUser">{% trans "Enable" %}</c-atoms.button>
+                  <c-atoms.button variant="ghost" size="sm" x-show="user.can_lock_out" x-bind:data-user-id="user.id" x-on:click="openUserDelete">{% trans "Delete" %}</c-atoms.button>
+                </div>
               </td>
             {% endif %}
           </tr>
@@ -83,4 +133,48 @@
       </button>
     </div>
   </div>
+  <p x-show="usersActionError" x-cloak x-text="usersActionError" class="mt-3 text-sm text-red-600" role="alert"></p>
+
+  {% if features.user_admin and perms.app.manage_app_users %}
+    {# The pilots send no email, so the admin sets every password (#1043). #}
+    <c-molecules.dialog id="user-create-dialog" title="{{ add_title }}" x-ref="userCreateDialog">
+      <form x-on:submit.prevent="createUser" class="space-y-4">
+        {% csrf_token %}
+        <c-molecules.form-field label="{{ email_label }}" type="email" name="email" id="user-create-email" autocomplete="off" required />
+        <c-molecules.form-field label="{{ password_label }}" type="password" name="password" id="user-create-password" autocomplete="new-password" help_text="{{ add_password_help }}" required />
+        <c-molecules.form-field label="{{ confirm_password_label }}" type="password" name="password_confirm" id="user-create-password-confirm" autocomplete="new-password" required />
+        <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
+        <div class="flex justify-end gap-2">
+          <c-atoms.button variant="outline" x-on:click="closeUserDialogs">{% trans "Cancel" %}</c-atoms.button>
+          <c-atoms.button type="submit">{% trans "Add account" %}</c-atoms.button>
+        </div>
+      </form>
+    </c-molecules.dialog>
+
+    <c-molecules.dialog id="user-password-dialog" title="{{ password_title }}" x-ref="userPasswordDialog">
+      <form x-on:submit.prevent="setUserPassword" class="space-y-4">
+        {% csrf_token %}
+        <p class="text-sm text-greyscale-600" x-text="userDialogEmail"></p>
+        <c-molecules.form-field label="{{ new_password_label }}" type="password" name="password" id="user-password" autocomplete="new-password" help_text="{{ reset_password_help }}" required />
+        <c-molecules.form-field label="{{ confirm_password_label }}" type="password" name="password_confirm" id="user-password-confirm" autocomplete="new-password" required />
+        <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
+        <div class="flex justify-end gap-2">
+          <c-atoms.button variant="outline" x-on:click="closeUserDialogs">{% trans "Cancel" %}</c-atoms.button>
+          <c-atoms.button type="submit">{% trans "Set password" %}</c-atoms.button>
+        </div>
+      </form>
+    </c-molecules.dialog>
+
+    <c-molecules.dialog id="user-delete-dialog" title="{{ delete_title }}" x-ref="userDeleteDialog">
+      <div class="space-y-4">
+        <p class="text-sm font-medium text-greyscale-900" x-text="userDialogEmail"></p>
+        <p class="text-sm text-greyscale-600">{% trans "This permanently deletes the account and everything it saved: chats, uploads, and answers. To stop it signing in but keep its history, disable it instead." %}</p>
+        <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
+        <div class="flex justify-end gap-2">
+          <c-atoms.button variant="outline" x-on:click="closeUserDialogs" autofocus>{% trans "Cancel" %}</c-atoms.button>
+          <c-atoms.button variant="danger" x-on:click="deleteUser">{% trans "Delete account" %}</c-atoms.button>
+        </div>
+      </div>
+    </c-molecules.dialog>
+  {% endif %}
 </div>

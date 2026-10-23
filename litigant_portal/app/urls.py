@@ -132,6 +132,36 @@ admin_api_patterns = [
     ),
     path("users/", admin_views.user_list_view, name="user_list"),
     path(
+        "users/create/",
+        admin_views.user_create_view,
+        name="user_create",
+    ),
+    path(
+        "users/<int:user_id>/password/",
+        admin_views.user_password_view,
+        name="user_password",
+    ),
+    path(
+        "users/<int:user_id>/disable/",
+        admin_views.user_disable_view,
+        name="user_disable",
+    ),
+    path(
+        "users/<int:user_id>/enable/",
+        admin_views.user_enable_view,
+        name="user_enable",
+    ),
+    path(
+        "users/<int:user_id>/delete/",
+        admin_views.user_delete_view,
+        name="user_delete",
+    ),
+    path(
+        "users/<int:user_id>/user-admin/toggle/",
+        admin_views.user_user_admin_toggle_view,
+        name="user_user_admin_toggle",
+    ),
+    path(
         "users/<int:user_id>/admin/toggle/",
         admin_views.user_admin_toggle_view,
         name="user_admin_toggle",

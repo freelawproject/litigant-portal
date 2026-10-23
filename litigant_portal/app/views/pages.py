@@ -5,8 +5,9 @@ from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.exceptions import PermissionDenied
 from django.http import (
     Http404,
     HttpRequest,
@@ -60,6 +61,7 @@ from litigant_portal.app.topic_flow.renderer import (
 )
 from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
+    admin_tabs,
     briefcase_answers,
     topic_flow_answers,
     topic_flow_row_answers,
@@ -845,9 +847,11 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
 
 
 @login_required
-@permission_required("app.manage_site", raise_exception=True)
 def admin(request: HttpRequest) -> HttpResponse:
-    """Admin dashboard shell."""
+    """Admin dashboard shell. Its tabs come from ``admin_tabs`` in the
+    context processor, so a court admin gets the Users tab alone."""
+    if not admin_tabs(request.user):
+        raise PermissionDenied
     return render(
         request,
         "pages/admin/index.html",

@@ -67,6 +67,7 @@
           <li><c-atoms.link href="#toast-container" variant="unstyled">Toast Container</c-atoms.link></li>
           <li><c-atoms.link href="#user-menu" variant="unstyled">User Menu</c-atoms.link></li>
           <li><c-atoms.link href="#empty-state" variant="unstyled">Empty State</c-atoms.link></li>
+          <li><c-atoms.link href="#dialog" variant="unstyled">Dialog</c-atoms.link></li>
           <li><c-atoms.link href="#site-menu" variant="unstyled">Site Menu</c-atoms.link></li>
           <li><c-atoms.link href="#selector-card" variant="unstyled">Selector Card</c-atoms.link></li>
           <li><c-atoms.link href="#side-nav-group" variant="unstyled">Side Nav Group</c-atoms.link></li>
@@ -1015,6 +1016,19 @@
           <p class="text-greyscale-600 mb-6">What fills a site frame region before the visitor has anything to put there: an icon, one sentence on what will collect there, and an optional action. Props: <code>icon</code>, <code>text</code>, <code>action_label</code>, <code>action_href</code>.</p>
           <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm bg-greyscale-25">
             <c-molecules.empty-state icon="chat-bubble-left-right" text="Your chats will show here." action_label="Start a chat" action_href="#empty-state" />
+          </div>
+        </section>
+        <section id="dialog" class="mb-12" aria-labelledby="dialog-heading">
+          <h3 id="dialog-heading" class="mb-4">Dialog</h3>
+          <p class="text-greyscale-600 mb-6">A modal over the page: a native <code>&lt;dialog&gt;</code>, so <code>showModal()</code> traps focus, makes the page behind inert, and closes on Escape. Props: <code>id</code> (the heading gets <code>{id}-title</code> and labels the dialog) and <code>title</code>; the slot holds the body and its buttons. Open it from Alpine with an <code>x-ref</code> passed through. Below, it renders open and in place rather than as a modal.</p>
+          <div class="border border-greyscale-200 rounded-lg p-4 mb-6">
+            <c-molecules.dialog id="dialog-sample" title="Delete this account?" open class="static">
+              <p class="text-sm text-greyscale-600">This permanently deletes the account and everything it saved.</p>
+              <div class="mt-4 flex justify-end gap-2">
+                <c-atoms.button variant="outline">Cancel</c-atoms.button>
+                <c-atoms.button variant="danger">Delete account</c-atoms.button>
+              </div>
+            </c-molecules.dialog>
           </div>
         </section>
         <section id="site-menu" class="mb-12" aria-labelledby="site-menu-heading">

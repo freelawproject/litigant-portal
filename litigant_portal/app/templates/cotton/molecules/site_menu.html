@@ -21,7 +21,7 @@
             {% trans "Profile" %}
           </c-atoms.link>
         </li>
-        {% if perms.app.manage_site %}
+        {% if admin_tabs %}
           <li class="sm:hidden">
             <c-atoms.link href="{% url 'pages:admin_dashboard' %}" variant="unstyled" class="site-menu-item">
               <c-atoms.icon name="wrench-screwdriver" class="w-5 h-5 text-greyscale-500" />

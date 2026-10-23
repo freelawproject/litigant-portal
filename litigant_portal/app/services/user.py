@@ -1,10 +1,15 @@
 import logging
 
+from allauth.account.models import EmailAddress
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 
 from litigant_portal.app.models import UserIdentity, UserUpload
-from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
+from litigant_portal.app.permissions import (
+    ADMINS_GROUP,
+    DEVELOPERS_GROUP,
+    USER_ADMINS_GROUP,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +32,51 @@ def user_admin_toggle(*, user: User) -> bool:
 def user_developer_toggle(*, user: User) -> bool:
     """Flip a user's membership in the Developers group."""
     return _group_toggle(user=user, name=DEVELOPERS_GROUP)
+
+
+def user_user_admin_toggle(*, user: User) -> bool:
+    """Flip a user's membership in the User admins group."""
+    return _group_toggle(user=user, name=USER_ADMINS_GROUP)
+
+
+@transaction.atomic
+def user_create(*, email: str, password: str) -> User:
+    """Create an app user with a password an admin set.
+
+    The pilots send no email, so there's no invite: the account can log in
+    as soon as it exists, and its address is recorded as verified the way
+    ``bootstrap_superuser`` does it.
+    """
+    user = User.objects.create_user(
+        username=email, email=email, password=password
+    )
+    EmailAddress.objects.create(
+        user=user, email=email, verified=True, primary=True
+    )
+    return user
+
+
+def user_password_set(*, user: User, password: str) -> None:
+    """Set a new password for an account."""
+    user.set_password(password)
+    user.save(update_fields=["password"])
+
+
+def user_active_set(*, user: User, active: bool) -> None:
+    """Disable or re-enable an account. A disabled account can't log in,
+    and everything it owns stays."""
+    user.is_active = active
+    user.save(update_fields=["is_active"])
+
+
+@transaction.atomic
+def user_delete(*, user: User) -> None:
+    """Delete an account and everything it owns, stored upload files
+    included. Permanent."""
+    identity = UserIdentity.objects.filter(user=user).first()
+    if identity is not None:
+        user_identity_reset(identity=identity)
+    user.delete()
 
 
 def user_identity_ensure(*, user) -> UserIdentity:

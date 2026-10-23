@@ -62,7 +62,7 @@ def test_only_the_exact_value_true_turns_pilot_on(raw, expected):
 PILOT_TOOLS = {
     "build_stamp",
     "start_over",
-    "court_user_admin",
+    "user_admin",
     "flow_links",
     "style_guide",
     "citation_chips",

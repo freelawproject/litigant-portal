@@ -37,7 +37,7 @@ class Features:
     # Pilot tools.
     build_stamp: bool
     start_over: bool
-    court_user_admin: bool
+    user_admin: bool
     flow_links: bool
     style_guide: bool
     citation_chips: bool
@@ -113,7 +113,7 @@ def features_for(env: str, pilot: bool, *, feedback_email: str) -> Features:
         stamp_label=_stamp_label(env, pilot),
         build_stamp=pilot_tools,
         start_over=pilot_tools,
-        court_user_admin=pilot_tools,
+        user_admin=pilot_tools,
         flow_links=pilot_tools,
         style_guide=pilot_tools,
         citation_chips=pilot_tools,

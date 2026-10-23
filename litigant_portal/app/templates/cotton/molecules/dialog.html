@@ -1,0 +1,7 @@
+<c-vars id="" title="" />
+{# A native modal <dialog>: showModal() traps focus, makes the page behind inert, and closes on Escape, so none of that is hand-rolled. #}
+{# Open it from Alpine with this.$refs.<ref>.showModal(); pass x-ref through attrs. #}
+<dialog id="{{ id }}" aria-labelledby="{{ id }}-title" class="m-auto w-[min(28rem,calc(100%-2rem))] rounded-lg border border-greyscale-200 bg-white p-6 text-left shadow-xl backdrop:bg-black/30 {{ class }}" {{ attrs }}>
+  <h2 id="{{ id }}-title" class="text-lg font-semibold text-greyscale-900">{{ title }}</h2>
+  <div class="mt-4">{{ slot }}</div>
+</dialog>

@@ -57,6 +57,7 @@ class Site(BaseModel):
         permissions = [
             ("manage_site", "Can manage the site"),
             ("manage_developers", "Can manage developer access"),
+            ("manage_app_users", "Can manage the app users' accounts"),
         ]
 
 
