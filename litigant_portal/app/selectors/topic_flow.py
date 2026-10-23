@@ -98,6 +98,23 @@ def variable_answer_map(
     return dict(answers.values_list("variable__name", "value"))
 
 
+def variable_answer_cleared_names(*, identity, names: list[str]) -> list:
+    """The given names the identity has cleared (a row with value None).
+
+    The complement ``variable_answer_map`` leaves out: the guided page
+    shows a glossary default only for a variable never answered, and a
+    cleared one must render blank rather than offer the default again.
+    """
+    return sorted(
+        VariableAnswer.objects.filter(
+            identity=identity,
+            variable__name__in=names,
+            variable__in_schema=True,
+            value__isnull=True,
+        ).values_list("variable__name", flat=True)
+    )
+
+
 def variable_answer_unreviewed_names(*, identity, names: list[str]) -> list:
     """The given names whose answer no human has confirmed yet, sorted.
 

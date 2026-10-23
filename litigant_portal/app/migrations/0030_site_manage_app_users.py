@@ -3,7 +3,7 @@ from django.db import migrations
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("app", "0028_contact_address_hours"),
+        ("app", "0029_variable_is_private"),
     ]
 
     operations = [

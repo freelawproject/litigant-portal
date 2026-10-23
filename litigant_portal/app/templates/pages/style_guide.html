@@ -860,6 +860,7 @@
           <div class="space-y-4 max-w-md mb-6">
             <c-molecules.form-field label="Email address" type="email" name="email" id="demo_email" placeholder="you@example.com" help_text="We'll never share your email" />
             <c-molecules.form-field label="With error" type="text" name="error_demo" id="demo_error" value="Bad value" :errors="['This field is required']" />
+            <c-molecules.form-field label="Number, any step" type="number" name="number_demo" id="demo_number" value="2.5" step="any" help_text="step=&quot;any&quot; lets the browser accept decimals" />
           </div>
           <h4 class="mt-8">Props</h4>
           <div class="bg-greyscale-100 rounded-xl p-4 my-3">
