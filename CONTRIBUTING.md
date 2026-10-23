@@ -61,7 +61,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/): `ty
 
 **First-time setup:** `make install` (installs `pre-commit` and other dev tools via `uv sync --extra dev`) — required before `make lint` will run.
 
-`make lint` and `make test` before pushing (`make pre-commit` runs both; pre-commit hooks also run on every commit). `make test` execs into the Django container, so `make docker` needs to be running first. What "done" actually requires — testing philosophy, WCAG/CSP/progressive-enhancement gates, content style, component discipline — lives in [docs/wiki/definition-of-done.md](docs/wiki/definition-of-done.md); that's the canonical bar for every PR and issue.
+`make lint` and `make test` before pushing (`make pre-commit` runs both; pre-commit hooks also run on every commit). `make test` execs into the Django container, so `make docker` needs to be running first. CI also measures test coverage in `tests.yml` and fails the job below the floor set there; `make test` does not measure it, so a green local run can still fail CI on coverage. The reasoning behind the floor is in the definition of done. What "done" actually requires — testing philosophy, WCAG/CSP/progressive-enhancement gates, content style, component discipline — lives in [docs/wiki/definition-of-done.md](docs/wiki/definition-of-done.md); that's the canonical bar for every PR and issue.
 
 ## Dev tooling runs on macOS and Linux
 
