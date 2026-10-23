@@ -33,6 +33,7 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.topic_flow import (
+    topic_flow_card_list,
     topic_flow_find,
     topic_flow_list,
 )
@@ -86,6 +87,50 @@ class TopicFlowSelectorTests(TestCase):
         self.assertIsNone(
             topic_flow_find(topic_slug="eviction", flow_slug="tenant")
         )
+
+    def test_card_list_gives_each_flow_its_own_guided_page_card(self):
+        topic = Topic.objects.create(
+            slug="eviction",
+            title="Housing & Eviction",
+            description="Help with an eviction case",
+            icon="home",
+        )
+        for order, (slug, name) in enumerate(
+            (("tenant", "Responding"), ("landlord", "Filing"))
+        ):
+            TopicFlow.objects.create(
+                topic=topic, slug=slug, name=name, enabled=True, order=order
+            )
+        self.assertEqual(
+            topic_flow_card_list(),
+            [
+                {
+                    "title": "Responding",
+                    "description": "Help with an eviction case",
+                    "icon": "home",
+                    "url": "/t/franklin-county-oh/eviction/tenant/",
+                },
+                {
+                    "title": "Filing",
+                    "description": "Help with an eviction case",
+                    "icon": "home",
+                    "url": "/t/franklin-county-oh/eviction/landlord/",
+                },
+            ],
+        )
+
+    def test_card_list_leaves_out_disabled_flows(self):
+        flow = _eviction_flow()
+        flow.enabled = False
+        flow.save()
+        self.assertEqual(topic_flow_card_list(), [])
+
+    def test_card_list_leaves_out_a_flow_with_no_guided_page(self):
+        topic = Topic.objects.create(slug="no-guided-page", title="Orphan")
+        TopicFlow.objects.create(
+            topic=topic, slug="tenant", name="Orphan", enabled=True
+        )
+        self.assertEqual(topic_flow_card_list(), [])
 
 
 @pytest.mark.postgres

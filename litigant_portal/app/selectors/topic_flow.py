@@ -1,4 +1,5 @@
 from django.core.cache import cache
+from django.urls import reverse
 
 from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
 from litigant_portal.app.models import (
@@ -7,6 +8,7 @@ from litigant_portal.app.models import (
     TopicFlowInterviewVariable,
     VariableAnswer,
 )
+from litigant_portal.app.topic_flow.registry import topic_flow_track_find
 
 
 def topic_list() -> list[Topic]:
@@ -30,6 +32,33 @@ def topic_flow_list() -> list[TopicFlow]:
         .select_related("topic")
         .order_by("topic__order", "topic__created_at", "order", "created_at")
     )
+
+
+def topic_flow_card_list() -> list[dict]:
+    """``{title, description, icon, url}`` per enabled flow with a guided
+    page, in ``topic_flow_list`` order: the home grid's cards (#1068).
+
+    One card per flow, however many a topic has, so merging a topic's
+    flows into one (#930) or splitting one later changes the cards with
+    no code change. A flow without a guided page gets no card.
+    """
+    cards = []
+    for flow in topic_flow_list():
+        track = topic_flow_track_find(flow)
+        if track is None:
+            continue
+        cards.append(
+            {
+                "title": flow.name,
+                "description": flow.topic.description,
+                "icon": flow.topic.icon,
+                "url": reverse(
+                    "pages:topic_flow",
+                    kwargs={k: track[k] for k in ("court", "topic", "role")},
+                ),
+            }
+        )
+    return cards
 
 
 def topic_flow_find(*, topic_slug: str, flow_slug: str) -> TopicFlow | None:

@@ -17,6 +17,7 @@ from django.test import (
 )
 
 from litigant_portal.app.context_processors import toast_messages
+from litigant_portal.app.models import Topic, TopicFlow
 
 User = get_user_model()
 
@@ -49,6 +50,19 @@ class HomePageTests(TestCase):
         """Home page should not include the chat Alpine component."""
         response = self.client.get("/")
         self.assertNotContains(response, "homePage")
+
+    def test_topic_cards_open_the_guided_flow_not_the_chat(self):
+        """Cards are the no-AI way in (#1068), so each one opens a guided
+        flow page rather than the chat."""
+        topic = Topic.objects.create(slug="eviction", title="Eviction")
+        TopicFlow.objects.create(
+            topic=topic, slug="tenant", name="Responding", enabled=True
+        )
+        response = self.client.get("/")
+        self.assertEqual(
+            [card["url"] for card in response.context["topic_cards"]],
+            ["/t/franklin-county-oh/eviction/tenant/"],
+        )
 
 
 @pytest.mark.postgres
