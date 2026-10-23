@@ -83,9 +83,9 @@ def topic_flow_download(request, court, topic, role, output_id):
 def _row_download(request, court, topic, role, output_id):
     """The ``calendar`` block as a ``.ics`` from the flow's deadline rows and
     the visitor's stored answers, or the ``contacts`` block as a ``.vcf``
-    from the court's Contact rows. Any other id is 404, as a non-downloadable
-    section is on the content path. The UID segment is the block name where
-    the section id was."""
+    from the URL's court's Contact rows. Any other id is 404, as a
+    non-downloadable section is on the content path. The UID segment is the
+    block name where the section id was."""
     flow = topic_flow_row_get(court, topic, role, graph=False)
     uid_prefix = f"{court}-{topic}-{role}-{output_id}"
     if output_id == "calendar":
@@ -100,7 +100,7 @@ def _row_download(request, court, topic, role, output_id):
         )
     if output_id == "contacts":
         return vcf_artifact(
-            contact_dicts(contact_list(), id_attr="ref"),
+            contact_dicts(contact_list(court=court), id_attr="ref"),
             uid_prefix=uid_prefix,
             filename="contacts.vcf",
         )

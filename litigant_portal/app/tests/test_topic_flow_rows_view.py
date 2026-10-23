@@ -64,6 +64,14 @@ CONTACTS = [
     },
     {"id": "aid", "name": "Legal Aid", "email": "help@aid.example"},
 ]
+# A second court's rows, synced alongside (CORPUS_COURT unset); the alpha
+# page and its download must leave them out.
+BETA_CONTACTS = [
+    {"id": "beta-clerk", "name": "Beta Clerk", "phone": "555-9999"}
+]
+BETA_RESOURCES = [
+    {"id": "beta-help", "label": "Beta Help", "url": "https://beta.example"}
+]
 RESOURCES = [
     {"id": "self-help", "label": "Self Help", "url": "https://help.example"},
     {
@@ -99,8 +107,8 @@ ANCHORS = [
 
 def _corpus():
     """One court with two contacts and two resources, one topic, an enabled
-    flow with an authored layout and a disabled sibling. ``first_name`` is
-    private."""
+    flow with an authored layout and a disabled sibling, plus a second court
+    with a contact and a resource of its own. ``first_name`` is private."""
     variables = {
         # Required and private, as in the real glossary.
         "first_name": {
@@ -201,7 +209,13 @@ def _corpus():
                     "court_name": "Alpha District Court",
                     "contacts": CONTACTS,
                     "resources": RESOURCES,
-                }
+                },
+                "beta": {
+                    "name": "Beta",
+                    "court_name": "Beta Municipal Court",
+                    "contacts": BETA_CONTACTS,
+                    "resources": BETA_RESOURCES,
+                },
             },
             "topics": {(COURT, TOPIC): {"title": "Pets"}},
             "flows": {
@@ -835,6 +849,16 @@ def test_contacts_block_renders_a_card_per_court_contact(client, synced):
 
 
 @pytest.mark.postgres
+def test_contacts_and_resources_blocks_leave_out_another_courts_rows(
+    client, synced
+):
+    flat = _flat(client.get(URL))
+    assert "Clerk of Court" in flat
+    assert "Beta Clerk" not in flat
+    assert "https://beta.example" not in flat
+
+
+@pytest.mark.postgres
 def test_contacts_block_links_to_the_contacts_download(client, synced):
     flat = _flat(client.get(URL))
     assert f'href="{DOWNLOAD_URL}contacts/"' in flat
@@ -851,6 +875,7 @@ def test_contacts_download_streams_a_vcard_per_court_contact(client, synced):
         in response["Content-Disposition"]
     )
     cards = list(vobject.readComponents(response.content.decode()))
+    # The other court's clerk is synced too but is not in this court's file.
     assert [card.fn.value for card in cards] == ["Clerk of Court", "Legal Aid"]
     assert cards[0].tel.value == "555-1234"
     assert "Hours: 9-4 M-F" in cards[0].note.value
