@@ -8,6 +8,7 @@ from django.db import transaction
 
 from litigant_portal.app.cache import (
     CONTACT_LIST_CACHE_KEY,
+    CORPUS_TOPIC_KEYS_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
     SITE_CACHE_KEY,
     TOPIC_LIST_CACHE_KEY,
@@ -194,16 +195,17 @@ def _reject_shared_names(courts: list[CourtSchema]) -> None:
 
 
 def _upsert_sources(model, entries, *, natural: str) -> list[str]:
-    """Upsert ``entries`` by key. A row whose key no entry claims (a
-    changed id, or a keyless row migrated before keys existed or
-    admin-created) is adopted by its ``natural`` field. Returns the keys
-    written, in display order."""
+    """Upsert ``(court, entry)`` pairs by key. A row whose key no entry
+    claims (a changed id, or a keyless row migrated before keys existed or
+    admin-created) is adopted by its ``natural`` field. Each row is stamped
+    with the court that authored it, so the guided page can pick its own
+    court's rows. Returns the keys written, in display order."""
     rows = list(model.objects.all())
-    authored = {entry.id for entry in entries}
+    authored = {entry.id for _court, entry in entries}
     by_key = {r.key: r for r in rows if r.key}
     unclaimed = {getattr(r, natural): r for r in rows if r.key not in authored}
     keys: list[str] = []
-    for order, entry in enumerate(entries):
+    for order, (court, entry) in enumerate(entries):
         row = (
             by_key.get(entry.id)
             or unclaimed.pop(getattr(entry, natural), None)
@@ -211,28 +213,34 @@ def _upsert_sources(model, entries, *, natural: str) -> list[str]:
         )
         _apply(row, entry, exclude={"id"})
         row.key = entry.id
+        row.court = court
         row.order = order
         row.save()
         keys.append(entry.id)
     return keys
 
 
-def _sync_contacts(courts: list[CourtSchema], *, strict: bool) -> None:
-    """Upsert every court's contacts and resources by key."""
-    _reject_shared_names(courts)
+def _sync_contacts(courts: dict[str, CourtSchema], *, strict: bool) -> None:
+    """Upsert every court's contacts and resources by key, each stamped
+    with its court's slug."""
+    _reject_shared_names(list(courts.values()))
     _warn_removed_keys(
         "court contacts and resources",
         [
             *Contact.objects.values_list("key", flat=True),
             *Resource.objects.values_list("key", flat=True),
         ],
-        [i for schema in courts for i in schema.source_ids],
+        [i for schema in courts.values() for i in schema.source_ids],
     )
     contact_keys = _upsert_sources(
-        Contact, [c for s in courts for c in s.contacts], natural="name"
+        Contact,
+        [(slug, c) for slug, s in courts.items() for c in s.contacts],
+        natural="name",
     )
     resource_keys = _upsert_sources(
-        Resource, [r for s in courts for r in s.resources], natural="label"
+        Resource,
+        [(slug, r) for slug, s in courts.items() for r in s.resources],
+        natural="label",
     )
     if strict:
         Contact.objects.exclude(key__in=contact_keys).delete()
@@ -336,6 +344,7 @@ def _sync_flow(
     TOPIC_LIST_CACHE_KEY,
     CONTACT_LIST_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
+    CORPUS_TOPIC_KEYS_CACHE_KEY,
 )
 def corpus_sync(
     *, court: str | None = None, strict: bool = False
@@ -376,7 +385,7 @@ def corpus_sync(
             _sync_site(court, corpus.courts[court])
         in_scope = [court] if court is not None else sorted(corpus.courts)
         _sync_contacts(
-            [corpus.courts[slug] for slug in in_scope], strict=strict
+            {slug: corpus.courts[slug] for slug in in_scope}, strict=strict
         )
         if strict:
             for topic_slug, topic in topics.items():

@@ -9,8 +9,13 @@ nothing here touches the database or the request.
 The flow's ``layout`` orders the page. A section key renders as an info
 section anchored on that key, so chat citations can link to it. The
 ``interview`` block renders one fact-gather form per interview page, anchored
-``interview-1``, ``interview-2``, ... in page order; the other block names
-(``LAYOUT_BLOCKS``) render as placeholders until #1017 fills them in.
+``interview-1``, ``interview-2``, ... in page order. The ``packet`` block
+lists the flow's forms whose condition holds against the stored answers,
+with the docassemble handoff when the flow has one and the environment
+serves it; the ``calendar`` block its deadlines, each computed from the
+stored answer to its source variable; the ``contacts`` and ``resources``
+blocks list the court's whole ``Contact`` and ``Resource`` lists in stored
+order. A block with nothing to show is skipped.
 
 A gated variable (``asked_when``) is asked only while the stored answer to
 its gate matches, the same rule the review-facts tool applies. There is no
@@ -27,9 +32,17 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.models.topic_flow import condition_holds
 from litigant_portal.app.selectors.corpus import default_layout
+from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.services.topic_flow import variable_value_validate
+from litigant_portal.app.topic_flow.contacts import contact_dicts
+from litigant_portal.app.topic_flow.deadlines import (
+    deadline_date,
+    deadline_display,
+)
 from litigant_portal.app.topic_flow.renderer import RenderedSection
+from litigant_portal.app.topic_flow.resources import resource_dicts
 from litigant_portal.app.topic_flow.validation import (
     INVALID_CHOICE_ERROR,
     INVALID_DATE_ERROR,
@@ -70,7 +83,6 @@ BLOCK_HEADINGS = {
     "resources": _("Resources"),
 }
 
-PLACEHOLDER_TEXT = _("This part of the page is coming soon.")
 GATE_HINT = _(
     "Depending on your answer, more questions may appear after you save."
 )
@@ -110,16 +122,60 @@ def private_names(pages) -> set[str]:
     }
 
 
-def flow_variable_names(pages) -> list[str]:
-    """Every variable the pages place, plus the gates they depend on: the
-    names whose answers the page needs to decide what to show."""
+def flow_variable_names(pages, form_conditions=(), deadlines=()) -> list[str]:
+    """Every variable the pages place, plus the gates they depend on, the
+    variables the packet's conditions read and the deadlines' source dates:
+    the names whose answers the page needs to decide what to show. A
+    condition's or a deadline's variable may be asked on no page of this
+    flow and stored by the chat."""
     names = []
     for _page, variables in pages:
         for variable in variables:
             names.append(variable.name)
             if variable.asked_when is not None:
                 names.append(variable.asked_when.name)
+    for condition in form_conditions:
+        if condition.variable is not None:
+            names.append(condition.variable.name)
+    names.extend(deadline.offset_from.name for deadline in deadlines)
     return list(dict.fromkeys(names))
+
+
+def flow_deadlines(deadlines, answers) -> list[dict]:
+    """``{id, label, description, date}`` per TopicFlowDeadline row, in
+    stored order, the shape ``resolve_ics_deadlines`` gives the content
+    path. ``id`` is the row's ``ref`` (its authored key)."""
+    return [
+        {
+            "id": deadline.ref,
+            "label": deadline.label,
+            "description": deadline.description,
+            "date": deadline_date(
+                deadline.offset_days, deadline.offset_from.name, answers
+            ),
+        }
+        for deadline in deadlines
+    ]
+
+
+def form_condition_holds(condition, answers) -> bool:
+    """Whether a packet entry shows: always without a variable; ``equals``
+    when the stored answer is the value; ``not_equals`` when it is anything
+    else, unanswered included."""
+    if condition.variable is None:
+        return True
+    return condition_holds(
+        answers, condition.variable.name, condition.value, condition.operator
+    )
+
+
+def packet_forms(form_conditions, answers) -> list[dict]:
+    """``{name, url}`` per form whose condition holds, in stored order."""
+    return [
+        {"name": condition.form.name, "url": condition.form.url}
+        for condition in form_conditions
+        if form_condition_holds(condition, answers)
+    ]
 
 
 def asked_names(pages, answers) -> list[str]:
@@ -280,11 +336,26 @@ def page_questions(
 
 
 def render_flow(
-    flow, sections, pages, answers, errors=None, cleared=frozenset()
+    flow,
+    sections,
+    pages,
+    answers,
+    errors=None,
+    cleared=frozenset(),
+    *,
+    form_conditions=(),
+    deadlines=(),
+    contacts=(),
+    resources=(),
+    court="",
+    topic="",
+    role="",
 ) -> list[RenderedSection]:
     """One ``RenderedSection`` per layout entry, in layout order; the
     ``interview`` entry expands to one per page. ``cleared`` is passed to
-    ``page_questions``."""
+    ``page_questions``. ``form_conditions`` and ``deadlines`` are the flow's
+    rows, ``contacts`` and ``resources`` the court's; the URL parts name the
+    flow for the download and interview links."""
     by_key = {
         section_anchor(section, number): section
         for number, section in enumerate(sections, 1)
@@ -299,9 +370,28 @@ def render_flow(
                 _render_page(number, page, variables, answers, gates, cleared)
                 for number, (page, variables) in enumerate(pages, 1)
             )
-        elif name in BLOCK_HEADINGS:
-            rendered.append(_render_placeholder(name))
-        # else: a name the schema would have rejected; leave it out
+        elif name == "packet":
+            forms = packet_forms(form_conditions, answers)
+            # Same rule as the content renderer's _render_packet: the row's
+            # handoff AND a configured docassemble, else a plain form list.
+            interview = bool(
+                flow.interview_reference
+                and interview_launch_url(flow.interview_reference)
+            )
+            if forms or interview:
+                rendered.append(
+                    _render_packet(forms, interview, court, topic, role)
+                )
+        elif name == "calendar" and deadlines:
+            rendered.append(
+                _render_calendar(deadlines, answers, court, topic, role)
+            )
+        elif name == "contacts" and contacts:
+            rendered.append(_render_contacts(contacts, court, topic, role))
+        elif name == "resources" and resources:
+            rendered.append(_render_resources(resources))
+        # else: a block with no rows, or a name the schema would have
+        # rejected; leave it out
     if errors:
         _apply_errors(rendered, errors)
     return rendered
@@ -340,12 +430,66 @@ def _render_info(anchor, section):
     )
 
 
-def _render_placeholder(block):
+def _render_packet(forms, interview_available, court, topic, role):
+    # Same context as the content renderer's _render_packet.
     return RenderedSection(
-        anchor_id=block,
-        heading=BLOCK_HEADINGS[block],
-        template=f"{_TEMPLATE_DIR}/flow_section_placeholder.html",
-        context={"text": PLACEHOLDER_TEXT},
+        anchor_id="packet",
+        heading=BLOCK_HEADINGS["packet"],
+        template=f"{_TEMPLATE_DIR}/flow_section_packet.html",
+        context={
+            "forms": forms,
+            "interview_available": interview_available,
+            "court": court,
+            "topic": topic,
+            "role": role,
+        },
+    )
+
+
+def _render_contacts(contacts, court, topic, role):
+    # Same context as the content renderer's _render_vcf: the template owns
+    # {% url %}, and the download id is the block name.
+    return RenderedSection(
+        anchor_id="contacts",
+        heading=BLOCK_HEADINGS["contacts"],
+        template=f"{_TEMPLATE_DIR}/flow_section_vcf.html",
+        context={
+            "contacts": contact_dicts(contacts, id_attr="ref"),
+            "court": court,
+            "topic": topic,
+            "role": role,
+            "output_id": "contacts",
+        },
+    )
+
+
+def _render_resources(resources):
+    return RenderedSection(
+        anchor_id="resources",
+        heading=BLOCK_HEADINGS["resources"],
+        template=f"{_TEMPLATE_DIR}/flow_section_resources.html",
+        context={"resources": resource_dicts(resources, id_attr="ref")},
+    )
+
+
+def _render_calendar(deadlines, answers, court, topic, role):
+    # Same context as the content renderer's _render_ics: has_dates gates
+    # the download link, since an empty calendar is no use.
+    resolved = [
+        deadline_display(d) for d in flow_deadlines(deadlines, answers)
+    ]
+    return RenderedSection(
+        anchor_id="calendar",
+        heading=BLOCK_HEADINGS["calendar"],
+        template=f"{_TEMPLATE_DIR}/flow_section_ics.html",
+        context={
+            "deadlines": resolved,
+            "has_dates": any(d["date_iso"] for d in resolved),
+            "court": court,
+            "topic": topic,
+            "role": role,
+            "output_id": "calendar",
+        },
     )
 
 
