@@ -31,7 +31,6 @@ app_patterns = [
         agent_views.development_stream,
         name="agent_development_stream",
     ),
-    path("t/<slug:court>/<slug:topic>/", pages.deep_link, name="deep_link"),
     path(
         "t/<slug:court>/<slug:topic>/<slug:role>/",
         pages.topic_flow,

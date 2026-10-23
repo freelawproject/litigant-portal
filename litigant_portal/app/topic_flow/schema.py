@@ -23,7 +23,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 # Shared slug shape for court/topic/role and every id — alphanumeric start,
-# then alphanumeric / underscore / hyphen. Mirrors the chat/prompts slug rule.
+# then alphanumeric / underscore / hyphen.
 Slug = Annotated[str, Field(pattern=r"^[a-z0-9][a-z0-9_-]*$")]
 
 # docassemble executes these as assignment statements, so identifiers only.

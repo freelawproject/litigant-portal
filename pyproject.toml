@@ -66,8 +66,6 @@ dependencies = [
     "openpyxl>=3.1",
     # Token counting for attachment-size gates
     "tiktoken>=0.8",
-    # JSON Schema validation (court.json + future partner config)
-    "jsonschema>=4.20",
 ]
 
 [project.optional-dependencies]
@@ -104,8 +102,6 @@ litigant_portal = [
   "corpus/**/*.pdf",
   "corpus/courts/*/branding/*.svg",
   "corpus/courts/*/branding/*.png",
-  "prompts/**/*.json",
-  "prompts/**/*.md",
 ]
 lp_agent = [
   "py.typed",

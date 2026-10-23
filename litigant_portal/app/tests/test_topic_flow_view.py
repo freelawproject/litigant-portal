@@ -15,7 +15,7 @@ import re
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.urls import resolve, reverse
+from django.urls import Resolver404, resolve, reverse
 
 from litigant_portal.app.models import (
     UserIdentity,
@@ -163,10 +163,11 @@ def test_three_segment_url_resolves_to_topic_flow_view():
     assert resolve(URL).view_name == "pages:topic_flow"
 
 
-def test_two_segment_url_still_resolves_to_legacy_deep_link():
-    # The 3-seg flow URL must not shadow the legacy 2-seg deep_link. `slug`
-    # never crosses a `/`, so they're distinct — assert it, don't assume it.
-    assert resolve(f"/t/{COURT}/{TOPIC}/").view_name == "pages:deep_link"
+def test_two_segment_url_no_longer_resolves():
+    # The 2-seg deep link went with the prompts package (#1049). `slug` never
+    # crosses a `/`, so the 3-seg flow URL must not absorb it either.
+    with pytest.raises(Resolver404):
+        resolve(f"/t/{COURT}/{TOPIC}/")
 
 
 def test_topic_flow_url_reverses_with_three_segments():
