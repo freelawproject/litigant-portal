@@ -41,8 +41,8 @@ from litigant_portal.app.models.choices import (
 from litigant_portal.app.selectors.corpus import corpus_court_known
 from litigant_portal.app.selectors.site import contact_help_list, site_get
 from litigant_portal.app.selectors.topic_flow import (
+    topic_flow_card_list,
     topic_flow_find,
-    topic_list,
 )
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.services.user import user_identity_reset
@@ -74,11 +74,13 @@ from litigant_portal.app.views.utils import (
 @xframe_options_sameorigin
 def home(request):
     """Home page - dashboard with hero and topic grid."""
-    topics = {t.slug: t for t in topic_list()}
     return render(
         request,
         "pages/home.html",
-        {"topics": topics, "briefcase_groups": briefcase_answers(request)},
+        {
+            "topic_cards": topic_flow_card_list(),
+            "briefcase_groups": briefcase_answers(request),
+        },
     )
 
 
@@ -436,12 +438,11 @@ def _style_guide_required(view):
 @_style_guide_required
 def style_guide(request):
     """Design tokens and component library"""
-    topics = {t.slug: t for t in topic_list()}
     return render(
         request,
         "pages/style_guide.html",
         {
-            "topics": topics,
+            "topic_cards": topic_flow_card_list(),
             "briefcase_groups": _briefcase_sample(),
             "internal_section": "style_guide",
         },
@@ -454,14 +455,14 @@ ATOMIC_DESIGN_STAGES = ("atoms", "molecules", "organisms", "template")
 
 # Stand-in content for the stages below "page", so the columns show
 # structure with no real court or topic in it.
-ATOMIC_PLACEHOLDER_TOPICS = {
-    f"topic-{number}": {
+ATOMIC_PLACEHOLDER_TOPIC_CARDS = [
+    {
         "icon": "question-mark-circle",
         "title": "Topic name",
         "description": "One line about what this topic covers",
+        "url": "#",
     }
-    for number in range(1, 4)
-}
+] * 3
 
 
 # The five levels of the Atomic Design page, smallest first. "summary" is
@@ -765,7 +766,7 @@ def atomic_design_stage(request, stage):
     if stage not in ATOMIC_DESIGN_STAGES:
         raise Http404
     context = {
-        "topics": ATOMIC_PLACEHOLDER_TOPICS,
+        "topic_cards": ATOMIC_PLACEHOLDER_TOPIC_CARDS,
         "court_logo": static("images/style_guide/placeholder_court_logo.svg"),
         "court_name": "Court name",
     }
