@@ -17,11 +17,12 @@ from .schema import (
     QUALITY_DIMENSIONS,
     Case,
     CitedGrade,
+    CitedGradeV2,
     Grade,
     Weights,
 )
 
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3
 
 
 class InvalidGrade(ValueError):
@@ -223,7 +224,38 @@ def validate_grade(
                 f"Fact {fact.id}: evidence is not in the answer.",
             )
         mismatch = False
-        if asserted and fact.value is not None:
+        if assessment.asserts_value is not None:
+            if assessment.asserts_value and (
+                not asserted or fact.value is None
+            ):
+                raise InvalidGrade(
+                    "unexpected_value",
+                    f"Fact {fact.id}: only supported/contradicted facts "
+                    "with numeric/boolean keys may assert a value.",
+                )
+            if assessment.asserts_value != (assessment.value is not None):
+                raise InvalidGrade(
+                    "missing_value"
+                    if assessment.asserts_value
+                    else "unexpected_value",
+                    f"Fact {fact.id}: asserts_value must match whether "
+                    "an extracted value is present.",
+                )
+            if (
+                assessment.status == "supported"
+                and fact.value is not None
+                and not assessment.asserts_value
+            ):
+                raise InvalidGrade(
+                    "missing_value",
+                    f"Fact {fact.id}: supported numeric/boolean facts "
+                    "must assert a value.",
+                )
+        if (
+            asserted
+            and fact.value is not None
+            and assessment.asserts_value is not False
+        ):
             if assessment.value is None:
                 raise InvalidGrade(
                     "missing_value",
@@ -302,8 +334,15 @@ def parse_response(
     """
     if version == 1:
         grade = Grade.model_validate_json(text)
-    elif version == FORMAT_VERSION:
-        cited = CitedGrade.model_validate_json(text)
+        if any(
+            "asserts_value" in fact.model_fields_set for fact in grade.facts
+        ):
+            raise InvalidGrade(
+                "format", "Judge format v1 does not support asserts_value."
+            )
+    elif version in {2, 3}:
+        schema = CitedGradeV2 if version == 2 else CitedGrade
+        cited = schema.model_validate_json(text)
         passages = {
             row["id"]: row["text"]
             for row in answer_passages(candidate["answer"])
@@ -335,10 +374,14 @@ def parse_response(
         grade,
         Case.model_validate(candidate["case"]),
         candidate["answer"],
-        evidence_verified=version == FORMAT_VERSION,
+        evidence_verified=version in {2, 3},
     )
+    content = grade.model_dump()
+    if version < 3:
+        for fact in content["facts"]:
+            fact.pop("asserts_value")
     return {
-        "grade": grade.model_dump(),
+        "grade": content,
         "score": score(grade, failures, weights),
         "judge_format_version": version,
     }

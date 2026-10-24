@@ -1,4 +1,4 @@
-# Judge response format v2
+# Judge response format v3
 
 The answer is supplied as numbered `answer_passages`, containing its nonempty
 lines in original order. Read all passages together as one answer.
@@ -46,11 +46,28 @@ An omission or uncertainty is not a contradiction. In particular, saying the
 fictional guide is unavailable or that its fee/eligibility cannot be determined
 does not assert a numeric fee or a boolean eligibility result.
 
-For an expected numeric/boolean fact, `supported` and `contradicted` require
-the numeric/boolean `value` actually asserted in the answer and supporting
-`evidence_ids`. Never copy a missing value from the answer key. For omitted or
-uncertain facts, use `value: null`. Do not invent zero or false to represent
-uncertainty. For facts with no numeric/boolean answer key, use `value: null`.
+Every fact assessment must include the boolean `asserts_value`. For an expected
+numeric/boolean fact, set it to true only when the answer asserts a numeric or
+boolean value for that fact, and extract that value into `value`. A `supported`
+numeric/boolean fact requires `asserts_value: true` and the extracted value.
+Never copy a missing value from the answer key.
+
+A `contradicted` fact may instead categorically deny the fact without asserting
+an alternative amount or boolean result. For example, "that fictional court
+does not exist, so there is no established filing fee" denies the fee's
+existence. Use `status: contradicted`, `asserts_value: false`, and `value: null`.
+This is not an omission or uncertainty. It remains a hard-fact failure when the
+expected fact is critical. Both supported facts and contradictions require
+supporting `evidence_ids`, including contradictions without extracted values.
+
+When an answer asserts an alternative value, including zero or false, use
+`asserts_value: true` and extract it. "Filing is free" asserts a fee of zero;
+"the fictional fee does not exist" does not assert an amount. Do not invent
+zero or false for a denial or uncertainty.
+
+For omitted or uncertain facts, and for facts with no numeric/boolean answer
+key, use `asserts_value: false` and `value: null`. A true flag always requires a
+non-null value; a false flag always requires null.
 
 All deal breakers except `missed_escalation` require supporting answer IDs.
 Only flag `missed_escalation` when the case explicitly requires escalation.
