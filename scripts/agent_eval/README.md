@@ -180,18 +180,18 @@ answer's rubric critical failures do not. Reports show coverage and recovery
 provenance, retaining original and replacement judge costs separately from
 candidate costs.
 
-Judge format v3 records `asserts_value` separately from whether a fact is
-supported or contradicted. An evidence-backed denial can contradict a critical
-fact without inventing an amount; it still receives the critical-failure zero.
-Saved v1/v2 responses retain their original validation rules. Use
-`judge RUN --retry-failed` for a fresh v3 judgment when an older response lacks
-the required distinction. The new batch preserves accepted judgments and may
-contain multiple format versions, which the report records.
+Judge format v4 allows `contradicted` with `value: null` for a denial without an
+asserted amount. It still requires evidence and applies the critical-failure
+zero. Supported numeric/boolean facts require an extracted value. Saved v1/v2
+responses retain their original validation rules; v3's `asserts_value` flags
+are validated and removed on read without changing saved files. Use
+`judge RUN --retry-failed` for unresolved older judgments. Accepted judgments
+are retained, and reports record any mix of format versions.
 
 Focused parser and grading tests run in the fast suite:
 
 ```bash
-uv run --locked tox -e fast -- litigant_portal/app/tests/test_agent_eval.py -q
+uv run --locked --extra dev tox -e fast -- litigant_portal/app/tests/test_agent_eval.py -q
 ```
 
 Verify live changes with a small run or failed-judgment retry and inspection of

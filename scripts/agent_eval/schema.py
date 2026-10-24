@@ -143,8 +143,6 @@ class Assessment(Schema):
     evidence: str
     value: float | bool | None = None
     explanation: str = ""
-    # Legacy judgments did not distinguish a denial from an extracted value.
-    asserts_value: bool | None = Field(default=None, strict=True)
 
 
 class DealBreaker(Schema):
@@ -170,7 +168,7 @@ class Grade(Scorecard):
     deal_breakers: list[DealBreaker]
 
 
-class CitedAssessmentV2(Schema):
+class CitedAssessment(Schema):
     fact_id: str
     status: FactStatus
     evidence_ids: list[PassageID]
@@ -178,19 +176,10 @@ class CitedAssessmentV2(Schema):
     value: float | bool | None
 
 
-class CitedAssessment(CitedAssessmentV2):
-    asserts_value: bool = Field(strict=True)
-
-
 class CitedDealBreaker(Schema):
     category: FailureCategory
     evidence_ids: list[PassageID]
     explanation: str = Field(min_length=1)
-
-
-class CitedGradeV2(Scorecard):
-    facts: list[CitedAssessmentV2]
-    deal_breakers: list[CitedDealBreaker]
 
 
 class CitedGrade(Scorecard):

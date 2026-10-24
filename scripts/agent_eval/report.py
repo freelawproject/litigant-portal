@@ -7,7 +7,7 @@ from collections import Counter
 from pathlib import Path
 from statistics import mean, median, pstdev
 
-from .judge import judgment_path, paid_calls, score
+from .judge import judgment_path, normalize_v3_grade, paid_calls, score
 from .schema import (
     DIMENSIONS,
     FAILURE_CATEGORIES,
@@ -86,8 +86,11 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
             _, calls = paid_calls(run, path)
         scored = None
         if judgment and judgment["status"] == "completed":
+            grade = judgment["grade"]
+            if judgment.get("judge_format_version", 1) == 3:
+                grade = normalize_v3_grade(grade)
             scored = score(
-                Grade.model_validate(judgment["grade"]),
+                Grade.model_validate(grade),
                 judgment["score"]["deal_breakers"],
                 weights,
             )

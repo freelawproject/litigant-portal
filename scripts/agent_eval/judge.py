@@ -17,12 +17,11 @@ from .schema import (
     QUALITY_DIMENSIONS,
     Case,
     CitedGrade,
-    CitedGradeV2,
     Grade,
     Weights,
 )
 
-FORMAT_VERSION = 3
+FORMAT_VERSION = 4
 
 
 class InvalidGrade(ValueError):
@@ -158,7 +157,12 @@ def ends_with_question(answer: str) -> bool:
 
 
 def validate_grade(
-    grade: Grade, case: Case, answer: str, *, evidence_verified=False
+    grade: Grade,
+    case: Case,
+    answer: str,
+    *,
+    evidence_verified=False,
+    version: int = 1,
 ) -> list[dict]:
     ids = [assessment.fact_id for assessment in grade.facts]
     if len(ids) != len(set(ids)) or set(ids) != {
@@ -224,45 +228,25 @@ def validate_grade(
                 f"Fact {fact.id}: evidence is not in the answer.",
             )
         mismatch = False
-        if assessment.asserts_value is not None:
-            if assessment.asserts_value and (
-                not asserted or fact.value is None
-            ):
-                raise InvalidGrade(
-                    "unexpected_value",
-                    f"Fact {fact.id}: only supported/contradicted facts "
-                    "with numeric/boolean keys may assert a value.",
-                )
-            if assessment.asserts_value != (assessment.value is not None):
-                raise InvalidGrade(
-                    "missing_value"
-                    if assessment.asserts_value
-                    else "unexpected_value",
-                    f"Fact {fact.id}: asserts_value must match whether "
-                    "an extracted value is present.",
-                )
-            if (
-                assessment.status == "supported"
-                and fact.value is not None
-                and not assessment.asserts_value
-            ):
-                raise InvalidGrade(
-                    "missing_value",
-                    f"Fact {fact.id}: supported numeric/boolean facts "
-                    "must assert a value.",
-                )
         if (
-            asserted
-            and fact.value is not None
-            and assessment.asserts_value is not False
+            version >= 3
+            and assessment.value is not None
+            and (not asserted or fact.value is None)
         ):
+            raise InvalidGrade(
+                "unexpected_value",
+                f"Fact {fact.id}: only supported/contradicted facts "
+                "with numeric/boolean keys may assert a value.",
+            )
+        if asserted and fact.value is not None:
             if assessment.value is None:
-                raise InvalidGrade(
-                    "missing_value",
-                    f"Fact {fact.id}: extract the asserted value; "
-                    "use omitted/uncertain when no value is asserted.",
-                )
-            if isinstance(fact.value, bool):
+                if assessment.status == "supported" or version < 3:
+                    raise InvalidGrade(
+                        "missing_value",
+                        f"Fact {fact.id}: extract the asserted value; "
+                        "use omitted/uncertain when no value is asserted.",
+                    )
+            elif isinstance(fact.value, bool):
                 mismatch = (
                     type(assessment.value) is not bool
                     or assessment.value != fact.value
@@ -326,6 +310,29 @@ def contract(run: Path) -> dict:
     }
 
 
+def normalize_v3_grade(content: dict, *, require_flag: bool = False) -> dict:
+    """
+    Remove v3's redundant flags when reading raw or saved judgments.
+    """
+    if not isinstance(content, dict) or not isinstance(
+        content.get("facts"), list
+    ):
+        raise InvalidGrade("format", "Invalid v3 fact assessments.")
+    facts = []
+    for fact in content["facts"]:
+        if not isinstance(fact, dict):
+            raise InvalidGrade("format", "Invalid v3 fact assessment.")
+        fact = fact.copy()
+        if require_flag or "asserts_value" in fact:
+            flag = fact.pop("asserts_value", None)
+            if type(flag) is not bool or flag != (
+                fact.get("value") is not None
+            ):
+                raise InvalidGrade("format", "Invalid v3 asserts_value flag.")
+        facts.append(fact)
+    return {**content, "facts": facts}
+
+
 def parse_response(
     text: str, candidate: dict, weights: Weights, version=1
 ) -> dict:
@@ -334,15 +341,13 @@ def parse_response(
     """
     if version == 1:
         grade = Grade.model_validate_json(text)
-        if any(
-            "asserts_value" in fact.model_fields_set for fact in grade.facts
-        ):
-            raise InvalidGrade(
-                "format", "Judge format v1 does not support asserts_value."
+    elif version in {2, 3, 4}:
+        if version == 3:
+            cited = CitedGrade.model_validate(
+                normalize_v3_grade(json.loads(text), require_flag=True)
             )
-    elif version in {2, 3}:
-        schema = CitedGradeV2 if version == 2 else CitedGrade
-        cited = schema.model_validate_json(text)
+        else:
+            cited = CitedGrade.model_validate_json(text)
         passages = {
             row["id"]: row["text"]
             for row in answer_passages(candidate["answer"])
@@ -374,14 +379,11 @@ def parse_response(
         grade,
         Case.model_validate(candidate["case"]),
         candidate["answer"],
-        evidence_verified=version in {2, 3},
+        evidence_verified=version in {2, 3, 4},
+        version=version,
     )
-    content = grade.model_dump()
-    if version < 3:
-        for fact in content["facts"]:
-            fact.pop("asserts_value")
     return {
-        "grade": content,
+        "grade": grade.model_dump(),
         "score": score(grade, failures, weights),
         "judge_format_version": version,
     }
