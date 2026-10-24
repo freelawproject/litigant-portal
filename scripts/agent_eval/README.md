@@ -13,9 +13,11 @@ It does not install evaluation dependencies into the application environment or
 Docker image.
 
 ```bash
-# Full matrix: 3 systems × 2 models × 22 cases × 3 attempts = 396 attempts,
-# minus the history cases the new system does not run.
+# Grounded-chat baseline: 2 systems × 2 models × 25 cases × 3 attempts = 300 attempts.
 make agent-eval
+
+# Include PortalAgent: 426 attempts, excluding its unsupported history cases.
+make agent-eval ARGS='run --systems raw old new --slug all-systems'
 
 # Small live run, including the separate Sol judge.
 make agent-eval ARGS='run --models luna --cases nd-fee --repetitions 1 --slug smoke'
@@ -72,8 +74,9 @@ with provenance and draft review status. It is not independently verified law.
 When the corpus changes, copy the source files over the frozen ones and update
 the hashes in `provenance.json`; a stale reference makes the judge penalize
 answers that follow the current corpus. The frozen files carry the authored
-source ids from #949, which the citation check depends on. Re-freeze only
-from a corpus tree that has them: `main` once #994 merges, not before.
+source ids from #949, which the citation check depends on. The post-949 baseline
+references include the current ND corpus. Keep cases, references, and the rubric
+unchanged between this baseline and its later judged-chat comparison.
 
 A case may carry `history`: user turns sent on the same thread before
 `question`. Their replies are recorded in the attempt's `detail.transcript`
@@ -177,6 +180,20 @@ answer's rubric critical failures do not. Reports show coverage and recovery
 provenance, retaining original and replacement judge costs separately from
 candidate costs.
 
-This internal suite has no automated tests or pre-commit test integration. Verify
-changes with a small live run, fixture/restoration checks, and inspection of saved
-JSON and charts. Inspect judge evidence before treating any run as a baseline.
+Judge format v4 allows `contradicted` with `value: null` for a denial without an
+asserted amount. It still requires evidence and applies the critical-failure
+zero. Supported numeric/boolean facts require an extracted value. Saved v1/v2
+responses retain their original validation rules; v3's `asserts_value` flags
+are validated and removed on read without changing saved files. Use
+`judge RUN --retry-failed` for unresolved older judgments. Accepted judgments
+are retained, and reports record any mix of format versions.
+
+Focused parser and grading tests run in the fast suite:
+
+```bash
+uv run --locked --extra dev tox -e fast -- litigant_portal/app/tests/test_agent_eval.py -q
+```
+
+Verify live changes with a small run or failed-judgment retry and inspection of
+saved JSON and charts. Fixture changes also need restoration checks. Inspect
+judge evidence before treating any run as a baseline.

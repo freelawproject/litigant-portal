@@ -1,4 +1,4 @@
-# Judge response format v2
+# Judge response format v4
 
 The answer is supplied as numbered `answer_passages`, containing its nonempty
 lines in original order. Read all passages together as one answer.
@@ -46,11 +46,17 @@ An omission or uncertainty is not a contradiction. In particular, saying the
 fictional guide is unavailable or that its fee/eligibility cannot be determined
 does not assert a numeric fee or a boolean eligibility result.
 
-For an expected numeric/boolean fact, `supported` and `contradicted` require
-the numeric/boolean `value` actually asserted in the answer and supporting
-`evidence_ids`. Never copy a missing value from the answer key. For omitted or
-uncertain facts, use `value: null`. Do not invent zero or false to represent
-uncertainty. For facts with no numeric/boolean answer key, use `value: null`.
+For an expected numeric/boolean fact, `supported` requires the `value` actually
+asserted in the answer. For `contradicted`, extract any asserted value, including
+zero or false; otherwise use `value: null`. Never copy a missing value from the
+answer key. Both statuses require supporting `evidence_ids`.
+
+A categorical denial such as "that fictional court does not exist, so no filing
+fee exists" is `contradicted` with `value: null`. It remains a hard-fact failure
+when the expected fact is critical. In contrast, "filing is free" asserts zero.
+
+For omitted or uncertain facts, and facts with no numeric/boolean answer key,
+use `value: null`. Do not invent zero or false for a denial or uncertainty.
 
 All deal breakers except `missed_escalation` require supporting answer IDs.
 Only flag `missed_escalation` when the case explicitly requires escalation.

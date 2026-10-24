@@ -12,6 +12,37 @@ name: 'Adult Name Change (Publication Waiver)'
 enabled: true
 order: 1
 
+# The page in the order content/ shows it. No `calendar`: this track has no
+# deadlines. The summary output is dropped (#1012).
+layout:
+  - overview
+  - eligibility
+  - costs
+  - criminal_history
+  - your_information_privacy
+  - interview
+  - packet
+  - publication_waiver
+  - waiver_denied
+  - form_gotchas
+  - hearing
+  - contacts
+  - resources
+  - after_order
+
+# Warm handoff to the docassemble interview that fills these forms (#547,
+# #531). Which docassemble it is sent to comes from the environment (#879).
+# Always the full data/questions path: the API accepts the short alias but
+# keys the session under the canonical path. Only reviewed answers are sent.
+# No publication date on this track.
+handoff:
+  interview_reference: 'docassemble.ndnamechange:data/questions/petition-waiver.yml'
+  interview_prefill:
+    first_name: current_first
+    middle_name: current_middle
+    last_name: current_last
+    county: residence_county
+
 # Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
   - id: overview
@@ -45,6 +76,11 @@ sections:
       If the judge requires one, you request it at edo.cjis.gov and pay the cost yourself.
 
       If you have a felony conviction, North Dakota law assumes a name-change request is made in bad faith. A judge may still grant it, but you would need to show by clear and convincing evidence that your request is made in good faith and not to defraud, mislead, injure anyone, or compromise public safety.
+
+  - id: your_information_privacy
+    heading: 'How your information is used'
+    content: |
+      What you enter below is used to fill out your court forms. For your privacy on a shared or public computer, your saved answers are not shown back on this page.
 
   - id: publication_waiver
     heading: 'About the publication waiver'
@@ -95,9 +131,11 @@ sections:
 
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
-# One page per docassemble interview page. The waiver-reasons page replaces
-# the standard track's publication page; its select-every-reason instruction
-# lives on the page description.
+# One page per docassemble interview page (title = the page's question,
+# description = its subquestion, or the ND context content/ carried as
+# help text). The waiver-reasons page replaces the standard track's
+# publication page; its select-every-reason instruction lives on the page
+# description.
 interview:
   - title: 'Your current legal name'
     variables:
@@ -110,6 +148,7 @@ interview:
       - name_change_requested_middle
       - name_change_requested_last
   - title: 'Where you live'
+    description: 'The North Dakota county where you have lived for the past 6 months is the county you file in.'
     variables:
       - street_address
       - city
