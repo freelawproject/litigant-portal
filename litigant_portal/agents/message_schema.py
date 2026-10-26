@@ -89,6 +89,7 @@ class MetaMessage(TypedDict, total=False):
     content: str
     verdict: dict[str, Any]
     error: str
+    error_category: Literal["timeout", "provider_error", "invalid_output"]
 
 
 MessageSchema = Annotated[

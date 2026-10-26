@@ -97,7 +97,7 @@ test('judging shows checking only on the attached stream and clears on progress 
     app.handleEvent(stream, { type: 'judging' })
     assert.equal(app.thinkingVisible, true)
     assert.equal(app.checkingVisible, true)
-    assert.equal(stream.stallTimer, null)
+    assert.ok(stream.stallTimer)
 
     app.messages = []
     app.updateThinking()
@@ -115,6 +115,44 @@ test('judging shows checking only on the attached stream and clears on progress 
     assert.equal(app.checkingVisible, false)
     app.handleEvent(stream, { type: 'done' })
     assert.equal(app.thinkingVisible, false)
+  }
+})
+
+test('judging followed by silence reaches the fallback', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { app, updateThinking } = makeApp()
+  app.updateThinking = updateThinking
+  const stream = newStream(app)
+  app.handleEvent(stream, { type: 'judging' })
+  t.mock.timers.tick(59000)
+  assert.equal(stream.failureRendered, false)
+  t.mock.timers.tick(1000)
+  assert.equal(stream.failureRendered, true)
+  assert.equal(stream.controller.signal.aborted, true)
+  assert.equal(app.checkingVisible, false)
+  assert.match(app.messages.at(-1).html, /Browse the help topics/)
+})
+
+test('heartbeats keep buffered work alive without rendering or scrolling', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  for (const checking of [false, true]) {
+    const { app, updateThinking } = makeApp()
+    app.updateThinking = updateThinking
+    const stream = newStream(app)
+    app.handleEvent(stream, { type: checking ? 'judging' : 'heartbeat' })
+    app.scrollToBottom = () => assert.fail('heartbeat scrolled the view')
+    for (let index = 0; index < 8; index++) {
+      t.mock.timers.tick(10000)
+      app.handleEvent(stream, { type: 'heartbeat' })
+      assert.equal(stream.failureRendered, false)
+      assert.equal(app.checkingVisible, checking)
+      assert.equal(app.messages.length, 0)
+    }
+    t.mock.timers.tick(59000)
+    assert.equal(stream.failureRendered, false)
+    app.scrollToBottom = () => {}
+    t.mock.timers.tick(1000)
+    assert.equal(stream.failureRendered, true)
   }
 })
 

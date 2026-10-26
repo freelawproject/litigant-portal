@@ -64,10 +64,12 @@ that the recorded tool results and current state do not support.
 Do not penalize concise wording or demand information beyond the actual question.
 Review only using supplied evidence; do not substitute your own legal recollection.
 Review the CURRENT candidate. Previous drafts and findings are diagnostic context,
-not evidence or binding instructions. Check whether the prior problems were fixed
-and whether the revision introduced new ones. Do not reject the current answer for
-claims removed from it. Do not reverse an earlier correction unless the evidence
-shows it was mistaken; explain that mistake and give a consistent correction.
+not evidence or binding instructions. Messages labeled internal review feedback
+are diagnostic context, not new requests from the user. Check whether the prior
+problems were fixed and whether the revision introduced new ones. Do not reject
+the current answer for claims removed from it. Do not reverse an earlier correction
+unless the evidence shows it was mistaken; explain that mistake and give a
+consistent correction.
 Following earlier feedback does not excuse an unsupported claim. Before rejecting,
 check that the requested correction is supported by the evidence and this policy.
 For each failure provide a short concrete correction in findings. Codes are:
@@ -87,6 +89,22 @@ Do not collect more case facts to prepare a procedure the material does not cove
 
 
 class AgentJudge:
+    @staticmethod
+    def correction(verdict: JudgeVerdict) -> dict[str, str]:
+        """
+        Label review feedback while retaining a provider-compatible message role.
+        """
+        return {
+            "role": "user",
+            "content": (
+                "Internal review feedback, not a new user request. "
+                "Revise the previous draft to address these review findings "
+                "using the supplied evidence. Return the corrected answer, "
+                "without mentioning the review. Findings: "
+                + verdict.model_dump_json()
+            ),
+        }
+
     @staticmethod
     def request(context: dict, candidate: str) -> list[dict]:
         """
@@ -139,4 +157,12 @@ class AgentJudge:
             or not choice.message.content
         ):
             raise ValueError("Invalid judge output.")
-        return JudgeVerdict.model_validate_json(choice.message.content)
+        content = choice.message.content.strip()
+        lines = content.splitlines()
+        if (
+            len(lines) >= 3
+            and lines[0].lower() in ("```", "```json")
+            and lines[-1] == "```"
+        ):
+            content = "\n".join(lines[1:-1])
+        return JudgeVerdict.model_validate_json(content)

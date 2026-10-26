@@ -4,6 +4,7 @@ from unittest.mock import patch
 
 import pytest
 from django.core.cache import cache
+from litellm import Timeout
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
 from litigant_portal.app.models import ChatThread, Site, UserIdentity
@@ -119,6 +120,9 @@ def test_disabled_preserves_streaming(stream, judge_model):
         "ginal",
     ]
     assert len(calls) == 1
+    assert "timeout" not in calls[0].kwargs
+    assert "num_retries" not in calls[0].kwargs
+    assert not any(event["type"] == "heartbeat" for event in events)
     assert not thread.messages.filter(meta=True).exists()
 
 
@@ -136,6 +140,10 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
         f"Draft {attempts - 1}"
     ]
     assert sum(e["type"] == "judging" for e in events) == attempts
+    assert sum(e["type"] == "heartbeat" for e in events) == attempts
+    for call in calls:
+        assert call.kwargs["timeout"] == 45
+        assert call.kwargs["num_retries"] == 0
     assert events[-1] == {"type": "done"}
     export = chat_thread_export_data(thread=thread)
     audits = [
@@ -163,30 +171,97 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
     if rejections:
         assert audits[0]["verdict"]["findings"][0] == FINDING
         assert "invented fee" in json.dumps(calls[2].kwargs["messages"])
+        correction = calls[2].kwargs["messages"][-1]
+        assert correction["content"].startswith(
+            "Internal review feedback, not a new user request."
+        )
+        next_review = json.loads(calls[3].kwargs["messages"][1]["content"])
+        assert next_review["messages"][-1] == correction
     if rejections == 3:
         assert "corrections exhausted" in caplog.text
 
 
-@pytest.mark.parametrize("malformed", [False, True])
+@pytest.mark.parametrize(
+    "category", ["timeout", "provider_error", "invalid_output"]
+)
 def test_judge_failure_releases_and_books_returned_usage(
-    stream, malformed, caplog
+    stream, category, caplog
 ):
     thread, run = stream
     reply = review(True)
     reply.choices[0].message.content = "private-judge-detail"
-    events, _ = run(
-        [
-            generation("Answer"),
-            reply if malformed else RuntimeError("private-judge-detail"),
-        ]
-    )
+    failures = {
+        "invalid_output": reply,
+        "provider_error": RuntimeError("private-judge-detail"),
+        "timeout": Timeout(
+            message="private-judge-detail", model=JUDGE, llm_provider="bedrock"
+        ),
+    }
+    events, _ = run([generation("Answer"), failures[category]])
     assert {"type": "content_delta", "content": "Answer"} in events
     assert "judge failed" in caplog.text
     assert "private-judge-detail" not in caplog.text
     assert chat_thread_usage(thread=thread)["total_cost"] == pytest.approx(
-        0.2 if malformed else 0.1
+        0.2 if category == "invalid_output" else 0.1
     )
-    assert thread.messages.filter(meta=True, data__kind="judge").exists()
+    audit = next(
+        message["data"]
+        for message in chat_thread_export_data(thread=thread)["messages"]
+        if message["data"].get("kind") == "judge"
+    )
+    assert audit["error"] == "judge_failed"
+    assert audit["error_category"] == category
+    if category == "invalid_output":
+        assert audit["content"] == "private-judge-detail"
+
+
+def test_buffered_generation_emits_throttled_progress(stream):
+    thread, run = stream
+    clock = SimpleNamespace(now=0)
+
+    def slow_generation():
+        for seconds in (1, 9, 10, 11, 20, 29, 30, 40, 50, 60, 70):
+            clock.now = seconds
+            if seconds in (10, 20):
+                yield SimpleNamespace(choices=[], usage=None)
+            else:
+                yield next(generation("Answer"))
+
+    with patch(
+        "litigant_portal.app.services.chat_engine.monotonic",
+        side_effect=lambda: clock.now,
+        create=True,
+    ):
+        events, _ = run([slow_generation(), review(True)])
+    assert [event["type"] for event in events] == [
+        "thread",
+        "state",
+        *["heartbeat"] * 8,
+        "judging",
+        "content_delta",
+        "done",
+    ]
+    assert not thread.messages.filter(data__type="heartbeat").exists()
+
+
+@pytest.mark.parametrize("correction", [False, True])
+def test_generation_timeout_uses_fallback_without_releasing_draft(
+    stream, correction
+):
+    thread, run = stream
+    responses = [generation("Rejected"), review(False)] if correction else []
+    responses.append(
+        Timeout(message="Timed out", model=MODEL, llm_provider="bedrock")
+    )
+    events, _ = run(responses)
+    assert events[-2]["type"] == "error"
+    assert events[-2]["fallback_url"] == "/"
+    assert events[-1]["type"] == "done"
+    assert not any(event["type"] == "content_delta" for event in events)
+    assert not thread.messages.filter(
+        meta=False, data__role="assistant"
+    ).exists()
+    assert events[-3]["type"] == "heartbeat"
 
 
 def test_tool_prose_releases_without_review(stream):

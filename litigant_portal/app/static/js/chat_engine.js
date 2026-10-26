@@ -947,6 +947,7 @@ document.addEventListener('alpine:init', () => {
       if (stream.inFlightToolIds.length === 0) {
         resetStallTimer(this, stream)
       }
+      if (event.type === 'heartbeat') return
       if (event.type === 'thread') {
         stream.threadId = event.thread_id
         this.setThreadStatus(stream.threadId, 'streaming')
@@ -960,8 +961,6 @@ document.addEventListener('alpine:init', () => {
         this.loadThreads()
       } else if (event.type === 'judging') {
         stream.judging = true
-        clearTimeout(stream.stallTimer)
-        stream.stallTimer = null
       } else if (event.type === 'content_delta') {
         stream.judging = false
         this.appendContent(stream, event.content || '')

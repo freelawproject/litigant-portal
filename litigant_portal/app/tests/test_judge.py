@@ -49,6 +49,57 @@ def test_uploaded_evidence_remains_native_content():
     assert context["messages"][0]["content"] == [image]
 
 
+@pytest.mark.parametrize("fence", ["", "```", "```json", "```JSON"])
+@pytest.mark.parametrize("approved", [False, True])
+def test_verdict_whitespace_and_outer_fence(fence, approved):
+    payload = {
+        "approved": approved,
+        "findings": (
+            [] if approved else [{"code": "off_topic", "message": "Redirect."}]
+        ),
+    }
+    content = json.dumps(payload)
+    if fence:
+        content = f"{fence}\n{content}\n```"
+    reply = response(f" \n{content}\n ")
+    assert AgentJudge.review(reply).model_dump(mode="json") == payload
+    assert reply.choices[0].message.content == f" \n{content}\n "
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        'Here is the verdict: {"approved":true,"findings":[]}',
+        '```json\n{"approved":true,"findings":[]}\n```\nCommentary',
+        '```json\n{"approved":true,"findings":[]}',
+        '```python\n{"approved":true,"findings":[]}\n```',
+        '```\n```json\n{"approved":true,"findings":[]}\n```\n```',
+        '```json\n{"approved":false,"findings":[]}\n```',
+        "```json\nnot JSON\n```",
+    ],
+)
+def test_verdict_does_not_extract_or_repair_json(content):
+    with pytest.raises(ValueError):
+        AgentJudge.review(response(content))
+
+
+def test_correction_is_labeled_and_carries_findings():
+    verdict = JudgeVerdict.model_validate(
+        {
+            "approved": False,
+            "findings": [{"code": "off_topic", "message": "Redirect."}],
+        }
+    )
+    message = AgentJudge.correction(verdict)
+    assert message["role"] == "user"
+    assert message["content"].startswith(
+        "Internal review feedback, not a new user request."
+    )
+    assert json.loads(message["content"].split("Findings: ")[1]) == (
+        verdict.model_dump(mode="json")
+    )
+
+
 @pytest.mark.parametrize(
     "payload",
     [
