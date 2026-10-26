@@ -919,6 +919,19 @@ document.addEventListener('alpine:init', () => {
         this.updateThinking()
         this.refreshSendState()
         this.loadThreads()
+        // Wait for Alpine to re-enable the input without taking focus elsewhere.
+        this.$nextTick(() => {
+          if (
+            this.attached(stream) &&
+            !this.streaming &&
+            !this.attachOpen &&
+            !this.confirmingDelete &&
+            document.hasFocus() &&
+            document.activeElement === document.body
+          ) {
+            this.$refs.input?.focus({ preventScroll: true })
+          }
+        })
       }
     },
 

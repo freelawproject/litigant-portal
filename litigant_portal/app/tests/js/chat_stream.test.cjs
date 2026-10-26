@@ -26,6 +26,11 @@ function makeApp(
     clearTimeout,
     window: {},
     document: {
+      body: {},
+      activeElement: null,
+      hasFocus() {
+        return true
+      },
       addEventListener(_name, callback) {
         callback()
       },
@@ -511,3 +516,67 @@ test('normal SSE completion keeps streamed output unchanged', async () => {
   assert.equal(released, true)
   assert.equal(app.streaming, false)
 })
+
+for (const scenario of [
+  'normal completion',
+  'judged completion',
+  'request failure',
+  'another control focused',
+  'thread switched',
+  'attachment dialog open',
+  'delete confirmation open',
+  'another stream started',
+  'page inactive',
+]) {
+  test(`composer focus after ${scenario}`, async () => {
+    const { app, context } = makeApp(async () => {
+      if (scenario === 'request failure') throw new Error('offline')
+      const chunks = [sse('content_delta', { content: 'Answer' }), sse('done')]
+      if (scenario === 'judged completion') chunks.unshift(sse('judging'))
+      return {
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: async () => ({ value: chunks.shift(), done: false }),
+            cancel: async () => {},
+            releaseLock() {},
+          }),
+        },
+      }
+    })
+    const callbacks = []
+    let focused = false
+    app.$nextTick = (callback) => callbacks.push(callback)
+    app.$refs.input = {
+      disabled: true,
+      focus(options) {
+        assert.equal(this.disabled, false)
+        assert.equal(options.preventScroll, true)
+        focused = true
+      },
+    }
+    context.document.activeElement = context.document.body
+
+    await app.sendMessage('Help', null)
+
+    assert.equal(app.streaming, false)
+    assert.equal(focused, false)
+    // Alpine re-enables the input before nextTick callbacks run.
+    app.$refs.input.disabled = false
+    if (scenario === 'another control focused')
+      context.document.activeElement = {}
+    if (scenario === 'thread switched') app.messages = []
+    if (scenario === 'attachment dialog open') app.attachOpen = true
+    if (scenario === 'delete confirmation open') app.confirmingDelete = true
+    if (scenario === 'another stream started') app.streaming = true
+    if (scenario === 'page inactive') context.document.hasFocus = () => false
+    callbacks.forEach((callback) => callback())
+
+    assert.equal(
+      focused,
+      ['normal completion', 'judged completion', 'request failure'].includes(
+        scenario
+      )
+    )
+  })
+}
