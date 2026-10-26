@@ -40,15 +40,14 @@ class ReviewFacts(Tool):
             chat_thread_identity_get,
         )
         from litigant_portal.app.selectors.topic_flow import (
+            topic_flow_url_kwargs,
             variable_answer_list,
         )
         from litigant_portal.app.services.docassemble import (
             interview_launch_url,
         )
-        from litigant_portal.app.topic_flow.prefill import interview_target
-        from litigant_portal.app.topic_flow.registry import (
-            registry,
-            topic_flow_track_find,
+        from litigant_portal.app.topic_flow.prefill import (
+            flow_interview_target,
         )
 
         thread = ChatThread.objects.get(id=thread_id)
@@ -96,14 +95,10 @@ class ReviewFacts(Tool):
                     }
                 )
 
-        # Same launch check as the guided page's packet section.
-        track = topic_flow_track_find(flow)
-        corpus = (
-            registry.get(track["court"], track["topic"], track["role"])
-            if track
-            else None
-        )
-        target = interview_target(corpus) if corpus else None
+        # Same launch check as the guided page's packet section; no page
+        # means no interview to launch from it.
+        page = topic_flow_url_kwargs(flow) or {}
+        target = flow_interview_target(flow) if page else None
         interview_available = bool(target and interview_launch_url(target[0]))
 
         result = "The review card is now shown to the user."
@@ -124,9 +119,9 @@ class ReviewFacts(Tool):
                 "as_of": as_of.isoformat(),
                 "all_reviewed": bool(facts)
                 and all(f["reviewed"] for f in facts),
-                "court": track["court"] if track else None,
-                "topic": track["topic"] if track else None,
-                "role": track["role"] if track else None,
+                "court": page.get("court"),
+                "topic": page.get("topic"),
+                "role": page.get("role"),
                 "interview_available": interview_available,
             },
         )

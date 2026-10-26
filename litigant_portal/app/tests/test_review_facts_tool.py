@@ -23,18 +23,10 @@ from litigant_portal.app.models import (
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.services.chat_engine import chat_thread_state_merge
 from litigant_portal.app.services.topic_flow import variable_answer_set
-from litigant_portal.app.topic_flow import registry as registry_module
-from litigant_portal.app.topic_flow.schema import (
-    Corpus,
-    FactGatherSection,
-    Metadata,
-    PacketOutput,
-    Question,
-)
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
-TRACK = {"court": "test-court", "topic": "name-change", "role": "standard"}
+REFERENCE = "docassemble.test:data/questions/petition.yml"
 
 
 @pytest.fixture
@@ -47,9 +39,15 @@ def thread():
 
 @pytest.fixture
 def flow():
-    topic = Topic.objects.create(slug="name_change", title="Name change")
+    topic = Topic.objects.create(
+        slug="name_change", court="test-court", title="Name change"
+    )
     flow = TopicFlow.objects.create(
-        topic=topic, slug="standard", name="Standard", enabled=True
+        topic=topic,
+        slug="standard",
+        name="Standard",
+        enabled=True,
+        interview_reference=REFERENCE,
     )
     page = TopicFlowInterviewPage.objects.create(flow=flow, title="About you")
     first_name = Variable.objects.create(
@@ -97,34 +95,9 @@ def _store(thread, name, value, reviewed=False):
     )
 
 
-def _launchable(monkeypatch, settings):
+def _launchable(settings):
     settings.DOCASSEMBLE_BASE_URL = "https://da.example.gov"
     settings.DOCASSEMBLE_PUBLIC_URL = None
-    corpus = Corpus(
-        metadata=Metadata(
-            court=TRACK["court"],
-            topic=TRACK["topic"],
-            role=TRACK["role"],
-            title="T",
-        ),
-        sections=[
-            PacketOutput(
-                kind="output",
-                output_type="packet",
-                id="filing_packet",
-                heading="Packet",
-                forms=["Petition"],
-                interview_reference=(
-                    "docassemble.test:data/questions/petition.yml"
-                ),
-                interview_prefill={},
-            )
-        ],
-    )
-    monkeypatch.setattr(
-        registry_module.registry, "tracks_for", lambda topic: [TRACK]
-    )
-    monkeypatch.setattr(registry_module.registry, "get", lambda *a: corpus)
 
 
 def test_without_an_active_flow_the_tool_reports_an_error(thread, flow):
@@ -242,57 +215,46 @@ def test_the_tool_takes_no_arguments_and_a_reviewed_flag_changes_nothing(
     assert answer.reviewed is False
 
 
-def test_interview_is_available_when_page_corpus_and_docassemble_line_up(
-    thread, active_flow, monkeypatch, settings
+def test_interview_is_available_when_the_row_handoff_and_docassemble_line_up(
+    thread, active_flow, settings
 ):
-    _launchable(monkeypatch, settings)
+    _launchable(settings)
     data = ReviewFacts()(thread_id=thread.id).render_data
     assert data["interview_available"] is True
     assert (data["court"], data["topic"], data["role"]) == (
         "test-court",
-        "name-change",
+        "name_change",
         "standard",
     )
 
 
 def test_interview_is_unavailable_without_docassemble(
-    thread, active_flow, monkeypatch, settings
+    thread, active_flow, settings
 ):
-    _launchable(monkeypatch, settings)
+    _launchable(settings)
     settings.DOCASSEMBLE_BASE_URL = None
     data = ReviewFacts()(thread_id=thread.id).render_data
     assert data["interview_available"] is False
     assert data["court"] == "test-court"
 
 
-def test_interview_is_unavailable_when_the_corpus_has_no_interview(
-    thread, active_flow, monkeypatch, settings
+def test_interview_is_unavailable_when_the_flow_has_no_handoff(
+    thread, active_flow, settings
 ):
-    _launchable(monkeypatch, settings)
-    corpus = Corpus(
-        metadata=Metadata(court="c", topic="t", role="r", title="T"),
-        sections=[
-            FactGatherSection(
-                kind="fact_gather",
-                id="your_information",
-                heading="Your name",
-                questions=[Question(id="first_name", label="First name")],
-            )
-        ],
-    )
-    monkeypatch.setattr(registry_module.registry, "get", lambda *a: corpus)
-    assert not ReviewFacts()(thread_id=thread.id).render_data[
-        "interview_available"
-    ]
+    _launchable(settings)
+    active_flow.interview_reference = ""
+    active_flow.save()
+    data = ReviewFacts()(thread_id=thread.id).render_data
+    assert data["interview_available"] is False
+    assert data["court"] == "test-court"
 
 
-def test_interview_is_unavailable_when_no_registry_page_matches(
-    thread, active_flow, monkeypatch, settings
+def test_interview_is_unavailable_when_the_topic_has_no_court(
+    thread, active_flow, settings
 ):
-    _launchable(monkeypatch, settings)
-    monkeypatch.setattr(
-        registry_module.registry, "tracks_for", lambda topic: []
-    )
+    _launchable(settings)
+    active_flow.topic.court = ""
+    active_flow.topic.save()
     data = ReviewFacts()(thread_id=thread.id).render_data
     assert data["interview_available"] is False
     assert data["court"] is None

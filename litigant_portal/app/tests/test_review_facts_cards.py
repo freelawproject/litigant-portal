@@ -180,7 +180,7 @@ def test_guided_page_is_offered_when_no_interview_is_available(
     assert f'href="{GUIDE_URL}"' in html
 
 
-def test_no_next_step_is_offered_without_a_registry_page(client_thread):
+def test_no_next_step_is_offered_when_the_topic_has_no_court(client_thread):
     html = _card_html(
         *client_thread,
         render_data=_data(
