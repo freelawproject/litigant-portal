@@ -22,7 +22,6 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.selectors import corpus as selectors
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
@@ -263,12 +262,6 @@ def synced(db, settings, tmp_path):
         mock.patch.object(services, "FORMS_DIR", tmp_path),
     ):
         corpus_sync()
-    # The view's court check reads the topic index from disk; keep it on
-    # the fake corpus so ``alpha`` is a known court for every test here.
-    with mock.patch.object(
-        selectors, "corpus_load_topics", return_value=corpus.topics
-    ):
-        yield
 
 
 def _section_ids(html):
@@ -934,11 +927,13 @@ def test_corpus_source_404s_the_wrong_court_when_corpus_court_is_set(
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_a_court_the_corpus_lacks_when_corpus_court_is_unset(
+def test_corpus_source_404s_a_court_that_does_not_own_the_topic_row(
     client, synced
 ):
+    """``beta`` is a synced court, but ``pets`` is alpha's topic."""
     assert client.get(URL).status_code == 200
     assert client.get(f"/t/beta/{TOPIC}/{ROLE}/").status_code == 404
+    assert client.get(f"/t/nowhere/{TOPIC}/{ROLE}/").status_code == 404
 
 
 # --- the default setting ----------------------------------------------------

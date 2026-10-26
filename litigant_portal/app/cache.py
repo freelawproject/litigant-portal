@@ -12,13 +12,6 @@ TOPIC_LIST_CACHE_KEY = "topic_list"
 CONTACT_LIST_CACHE_KEY = "contact_list"
 RESOURCE_LIST_CACHE_KEY = "resource_list"
 
-# The (court, topic) pairs the corpus tree authors, stored with a
-# fingerprint of that tree so a process ignores a list another release
-# cached. Read through corpus_court_known on every rows-path request,
-# dropped on commit by the busts_cache on corpus_sync, which runs on every
-# deploy of the tree.
-CORPUS_TOPIC_KEYS_CACHE_KEY = "corpus_topic_keys"
-
 # Keys holding cached model rows.
 DATA_MODEL_CACHE_KEYS = [
     SITE_CACHE_KEY,

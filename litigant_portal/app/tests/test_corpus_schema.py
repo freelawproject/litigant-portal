@@ -7,10 +7,8 @@ typo in a court form fails the check rather than printing a wrong PDF.
 from unittest import mock
 
 import pytest
-from django.core.cache import cache
 from pydantic import ValidationError
 
-from litigant_portal.app.cache import CORPUS_TOPIC_KEYS_CACHE_KEY
 from litigant_portal.app.selectors import corpus as selectors
 from litigant_portal.app.selectors.corpus import (
     BrandingSchema,
@@ -1094,71 +1092,3 @@ def test_a_contact_field_longer_than_its_column_is_rejected(field):
     data["courts"]["north-dakota"]["contacts"][0][field] = "x" * 256
     with pytest.raises(ValidationError):
         CorpusSchema.model_validate(data)
-
-
-@pytest.mark.parametrize(
-    ("corpus_court", "court", "known"),
-    [
-        ("north-dakota", "north-dakota", True),
-        ("north-dakota", "arizona", False),
-        (None, "north-dakota", True),
-        (None, "arizona", False),
-    ],
-    ids=[
-        "set-accepts-the-configured-court",
-        "set-rejects-another-court-even-if-authored",
-        "unset-accepts-a-court-authoring-the-topic",
-        "unset-rejects-a-court-the-corpus-lacks",
-    ],
-)
-def test_corpus_court_known_follows_the_setting_then_the_topic_index(
-    settings, corpus_court, court, known
-):
-    settings.CORPUS_COURT = corpus_court
-    topics = {("north-dakota", "adult-name-change"): object()}
-    with mock.patch.object(
-        selectors, "corpus_load_topics", return_value=topics
-    ):
-        assert (
-            selectors.corpus_court_known(court, "adult-name-change") is known
-        )
-
-
-def test_corpus_court_known_reads_the_topic_index_from_disk_once(settings):
-    settings.CORPUS_COURT = None
-    topics = {("north-dakota", "adult-name-change"): object()}
-    with mock.patch.object(
-        selectors, "corpus_load_topics", return_value=topics
-    ) as load:
-        assert selectors.corpus_court_known(
-            "north-dakota", "adult-name-change"
-        )
-        assert not selectors.corpus_court_known("arizona", "adult-name-change")
-    assert load.call_count == 1
-
-
-@pytest.mark.parametrize(
-    "stale",
-    [
-        ("other-tree", [("arizona", "adult-name-change")]),
-        [("arizona", "adult-name-change")],
-        [],
-    ],
-    ids=["another-tree", "unfingerprinted-list", "unfingerprinted-empty"],
-)
-def test_corpus_court_known_ignores_an_index_cached_from_another_tree(
-    settings, stale
-):
-    """A list another release's process cached is a miss, not an answer,
-    whatever shape that release stored it in."""
-    settings.CORPUS_COURT = None
-    cache.set(CORPUS_TOPIC_KEYS_CACHE_KEY, stale, timeout=None)
-    topics = {("north-dakota", "adult-name-change"): object()}
-    with mock.patch.object(
-        selectors, "corpus_load_topics", return_value=topics
-    ) as load:
-        assert not selectors.corpus_court_known("arizona", "adult-name-change")
-        assert selectors.corpus_court_known(
-            "north-dakota", "adult-name-change"
-        )
-    assert load.call_count == 1

@@ -1,10 +1,10 @@
 from functools import wraps
 
+from django.conf import settings
 from django.http import Http404, JsonResponse
 from django.utils.translation import gettext as _
 
 from litigant_portal.app.features import features
-from litigant_portal.app.selectors.corpus import corpus_court_known
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
     topic_flow_list,
@@ -29,12 +29,14 @@ def has_identity(request) -> bool:
 def topic_flow_row_get(court, topic, role, *, graph=True):
     """The enabled ``TopicFlow`` row behind a ``/t/<court>/<topic>/<role>/``
     URL, for the ``TOPIC_FLOW_SOURCE=corpus`` views; ``graph`` is passed to
-    ``topic_flow_find``. ``court`` is checked through ``corpus_court_known``;
-    the lookup itself is by topic and flow slug. Raises ``Http404`` on
-    either miss."""
-    if not corpus_court_known(court, topic):
+    ``topic_flow_find``. The row's topic must carry the URL's court, which
+    must also be the instance's court when ``CORPUS_COURT`` is set. Raises
+    ``Http404`` on any miss."""
+    if settings.CORPUS_COURT is not None and court != settings.CORPUS_COURT:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-    flow = topic_flow_find(topic_slug=topic, flow_slug=role, graph=graph)
+    flow = topic_flow_find(
+        topic_slug=topic, flow_slug=role, court=court, graph=graph
+    )
     if flow is None:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
     return flow

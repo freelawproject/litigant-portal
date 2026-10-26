@@ -33,14 +33,22 @@ def topic_flow_list() -> list[TopicFlow]:
 
 
 def topic_flow_find(
-    *, topic_slug: str, flow_slug: str, graph: bool = True
+    *,
+    topic_slug: str,
+    flow_slug: str,
+    court: str | None = None,
+    graph: bool = True,
 ) -> TopicFlow | None:
-    """The enabled flow at (topic_slug, flow_slug), or None. With ``graph``
-    its whole content graph is prefetched, for the page; without, only the
-    row and its topic, for a caller that reads a field or one relation."""
+    """The enabled flow at (topic_slug, flow_slug), or None. With ``court``
+    the topic must carry that court too, for the page URL's check. With
+    ``graph`` its whole content graph is prefetched, for the page; without,
+    only the row and its topic, for a caller that reads a field or one
+    relation."""
     flows = TopicFlow.objects.filter(
         topic__slug=topic_slug, slug=flow_slug, enabled=True
     ).select_related("topic")
+    if court is not None:
+        flows = flows.filter(topic__court=court)
     if graph:
         flows = flows.prefetch_related(
             "sections",
