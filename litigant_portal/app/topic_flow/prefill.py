@@ -1,7 +1,8 @@
 """The variables a flow hands to its docassemble interview.
 
 Pure, like the renderer: the reviewed-only answer read happens at the call
-site, these functions only resolve the corpus mapping and rename what it holds.
+site, these functions only resolve the mapping (from the corpus packet
+section, or from the TopicFlow row) and rename what it holds.
 """
 
 from litigant_portal.app.topic_flow.schema import PacketOutput
@@ -25,6 +26,14 @@ def interview_target(corpus) -> tuple[str, dict] | None:
         if reference:
             return reference, dict(section.interview_prefill)
     return None
+
+
+def flow_interview_target(flow) -> tuple[str, dict] | None:
+    """The row twin of ``interview_target``: ``(flow.interview_reference,
+    flow.interview_prefill)``, or None when the row has no reference."""
+    if not flow.interview_reference:
+        return None
+    return flow.interview_reference, dict(flow.interview_prefill)
 
 
 def prefill_variables(*, mapping: dict, answers: dict) -> dict:

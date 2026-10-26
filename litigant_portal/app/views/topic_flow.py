@@ -1,5 +1,6 @@
 import logging
 
+from django.conf import settings
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.urls import Resolver404, resolve
@@ -9,6 +10,7 @@ from django.utils.translation import gettext as _
 from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_POST
 
+from litigant_portal.app.selectors.site import contact_list
 from litigant_portal.app.selectors.topic_flow import (
     variable_answer_unreviewed_names,
 )
@@ -18,11 +20,16 @@ from litigant_portal.app.services.docassemble import (
     interview_launch_url,
 )
 from litigant_portal.app.services.topic_flow import variable_answer_confirm
+from litigant_portal.app.topic_flow import rows
+from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
     find_downloadable,
+    ics_artifact,
+    vcf_artifact,
 )
 from litigant_portal.app.topic_flow.prefill import (
+    flow_interview_target,
     interview_target,
     prefill_variables,
 )
@@ -31,6 +38,8 @@ from litigant_portal.app.views.utils import (
     has_identity,
     topic_flow_answers,
     topic_flow_reviewed_answers,
+    topic_flow_row_answers,
+    topic_flow_row_get,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,23 +55,56 @@ def topic_flow_download(request, court, topic, role, output_id):
     The view stays thin — file bytes come from the download handlers in
     downloads.py, computed from the same stored answers the page renders, so
     the download matches what's on screen.
+
+    Under ``TOPIC_FLOW_SOURCE=corpus`` the output ids are the layout block
+    names, and the file is built from rows (#1017).
     """
-    corpus = registry.get(court, topic, role)
-    if corpus is None:
-        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+    if settings.TOPIC_FLOW_SOURCE == "corpus":
+        artifact = _row_download(request, court, topic, role, output_id)
+    else:
+        corpus = registry.get(court, topic, role)
+        if corpus is None:
+            raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
 
-    section = find_downloadable(corpus, output_id)
-    if section is None:
-        raise Http404(f"No downloadable output {output_id!r}")
+        section = find_downloadable(corpus, output_id)
+        if section is None:
+            raise Http404(f"No downloadable output {output_id!r}")
 
-    artifact = build_download(
-        section, corpus, topic_flow_answers(request, corpus)
-    )
+        artifact = build_download(
+            section, corpus, topic_flow_answers(request, corpus)
+        )
     response = HttpResponse(artifact.body, content_type=artifact.content_type)
     response["Content-Disposition"] = (
         f'attachment; filename="{artifact.filename}"'
     )
     return response
+
+
+def _row_download(request, court, topic, role, output_id):
+    """The ``calendar`` block as a ``.ics`` from the flow's deadline rows and
+    the visitor's stored answers, or the ``contacts`` block as a ``.vcf``
+    from the URL's court's Contact rows. Any other id is 404, as a
+    non-downloadable section is on the content path. The UID segment is the
+    block name where the section id was."""
+    flow = topic_flow_row_get(court, topic, role, graph=False)
+    uid_prefix = f"{court}-{topic}-{role}-{output_id}"
+    if output_id == "calendar":
+        deadlines = list(flow.deadlines.select_related("offset_from"))
+        names = rows.flow_variable_names([], deadlines=deadlines)
+        return ics_artifact(
+            rows.flow_deadlines(
+                deadlines, topic_flow_row_answers(request, names)
+            ),
+            uid_prefix=uid_prefix,
+            filename="calendar.ics",
+        )
+    if output_id == "contacts":
+        return vcf_artifact(
+            contact_dicts(contact_list(court=court), id_attr="ref"),
+            uid_prefix=uid_prefix,
+            filename="contacts.vcf",
+        )
+    raise Http404(f"No downloadable output {output_id!r}")
 
 
 @require_POST
@@ -75,14 +117,31 @@ def topic_flow_interview(request, court, topic, role):
 
     Any failure redirects to the plain interview link instead. Unprefilled is a
     worse handoff than prefilled, but a dead button is worse than both.
+
+    The handoff is read from the TopicFlow row under
+    ``TOPIC_FLOW_SOURCE=corpus``; everything after the target is found is
+    the same on both paths.
     """
+    target = _interview_target(court, topic, role)
+    if target is None:
+        raise Http404(f"No interview handoff for {court}/{topic}/{role}")
+    return _interview_redirect(request, court, topic, role, target)
+
+
+def _interview_target(court, topic, role):
+    """``(interview, mapping)`` for the flow at this URL, or None without a
+    handoff. 404 for a flow that does not exist on the configured source."""
+    if settings.TOPIC_FLOW_SOURCE == "corpus":
+        return flow_interview_target(
+            topic_flow_row_get(court, topic, role, graph=False)
+        )
     corpus = registry.get(court, topic, role)
     if corpus is None:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+    return interview_target(corpus)
 
-    target = interview_target(corpus)
-    if target is None:
-        raise Http404(f"No interview handoff for {court}/{topic}/{role}")
+
+def _interview_redirect(request, court, topic, role, target):
     interview, mapping = target
     launch_url = interview_launch_url(interview)
     if launch_url is None:
@@ -176,9 +235,10 @@ def csrf_failure(request, reason=""):
     except Resolver404:
         match = None
     if match and match.url_name == "topic_flow_interview":
-        kwargs = match.kwargs
-        corpus = registry.get(kwargs["court"], kwargs["topic"], kwargs["role"])
-        target = interview_target(corpus) if corpus else None
+        try:
+            target = _interview_target(**match.kwargs)
+        except Http404:
+            target = None
         launch_url = interview_launch_url(target[0]) if target else None
         if launch_url is not None:
             return redirect(launch_url)

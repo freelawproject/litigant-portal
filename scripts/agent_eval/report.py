@@ -7,13 +7,14 @@ from collections import Counter
 from pathlib import Path
 from statistics import mean, median, pstdev
 
-from .judge import judgment_path, paid_calls, score
+from .judge import judgment_path, normalize_v3_grade, paid_calls, score
 from .schema import (
     DIMENSIONS,
     FAILURE_CATEGORIES,
     Grade,
     Weights,
     fingerprint,
+    normalize_system,
     runs_on,
     verify_references,
     write_json,
@@ -76,6 +77,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
     records = []
     for relative in manifest["attempts"]:
         row = json.loads((run / relative).read_text())
+        system = normalize_system(row["system"])
         judgment = None
         calls = []
         if relative in batch["judgments"]:
@@ -86,8 +88,11 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
             _, calls = paid_calls(run, path)
         scored = None
         if judgment and judgment["status"] == "completed":
+            grade = judgment["grade"]
+            if judgment.get("judge_format_version", 1) == 3:
+                grade = normalize_v3_grade(grade)
             scored = score(
-                Grade.model_validate(judgment["grade"]),
+                Grade.model_validate(grade),
                 judgment["score"]["deal_breakers"],
                 weights,
             )
@@ -101,7 +106,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 "case_id": row["case"]["id"],
                 "repeat": row["repeat"],
                 "group": row["case"]["group"],
-                "system": row["system"],
+                "system": system,
                 "model": row["model"],
                 "status": row["status"],
                 "overall": overall,
@@ -147,7 +152,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                         for key in ("model", "error", "error_message")
                     }
                     for call in row["calls"]
-                    if row["system"] == "old"
+                    if system == "current"
                     and call.get("error")
                     and not call.get("request", {}).get("stream")
                 ],
@@ -163,7 +168,8 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
             }
         )
     summaries = []
-    for system in manifest["config"]["systems"]:
+    for stored_system in manifest["config"]["systems"]:
+        system = normalize_system(stored_system)
         for model in manifest["config"]["models"]:
             for group in dict.fromkeys(
                 case["group"] for case in manifest["cases"]
@@ -404,8 +410,8 @@ def charts(reports: list[dict], output: Path):
     plt.rcParams.update(
         {"font.size": 10, "axes.spines.top": False, "axes.spines.right": False}
     )
-    colors = {"raw": "#64748b", "old": "#e09f3e", "new": "#168aad"}
-    markers = {"raw": "o", "old": "s", "new": "^"}
+    colors = {"raw": "#64748b", "current": "#e09f3e", "standalone": "#168aad"}
+    markers = {"raw": "o", "current": "s", "standalone": "^"}
     failure_legend = Line2D(
         [],
         [],

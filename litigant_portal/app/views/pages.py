@@ -18,7 +18,7 @@ from django.shortcuts import redirect, render
 from django.template.loader import get_template
 from django.templatetags.static import static
 from django.urls import reverse, reverse_lazy
-from django.utils.http import url_has_allowed_host_and_scheme, urlencode
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView, UpdateView
@@ -38,9 +38,12 @@ from litigant_portal.app.models.choices import (
     State,
     VariableDataType,
 )
-from litigant_portal.app.selectors.corpus import corpus_court_known
-from litigant_portal.app.selectors.site import contact_help_list, site_get
-from litigant_portal.app.selectors.topic_flow import topic_flow_find
+from litigant_portal.app.selectors.site import (
+    contact_help_list,
+    contact_list,
+    resource_list,
+    site_get,
+)
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.theme import (
@@ -64,6 +67,7 @@ from litigant_portal.app.views.utils import (
     topic_flow_cards,
     topic_flow_row_answers,
     topic_flow_row_cleared_names,
+    topic_flow_row_get,
 )
 
 
@@ -95,24 +99,6 @@ def chat_view(request):
         "pages/chat/index.html",
         {"briefcase_groups": briefcase_answers(request)},
     )
-
-
-def deep_link(request, court, topic):
-    """Deep-link entry: /t/{court}/{topic}/ → chat with both pre-set.
-
-    Validates the pair against the prompt registries. Unknown court or
-    topic returns 404. On success, 302 to /chat/?topic=X&court=Y so the
-    existing chat page handles the heavy lifting.
-    """
-    from litigant_portal.prompts import is_known_court, is_known_topic
-
-    if not is_known_topic(topic):
-        raise Http404(f"Topic '{topic}' not registered")
-    if not is_known_court(court):
-        raise Http404(f"Court '{court}' not registered")
-
-    query = urlencode({"topic": topic.lower(), "court": court.lower()})
-    return redirect(f"{reverse('pages:chat')}?{query}")
 
 
 def topic_flow(request, court, topic, role):
@@ -250,20 +236,26 @@ def topic_flow_rows(request, court, topic, role):
     #1016).
 
     The sibling of ``topic_flow`` that reads the rows ``sync_corpus`` writes.
-    ``court`` is checked through ``corpus_court_known``; the lookup itself
-    is by topic and flow slug.
     """
-    if not corpus_court_known(court, topic):
-        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-    flow = topic_flow_find(topic_slug=topic, flow_slug=role)
-    if flow is None:
-        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-
+    flow = topic_flow_row_get(court, topic, role)
     sections = list(flow.sections.all())
     pages = rows.flow_pages(flow)
-    names = rows.flow_variable_names(pages)
+    form_conditions = list(flow.form_conditions.all())
+    deadlines = list(flow.deadlines.all())
+    names = rows.flow_variable_names(pages, form_conditions, deadlines)
     answers = topic_flow_row_answers(request, names)
     cleared = topic_flow_row_cleared_names(request, names)
+    # The output blocks' rows (the URL's court's whole contact and resource
+    # lists, not a per-flow pick) and the URL parts their links need.
+    block_rows = {
+        "form_conditions": form_conditions,
+        "deadlines": deadlines,
+        "contacts": contact_list(court=court),
+        "resources": resource_list(court=court),
+        "court": court,
+        "topic": topic,
+        "role": role,
+    }
 
     if request.method == "POST":
         # Same rules as the content path's POST above, over glossary rows.
@@ -312,7 +304,13 @@ def topic_flow_rows(request, court, topic, role):
                 request,
                 flow.name,
                 rows.render_flow(
-                    flow, sections, pages, answers, errors, cleared
+                    flow,
+                    sections,
+                    pages,
+                    answers,
+                    errors,
+                    cleared,
+                    **block_rows,
                 ),
             )
         if valid:
@@ -335,7 +333,9 @@ def topic_flow_rows(request, court, topic, role):
     return _render_flow_page(
         request,
         flow.name,
-        rows.render_flow(flow, sections, pages, answers, cleared=cleared),
+        rows.render_flow(
+            flow, sections, pages, answers, cleared=cleared, **block_rows
+        ),
     )
 
 

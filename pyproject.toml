@@ -66,8 +66,6 @@ dependencies = [
     "openpyxl>=3.1",
     # Token counting for attachment-size gates
     "tiktoken>=0.8",
-    # JSON Schema validation (court.json + future partner config)
-    "jsonschema>=4.20",
 ]
 
 [project.optional-dependencies]
@@ -76,6 +74,7 @@ dev = [
     "mypy>=1.19.1",
     "pre-commit>=4.5.0",
     "pytest>=8.0",
+    "pytest-cov>=6.0",
     "pytest-django>=4.9",
     "pytailwindcss>=0.2",
     "ruff>=0.11.8",
@@ -104,8 +103,6 @@ litigant_portal = [
   "corpus/**/*.pdf",
   "corpus/courts/*/branding/*.svg",
   "corpus/courts/*/branding/*.png",
-  "prompts/**/*.json",
-  "prompts/**/*.md",
 ]
 lp_agent = [
   "py.typed",
@@ -162,6 +159,18 @@ addopts = "-ra --strict-markers"
 markers = [
     "postgres: test requires a PostgreSQL database",
 ]
+
+[tool.coverage.run]
+source = ["litigant_portal", "lp_agent"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "litigant_portal/manage.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
 
 [tool.djlint]
 profile = "django"

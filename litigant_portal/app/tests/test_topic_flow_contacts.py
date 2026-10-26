@@ -9,7 +9,11 @@ the fields the resolver reads).
 
 from types import SimpleNamespace
 
-from litigant_portal.app.topic_flow.contacts import resolve_vcf_contacts
+from litigant_portal.app.models import Contact as ContactRow
+from litigant_portal.app.topic_flow.contacts import (
+    contact_dicts,
+    resolve_vcf_contacts,
+)
 from litigant_portal.app.topic_flow.schema import Contact
 
 
@@ -75,3 +79,42 @@ def test_resolves_every_referenced_contact():
         _section("clerk", "aid"), _corpus(clerk, aid)
     )
     assert len(resolved) == 2
+
+
+def test_contact_dicts_flatten_rows_in_order():
+    # The rows path: a Contact row's ref (its key) is the dict id.
+    rows = [
+        ContactRow(
+            key="clerk",
+            name="Clerk of Court",
+            phone="555-1234",
+            email="clerk@court.gov",
+            url="https://court.gov",
+            address="100 Main St",
+            hours="9-4 M-F",
+            note="Window 3",
+        ),
+        ContactRow(key="aid", name="Legal Aid"),
+    ]
+    assert contact_dicts(rows, id_attr="ref") == [
+        {
+            "id": "clerk",
+            "name": "Clerk of Court",
+            "phone": "555-1234",
+            "email": "clerk@court.gov",
+            "url": "https://court.gov",
+            "address": "100 Main St",
+            "hours": "9-4 M-F",
+            "note": "Window 3",
+        },
+        {
+            "id": "aid",
+            "name": "Legal Aid",
+            "phone": "",
+            "email": "",
+            "url": "",
+            "address": "",
+            "hours": "",
+            "note": "",
+        },
+    ]

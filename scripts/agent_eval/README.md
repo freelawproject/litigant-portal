@@ -1,7 +1,7 @@
 # Agent evaluation baseline
 
 Compare raw Bedrock questions (`raw`), the existing `LitigantAssistant` chat
-engine (`old`), and `PortalAgent` with its Direct runtime (`new`). Raw receives
+engine (`current`), and `PortalAgent` with its Direct runtime (`standalone`). Raw receives
 only the question: no system prompt, history, tools, or corpus. This is an API
 baseline, not a measurement of chatgpt.com.
 
@@ -13,9 +13,11 @@ It does not install evaluation dependencies into the application environment or
 Docker image.
 
 ```bash
-# Full matrix: 3 systems × 2 models × 22 cases × 3 attempts = 396 attempts,
-# minus the history cases the new system does not run.
+# Grounded-chat baseline: 2 systems × 2 models × 25 cases × 3 attempts = 300 attempts.
 make agent-eval
+
+# Include PortalAgent: 426 attempts, excluding its unsupported history cases.
+make agent-eval ARGS='run --systems raw current standalone --slug all-systems'
 
 # Small live run, including the separate Sol judge.
 make agent-eval ARGS='run --models luna --cases nd-fee --repetitions 1 --slug smoke'
@@ -45,7 +47,7 @@ Orchestration, raw calls, judging, and charts run locally. Export
 `AWS_BEARER_TOKEN_BEDROCK` locally for raw calls and judging. Raw-only runs,
 judging saved answers, and offline reports do not require Docker.
 
-Old/new calls require the usual **already-running** Django development container
+Current/standalone calls require the usual **already-running** Django development container
 and its database/Redis services. The runner uses `docker compose exec -T django`
 to upload a temporary Python worker. That worker imports the container's app,
 uses its credentials and services, and streams artifacts back to local `evals/`.
@@ -64,7 +66,7 @@ recorded, and the setting is restored afterward. Legacy agent code is unchanged.
 
 [cases.yml](cases.yml) contains fifteen real-reference cases, six fictional
 cases, and four multi-turn conversation cases. Every case with `history` takes
-the `conversation` group, because the new system does not run history cases;
+the `conversation` group, because the standalone system does not run history cases;
 keeping them out of `real` keeps that group comparable across all three
 systems.
 [references/](references/) freezes repository corpus content for answer keys,
@@ -72,15 +74,16 @@ with provenance and draft review status. It is not independently verified law.
 When the corpus changes, copy the source files over the frozen ones and update
 the hashes in `provenance.json`; a stale reference makes the judge penalize
 answers that follow the current corpus. The frozen files carry the authored
-source ids from #949, which the citation check depends on. Re-freeze only
-from a corpus tree that has them: `main` once #994 merges, not before.
+source ids from #949, which the citation check depends on. The post-949 baseline
+references include the current ND corpus. Keep cases, references, and the rubric
+unchanged between this baseline and its later judged-chat comparison.
 
 A case may carry `history`: user turns sent on the same thread before
 `question`. Their replies are recorded in the attempt's `detail.transcript`
-and shown to the judge as context; only the final answer is graded. The old
+and shown to the judge as context; only the final answer is graded. The current
 system continues one chat thread across turns and clears the evaluation
 identity's stored facts before each case, recording what the agent stored as
-`detail.stored_facts`. Raw replays the turns as a message list. The new
+`detail.stored_facts`. Raw replays the turns as a message list. The standalone
 system takes single-turn cases only, so the runner does not schedule it for
 history cases and the planned attempt count excludes them. Timing covers
 all turns of the case. The
@@ -104,7 +107,7 @@ deal breaker; cases without the flag are not affected.
 The fictional chicken-law variants change the fee and procedural order while
 retaining identical questions. Both include the 200-square-feet-per-chicken
 boundary. Fixtures enter through normal corpus files and an evaluation database
-flow. The new agent currently does not retrieve this content; the benchmark does
+flow. The standalone agent currently does not retrieve this content; the benchmark does
 not insert it into the candidate prompt. Raw receives no corpus.
 
 Legacy runs temporarily change site settings and may enable the fictional flow;
@@ -159,6 +162,10 @@ use the latest batch, including incomplete grading. Reweighting/comparison write
 a separate report; incompatible cases/references/rubrics cannot be pooled.
 Reports and Matplotlib PNGs can be rebuilt without API calls or running services.
 
+Legacy `old` and `new` system tags are accepted on read as `current` and
+`standalone`. Rebuilt summaries and charts use the canonical names; saved
+manifests, attempts, judgments, and their paths remain unchanged.
+
 `recover` revalidates saved raw judge responses offline, including legacy quoted
 evidence with Markdown, punctuation, and capitalization differences. It preserves
 the original records and records recovered judgments in a new batch. Unrecoverable
@@ -177,6 +184,20 @@ answer's rubric critical failures do not. Reports show coverage and recovery
 provenance, retaining original and replacement judge costs separately from
 candidate costs.
 
-This internal suite has no automated tests or pre-commit test integration. Verify
-changes with a small live run, fixture/restoration checks, and inspection of saved
-JSON and charts. Inspect judge evidence before treating any run as a baseline.
+Judge format v4 allows `contradicted` with `value: null` for a denial without an
+asserted amount. It still requires evidence and applies the critical-failure
+zero. Supported numeric/boolean facts require an extracted value. Saved v1/v2
+responses retain their original validation rules; v3's `asserts_value` flags
+are validated and removed on read without changing saved files. Use
+`judge RUN --retry-failed` for unresolved older judgments. Accepted judgments
+are retained, and reports record any mix of format versions.
+
+Focused parser and grading tests run in the fast suite:
+
+```bash
+uv run --locked --extra dev tox -e fast -- litigant_portal/app/tests/test_agent_eval.py -q
+```
+
+Verify live changes with a small run or failed-judgment retry and inspection of
+saved JSON and charts. Fixture changes also need restoration checks. Inspect
+judge evidence before treating any run as a baseline.

@@ -11,10 +11,10 @@
 # FCMC Self Help Center contact added #611 ((614) 645-7381, 16th Fl.).
 # Response-packet forms are #610 (no packet section here yet).
 #
-# Known gap, deliberate: the flow URL /t/franklin-county-oh/eviction/tenant/
-# resolves from this corpus alone, but the chat deep-link
-# /t/franklin-county-oh/eviction/ 404s until courts/franklin-county-oh/
-# prompt.md exists (chat-side court content; needs the same sources, #373).
+# The flow URL /t/franklin-county-oh/eviction/tenant/ resolves from this
+# corpus alone. There is no two-segment chat deep link: the chat reads no
+# court or topic from the URL (#687, #1049). Chat-side court content needs
+# the same sources (#373).
 #
 # Authoring style (per #620/#646): no em-dashes in user-facing copy; body
 # paragraphs are ONE line each (the renderer turns every newline into <br>);
