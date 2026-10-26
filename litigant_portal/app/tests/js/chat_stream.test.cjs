@@ -49,6 +49,7 @@ function makeApp(
   app.$nextTick = (callback) => callback()
   app.$refs = {}
   app.loadThreads = async () => {}
+  const updateThinking = app.updateThinking.bind(app)
   app.updateThinking = () => {}
   app.scrollToBottom = () => {}
   app.setThreadStatus = () => {}
@@ -57,7 +58,7 @@ function makeApp(
     app.attachments = []
     app.hasAttachments = false
   }
-  return { app, context }
+  return { app, context, updateThinking }
 }
 
 function newStream(app) {
@@ -82,6 +83,35 @@ function sse(type, fields = {}) {
     'data: ' + JSON.stringify({ type, ...fields }) + '\n\n'
   )
 }
+
+test('judging shows checking only on the attached stream and clears on progress or termination', () => {
+  for (const type of ['content_delta', 'tool_call', 'done', 'error']) {
+    const { app, updateThinking } = makeApp()
+    app.updateThinking = updateThinking
+    const stream = newStream(app)
+    app.handleEvent(stream, { type: 'judging' })
+    assert.equal(app.thinkingVisible, true)
+    assert.equal(app.checkingVisible, true)
+    assert.equal(stream.stallTimer, null)
+
+    app.messages = []
+    app.updateThinking()
+    assert.equal(app.checkingVisible, false)
+    app.messages = stream.messages
+    app.updateThinking()
+    assert.equal(app.checkingVisible, true)
+
+    app.handleEvent(stream, {
+      type,
+      content: 'Answer',
+      id: 'tool',
+      name: 'LoadTopicFlow',
+    })
+    assert.equal(app.checkingVisible, false)
+    app.handleEvent(stream, { type: 'done' })
+    assert.equal(app.thinkingVisible, false)
+  }
+})
 
 test('network drop uses the fallback card renderer', async () => {
   const { app } = makeApp(async () => {

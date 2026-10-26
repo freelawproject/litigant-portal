@@ -15,6 +15,7 @@ def site_update(
     official_resources_url: str = "",
     fast_model: str = "",
     assistant_model: str = "",
+    judge_model: str = "",
 ) -> Site:
     """Update the site's editable fields."""
     site = site_get()
@@ -25,6 +26,7 @@ def site_update(
     site.official_resources_url = official_resources_url
     site.fast_model = fast_model
     site.assistant_model = assistant_model
+    site.judge_model = judge_model or None
     site.save(
         update_fields=[
             "court_name",
@@ -34,6 +36,7 @@ def site_update(
             "official_resources_url",
             "fast_model",
             "assistant_model",
+            "judge_model",
             "updated_at",
         ]
     )

@@ -9,6 +9,7 @@ inside an open transaction and is dropped only once it lands.
 import uuid
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.test import TestCase
@@ -117,6 +118,30 @@ class SiteCacheTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             site_update(assistant_model=model)
         self.assertEqual(site_get_model(role="assistant"), model)
+
+    def test_judge_setting_round_trip_and_validation(self):
+        self.assertIsNone(site_get().judge_model)
+        user = get_user_model().objects.create_superuser(
+            username="judge-admin", email="judge@example.test", password="test"
+        )
+        self.client.force_login(user)
+        for model in (BedrockModel.GPT_5_6_SOL, ""):
+            with self.captureOnCommitCallbacks(execute=True):
+                response = self.client.post(
+                    "/api/admin/site/update/", {"judge_model": model}
+                )
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["judge_model"], model)
+            self.assertEqual(site_get().judge_model, model or None)
+            self.assertEqual(
+                self.client.get("/api/admin/site/").json()["judge_model"],
+                model,
+            )
+        response = self.client.post(
+            "/api/admin/site/update/", {"judge_model": "not-a-model"}
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIsNone(Site.objects.get().judge_model)
 
 
 @pytest.mark.postgres

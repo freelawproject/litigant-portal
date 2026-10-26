@@ -68,6 +68,14 @@ Read it as a loop:
 
 ---
 
+## Optional answer review
+
+Set **Judge model** in admin Settings to enable answer review; leave it disabled to retain token streaming. The engine reads `site_get().judge_model` directly. It buffers each generation, releases tool-bearing prose before dispatching tools, and sends final candidates to `agents/judge.py`. That module adapts the prototype verdict contract: schema-in-prompt JSON, validated with Pydantic, without a provider-specific structured-output mode.
+
+The `judging` SSE event uses the existing waiting indicator. A released final answer is stored before display. Rejected drafts are `meta=True` audit rows, excluded from subsequent conversation history; draft and findings remain in request-local history for up to two corrections. Judge completions have separate meta rows with verdicts, findings, and usage, available in the admin JSON export. Exhaustion releases the last draft with a warning; a judge call or parse failure also releases with a warning. Database write failures use the existing error path.
+
+The waiting copy is provisional. An exhaustion caveat and Jessica's fail-open sign-off remain team decisions; do not enable judged chat for a pilot court before that sign-off. For the comparison, use the existing eval `current` system in separate runs with the Site judge setting off and on, keeping cases, references, and grading fixed. The eval config's `judge_model` selects the external grader, not this runtime judge.
+
 ## Anatomy of an agent
 
 An agent is a configuration object. It binds together five ingredients. The

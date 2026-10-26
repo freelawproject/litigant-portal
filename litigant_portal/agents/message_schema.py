@@ -80,10 +80,15 @@ class ToolMessage(TypedDict, total=False):
 
 
 class MetaMessage(TypedDict, total=False):
-    """An accounting-only record."""
+    """
+    An accounting or audit record, excluded from conversation replay.
+    """
 
     role: Literal["meta"]
     kind: str
+    content: str
+    verdict: dict[str, Any]
+    error: str
 
 
 MessageSchema = Annotated[

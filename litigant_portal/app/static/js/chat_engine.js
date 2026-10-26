@@ -536,6 +536,7 @@ document.addEventListener('alpine:init', () => {
     menuOpen: false,
     confirmingDelete: false,
     thinkingVisible: false,
+    checkingVisible: false,
     // The in-flight stream context, if any. It owns the message array it
     // writes into, so switching threads mid-stream just detaches the view
     // while the stream keeps filling its own buffer in the background.
@@ -825,6 +826,7 @@ document.addEventListener('alpine:init', () => {
         terminal: false,
         receivedFirstStreamEvent: false,
         inFlightToolIds: [],
+        judging: false,
         controller: new AbortController(),
       }
       this.activeStream = stream
@@ -943,9 +945,15 @@ document.addEventListener('alpine:init', () => {
         }
         // Surface the new thread's row (and its dot) right away.
         this.loadThreads()
+      } else if (event.type === 'judging') {
+        stream.judging = true
+        clearTimeout(stream.stallTimer)
+        stream.stallTimer = null
       } else if (event.type === 'content_delta') {
+        stream.judging = false
         this.appendContent(stream, event.content || '')
       } else if (event.type === 'tool_call') {
+        stream.judging = false
         // A new tool starts a fresh text run after it.
         stream.openIndex = null
         stream.messages.push(makeToolFromCall(event))
@@ -969,6 +977,7 @@ document.addEventListener('alpine:init', () => {
       } else if (event.type === 'error') {
         this.failStream(stream, event)
       } else if (event.type === 'done') {
+        stream.judging = false
         stream.terminal = true
         clearStreamTimers(stream)
       }
@@ -987,6 +996,7 @@ document.addEventListener('alpine:init', () => {
 
     failStream(stream, event = {}) {
       if (stream.failureRendered || stream.terminal) return
+      stream.judging = false
       stream.failureRendered = true
       stream.terminal = true
       clearStreamTimers(stream)
@@ -1058,12 +1068,19 @@ document.addEventListener('alpine:init', () => {
     // streaming text is already the most recent thing on screen. Only the
     // stream attached to the visible thread shows it.
     updateThinking() {
+      this.checkingVisible = false
       if (
         !this.streaming ||
         !this.activeStream ||
+        this.activeStream.terminal ||
         !this.attached(this.activeStream)
       ) {
         this.thinkingVisible = false
+        return
+      }
+      if (this.activeStream.judging) {
+        this.thinkingVisible = true
+        this.checkingVisible = true
         return
       }
       const last = this.messages[this.messages.length - 1]

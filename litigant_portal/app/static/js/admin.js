@@ -61,6 +61,7 @@ document.addEventListener('alpine:init', () => {
     siteOfficialResourcesUrl: '',
     siteFastModel: '',
     siteAssistantModel: '',
+    siteJudgeModel: '',
     siteSaved: false,
     siteError: '',
     // Knowledge base tab
@@ -136,6 +137,7 @@ document.addEventListener('alpine:init', () => {
         this.siteOfficialResourcesUrl = site.official_resources_url
         this.siteFastModel = site.fast_model
         this.siteAssistantModel = site.assistant_model
+        this.siteJudgeModel = site.judge_model
       } catch (e) {
         console.error('Failed to load site settings:', e)
       }
@@ -162,6 +164,7 @@ document.addEventListener('alpine:init', () => {
         )
         body.append('fast_model', this.siteFastModel)
         body.append('assistant_model', this.siteAssistantModel)
+        body.append('judge_model', this.siteJudgeModel)
         body.append('csrfmiddlewaretoken', this.csrfToken())
         const res = await fetch('/api/admin/site/update/', {
           method: 'POST',

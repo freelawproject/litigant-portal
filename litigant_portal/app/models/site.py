@@ -47,6 +47,12 @@ class Site(BaseModel):
         null=True,
         choices=BedrockModel.choices,
     )
+    judge_model = models.CharField(
+        max_length=128,
+        blank=True,
+        null=True,
+        choices=BedrockModel.choices,
+    )
 
     class Meta:
         constraints = [
