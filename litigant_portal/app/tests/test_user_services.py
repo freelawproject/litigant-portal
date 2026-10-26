@@ -68,6 +68,7 @@ class IdentityMergeTests(TestCase):
         self.assertEqual(upload.identity, self.target)
         # The stored path is identity-free, so the merge never touches it.
         self.assertEqual(upload.file.name, "uploads/x/notes.txt")
+        self.assertFalse(UserIdentity.objects.filter(pk=self.anon.pk).exists())
 
 
 @pytest.mark.postgres
