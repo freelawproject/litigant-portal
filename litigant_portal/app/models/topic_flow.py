@@ -136,7 +136,25 @@ class Variable(BaseModel):
         ``{name: value}`` answers. Callers prefetch ``asked_when``."""
         if self.asked_when is None:
             return True
-        return answers.get(self.asked_when.name) == self.asked_when_value
+        return condition_holds(
+            answers, self.asked_when.name, self.asked_when_value
+        )
+
+
+def condition_holds(
+    answers: dict,
+    name: str,
+    value,
+    operator=TopicFlowFormConditionOperator.EQUALS,
+) -> bool:
+    """Whether a ``{variable, operator, value}`` rule holds against
+    ``{name: value}`` answers: ``equals`` when the stored answer is the
+    value, ``not_equals`` when it is anything else, unanswered included.
+    The one evaluator for a gate, a packet condition and a checkbox rule."""
+    matches = answers.get(name) == value
+    if operator == TopicFlowFormConditionOperator.NOT_EQUALS:
+        return not matches
+    return matches
 
 
 class VariableAnswer(BaseModel):
@@ -416,3 +434,8 @@ class TopicFlowDeadline(BaseModel):
 
     class Meta:
         ordering = ["order", "created_at"]
+
+    @property
+    def ref(self) -> str:
+        """The authored key, or the row id for a row that has none."""
+        return self.key or str(self.pk)

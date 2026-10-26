@@ -11,6 +11,7 @@ the same ``resolve_ics_deadlines`` the page renders with, so the download can't
 drift from what's on screen.
 """
 
+import re
 from datetime import date
 
 import vobject
@@ -18,6 +19,8 @@ import vobject
 from litigant_portal.app.topic_flow.downloads import (
     build_download,
     find_downloadable,
+    ics_artifact,
+    vcf_artifact,
 )
 from litigant_portal.app.topic_flow.schema import (
     Contact,
@@ -163,6 +166,61 @@ def test_uid_is_stable_across_downloads():
     )
 
 
+def test_content_ics_output_is_unchanged():
+    # The handler now goes through the shared ics_artifact; the bytes the
+    # content path served before the split are pinned here, DTSTAMP aside.
+    corpus = _corpus()
+    artifact = build_download(_ics_section(corpus), corpus, ANSWERS)
+    assert artifact.filename == "deadlines_calendar.ics"
+    body = re.sub(r"DTSTAMP:\d{8}T\d{6}Z", "DTSTAMP:<now>", artifact.body)
+    assert body == (
+        "BEGIN:VCALENDAR\r\n"
+        "VERSION:2.0\r\n"
+        "PRODID:-//Free Law Project//Litigant Portal Topic Flow//EN\r\n"
+        "BEGIN:VEVENT\r\n"
+        "UID:test-court-test_topic-petitioner-deadlines_calendar-"
+        "publication_wait@li\r\n tigantportal.com\r\n"
+        "DTSTART;VALUE=DATE:20260303\r\n"
+        "DESCRIPTION:Judge may review after this.\r\n"
+        "DTSTAMP:<now>\r\n"
+        "SUMMARY:30-day publication wait\r\n"
+        "END:VEVENT\r\n"
+        "END:VCALENDAR\r\n"
+    )
+
+
+# --- ics_artifact (shared by both paths) ------------------------------------
+
+
+def test_ics_artifact_prefixes_each_uid_and_skips_dateless_deadlines():
+    artifact = ics_artifact(
+        [
+            {
+                "id": "answer_due",
+                "label": "Answer due",
+                "description": "",
+                "date": date(2026, 3, 3),
+            },
+            {
+                "id": "hearing",
+                "label": "Hearing",
+                "description": "",
+                "date": None,
+            },
+        ],
+        uid_prefix="alpha-pets-standard-calendar",
+        filename="calendar.ics",
+    )
+    assert artifact.filename == "calendar.ics"
+    assert artifact.content_type == "text/calendar; charset=utf-8"
+    cal = vobject.readOne(artifact.body)
+    events = cal.contents.get("vevent", [])
+    assert [e.uid.value for e in events] == [
+        "alpha-pets-standard-calendar-answer_due@litigantportal.com"
+    ]
+    assert events[0].dtstart.value == date(2026, 3, 3)
+
+
 # --- build_download (vcf) ---------------------------------------------------
 # A vcf section dispatches to the vCard builder, independent of answers (contacts
 # are static corpus data). Body is parsed back with vobject to assert the contact
@@ -211,3 +269,51 @@ def test_vcf_uid_is_stable_across_downloads():
         vobject.readOne(first.body).uid.value
         == vobject.readOne(again.body).uid.value
     )
+
+
+def test_content_vcf_output_is_unchanged():
+    # The handler now goes through the shared vcf_artifact; the bytes the
+    # content path served before the split are pinned here.
+    corpus = _corpus()
+    artifact = build_download(_vcf_section(corpus), corpus, {})
+    assert artifact.filename == "contacts_card.vcf"
+    assert artifact.body == (
+        "BEGIN:VCARD\r\n"
+        "VERSION:3.0\r\n"
+        "UID:test-court-test_topic-petitioner-contacts_card-clerk"
+        "@litigantportal.com\r\n"
+        "FN:Clerk of Court\r\n"
+        "NOTE:Window 3\\nHours: 9-4 M-F\r\n"
+        "ORG:Clerk of Court\r\n"
+        "TEL:555-1234\r\n"
+        "END:VCARD\r\n"
+    )
+
+
+# --- vcf_artifact (shared by both paths) ------------------------------------
+
+
+def _resolved_contact(id, name, **fields):
+    blank = dict.fromkeys(
+        ("phone", "email", "url", "address", "hours", "note"), None
+    )
+    return {"id": id, "name": name, **blank, **fields}
+
+
+def test_vcf_artifact_prefixes_each_uid_with_the_given_prefix():
+    artifact = vcf_artifact(
+        [
+            _resolved_contact("clerk", "Clerk", phone="555-1234"),
+            _resolved_contact("aid", "Legal Aid"),
+        ],
+        uid_prefix="alpha-pets-standard-contacts",
+        filename="contacts.vcf",
+    )
+    assert artifact.filename == "contacts.vcf"
+    assert artifact.content_type == "text/vcard; charset=utf-8"
+    cards = list(vobject.readComponents(artifact.body))
+    assert [card.uid.value for card in cards] == [
+        "alpha-pets-standard-contacts-clerk@litigantportal.com",
+        "alpha-pets-standard-contacts-aid@litigantportal.com",
+    ]
+    assert [card.fn.value for card in cards] == ["Clerk", "Legal Aid"]

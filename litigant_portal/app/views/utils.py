@@ -1,10 +1,12 @@
 from functools import wraps
 
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.utils.translation import gettext as _
 
 from litigant_portal.app.features import features
+from litigant_portal.app.selectors.corpus import corpus_court_known
 from litigant_portal.app.selectors.topic_flow import (
+    topic_flow_find,
     variable_answer_cleared_names,
     variable_answer_groups,
     variable_answer_map,
@@ -20,6 +22,20 @@ def has_identity(request) -> bool:
     crawlers included. Every read-only surface checks this first.
     """
     return bool(request.user.is_authenticated or request.session.session_key)
+
+
+def topic_flow_row_get(court, topic, role, *, graph=True):
+    """The enabled ``TopicFlow`` row behind a ``/t/<court>/<topic>/<role>/``
+    URL, for the ``TOPIC_FLOW_SOURCE=corpus`` views; ``graph`` is passed to
+    ``topic_flow_find``. ``court`` is checked through ``corpus_court_known``;
+    the lookup itself is by topic and flow slug. Raises ``Http404`` on
+    either miss."""
+    if not corpus_court_known(court, topic):
+        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+    flow = topic_flow_find(topic_slug=topic, flow_slug=role, graph=graph)
+    if flow is None:
+        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
+    return flow
 
 
 def topic_flow_answers(request, corpus) -> dict:
