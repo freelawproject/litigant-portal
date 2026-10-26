@@ -20,6 +20,7 @@ class Topic(BaseModel):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     slug = models.SlugField(max_length=64, unique=True)
+    court = models.SlugField(max_length=64, blank=True, default="")
     title = models.CharField(max_length=255)
     subtitle = models.CharField(max_length=255, blank=True)
     description = models.CharField(max_length=255, blank=True)

@@ -369,6 +369,7 @@ def corpus_sync(
                 slug=topic_slug
             )
             _apply(topic, schema)
+            topic.court = court_slug
             topic.save()
             topics[topic_slug] = topic
         flow_count = 0

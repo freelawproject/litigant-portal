@@ -53,6 +53,19 @@ def topic_flow_find(
     return flows.first()
 
 
+def topic_flow_url_kwargs(flow: TopicFlow) -> dict[str, str] | None:
+    """The ``court``/``topic``/``role`` kwargs the guided page reverses
+    from, or None for a topic without a court: it predates its first sync,
+    so its page has no URL yet. Reads the loaded topic; callers select it."""
+    if not flow.topic.court:
+        return None
+    return {
+        "court": flow.topic.court,
+        "topic": flow.topic.slug,
+        "role": flow.slug,
+    }
+
+
 def variable_answer_list(
     *, identity, answered_only: bool = False
 ) -> list[VariableAnswer]:

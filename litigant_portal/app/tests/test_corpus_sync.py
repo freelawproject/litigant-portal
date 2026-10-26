@@ -309,8 +309,12 @@ class CourtScopingTests(CorpusSyncTests):
             {"pets", "eviction"},
         )
         self.assertEqual(Site.objects.get().court_name, court_name)
-        # Both courts' contacts land, each stamped with its court so the
+        # Both courts' rows land, each stamped with its court so the
         # guided page can pick its own.
+        self.assertEqual(
+            set(Topic.objects.values_list("court", "slug")),
+            {("alpha", "pets"), ("beta", "eviction")},
+        )
         self.assertEqual(
             set(Contact.objects.values_list("court", "name")),
             {("alpha", "Alpha Help"), ("beta", "Beta Help")},
