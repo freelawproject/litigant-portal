@@ -28,6 +28,7 @@ from .schema import (
     CitedGrade,
     Config,
     fingerprint,
+    normalize_system,
     read_cases,
     runs_on,
     verify_references,
@@ -282,17 +283,17 @@ def worker(run: Path, path: Path, grading: bool):
                 record["detail"] = safe(detail)
                 if not record["answer"].strip():
                     raise RuntimeError("System produced no visible answer.")
-                if record["system"] == "old" and any(
+                if normalize_system(record["system"]) == "current" and any(
                     call.get("finish_reason")
                     not in {"stop", "tool_calls", "function_call"}
                     for call in record["calls"]
                     if call["request"].get("stream")
                 ):
                     raise RuntimeError(
-                        "Old model stream did not finish normally."
+                        "Current model stream did not finish normally."
                     )
         record["status"] = "completed"
-        if not grading and record["system"] == "old":
+        if not grading and normalize_system(record["system"]) == "current":
             record["auxiliary_failures"] = [
                 {
                     key: call.get(key)

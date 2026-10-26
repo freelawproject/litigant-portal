@@ -8,7 +8,13 @@ from pathlib import Path
 from typing import Annotated, Literal, Self, get_args
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    model_validator,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
@@ -17,7 +23,7 @@ QUALITY_DIMENSIONS = ("clarity", "actionability", "relevance")
 DIMENSIONS = FACT_DIMENSIONS + QUALITY_DIMENSIONS
 SLUG = r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
 type Slug = Annotated[str, Field(pattern=SLUG)]
-type System = Literal["raw", "old", "new"]
+type System = Literal["raw", "current", "standalone"]
 type FactStatus = Literal["supported", "contradicted", "omitted", "uncertain"]
 type FailureCategory = Literal[
     "citation",
@@ -29,6 +35,17 @@ type FailureCategory = Literal[
 ]
 FAILURE_CATEGORIES = get_args(FailureCategory.__value__)
 type PassageID = Annotated[int, Field(gt=0, strict=True)]
+
+
+def normalize_system(system: str) -> str:
+    """
+    Translate legacy eval tags on read without rewriting saved evidence.
+    """
+    if system == "old":
+        return "current"
+    if system == "new":
+        return "standalone"
+    return system
 
 
 class Schema(BaseModel):
@@ -59,7 +76,9 @@ class Price(Schema):
 
 class Config(Schema):
     slug: Slug = "initial-baseline"
-    systems: list[System] = Field(default=["raw", "old", "new"], min_length=1)
+    systems: list[Annotated[System, BeforeValidator(normalize_system)]] = (
+        Field(default=["raw", "current", "standalone"], min_length=1)
+    )
     models: list[Slug] = Field(default=["luna", "terra"], min_length=1)
     model_ids: dict[Slug, str] = Field(
         default_factory=lambda: {
@@ -213,8 +232,10 @@ def read_cases(config: Config) -> list[Case]:
 
 
 def runs_on(system: str, history: list[str]) -> bool:
-    """The new system takes single-turn cases only; skip rather than error."""
-    return not (system == "new" and history)
+    """
+    The standalone system takes single-turn cases only; skip rather than error.
+    """
+    return not (normalize_system(system) == "standalone" and history)
 
 
 def write_json(path: Path, value) -> None:

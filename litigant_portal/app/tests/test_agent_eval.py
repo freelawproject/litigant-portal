@@ -4,13 +4,17 @@ All tests are DB-free and run in the fast suite. The Docker test image
 ships without scripts/, so the module is skipped there.
 """
 
+import json
+
 import pytest
 
 pytest.importorskip("scripts.agent_eval.schema")
 
 from scripts.agent_eval.judge import (  # noqa: E402
+    FORMAT_VERSION,
     InvalidGrade,
     ends_with_question,
+    parse_response,
     validate_grade,
 )
 from scripts.agent_eval.schema import (  # noqa: E402
@@ -18,6 +22,7 @@ from scripts.agent_eval.schema import (  # noqa: E402
     Case,
     Config,
     Grade,
+    Weights,
     read_cases,
 )
 
@@ -70,6 +75,13 @@ HEADING_ONLY = "**Do I need a hearing?**\n\nNot always. The judge decides if one
 
 def test_every_case_in_cases_yml_loads():
     assert len(read_cases(Config())) > 20
+
+
+def test_system_tags() -> None:
+    expected = ["raw", "current", "standalone"]
+    assert Config().systems == expected
+    for tags in (expected, ["raw", "old", "new"]):
+        assert Config.model_validate({"systems": tags}).systems == expected
 
 
 @pytest.mark.parametrize(
@@ -158,3 +170,101 @@ def test_reply_shape_is_not_added_for_cases_without_the_flag():
         evidence_verified=True,
     )
     assert failures == []
+
+
+@pytest.fixture
+def value_judgment() -> tuple[dict, dict]:
+    case = _case(
+        expects_one_question=False,
+        facts=[
+            {
+                "id": "filing-fee",
+                "statement": "The filing fee is $18.87.",
+                "critical": True,
+                "value": 18.87,
+            }
+        ],
+    )
+    response = _grade().model_dump()
+    response["facts"] = [
+        {
+            "fact_id": "filing-fee",
+            "status": "contradicted",
+            "value": None,
+            "evidence_ids": [1],
+            "explanation": "The answer denies that the fee exists.",
+        }
+    ]
+    return {"case": case.model_dump(), "answer": "No fee exists."}, response
+
+
+@pytest.mark.parametrize(
+    "version", [1, 2, 3, None], ids=["v1", "v2", "v3", "current"]
+)
+def test_denial_without_value_keeps_critical_failure(
+    value_judgment: tuple[dict, dict], version: int | None
+) -> None:
+    candidate, response = value_judgment
+    fact = response["facts"][0]
+    if version == 1:
+        fact["evidence"] = candidate["answer"]
+        fact.pop("evidence_ids")
+    elif version == 3:
+        fact["asserts_value"] = False
+    version = FORMAT_VERSION if version is None else version
+    if version < 3:
+        with pytest.raises(InvalidGrade) as excinfo:
+            parse_response(json.dumps(response), candidate, Weights(), version)
+        assert excinfo.value.category == "missing_value"
+    else:
+        result = parse_response(
+            json.dumps(response), candidate, Weights(), version
+        )
+        assert result["score"]["overall"] == 0
+        assert result["score"]["deal_breakers"][0]["category"] == "hard_fact"
+        assert result["grade"]["facts"][0]["evidence"] == candidate["answer"]
+
+
+def test_supported_fact_still_requires_value(
+    value_judgment: tuple[dict, dict],
+) -> None:
+    candidate, response = value_judgment
+    response["facts"][0]["status"] = "supported"
+    with pytest.raises(InvalidGrade) as excinfo:
+        parse_response(
+            json.dumps(response), candidate, Weights(), FORMAT_VERSION
+        )
+    assert excinfo.value.category == "missing_value"
+
+
+def test_supported_value_without_fact_key_is_rejected_in_v4(
+    value_judgment: tuple[dict, dict],
+) -> None:
+    candidate, response = value_judgment
+    candidate["case"]["facts"][0].pop("value")
+    candidate["answer"] = "The filing fee is $18.87."
+    response["facts"][0].update(status="supported", value=18.87)
+    text = json.dumps(response)
+    parse_response(text, candidate, Weights(), version=2)
+    with pytest.raises(InvalidGrade) as excinfo:
+        parse_response(text, candidate, Weights(), version=4)
+    assert excinfo.value.category == "unexpected_value"
+
+
+@pytest.mark.parametrize(
+    ("value", "answer"),
+    [(0.0, "Filing is free."), (False, "You are not eligible.")],
+)
+def test_zero_and_false_are_values(
+    value_judgment: tuple[dict, dict], value: float | bool, answer: str
+) -> None:
+    candidate, response = value_judgment
+    candidate["answer"] = answer
+    candidate["case"]["facts"][0]["value"] = value
+    response["facts"][0].update(status="supported", value=value)
+    result = parse_response(
+        json.dumps(response), candidate, Weights(), FORMAT_VERSION
+    )
+    assert result["grade"]["facts"][0]["value"] == value
+    assert result["score"]["overall"] == 75
+    assert result["score"]["deal_breakers"] == []
