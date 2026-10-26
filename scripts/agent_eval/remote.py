@@ -301,7 +301,7 @@ def serve(run: Path, payload: dict, wire):
                 stack.enter_context(
                     corpus.corpus_session(
                         run,
-                        "old" in config.systems,
+                        "current" in config.systems,
                         fast_model=fast,
                         notify=lambda: publish(run / "fixture-state.json"),
                     )
@@ -326,11 +326,11 @@ def serve(run: Path, payload: dict, wire):
                 variant = message["variant"]
                 if variant != "current":
                     root = corpus.fixture_root(run, variant)
-                    if "old" in config.systems:
+                    if "current" in config.systems:
                         corpus.install_fixture(root)
                     for path in sorted(root.rglob("*.yml")):
                         publish(path)
-                if "old" in config.systems:
+                if "current" in config.systems:
                     path = run / "corpora" / f"{variant}-database.json"
                     write_json(path, corpus.snapshot_current())
                     publish(path)

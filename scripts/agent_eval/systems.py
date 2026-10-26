@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 from .provider import close_stream, data
+from .schema import normalize_system
 
 
 def turns(case, emit):
@@ -115,7 +116,7 @@ async def _raw_turn(messages: list[dict], model: str, on_text) -> str:
         await client.close()
 
 
-def old(case, model: str, identity, emit) -> dict:
+def current(case, model: str, identity, emit) -> dict:
     from litigant_portal.agents.assistant import LitigantAssistant
     from litigant_portal.app.models import ChatThread
     from litigant_portal.app.selectors.chat_engine import (
@@ -168,7 +169,7 @@ def old(case, model: str, identity, emit) -> dict:
         ):
             emit({"type": "thread_export", "data": export})
             raise RuntimeError(
-                error or "Old agent stopped without a final answer."
+                error or "Current agent stopped without a final answer."
             )
     return {
         "thread_id": thread_id,
@@ -189,7 +190,7 @@ def old(case, model: str, identity, emit) -> dict:
     }
 
 
-async def new(
+async def standalone(
     case, model: str, identity, emit, resource_root: str | None
 ) -> dict:
     from django.test.utils import override_settings
@@ -221,14 +222,17 @@ async def new(
 
 
 def invoke(system, case, model, identity, emit, resource_root=None):
+    system = normalize_system(system)
     if system == "raw":
         return asyncio.run(raw(case, model, emit))
-    if system == "old":
-        return old(case, model, identity, emit)
-    if system == "new":
+    if system == "current":
+        return current(case, model, identity, emit)
+    if system == "standalone":
         if case.history:
             raise RuntimeError(
-                "The new system supports single-turn cases only."
+                "The standalone system supports single-turn cases only."
             )
-        return asyncio.run(new(case, model, identity, emit, resource_root))
+        return asyncio.run(
+            standalone(case, model, identity, emit, resource_root)
+        )
     raise ValueError(f"Unknown system: {system}")

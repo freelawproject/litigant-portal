@@ -12,7 +12,7 @@ from .schema import HERE, ROOT, Config, Weights, read_config
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare raw, old, and new agent outputs."
+        description="Compare raw, current, and standalone agent outputs."
     )
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser(

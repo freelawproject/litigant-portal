@@ -1,7 +1,7 @@
 # Agent evaluation baseline
 
 Compare raw Bedrock questions (`raw`), the existing `LitigantAssistant` chat
-engine (`old`), and `PortalAgent` with its Direct runtime (`new`). Raw receives
+engine (`current`), and `PortalAgent` with its Direct runtime (`standalone`). Raw receives
 only the question: no system prompt, history, tools, or corpus. This is an API
 baseline, not a measurement of chatgpt.com.
 
@@ -17,7 +17,7 @@ Docker image.
 make agent-eval
 
 # Include PortalAgent: 426 attempts, excluding its unsupported history cases.
-make agent-eval ARGS='run --systems raw old new --slug all-systems'
+make agent-eval ARGS='run --systems raw current standalone --slug all-systems'
 
 # Small live run, including the separate Sol judge.
 make agent-eval ARGS='run --models luna --cases nd-fee --repetitions 1 --slug smoke'
@@ -47,7 +47,7 @@ Orchestration, raw calls, judging, and charts run locally. Export
 `AWS_BEARER_TOKEN_BEDROCK` locally for raw calls and judging. Raw-only runs,
 judging saved answers, and offline reports do not require Docker.
 
-Old/new calls require the usual **already-running** Django development container
+Current/standalone calls require the usual **already-running** Django development container
 and its database/Redis services. The runner uses `docker compose exec -T django`
 to upload a temporary Python worker. That worker imports the container's app,
 uses its credentials and services, and streams artifacts back to local `evals/`.
@@ -66,7 +66,7 @@ recorded, and the setting is restored afterward. Legacy agent code is unchanged.
 
 [cases.yml](cases.yml) contains fifteen real-reference cases, six fictional
 cases, and four multi-turn conversation cases. Every case with `history` takes
-the `conversation` group, because the new system does not run history cases;
+the `conversation` group, because the standalone system does not run history cases;
 keeping them out of `real` keeps that group comparable across all three
 systems.
 [references/](references/) freezes repository corpus content for answer keys,
@@ -80,10 +80,10 @@ unchanged between this baseline and its later judged-chat comparison.
 
 A case may carry `history`: user turns sent on the same thread before
 `question`. Their replies are recorded in the attempt's `detail.transcript`
-and shown to the judge as context; only the final answer is graded. The old
+and shown to the judge as context; only the final answer is graded. The current
 system continues one chat thread across turns and clears the evaluation
 identity's stored facts before each case, recording what the agent stored as
-`detail.stored_facts`. Raw replays the turns as a message list. The new
+`detail.stored_facts`. Raw replays the turns as a message list. The standalone
 system takes single-turn cases only, so the runner does not schedule it for
 history cases and the planned attempt count excludes them. Timing covers
 all turns of the case. The
@@ -107,7 +107,7 @@ deal breaker; cases without the flag are not affected.
 The fictional chicken-law variants change the fee and procedural order while
 retaining identical questions. Both include the 200-square-feet-per-chicken
 boundary. Fixtures enter through normal corpus files and an evaluation database
-flow. The new agent currently does not retrieve this content; the benchmark does
+flow. The standalone agent currently does not retrieve this content; the benchmark does
 not insert it into the candidate prompt. Raw receives no corpus.
 
 Legacy runs temporarily change site settings and may enable the fictional flow;
@@ -161,6 +161,10 @@ Rejudging saves a new batch and preserves earlier answers and judgments. Reports
 use the latest batch, including incomplete grading. Reweighting/comparison writes
 a separate report; incompatible cases/references/rubrics cannot be pooled.
 Reports and Matplotlib PNGs can be rebuilt without API calls or running services.
+
+Legacy `old` and `new` system tags are accepted on read as `current` and
+`standalone`. Rebuilt summaries and charts use the canonical names; saved
+manifests, attempts, judgments, and their paths remain unchanged.
 
 `recover` revalidates saved raw judge responses offline, including legacy quoted
 evidence with Markdown, punctuation, and capitalization differences. It preserves

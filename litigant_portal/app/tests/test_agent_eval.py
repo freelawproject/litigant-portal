@@ -77,6 +77,13 @@ def test_every_case_in_cases_yml_loads():
     assert len(read_cases(Config())) > 20
 
 
+def test_system_tags() -> None:
+    expected = ["raw", "current", "standalone"]
+    assert Config().systems == expected
+    for tags in (expected, ["raw", "old", "new"]):
+        assert Config.model_validate({"systems": tags}).systems == expected
+
+
 @pytest.mark.parametrize(
     ("answer", "expected"),
     [
