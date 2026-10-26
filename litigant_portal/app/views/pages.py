@@ -40,10 +40,7 @@ from litigant_portal.app.models.choices import (
 )
 from litigant_portal.app.selectors.corpus import corpus_court_known
 from litigant_portal.app.selectors.site import contact_help_list, site_get
-from litigant_portal.app.selectors.topic_flow import (
-    topic_flow_card_list,
-    topic_flow_find,
-)
+from litigant_portal.app.selectors.topic_flow import topic_flow_find
 from litigant_portal.app.services.topic_flow import variable_answer_set_many
 from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.theme import (
@@ -64,6 +61,7 @@ from litigant_portal.app.views.utils import (
     admin_tabs,
     briefcase_answers,
     topic_flow_answers,
+    topic_flow_cards,
     topic_flow_row_answers,
     topic_flow_row_cleared_names,
 )
@@ -78,7 +76,7 @@ def home(request):
         request,
         "pages/home.html",
         {
-            "topic_cards": topic_flow_card_list(),
+            "topic_cards": topic_flow_cards(),
             "briefcase_groups": briefcase_answers(request),
         },
     )
@@ -442,7 +440,7 @@ def style_guide(request):
         request,
         "pages/style_guide.html",
         {
-            "topic_cards": topic_flow_card_list(),
+            "topic_cards": topic_flow_cards(),
             "briefcase_groups": _briefcase_sample(),
             "internal_section": "style_guide",
         },

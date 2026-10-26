@@ -15,6 +15,10 @@ import logging
 from pathlib import Path
 from typing import NamedTuple
 
+from django.conf import settings
+from django.urls import reverse
+
+from litigant_portal.app.selectors.corpus import corpus_load_topics
 from litigant_portal.app.topic_flow.loader import (
     CorpusLoader,
     CorpusValidationError,
@@ -133,3 +137,39 @@ def topic_flow_track_find(flow) -> dict | None:
         if track["role"] == flow.slug:
             return track
     return None
+
+
+def topic_flow_page_url(flow) -> str | None:
+    """The guided page URL for a DB TopicFlow on the configured
+    ``TOPIC_FLOW_SOURCE``, or None where that source would 404 it.
+
+    On ``content`` the matching content/ track names the court. On
+    ``corpus`` it is the deployment's ``CORPUS_COURT``, else the court that
+    authors the topic: the court ``corpus_court_known`` accepts on the page.
+    The home cards (#1068) and the chat's error fallback link through this,
+    so neither offers a page that won't render.
+    """
+    if settings.TOPIC_FLOW_SOURCE == "corpus":
+        court = _corpus_page_court(flow.topic.slug)
+        if court is None:
+            return None
+        kwargs = {"court": court, "topic": flow.topic.slug, "role": flow.slug}
+    else:
+        track = topic_flow_track_find(flow)
+        if track is None:
+            return None
+        kwargs = {key: track[key] for key in ("court", "topic", "role")}
+    return reverse("pages:topic_flow", kwargs=kwargs)
+
+
+def _corpus_page_court(topic: str) -> str | None:
+    if settings.CORPUS_COURT is not None:
+        return settings.CORPUS_COURT
+    return next(
+        (
+            court
+            for court, slug in sorted(corpus_load_topics())
+            if slug == topic
+        ),
+        None,
+    )
