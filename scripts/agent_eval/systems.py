@@ -150,7 +150,11 @@ def current(case, model: str, identity, emit) -> dict:
                     on_text(event["content"])
                     continue
                 elif kind == "error":
-                    error = event["error"]
+                    error = (
+                        event.get("message")
+                        or event.get("error")
+                        or "Current agent reported a stream error."
+                    )
                 elif kind == "done":
                     done = True
                 emit(event)

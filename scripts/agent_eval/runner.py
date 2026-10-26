@@ -167,6 +167,7 @@ def execute_worker(
         args.append("--grading")
     started = time.monotonic()
     failure, interrupted, last_mtime = None, False, None
+    timed_out = False
     with path.with_suffix(".log").open("w") as log:
         process = subprocess.Popen(
             args,
@@ -183,6 +184,7 @@ def execute_worker(
                     break
                 if time.monotonic() - started >= timeout:
                     failure = f"Attempt exceeded {timeout:g} seconds."
+                    timed_out = True
                     break
                 mtime = path.stat().st_mtime_ns
                 if mtime != last_mtime:
@@ -205,6 +207,8 @@ def execute_worker(
             error=failure or "Missing terminal result.",
         )
         row["elapsed_seconds"] = time.monotonic() - started
+        if timed_out:
+            row["error_category"] = "attempt_timeout"
         write_json(path, row)
     publish(path)
     publish(path.with_suffix(".log"))
@@ -247,6 +251,10 @@ def worker(run: Path, path: Path, grading: bool):
             from litigant_portal.app.models import UserIdentity
 
             identity = UserIdentity.objects.get(pk=manifest["identity_id"])
+            if normalize_system(record["system"]) == "current":
+                from litigant_portal.app.selectors.site import site_get
+
+                record["runtime_judge_model"] = site_get().judge_model or None
         # Django startup and identity lookup are outside response latency.
         started = time.monotonic()
         flush()

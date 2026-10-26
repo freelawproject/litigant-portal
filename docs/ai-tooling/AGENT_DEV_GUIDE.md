@@ -78,6 +78,8 @@ With judging enabled, `heartbeat` events mark each generation's start and receiv
 
 The waiting copy is provisional. An exhaustion caveat and Jessica's fail-open sign-off remain team decisions; do not enable judged chat for a pilot court before that sign-off. For the comparison, use the existing eval `current` system in separate runs with the Site judge setting off and on, keeping cases, references, and grading fixed. The eval config's `judge_model` selects the external grader, not this runtime judge.
 
+Include the review coverage limit in Jessica's pilot review: prose accompanying a tool call, including `RecordFact` or `ReviewFacts`, is released without judge approval and may contain substantive answers. The judge reviews the final generation only. This is separate from releasing a final answer after a judge error; sign-off on fail-open should not imply acceptance of the coverage limit. The judged configuration also changes generation timeouts and retries, so the eval comparison measures both effects. Use the [eval handoff checklist](../../scripts/agent_eval/README.md#judged-chat-handoff) to present them separately. Per-network-operation timeouts do not guarantee a maximum server silence or total turn duration.
+
 ## Anatomy of an agent
 
 An agent is a configuration object. It binds together five ingredients. The

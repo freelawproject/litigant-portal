@@ -25,7 +25,6 @@ REQUEST_FIELDS = {
     "max_output_tokens",
     "reasoning",
     "stream_options",
-    "num_retries",
     "caching",
     "store",
     "include",
@@ -133,9 +132,10 @@ class Stream:
     Forward stream attributes and closing behavior as well as every chunk.
     """
 
-    def __init__(self, source, observe):
+    def __init__(self, source, observe, observe_error):
         self.source = source
         self.observe = observe
+        self.observe_error = observe_error
         self.iterator = None
         self.async_iterator = None
 
@@ -150,7 +150,13 @@ class Stream:
     def __next__(self):
         if self.iterator is None:
             self.iterator = iter(self.source)
-        value = next(self.iterator)
+        try:
+            value = next(self.iterator)
+        except StopIteration:
+            raise
+        except Exception as exc:
+            self.observe_error(exc)
+            raise
         self.observe(value)
         return value
 
@@ -162,7 +168,13 @@ class Stream:
     async def __anext__(self):
         if self.async_iterator is None:
             self.async_iterator = self.source.__aiter__()
-        value = await self.async_iterator.__anext__()
+        try:
+            value = await self.async_iterator.__anext__()
+        except StopAsyncIteration:
+            raise
+        except Exception as exc:
+            self.observe_error(exc)
+            raise
         self.observe(value)
         return value
 
@@ -183,8 +195,13 @@ class Observer:
             "api": api,
             "model": kwargs.get("model"),
             "request": safe(
-                {k: v for k, v in kwargs.items() if k in REQUEST_FIELDS}
+                {
+                    **{k: v for k, v in kwargs.items() if k in REQUEST_FIELDS},
+                    "timeout": kwargs.get("timeout"),
+                    "num_retries": kwargs.get("num_retries"),
+                }
             ),
+            "error_category": None,
             "usage": None,
             "cost_usd": None,
             "finish_reason": None,
@@ -211,7 +228,20 @@ class Observer:
             if response.get("usage") or call["finish_reason"]:
                 self.flush()
 
-        return call, observe
+        def observe_error(exc):
+            from litellm import Timeout
+
+            call["error"] = type(exc).__name__
+            call["error_category"] = (
+                "timeout"
+                if isinstance(exc, (Timeout, TimeoutError))
+                else "provider_error"
+            )
+            call["error_message"] = safe(str(exc))[:2000]
+            call["elapsed_seconds"] = time.monotonic() - started
+            self.flush()
+
+        return observe, observe_error
 
     def __enter__(self):
         import litellm
@@ -222,17 +252,15 @@ class Observer:
             if _OBSERVING.get():
                 return completion(*args, **kwargs)
             token = _OBSERVING.set(True)
-            call, observe = self.start("completion", kwargs)
+            observe, observe_error = self.start("completion", kwargs)
             try:
                 result = completion(*args, **kwargs)
                 if kwargs.get("stream"):
-                    return Stream(result, observe)
+                    return Stream(result, observe, observe_error)
                 observe(result)
                 return result
             except Exception as exc:
-                call["error"] = type(exc).__name__
-                call["error_message"] = safe(str(exc))[:2000]
-                self.flush()
+                observe_error(exc)
                 raise
             finally:
                 _OBSERVING.reset(token)
@@ -241,17 +269,15 @@ class Observer:
             if _OBSERVING.get():
                 return await responses(*args, **kwargs)
             token = _OBSERVING.set(True)
-            call, observe = self.start("responses", kwargs)
+            observe, observe_error = self.start("responses", kwargs)
             try:
                 result = await responses(*args, **kwargs)
                 if kwargs.get("stream"):
-                    return Stream(result, observe)
+                    return Stream(result, observe, observe_error)
                 observe(result)
                 return result
             except Exception as exc:
-                call["error"] = type(exc).__name__
-                call["error_message"] = safe(str(exc))[:2000]
-                self.flush()
+                observe_error(exc)
                 raise
             finally:
                 _OBSERVING.reset(token)

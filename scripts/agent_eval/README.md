@@ -151,10 +151,14 @@ SDK-internal retries without usage cannot be reconstructed as billed costs.
 
 ## Artifacts and manual checks
 
+Each observed call records `request.timeout` and `request.num_retries`, including null when the application leaves the value to provider defaults. This records the request without changing it. Calls also record `error_category` (`timeout`, `provider_error`, or null for no observed failure), including errors raised while consuming a stream. Each `current` attempt saves `runtime_judge_model` before invoking the chat engine; null means disabled. The worker's whole-attempt deadline is recorded separately as `attempt_timeout`.
+
+Reports include generation-timeout attempt counts, attempt-deadline counts, runtime judge review outcomes from exported audit rows, and the existing external grading diagnostics. Runtime review counts include every correction review and are not counts of failed answers. Unknown legacy diagnostics remain unknown; missing metadata is not evidence of zero failures. Report settings use `provider_default` for recorded null values and `unknown` for absent legacy fields. Scores, costs, and execution-failure treatment are unchanged.
+
 Results live in ignored `evals/YYYYMMDD_HHMMSS-slug/` (UTC). JSON and logs capture
 visible answers, tool/model traces, usage, timing, judgments, corpus snapshots,
 and recovery state. Local evaluator and container application provenance are
-recorded separately. Timing excludes setup and judging; timeouts bound the actual
+recorded separately. Timing excludes setup and external grading, but includes runtime judge calls; timeouts bound the actual
 candidate child process. Temporary worker files are removed when its session ends.
 
 Rejudging saves a new batch and preserves earlier answers and judgments. Reports
@@ -192,12 +196,21 @@ are validated and removed on read without changing saved files. Use
 `judge RUN --retry-failed` for unresolved older judgments. Accepted judgments
 are retained, and reports record any mix of format versions.
 
-Focused parser and grading tests run in the fast suite:
+Focused eval tests run in the fast suite:
 
 ```bash
-uv run --locked --extra dev tox -e fast -- litigant_portal/app/tests/test_agent_eval.py -q
+uv run --locked --extra dev tox -e fast -- litigant_portal/app/tests/test_agent_eval.py litigant_portal/app/tests/test_agent_eval_runtime.py -q
 ```
 
 Verify live changes with a small run or failed-judgment retry and inspection of
 saved JSON and charts. Fixture changes also need restoration checks. Inspect
 judge evidence before treating any run as a baseline.
+
+## Judged chat handoff
+
+For Jessica's pilot review, include:
+
+- The actual runtime judge model and generation timeout/retry settings for both runs. The eval config's `judge_model` selects the external grader; it does not enable runtime judging.
+- Existing quality, critical-failure, latency, and cost results, alongside generation-timeout attempts, whole-attempt deadlines, and runtime judge verdicts/call failures. This comparison measures complete configurations, including the timeout difference, rather than isolating judge quality.
+- The coverage limit: prose accompanying tool calls, including fact-recording calls, is released without judge approval and can contain substantive answers. Discuss this separately from fail-open on judge errors; do not claim that all visible answers were reviewed.
+- The current release behavior when corrections are exhausted and the remaining decisions about caveat copy, waiting copy, and fail-open. Per-operation timeouts and heartbeats do not establish a maximum total turn duration.
