@@ -50,6 +50,15 @@ class IdentityMergeTests(TestCase):
         self.target = UserIdentity.objects.create(user=self.user)
         self.anon = UserIdentity.objects.create(session_key="abc123")
 
+    def test_merging_an_identity_into_itself_raises(self):
+        with self.assertRaisesMessage(
+            ValueError, "Cannot merge an identity into itself"
+        ):
+            user_identity_merge(
+                source_identity=self.anon, target_identity=self.anon
+            )
+        self.assertTrue(UserIdentity.objects.filter(pk=self.anon.pk).exists())
+
     def test_migrates_chat_threads_and_uploads(self):
         thread = ChatThread.objects.create(identity=self.anon)
         upload = UserUpload.objects.create(

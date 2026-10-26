@@ -115,6 +115,8 @@ def user_identity_merge(
     All chat threads and uploads migrate, as do variable answers the target
     hasn't answered itself. Runs in a single transaction.
     """
+    if source_identity.pk == target_identity.pk:
+        raise ValueError("Cannot merge an identity into itself")
     threads = source_identity.chat_threads.update(identity=target_identity)
     uploads = source_identity.uploads.update(identity=target_identity)
     answers = _variable_answers_migrate(
