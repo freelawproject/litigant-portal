@@ -29,6 +29,9 @@ def _left_region(html):
 
 
 @pytest.mark.postgres
+# The flow page here comes from the content/ tree; the test database holds
+# no synced rows.
+@override_settings(TOPIC_FLOW_SOURCE="content")
 class FramedPagesTests(TestCase):
     def test_home_and_topic_flow_pass_the_briefcase_like_chat(self):
         """The briefcase is the right region on every framed page, so each

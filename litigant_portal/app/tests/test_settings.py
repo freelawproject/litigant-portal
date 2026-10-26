@@ -32,14 +32,12 @@ class TopicFlowSourceSettingTests(SimpleTestCase):
         with mock.patch.dict(os.environ, environ, clear=True):
             return importlib.reload(litigant_portal.settings)
 
-    def test_topic_flow_source_defaults_to_content(self):
-        self.assertEqual(
-            self._reload_settings({}).TOPIC_FLOW_SOURCE, "content"
-        )
+    def test_topic_flow_source_defaults_to_corpus(self):
+        self.assertEqual(self._reload_settings({}).TOPIC_FLOW_SOURCE, "corpus")
 
-    def test_topic_flow_source_accepts_corpus(self):
-        module = self._reload_settings({"TOPIC_FLOW_SOURCE": "corpus"})
-        self.assertEqual(module.TOPIC_FLOW_SOURCE, "corpus")
+    def test_topic_flow_source_accepts_content(self):
+        module = self._reload_settings({"TOPIC_FLOW_SOURCE": "content"})
+        self.assertEqual(module.TOPIC_FLOW_SOURCE, "content")
 
     def test_unknown_source_setting_is_rejected(self):
         with self.assertRaises(ImproperlyConfigured):

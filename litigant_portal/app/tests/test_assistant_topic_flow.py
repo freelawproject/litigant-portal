@@ -101,12 +101,14 @@ class TopicFlowPageUrlTests(TestCase):
     """Where a flow's guided page lives on the configured source (#1068):
     a URL only when that source would render the page."""
 
+    @override_settings(TOPIC_FLOW_SOURCE="content")
     def test_content_source_links_the_flow_its_content_file_serves(self):
         self.assertEqual(
             topic_flow_page_url(_flow("eviction", "tenant")),
             "/t/franklin-county-oh/eviction/tenant/",
         )
 
+    @override_settings(TOPIC_FLOW_SOURCE="content")
     def test_content_source_has_no_page_without_a_content_file(self):
         self.assertIsNone(topic_flow_page_url(_flow("no-guided-page", "x")))
 

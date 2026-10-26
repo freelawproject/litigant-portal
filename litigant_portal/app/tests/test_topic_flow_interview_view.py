@@ -45,6 +45,8 @@ MAPPING = {
 def _docassemble_configured(settings):
     settings.DOCASSEMBLE_BASE_URL = BASE
     settings.DOCASSEMBLE_PUBLIC_URL = None
+    # These tests drive the content/ path; the rows path has its own file.
+    settings.TOPIC_FLOW_SOURCE = "content"
 
 
 def _corpus(*, mapping=None, reference=REFERENCE):
