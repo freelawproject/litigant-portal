@@ -6,15 +6,25 @@ model instances built in memory. The view tests that drive these through
 the page live in ``test_topic_flow_rows_view.py``.
 """
 
+from datetime import date
+
 import pytest
 
 from litigant_portal.app.models import (
+    Contact,
+    Form,
+    Resource,
     TopicFlow,
+    TopicFlowDeadline,
+    TopicFlowFormCondition,
     TopicFlowInterviewPage,
     TopicFlowSection,
     Variable,
 )
-from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.models.choices import (
+    TopicFlowFormConditionOperator,
+    VariableDataType,
+)
 from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.renderer import RenderedSection
@@ -86,19 +96,358 @@ def test_render_flow_gives_one_info_section_per_key_in_layout_order():
     assert rendered[0].template == "cotton/molecules/flow_section_info.html"
 
 
-def test_render_flow_gives_a_placeholder_per_block():
-    flow = TopicFlow(layout=["overview", *LAYOUT_BLOCKS])
-    rendered = rows.render_flow(flow, SECTIONS[:1], [], {})
-    blocks = rendered[1:]
-    placeholders = [name for name in LAYOUT_BLOCKS if name != "interview"]
-    assert [r.anchor_id for r in blocks] == placeholders
-    assert [r.heading for r in blocks] == [
-        rows.BLOCK_HEADINGS[name] for name in placeholders
-    ]
-    assert all(
-        r.template == "cotton/molecules/flow_section_placeholder.html"
-        for r in blocks
+# --- contacts and resources blocks ------------------------------------------
+
+URL_PARTS = {"court": "alpha", "topic": "pets", "role": "standard"}
+CONTACTS = [
+    Contact(key="clerk", name="Clerk of Court", phone="555-1234"),
+    Contact(key="aid", name="Legal Aid", hours="9-4 M-F"),
+]
+RESOURCES = [
+    Resource(key="self-help", label="Self Help", url="https://help.example"),
+    Resource(
+        key="rules", label="Rules", url="https://rules.example", note="Ch. 3"
+    ),
+]
+
+
+def test_render_flow_lists_court_resources_under_the_resources_block():
+    flow = TopicFlow(layout=["resources"])
+    (section,) = rows.render_flow(
+        flow, [], [], {}, resources=RESOURCES, **URL_PARTS
     )
+    assert section.anchor_id == "resources"
+    assert section.heading == rows.BLOCK_HEADINGS["resources"]
+    assert section.template == "cotton/molecules/flow_section_resources.html"
+    assert section.context == {
+        "resources": [
+            {
+                "id": "self-help",
+                "label": "Self Help",
+                "url": "https://help.example",
+                "note": "",
+            },
+            {
+                "id": "rules",
+                "label": "Rules",
+                "url": "https://rules.example",
+                "note": "Ch. 3",
+            },
+        ]
+    }
+
+
+def test_render_flow_lists_court_contacts_with_the_download_id():
+    flow = TopicFlow(layout=["contacts"])
+    (section,) = rows.render_flow(
+        flow, [], [], {}, contacts=CONTACTS, **URL_PARTS
+    )
+    assert section.anchor_id == "contacts"
+    assert section.heading == rows.BLOCK_HEADINGS["contacts"]
+    assert section.template == "cotton/molecules/flow_section_vcf.html"
+    assert [c["id"] for c in section.context["contacts"]] == ["clerk", "aid"]
+    assert section.context["contacts"][1]["hours"] == "9-4 M-F"
+    assert {k: section.context[k] for k in ("court", "topic", "role")} == (
+        URL_PARTS
+    )
+    assert section.context["output_id"] == "contacts"
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        Contact(name="Bailiff"),
+        Resource(label="Statutes", url="https://law.example"),
+        TopicFlowDeadline(label="Answer due"),
+    ],
+    ids=["contact", "resource", "deadline"],
+)
+def test_a_row_without_a_key_is_referenced_by_its_id(row):
+    # A row synced before keys existed and adopted by no authored entry
+    # keeps a blank key; the vCard and calendar UIDs must still be distinct.
+    assert row.ref == str(row.pk)
+    row.key = "clerk"
+    assert row.ref == "clerk"
+
+
+def test_render_flow_skips_contacts_and_resources_blocks_when_empty():
+    flow = TopicFlow(layout=["overview", "contacts", "resources"])
+    rendered = rows.render_flow(flow, SECTIONS[:1], [], {}, **URL_PARTS)
+    assert [r.anchor_id for r in rendered] == ["overview"]
+
+
+# --- packet -----------------------------------------------------------------
+
+PETITION = Form(
+    slug="petition", name="Petition", url="https://x.example/p.pdf"
+)
+CHECKLIST = Form(slug="checklist", name="Checklist")
+WAIVER = Form(slug="waiver", name="Fee waiver")
+
+
+def _condition(form, variable=None, operator="equals", value=None):
+    return TopicFlowFormCondition(
+        form=form,
+        variable=variable,
+        operator=TopicFlowFormConditionOperator(operator),
+        value=value,
+    )
+
+
+@pytest.mark.parametrize(
+    ("condition", "answers", "holds"),
+    [
+        (_condition(PETITION), {}, True),
+        (
+            _condition(WAIVER, LICENSED, "equals", True),
+            {"licensed": True},
+            True,
+        ),
+        (
+            _condition(WAIVER, LICENSED, "equals", True),
+            {"licensed": False},
+            False,
+        ),
+        (_condition(WAIVER, LICENSED, "equals", True), {}, False),
+        (
+            _condition(WAIVER, LICENSED, "not_equals", True),
+            {"licensed": False},
+            True,
+        ),
+        (_condition(WAIVER, LICENSED, "not_equals", True), {}, True),
+        (
+            _condition(WAIVER, LICENSED, "not_equals", True),
+            {"licensed": True},
+            False,
+        ),
+    ],
+    ids=[
+        "no-variable-always",
+        "equals-matches",
+        "equals-other-value",
+        "equals-unanswered",
+        "not-equals-other-value",
+        "not-equals-unanswered",
+        "not-equals-matching-value",
+    ],
+)
+def test_form_condition_holds(condition, answers, holds):
+    assert rows.form_condition_holds(condition, answers) is holds
+
+
+def test_packet_forms_keep_order_and_drop_unmet_conditions():
+    conditions = [
+        _condition(CHECKLIST),
+        _condition(WAIVER, LICENSED, "equals", True),
+        _condition(PETITION),
+    ]
+    assert rows.packet_forms(conditions, {}) == [
+        {"name": "Checklist", "url": ""},
+        {"name": "Petition", "url": "https://x.example/p.pdf"},
+    ]
+    assert [
+        f["name"] for f in rows.packet_forms(conditions, {"licensed": True})
+    ] == [
+        "Checklist",
+        "Fee waiver",
+        "Petition",
+    ]
+
+
+def test_render_flow_packet_lists_the_forms_without_an_interview_button():
+    flow = TopicFlow(layout=["packet"])
+    conditions = [_condition(PETITION), _condition(CHECKLIST)]
+    (section,) = rows.render_flow(
+        flow, [], [], {}, form_conditions=conditions, **URL_PARTS
+    )
+    assert section.anchor_id == "packet"
+    assert section.heading == rows.BLOCK_HEADINGS["packet"]
+    assert section.template == "cotton/molecules/flow_section_packet.html"
+    assert section.context == {
+        "forms": [
+            {"name": "Petition", "url": "https://x.example/p.pdf"},
+            {"name": "Checklist", "url": ""},
+        ],
+        "interview_available": False,
+        **URL_PARTS,
+    }
+
+
+def test_packet_offers_the_interview_only_with_a_reference_and_a_docassemble(
+    settings,
+):
+    # Same rule as the content renderer: both the row's reference and a
+    # configured docassemble, else a plain form list.
+    conditions = [_condition(PETITION)]
+    with_reference = TopicFlow(
+        layout=["packet"], interview_reference="docassemble.x:q.yml"
+    )
+
+    def available(flow):
+        (section,) = rows.render_flow(
+            flow, [], [], {}, form_conditions=conditions, **URL_PARTS
+        )
+        return section.context["interview_available"]
+
+    settings.DOCASSEMBLE_BASE_URL = "https://da.example.gov/interview"
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    assert available(with_reference) is True
+    assert available(TopicFlow(layout=["packet"])) is False
+    settings.DOCASSEMBLE_BASE_URL = None
+    assert available(with_reference) is False
+
+
+def test_packet_with_a_handoff_renders_for_the_button_alone(settings):
+    # Every form gated and unmet, but the interview still fills them: the
+    # content path renders its packet unconditionally, so this one must
+    # not hide the button with the list.
+    flow = TopicFlow(
+        layout=["packet"], interview_reference="docassemble.x:q.yml"
+    )
+    gated = [_condition(WAIVER, LICENSED, "equals", True)]
+    settings.DOCASSEMBLE_BASE_URL = "https://da.example.gov/interview"
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    (section,) = rows.render_flow(
+        flow, [], [], {}, form_conditions=gated, **URL_PARTS
+    )
+    assert section.context["forms"] == []
+    assert section.context["interview_available"] is True
+
+    settings.DOCASSEMBLE_BASE_URL = None
+    assert (
+        rows.render_flow(flow, [], [], {}, form_conditions=gated, **URL_PARTS)
+        == []
+    )
+
+
+def test_flow_variable_names_include_form_condition_variables():
+    # The chat may store the answer a condition reads, and no page of this
+    # flow asks it; the page must still read it to show the form.
+    waiver_needed = _variable(
+        "waiver_needed", data_type=VariableDataType.BOOLEAN
+    )
+    pages = [(TopicFlowInterviewPage(title="A"), [FULL_NAME, LICENSED])]
+    conditions = [
+        _condition(PETITION),
+        _condition(WAIVER, waiver_needed, "equals", True),
+        _condition(CHECKLIST, LICENSED, "equals", True),
+    ]
+    assert rows.flow_variable_names(pages, conditions) == [
+        "full_name",
+        "licensed",
+        "waiver_needed",
+    ]
+
+
+def test_render_flow_skips_the_packet_block_without_forms():
+    flow = TopicFlow(layout=["overview", "packet"])
+    assert [
+        r.anchor_id
+        for r in rows.render_flow(flow, SECTIONS[:1], [], {}, **URL_PARTS)
+    ] == ["overview"]
+    # Every form conditional and unmet is the same as no forms at all.
+    gated = [_condition(WAIVER, LICENSED, "equals", True)]
+    assert [
+        r.anchor_id
+        for r in rows.render_flow(
+            flow, SECTIONS[:1], [], {}, form_conditions=gated, **URL_PARTS
+        )
+    ] == ["overview"]
+
+
+# --- calendar ---------------------------------------------------------------
+
+LICENSE_DATE_VAR = _variable("license_date", data_type=VariableDataType.DATE)
+RENEWAL = TopicFlowDeadline(
+    key="renewal",
+    label="License renewal due",
+    description="One year on.",
+    offset_days=365,
+    offset_from=LICENSE_DATE_VAR,
+)
+INSPECTION = TopicFlowDeadline(
+    key="inspection",
+    label="Inspection",
+    offset_days=30,
+    offset_from=LICENSE_DATE_VAR,
+)
+
+
+def test_flow_deadlines_use_the_row_key_as_id_and_the_variable_name_as_source():
+    resolved = rows.flow_deadlines(
+        [RENEWAL, INSPECTION], {"license_date": "2026-02-01"}
+    )
+    assert resolved == [
+        {
+            "id": "renewal",
+            "label": "License renewal due",
+            "description": "One year on.",
+            "date": date(2027, 2, 1),
+        },
+        {
+            "id": "inspection",
+            "label": "Inspection",
+            "description": "",
+            "date": date(2026, 3, 3),
+        },
+    ]
+    assert [d["date"] for d in rows.flow_deadlines([RENEWAL], {})] == [None]
+
+
+def test_render_flow_calendar_has_dates_only_once_a_date_is_stored():
+    flow = TopicFlow(layout=["calendar"])
+    (pending,) = rows.render_flow(
+        flow, [], [], {}, deadlines=[RENEWAL], **URL_PARTS
+    )
+    assert pending.anchor_id == "calendar"
+    assert pending.heading == rows.BLOCK_HEADINGS["calendar"]
+    assert pending.template == "cotton/molecules/flow_section_ics.html"
+    assert pending.context["has_dates"] is False
+    assert pending.context["deadlines"] == [
+        {
+            "label": "License renewal due",
+            "description": "One year on.",
+            "date_display": None,
+            "date_iso": None,
+        }
+    ]
+    assert pending.context["output_id"] == "calendar"
+    assert {k: pending.context[k] for k in ("court", "topic", "role")} == (
+        URL_PARTS
+    )
+
+    (stored,) = rows.render_flow(
+        flow,
+        [],
+        [],
+        {"license_date": "2026-02-01"},
+        deadlines=[RENEWAL],
+        **URL_PARTS,
+    )
+    assert stored.context["has_dates"] is True
+    assert stored.context["deadlines"][0]["date_iso"] == "2027-02-01"
+    assert (
+        stored.context["deadlines"][0]["date_display"]
+        == "Monday, February 1, 2027"
+    )
+
+
+def test_render_flow_skips_the_calendar_block_without_deadlines():
+    flow = TopicFlow(layout=["overview", "calendar"])
+    rendered = rows.render_flow(flow, SECTIONS[:1], [], {}, **URL_PARTS)
+    assert [r.anchor_id for r in rendered] == ["overview"]
+
+
+def test_flow_variable_names_include_deadline_sources():
+    # A deadline's source date may be stored by the chat and asked on no
+    # page of this flow.
+    pages = [(TopicFlowInterviewPage(title="A"), [FULL_NAME])]
+    assert rows.flow_variable_names(
+        pages, deadlines=[RENEWAL, INSPECTION]
+    ) == [
+        "full_name",
+        "license_date",
+    ]
 
 
 def test_interview_block_expands_to_one_section_per_page_in_order():
@@ -136,9 +485,9 @@ def test_section_without_a_key_gets_a_positional_anchor():
 def test_render_flow_leaves_out_a_layout_name_the_schema_would_reject():
     # Only an admin edit to the layout column can get here; a 500 for every
     # visitor is the wrong answer to a typo.
-    flow = TopicFlow(layout=["overview", "stray", "packet"])
-    rendered = rows.render_flow(flow, SECTIONS[:1], [], {})
-    assert [r.anchor_id for r in rendered] == ["overview", "packet"]
+    flow = TopicFlow(layout=["overview", "stray", "fees"])
+    rendered = rows.render_flow(flow, SECTIONS, [], {})
+    assert [r.anchor_id for r in rendered] == ["overview", "fees"]
 
 
 # --- gating -----------------------------------------------------------------

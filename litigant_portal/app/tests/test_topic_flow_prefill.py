@@ -1,6 +1,9 @@
-"""Prefill payload tests: corpus mapping resolution and the rename. DB-free."""
+"""Prefill payload tests: corpus mapping resolution, the row twin, and the
+rename. DB-free."""
 
+from litigant_portal.app.models import TopicFlow
 from litigant_portal.app.topic_flow.prefill import (
+    flow_interview_target,
     interview_target,
     prefill_variables,
 )
@@ -112,3 +115,21 @@ def test_a_question_the_page_never_shows_still_reaches_the_payload():
     assert prefill_variables(
         mapping=mapping, answers={"first_name": "Sandra"}
     ) == {"current_first": "Sandra"}
+
+
+# --- the row twin -----------------------------------------------------------
+
+
+def test_flow_target_carries_the_reference_and_the_mapping():
+    flow = TopicFlow(interview_reference=REFERENCE, interview_prefill=MAPPING)
+    assert flow_interview_target(flow) == (REFERENCE, MAPPING)
+
+
+def test_flow_target_is_none_without_a_reference():
+    assert flow_interview_target(TopicFlow()) is None
+    assert (
+        flow_interview_target(
+            TopicFlow(interview_reference="", interview_prefill=MAPPING)
+        )
+        is None
+    )
