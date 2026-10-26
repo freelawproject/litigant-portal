@@ -237,6 +237,20 @@ def test_supported_fact_still_requires_value(
     assert excinfo.value.category == "missing_value"
 
 
+def test_supported_value_without_fact_key_is_rejected_in_v4(
+    value_judgment: tuple[dict, dict],
+) -> None:
+    candidate, response = value_judgment
+    candidate["case"]["facts"][0].pop("value")
+    candidate["answer"] = "The filing fee is $18.87."
+    response["facts"][0].update(status="supported", value=18.87)
+    text = json.dumps(response)
+    parse_response(text, candidate, Weights(), version=2)
+    with pytest.raises(InvalidGrade) as excinfo:
+        parse_response(text, candidate, Weights(), version=4)
+    assert excinfo.value.category == "unexpected_value"
+
+
 @pytest.mark.parametrize(
     ("value", "answer"),
     [(0.0, "Filing is free."), (False, "You are not eligible.")],
