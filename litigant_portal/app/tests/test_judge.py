@@ -1,4 +1,5 @@
 import json
+from copy import deepcopy
 from types import SimpleNamespace
 
 import pytest
@@ -35,18 +36,57 @@ def test_request_and_valid_verdicts():
         assert verdict.model_dump(mode="json") == payload
 
 
-def test_uploaded_evidence_remains_native_content():
-    image = {
-        "type": "image_url",
-        "image_url": {"url": "data:image/png;base64,aA=="},
+@pytest.mark.parametrize(
+    "attachment",
+    [
+        {
+            "type": "image_url",
+            "image_url": {"url": "data:image/png;base64,aA=="},
+        },
+        {
+            "type": "file",
+            "file": {
+                "file_data": "data:application/pdf;base64,aA==",
+                "filename": "notice.pdf",
+            },
+        },
+        {"type": "file", "file": {"file_id": "file-example"}},
+    ],
+)
+def test_request_excludes_native_attachments(attachment):
+    text = {"type": "text", "text": "Please explain this notice."}
+    context = {
+        "messages": [
+            {"role": "user", "content": [attachment]},
+            {"role": "assistant", "content": "Earlier reply."},
+            {"role": "user", "content": [text, attachment]},
+            {
+                "role": "tool",
+                "tool_call_id": "load-source",
+                "content": "Supplied procedural guidance.",
+            },
+        ],
+        "state": {"name": "Alex"},
     }
-    context = {"messages": [{"role": "user", "content": [image]}]}
-    content = AgentJudge.request(context, "The notice says Friday.")[1][
-        "content"
-    ]
-    assert content[1] == image
-    assert "base64" not in content[0]["text"]
-    assert context["messages"][0]["content"] == [image]
+    original = deepcopy(context)
+    messages = AgentJudge.request(context, "Bring the form.")
+    assert all(isinstance(message["content"], str) for message in messages)
+    payload = json.loads(messages[1]["content"])
+    marker = {
+        "type": "text",
+        "text": "[Attachment excluded from text-only review]",
+    }
+    assert payload == {
+        **original,
+        "candidate": "Bring the form.",
+        "messages": [
+            {"role": "user", "content": [marker]},
+            original["messages"][1],
+            {"role": "user", "content": [text, marker]},
+            original["messages"][3],
+        ],
+    }
+    assert context == original
 
 
 @pytest.mark.parametrize("fence", ["", "```", "```json", "```JSON"])
