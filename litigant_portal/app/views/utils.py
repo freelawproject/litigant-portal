@@ -2,17 +2,18 @@ from functools import wraps
 
 from django.conf import settings
 from django.http import Http404, JsonResponse
+from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from litigant_portal.app.features import features
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
     topic_flow_list,
+    topic_flow_url_kwargs,
     variable_answer_cleared_names,
     variable_answer_groups,
     variable_answer_map,
 )
-from litigant_portal.app.topic_flow.registry import topic_flow_page_url
 from litigant_portal.app.topic_flow.renderer import question_ids
 
 
@@ -81,23 +82,23 @@ def _answer_map(request, names, *, reviewed_only=False) -> dict:
 
 
 def topic_flow_cards() -> list[dict]:
-    """``{title, description, icon, url}`` per enabled flow whose guided page
-    renders on the configured source: the home grid's cards (#1068).
+    """``{title, description, icon, url}`` per enabled flow with a guided
+    page: the home grid's cards (#1068).
 
     One card per flow, however many a topic has, so merging a topic's flows
-    (#930) or splitting one changes the cards with no code change. A flow
-    with no page that renders gets no card, complete or not.
+    (#930) or splitting one changes the cards with no code change. A topic
+    with no court has no page yet, so its flows get no card.
     """
     cards = []
     for flow in topic_flow_list():
-        url = topic_flow_page_url(flow)
-        if url is not None:
+        page = topic_flow_url_kwargs(flow)
+        if page is not None:
             cards.append(
                 {
                     "title": flow.name,
                     "description": flow.topic.description,
                     "icon": flow.topic.icon,
-                    "url": url,
+                    "url": reverse("pages:topic_flow", kwargs=page),
                 }
             )
     return cards
