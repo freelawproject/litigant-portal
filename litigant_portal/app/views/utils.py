@@ -1,12 +1,15 @@
 from functools import wraps
 
+from django.conf import settings
 from django.http import Http404, JsonResponse
+from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from litigant_portal.app.features import features
-from litigant_portal.app.selectors.corpus import corpus_court_known
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
+    topic_flow_list,
+    topic_flow_url_kwargs,
     variable_answer_cleared_names,
     variable_answer_groups,
     variable_answer_map,
@@ -27,12 +30,14 @@ def has_identity(request) -> bool:
 def topic_flow_row_get(court, topic, role, *, graph=True):
     """The enabled ``TopicFlow`` row behind a ``/t/<court>/<topic>/<role>/``
     URL, for the ``TOPIC_FLOW_SOURCE=corpus`` views; ``graph`` is passed to
-    ``topic_flow_find``. ``court`` is checked through ``corpus_court_known``;
-    the lookup itself is by topic and flow slug. Raises ``Http404`` on
-    either miss."""
-    if not corpus_court_known(court, topic):
+    ``topic_flow_find``. The row's topic must carry the URL's court, which
+    must also be the instance's court when ``CORPUS_COURT`` is set. Raises
+    ``Http404`` on any miss."""
+    if settings.CORPUS_COURT is not None and court != settings.CORPUS_COURT:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-    flow = topic_flow_find(topic_slug=topic, flow_slug=role, graph=graph)
+    flow = topic_flow_find(
+        topic_slug=topic, flow_slug=role, court=court, graph=graph
+    )
     if flow is None:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
     return flow
@@ -74,6 +79,29 @@ def _answer_map(request, names, *, reviewed_only=False) -> dict:
     return variable_answer_map(
         identity=request.identity, names=names, reviewed_only=reviewed_only
     )
+
+
+def topic_flow_cards() -> list[dict]:
+    """``{title, description, icon, url}`` per enabled flow with a guided
+    page: the home grid's cards (#1068).
+
+    One card per flow, however many a topic has, so merging a topic's flows
+    (#930) or splitting one changes the cards with no code change. A topic
+    with no court has no page yet, so its flows get no card.
+    """
+    cards = []
+    for flow in topic_flow_list():
+        page = topic_flow_url_kwargs(flow)
+        if page is not None:
+            cards.append(
+                {
+                    "title": flow.name,
+                    "description": flow.topic.description,
+                    "icon": flow.topic.icon,
+                    "url": reverse("pages:topic_flow", kwargs=page),
+                }
+            )
+    return cards
 
 
 def briefcase_answers(request) -> list[dict]:

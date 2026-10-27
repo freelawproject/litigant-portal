@@ -9,6 +9,8 @@ import pytest
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from litigant_portal.app.models import Topic, TopicFlow, TopicFlowSection
+
 # The header's drawer buttons point at the frame's two regions by id.
 LEFT_DRAWER_BUTTON = 'popovertarget="frame-left"'
 RIGHT_DRAWER_BUTTON = 'popovertarget="frame-right"'
@@ -29,7 +31,29 @@ def _left_region(html):
 
 
 @pytest.mark.postgres
+# Pinned so the page reads the rows seeded below whatever .env says.
+@override_settings(TOPIC_FLOW_SOURCE="corpus", CORPUS_COURT=None)
 class FramedPagesTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        # One enabled flow with one section, so the flow page renders and
+        # its left region has a section to jump to.
+        flow = TopicFlow.objects.create(
+            topic=Topic.objects.create(
+                slug=TOPIC_FLOW_KWARGS["topic"],
+                court=TOPIC_FLOW_KWARGS["court"],
+                title="Eviction",
+                # The home page draws every topic's icon; blank is an error.
+                icon="home",
+            ),
+            slug=TOPIC_FLOW_KWARGS["role"],
+            name="Tenant",
+            enabled=True,
+        )
+        TopicFlowSection.objects.create(
+            flow=flow, key="overview", heading="Overview", content="Start."
+        )
+
     def test_home_and_topic_flow_pass_the_briefcase_like_chat(self):
         """The briefcase is the right region on every framed page, so each
         view hands it the visitor's answers, wherever they were saved."""

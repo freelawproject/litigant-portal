@@ -379,9 +379,10 @@ if not DEBUG:
 CORPUS_COURT = os.environ.get("CORPUS_COURT") or None
 
 # Which tree builds the guided page at /t/<court>/<topic>/<role>/ (#1016):
-# "content" reads litigant_portal/content/ through the registry, "corpus"
-# reads the TopicFlow rows sync_corpus writes. The default flips in #1018.
-TOPIC_FLOW_SOURCE = os.environ.get("TOPIC_FLOW_SOURCE") or "content"
+# "corpus" reads the TopicFlow rows sync_corpus writes, "content" reads
+# litigant_portal/content/ through the registry, kept until #1012 deletes
+# that tree.
+TOPIC_FLOW_SOURCE = os.environ.get("TOPIC_FLOW_SOURCE") or "corpus"
 if TOPIC_FLOW_SOURCE not in ("content", "corpus"):
     raise ImproperlyConfigured(
         f"TOPIC_FLOW_SOURCE must be 'content' or 'corpus', "

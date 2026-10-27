@@ -189,6 +189,7 @@ dmypy.json
 /corpus-sources/*
 !/corpus-sources/README.md
 !/corpus-sources/arizona/
+!/corpus-sources/portsmouth-va/
 /corpus-sources/*/_local/
 
 # Before/after captures from scripts/screenshots.mjs

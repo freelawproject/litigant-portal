@@ -9,12 +9,21 @@ from django.test import SimpleTestCase
 from django.urls import reverse
 
 from litigant_portal.agents.base import Agent, ToolOutput
+from litigant_portal.app.models import Topic, TopicFlow
 from litigant_portal.app.services.chat_engine import chat_stream
 
 
 class FailingAgent(Agent):
     def generate_system_prompt(self, *, thread_id) -> str:
         return "Test prompt"
+
+
+def _flow(court="franklin-county-oh"):
+    return TopicFlow(
+        topic=Topic(slug="eviction", court=court),
+        slug="tenant",
+        name="Tenant eviction guide",
+    )
 
 
 class ChatStreamFallbackTests(SimpleTestCase):
@@ -83,30 +92,14 @@ class ChatStreamFallbackTests(SimpleTestCase):
 
     def test_active_valid_flow_gets_guided_fallback_and_safe_error(self):
         self.thread.state = {"active_topic_flow": "eviction/tenant"}
-        flow = SimpleNamespace(
-            topic=SimpleNamespace(slug="eviction"),
-            slug="tenant",
-            name="Tenant eviction guide",
-        )
-        track = {
-            "court": "franklin-county-oh",
-            "topic": "eviction",
-            "role": "tenant",
-        }
 
-        with (
-            patch(
-                "litigant_portal.app.services.chat_engine.topic_flow_from_path",
-                return_value=flow,
-            ) as from_path,
-            patch(
-                "litigant_portal.app.services.chat_engine.topic_flow_track_find",
-                return_value=track,
-            ) as track_find,
-        ):
+        with patch(
+            "litigant_portal.app.services.chat_engine.topic_flow_from_path",
+            return_value=_flow(),
+        ) as from_path:
             events = self.stream_events()
-            from_path.assert_called_once_with("eviction/tenant")
-            track_find.assert_called_once_with(flow)
+            # The fallback reads three fields; the content graph stays home.
+            from_path.assert_called_once_with("eviction/tenant", graph=False)
         error = next(event for event in events if event["type"] == "error")
 
         self.assertEqual(
@@ -143,17 +136,11 @@ class ChatStreamFallbackTests(SimpleTestCase):
             with self.subTest(state=state):
                 self.thread.state = state
 
-                with (
-                    patch(
-                        "litigant_portal.app.services.chat_engine.topic_flow_from_path",
-                        return_value=None,
-                    ),
-                    patch(
-                        "litigant_portal.app.services.chat_engine.topic_flow_track_find"
-                    ) as track_find,
+                with patch(
+                    "litigant_portal.app.services.chat_engine.topic_flow_from_path",
+                    return_value=None,
                 ):
                     events = self.stream_events()
-                    track_find.assert_not_called()
                 error = next(
                     event for event in events if event["type"] == "error"
                 )
@@ -174,22 +161,14 @@ class ChatStreamFallbackTests(SimpleTestCase):
         self.thread.state = {"active_topic_flow": "eviction/tenant"}
         for resolver in (
             "topic_flow_from_path",
-            "topic_flow_track_find",
+            "topic_flow_url_kwargs",
             "reverse",
         ):
             with (
                 self.subTest(resolver=resolver),
                 patch(
                     "litigant_portal.app.services.chat_engine.topic_flow_from_path",
-                    return_value=SimpleNamespace(name="Guide"),
-                ),
-                patch(
-                    "litigant_portal.app.services.chat_engine.topic_flow_track_find",
-                    return_value={
-                        "court": "court",
-                        "topic": "topic",
-                        "role": "role",
-                    },
+                    return_value=_flow(),
                 ),
                 patch(
                     f"litigant_portal.app.services.chat_engine.{resolver}",
@@ -210,17 +189,11 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 self.assertNotIn("secret-provider-detail", payload)
                 self.assertNotIn("secret-resolution-detail", payload)
 
-    def test_unmatched_track_falls_back_to_home(self):
+    def test_topic_without_a_court_falls_back_to_home(self):
         self.thread.state = {"active_topic_flow": "eviction/tenant"}
-        with (
-            patch(
-                "litigant_portal.app.services.chat_engine.topic_flow_from_path",
-                return_value=SimpleNamespace(name="Guide"),
-            ),
-            patch(
-                "litigant_portal.app.services.chat_engine.topic_flow_track_find",
-                return_value=None,
-            ),
+        with patch(
+            "litigant_portal.app.services.chat_engine.topic_flow_from_path",
+            return_value=_flow(court=""),
         ):
             events = self.stream_events()
 

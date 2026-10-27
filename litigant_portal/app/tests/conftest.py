@@ -44,6 +44,17 @@ def blank_site_without_a_database(request, test_cache):
 
 
 @pytest.fixture(autouse=True)
+def no_flow_rows_without_a_database(request, monkeypatch):
+    """The tester menu lists the flow rows on every page render where
+    tester tools are on; a test with no database access gets none."""
+    if not _uses_database(request):
+        monkeypatch.setattr(
+            "litigant_portal.app.context_processors.topic_flow_list",
+            lambda: [],
+        )
+
+
+@pytest.fixture(autouse=True)
 def test_storage(settings):
     """Use in-memory storage for tests."""
     settings.STORAGES = {

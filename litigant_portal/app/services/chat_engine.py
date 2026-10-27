@@ -29,11 +29,11 @@ from litigant_portal.app.selectors.chat_engine import (
     chat_thread_get,
 )
 from litigant_portal.app.selectors.site import site_get, site_get_model
+from litigant_portal.app.selectors.topic_flow import topic_flow_url_kwargs
 from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
     user_upload_render_list,
 )
-from litigant_portal.app.topic_flow.registry import topic_flow_track_find
 
 logger = logging.getLogger(__name__)
 
@@ -404,16 +404,13 @@ def _stream_error_event(thread: ChatThread) -> dict[str, str]:
     try:
         active_path = (thread.state or {}).get("active_topic_flow")
         flow = (
-            topic_flow_from_path(active_path)
+            topic_flow_from_path(active_path, graph=False)
             if isinstance(active_path, str)
             else None
         )
-        track = topic_flow_track_find(flow) if flow else None
-        if track:
-            guided_url = reverse(
-                "pages:topic_flow",
-                kwargs={key: track[key] for key in ("court", "topic", "role")},
-            )
+        page = topic_flow_url_kwargs(flow) if flow else None
+        if page:
+            guided_url = reverse("pages:topic_flow", kwargs=page)
             guided_label = flow.name
             guided_message = _(
                 "The assistant is temporarily unavailable. You can continue "

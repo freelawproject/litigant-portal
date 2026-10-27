@@ -22,7 +22,6 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.selectors import corpus as selectors
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
@@ -36,7 +35,6 @@ from litigant_portal.app.topic_flow.schema import (
     PacketOutput,
     Question,
 )
-from litigant_portal.app.views import pages
 from litigant_portal.app.views import topic_flow as topic_flow_views
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
@@ -264,12 +262,6 @@ def synced(db, settings, tmp_path):
         mock.patch.object(services, "FORMS_DIR", tmp_path),
     ):
         corpus_sync()
-    # The view's court check reads the topic index from disk; keep it on
-    # the fake corpus so ``alpha`` is a known court for every test here.
-    with mock.patch.object(
-        selectors, "corpus_load_topics", return_value=corpus.topics
-    ):
-        yield
 
 
 def _section_ids(html):
@@ -494,7 +486,9 @@ def test_content_path_choice_options_are_unchanged(
             )
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     flat = _flat(client.get(URL))
     assert _has_option(flat, "Cass", "Cass")
     assert _has_option(flat, "Burleigh", "Burleigh")
@@ -933,11 +927,13 @@ def test_corpus_source_404s_the_wrong_court_when_corpus_court_is_set(
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_a_court_the_corpus_lacks_when_corpus_court_is_unset(
+def test_corpus_source_404s_a_court_that_does_not_own_the_topic_row(
     client, synced
 ):
+    """``beta`` is a synced court, but ``pets`` is alpha's topic."""
     assert client.get(URL).status_code == 200
     assert client.get(f"/t/beta/{TOPIC}/{ROLE}/").status_code == 404
+    assert client.get(f"/t/nowhere/{TOPIC}/{ROLE}/").status_code == 404
 
 
 # --- the default setting ----------------------------------------------------
@@ -966,7 +962,9 @@ def test_content_source_still_uses_the_registry(
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     response = client.get(URL)
     assert response.context["page_title"] == "From YAML"
     flat = _flat(response)
@@ -974,7 +972,7 @@ def test_content_source_still_uses_the_registry(
     # The shared form names itself by the heading on this path too.
     assert re.search(r'<form[^>]*aria-labelledby="facts-heading"', flat)
 
-    monkeypatch.setattr(pages.registry, "get", lambda *a: None)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: None)
     assert client.get(URL).status_code == 404
 
 
@@ -1104,7 +1102,9 @@ def test_post_writes_the_same_rows_the_content_path_writes(
             )
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     client.post(URL, answers)
     assert _rows() == from_rows
     assert from_rows == {

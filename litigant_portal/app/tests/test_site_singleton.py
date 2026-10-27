@@ -14,8 +14,18 @@ from django.core.cache import cache
 from django.db import IntegrityError, transaction
 from django.test import TestCase
 
-from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
-from litigant_portal.app.models import Contact, Resource, Site, Topic
+from litigant_portal.app.cache import (
+    SITE_CACHE_KEY,
+    TOPIC_FLOW_LIST_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+)
+from litigant_portal.app.models import (
+    Contact,
+    Resource,
+    Site,
+    Topic,
+    TopicFlow,
+)
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
     DEFAULT_FAST_BEDROCK_MODEL,
@@ -28,9 +38,12 @@ from litigant_portal.app.selectors.site import (
     site_get,
     site_get_model,
 )
-from litigant_portal.app.selectors.topic_flow import topic_list
+from litigant_portal.app.selectors.topic_flow import (
+    topic_flow_list,
+    topic_list,
+)
 from litigant_portal.app.services.site import site_update
-from litigant_portal.app.services.topic_flow import topic_create
+from litigant_portal.app.services.topic_flow import topic_create, topic_delete
 
 
 @pytest.mark.postgres
@@ -170,3 +183,16 @@ class TopicScopingTests(TestCase):
             topic_create(title="Small Claims")
         self.assertIsNone(cache.get(TOPIC_LIST_CACHE_KEY))
         self.assertEqual(len(topic_list()), 1)
+
+    def test_topic_flow_list_is_cached_and_busted_by_topic_writes(self):
+        topic = topic_create(title="Evictions")
+        TopicFlow.objects.create(topic=topic, slug="tenant", enabled=True)
+        self.assertEqual([f.slug for f in topic_flow_list()], ["tenant"])
+        with self.assertNumQueries(0):
+            self.assertEqual([f.slug for f in topic_flow_list()], ["tenant"])
+
+        # Deleting the topic takes its flows with it.
+        with self.captureOnCommitCallbacks(execute=True):
+            topic_delete(topic=topic)
+        self.assertIsNone(cache.get(TOPIC_FLOW_LIST_CACHE_KEY))
+        self.assertEqual(topic_flow_list(), [])

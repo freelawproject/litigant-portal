@@ -5,7 +5,10 @@ from django.db import transaction
 from django.db.models import Max
 from django.utils.text import slugify
 
-from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
+from litigant_portal.app.cache import (
+    TOPIC_FLOW_LIST_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+)
 from litigant_portal.app.models import Topic, Variable, VariableAnswer
 from litigant_portal.app.models.choices import VariableDataType
 
@@ -21,7 +24,7 @@ def _topic_unique_slug(*, title: str) -> str:
     return slug
 
 
-@busts_cache(TOPIC_LIST_CACHE_KEY)
+@busts_cache(TOPIC_LIST_CACHE_KEY, TOPIC_FLOW_LIST_CACHE_KEY)
 def topic_create(**fields) -> Topic:
     """Create a topic, appended to the display order."""
     last = Topic.objects.aggregate(m=Max("order"))["m"]
@@ -32,7 +35,7 @@ def topic_create(**fields) -> Topic:
     )
 
 
-@busts_cache(TOPIC_LIST_CACHE_KEY)
+@busts_cache(TOPIC_LIST_CACHE_KEY, TOPIC_FLOW_LIST_CACHE_KEY)
 def topic_update(*, topic: Topic, **fields) -> Topic:
     """Update a topic's editable fields."""
     for name, value in fields.items():
@@ -41,7 +44,7 @@ def topic_update(*, topic: Topic, **fields) -> Topic:
     return topic
 
 
-@busts_cache(TOPIC_LIST_CACHE_KEY)
+@busts_cache(TOPIC_LIST_CACHE_KEY, TOPIC_FLOW_LIST_CACHE_KEY)
 def topic_delete(*, topic: Topic) -> None:
     topic.delete()
 

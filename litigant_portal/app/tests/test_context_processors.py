@@ -6,8 +6,7 @@ from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.context_processors import app_meta, court_branding
-from litigant_portal.app.models import Site
-from litigant_portal.app.topic_flow.registry import registry
+from litigant_portal.app.models import Site, Topic, TopicFlow
 
 
 class AppMetaTests(SimpleTestCase):
@@ -54,26 +53,63 @@ class AppMetaTests(SimpleTestCase):
         self.assertFalse(result["features"].start_over)
         self.assertEqual(result["tester_flow_links"], [])
 
-    def test_flow_links_cover_every_court_when_no_court_is_set(self):
-        with self.settings(DEPLOYMENT_ENV="dev", CORPUS_COURT=None):
-            result = app_meta(self.factory.get("/"))
 
-        keys = registry.keys()
-        expected = {
-            f"/t/{court}/{topic}/{role}/" for court, topic, role in keys
-        }
-        urls = {link["url"] for link in result["tester_flow_links"]}
-        self.assertEqual(urls, expected)
+@pytest.mark.postgres
+class TesterFlowLinkTests(TestCase):
+    """The tester menu's flow links come from the enabled flow rows."""
 
-    def test_flow_links_cover_only_the_instances_court(self):
-        with self.settings(
-            DEPLOYMENT_ENV="prod", PILOT=True, CORPUS_COURT="arizona"
+    def setUp(self):
+        self.request = RequestFactory().get("/")
+        for court, topic, flow, name in (
+            ("arizona", "civil-traffic", "options", "Know my options"),
+            ("north-dakota", "adult-name-change", "standard", "Standard"),
         ):
-            result = app_meta(self.factory.get("/"))
+            TopicFlow.objects.create(
+                topic=Topic.objects.create(slug=topic, court=court),
+                slug=flow,
+                name=name,
+                enabled=True,
+            )
 
-        urls = [link["url"] for link in result["tester_flow_links"]]
-        self.assertTrue(urls)
-        self.assertTrue(all(url.startswith("/t/arizona/") for url in urls))
+    def _urls(self, **overrides):
+        with self.settings(DEPLOYMENT_ENV="dev", **overrides):
+            links = app_meta(self.request)["tester_flow_links"]
+        return [link["url"] for link in links]
+
+    def test_links_cover_every_court_when_no_court_is_set(self):
+        self.assertEqual(
+            self._urls(CORPUS_COURT=None),
+            [
+                "/t/arizona/civil-traffic/options/",
+                "/t/north-dakota/adult-name-change/standard/",
+            ],
+        )
+
+    def test_links_cover_only_the_instances_court(self):
+        self.assertEqual(
+            self._urls(CORPUS_COURT="arizona"),
+            ["/t/arizona/civil-traffic/options/"],
+        )
+
+    def test_a_link_is_titled_by_its_flow_name(self):
+        with self.settings(DEPLOYMENT_ENV="dev", CORPUS_COURT="arizona"):
+            (link,) = app_meta(self.request)["tester_flow_links"]
+        self.assertEqual(link["title"], "Know my options")
+
+    def test_a_disabled_flow_gets_no_link(self):
+        TopicFlow.objects.filter(slug="options").update(enabled=False)
+        self.assertEqual(
+            self._urls(CORPUS_COURT=None),
+            ["/t/north-dakota/adult-name-change/standard/"],
+        )
+
+    def test_a_topic_without_a_court_gets_no_link(self):
+        """A topic that predates its first sync has no page URL yet."""
+        Topic.objects.filter(slug="adult-name-change").update(court="")
+        self.assertEqual(
+            self._urls(CORPUS_COURT=None),
+            ["/t/arizona/civil-traffic/options/"],
+        )
 
 
 @pytest.mark.postgres

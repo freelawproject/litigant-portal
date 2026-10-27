@@ -5,8 +5,8 @@
 <section class="topic-grid-section {{ class }}" {{ attrs }}>
   {% if heading %}<h2 class="topic-grid-heading">{{ heading }}</h2>{% endif %}
   <div class="topic-grid">
-    {% for slug, topic in topics.items %}
-      <c-molecules.topic-card icon="{{ topic.icon }}" title="{{ topic.title }}" description="{{ topic.description }}" href="{% url 'pages:chat' %}?topic={{ slug }}" />
+    {% for card in topic_cards %}
+      <c-molecules.topic-card icon="{{ card.icon }}" title="{{ card.title }}" description="{{ card.description }}" href="{{ card.url }}" />
     {% endfor %}
   </div>
 </section>

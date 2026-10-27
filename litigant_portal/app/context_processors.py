@@ -4,23 +4,27 @@ from django.urls import reverse
 
 from litigant_portal.app.features import features
 from litigant_portal.app.selectors.site import site_get
-from litigant_portal.app.topic_flow.registry import registry
+from litigant_portal.app.selectors.topic_flow import (
+    topic_flow_list,
+    topic_flow_url_kwargs,
+)
 from litigant_portal.app.views.utils import admin_tabs
 
 
 def _tester_flow_links(court: str | None) -> list[dict]:
     """Links to the instance's flows for the tester menu: one court's when
     the instance serves one, every court's otherwise."""
-    return [
-        {
-            "url": reverse(
-                "pages:topic_flow",
-                kwargs={"court": f.court, "topic": f.topic, "role": f.role},
-            ),
-            "title": f.title,
-        }
-        for f in registry.flows(court)
-    ]
+    links = []
+    for flow in topic_flow_list():
+        page = topic_flow_url_kwargs(flow)
+        if page and court in (None, page["court"]):
+            links.append(
+                {
+                    "url": reverse("pages:topic_flow", kwargs=page),
+                    "title": flow.name,
+                }
+            )
+    return links
 
 
 def app_meta(request):

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import re
 from pathlib import Path
 from typing import Annotated, Literal
@@ -8,7 +7,6 @@ from urllib.parse import urlsplit
 
 import yaml
 from django.conf import settings
-from django.core.cache import cache
 from django.core.exceptions import ValidationError as DjangoValidationError
 from pydantic import (
     BaseModel,
@@ -20,7 +18,6 @@ from pydantic import (
 )
 from pypdf import PdfReader
 
-from litigant_portal.app.cache import CORPUS_TOPIC_KEYS_CACHE_KEY
 from litigant_portal.app.models.choices import (
     ContactKind,
     JurisdictionLevel,
@@ -948,38 +945,6 @@ def corpus_load_topics() -> dict[tuple[str, str], TopicSchema]:
         (path.parts[-4], path.parts[-2]): corpus_parse_yaml(path, TopicSchema)
         for path in sorted(COURTS_DIR.glob("*/topics/*/topic.yml"))
     }
-
-
-def _corpus_topic_tree_fingerprint() -> str:
-    """A hash of the topic document paths on this process's disk. The
-    cached topic index carries it, so a process never serves a list built
-    from another release's tree (an old pod refilling the key after the
-    bust on deploy, for example)."""
-    paths = sorted(
-        str(p.relative_to(COURTS_DIR))
-        for p in COURTS_DIR.glob("*/topics/*/topic.yml")
-    )
-    return hashlib.sha256("\n".join(paths).encode()).hexdigest()
-
-
-def corpus_court_known(court: str, topic: str) -> bool:
-    """Whether a page URL's court is one this deployment serves: the
-    ``CORPUS_COURT`` setting when set (as ``agent_scope_choices`` reads
-    it), otherwise any court authoring ``topic`` in the corpus. The topic
-    index is served from cache, as every rows-path request reads it; a
-    cached index from a different tree counts as a miss."""
-    if settings.CORPUS_COURT is not None:
-        return court == settings.CORPUS_COURT
-    fingerprint = _corpus_topic_tree_fingerprint()
-    cached = cache.get(CORPUS_TOPIC_KEYS_CACHE_KEY)
-    if isinstance(cached, tuple) and cached[0] == fingerprint:
-        keys = cached[1]
-    else:
-        keys = list(corpus_load_topics())
-        cache.set(
-            CORPUS_TOPIC_KEYS_CACHE_KEY, (fingerprint, keys), timeout=None
-        )
-    return (court, topic) in keys
 
 
 def corpus_load_flows() -> dict[tuple[str, str, str], FlowSchema]:
