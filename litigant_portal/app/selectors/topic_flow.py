@@ -1,6 +1,9 @@
 from django.core.cache import cache
 
-from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
+from litigant_portal.app.cache import (
+    TOPIC_FLOW_LIST_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+)
 from litigant_portal.app.models import (
     Topic,
     TopicFlow,
@@ -24,12 +27,19 @@ def topic_get(*, topic_id) -> Topic:
 
 
 def topic_flow_list() -> list[TopicFlow]:
-    """Enabled flows with their topics, in topic order then flow order."""
-    return list(
-        TopicFlow.objects.filter(enabled=True)
-        .select_related("topic")
-        .order_by("topic__order", "topic__created_at", "order", "created_at")
-    )
+    """Enabled flows with their topics, in topic order then flow order,
+    served from cache."""
+    flows = cache.get(TOPIC_FLOW_LIST_CACHE_KEY)
+    if flows is None:
+        flows = list(
+            TopicFlow.objects.filter(enabled=True)
+            .select_related("topic")
+            .order_by(
+                "topic__order", "topic__created_at", "order", "created_at"
+            )
+        )
+        cache.set(TOPIC_FLOW_LIST_CACHE_KEY, flows, timeout=None)
+    return flows
 
 
 def topic_flow_find(
