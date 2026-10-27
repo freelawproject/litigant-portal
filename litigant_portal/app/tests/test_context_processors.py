@@ -96,10 +96,20 @@ class TesterFlowLinkTests(TestCase):
             (link,) = app_meta(self.request)["tester_flow_links"]
         self.assertEqual(link["title"], "Know my options")
 
-    def test_a_disabled_flow_or_an_unsynced_topic_gets_no_link(self):
+    def test_a_disabled_flow_gets_no_link(self):
         TopicFlow.objects.filter(slug="options").update(enabled=False)
+        self.assertEqual(
+            self._urls(CORPUS_COURT=None),
+            ["/t/north-dakota/adult-name-change/standard/"],
+        )
+
+    def test_a_topic_without_a_court_gets_no_link(self):
+        """A topic that predates its first sync has no page URL yet."""
         Topic.objects.filter(slug="adult-name-change").update(court="")
-        self.assertEqual(self._urls(CORPUS_COURT=None), [])
+        self.assertEqual(
+            self._urls(CORPUS_COURT=None),
+            ["/t/arizona/civil-traffic/options/"],
+        )
 
 
 @pytest.mark.postgres
