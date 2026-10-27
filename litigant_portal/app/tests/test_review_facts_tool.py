@@ -5,10 +5,13 @@ so every test is postgres-marked. The safety rule under test: the tool
 takes no input that could steer the card, and it never writes.
 """
 
+from unittest.mock import patch
+
 import pytest
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
+from litigant_portal.agents.tools import review_facts as tool_module
 from litigant_portal.agents.tools.review_facts import ReviewFacts
 from litigant_portal.app.models import (
     ChatThread,
@@ -128,6 +131,20 @@ def test_answered_flow_variables_are_listed_with_their_review_state(
     ]
     assert data["confirm_names"] == ["first_name", "county"]
     assert data["all_reviewed"] is False
+
+
+def test_the_tool_reads_the_flow_row_without_its_content_graph(
+    thread, active_flow
+):
+    _store(thread, "first_name", "Ada")
+    with patch.object(
+        tool_module,
+        "topic_flow_from_path",
+        wraps=tool_module.topic_flow_from_path,
+    ) as from_path:
+        data = ReviewFacts()(thread_id=thread.id).render_data
+    from_path.assert_called_once_with("name_change/standard", graph=False)
+    assert [f["name"] for f in data["facts"]] == ["first_name"]
 
 
 def test_the_card_carries_an_aware_timestamp_of_when_it_read_the_answers(

@@ -8,10 +8,11 @@ def _flow_variables(flow) -> list:
     """The flow's interview variables in page order, without duplicates."""
     seen = set()
     variables = []
-    for page in flow.interview_pages.all():
-        for placement in page.variables.select_related(
-            "variable", "variable__asked_when"
-        ):
+    pages = flow.interview_pages.prefetch_related(
+        "variables__variable__asked_when"
+    )
+    for page in pages:
+        for placement in page.variables.all():
             variable = placement.variable
             if variable.name in seen:
                 continue
@@ -52,7 +53,9 @@ class ReviewFacts(Tool):
 
         thread = ChatThread.objects.get(id=thread_id)
         path = (thread.state or {}).get("active_topic_flow")
-        flow = topic_flow_from_path(path) if path else None
+        # The card reads the interview pages and a few row fields;
+        # _flow_variables fetches the pages itself.
+        flow = topic_flow_from_path(path, graph=False) if path else None
         if flow is None:
             return ToolOutput(
                 result=(
