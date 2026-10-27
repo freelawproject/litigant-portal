@@ -10,7 +10,7 @@ from django.urls import reverse
 
 from litigant_portal.app.views.design_system import (
     ATOMIC_DESIGN_STAGES,
-    ATOMIC_PLACEHOLDER_TOPICS,
+    ATOMIC_PLACEHOLDER_TOPIC_CARDS,
     _sample_components,
 )
 
@@ -47,7 +47,9 @@ class AtomicDesignStageTests(TestCase):
         )
 
         self.assertTemplateUsed(response, "pages/home.html")
-        self.assertEqual(response.context["topics"], ATOMIC_PLACEHOLDER_TOPICS)
+        self.assertEqual(
+            response.context["topic_cards"], ATOMIC_PLACEHOLDER_TOPIC_CARDS
+        )
         self.assertTrue(response.context["court_name"])
 
     def test_framed_pages_allow_same_origin_framing(self):

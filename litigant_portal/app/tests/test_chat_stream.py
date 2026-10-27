@@ -6,7 +6,6 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from django.test import SimpleTestCase
-from django.urls import reverse
 
 from litigant_portal.agents.base import Agent, ToolOutput
 from litigant_portal.app.services.chat_engine import chat_stream
@@ -88,11 +87,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
             slug="tenant",
             name="Tenant eviction guide",
         )
-        track = {
-            "court": "franklin-county-oh",
-            "topic": "eviction",
-            "role": "tenant",
-        }
+        url = "/t/franklin-county-oh/eviction/tenant/"
 
         with (
             patch(
@@ -100,26 +95,16 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 return_value=flow,
             ) as from_path,
             patch(
-                "litigant_portal.app.services.chat_engine.topic_flow_track_find",
-                return_value=track,
-            ) as track_find,
+                "litigant_portal.app.services.chat_engine.topic_flow_page_url",
+                return_value=url,
+            ) as page_url,
         ):
             events = self.stream_events()
             from_path.assert_called_once_with("eviction/tenant")
-            track_find.assert_called_once_with(flow)
+            page_url.assert_called_once_with(flow)
         error = next(event for event in events if event["type"] == "error")
 
-        self.assertEqual(
-            error["fallback_url"],
-            reverse(
-                "pages:topic_flow",
-                kwargs={
-                    "court": "franklin-county-oh",
-                    "topic": "eviction",
-                    "role": "tenant",
-                },
-            ),
-        )
+        self.assertEqual(error["fallback_url"], url)
         self.assertEqual(
             error["fallback_label"],
             "Tenant eviction guide",
@@ -149,11 +134,11 @@ class ChatStreamFallbackTests(SimpleTestCase):
                         return_value=None,
                     ),
                     patch(
-                        "litigant_portal.app.services.chat_engine.topic_flow_track_find"
-                    ) as track_find,
+                        "litigant_portal.app.services.chat_engine.topic_flow_page_url"
+                    ) as page_url,
                 ):
                     events = self.stream_events()
-                    track_find.assert_not_called()
+                    page_url.assert_not_called()
                 error = next(
                     event for event in events if event["type"] == "error"
                 )
@@ -172,11 +157,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
         self,
     ):
         self.thread.state = {"active_topic_flow": "eviction/tenant"}
-        for resolver in (
-            "topic_flow_from_path",
-            "topic_flow_track_find",
-            "reverse",
-        ):
+        for resolver in ("topic_flow_from_path", "topic_flow_page_url"):
             with (
                 self.subTest(resolver=resolver),
                 patch(
@@ -184,12 +165,8 @@ class ChatStreamFallbackTests(SimpleTestCase):
                     return_value=SimpleNamespace(name="Guide"),
                 ),
                 patch(
-                    "litigant_portal.app.services.chat_engine.topic_flow_track_find",
-                    return_value={
-                        "court": "court",
-                        "topic": "topic",
-                        "role": "role",
-                    },
+                    "litigant_portal.app.services.chat_engine.topic_flow_page_url",
+                    return_value="/t/court/topic/role/",
                 ),
                 patch(
                     f"litigant_portal.app.services.chat_engine.{resolver}",
@@ -218,7 +195,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 return_value=SimpleNamespace(name="Guide"),
             ),
             patch(
-                "litigant_portal.app.services.chat_engine.topic_flow_track_find",
+                "litigant_portal.app.services.chat_engine.topic_flow_page_url",
                 return_value=None,
             ),
         ):

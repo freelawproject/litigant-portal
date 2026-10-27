@@ -5,7 +5,7 @@
   <div x-show="kbListVisible">
     <div class="mb-4">
       <h3 class="text-base font-semibold text-greyscale-900">{% trans "Topics" %}</h3>
-      <p class="text-sm text-greyscale-500">{% trans "The legal topics this site offers — shown on the home page and used to guide chat." %}</p>
+      <p class="text-sm text-greyscale-500">{% trans "The legal topics this site offers, used to guide chat. The home page lists each topic's guided flows." %}</p>
     </div>
     <div class="space-y-3">
       <template x-for="topic in kbTopics" :key="topic.id">

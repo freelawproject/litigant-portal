@@ -7,10 +7,12 @@ from litigant_portal.app.features import features
 from litigant_portal.app.selectors.corpus import corpus_court_known
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
+    topic_flow_list,
     variable_answer_cleared_names,
     variable_answer_groups,
     variable_answer_map,
 )
+from litigant_portal.app.topic_flow.registry import topic_flow_page_url
 from litigant_portal.app.topic_flow.renderer import question_ids
 
 
@@ -74,6 +76,29 @@ def _answer_map(request, names, *, reviewed_only=False) -> dict:
     return variable_answer_map(
         identity=request.identity, names=names, reviewed_only=reviewed_only
     )
+
+
+def topic_flow_cards() -> list[dict]:
+    """``{title, description, icon, url}`` per enabled flow whose guided page
+    renders on the configured source: the home grid's cards (#1068).
+
+    One card per flow, however many a topic has, so merging a topic's flows
+    (#930) or splitting one changes the cards with no code change. A flow
+    with no page that renders gets no card, complete or not.
+    """
+    cards = []
+    for flow in topic_flow_list():
+        url = topic_flow_page_url(flow)
+        if url is not None:
+            cards.append(
+                {
+                    "title": flow.name,
+                    "description": flow.topic.description,
+                    "icon": flow.topic.icon,
+                    "url": url,
+                }
+            )
+    return cards
 
 
 def briefcase_answers(request) -> list[dict]:

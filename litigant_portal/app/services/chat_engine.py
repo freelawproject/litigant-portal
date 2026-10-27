@@ -10,7 +10,6 @@ from django.conf import settings
 from django.db import transaction
 from django.http import StreamingHttpResponse
 from django.template.loader import render_to_string
-from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
@@ -31,7 +30,7 @@ from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
     user_upload_render_list,
 )
-from litigant_portal.app.topic_flow.registry import topic_flow_track_find
+from litigant_portal.app.topic_flow.registry import topic_flow_page_url
 
 logger = logging.getLogger(__name__)
 
@@ -401,12 +400,8 @@ def _stream_error_event(thread: ChatThread) -> dict[str, str]:
             if isinstance(active_path, str)
             else None
         )
-        track = topic_flow_track_find(flow) if flow else None
-        if track:
-            guided_url = reverse(
-                "pages:topic_flow",
-                kwargs={key: track[key] for key in ("court", "topic", "role")},
-            )
+        guided_url = topic_flow_page_url(flow) if flow else None
+        if guided_url:
             guided_label = flow.name
             guided_message = _(
                 "The assistant is temporarily unavailable. You can continue "

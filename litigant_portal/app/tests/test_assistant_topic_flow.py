@@ -3,7 +3,7 @@ it, the flow list injected into the system prompt, and stale-state
 clearing."""
 
 import pytest
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from litigant_portal.agents.assistant import (
     LitigantAssistant,
@@ -37,6 +37,7 @@ from litigant_portal.app.selectors.topic_flow import (
     topic_flow_list,
 )
 from litigant_portal.app.services.site import site_update
+from litigant_portal.app.topic_flow.registry import topic_flow_page_url
 
 
 def _eviction_flow() -> TopicFlow:
@@ -86,6 +87,46 @@ class TopicFlowSelectorTests(TestCase):
         self.assertIsNone(
             topic_flow_find(topic_slug="eviction", flow_slug="tenant")
         )
+
+
+def _flow(topic_slug: str, flow_slug: str) -> TopicFlow:
+    topic = Topic.objects.create(slug=topic_slug, title=topic_slug)
+    return TopicFlow.objects.create(
+        topic=topic, slug=flow_slug, name=flow_slug, enabled=True
+    )
+
+
+@pytest.mark.postgres
+class TopicFlowPageUrlTests(TestCase):
+    """Where a flow's guided page lives on the configured source (#1068):
+    a URL only when that source would render the page."""
+
+    def test_content_source_links_the_flow_its_content_file_serves(self):
+        self.assertEqual(
+            topic_flow_page_url(_flow("eviction", "tenant")),
+            "/t/franklin-county-oh/eviction/tenant/",
+        )
+
+    def test_content_source_has_no_page_without_a_content_file(self):
+        self.assertIsNone(topic_flow_page_url(_flow("no-guided-page", "x")))
+
+    @override_settings(TOPIC_FLOW_SOURCE="corpus", CORPUS_COURT="north-dakota")
+    def test_corpus_source_takes_the_court_from_the_deployment(self):
+        self.assertEqual(
+            topic_flow_page_url(_flow("adult-name-change", "standard")),
+            "/t/north-dakota/adult-name-change/standard/",
+        )
+
+    @override_settings(TOPIC_FLOW_SOURCE="corpus", CORPUS_COURT=None)
+    def test_corpus_source_without_a_court_takes_the_authoring_court(self):
+        self.assertEqual(
+            topic_flow_page_url(_flow("eviction", "landlord")),
+            "/t/franklin-county-oh/eviction/landlord/",
+        )
+
+    @override_settings(TOPIC_FLOW_SOURCE="corpus", CORPUS_COURT=None)
+    def test_corpus_source_has_no_page_for_a_topic_no_court_authors(self):
+        self.assertIsNone(topic_flow_page_url(_flow("no-guided-page", "x")))
 
 
 @pytest.mark.postgres

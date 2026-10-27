@@ -29,9 +29,12 @@ from litigant_portal.app.models.choices import (
     State,
 )
 from litigant_portal.app.selectors.site import contact_help_list, site_get
-from litigant_portal.app.selectors.topic_flow import topic_list
 from litigant_portal.app.services.user import user_identity_reset
-from litigant_portal.app.views.utils import admin_tabs, briefcase_answers
+from litigant_portal.app.views.utils import (
+    admin_tabs,
+    briefcase_answers,
+    topic_flow_cards,
+)
 
 
 # The Atomic Design summary page frames the real home page as its "page"
@@ -39,11 +42,13 @@ from litigant_portal.app.views.utils import admin_tabs, briefcase_answers
 @xframe_options_sameorigin
 def home(request):
     """Home page - dashboard with hero and topic grid."""
-    topics = {t.slug: t for t in topic_list()}
     return render(
         request,
         "pages/home.html",
-        {"topics": topics, "briefcase_groups": briefcase_answers(request)},
+        {
+            "topic_cards": topic_flow_cards(),
+            "briefcase_groups": briefcase_answers(request),
+        },
     )
 
 
