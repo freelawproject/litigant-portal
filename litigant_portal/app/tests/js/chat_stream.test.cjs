@@ -90,7 +90,13 @@ function sse(type, fields = {}) {
 }
 
 test('judging shows checking only on the attached stream and clears on progress or termination', () => {
-  for (const type of ['content_delta', 'tool_call', 'done', 'error']) {
+  for (const type of [
+    'heartbeat',
+    'content_delta',
+    'tool_call',
+    'done',
+    'error',
+  ]) {
     const { app, updateThinking } = makeApp()
     app.updateThinking = updateThinking
     const stream = newStream(app)
@@ -145,7 +151,7 @@ test('heartbeats keep buffered work alive without rendering or scrolling', (t) =
       t.mock.timers.tick(10000)
       app.handleEvent(stream, { type: 'heartbeat' })
       assert.equal(stream.failureRendered, false)
-      assert.equal(app.checkingVisible, checking)
+      assert.equal(app.checkingVisible, false)
       assert.equal(app.messages.length, 0)
     }
     t.mock.timers.tick(59000)
@@ -153,6 +159,63 @@ test('heartbeats keep buffered work alive without rendering or scrolling', (t) =
     app.scrollToBottom = () => {}
     t.mock.timers.tick(1000)
     assert.equal(stream.failureRendered, true)
+  }
+})
+
+test('a background rewrite clears checking before reattaching and reviewing again', () => {
+  const { app, updateThinking } = makeApp()
+  app.updateThinking = updateThinking
+  const stream = newStream(app)
+  app.handleEvent(stream, { type: 'judging' })
+  app.messages = []
+  app.updateThinking()
+  app.updateThinking = () =>
+    assert.fail('background heartbeat updated the view')
+  app.handleEvent(stream, { type: 'heartbeat' })
+  app.messages = stream.messages
+  app.updateThinking = updateThinking
+  app.updateThinking()
+  assert.equal(app.checkingVisible, false)
+  app.handleEvent(stream, { type: 'judging' })
+  assert.equal(app.checkingVisible, true)
+  app.handleEvent(stream, { type: 'done' })
+})
+
+test('review warnings survive streaming, reload and copying without changing answer text', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  for (const warning of [
+    '',
+    'Warning: This answer could not be fully verified and may contain errors.',
+  ]) {
+    const content = 'Answer [source:court/example]'
+    const item = { kind: 'assistant', content }
+    if (warning) item.review_warning = warning
+    const { app, context } = makeApp(async () => ({
+      ok: true,
+      json: async () => ({ id: 'thread-id', items: [item] }),
+    }))
+    let copied
+    context.navigator = {
+      clipboard: {
+        writeText(text) {
+          copied = text
+        },
+      },
+    }
+    const stream = newStream(app)
+    app.handleEvent(stream, { type: 'content_delta', ...item })
+    app.handleEvent(stream, { type: 'done' })
+    assert.equal(app.messages[0].content, content)
+    assert.equal(app.messages[0].reviewWarning, warning)
+    app.activeStream = null
+    app.streaming = false
+    await app.openThread('thread-id')
+    assert.equal(app.messages[0].content, content)
+    assert.equal(app.messages[0].reviewWarning, warning)
+    app.copyMessage({
+      currentTarget: { dataset: { messageId: app.messages[0].id } },
+    })
+    assert.equal(copied, warning ? warning + '\n\nAnswer' : 'Answer')
   }
 })
 

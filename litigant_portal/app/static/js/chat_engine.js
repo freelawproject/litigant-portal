@@ -236,6 +236,7 @@ function blankMessage() {
     id: 0,
     content: '',
     html: '',
+    reviewWarning: '',
     isUser: false,
     isAssistant: false,
     isTool: false,
@@ -262,7 +263,7 @@ function blankMessage() {
 // Build a message with precomputed style classes + rendered markdown (CSP-safe
 // — the template binds dot-paths only, no expressions).
 let messageSeq = 0
-function makeMessage(role, content, attachments) {
+function makeMessage(role, content, attachments, reviewWarning = '') {
   const isUser = role === 'user'
   const atts = attachments || []
   return {
@@ -270,6 +271,7 @@ function makeMessage(role, content, attachments) {
     id: ++messageSeq,
     role,
     content,
+    reviewWarning,
     html: isUser ? '' : renderMarkdown(content),
     isUser,
     isAssistant: !isUser,
@@ -414,7 +416,8 @@ function buildItem(item) {
   return makeMessage(
     item.kind,
     item.content,
-    (item.attachments || []).map(messageAttachment)
+    (item.attachments || []).map(messageAttachment),
+    item.review_warning
   )
 }
 
@@ -947,7 +950,13 @@ document.addEventListener('alpine:init', () => {
       if (stream.inFlightToolIds.length === 0) {
         resetStallTimer(this, stream)
       }
-      if (event.type === 'heartbeat') return
+      if (event.type === 'heartbeat') {
+        if (stream.judging) {
+          stream.judging = false
+          if (this.attached(stream)) this.updateThinking()
+        }
+        return
+      }
       if (event.type === 'thread') {
         stream.threadId = event.thread_id
         this.setThreadStatus(stream.threadId, 'streaming')
@@ -963,7 +972,7 @@ document.addEventListener('alpine:init', () => {
         stream.judging = true
       } else if (event.type === 'content_delta') {
         stream.judging = false
-        this.appendContent(stream, event.content || '')
+        this.appendContent(stream, event.content || '', event.review_warning)
       } else if (event.type === 'tool_call') {
         stream.judging = false
         // A new tool starts a fresh text run after it.
@@ -1033,7 +1042,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Append streamed content to the open assistant part (creating it lazily).
-    appendContent(stream, text) {
+    appendContent(stream, text, reviewWarning = '') {
       if (text) stream.hadAssistantText = true
       if (stream.openIndex === null) {
         stream.messages.push(makeMessage('assistant', ''))
@@ -1044,6 +1053,7 @@ document.addEventListener('alpine:init', () => {
       stream.messages[stream.openIndex] = {
         ...msg,
         content,
+        reviewWarning: reviewWarning || msg.reviewWarning,
         html: renderMarkdown(content),
       }
     },
@@ -1112,8 +1122,14 @@ document.addEventListener('alpine:init', () => {
       const id = Number(e.currentTarget.dataset.messageId)
       const message = this.messages.find((m) => m.id === id)
       if (!message) return
-      if (navigator.clipboard)
-        navigator.clipboard.writeText(copyableText(message.content))
+      if (navigator.clipboard) {
+        const content = copyableText(message.content)
+        navigator.clipboard.writeText(
+          message.reviewWarning
+            ? message.reviewWarning + '\n\n' + content
+            : content
+        )
+      }
       message.copied = true
       message.notCopied = false
       setTimeout(() => {

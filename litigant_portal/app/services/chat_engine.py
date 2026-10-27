@@ -372,7 +372,10 @@ def chat_thread_render_items(
         elif role == "assistant":
             content = msg.get("content", "")
             if content:
-                items.append({"kind": "assistant", "content": content})
+                item = {"kind": "assistant", "content": content}
+                if msg.get("review_warning"):
+                    item["review_warning"] = msg["review_warning"]
+                items.append(item)
             for tool_call in msg.get("tool_calls") or []:
                 items.append(_tool_item(tool_call, results, tools))
     return items
@@ -660,18 +663,18 @@ def chat_stream(
                     )
                 rejected = verdict is not None and not verdict.approved
                 history.append(assistant_msg)
-                chat_message_create(
-                    thread_id=thread.id,
-                    data=assistant_msg,
-                    model=model,
-                    num_tokens=completion_tokens,
-                    cost=cost,
-                    prompt_artifact=prompt_artifact,
-                    identity_prompt=identity_prompt,
-                    meta=rejected,
-                )
 
                 if rejected:
+                    chat_message_create(
+                        thread_id=thread.id,
+                        data=assistant_msg,
+                        model=model,
+                        num_tokens=completion_tokens,
+                        cost=cost,
+                        prompt_artifact=prompt_artifact,
+                        identity_prompt=identity_prompt,
+                        meta=True,
+                    )
                     if corrections < MAX_CORRECTIONS and step < MAX_STEPS - 1:
                         corrections += 1
                         history.append(AgentJudge.correction(verdict))
@@ -681,23 +684,40 @@ def chat_stream(
                         "releasing last draft (thread=%s)",
                         thread.id,
                     )
-                    # The rejected audit row already owns generation usage.
-                    chat_message_create(
-                        thread_id=thread.id,
-                        data=assistant_msg,
-                        model=model,
-                        num_tokens=0,
-                        prompt_artifact=prompt_artifact,
-                        identity_prompt=identity_prompt,
-                    )
+
+                if (
+                    judge_model
+                    and not tool_calls
+                    and (rejected or verdict is None)
+                ):
+                    assistant_msg = {
+                        **assistant_msg,
+                        "review_warning": _(
+                            "Warning: This answer could not be fully verified "
+                            "and may contain errors."
+                        ),
+                    }
+                # Rejected drafts already own their generation usage in audit rows.
+                chat_message_create(
+                    thread_id=thread.id,
+                    data=assistant_msg,
+                    model=model,
+                    num_tokens=0 if rejected else completion_tokens,
+                    cost=0.0 if rejected else cost,
+                    prompt_artifact=prompt_artifact,
+                    identity_prompt=identity_prompt,
+                )
 
                 if judge_model and assistant_msg["content"]:
-                    yield _sse(
-                        {
-                            "type": "content_delta",
-                            "content": assistant_msg["content"],
-                        }
-                    )
+                    event = {
+                        "type": "content_delta",
+                        "content": assistant_msg["content"],
+                    }
+                    if assistant_msg.get("review_warning"):
+                        event["review_warning"] = assistant_msg[
+                            "review_warning"
+                        ]
+                    yield _sse(event)
 
                 if not tool_calls:
                     break

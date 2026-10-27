@@ -12,14 +12,21 @@ from litigant_portal.app.models.choices import BedrockModel
 from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_export_data,
+    chat_thread_export_markdown,
     chat_thread_usage,
 )
-from litigant_portal.app.services.chat_engine import chat_stream
+from litigant_portal.app.services.chat_engine import (
+    chat_stream,
+    chat_thread_render_items,
+)
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 MODEL = BedrockModel.GPT_5_6_LUNA
 JUDGE = BedrockModel.GPT_5_6_SOL
 FINDING = {"code": "unsupported_claim", "message": "Remove the invented fee."}
+WARNING = (
+    "Warning: This answer could not be fully verified and may contain errors."
+)
 
 
 class JudgeTestAgent(Agent):
@@ -102,9 +109,18 @@ def stream():
             for frame in response.streaming_content:
                 event = json.loads(frame.decode().removeprefix("data: "))
                 if judge_model and event["type"] == "content_delta":
-                    assert thread.messages.filter(
+                    saved = thread.messages.get(
                         meta=False, data__content=event["content"]
-                    ).exists(), "Display must follow persistence"
+                    )
+                    assert saved.data.get("review_warning") == event.get(
+                        "review_warning"
+                    ), "Display must follow persistence"
+                    items = chat_thread_render_items(
+                        thread=thread, agent_class=JudgeTestAgent
+                    )
+                    assert items[-1].get("review_warning") == event.get(
+                        "review_warning"
+                    )
                 events.append(event)
             return events, completion.call_args_list
 
@@ -124,6 +140,7 @@ def test_disabled_preserves_streaming(stream, judge_model):
     assert "num_retries" not in calls[0].kwargs
     assert not any(event["type"] == "heartbeat" for event in events)
     assert not thread.messages.filter(meta=True).exists()
+    assert not any("review_warning" in event for event in events)
 
 
 @pytest.mark.parametrize("rejections", [0, 1, 2, 3])
@@ -156,6 +173,15 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
     rejected = thread.messages.filter(meta=True, data__role="assistant")
     assert rejected.count() == min(rejections, 3)
     assert not rejected.filter(hidden=True).exists()
+    assert not rejected.filter(data__has_key="review_warning").exists()
+    expected_warning = WARNING if rejections == 3 else None
+    released = next(e for e in events if e["type"] == "content_delta")
+    assert released.get("review_warning") == expected_warning
+    visible = [m["data"] for m in export["messages"] if not m["meta"]]
+    assert visible[-1].get("review_warning") == expected_warning
+    assert (WARNING in chat_thread_export_markdown(thread=thread)) is (
+        rejections == 3
+    )
     assert chat_thread_usage(thread=thread)["total_cost"] == pytest.approx(
         attempts * 0.2
     )
@@ -179,6 +205,13 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
         assert next_review["messages"][-1] == correction
     if rejections == 3:
         assert "corrections exhausted" in caplog.text
+        _, followup_calls = run([generation("Follow-up"), review(True)])
+        previous_answer = next(
+            message
+            for message in followup_calls[0].kwargs["messages"]
+            if message["role"] == "assistant"
+        )
+        assert previous_answer == {"role": "assistant", "content": "Draft 2"}
 
 
 @pytest.mark.parametrize(
@@ -198,7 +231,11 @@ def test_judge_failure_releases_and_books_returned_usage(
         ),
     }
     events, _ = run([generation("Answer"), failures[category]])
-    assert {"type": "content_delta", "content": "Answer"} in events
+    assert {
+        "type": "content_delta",
+        "content": "Answer",
+        "review_warning": WARNING,
+    } in events
     assert "judge failed" in caplog.text
     assert "private-judge-detail" not in caplog.text
     assert chat_thread_usage(thread=thread)["total_cost"] == pytest.approx(
@@ -286,14 +323,21 @@ def test_tool_prose_releases_without_review(stream):
     assert "Source text" in calls[-1].kwargs["messages"][1]["content"]
 
 
-@pytest.mark.parametrize("successful_writes", [1, 2])
-def test_failed_write_never_releases_candidate(stream, successful_writes):
+@pytest.mark.parametrize(
+    ("successful_writes", "rejections"), [(1, 0), (2, 0), (2, 1), (7, 3)]
+)
+def test_failed_write_never_releases_candidate(
+    stream, successful_writes, rejections
+):
     _, run = stream
+    responses = []
+    for _ in range(max(rejections, 1)):
+        responses.extend([generation("Answer"), review(not rejections)])
     with patch(
         "litigant_portal.app.services.chat_engine.chat_message_create",
         side_effect=[None] * successful_writes
         + [RuntimeError("database unavailable")],
     ):
-        events, _ = run([generation("Answer"), review(True)])
+        events, _ = run(responses)
     assert not any(e["type"] == "content_delta" for e in events)
     assert events[-2]["type"] == "error"

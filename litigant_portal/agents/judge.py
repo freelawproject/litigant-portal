@@ -154,8 +154,8 @@ class AgentJudge:
         lines = content.splitlines()
         if (
             len(lines) >= 3
-            and lines[0].lower() in ("```", "```json")
-            and lines[-1] == "```"
+            and lines[0].strip().lower() in ("```", "```json")
+            and lines[-1].strip() == "```"
         ):
             content = "\n".join(lines[1:-1])
         return JudgeVerdict.model_validate_json(content)

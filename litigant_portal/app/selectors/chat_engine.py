@@ -240,6 +240,8 @@ def _message_lines(msg: dict) -> list[str]:
     if flags:
         heading += " [" + ", ".join(flags) + "]"
     lines = [f"## {heading} ({msg['created_at']})"]
+    if data.get("review_warning"):
+        lines += ["", data["review_warning"]]
     if data.get("content"):
         lines += ["", data["content"]]
     for call in data.get("tool_calls") or []:

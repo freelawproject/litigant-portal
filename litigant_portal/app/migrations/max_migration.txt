@@ -1,1 +1,1 @@
-0032_merge_judge_and_court
+0032_site_judge_model

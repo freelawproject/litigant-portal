@@ -130,6 +130,10 @@
             </template>
           </div>
           {# Text part — user / assistant bubble #}
+          <p x-show="message.reviewWarning"
+             x-cloak
+             x-text="message.reviewWarning"
+             class="mb-2 max-w-[80%] rounded-lg border border-yellow-400 bg-yellow-50 px-3 py-2 text-sm text-yellow-700"></p>
           <div x-show="message.notTool"
                class="max-w-[80%] rounded-lg px-3 py-2 text-sm break-words"
                x-bind:class="message.bubbleClass">

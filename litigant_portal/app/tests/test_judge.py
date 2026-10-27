@@ -89,7 +89,9 @@ def test_request_excludes_native_attachments(attachment):
     assert context == original
 
 
-@pytest.mark.parametrize("fence", ["", "```", "```json", "```JSON"])
+@pytest.mark.parametrize(
+    "fence", ["", "```", "```json", "```JSON", "```json \t"]
+)
 @pytest.mark.parametrize("approved", [False, True])
 def test_verdict_whitespace_and_outer_fence(fence, approved):
     payload = {
@@ -100,7 +102,8 @@ def test_verdict_whitespace_and_outer_fence(fence, approved):
     }
     content = json.dumps(payload)
     if fence:
-        content = f"{fence}\n{content}\n```"
+        closing = " \t``` " if fence.endswith("\t") else "```"
+        content = f"{fence}\n{content}\n{closing}"
     reply = response(f" \n{content}\n ")
     assert AgentJudge.review(reply).model_dump(mode="json") == payload
     assert reply.choices[0].message.content == f" \n{content}\n "
