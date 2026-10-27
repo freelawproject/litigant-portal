@@ -174,12 +174,12 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
     assert rejected.count() == min(rejections, 3)
     assert not rejected.filter(hidden=True).exists()
     assert not rejected.filter(data__has_key="review_warning").exists()
-    expected_warning = WARNING if rejections == 3 else None
+    expected_warning = True if rejections == 3 else None
     released = next(e for e in events if e["type"] == "content_delta")
     assert released.get("review_warning") == expected_warning
     visible = [m["data"] for m in export["messages"] if not m["meta"]]
     assert visible[-1].get("review_warning") == expected_warning
-    assert (WARNING in chat_thread_export_markdown(thread=thread)) is (
+    assert ("[unverified]" in chat_thread_export_markdown(thread=thread)) is (
         rejections == 3
     )
     assert chat_thread_usage(thread=thread)["total_cost"] == pytest.approx(
@@ -205,6 +205,26 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
         assert next_review["messages"][-1] == correction
     if rejections == 3:
         assert "corrections exhausted" in caplog.text
+        legacy = thread.messages.filter(
+            meta=False, data__role="assistant"
+        ).last()
+        legacy.data["review_warning"] = WARNING
+        legacy.save()
+        assert (
+            chat_thread_render_items(
+                thread=thread, agent_class=JudgeTestAgent
+            )[-1]["review_warning"]
+            is True
+        )
+        assert (
+            chat_thread_export_data(thread=thread)["messages"][-1]["data"][
+                "review_warning"
+            ]
+            == WARNING
+        )
+        markdown = chat_thread_export_markdown(thread=thread)
+        assert "[unverified]" in markdown
+        assert WARNING not in markdown
         _, followup_calls = run([generation("Follow-up"), review(True)])
         previous_answer = next(
             message
@@ -234,7 +254,7 @@ def test_judge_failure_releases_and_books_returned_usage(
     assert {
         "type": "content_delta",
         "content": "Answer",
-        "review_warning": WARNING,
+        "review_warning": True,
     } in events
     assert "judge failed" in caplog.text
     assert "private-judge-detail" not in caplog.text

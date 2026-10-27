@@ -10,10 +10,12 @@ swaps.
 
 import re
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.template.loader import render_to_string
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
@@ -60,6 +62,24 @@ class ChatPageRouteTests(TestCase):
         response = self.client.get(reverse("pages:chat"))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, "pages/chat/index.html")
+
+    def test_review_warning_uses_page_translation_without_alert_role(self):
+        with patch(
+            "django.template.base.gettext_lazy",
+            return_value="Current translated warning",
+        ):
+            html = self.client.get(reverse("pages:chat")).content.decode()
+        self.assertIn('data-review-warning="Current translated warning"', html)
+        notice = re.search(
+            r'<div\b[^>]*x-show="message.reviewWarning"[^>]*>', html
+        ).group()
+        self.assertNotIn("role=", notice)
+        self.assertIn('x-text="reviewWarningText"', notice)
+        style_guide = render_to_string("pages/style_guide.html")
+        self.assertRegex(
+            style_guide,
+            r'<div\b[^>]*role="alert"[^>]*>\s*Warning alert message\.',
+        )
 
 
 @pytest.mark.postgres

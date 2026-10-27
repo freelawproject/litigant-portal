@@ -237,11 +237,11 @@ def _message_lines(msg: dict) -> list[str]:
     elif role == "meta":
         heading = f"meta: {data.get('kind', 'unknown')}"
     flags = [flag for flag in ("hidden", "meta") if msg[flag]]
+    if data.get("review_warning"):
+        flags.append("unverified")
     if flags:
         heading += " [" + ", ".join(flags) + "]"
     lines = [f"## {heading} ({msg['created_at']})"]
-    if data.get("review_warning"):
-        lines += ["", data["review_warning"]]
     if data.get("content"):
         lines += ["", data["content"]]
     for call in data.get("tool_calls") or []:

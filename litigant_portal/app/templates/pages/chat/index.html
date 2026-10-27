@@ -11,7 +11,7 @@
 {# chatApp spans the whole page: the thread list in the frame's left region, #}
 {# the conversation, and the briefcase in the right region all share its state. #}
 {# The component is agent-agnostic: point it at any agent's API mount. #}
-{% block body_attrs %}x-data="chatApp" data-agent-base="/api/agents/assistant/" data-citation-chips="{{ features.citation_chips|yesno:'true,false' }}"{% endblock body_attrs %}
+{% block body_attrs %}x-data="chatApp" data-agent-base="/api/agents/assistant/" data-citation-chips="{{ features.citation_chips|yesno:'true,false' }}" data-review-warning="{% trans "Warning: This answer could not be fully verified and may contain errors." %}"{% endblock body_attrs %}
 
 {% block frame_left %}
   {% include "pages/chat/partials/_thread_list.html" %}
@@ -130,10 +130,12 @@
             </template>
           </div>
           {# Text part — user / assistant bubble #}
-          <p x-show="message.reviewWarning"
-             x-cloak
-             x-text="message.reviewWarning"
-             class="mb-2 max-w-[80%] rounded-lg border border-yellow-400 bg-yellow-50 px-3 py-2 text-sm text-yellow-700"></p>
+          <c-atoms.alert variant="warning"
+                         role=""
+                         x-show="message.reviewWarning"
+                         x-cloak
+                         x-text="reviewWarningText"
+                         class="mb-2 max-w-[80%]" />
           <div x-show="message.notTool"
                class="max-w-[80%] rounded-lg px-3 py-2 text-sm break-words"
                x-bind:class="message.bubbleClass">

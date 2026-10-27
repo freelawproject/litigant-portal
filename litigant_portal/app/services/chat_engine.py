@@ -374,7 +374,7 @@ def chat_thread_render_items(
             if content:
                 item = {"kind": "assistant", "content": content}
                 if msg.get("review_warning"):
-                    item["review_warning"] = msg["review_warning"]
+                    item["review_warning"] = True
                 items.append(item)
             for tool_call in msg.get("tool_calls") or []:
                 items.append(_tool_item(tool_call, results, tools))
@@ -692,10 +692,7 @@ def chat_stream(
                 ):
                     assistant_msg = {
                         **assistant_msg,
-                        "review_warning": _(
-                            "Warning: This answer could not be fully verified "
-                            "and may contain errors."
-                        ),
+                        "review_warning": True,
                     }
                 # Rejected drafts already own their generation usage in audit rows.
                 chat_message_create(

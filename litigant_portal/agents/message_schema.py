@@ -63,7 +63,7 @@ class AssistantMessage(TypedDict, total=False):
     content: str
     tool_calls: list[ToolCall]
     unknown_citations: list[str]
-    review_warning: str
+    review_warning: bool | str
 
 
 class ToolMessage(TypedDict, total=False):

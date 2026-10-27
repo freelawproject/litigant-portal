@@ -183,10 +183,7 @@ test('a background rewrite clears checking before reattaching and reviewing agai
 
 test('review warnings survive streaming, reload and copying without changing answer text', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
-  for (const warning of [
-    '',
-    'Warning: This answer could not be fully verified and may contain errors.',
-  ]) {
+  for (const warning of [false, true]) {
     const content = 'Answer [source:court/example]'
     const item = { kind: 'assistant', content }
     if (warning) item.review_warning = warning
@@ -194,6 +191,7 @@ test('review warnings survive streaming, reload and copying without changing ans
       ok: true,
       json: async () => ({ id: 'thread-id', items: [item] }),
     }))
+    app.reviewWarningText = 'Current translated warning'
     let copied
     context.navigator = {
       clipboard: {
@@ -215,7 +213,10 @@ test('review warnings survive streaming, reload and copying without changing ans
     app.copyMessage({
       currentTarget: { dataset: { messageId: app.messages[0].id } },
     })
-    assert.equal(copied, warning ? warning + '\n\nAnswer' : 'Answer')
+    assert.equal(
+      copied,
+      warning ? app.reviewWarningText + '\n\nAnswer' : 'Answer'
+    )
   }
 })
 

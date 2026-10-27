@@ -236,7 +236,7 @@ function blankMessage() {
     id: 0,
     content: '',
     html: '',
-    reviewWarning: '',
+    reviewWarning: false,
     isUser: false,
     isAssistant: false,
     isTool: false,
@@ -263,7 +263,7 @@ function blankMessage() {
 // Build a message with precomputed style classes + rendered markdown (CSP-safe
 // — the template binds dot-paths only, no expressions).
 let messageSeq = 0
-function makeMessage(role, content, attachments, reviewWarning = '') {
+function makeMessage(role, content, attachments, reviewWarning = false) {
   const isUser = role === 'user'
   const atts = attachments || []
   return {
@@ -271,7 +271,7 @@ function makeMessage(role, content, attachments, reviewWarning = '') {
     id: ++messageSeq,
     role,
     content,
-    reviewWarning,
+    reviewWarning: !!reviewWarning,
     html: isUser ? '' : renderMarkdown(content),
     isUser,
     isAssistant: !isUser,
@@ -525,6 +525,7 @@ document.addEventListener('alpine:init', () => {
     // Mount point of the agent's API (e.g. "/api/agents/assistant/") — the
     // component itself is agent-agnostic.
     base: '',
+    reviewWarningText: '',
     // History sidebar
     threads: [],
     showEmpty: false,
@@ -573,6 +574,7 @@ document.addEventListener('alpine:init', () => {
 
     init() {
       this.base = this.$root.dataset.agentBase
+      this.reviewWarningText = this.$root.dataset.reviewWarning
       setCitationChips(this.$root.dataset.citationChips === 'true')
       this.loadThreads()
       this.consumeQueryMessage()
@@ -1042,7 +1044,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Append streamed content to the open assistant part (creating it lazily).
-    appendContent(stream, text, reviewWarning = '') {
+    appendContent(stream, text, reviewWarning = false) {
       if (text) stream.hadAssistantText = true
       if (stream.openIndex === null) {
         stream.messages.push(makeMessage('assistant', ''))
@@ -1053,7 +1055,7 @@ document.addEventListener('alpine:init', () => {
       stream.messages[stream.openIndex] = {
         ...msg,
         content,
-        reviewWarning: reviewWarning || msg.reviewWarning,
+        reviewWarning: !!reviewWarning || msg.reviewWarning,
         html: renderMarkdown(content),
       }
     },
@@ -1126,7 +1128,7 @@ document.addEventListener('alpine:init', () => {
         const content = copyableText(message.content)
         navigator.clipboard.writeText(
           message.reviewWarning
-            ? message.reviewWarning + '\n\n' + content
+            ? this.reviewWarningText + '\n\n' + content
             : content
         )
       }
