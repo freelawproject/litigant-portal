@@ -36,7 +36,6 @@ from litigant_portal.app.topic_flow.schema import (
     PacketOutput,
     Question,
 )
-from litigant_portal.app.views import pages
 from litigant_portal.app.views import topic_flow as topic_flow_views
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
@@ -494,7 +493,9 @@ def test_content_path_choice_options_are_unchanged(
             )
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     flat = _flat(client.get(URL))
     assert _has_option(flat, "Cass", "Cass")
     assert _has_option(flat, "Burleigh", "Burleigh")
@@ -966,7 +967,9 @@ def test_content_source_still_uses_the_registry(
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     response = client.get(URL)
     assert response.context["page_title"] == "From YAML"
     flat = _flat(response)
@@ -974,7 +977,7 @@ def test_content_source_still_uses_the_registry(
     # The shared form names itself by the heading on this path too.
     assert re.search(r'<form[^>]*aria-labelledby="facts-heading"', flat)
 
-    monkeypatch.setattr(pages.registry, "get", lambda *a: None)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: None)
     assert client.get(URL).status_code == 404
 
 
@@ -1104,7 +1107,9 @@ def test_post_writes_the_same_rows_the_content_path_writes(
             )
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: registry_corpus)
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: registry_corpus
+    )
     client.post(URL, answers)
     assert _rows() == from_rows
     assert from_rows == {

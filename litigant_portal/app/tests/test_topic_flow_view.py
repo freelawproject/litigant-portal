@@ -40,7 +40,7 @@ from litigant_portal.app.topic_flow.schema import (
     SummaryOutput,
     VcfOutput,
 )
-from litigant_portal.app.views import pages
+from litigant_portal.app.views import topic_flow as topic_flow_views
 
 COURT, TOPIC, ROLE = "test-court", "test_topic", "petitioner"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
@@ -185,7 +185,7 @@ def test_topic_flow_url_reverses_with_three_segments():
 
 @pytest.mark.django_db
 def test_get_renders_topic_flow_page(client, monkeypatch):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.get(URL)
     assert response.status_code == 200
     assert "pages/topic_flow.html" in [t.name for t in response.templates]
@@ -195,7 +195,7 @@ def test_get_renders_topic_flow_page(client, monkeypatch):
 def test_context_carries_rendered_sections_in_corpus_order(
     client, monkeypatch
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     rendered = client.get(URL).context["rendered_sections"]
     # One RenderedSection per corpus section, same order — the view's core job.
     assert all(isinstance(r, RenderedSection) for r in rendered)
@@ -206,7 +206,7 @@ def test_context_carries_rendered_sections_in_corpus_order(
 def test_page_emits_an_anchor_target_per_section(client, monkeypatch):
     # The TOC jumps to #anchor_id; assert the loop emits each target so anchor
     # navigation works with JS off. (Functional ids, not cosmetic markup.)
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
     for section_id in SECTION_IDS:
         assert f'id="{section_id}"' in html
@@ -214,7 +214,7 @@ def test_page_emits_an_anchor_target_per_section(client, monkeypatch):
 
 @pytest.mark.django_db
 def test_unknown_flow_returns_404(client, monkeypatch):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: None)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: None)
     assert client.get(URL).status_code == 404
 
 
@@ -228,7 +228,7 @@ def test_unknown_flow_returns_404(client, monkeypatch):
 def test_info_section_renders_its_body(client, monkeypatch):
     # Proves the include wiring resolves and the info partial gets its context —
     # the body the corpus supplied reaches the page, not just the heading.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
     assert "Read this first." in html
 
@@ -239,7 +239,7 @@ def test_fact_gather_renders_post_form_with_a_field_per_question(
 ):
     # The form must POST and carry a `name` per question — the contract the
     # Item 5 POST handler reads. Without these names, answers can't persist.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
     assert 'method="post"' in html
     assert "csrfmiddlewaretoken" in html
@@ -250,7 +250,7 @@ def test_fact_gather_renders_post_form_with_a_field_per_question(
 @pytest.mark.django_db
 def test_fact_gather_choice_question_renders_its_options(client, monkeypatch):
     # A choice question must render its options, else the user can't answer it.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
     assert "<option" in html
     assert "Cass" in html
@@ -260,7 +260,7 @@ def test_fact_gather_choice_question_renders_its_options(client, monkeypatch):
 @pytest.mark.django_db
 def test_packet_section_lists_each_form(client, monkeypatch):
     # The packet partial must render every form name the corpus declares.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
     assert "Petition for Name Change" in html
 
@@ -285,7 +285,7 @@ def test_packet_form_with_url_renders_as_link(client, monkeypatch):
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: corpus)
     flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
     # Linked form → anchor to its PDF; name-only form → present, unlinked.
     assert re.search(
@@ -317,7 +317,7 @@ def test_packet_section_posts_the_handoff_when_an_interview_is_set(
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: corpus)
     flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
     assert re.search(
         rf'<form[^>]*method="post"[^>]*action="{re.escape(URL)}interview/"',
@@ -345,7 +345,7 @@ def test_packet_section_omits_interview_link_when_unset(client, monkeypatch):
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: corpus)
     html = client.get(URL).content.decode()
     assert "Fill out your forms" not in html
 
@@ -371,7 +371,7 @@ def test_packet_section_omits_the_handoff_without_docassemble_configured(
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: corpus)
     html = client.get(URL).content.decode()
     assert "Fill out your forms" not in html
     assert "Petition for Name Change" in html
@@ -398,7 +398,7 @@ def test_resources_section_renders_links(client, monkeypatch):
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: corpus)
     flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
     assert re.search(
         rf'<a[^>]*href="{re.escape(url)}"[^>]*>[^<]*Name-change guidance',
@@ -427,7 +427,7 @@ def test_fact_gather_marks_required_questions_and_leaves_optional_unmarked(
     # name_change_publication_date is required=True, filing_county defaults required=False.
     # If an optional field renders required, the browser blocks the litigant on
     # a question the author meant to be skippable — the bug this guards.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
     assert re.search(
         r"\brequired\b", _field_tag(html, "name_change_publication_date")
@@ -442,7 +442,7 @@ def test_fact_gather_date_field_disables_browser_autocomplete(
     # #638: on a shared/public terminal, Chrome's own autofill could otherwise
     # suggest a prior user's typed date from its own memory, independent of
     # our session. autocomplete="off" should stop that.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.get(URL).content.decode()
     assert 'autocomplete="off"' in _field_tag(
         html, "name_change_publication_date"
@@ -478,7 +478,7 @@ def test_headingless_fact_gather_skipped_in_toc_but_body_still_renders(
             ),
         ],
     )
-    monkeypatch.setattr(pages.registry, "get", lambda *a: corpus)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: corpus)
     html = client.get(URL).content.decode()
     assert 'href="#overview"' in html  # heading section -> TOC link
     assert 'href="#key_dates"' not in html  # headingless -> no empty link
@@ -494,7 +494,7 @@ def test_post_persists_answers_and_redirects_prg(
 ):
     # Post-Redirect-Get: the POST must 302 back to the flow URL, never render
     # 200 in place. Otherwise a browser reload re-submits the form.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(
         URL,
         {
@@ -513,7 +513,7 @@ def test_post_redirects_to_the_saved_section_anchor(
     # Scroll restore (#510): the PRG lands on the fact_gather section's anchor,
     # so saving returns the litigant to the form they were filling — and the
     # deadlines that recompute just below it — not the top of the page.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(
         URL,
         {
@@ -531,7 +531,7 @@ def test_posted_answers_prefill_on_the_redirected_get(
     # What you submitted comes back filled in: the choice marks its option
     # selected. name_change_publication_date is the exception (#638) — it never echoes
     # back, even right after you just submitted it.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(
         URL,
         {
@@ -549,7 +549,7 @@ def test_posted_answers_prefill_on_the_redirected_get(
 
 @pytest.mark.django_db
 def test_get_prefills_form_from_stored_answers(client, monkeypatch, variables):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     _store(client, "name_change_publication_date", "2026-03-15")
     _store(client, "filing_county", "Cass")
     html = client.get(URL).content.decode()
@@ -564,7 +564,7 @@ def test_get_prefills_form_from_stored_answers(client, monkeypatch, variables):
 def test_get_prefills_an_unreviewed_answer_from_the_other_pathway(
     client, monkeypatch, variables
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     _store(client, "filing_county", "Cass", reviewed=False)
     flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
     assert re.search(r'<option value="Cass"[^>]*selected', flat)
@@ -572,7 +572,7 @@ def test_get_prefills_an_unreviewed_answer_from_the_other_pathway(
 
 @pytest.mark.django_db
 def test_get_leaves_a_cleared_answer_empty(client, monkeypatch, variables):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     _store(client, "filing_county", None)
     flat = re.sub(r"\s+", " ", client.get(URL).content.decode())
     assert not re.search(r'<option value="Cass"[^>]*selected', flat)
@@ -580,14 +580,14 @@ def test_get_leaves_a_cleared_answer_empty(client, monkeypatch, variables):
 
 @pytest.mark.django_db
 def test_get_for_a_first_time_visitor_creates_no_identity(client, monkeypatch):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     assert client.get(URL).status_code == 200
     assert UserIdentity.objects.count() == 0
 
 
 @pytest.mark.django_db
 def test_recap_never_shows_publication_date(client, monkeypatch, variables):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     _store(client, "name_change_publication_date", "2026-03-15")
     _store(client, "filing_county", "Cass")
     html = client.get(URL).content.decode()
@@ -597,7 +597,7 @@ def test_recap_never_shows_publication_date(client, monkeypatch, variables):
 
 @pytest.mark.django_db
 def test_post_stores_only_known_question_ids(client, monkeypatch, variables):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(
         URL,
         {"name_change_publication_date": "2026-02-01", "not_a_question": "x"},
@@ -607,7 +607,7 @@ def test_post_stores_only_known_question_ids(client, monkeypatch, variables):
 
 @pytest.mark.django_db
 def test_post_marks_saved_answers_reviewed(client, monkeypatch, variables):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(
         URL,
         {
@@ -622,7 +622,7 @@ def test_post_marks_saved_answers_reviewed(client, monkeypatch, variables):
 def test_post_owns_answers_by_the_visitor_identity(
     client, monkeypatch, variables
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(URL, {"name_change_publication_date": "2026-02-01"})
     identity = UserIdentity.objects.get()
     assert identity.session_key == client.session.session_key
@@ -633,7 +633,7 @@ def test_post_owns_answers_by_the_visitor_identity(
 
 @pytest.mark.django_db
 def test_reposting_updates_the_same_answer_row(client, monkeypatch, variables):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(URL, {"name_change_publication_date": "2026-02-01"})
     client.post(URL, {"name_change_publication_date": "2026-03-01"})
     answer = VariableAnswer.objects.get()
@@ -648,7 +648,7 @@ def test_post_unparseable_date_soft_gates_instead_of_erroring(
     # Answers are stored typed now, so a date the storage layer would reject
     # has to be caught as litigant input: re-render with an inline error, not
     # a 500, and store nothing.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(URL, {"name_change_publication_date": "01/02/2026"})
     assert response.status_code == 200
     flat = re.sub(r"\s+", " ", response.content.decode())
@@ -660,7 +660,7 @@ def test_post_unparseable_date_soft_gates_instead_of_erroring(
 
 @pytest.mark.django_db
 def test_post_without_a_glossary_variable_fails_loud(client, monkeypatch):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     with pytest.raises(Variable.DoesNotExist):
         client.post(URL, {"name_change_publication_date": "2026-02-01"})
     assert not VariableAnswer.objects.exists()
@@ -670,7 +670,7 @@ def test_post_without_a_glossary_variable_fails_loud(client, monkeypatch):
 def test_answers_survive_login(client, monkeypatch, variables):
     # What a guest saved is still theirs, and still confirmed, after the
     # identity merge runs on login.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(URL, {"filing_county": "Cass"})
     user = get_user_model().objects.create_user(username="u", password="p")
 
@@ -727,7 +727,9 @@ def name_variable(variables):
 def test_blank_protected_field_keeps_a_reviewed_answer(
     client, monkeypatch, name_variable
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: _identity_corpus()
+    )
     client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
     client.post(URL, {"first_name": "", "filing_county": "Burleigh"})
     assert _values() == {"first_name": "Sandra", "filing_county": "Burleigh"}
@@ -740,7 +742,9 @@ def test_blank_protected_field_keeps_an_unreviewed_answer_unreviewed(
 ):
     # The AI-written case: saving this section must neither destroy the
     # assistant's answer nor confirm it on the litigant's behalf.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: _identity_corpus()
+    )
     _store(client, "first_name", "Sandra", reviewed=False)
     client.post(URL, {"first_name": "", "filing_county": "Cass"})
     answer = _answers()["first_name"]
@@ -754,7 +758,9 @@ def test_typing_a_protected_field_overwrites_it_and_marks_it_reviewed(
 ):
     # Overwriting is the only correction available for a field the page can't
     # show, so it has to work.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: _identity_corpus()
+    )
     _store(client, "first_name", "Sandra", reviewed=False)
     client.post(URL, {"first_name": "Alex", "filing_county": "Cass"})
     answer = _answers()["first_name"]
@@ -766,7 +772,9 @@ def test_typing_a_protected_field_overwrites_it_and_marks_it_reviewed(
 def test_blank_unprotected_field_still_clears_its_answer(
     client, monkeypatch, name_variable
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: _identity_corpus()
+    )
     client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
     client.post(URL, {"first_name": "", "filing_county": ""})
     assert _answers()["filing_county"].value is None
@@ -782,7 +790,9 @@ def test_blank_unprotected_field_still_clears_its_answer(
 def test_checking_clear_erases_a_protected_answer(
     client, monkeypatch, name_variable
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: _identity_corpus()
+    )
     client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
     client.post(
         URL,
@@ -795,7 +805,9 @@ def test_checking_clear_erases_a_protected_answer(
 def test_a_typed_value_wins_over_the_clear_checkbox(
     client, monkeypatch, name_variable
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: _identity_corpus()
+    )
     client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
     client.post(
         URL,
@@ -812,7 +824,9 @@ def test_a_typed_value_wins_over_the_clear_checkbox(
 def test_clear_checkbox_renders_only_beside_a_saved_protected_answer(
     client, monkeypatch, name_variable
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: _identity_corpus()
+    )
     before = client.get(URL).content.decode()
     assert 'name="first_name__clear"' not in before
     client.post(URL, {"first_name": "Sandra", "filing_county": "Cass"})
@@ -828,7 +842,9 @@ def test_clear_checkbox_renders_only_beside_a_saved_protected_answer(
 def test_clearing_erases_an_unreviewed_assistant_answer_too(
     client, monkeypatch, name_variable
 ):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _identity_corpus())
+    monkeypatch.setattr(
+        topic_flow_views.registry, "get", lambda *a: _identity_corpus()
+    )
     _store(client, "first_name", "Sandra", reviewed=False)
     client.post(
         URL,
@@ -849,7 +865,7 @@ def test_post_empty_required_rerenders_in_place(
 ):
     # Invalid submit soft-gates: re-render 200 (so the inline error shows),
     # not a PRG 302. A 302 would bounce the litigant forward past the gap.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(
         URL, {"name_change_publication_date": "", "filing_county": ""}
     )
@@ -860,7 +876,7 @@ def test_post_empty_required_rerenders_in_place(
 def test_post_empty_required_is_not_persisted(client, monkeypatch, variables):
     # The blank required answer must not land in the store — otherwise the
     # litigant could advance toward filing with a missing answer.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(URL, {"name_change_publication_date": "", "filing_county": ""})
     assert "name_change_publication_date" not in _values()
 
@@ -871,7 +887,7 @@ def test_post_empty_required_marks_the_field_invalid(
 ):
     # The offending field carries aria-invalid="true" — the JS-off-safe a11y
     # signal the form-field error pattern renders. Functional, not copy.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.post(
         URL, {"name_change_publication_date": "", "filing_county": ""}
     ).content.decode()
@@ -887,7 +903,7 @@ def test_post_choice_outside_list_is_rejected_not_stored(
 ):
     # A choice answer outside the declared options is dropped, never persisted
     # (the silent-accept hole this issue closes).
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(
         URL,
         {
@@ -906,7 +922,7 @@ def test_post_saves_valid_fields_even_when_a_sibling_is_invalid(
     # Partial-invalid submit: the valid field still persists so the litigant
     # doesn't lose good input on every fix-and-resubmit; only the bad one is
     # flagged. (name_change_publication_date valid, filing_county out-of-list.)
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(
         URL,
         {
@@ -922,7 +938,7 @@ def test_post_saves_valid_fields_even_when_a_sibling_is_invalid(
 @pytest.mark.django_db
 def test_post_all_valid_still_redirects_prg(client, monkeypatch, variables):
     # The happy path is unchanged: a fully valid submit persists and 302s (PRG).
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(
         URL,
         {
@@ -942,7 +958,7 @@ def test_error_rerender_does_not_leak_rejected_value(
     # so a rejected choice ("Stark") appears nowhere — the fact_gather form
     # flags it, but the summary section can't echo it as a saved answer. Guards
     # against the page contradicting itself (form says "fix", summary says "ok").
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     html = client.post(
         URL,
         {
@@ -958,7 +974,7 @@ def test_post_persists_stripped_value(client, monkeypatch, variables):
     # validate_answers checks the stripped value, so storage must strip too —
     # else a padded choice validates but fails the strict option-selected match
     # on re-render, and a padded date breaks date.fromisoformat downstream.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     client.post(
         URL,
         {
@@ -971,7 +987,7 @@ def test_post_persists_stripped_value(client, monkeypatch, variables):
 
 @pytest.mark.django_db
 def test_post_save_flashes_a_saved_toast(client, monkeypatch, variables):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(URL, {"filing_county": "Cass"}, follow=True)
     html = response.content.decode()
     assert "Saved." in html
@@ -984,7 +1000,7 @@ def test_post_of_a_protected_answer_explains_the_privacy_blank(
 ):
     # A NEVER_PREFILL answer re-renders blank right after saving (#638), so
     # the toast must say the save worked and why the field looks empty (#803).
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(
         URL, {"name_change_publication_date": "2026-02-01"}, follow=True
     )
@@ -995,7 +1011,7 @@ def test_post_of_a_protected_answer_explains_the_privacy_blank(
 def test_post_with_errors_flashes_no_toast(client, monkeypatch, variables):
     # The error re-render's feedback is the inline field errors; a "Saved."
     # toast beside them would contradict the page.
-    monkeypatch.setattr(pages.registry, "get", lambda *a: _corpus())
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: _corpus())
     response = client.post(URL, {"name_change_publication_date": "not-a-date"})
     assert "Saved." not in response.content.decode()
 
@@ -1048,7 +1064,7 @@ def test_ics_section_renders_personalized_deadline(
     # The payoff: a stored answer drives compute_deadline and the concrete date
     # appears on the page, server-rendered. 30 days after 2026-02-01 = 2026-03-03.
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_deadline()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_deadline()
     )
     _store(client, "name_change_publication_date", "2026-02-01")
     html = client.get(URL).content.decode()
@@ -1061,7 +1077,7 @@ def test_ics_section_pending_without_answer_still_renders(client, monkeypatch):
     # Graceful missing-answer state: page still renders, deadline label shows,
     # but no computed date is emitted (nothing to compute yet).
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_deadline()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_deadline()
     )
     html = client.get(URL).content.decode()
     assert "30-day publication wait" in html
@@ -1103,7 +1119,7 @@ def test_download_streams_ics_attachment_with_the_computed_deadline(
     # The payoff: the stored answer drives the same compute_deadline path, and
     # the downloaded calendar carries the concrete date as an all-day event.
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_deadline()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_deadline()
     )
     _store(client, "name_change_publication_date", "2026-02-01")
     response = client.get(DOWNLOAD_URL)
@@ -1124,7 +1140,7 @@ def test_download_without_answers_is_an_empty_but_valid_calendar(
 ):
     # No stored answer → 200 with a valid, event-free calendar (not a 500/404).
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_deadline()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_deadline()
     )
     response = client.get(DOWNLOAD_URL)
     assert response.status_code == 200
@@ -1135,7 +1151,7 @@ def test_download_without_answers_is_an_empty_but_valid_calendar(
 
 @pytest.mark.django_db
 def test_download_unknown_flow_returns_404(client, monkeypatch):
-    monkeypatch.setattr(pages.registry, "get", lambda *a: None)
+    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: None)
     assert client.get(DOWNLOAD_URL).status_code == 404
 
 
@@ -1143,7 +1159,7 @@ def test_download_unknown_flow_returns_404(client, monkeypatch):
 def test_download_non_downloadable_output_returns_404(client, monkeypatch):
     # key_dates is a fact_gather, not a downloadable output — gated to 404.
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_deadline()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_deadline()
     )
     url = f"/t/{COURT}/{TOPIC}/{ROLE}/download/key_dates/"
     assert client.get(url).status_code == 404
@@ -1156,7 +1172,7 @@ def test_ics_section_links_to_the_download_once_a_date_is_entered(
     # The page must surface a reachable link to the download URL — without it
     # the litigant can't get the calendar file. Functional target, not markup.
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_deadline()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_deadline()
     )
     _store(client, "name_change_publication_date", "2026-02-01")
     html = client.get(URL).content.decode()
@@ -1170,7 +1186,7 @@ def test_ics_section_hides_download_link_until_a_date_is_entered(
     # No computable date → no link (an empty calendar is no use). Guards the
     # has_dates gate end-to-end, the mirror of the link-present case above.
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_deadline()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_deadline()
     )
     html = client.get(URL).content.decode()
     assert f'href="{DOWNLOAD_URL}"' not in html
@@ -1209,7 +1225,7 @@ def test_vcf_download_streams_vcard_attachment_with_the_contact(
     # The payoff: the generic route dispatches a vcf section to the vCard
     # builder and streams it as a .vcf attachment carrying the contact.
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_contact()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_contact()
     )
     response = client.get(VCF_DOWNLOAD_URL)
     assert response.status_code == 200
@@ -1229,7 +1245,7 @@ def test_vcf_section_links_to_the_download(client, monkeypatch):
     # litigant can't save the contacts. Functional target, not markup. No
     # gate (unlike ics): contacts are always present, so the link always shows.
     monkeypatch.setattr(
-        pages.registry, "get", lambda *a: _corpus_with_contact()
+        topic_flow_views.registry, "get", lambda *a: _corpus_with_contact()
     )
     html = client.get(URL).content.decode()
     assert f'href="{VCF_DOWNLOAD_URL}"' in html

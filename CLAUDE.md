@@ -216,7 +216,7 @@ The compact rules (sizing history, anchors, and calibration records are JI-team 
 **By surface** — views, templates, JS, and the URL pattern lists:
 
 - **`views/pages.py`** — views that render a page. Keep them thin; let endpoints do the work so pages stay reactive.
-- **`views/<surface>.py`** — one endpoint module per surface (`admin`, `assistant`, `topic_flow`). Not every surface needs one.
+- **`views/<surface>.py`** — one module per surface (`admin`, `assistant`, `design_system`, `topic_flow`). A surface's page view lives here too when it has endpoints of its own: the guided page sits in `topic_flow` beside its download, interview and confirm endpoints. Not every surface needs one.
 - **`templates/pages/<surface>/`** — that surface's templates. Shared UI becomes a Cotton component under `templates/cotton/`, never a copied partial.
 - **`static/js/<surface>.js`** — that surface's Alpine components; cross-cutting ones live in `components.js`.
 - **`urls.py`** — one pattern list per group (`app_patterns`, `assistant_patterns`, `admin_api_patterns`), each `include`d under its own namespace.

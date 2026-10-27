@@ -21,7 +21,7 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.topic_flow import variable_answer_groups
-from litigant_portal.app.views.pages import _briefcase_sample
+from litigant_portal.app.views.design_system import _briefcase_sample
 
 
 def _place(page, variable, order):
