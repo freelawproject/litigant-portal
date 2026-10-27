@@ -1,0 +1,14 @@
+# Portsmouth (VA) court-level content, scoped to the site data models (court
+# fields on Site, Contact, Resource). A skeleton so the Portsmouth instance
+# boots before its topics are known (#1100): no topics, contacts or resources
+# yet. Sources: corpus-sources/portsmouth-va/SOURCE.md.
+
+name: 'Portsmouth'
+court_name: 'Portsmouth General District Court'
+state: VA
+official_url: 'https://vacourts.gov/courts/gd/portsmouth/home'
+
+# Header art (#979): the general district court uses the Seal of Virginia,
+# rendered from the source SVG at the size the other courts use.
+branding:
+  logo: branding/logo.png
