@@ -13,9 +13,10 @@ The non-AI topic flow and the AI assistant should answer from one source of trut
 Improve a flow and both surfaces improve.
 
 That holds today for **facts**: the guided pages and the chat both read and write
-`VariableAnswer`, so an answer given in one shows up in the other. It does not hold yet
-for **content**: the pages render `content/`, the chat reads `corpus/`, and editing one
-tree does not update the other (#179).
+`VariableAnswer`, so an answer given in one shows up in the other. Since #1018 it holds
+for **content** too: the pages and the chat both read the rows `sync_corpus` writes from
+`corpus/`. The older `content/` tree still renders the page under
+`TOPIC_FLOW_SOURCE=content` until #1012 deletes it.
 
 ## Layer 1: source documents
 
@@ -34,14 +35,14 @@ publication, our flow prose carried one, and no check noticed.
 | Tree                       | Holds                                                   | Read by                                   |
 | -------------------------- | ------------------------------------------------------- | ----------------------------------------- |
 | `litigant_portal/corpus/`  | variables, court, topic, flows, forms (`.yml` + `.pdf`) | `selectors/corpus.py`, then `sync_corpus` |
-| `litigant_portal/content/` | the older flat corpus                                   | `app/topic_flow/registry.py`              |
+| `litigant_portal/content/` | the older flat corpus, `TOPIC_FLOW_SOURCE=content` only | `app/topic_flow/registry.py`              |
 | `litigant_portal/agents/`  | `BASE_PROMPT` and the court, flow and facts templates   | the chat assistant, assembled per turn    |
 
 `corpus/` is the contract boundary. It is schema-validated and checked at startup, so
 it is the right emit target for a build tool.
 
-`content/` still renders the live public flow pages at `/t/<court>/<topic>/<role>/`.
-Which tree retires is open under #179.
+The public flow pages at `/t/<court>/<topic>/<role>/` render from the rows by default.
+`content/` retires under #1012.
 
 ## Layer 3: build step
 
@@ -52,8 +53,9 @@ conditions, deadlines and links.
 
 ## Layer 4: run time
 
-**Guided pages.** The topic flow page renders `content/` through the registry. Saving a
-section writes the litigant's answers as `VariableAnswer` rows marked `reviewed`: this
+**Guided pages.** The topic flow page renders the `TopicFlow` row and its graph through
+`app/topic_flow/rows.py` (`content/` through the registry under
+`TOPIC_FLOW_SOURCE=content`). Saving a section writes the litigant's answers as `VariableAnswer` rows marked `reviewed`: this
 page is where a person confirms a fact.
 
 **Chat.** The assistant (`agents/assistant.py`) builds its system prompt each turn from

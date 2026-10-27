@@ -87,12 +87,12 @@ Rules for authoring user-facing content — corpus YAML, UI strings, and prompt 
 
 **There are currently two corpus trees, and both are live.** Know which one you are editing:
 
-| Tree                            | Read by                                  | Serves                                                                        |
-| ------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------------- |
-| `litigant_portal/content/*.yml` | `app/topic_flow/registry.py`             | **The live public flow pages.** Flat, one file per `(court, topic, role)`     |
-| `litigant_portal/corpus/`       | `app/selectors/corpus.py`, `sync_corpus` | Database rows. Court-scoped tree plus a shared variable glossary and `forms/` |
+| Tree                            | Read by                                  | Serves                                                                                                                    |
+| ------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `litigant_portal/corpus/`       | `app/selectors/corpus.py`, `sync_corpus` | **The live public flow pages**, from database rows. Court-scoped tree plus a shared variable glossary and `forms/`        |
+| `litigant_portal/content/*.yml` | `app/topic_flow/registry.py`             | The older flat tree, one file per `(court, topic, role)`. Renders the page only under `TOPIC_FLOW_SOURCE=content` (#1018) |
 
-Both are hand-maintained and each is validated at startup by its own Django system check (`apps.py` registers `checks.corpus` and `topic_flow.checks`). Editing one does not update the other — a change to `corpus/` alone will not alter what the public page renders, and the failure is silent. Which tree retires, and when, is an open decision under #179.
+Both are hand-maintained and each is validated at startup by its own Django system check (`apps.py` registers `checks.corpus` and `topic_flow.checks`). Editing one does not update the other, and a `corpus/` change reaches the page only after `sync_corpus` runs (the Docker entrypoint runs it at startup). `content/` retires under #1012.
 
 The rules below apply to whichever tree you are authoring in:
 
@@ -211,7 +211,7 @@ The compact rules (sizing history, anchors, and calibration records are JI-team 
 
 **Permissions.** Admin access is the `app.manage_site` and `app.manage_developers` permissions, carried by the `Admins` and `Developers` groups (provisioned by a `post_migrate` receiver in `signals.py`). Check them with `request.user.has_perm(...)` in views and `{% if perms.app.manage_site %}` in templates — don't wrap either in a selector. Page views use Django's `@permission_required(..., raise_exception=True)`; the JSON API keeps its own `manage_site_required` / `manage_developers_required` decorators, because the built-in renders an HTML 403 where those endpoints must return a JSON body. These are deliberately separate from the auto-generated `add/change/delete/view` permissions that gate Django admin. Full reference: [`docs/wiki/permissions.md`](docs/wiki/permissions.md).
 
-**`app/topic_flow/` is not a data-layer module.** It's the corpus engine (schema, registry, renderer, downloads) that reads YAML from `litigant_portal/content/` — the tree that renders the public pages, not the `litigant_portal/corpus/` tree that syncs to the database (see Content style above). The `topic_flow` entries under `models/`, `selectors/`, `services/`, and `views/` are the data layer for the `Topic` rows the corpus is attached to. Two different things sharing a name; always import both absolutely.
+**`app/topic_flow/` is not a data-layer module.** It's the corpus engine (schema, registry, renderer, downloads) that reads YAML from `litigant_portal/content/` — the older tree, kept behind `TOPIC_FLOW_SOURCE=content` until #1012 deletes it — plus `rows.py`, which builds the same page from the `litigant_portal/corpus/` rows that `sync_corpus` writes (see Content style above). The `topic_flow` entries under `models/`, `selectors/`, `services/`, and `views/` are the data layer for the `Topic` rows the corpus is attached to. Two different things sharing a name; always import both absolutely.
 
 **By surface** — views, templates, JS, and the URL pattern lists:
 
@@ -252,7 +252,7 @@ Components live in `litigant_portal/app/templates/cotton/` using Atomic Design h
 ```
 litigant_portal/app/templates/cotton/
 ├── atoms/      # Basic elements: alert, auto_dismiss, badge, button, checkbox, eyebrow, icon, input, link, nav_link, search_input, select
-├── molecules/  # Combinations: auth_status, briefcase_fact, contact_card, empty_state, flow_links, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, site_menu, toast_container, topic_card, user_menu
+├── molecules/  # Combinations: auth_status, briefcase_fact, contact_card, empty_state, flow_section_* (fact_gather, ics, info, packet, resources, summary, vcf), form_errors, form_field, form_field_select, logo, search_bar, site_menu, toast_container, topic_card, user_menu
 └── organisms/  # Complex sections: auth_layout, briefcase_panel, header, hero, site_frame, topic_grid
 ```
 

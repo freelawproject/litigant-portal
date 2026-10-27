@@ -1,6 +1,9 @@
 from django.core.cache import cache
 
-from litigant_portal.app.cache import TOPIC_LIST_CACHE_KEY
+from litigant_portal.app.cache import (
+    TOPIC_FLOW_LIST_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+)
 from litigant_portal.app.models import (
     Topic,
     TopicFlow,
@@ -24,23 +27,38 @@ def topic_get(*, topic_id) -> Topic:
 
 
 def topic_flow_list() -> list[TopicFlow]:
-    """Enabled flows with their topics, in topic order then flow order."""
-    return list(
-        TopicFlow.objects.filter(enabled=True)
-        .select_related("topic")
-        .order_by("topic__order", "topic__created_at", "order", "created_at")
-    )
+    """Enabled flows with their topics, in topic order then flow order,
+    served from cache."""
+    flows = cache.get(TOPIC_FLOW_LIST_CACHE_KEY)
+    if flows is None:
+        flows = list(
+            TopicFlow.objects.filter(enabled=True)
+            .select_related("topic")
+            .order_by(
+                "topic__order", "topic__created_at", "order", "created_at"
+            )
+        )
+        cache.set(TOPIC_FLOW_LIST_CACHE_KEY, flows, timeout=None)
+    return flows
 
 
 def topic_flow_find(
-    *, topic_slug: str, flow_slug: str, graph: bool = True
+    *,
+    topic_slug: str,
+    flow_slug: str,
+    court: str | None = None,
+    graph: bool = True,
 ) -> TopicFlow | None:
-    """The enabled flow at (topic_slug, flow_slug), or None. With ``graph``
-    its whole content graph is prefetched, for the page; without, only the
-    row and its topic, for a caller that reads a field or one relation."""
+    """The enabled flow at (topic_slug, flow_slug), or None. With ``court``
+    the topic must carry that court too, for the page URL's check. With
+    ``graph`` its whole content graph is prefetched, for the page; without,
+    only the row and its topic, for a caller that reads a field or one
+    relation."""
     flows = TopicFlow.objects.filter(
         topic__slug=topic_slug, slug=flow_slug, enabled=True
     ).select_related("topic")
+    if court is not None:
+        flows = flows.filter(topic__court=court)
     if graph:
         flows = flows.prefetch_related(
             "sections",
@@ -51,6 +69,19 @@ def topic_flow_find(
             "interview_pages__variables__variable__asked_when",
         )
     return flows.first()
+
+
+def topic_flow_url_kwargs(flow: TopicFlow) -> dict[str, str] | None:
+    """The ``court``/``topic``/``role`` kwargs the guided page reverses
+    from, or None for a topic without a court: it predates its first sync,
+    so its page has no URL yet. Reads the loaded topic; callers select it."""
+    if not flow.topic.court:
+        return None
+    return {
+        "court": flow.topic.court,
+        "topic": flow.topic.slug,
+        "role": flow.slug,
+    }
 
 
 def variable_answer_list(

@@ -8,14 +8,17 @@ def topic_flow_path(flow) -> str:
     return f"{flow.topic.slug}/{flow.slug}"
 
 
-def topic_flow_from_path(path: str):
-    """The enabled TopicFlow at ``path`` (topic-slug/flow-slug), or None."""
+def topic_flow_from_path(path: str, *, graph: bool = True):
+    """The enabled TopicFlow at ``path`` (topic-slug/flow-slug), or None.
+    ``graph`` is passed to ``topic_flow_find``."""
     from litigant_portal.app.selectors.topic_flow import topic_flow_find
 
     topic_slug, sep, flow_slug = path.partition("/")
     if not (sep and topic_slug and flow_slug):
         return None
-    return topic_flow_find(topic_slug=topic_slug, flow_slug=flow_slug)
+    return topic_flow_find(
+        topic_slug=topic_slug, flow_slug=flow_slug, graph=graph
+    )
 
 
 def _variable_line(variable) -> str:

@@ -102,6 +102,12 @@ def _corpus():
     )
 
 
+@pytest.fixture(autouse=True)
+def _content_source(settings):
+    # These tests drive the content/ path; the rows path has its own file.
+    settings.TOPIC_FLOW_SOURCE = "content"
+
+
 # --- answer storage helpers -------------------------------------------------
 
 

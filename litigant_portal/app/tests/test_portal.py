@@ -54,7 +54,9 @@ class HomePageTests(TestCase):
     def test_topic_cards_open_the_guided_flow_not_the_chat(self):
         """Cards are the no-AI way in (#1068), so each one opens a guided
         flow page rather than the chat."""
-        topic = Topic.objects.create(slug="eviction", title="Eviction")
+        topic = Topic.objects.create(
+            slug="eviction", title="Eviction", court="franklin-county-oh"
+        )
         TopicFlow.objects.create(
             topic=topic, slug="tenant", name="Responding", enabled=True
         )
@@ -63,6 +65,15 @@ class HomePageTests(TestCase):
             [card["url"] for card in response.context["topic_cards"]],
             ["/t/franklin-county-oh/eviction/tenant/"],
         )
+
+    def test_a_topic_without_a_court_gets_no_card(self):
+        """A topic sync has not stamped yet has no page to open."""
+        topic = Topic.objects.create(slug="eviction", title="Eviction")
+        TopicFlow.objects.create(
+            topic=topic, slug="tenant", name="Responding", enabled=True
+        )
+        response = self.client.get("/")
+        self.assertEqual(response.context["topic_cards"], [])
 
 
 @pytest.mark.postgres

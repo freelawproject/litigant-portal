@@ -17,6 +17,7 @@ from django.test import TestCase, override_settings
 from litigant_portal.app.cache import (
     CONTACT_LIST_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
+    TOPIC_FLOW_LIST_CACHE_KEY,
 )
 from litigant_portal.app.models import (
     Contact,
@@ -32,6 +33,7 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.selectors.site import contact_list, resource_list
+from litigant_portal.app.selectors.topic_flow import topic_flow_list
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
 
@@ -309,8 +311,12 @@ class CourtScopingTests(CorpusSyncTests):
             {"pets", "eviction"},
         )
         self.assertEqual(Site.objects.get().court_name, court_name)
-        # Both courts' contacts land, each stamped with its court so the
+        # Both courts' rows land, each stamped with its court so the
         # guided page can pick its own.
+        self.assertEqual(
+            set(Topic.objects.values_list("court", "slug")),
+            {("alpha", "pets"), ("beta", "eviction")},
+        )
         self.assertEqual(
             set(Contact.objects.values_list("court", "name")),
             {("alpha", "Alpha Help"), ("beta", "Beta Help")},
@@ -577,7 +583,7 @@ class SourceKeyTests(CorpusSyncTests):
             Contact.objects.get(key="alpha_help").name, "Beta Help"
         )
 
-    def test_sync_drops_the_cached_contact_and_resource_lists(self):
+    def test_sync_drops_the_cached_contact_resource_and_flow_lists(self):
         self._sync(_make_corpus(), court=None)
         self.assertEqual(
             [c.key for c in contact_list()], ["alpha_help", "beta_help"]
@@ -585,9 +591,16 @@ class SourceKeyTests(CorpusSyncTests):
         self.assertEqual(
             [r.key for r in resource_list()], ["alpha_guide", "beta_guide"]
         )
+        # The test corpus enables no flow, so the warmed list is empty.
+        topic_flow_list()
+        self.assertIsNotNone(cache.get(TOPIC_FLOW_LIST_CACHE_KEY))
         with self.captureOnCommitCallbacks(execute=True):
             self._sync(_make_corpus(include_beta=False), court=None)
-        for key in (CONTACT_LIST_CACHE_KEY, RESOURCE_LIST_CACHE_KEY):
+        for key in (
+            CONTACT_LIST_CACHE_KEY,
+            RESOURCE_LIST_CACHE_KEY,
+            TOPIC_FLOW_LIST_CACHE_KEY,
+        ):
             self.assertIsNone(cache.get(key), key)
 
 

@@ -8,9 +8,9 @@ from django.db import transaction
 
 from litigant_portal.app.cache import (
     CONTACT_LIST_CACHE_KEY,
-    CORPUS_TOPIC_KEYS_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
     SITE_CACHE_KEY,
+    TOPIC_FLOW_LIST_CACHE_KEY,
     TOPIC_LIST_CACHE_KEY,
 )
 from litigant_portal.app.models import (
@@ -342,9 +342,9 @@ def _sync_flow(
 @busts_cache(
     SITE_CACHE_KEY,
     TOPIC_LIST_CACHE_KEY,
+    TOPIC_FLOW_LIST_CACHE_KEY,
     CONTACT_LIST_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
-    CORPUS_TOPIC_KEYS_CACHE_KEY,
 )
 def corpus_sync(
     *, court: str | None = None, strict: bool = False
@@ -369,6 +369,7 @@ def corpus_sync(
                 slug=topic_slug
             )
             _apply(topic, schema)
+            topic.court = court_slug
             topic.save()
             topics[topic_slug] = topic
         flow_count = 0
