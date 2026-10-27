@@ -8,7 +8,7 @@ import pytest
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
-from litigant_portal.app.views.pages import (
+from litigant_portal.app.views.design_system import (
     ATOMIC_DESIGN_STAGES,
     ATOMIC_PLACEHOLDER_TOPIC_CARDS,
     _sample_components,
