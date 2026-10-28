@@ -32,7 +32,7 @@ def _left_region(html):
 
 @pytest.mark.postgres
 # Pinned so the page reads the rows seeded below whatever .env says.
-@override_settings(TOPIC_FLOW_SOURCE="corpus", CORPUS_COURT=None)
+@override_settings(CORPUS_COURT=None)
 class FramedPagesTests(TestCase):
     @classmethod
     def setUpTestData(cls):

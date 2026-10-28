@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
 
 from litigant_portal.app.features import parse_deployment_env, parse_pilot
@@ -377,17 +376,6 @@ if not DEBUG:
 # and site config. Unset imports every court's topics, flows, contacts,
 # and resources (dev) and leaves the site's court fields alone.
 CORPUS_COURT = os.environ.get("CORPUS_COURT") or None
-
-# Which tree builds the guided page at /t/<court>/<topic>/<role>/ (#1016):
-# "corpus" reads the TopicFlow rows sync_corpus writes, "content" reads
-# litigant_portal/content/ through the registry, kept until #1012 deletes
-# that tree.
-TOPIC_FLOW_SOURCE = os.environ.get("TOPIC_FLOW_SOURCE") or "corpus"
-if TOPIC_FLOW_SOURCE not in ("content", "corpus"):
-    raise ImproperlyConfigured(
-        f"TOPIC_FLOW_SOURCE must be 'content' or 'corpus', "
-        f"not {TOPIC_FLOW_SOURCE!r}"
-    )
 
 # Audit window: cleanup_sessions keeps chat activity this many days.
 AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "30"))

@@ -1,10 +1,8 @@
 """Build the guided page from TopicFlow rows.
 
-The sibling of ``renderer.py`` for the ``TOPIC_FLOW_SOURCE=corpus`` path: it
-reads the rows ``sync_corpus`` writes instead of the ``content/`` registry,
-and produces the same ``RenderedSection`` list, so the page template does not
-know which path built it. Pure: callers pass the prefetched rows in, and
-nothing here touches the database or the request.
+Reads the rows ``sync_corpus`` writes and produces the ``RenderedSection``
+list the page template renders. Pure: callers pass the prefetched rows in,
+and nothing here touches the database or the request.
 
 The flow's ``layout`` orders the page. A section key renders as an info
 section anchored on that key, so chat citations can link to it. The

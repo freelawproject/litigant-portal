@@ -14,7 +14,6 @@ from litigant_portal.app.selectors.topic_flow import (
     variable_answer_groups,
     variable_answer_map,
 )
-from litigant_portal.app.topic_flow.renderer import question_ids
 
 
 def has_identity(request) -> bool:
@@ -29,8 +28,8 @@ def has_identity(request) -> bool:
 
 def topic_flow_row_get(court, topic, role, *, graph=True):
     """The enabled ``TopicFlow`` row behind a ``/t/<court>/<topic>/<role>/``
-    URL, for the ``TOPIC_FLOW_SOURCE=corpus`` views; ``graph`` is passed to
-    ``topic_flow_find``. The row's topic must carry the URL's court, which
+    URL; ``graph`` is passed to ``topic_flow_find``. The row's topic must
+    carry the URL's court, which
     must also be the instance's court when ``CORPUS_COURT`` is set. Raises
     ``Http404`` on any miss."""
     if settings.CORPUS_COURT is not None and court != settings.CORPUS_COURT:
@@ -43,18 +42,10 @@ def topic_flow_row_get(court, topic, role, *, graph=True):
     return flow
 
 
-def topic_flow_answers(request, corpus) -> dict:
-    """``{question_id: value}`` for this visitor, for the page and downloads.
-
-    Reads through the glossary, so a fact the assistant stored shows up
-    here too. Empty for a visitor with no identity yet.
-    """
-    return _answer_map(request, question_ids(corpus))
-
-
 def topic_flow_row_answers(request, names: list[str]) -> dict:
-    """``{variable_name: value}`` for the given names, for the page built
-    from TopicFlow rows (#1016). Same read as ``topic_flow_answers``."""
+    """``{variable_name: value}`` for the given names, for the page and its
+    downloads. Reads through the glossary, so a fact the assistant stored
+    shows up here too. Empty for a visitor with no identity yet."""
     return _answer_map(request, names)
 
 

@@ -214,7 +214,7 @@ class BriefcaseChatContextTests(TestCase):
     def test_chat_page_for_a_first_time_visitor_creates_no_identity(self):
         # Reading through request.identity mints a session and a UserIdentity
         # row, so an unguarded read banks one per anonymous hit, crawlers
-        # included. views/utils.topic_flow_answers already guards this.
+        # included. views/utils.topic_flow_row_answers already guards this.
         self.client.get(reverse("pages:chat"))
 
         self.assertEqual(UserIdentity.objects.count(), 0)

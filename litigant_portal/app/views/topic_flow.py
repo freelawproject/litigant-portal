@@ -1,6 +1,5 @@
 import logging
 
-from django.conf import settings
 from django.contrib import messages
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
@@ -26,29 +25,14 @@ from litigant_portal.app.services.topic_flow import (
 )
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.contacts import contact_dicts
-from litigant_portal.app.topic_flow.downloads import (
-    build_download,
-    find_downloadable,
-    ics_artifact,
-    vcf_artifact,
-)
+from litigant_portal.app.topic_flow.downloads import ics_artifact, vcf_artifact
 from litigant_portal.app.topic_flow.prefill import (
     flow_interview_target,
-    interview_target,
     prefill_variables,
 )
-from litigant_portal.app.topic_flow.registry import registry
-from litigant_portal.app.topic_flow.renderer import (
-    NEVER_PREFILL,
-    question_ids,
-    render_section,
-    submitted_section_anchor,
-)
-from litigant_portal.app.topic_flow.validation import validate_answers
 from litigant_portal.app.views.utils import (
     briefcase_answers,
     has_identity,
-    topic_flow_answers,
     topic_flow_reviewed_answers,
     topic_flow_row_answers,
     topic_flow_row_cleared_names,
@@ -59,140 +43,18 @@ logger = logging.getLogger(__name__)
 
 
 def topic_flow(request, court, topic, role):
-    """Topic Flow entry: /t/{court}/{topic}/{role}/ → rendered corpus sections.
+    """The guided page at /t/{court}/{topic}/{role}/, built from the TopicFlow
+    rows ``sync_corpus`` writes (404 on miss).
 
-    Resolves the corpus from the registry (404 on miss). GET renders each
-    section via SectionRenderer with the visitor's stored answers (so
-    fact_gather fields prefill). POST persists the submitted answers as
+    GET renders the flow's layout with the visitor's stored answers, so the
+    interview fields prefill. POST persists the submitted answers as
     VariableAnswer rows and redirects (PRG) so a reload re-GETs rather than
-    re-submits — the whole flow works with JS off. The view stays thin:
-    section dispatch lives in renderer.py, deadline math in deadlines.py.
+    re-submits; the whole flow works with JS off. The view stays thin: the
+    row-to-section work lives in rows.py, deadline math in deadlines.py.
 
     Saving marks answers ``reviewed=True``: this page is where a human
     confirms what the assistant guessed, and only reviewed answers may
     reach the docassemble prefill.
-    """
-    if settings.TOPIC_FLOW_SOURCE == "corpus":
-        return topic_flow_rows(request, court, topic, role)
-
-    corpus = registry.get(court, topic, role)
-    if corpus is None:
-        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-
-    if request.method == "POST":
-        submitted, errors, valid = _accepted_answers(
-            request.POST,
-            question_ids(corpus),
-            lambda s: validate_answers(corpus, s),
-            lambda _name, raw: raw.strip() or None,
-            NEVER_PREFILL,
-        )
-        if valid:
-            variable_answer_set_many(
-                identity=request.identity, values=valid, reviewed=True
-            )
-        if errors:
-            # Soft-gate: re-render in place (no PRG) with inline errors so the
-            # litigant can fix and resubmit. Render from the stored answers
-            # (not the raw submission), so a rejected value can't leak into the
-            # summary while the form flags it. Other sections still render —
-            # not a forward-only wizard.
-            return _render_topic_flow(
-                request, corpus, topic_flow_answers(request, corpus), errors
-            )
-        if valid:
-            # A NEVER_PREFILL field re-renders blank even after a successful
-            # save, so without a toast the save looks like it failed (#803).
-            _flash_saved(request, valid, NEVER_PREFILL)
-        # PRG back to the section just saved (#anchor) so the litigant keeps
-        # their place and sees the recomputed deadlines, instead of the browser
-        # jumping to the top of the page on the redirected GET.
-        url = reverse(
-            "pages:topic_flow",
-            kwargs={"court": court, "topic": topic, "role": role},
-        )
-        anchor = submitted_section_anchor(corpus, submitted)
-        if anchor:
-            url = f"{url}#{anchor}"
-        return redirect(url)
-
-    return _render_topic_flow(
-        request, corpus, topic_flow_answers(request, corpus)
-    )
-
-
-def _accepted_answers(post, names, validate, coerce, protected):
-    """``(submitted, errors, valid)`` for a fact form POST.
-
-    ``submitted`` is the posted strings for ``names``; ``errors`` is
-    ``{name: [message]}``; ``valid`` is the typed values to store.
-    ``protected`` names the fields that render blank even when stored
-    (``NEVER_PREFILL`` on the content path, the glossary's private flag on
-    the rows path): a blank one is skipped unless its clear checkbox was
-    posted (a blank there means "not shown", not "erase").
-    """
-    submitted = {name: post[name] for name in names if name in post}
-    errors = validate(submitted)
-    valid = {}
-    for name, raw in submitted.items():
-        if name in errors:
-            continue
-        value = coerce(name, raw)
-        if (
-            value is None
-            and name in protected
-            and f"{name}__clear" not in post
-        ):
-            continue
-        valid[name] = value
-    return submitted, errors, valid
-
-
-def _flash_saved(request, valid, protected, revealed=()):
-    """The toast after a save. A ``protected`` field re-renders blank even
-    after a successful save, so without the longer message the save looks
-    like it failed (#803). ``revealed`` names the questions the save
-    uncovered, so a screen reader hears that the page is not done (WCAG
-    4.1.3); a gate can reveal a question on an earlier page, so the toast
-    does not say where. Shared by both page sources."""
-    private = any(valid.get(name) for name in protected)
-    if revealed and private:
-        text = _(
-            "Saved. More questions appeared on this page. For your privacy, "
-            "your answers are not shown here."
-        )
-    elif revealed:
-        text = _("Saved. More questions appeared on this page.")
-    elif private:
-        text = _(
-            "Saved. For your privacy, your answers are not shown on this page."
-        )
-    else:
-        text = _("Saved.")
-    messages.success(request, text)
-
-
-def _render_topic_flow(request, corpus, answers, errors=None):
-    """Render the full Topic Flow page from resolved answers.
-
-    Shared by the GET path and the POST error re-render. ``errors`` (a
-    ``{question_id: [message]}`` map) threads into ``render_section`` so a
-    failed fact_gather submit shows inline errors; ``None`` on a clean render.
-    """
-    rendered_sections = [
-        render_section(section, corpus, answers, errors)
-        for section in corpus.sections
-    ]
-    return _render_flow_page(
-        request, corpus.metadata.title, rendered_sections, corpus=corpus
-    )
-
-
-def topic_flow_rows(request, court, topic, role):
-    """The guided page built from TopicFlow rows (``TOPIC_FLOW_SOURCE=corpus``,
-    #1016).
-
-    The sibling of ``topic_flow`` that reads the rows ``sync_corpus`` writes.
     """
     flow = topic_flow_row_get(court, topic, role)
     sections = list(flow.sections.all())
@@ -215,7 +77,6 @@ def topic_flow_rows(request, court, topic, role):
     }
 
     if request.method == "POST":
-        # Same rules as the content path's POST above, over glossary rows.
         # Only currently asked variables are read, so a gated field whose
         # gate is unmet is ignored even if posted. A stored private field
         # renders blank, so a blank there is "keep", not "missing".
@@ -257,6 +118,10 @@ def topic_flow_rows(request, court, topic, role):
                 if name in asked_after
             }
         if errors:
+            # Soft-gate: re-render in place (no PRG) with inline errors so the
+            # litigant can fix and resubmit. Render from the stored answers
+            # (not the raw submission), so a rejected value can't leak into
+            # the page while the form flags it.
             return _render_flow_page(
                 request,
                 flow.name,
@@ -272,6 +137,9 @@ def topic_flow_rows(request, court, topic, role):
             )
         if valid:
             _flash_saved(request, valid, private, revealed)
+        # PRG back to the place just saved so the litigant keeps their place
+        # and sees the recomputed deadlines, instead of the browser jumping
+        # to the top of the page on the redirected GET.
         url = reverse(
             "pages:topic_flow",
             kwargs={"court": court, "topic": topic, "role": role},
@@ -296,9 +164,59 @@ def topic_flow_rows(request, court, topic, role):
     )
 
 
+def _accepted_answers(post, names, validate, coerce, protected):
+    """``(submitted, errors, valid)`` for a fact form POST.
+
+    ``submitted`` is the posted strings for ``names``; ``errors`` is
+    ``{name: [message]}``; ``valid`` is the typed values to store.
+    ``protected`` names the fields that render blank even when stored (the
+    glossary's private flag): a blank one is skipped unless its clear
+    checkbox was posted (a blank there means "not shown", not "erase").
+    """
+    submitted = {name: post[name] for name in names if name in post}
+    errors = validate(submitted)
+    valid = {}
+    for name, raw in submitted.items():
+        if name in errors:
+            continue
+        value = coerce(name, raw)
+        if (
+            value is None
+            and name in protected
+            and f"{name}__clear" not in post
+        ):
+            continue
+        valid[name] = value
+    return submitted, errors, valid
+
+
+def _flash_saved(request, valid, protected, revealed=()):
+    """The toast after a save. A ``protected`` field re-renders blank even
+    after a successful save, so without the longer message the save looks
+    like it failed (#803). ``revealed`` names the questions the save
+    uncovered, so a screen reader hears that the page is not done (WCAG
+    4.1.3); a gate can reveal a question on an earlier page, so the toast
+    does not say where."""
+    private = any(valid.get(name) for name in protected)
+    if revealed and private:
+        text = _(
+            "Saved. More questions appeared on this page. For your privacy, "
+            "your answers are not shown here."
+        )
+    elif revealed:
+        text = _("Saved. More questions appeared on this page.")
+    elif private:
+        text = _(
+            "Saved. For your privacy, your answers are not shown on this page."
+        )
+    else:
+        text = _("Saved.")
+    messages.success(request, text)
+
+
 def _render_flow_page(request, page_title, rendered_sections, **extra):
     """Render ``pages/topic_flow.html`` from an ordered ``RenderedSection``
-    list, whichever source built it."""
+    list."""
     section_links = [
         {"anchor": section.anchor_id, "heading": section.heading}
         for section in rendered_sections
@@ -320,33 +238,14 @@ def _render_flow_page(request, page_title, rendered_sections, **extra):
 
 
 def topic_flow_download(request, court, topic, role, output_id):
-    """Download a Topic Flow output section as a file (e.g. an ``.ics``).
+    """Download a Topic Flow output block as a file (e.g. an ``.ics``).
 
-    The endpoint counterpart to the ``topic_flow`` render above: resolve the
-    corpus and the downloadable output section (404 on either miss — an
-    unknown id or a non-downloadable section), then dispatch on
-    ``output_type`` to assemble the file from the visitor's stored answers.
-    The view stays thin — file bytes come from the download handlers in
-    downloads.py, computed from the same stored answers the page renders, so
-    the download matches what's on screen.
-
-    Under ``TOPIC_FLOW_SOURCE=corpus`` the output ids are the layout block
-    names, and the file is built from rows (#1017).
+    The endpoint counterpart to the ``topic_flow`` render above: the output
+    ids are the layout block names, and the file is built from the same rows
+    and stored answers the page renders, so the download matches what's on
+    screen (#1017). An unknown id or flow is 404.
     """
-    if settings.TOPIC_FLOW_SOURCE == "corpus":
-        artifact = _row_download(request, court, topic, role, output_id)
-    else:
-        corpus = registry.get(court, topic, role)
-        if corpus is None:
-            raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-
-        section = find_downloadable(corpus, output_id)
-        if section is None:
-            raise Http404(f"No downloadable output {output_id!r}")
-
-        artifact = build_download(
-            section, corpus, topic_flow_answers(request, corpus)
-        )
+    artifact = _row_download(request, court, topic, role, output_id)
     response = HttpResponse(artifact.body, content_type=artifact.content_type)
     response["Content-Disposition"] = (
         f'attachment; filename="{artifact.filename}"'
@@ -357,9 +256,8 @@ def topic_flow_download(request, court, topic, role, output_id):
 def _row_download(request, court, topic, role, output_id):
     """The ``calendar`` block as a ``.ics`` from the flow's deadline rows and
     the visitor's stored answers, or the ``contacts`` block as a ``.vcf``
-    from the URL's court's Contact rows. Any other id is 404, as a
-    non-downloadable section is on the content path. The UID segment is the
-    block name where the section id was."""
+    from the URL's court's Contact rows. Any other id is 404. The UID
+    segment is the block name."""
     flow = topic_flow_row_get(court, topic, role, graph=False)
     uid_prefix = f"{court}-{topic}-{role}-{output_id}"
     if output_id == "calendar":
@@ -391,10 +289,6 @@ def topic_flow_interview(request, court, topic, role):
 
     Any failure redirects to the plain interview link instead. Unprefilled is a
     worse handoff than prefilled, but a dead button is worse than both.
-
-    The handoff is read from the TopicFlow row under
-    ``TOPIC_FLOW_SOURCE=corpus``; everything after the target is found is
-    the same on both paths.
     """
     target = _interview_target(court, topic, role)
     if target is None:
@@ -403,16 +297,11 @@ def topic_flow_interview(request, court, topic, role):
 
 
 def _interview_target(court, topic, role):
-    """``(interview, mapping)`` for the flow at this URL, or None without a
-    handoff. 404 for a flow that does not exist on the configured source."""
-    if settings.TOPIC_FLOW_SOURCE == "corpus":
-        return flow_interview_target(
-            topic_flow_row_get(court, topic, role, graph=False)
-        )
-    corpus = registry.get(court, topic, role)
-    if corpus is None:
-        raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
-    return interview_target(corpus)
+    """``(interview, mapping)`` from the TopicFlow row at this URL, or None
+    without a handoff. 404 for a flow that does not exist."""
+    return flow_interview_target(
+        topic_flow_row_get(court, topic, role, graph=False)
+    )
 
 
 def _interview_redirect(request, court, topic, role, target):
