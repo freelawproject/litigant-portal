@@ -3,9 +3,7 @@
 # decision tree apply statewide; the court that handles a case is the one
 # named on the ticket, collected as the traffic_court fact (#1040). Only
 # statewide contacts and resources live here. Sources:
-# corpus-sources/arizona/SOURCE.md. Contacts match
-# content/civil-traffic-options.yml; edit both together until #1012.
-# LEGAL REVIEW REQUIRED.
+# corpus-sources/arizona/SOURCE.md. LEGAL REVIEW REQUIRED.
 
 name: 'Arizona'
 court_name: 'Arizona Judicial Branch'

@@ -27,7 +27,7 @@ from litigant_portal.app.models.choices import (
 )
 from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
 from litigant_portal.app.topic_flow import rows
-from litigant_portal.app.topic_flow.renderer import RenderedSection
+from litigant_portal.app.topic_flow.rows import RenderedSection
 
 FACT_GATHER = "cotton/molecules/flow_section_fact_gather.html"
 
@@ -298,9 +298,8 @@ def test_packet_offers_the_interview_only_with_a_reference_and_a_docassemble(
 
 
 def test_packet_with_a_handoff_renders_for_the_button_alone(settings):
-    # Every form gated and unmet, but the interview still fills them: the
-    # content path renders its packet unconditionally, so this one must
-    # not hide the button with the list.
+    # Every form gated and unmet, but the interview still fills them, so
+    # the block must not hide the button with the list.
     flow = TopicFlow(
         layout=["packet"], interview_reference="docassemble.x:q.yml"
     )
@@ -788,8 +787,8 @@ def test_private_question_renders_blank_and_marks_saved():
     assert _question(first_name)["saved"] is False
 
 
-def test_the_glossary_flag_decides_privacy_not_the_content_trees_set():
-    # ``first_name`` is in NEVER_PREFILL; the rows path reads the row.
+def test_the_glossary_flag_decides_privacy_not_the_variable_name():
+    # ``first_name`` is private in the real glossary; the page reads the row.
     first_name = _variable("first_name")
     assert _question(first_name, {"first_name": "Sandra"})["value"] == "Sandra"
 

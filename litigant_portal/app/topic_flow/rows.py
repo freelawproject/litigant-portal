@@ -1,10 +1,8 @@
 """Build the guided page from TopicFlow rows.
 
-The sibling of ``renderer.py`` for the ``TOPIC_FLOW_SOURCE=corpus`` path: it
-reads the rows ``sync_corpus`` writes instead of the ``content/`` registry,
-and produces the same ``RenderedSection`` list, so the page template does not
-know which path built it. Pure: callers pass the prefetched rows in, and
-nothing here touches the database or the request.
+Reads the rows ``sync_corpus`` writes and produces the ``RenderedSection``
+list the page template renders. Pure: callers pass the prefetched rows in,
+and nothing here touches the database or the request.
 
 The flow's ``layout`` orders the page. A section key renders as an info
 section anchored on that key, so chat citations can link to it. The
@@ -25,6 +23,7 @@ gated fields appear.
 
 import math
 import re
+from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -41,13 +40,23 @@ from litigant_portal.app.topic_flow.deadlines import (
     deadline_date,
     deadline_display,
 )
-from litigant_portal.app.topic_flow.renderer import RenderedSection
 from litigant_portal.app.topic_flow.resources import resource_dicts
-from litigant_portal.app.topic_flow.validation import (
-    INVALID_CHOICE_ERROR,
-    INVALID_DATE_ERROR,
-    REQUIRED_ERROR,
-)
+
+
+@dataclass(frozen=True)
+class RenderedSection:
+    """One page section: a template path plus a flat, fully-resolved context
+    dict, so the page template stays logic-free."""
+
+    anchor_id: str
+    heading: str
+    template: str
+    context: dict
+
+
+REQUIRED_ERROR = _("Please answer this before continuing.")
+INVALID_CHOICE_ERROR = _("Choose one of the listed options.")
+INVALID_DATE_ERROR = _("Enter the date as YYYY-MM-DD, like 2026-03-15.")
 
 INVALID_NUMBER_ERROR = _("Enter a number, like 3 or 2.5.")
 # Digits with an optional decimal part. ``float()`` is wider (``nan``,
@@ -112,8 +121,8 @@ def flow_pages(flow) -> list[tuple]:
 
 
 def private_names(pages) -> set[str]:
-    """The placed variables the glossary marks private: the rows path's
-    protected set, the sibling of the content renderer's ``NEVER_PREFILL``."""
+    """The placed variables the glossary marks private: the page's protected
+    set, rendered blank whatever is stored."""
     return {
         variable.name
         for _page, variables in pages
@@ -143,8 +152,8 @@ def flow_variable_names(pages, form_conditions=(), deadlines=()) -> list[str]:
 
 def flow_deadlines(deadlines, answers) -> list[dict]:
     """``{id, label, description, date}`` per TopicFlowDeadline row, in
-    stored order, the shape ``resolve_ics_deadlines`` gives the content
-    path. ``id`` is the row's ``ref`` (its authored key)."""
+    stored order, the shape ``deadline_display`` and ``ics_artifact`` take.
+    ``id`` is the row's ``ref`` (its authored key)."""
     return [
         {
             "id": deadline.ref,
@@ -322,10 +331,10 @@ def page_questions(
                     else variable.choices
                 ),
                 "help_text": help_text,
-                # Same leak guard as the content renderer's NEVER_PREFILL,
-                # read from the glossary row so the set can't drift from
-                # the corpus: a private field renders blank and gets the
-                # clear checkbox instead (#638).
+                # The leak guard for a shared terminal, read from the
+                # glossary row so the set can't drift from the corpus: a
+                # private field renders blank and gets the clear checkbox
+                # instead (#638).
                 "value": "" if protected else _form_value(variable, stored),
                 "saved": saved,
                 "errors": [],
@@ -372,8 +381,8 @@ def render_flow(
             )
         elif name == "packet":
             forms = packet_forms(form_conditions, answers)
-            # Same rule as the content renderer's _render_packet: the row's
-            # handoff AND a configured docassemble, else a plain form list.
+            # The row's handoff AND a configured docassemble, else a plain
+            # form list.
             interview = bool(
                 flow.interview_reference
                 and interview_launch_url(flow.interview_reference)
@@ -398,8 +407,9 @@ def render_flow(
 
 
 def _apply_errors(rendered, errors):
-    """Put each inline error on its question and focus the first one, as
-    ``render_section`` does for the content path (WCAG 2.4.3 / 3.3.1)."""
+    """Put each inline error on its question and focus the first one, so
+    keyboard and screen-reader users land on the error instead of hunting
+    for it (WCAG 2.4.3 / 3.3.1)."""
     focused = False
     for section in rendered:
         for question in section.context.get("questions", ()):
@@ -431,7 +441,7 @@ def _render_info(anchor, section):
 
 
 def _render_packet(forms, interview_available, court, topic, role):
-    # Same context as the content renderer's _render_packet.
+    # URL parts, not a built URL: the template owns {% url %}.
     return RenderedSection(
         anchor_id="packet",
         heading=BLOCK_HEADINGS["packet"],
@@ -447,8 +457,7 @@ def _render_packet(forms, interview_available, court, topic, role):
 
 
 def _render_contacts(contacts, court, topic, role):
-    # Same context as the content renderer's _render_vcf: the template owns
-    # {% url %}, and the download id is the block name.
+    # The template owns {% url %}, and the download id is the block name.
     return RenderedSection(
         anchor_id="contacts",
         heading=BLOCK_HEADINGS["contacts"],
@@ -473,8 +482,7 @@ def _render_resources(resources):
 
 
 def _render_calendar(deadlines, answers, court, topic, role):
-    # Same context as the content renderer's _render_ics: has_dates gates
-    # the download link, since an empty calendar is no use.
+    # has_dates gates the download link, since an empty calendar is no use.
     resolved = [
         deadline_display(d) for d in flow_deadlines(deadlines, answers)
     ]

@@ -2,8 +2,8 @@
 # publication may be waived). The directory locates the court and topic; the
 # file name is the flow slug. No deadlines: publication and the 30-day wait
 # can be waived, so there is no fixed date to compute. Ported from the wip
-# library flow config (source copy: content/adult-name-change-waiver.yml;
-# forms via docassemble/nd-name-change/petition-waiver.yml), restructured
+# library flow config (forms via
+# docassemble/nd-name-change/petition-waiver.yml), restructured
 # for the glossary schema. The packet shares nd-name-change-confidential-info
 # and nd-name-change-order with the standard flow; the petition and
 # declaration are the waiver-track forms over the same PDFs.
@@ -12,8 +12,8 @@ name: 'Adult Name Change (Publication Waiver)'
 enabled: true
 order: 1
 
-# The page in the order content/ shows it. No `calendar`: this track has no
-# deadlines. The summary output is dropped (#1012).
+# The page, top to bottom. No `calendar`: this track has no deadlines, and
+# there is no summary block.
 layout:
   - overview
   - eligibility
@@ -132,8 +132,8 @@ sections:
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
 # One page per docassemble interview page (title = the page's question,
-# description = its subquestion, or the ND context content/ carried as
-# help text). The waiver-reasons page replaces the standard track's
+# description = its subquestion, or the ND context carried as help text).
+# The waiver-reasons page replaces the standard track's
 # publication page; its select-every-reason instruction lives on the page
 # description.
 interview:

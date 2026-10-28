@@ -1,8 +1,8 @@
 # Adult Name Change (North Dakota), STANDARD track. The directory locates
 # the court and topic; the file name is the flow slug. Ported from the wip
-# library flow config (source copy: content/adult-name-change-standard.yml;
-# forms bench-confirmed via docassemble/nd-name-change/petition-standard.yml,
-# #560), restructured for the glossary schema: interview pages place
+# library flow config (forms bench-confirmed via
+# docassemble/nd-name-change/petition-standard.yml, #560), restructured
+# for the glossary schema: interview pages place
 # glossary variables by name, and the packet lists forms by slug with the
 # fee-waiver form joining on a condition.
 
@@ -10,8 +10,8 @@ name: 'Adult Name Change (Publication Required)'
 enabled: true
 order: 0
 
-# The page in the order content/ shows it: the two fact-gather blocks fold
-# into `interview`, the summary output is dropped (#1012).
+# The page, top to bottom. The questions all live in `interview`, and there
+# is no summary block.
 layout:
   - overview
   - filing_fee
@@ -156,8 +156,8 @@ sections:
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
 # One page per docassemble interview page (title = the page's question,
-# description = its subquestion, or the ND context content/ carried as
-# help text). Pages place glossary variables by name; the gated conviction
+# description = its subquestion, or the ND context carried as help text).
+# Pages place glossary variables by name; the gated conviction
 # variables sit with their gate and only appear when it is satisfied.
 interview:
   - title: 'Your current legal name'

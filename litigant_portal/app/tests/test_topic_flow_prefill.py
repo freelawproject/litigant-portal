@@ -1,66 +1,33 @@
-"""Prefill payload tests: corpus mapping resolution, the row twin, and the
-rename. DB-free."""
+"""Prefill payload tests: the row's handoff target and the rename. DB-free."""
 
 from litigant_portal.app.models import TopicFlow
 from litigant_portal.app.topic_flow.prefill import (
     flow_interview_target,
-    interview_target,
     prefill_variables,
-)
-from litigant_portal.app.topic_flow.schema import (
-    Corpus,
-    FactGatherSection,
-    InfoSection,
-    Metadata,
-    PacketOutput,
-    Question,
 )
 
 MAPPING = {"first_name": "current_first", "county": "residence_county"}
 REFERENCE = "docassemble.test:data/questions/petition.yml"
 
 
-def _corpus(*sections):
-    return Corpus(
-        metadata=Metadata(court="c", topic="t", role="r", title="T"),
-        sections=list(sections) or [_packet()],
+def test_flow_target_carries_the_reference_and_the_mapping():
+    flow = TopicFlow(interview_reference=REFERENCE, interview_prefill=MAPPING)
+    assert flow_interview_target(flow) == (REFERENCE, MAPPING)
+
+
+def test_flow_target_is_none_without_a_reference():
+    assert flow_interview_target(TopicFlow()) is None
+    assert (
+        flow_interview_target(
+            TopicFlow(interview_reference="", interview_prefill=MAPPING)
+        )
+        is None
     )
 
 
-def _packet(*, reference=REFERENCE, mapping=None, id="filing_packet"):
-    return PacketOutput(
-        kind="output",
-        output_type="packet",
-        id=id,
-        heading="Your filing packet",
-        forms=["Petition"],
-        interview_reference=reference,
-        interview_prefill=MAPPING if mapping is None else mapping,
-    )
-
-
-def test_target_carries_the_interview_reference_and_its_mapping():
-    assert interview_target(_corpus()) == (REFERENCE, MAPPING)
-
-
-def test_target_is_none_without_a_packet_section():
-    corpus = _corpus(
-        InfoSection(kind="info", id="overview", heading="H", body="B")
-    )
-    assert interview_target(corpus) is None
-
-
-def test_target_is_none_when_the_packet_has_no_interview():
-    assert interview_target(_corpus(_packet(reference=None))) is None
-
-
-def test_target_skips_a_packet_without_an_interview():
-    corpus = _corpus(_packet(reference=None, id="forms_only"), _packet())
-    assert interview_target(corpus) == (REFERENCE, MAPPING)
-
-
-def test_unmapped_packet_yields_an_empty_mapping():
-    assert interview_target(_corpus(_packet(mapping={}))) == (REFERENCE, {})
+def test_flow_with_an_empty_mapping_yields_an_empty_mapping():
+    flow = TopicFlow(interview_reference=REFERENCE, interview_prefill={})
+    assert flow_interview_target(flow) == (REFERENCE, {})
 
 
 def test_variables_are_renamed_to_their_interview_names():
@@ -99,37 +66,3 @@ def test_a_date_stays_an_iso_string():
     assert prefill_variables(mapping=mapping, answers=answers) == {
         "publication_date": "2026-05-01"
     }
-
-
-def test_a_question_the_page_never_shows_still_reaches_the_payload():
-    # NEVER_PREFILL governs rendering, not sending.
-    corpus = _corpus(
-        FactGatherSection(
-            kind="fact_gather",
-            id="your_information",
-            questions=[Question(id="first_name", label="First name")],
-        ),
-        _packet(),
-    )
-    _, mapping = interview_target(corpus)
-    assert prefill_variables(
-        mapping=mapping, answers={"first_name": "Sandra"}
-    ) == {"current_first": "Sandra"}
-
-
-# --- the row twin -----------------------------------------------------------
-
-
-def test_flow_target_carries_the_reference_and_the_mapping():
-    flow = TopicFlow(interview_reference=REFERENCE, interview_prefill=MAPPING)
-    assert flow_interview_target(flow) == (REFERENCE, MAPPING)
-
-
-def test_flow_target_is_none_without_a_reference():
-    assert flow_interview_target(TopicFlow()) is None
-    assert (
-        flow_interview_target(
-            TopicFlow(interview_reference="", interview_prefill=MAPPING)
-        )
-        is None
-    )

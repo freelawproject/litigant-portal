@@ -1,10 +1,10 @@
-"""Topic Flow entry-view tests for the ``TOPIC_FLOW_SOURCE=corpus`` path
-: the guided page built from TopicFlow rows.
+"""Topic Flow entry-view tests: the guided page built from TopicFlow rows,
+its downloads and the docassemble handoff.
 
-Every test here needs a database: a small corpus is built in Python and
-synced through ``corpus_sync`` (patched over ``corpus_load``, as
-``test_corpus_sync.py`` does), then the test client drives the page. The
-pure row-to-section functions are covered DB-free in
+The URL-resolution tests are DB-free. Every other test needs a database: a
+small corpus is built in Python and synced through ``corpus_sync`` (patched
+over ``corpus_load``, as ``test_corpus_sync.py`` does), then the test client
+drives the page. The pure row-to-section functions are covered DB-free in
 ``test_topic_flow_rows.py``.
 """
 
@@ -14,7 +14,10 @@ from unittest import mock
 
 import pytest
 import vobject
+from django.contrib.auth import get_user_model
 from django.test import Client
+from django.urls import Resolver404, resolve, reverse
+from django.utils import timezone
 
 from litigant_portal.app.models import (
     TopicFlow,
@@ -27,14 +30,6 @@ from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
 from litigant_portal.app.services.docassemble import DocassembleError
 from litigant_portal.app.services.topic_flow import variable_answer_set
-from litigant_portal.app.topic_flow.schema import (
-    Corpus,
-    FactGatherSection,
-    InfoSection,
-    Metadata,
-    PacketOutput,
-    Question,
-)
 from litigant_portal.app.views import topic_flow as topic_flow_views
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
@@ -250,9 +245,8 @@ def _corpus():
 
 @pytest.fixture
 def synced(db, settings, tmp_path):
-    """The corpus above in the database, with the page reading rows. The
-    forms directory holds stand-in PDF bytes for the sync's file writes."""
-    settings.TOPIC_FLOW_SOURCE = "corpus"
+    """The corpus above in the database. The forms directory holds stand-in
+    PDF bytes for the sync's file writes."""
     settings.CORPUS_COURT = None
     corpus = _corpus()
     for slug in corpus.forms:
@@ -307,11 +301,53 @@ def _store(client, name, value, reviewed=False):
     )
 
 
+# --- URL resolution (DB-free) -----------------------------------------------
+
+
+def test_three_segment_url_resolves_to_topic_flow_view():
+    assert resolve(URL).view_name == "pages:topic_flow"
+
+
+def test_two_segment_url_no_longer_resolves():
+    # The 2-seg deep link went with the prompts package (#1049). `slug` never
+    # crosses a `/`, so the 3-seg flow URL must not absorb it either.
+    with pytest.raises(Resolver404):
+        resolve(f"/t/{COURT}/{TOPIC}/")
+
+
+def test_topic_flow_url_reverses_with_three_segments():
+    kwargs = {"court": COURT, "topic": TOPIC, "role": ROLE}
+    assert reverse("pages:topic_flow", kwargs=kwargs) == URL
+
+
+def test_download_url_resolves_and_reverses_with_the_output_id():
+    assert (
+        resolve(f"{DOWNLOAD_URL}calendar/").view_name
+        == "pages:topic_flow_download"
+    )
+    kwargs = {"court": COURT, "topic": TOPIC, "role": ROLE}
+    assert (
+        reverse(
+            "pages:topic_flow_download",
+            kwargs={**kwargs, "output_id": "calendar"},
+        )
+        == f"{DOWNLOAD_URL}calendar/"
+    )
+
+
+def test_interview_url_resolves_and_reverses():
+    assert resolve(INTERVIEW_URL).view_name == "pages:topic_flow_interview"
+    kwargs = {"court": COURT, "topic": TOPIC, "role": ROLE}
+    assert (
+        reverse("pages:topic_flow_interview", kwargs=kwargs) == INTERVIEW_URL
+    )
+
+
 # --- GET render -------------------------------------------------------------
 
 
 @pytest.mark.postgres
-def test_corpus_source_renders_the_synced_flow(client, synced):
+def test_get_renders_the_synced_flow(client, synced):
     response = client.get(URL)
     assert response.status_code == 200
     assert "pages/topic_flow.html" in [t.name for t in response.templates]
@@ -322,21 +358,19 @@ def test_corpus_source_renders_the_synced_flow(client, synced):
 
 
 @pytest.mark.postgres
-def test_corpus_source_emits_an_anchor_per_section_key_in_layout_order(
-    client, synced
-):
+def test_page_emits_an_anchor_per_section_key_in_layout_order(client, synced):
     assert _section_ids(client.get(URL).content.decode()) == ANCHORS
 
 
 @pytest.mark.postgres
-def test_corpus_source_renders_each_section_body(client, synced):
+def test_page_renders_each_section_body(client, synced):
     html = client.get(URL).content.decode()
     assert "Read this first." in html
     assert "Pay the fee." in html
 
 
 @pytest.mark.postgres
-def test_corpus_source_lists_every_section_in_the_left_region(client, synced):
+def test_page_lists_every_section_in_the_left_region(client, synced):
     html = client.get(URL).content.decode()
     for anchor in ANCHORS:
         assert f'href="#{anchor}"' in html
@@ -459,39 +493,16 @@ def test_protected_field_never_echoes_the_stored_value(client, synced):
     assert re.search(
         r'<input[^>]*type="checkbox"[^>]*name="first_name__clear"', after
     )
+    # The unprotected sibling shows its value, so it never needs the box.
+    assert 'name="full_name__clear"' not in after
 
 
 @pytest.mark.postgres
-def test_content_path_choice_options_are_unchanged(
-    client, synced, settings, monkeypatch
-):
-    # The content renderer now hands the template {value, label} dicts; its
-    # options must read exactly as before the shape change.
-    settings.TOPIC_FLOW_SOURCE = "content"
-    registry_corpus = Corpus(
-        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
-        sections=[
-            FactGatherSection(
-                kind="fact_gather",
-                id="key_dates",
-                heading="Your dates",
-                questions=[
-                    Question(
-                        id="filing_county",
-                        label="County",
-                        type="choice",
-                        choices=["Cass", "Burleigh"],
-                    )
-                ],
-            )
-        ],
-    )
-    monkeypatch.setattr(
-        topic_flow_views.registry, "get", lambda *a: registry_corpus
-    )
+def test_date_field_disables_browser_autocomplete(client, synced):
+    # #638: on a shared terminal the browser's own autofill could otherwise
+    # suggest a prior user's typed date, independent of our session.
     flat = _flat(client.get(URL))
-    assert _has_option(flat, "Cass", "Cass")
-    assert _has_option(flat, "Burleigh", "Burleigh")
+    assert 'autocomplete="off"' in _field_tag(flat, "license_date")
 
 
 # --- packet -----------------------------------------------------------------
@@ -640,6 +651,86 @@ def test_interview_post_with_nothing_to_prefill_goes_to_the_plain_link(
 
 
 @pytest.mark.postgres
+def test_a_fresh_guest_goes_straight_to_the_plain_interview(
+    client, synced, docassemble
+):
+    # No identity row minted for a visitor who answered nothing.
+    assert client.post(INTERVIEW_URL)["Location"] == DA_LAUNCH
+    assert docassemble.calls == []
+    assert UserIdentity.objects.count() == 0
+
+
+@pytest.mark.postgres
+def test_a_flow_with_an_empty_prefill_map_links_out_without_a_session(
+    client, synced, docassemble
+):
+    TopicFlow.objects.filter(slug=ROLE).update(interview_prefill={})
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    assert client.post(INTERVIEW_URL)["Location"] == DA_LAUNCH
+    assert docassemble.calls == []
+
+
+@pytest.mark.postgres
+def test_a_changed_answer_is_sent_at_its_new_value(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    _store(client, "full_name", "Jane Roe", reviewed=True)
+    client.post(INTERVIEW_URL)
+    assert docassemble.calls[0]["variables"] == {"petitioner_name": "Jane Roe"}
+
+
+@pytest.mark.postgres
+def test_the_same_answer_is_sent_once_the_litigant_confirms_it(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=False)
+    client.post(URL, {"first_name": "", "full_name": "Jane Doe"})
+    client.post(INTERVIEW_URL)
+    assert docassemble.calls[0]["variables"] == {"petitioner_name": "Jane Doe"}
+
+
+@pytest.mark.postgres
+def test_an_answer_confirmed_through_the_chat_endpoint_reaches_the_payload(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=False)
+    client.post(
+        "/facts/confirm/",
+        {"names": ["full_name"], "as_of": timezone.now().isoformat()},
+    )
+    client.post(INTERVIEW_URL)
+    assert docassemble.calls[0]["variables"] == {"petitioner_name": "Jane Doe"}
+
+
+@pytest.mark.postgres
+def test_an_assistant_overwrite_drops_a_confirmed_answer_again(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    _store(client, "full_name", "Jane Roe", reviewed=False)
+    assert client.post(INTERVIEW_URL)["Location"] == DA_LAUNCH
+    assert docassemble.calls == []
+
+
+@pytest.mark.postgres
+def test_answers_still_reach_the_payload_after_login(
+    client, synced, docassemble
+):
+    client.post(URL, {"first_name": "", "full_name": "Jane Doe"})
+    # The GET is load-bearing: AnonymousSessionKeyMiddleware only records
+    # the key on a request that already carries a session cookie, and the
+    # POST above created the session mid-request. client.login() skips
+    # middleware, so without it the merge has no key to work from.
+    client.get(URL)
+    user = get_user_model().objects.create_user(username="u", password="p")
+    assert client.login(username="u", password="p")
+    client.post(INTERVIEW_URL)
+    assert docassemble.calls[0]["variables"] == {"petitioner_name": "Jane Doe"}
+    assert UserIdentity.objects.filter(user=user).exists()
+
+
+@pytest.mark.postgres
 def test_interview_post_falls_back_to_the_plain_link_when_the_session_fails(
     client, synced, settings, monkeypatch
 ):
@@ -657,6 +748,30 @@ def test_interview_post_falls_back_to_the_plain_link_when_the_session_fails(
 
 
 @pytest.mark.postgres
+def test_an_unexpected_client_error_is_not_swallowed(
+    client, synced, settings, monkeypatch
+):
+    # Only DocassembleError means "fall back"; a bug in our own code must
+    # surface rather than hide behind an unprefilled interview.
+    settings.DOCASSEMBLE_BASE_URL = DA_BASE
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    monkeypatch.setattr(
+        topic_flow_views,
+        "docassemble_session_create",
+        _DocassembleClient(error=TypeError("bug")),
+    )
+    _store(client, "full_name", "Jane Doe", reviewed=True)
+    with pytest.raises(TypeError):
+        client.post(INTERVIEW_URL)
+
+
+@pytest.mark.postgres
+def test_interview_get_is_rejected(client, synced, docassemble):
+    assert client.get(INTERVIEW_URL).status_code == 405
+    assert docassemble.calls == []
+
+
+@pytest.mark.postgres
 def test_interview_post_on_a_flow_without_a_reference_is_404(
     client, synced, docassemble
 ):
@@ -666,6 +781,17 @@ def test_interview_post_on_a_flow_without_a_reference_is_404(
         client.post(f"/t/{COURT}/{TOPIC}/nope/interview/").status_code == 404
     )
     assert docassemble.calls == []
+
+
+@pytest.mark.postgres
+def test_interview_post_without_docassemble_configured_is_404(
+    client, synced, settings
+):
+    # The packet block hides the button in this state; a POST that arrives
+    # anyway must not fall back onto a host named by content.
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    assert client.post(INTERVIEW_URL).status_code == 404
 
 
 @pytest.mark.postgres
@@ -680,7 +806,7 @@ def test_interview_target_reads_the_flow_row_without_its_graph(
 
 
 @pytest.mark.postgres
-def test_csrf_failure_on_the_corpus_path_falls_back_to_the_plain_link(
+def test_csrf_failure_on_the_interview_falls_back_to_the_plain_link(
     synced, docassemble
 ):
     response = Client(enforce_csrf_checks=True).post(INTERVIEW_URL)
@@ -689,51 +815,40 @@ def test_csrf_failure_on_the_corpus_path_falls_back_to_the_plain_link(
 
 
 @pytest.mark.postgres
-def test_interview_payload_matches_the_content_path(
-    client, synced, docassemble, settings, monkeypatch
+def test_csrf_failure_on_an_unknown_flow_keeps_the_default_page(
+    synced, docassemble
 ):
-    # DoD item 1, the automated half: the same reviewed answers and the same
-    # handoff reach docassemble as the same payload under both settings.
-    _store(client, "full_name", "Jane Doe", reviewed=True)
-    _store(client, "license_date", "2026-02-01", reviewed=True)
-    _store(client, "pet_kind", "dog", reviewed=False)
-    client.post(INTERVIEW_URL)
-
-    settings.TOPIC_FLOW_SOURCE = "content"
-    registry_corpus = Corpus(
-        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
-        sections=[
-            FactGatherSection(
-                kind="fact_gather",
-                id="facts",
-                heading="Facts",
-                questions=[
-                    Question(id="full_name", label="Full name"),
-                    Question(id="license_date", label="When", type="date"),
-                ],
-            ),
-            PacketOutput(
-                kind="output",
-                output_type="packet",
-                id="filing_packet",
-                heading="Your forms",
-                forms=["License petition"],
-                interview_reference=REFERENCE,
-                interview_prefill=PREFILL,
-            ),
-        ],
+    response = Client(enforce_csrf_checks=True).post(
+        f"/t/{COURT}/{TOPIC}/nope/interview/"
     )
-    monkeypatch.setattr(
-        topic_flow_views.registry, "get", lambda *a: registry_corpus
-    )
-    client.post(INTERVIEW_URL)
+    assert response.status_code == 403
 
-    from_rows, from_content = docassemble.calls
-    assert from_rows == from_content
-    assert from_rows["variables"] == {
-        "petitioner_name": "Jane Doe",
-        "licensed_on": "2026-02-01",
-    }
+
+@pytest.mark.postgres
+def test_csrf_failure_on_a_flow_without_an_interview_keeps_the_default_page(
+    synced, docassemble
+):
+    TopicFlow.objects.filter(slug=ROLE).update(interview_reference="")
+    response = Client(enforce_csrf_checks=True).post(INTERVIEW_URL)
+    assert response.status_code == 403
+
+
+@pytest.mark.postgres
+def test_csrf_failure_without_docassemble_keeps_the_default_page(
+    synced, settings
+):
+    settings.DOCASSEMBLE_BASE_URL = None
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    response = Client(enforce_csrf_checks=True).post(INTERVIEW_URL)
+    assert response.status_code == 403
+
+
+@pytest.mark.postgres
+def test_csrf_failure_elsewhere_keeps_the_default_page(synced, docassemble):
+    response = Client(enforce_csrf_checks=True).post(
+        URL, {"first_name": "", "full_name": "Jane Doe"}
+    )
+    assert response.status_code == 403
 
 
 # --- calendar ---------------------------------------------------------------
@@ -892,10 +1007,8 @@ def test_contacts_download_uid_names_the_flow_and_the_contact_key(
 
 
 @pytest.mark.postgres
-def test_download_of_an_unknown_output_is_404_on_the_corpus_path(
-    client, synced
-):
-    # The content section ids are not ids here, and nor is a section key.
+def test_download_of_an_unknown_output_is_404(client, synced):
+    # Only the two output block names download; a section key is not an id.
     for output_id in ("save_contacts", "overview", "nope"):
         assert client.get(f"{DOWNLOAD_URL}{output_id}/").status_code == 404
     assert (
@@ -908,17 +1021,17 @@ def test_download_of_an_unknown_output_is_404_on_the_corpus_path(
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_an_unknown_flow(client, synced):
+def test_unknown_flow_is_404(client, synced):
     assert client.get(f"/t/{COURT}/{TOPIC}/nope/").status_code == 404
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_a_disabled_flow(client, synced):
+def test_disabled_flow_is_404(client, synced):
     assert client.get(f"/t/{COURT}/{TOPIC}/retired/").status_code == 404
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_the_wrong_court_when_corpus_court_is_set(
+def test_the_wrong_court_is_404_when_corpus_court_is_set(
     client, synced, settings
 ):
     settings.CORPUS_COURT = COURT
@@ -927,62 +1040,45 @@ def test_corpus_source_404s_the_wrong_court_when_corpus_court_is_set(
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_a_court_that_does_not_own_the_topic_row(
-    client, synced
-):
+def test_a_court_that_does_not_own_the_topic_row_is_404(client, synced):
     """``beta`` is a synced court, but ``pets`` is alpha's topic."""
     assert client.get(URL).status_code == 200
     assert client.get(f"/t/beta/{TOPIC}/{ROLE}/").status_code == 404
     assert client.get(f"/t/nowhere/{TOPIC}/{ROLE}/").status_code == 404
 
 
-# --- the default setting ----------------------------------------------------
-
-
-@pytest.mark.postgres
-def test_content_source_still_uses_the_registry(
-    client, synced, settings, monkeypatch
-):
-    # The rows are in the database, but under the default setting the page
-    # is whatever the registry says, found or not.
-    settings.TOPIC_FLOW_SOURCE = "content"
-    registry_corpus = Corpus(
-        metadata=Metadata(
-            court=COURT, topic=TOPIC, role=ROLE, title="From YAML"
-        ),
-        sections=[
-            InfoSection(
-                kind="info", id="intro", heading="Intro", body="Hello."
-            ),
-            FactGatherSection(
-                kind="fact_gather",
-                id="facts",
-                heading="Your facts",
-                questions=[Question(id="filing_county", label="County")],
-            ),
-        ],
-    )
-    monkeypatch.setattr(
-        topic_flow_views.registry, "get", lambda *a: registry_corpus
-    )
-    response = client.get(URL)
-    assert response.context["page_title"] == "From YAML"
-    flat = _flat(response)
-    assert _section_ids(flat) == ["intro", "facts"]
-    # The shared form names itself by the heading on this path too.
-    assert re.search(r'<form[^>]*aria-labelledby="facts-heading"', flat)
-
-    monkeypatch.setattr(topic_flow_views.registry, "get", lambda *a: None)
-    assert client.get(URL).status_code == 404
-
-
 # --- identity ---------------------------------------------------------------
 
 
 @pytest.mark.postgres
-def test_corpus_source_first_time_visitor_creates_no_identity(client, synced):
+def test_first_time_visitor_creates_no_identity(client, synced):
     assert client.get(URL).status_code == 200
     assert UserIdentity.objects.count() == 0
+
+
+@pytest.mark.postgres
+def test_post_owns_answers_by_the_visitor_identity(client, synced):
+    client.post(URL, {"pet_kind": "dog"})
+    identity = UserIdentity.objects.get()
+    assert identity.session_key == client.session.session_key
+    assert list(identity.variable_answers.all()) == list(
+        VariableAnswer.objects.all()
+    )
+
+
+@pytest.mark.postgres
+def test_answers_survive_login(client, synced):
+    # What a guest saved is still theirs, and still confirmed, after the
+    # identity merge runs on login.
+    client.post(URL, {"pet_kind": "dog"})
+    client.get(URL)
+    user = get_user_model().objects.create_user(username="u", password="p")
+    assert client.login(username="u", password="p")
+    flat = _flat(client.get(URL))
+    assert re.search(r'<option value="dog"[^>]*selected', flat)
+    answer = VariableAnswer.objects.get()
+    assert answer.identity.user == user
+    assert answer.reviewed
 
 
 # --- POST: saving answers ---------------------------------------------------
@@ -1067,49 +1163,12 @@ def test_number_field_takes_any_step_so_a_stored_decimal_resubmits(
 
 
 @pytest.mark.postgres
-def test_post_writes_the_same_rows_the_content_path_writes(
-    client, synced, settings, monkeypatch
-):
-    # DoD item 2: one submission, both page sources, identical rows. Shaped
-    # like the ND flow: a text, a choice and a date answer.
-    answers = {
-        "full_name": "Jane Doe",
-        "pet_kind": "dog",
-        "license_date": "2026-02-01",
-    }
-    client.post(URL, answers)
-    from_rows = _rows()
-    VariableAnswer.objects.all().delete()
-
-    settings.TOPIC_FLOW_SOURCE = "content"
-    registry_corpus = Corpus(
-        metadata=Metadata(court=COURT, topic=TOPIC, role=ROLE, title="T"),
-        sections=[
-            FactGatherSection(
-                kind="fact_gather",
-                id="facts",
-                heading="Facts",
-                questions=[
-                    Question(id="full_name", label="Full name"),
-                    Question(
-                        id="pet_kind",
-                        label="Kind",
-                        type="choice",
-                        choices=["dog", "cat"],
-                    ),
-                    Question(id="license_date", label="When", type="date"),
-                ],
-            )
-        ],
-    )
-    monkeypatch.setattr(
-        topic_flow_views.registry, "get", lambda *a: registry_corpus
-    )
-    client.post(URL, answers)
-    assert _rows() == from_rows
-    assert from_rows == {
-        name: (value, True) for name, value in answers.items()
-    }
+def test_reposting_updates_the_same_answer_row(client, synced):
+    client.post(URL, {"pet_kind": "dog"})
+    client.post(URL, {"pet_kind": "cat"})
+    answer = VariableAnswer.objects.get()
+    assert answer.value == "cat"
+    assert answer.reviewed
 
 
 @pytest.mark.postgres
@@ -1306,8 +1365,29 @@ def test_blank_protected_field_keeps_an_unreviewed_answer_unreviewed(
 
 
 @pytest.mark.postgres
+def test_typing_a_protected_field_overwrites_it_and_marks_it_reviewed(
+    client, synced
+):
+    # Overwriting is the only correction available for a field the page
+    # can't show, so it has to work.
+    _store(client, "first_name", "Sandra", reviewed=False)
+    client.post(URL, {"first_name": "Alex", "full_name": "Alex Doe"})
+    assert _rows()["first_name"] == ("Alex", True)
+
+
+@pytest.mark.postgres
 def test_checking_clear_erases_a_protected_answer(client, synced):
     client.post(URL, {"first_name": "Sandra", "full_name": "Sandra Doe"})
+    client.post(
+        URL,
+        {"first_name": "", "first_name__clear": "on", "full_name": "S. Doe"},
+    )
+    assert _values()["first_name"] is None
+
+
+@pytest.mark.postgres
+def test_clearing_erases_an_unreviewed_assistant_answer_too(client, synced):
+    _store(client, "first_name", "Sandra", reviewed=False)
     client.post(
         URL,
         {"first_name": "", "first_name__clear": "on", "full_name": "S. Doe"},

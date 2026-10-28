@@ -3,10 +3,9 @@
 Local archive of the **source material** court partners give us — official forms,
 instruction guides, and feedback — that backs the Topic Flow corpus.
 
-**The corpus lives in two trees right now, both live.** `litigant_portal/content/*.yml` renders
-the public flow pages (read by `app/topic_flow/registry.py`); `litigant_portal/corpus/`
-syncs to database rows (read by `app/selectors/corpus.py`). Editing one does not update
-the other, and the failure is silent. Which tree retires is an open decision under #179.
+**The corpus is `litigant_portal/corpus/`.** It is read by `app/selectors/corpus.py` and
+synced to database rows by `sync_corpus`; the public flow pages and the chat assistant
+both render from those rows.
 
 **A court's curated sources travel with the repo; the rest stays local.** The
 files needed to update or rebuild a court's corpus (the partner's rules, guides
