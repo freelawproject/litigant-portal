@@ -353,7 +353,7 @@ class TopicFlowFormCondition(BaseModel):
 
 
 class TopicFlowInterviewPage(BaseModel):
-    """A page of a flow's guided interview. Purely cosmetic grouping.
+    """A page of a flow's guided interview: a grouping of its variables.
 
     ``on_page`` marks a page the guided page asks; the chat and the
     docassemble handoff use every page."""
