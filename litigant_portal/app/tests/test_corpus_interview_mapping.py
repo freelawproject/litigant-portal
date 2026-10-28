@@ -2,7 +2,7 @@
 
 A preset variable skips its question and its validation, so a stale name is
 dropped silently and a bad choice value prints onto a court form. Covers the
-flows whose interview is versioned under ``docassemble/``. DB-free.
+corpus flows whose interview is versioned under ``docassemble/``. DB-free.
 
 Skipped under ``make test``: the container image carries no interviews, only
 ``litigant_portal/``. CI runs tox against a full checkout, so the guard gates
@@ -15,11 +15,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from litigant_portal.app.topic_flow.loader import CorpusLoader
-from litigant_portal.app.topic_flow.prefill import interview_target
-from litigant_portal.app.topic_flow.registry import (
-    CONTENT_DIR,
-    iter_corpus_paths,
+from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.selectors.corpus import (
+    corpus_load_flows,
+    corpus_load_variables,
 )
 
 INTERVIEW_DIR = Path(__file__).resolve().parents[3] / "docassemble"
@@ -81,35 +80,34 @@ def _fields(interview_path):
     return fields
 
 
+def _handoffs():
+    """(flow label, handoff, interview path) per flow handing off to an
+    interview we have."""
+    for slugs, flow in corpus_load_flows().items():
+        if flow.handoff is None:
+            continue
+        interview_path = _interview_path(flow.handoff.interview_reference)
+        if interview_path is not None:
+            yield "/".join(slugs), flow.handoff, interview_path
+
+
 def _mapped():
-    """(content file, question id, interview variable, interview path)."""
-    for path in iter_corpus_paths(CONTENT_DIR):
-        target = interview_target(CorpusLoader.load(path))
-        if target is None:
-            continue
-        reference, mapping = target
-        interview_path = _interview_path(reference)
-        if interview_path is None:
-            continue
-        for question_id, variable in mapping.items():
-            yield path.name, question_id, variable, interview_path
+    """(flow label, variable name, interview variable, interview path)."""
+    for label, handoff, interview_path in _handoffs():
+        for name, variable in handoff.interview_prefill.items():
+            yield label, name, variable, interview_path
 
 
 def _handoff_interviews():
-    """(content file, interview path) per interview a flow hands off to.
+    """(flow label, interview path) per interview a flow hands off to.
 
     Every flow with an interview reference, mapped or not: the handoff creates a
     session either way.
     """
     seen = {}
-    for path in iter_corpus_paths(CONTENT_DIR):
-        target = interview_target(CorpusLoader.load(path))
-        if target is None:
-            continue
-        interview_path = _interview_path(target[0])
-        if interview_path is not None:
-            seen.setdefault(interview_path, path.name)
-    return [(name, path) for path, name in seen.items()]
+    for label, _handoff, interview_path in _handoffs():
+        seen.setdefault(interview_path, label)
+    return [(label, path) for path, label in seen.items()]
 
 
 MAPPED = list(_mapped())
@@ -122,51 +120,42 @@ def test_the_nd_name_change_flows_are_actually_being_checked():
 
 
 @pytest.mark.parametrize(
-    ("file_name", "question_id", "variable", "interview_path"),
+    ("label", "name", "variable", "interview_path"),
     MAPPED,
     ids=[f"{f}:{q}" for f, q, _v, _p in MAPPED],
 )
 def test_mapped_variable_exists_in_the_interview(
-    file_name, question_id, variable, interview_path
+    label, name, variable, interview_path
 ):
     fields = _fields(interview_path)
     assert variable in fields, (
-        f"{file_name} maps '{question_id}' to '{variable}', which "
+        f"{label} maps '{name}' to '{variable}', which "
         f"{interview_path.name} does not ask"
     )
 
 
 @pytest.mark.parametrize(
-    ("file_name", "question_id", "variable", "interview_path"),
+    ("label", "name", "variable", "interview_path"),
     MAPPED,
     ids=[f"{f}:{q}" for f, q, _v, _p in MAPPED],
 )
 def test_a_mapped_checkbox_variable_is_never_prefilled(
-    file_name, question_id, variable, interview_path
+    label, name, variable, interview_path
 ):
     # checkboxes is a DADict: a plain value corrupts the answer.
     entry = _fields(interview_path).get(variable, {})
     assert entry.get("datatype") != "checkboxes", (
-        f"{file_name} maps '{question_id}' to the checkboxes variable "
-        f"'{variable}'"
+        f"{label} maps '{name}' to the checkboxes variable '{variable}'"
     )
 
 
 def test_mapped_choice_values_agree_with_the_interview():
-    for file_name, question_id, variable, interview_path in MAPPED:
-        corpus = CorpusLoader.load(CONTENT_DIR / file_name)
-        question = next(
-            (
-                q
-                for section in corpus.sections
-                if section.kind == "fact_gather"
-                for q in section.questions
-                if q.id == question_id
-            ),
-            None,
-        )
-        if question is None or question.type != "choice":
+    glossary = corpus_load_variables()
+    for label, name, variable, interview_path in MAPPED:
+        glossary_variable = glossary[name]
+        if glossary_variable.data_type != VariableDataType.CHOICE:
             continue
+        offered = {choice.value for choice in glossary_variable.choices}
         declared = _fields(interview_path)[variable].get("choices") or []
         allowed = {
             value
@@ -175,20 +164,19 @@ def test_mapped_choice_values_agree_with_the_interview():
                 choice.values() if isinstance(choice, dict) else [choice]
             )
         }
-        assert set(question.choices) <= allowed, (
-            f"{file_name} '{question_id}' offers values "
-            f"{set(question.choices) - allowed} that {interview_path.name} "
-            f"does not accept for '{variable}'"
+        assert offered <= allowed, (
+            f"{label} '{name}' offers values {offered - allowed} that "
+            f"{interview_path.name} does not accept for '{variable}'"
         )
 
 
 @pytest.mark.parametrize(
-    ("file_name", "interview_path"),
+    ("label", "interview_path"),
     INTERVIEWS,
     ids=[p.name for _f, p in INTERVIEWS],
 )
 def test_interview_enables_multi_user_from_an_initial_block(
-    file_name, interview_path
+    label, interview_path
 ):
     # The one prerequisite with no fallback: without it the resume link cannot
     # decrypt the session, so the litigant gets an error rather than a plain
@@ -199,19 +187,17 @@ def test_interview_enables_multi_user_from_an_initial_block(
         if block.get("initial")
     )
     assert re.search(r"multi_user\s*=\s*True", initial_code), (
-        f"{interview_path.name} (handed off from {file_name}) does not set "
+        f"{interview_path.name} (handed off from {label}) does not set "
         "multi_user = True in an initial code block"
     )
 
 
 @pytest.mark.parametrize(
-    ("file_name", "interview_path"),
+    ("label", "interview_path"),
     INTERVIEWS,
     ids=[p.name for _f, p in INTERVIEWS],
 )
-def test_interview_never_sets_multi_user_as_a_bare_key(
-    file_name, interview_path
-):
+def test_interview_never_sets_multi_user_as_a_bare_key(label, interview_path):
     # A bare `multi_user: True` key throws DASourceError on load.
     assert not any(
         "multi_user" in block for block in _blocks(interview_path)
