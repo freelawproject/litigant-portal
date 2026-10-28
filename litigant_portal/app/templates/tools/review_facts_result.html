@@ -28,10 +28,10 @@
             {# Both badges render; factReviewCard flips them on confirm. The #}
             {# wrappers carry `hidden`: a bare conditional attribute on a #}
             {# Cotton tag is dropped by its attribute parser. #}
-            <span data-role="badge-confirmed" {% if not fact.reviewed %}hidden{% endif %}>
+            <span class="shrink-0 whitespace-nowrap" data-role="badge-confirmed" {% if not fact.reviewed %}hidden{% endif %}>
               <c-atoms.badge variant="completed">{% trans "Confirmed" %}</c-atoms.badge>
             </span>
-            <span data-role="badge-pending" {% if fact.reviewed %}hidden{% endif %}>
+            <span class="shrink-0 whitespace-nowrap" data-role="badge-pending" {% if fact.reviewed %}hidden{% endif %}>
               <c-atoms.badge variant="pending">{% trans "Not confirmed yet" %}</c-atoms.badge>
             </span>
           </div>
