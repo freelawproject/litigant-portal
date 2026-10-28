@@ -14,9 +14,7 @@ Improve a flow and both surfaces improve.
 
 That holds today for **facts**: the guided pages and the chat both read and write
 `VariableAnswer`, so an answer given in one shows up in the other. Since #1018 it holds
-for **content** too: the pages and the chat both read the rows `sync_corpus` writes from
-`corpus/`. The older `content/` tree still renders the page under
-`TOPIC_FLOW_SOURCE=content` until #1012 deletes it.
+for **content** too: the pages and the chat both read the rows `sync_corpus` writes from `corpus/`.
 
 ## Layer 1: source documents
 
@@ -32,17 +30,15 @@ publication, our flow prose carried one, and no check noticed.
 
 ## Layer 2: repository trees
 
-| Tree                       | Holds                                                   | Read by                                   |
-| -------------------------- | ------------------------------------------------------- | ----------------------------------------- |
-| `litigant_portal/corpus/`  | variables, court, topic, flows, forms (`.yml` + `.pdf`) | `selectors/corpus.py`, then `sync_corpus` |
-| `litigant_portal/content/` | the older flat corpus, `TOPIC_FLOW_SOURCE=content` only | `app/topic_flow/registry.py`              |
-| `litigant_portal/agents/`  | `BASE_PROMPT` and the court, flow and facts templates   | the chat assistant, assembled per turn    |
+| Tree                      | Holds                                                   | Read by                                   |
+| ------------------------- | ------------------------------------------------------- | ----------------------------------------- |
+| `litigant_portal/corpus/` | variables, court, topic, flows, forms (`.yml` + `.pdf`) | `selectors/corpus.py`, then `sync_corpus` |
+| `litigant_portal/agents/` | `BASE_PROMPT` and the court, flow and facts templates   | the chat assistant, assembled per turn    |
 
 `corpus/` is the contract boundary. It is schema-validated and checked at startup, so
 it is the right emit target for a build tool.
 
-The public flow pages at `/t/<court>/<topic>/<role>/` render from the rows by default.
-`content/` retires under #1012.
+The public flow pages at `/t/<court>/<topic>/<role>/` render from the rows.
 
 ## Layer 3: build step
 
@@ -54,9 +50,8 @@ conditions, deadlines and links.
 ## Layer 4: run time
 
 **Guided pages.** The topic flow page renders the `TopicFlow` row and its graph through
-`app/topic_flow/rows.py` (`content/` through the registry under
-`TOPIC_FLOW_SOURCE=content`). Saving a section writes the litigant's answers as `VariableAnswer` rows marked `reviewed`: this
-page is where a person confirms a fact.
+`app/topic_flow/rows.py`. Saving a section writes the litigant's answers as
+`VariableAnswer` rows marked `reviewed`: this page is where a person confirms a fact.
 
 **Chat.** The assistant (`agents/assistant.py`) builds its system prompt each turn from
 four parts: `BASE_PROMPT`, the court (from the site's config), the list of available
@@ -77,7 +72,6 @@ of the chat path above.
 - No contract or tooling between source documents and `corpus/`, and no coverage check.
 - No statute text in `corpus-sources/`, and no decision-tree document. The decision tree
   exists only as the split between flow files.
-- Two live corpus trees, edited separately (#179).
 - Chat answers don't cite the corpus yet (#949).
 - Facts the chat records can't be confirmed from the chat yet, so they never reach the
   docassemble prefill (#948).

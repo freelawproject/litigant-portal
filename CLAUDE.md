@@ -85,16 +85,9 @@ No auto-formatter for `.html` templates — djlint runs lint-only. **Load the gl
 
 Rules for authoring user-facing content — corpus YAML, UI strings, and prompt layers that shape chat output.
 
-**There are currently two corpus trees, and both are live.** Know which one you are editing:
+**The corpus is one tree, `litigant_portal/corpus/`.** It is read by `app/selectors/corpus.py` and synced into database rows by `sync_corpus`; the public flow pages and the chat assistant both render from those rows. It is a court-scoped tree plus a shared variable glossary and `forms/`, hand-maintained and validated at startup by the `checks.corpus` Django system check. A `corpus/` change reaches the page only after `sync_corpus` runs (the Docker entrypoint runs it at startup).
 
-| Tree                            | Read by                                  | Serves                                                                                                                    |
-| ------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `litigant_portal/corpus/`       | `app/selectors/corpus.py`, `sync_corpus` | **The live public flow pages**, from database rows. Court-scoped tree plus a shared variable glossary and `forms/`        |
-| `litigant_portal/content/*.yml` | `app/topic_flow/registry.py`             | The older flat tree, one file per `(court, topic, role)`. Renders the page only under `TOPIC_FLOW_SOURCE=content` (#1018) |
-
-Both are hand-maintained and each is validated at startup by its own Django system check (`apps.py` registers `checks.corpus` and `topic_flow.checks`). Editing one does not update the other, and a `corpus/` change reaches the page only after `sync_corpus` runs (the Docker entrypoint runs it at startup). `content/` retires under #1012.
-
-The rules below apply to whichever tree you are authoring in:
+The rules below apply to everything you author in it:
 
 - **No em-dashes.** Use a period, comma, colon, or parentheses instead. Em-dash-heavy prose reads as AI-generated and undermines user trust (legal review, #620). Dev-facing text (code comments, docs, commit messages) is exempt.
 - **Corpus info bodies: one line per paragraph.** The renderer pipes `body` through Django's `linebreaks`, so every newline becomes a `<br>` — hard-wrapped prose breaks mid-sentence on the page. Separate paragraphs with blank lines; never wrap a paragraph across source lines.
@@ -211,7 +204,7 @@ The compact rules (sizing history, anchors, and calibration records are JI-team 
 
 **Permissions.** Admin access is the `app.manage_site` and `app.manage_developers` permissions, carried by the `Admins` and `Developers` groups (provisioned by a `post_migrate` receiver in `signals.py`). Check them with `request.user.has_perm(...)` in views and `{% if perms.app.manage_site %}` in templates — don't wrap either in a selector. Page views use Django's `@permission_required(..., raise_exception=True)`; the JSON API keeps its own `manage_site_required` / `manage_developers_required` decorators, because the built-in renders an HTML 403 where those endpoints must return a JSON body. These are deliberately separate from the auto-generated `add/change/delete/view` permissions that gate Django admin. Full reference: [`docs/wiki/permissions.md`](docs/wiki/permissions.md).
 
-**`app/topic_flow/` is not a data-layer module.** It's the corpus engine (schema, registry, renderer, downloads) that reads YAML from `litigant_portal/content/` — the older tree, kept behind `TOPIC_FLOW_SOURCE=content` until #1012 deletes it — plus `rows.py`, which builds the same page from the `litigant_portal/corpus/` rows that `sync_corpus` writes (see Content style above). The `topic_flow` entries under `models/`, `selectors/`, `services/`, and `views/` are the data layer for the `Topic` rows the corpus is attached to. Two different things sharing a name; always import both absolutely.
+**`app/topic_flow/` is not a data-layer module.** It's the row-based page engine: `rows.py` builds the guided page from the `litigant_portal/corpus/` rows that `sync_corpus` writes (see Content style above), and `downloads.py`, `deadlines.py`, `contacts.py`, `resources.py` and `prefill.py` are the pure helpers behind it. The `topic_flow` entries under `models/`, `selectors/`, `services/`, and `views/` are the data layer for the `Topic` rows the corpus is attached to. Two different things sharing a name; always import both absolutely.
 
 **By surface** — views, templates, JS, and the URL pattern lists:
 
