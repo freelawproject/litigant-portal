@@ -4,9 +4,8 @@ The handoff fails safe at request time (a half-configured prefill falls back
 to the plain interview; an unconfigured docassemble hides the button), so
 neither state is loud where an operator looks. These are the loud
 counterparts, surfacing once at deploy time (#879): W001 for a key without
-its API root, W002 naming the flows whose handoff is hidden because no
-docassemble is configured at all. W002 reads both content trees (#1017)
-and names a flow authored in both once.
+its API root, W002 naming the corpus flows whose handoff is hidden because
+no docassemble is configured at all.
 """
 
 from django.conf import settings
@@ -14,15 +13,6 @@ from django.core.checks import Tags, Warning, register
 
 from litigant_portal.app.selectors.corpus import corpus_load_flows
 from litigant_portal.app.services.docassemble import docassemble_configured
-from litigant_portal.app.topic_flow.loader import (
-    CorpusLoader,
-    CorpusValidationError,
-)
-from litigant_portal.app.topic_flow.prefill import interview_target
-from litigant_portal.app.topic_flow.registry import (
-    CONTENT_DIR,
-    iter_corpus_paths,
-)
 
 
 @register(Tags.compatibility)
@@ -45,7 +35,7 @@ def check_docassemble_settings(app_configs, **kwargs):
 def check_unservable_handoffs(app_configs, **kwargs):
     if docassemble_configured():
         return []
-    affected = _content_handoffs() | _corpus_handoffs()
+    affected = _corpus_handoffs()
     if not affected:
         return []
     return [
@@ -58,23 +48,8 @@ def check_unservable_handoffs(app_configs, **kwargs):
     ]
 
 
-def _content_handoffs() -> set[str]:
-    """``court/topic/role`` for each ``content/`` flow with a handoff."""
-    affected = set()
-    for path in iter_corpus_paths(CONTENT_DIR):
-        try:
-            corpus = CorpusLoader.load(path)
-        except CorpusValidationError:
-            # topic_flow.E001 reports it; not this check's business.
-            continue
-        if interview_target(corpus) is not None:
-            meta = corpus.metadata
-            affected.add(f"{meta.court}/{meta.topic}/{meta.role}")
-    return affected
-
-
 def _corpus_handoffs() -> set[str]:
-    """``court/topic/role`` for each ``corpus/`` flow with a handoff."""
+    """``court/topic/role`` for each corpus flow with a handoff."""
     try:
         flows = corpus_load_flows()
     except ValueError:

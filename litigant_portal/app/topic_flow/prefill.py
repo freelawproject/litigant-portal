@@ -5,20 +5,6 @@ functions only resolve the mapping from the TopicFlow row and rename what it
 holds.
 """
 
-from litigant_portal.app.topic_flow.schema import PacketOutput
-
-
-def interview_target(corpus) -> tuple[str, dict] | None:
-    """``(interview reference, {question id: interview variable})``, or None.
-
-    The first packet section carrying an interview wins; a corpus with no
-    interview handoff returns None.
-    """
-    for section in corpus.sections:
-        if isinstance(section, PacketOutput) and section.interview_reference:
-            return section.interview_reference, dict(section.interview_prefill)
-    return None
-
 
 def flow_interview_target(flow) -> tuple[str, dict] | None:
     """``(flow.interview_reference, flow.interview_prefill)``, or None when

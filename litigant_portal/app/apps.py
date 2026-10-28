@@ -9,7 +9,6 @@ class AppConfig(DjangoAppConfig):
     def ready(self):
         import litigant_portal.app.checks.corpus  # noqa: F401
         import litigant_portal.app.checks.docassemble  # noqa: F401
-        import litigant_portal.app.topic_flow.checks  # noqa: F401
         from litigant_portal.app import signals
 
         post_migrate.connect(signals.ensure_site_row, sender=self)

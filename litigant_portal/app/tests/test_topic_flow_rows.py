@@ -298,9 +298,8 @@ def test_packet_offers_the_interview_only_with_a_reference_and_a_docassemble(
 
 
 def test_packet_with_a_handoff_renders_for_the_button_alone(settings):
-    # Every form gated and unmet, but the interview still fills them: the
-    # content path renders its packet unconditionally, so this one must
-    # not hide the button with the list.
+    # Every form gated and unmet, but the interview still fills them, so
+    # the block must not hide the button with the list.
     flow = TopicFlow(
         layout=["packet"], interview_reference="docassemble.x:q.yml"
     )
