@@ -530,6 +530,22 @@ class FlowSchema(BaseSchema):
         """The authored layout, or the default when none is authored."""
         return list(self.layout) or default_layout(s.id for s in self.sections)
 
+    @property
+    def unasked_decision_variables(self) -> list[str]:
+        """The variables the page reacts to (deadline sources, packet
+        conditions) that no page marked ``on_page`` asks, sorted. Only the
+        chat can set them, which ``corpus.W001`` warns about."""
+        asked = {
+            name
+            for page in self.interview
+            if page.on_page
+            for name in page.variables
+        }
+        decided = {deadline.offset_from for deadline in self.deadlines} | {
+            entry.when.variable for entry in self.packet if entry.when
+        }
+        return sorted(decided - asked)
+
     @model_validator(mode="after")
     def _unique_source_ids(self):
         """Validates:

@@ -681,6 +681,54 @@ def test_every_shipped_flow_marks_at_least_one_page():
         assert any(page.on_page for page in flow.interview), key
 
 
+# The variables the page reacts to: deadline sources and packet conditions.
+
+_DUE = {
+    "id": "due",
+    "label": "Due",
+    "offset_days": 30,
+    "offset_from": "adopted_on",
+}
+_WHEN_LICENSED = {
+    "form": "license",
+    "when": {"variable": "licensed", "value": True},
+}
+
+
+def _page(variables, on_page):
+    return {"title": "Page", "variables": variables, "on_page": on_page}
+
+
+def test_unasked_decision_variables_lists_sources_on_no_marked_page():
+    flow = _flow_doc(
+        interview=[_page(["adopted_on", "licensed"], on_page=False)],
+        packet=[_WHEN_LICENSED],
+        deadlines=[_DUE],
+    )
+    assert flow.unasked_decision_variables == ["adopted_on", "licensed"]
+
+
+def test_unasked_decision_variables_is_empty_when_marked_pages_ask_them():
+    flow = _flow_doc(
+        layout=["start", "interview", "packet", "calendar"],
+        interview=[
+            _page(["adopted_on"], on_page=True),
+            _page(["licensed"], on_page=True),
+        ],
+        packet=[_WHEN_LICENSED],
+        deadlines=[_DUE],
+    )
+    assert flow.unasked_decision_variables == []
+
+
+def test_unasked_decision_variables_ignores_an_unconditional_packet_entry():
+    flow = _flow_doc(
+        interview=[_page(["full_name"], on_page=False)],
+        packet=[{"form": "license"}],
+    )
+    assert flow.unasked_decision_variables == []
+
+
 def test_section_id_may_not_be_a_block_name():
     with pytest.raises(ValidationError, match="reserved.*packet"):
         _flow_doc(sections=[_section("packet")])

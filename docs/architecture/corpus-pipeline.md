@@ -50,8 +50,10 @@ conditions, deadlines and links.
 ## Layer 4: run time
 
 **Guided pages.** The topic flow page renders the `TopicFlow` row and its graph through
-`app/topic_flow/rows.py`. Saving a section writes the litigant's answers as
-`VariableAnswer` rows marked `reviewed`: this page is where a person confirms a fact.
+`app/topic_flow/rows.py`. It asks only the interview pages marked `on_page`, while the
+chat and the docassemble handoff see every page. Saving a section writes the litigant's
+answers as `VariableAnswer` rows marked `reviewed`: this page is where a person confirms
+a fact.
 
 **Chat.** The assistant (`agents/assistant.py`) builds its system prompt each turn from
 four parts: `BASE_PROMPT`, the court (from the site's config), the list of available
