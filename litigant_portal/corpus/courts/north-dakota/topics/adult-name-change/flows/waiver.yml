@@ -78,9 +78,11 @@ sections:
       If you have a felony conviction, North Dakota law assumes a name-change request is made in bad faith. A judge may still grant it, but you would need to show by clear and convincing evidence that your request is made in good faith and not to defraud, mislead, injure anyone, or compromise public safety.
 
   - id: your_information_privacy
-    heading: 'How your information is used'
+    heading: 'The question this page asks'
     content: |
-      What you enter below is used to fill out your court forms. For your privacy on a shared or public computer, your saved answers are not shown back on this page.
+      One question below shapes your packet: whether you need the filing fee waived. Your answer decides which forms are in your packet.
+
+      The rest of your details are asked when you fill out your forms from the packet section.
 
   - id: publication_waiver
     heading: 'About the publication waiver'

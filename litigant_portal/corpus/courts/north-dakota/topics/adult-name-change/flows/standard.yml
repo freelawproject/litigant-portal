@@ -124,9 +124,11 @@ sections:
       North Dakota law does not say how many times the notice has to run. The statute requires only that 30 days of notice be given before a judge can act. The North Dakota Legal Self Help Center cannot interpret this, so ask the newspaper and the Clerk of Court what your county expects before you pay for publication. Newspapers handle these notices routinely and can tell you what they normally run.
 
   - id: your_information_privacy
-    heading: 'How your information is used'
+    heading: 'The questions this page asks'
     content: |
-      What you enter below is used to fill out your court forms. For your privacy on a shared or public computer, your saved answers are not shown back on this page.
+      Two questions below shape your packet: whether you need the filing fee waived, and the date your notice was published. The fee answer decides which forms are in your packet. The publication date sets your 30-day waiting period and is carried into the forms.
+
+      The rest of your details are asked when you fill out your forms from the packet section. For your privacy on a shared or public computer, your saved publication date is not shown back on this page.
 
   - id: form_gotchas
     heading: 'Before you sign'
