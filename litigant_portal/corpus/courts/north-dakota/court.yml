@@ -1,6 +1,6 @@
 # North Dakota court-level content, scoped to the site data models (court
-# fields on Site, Contact, Resource). Ported from the wip library; source
-# copy: content/adult-name-change-standard.yml.
+# fields on Site, Contact, Resource). Ported from the wip library's standard
+# name-change flow.
 
 name: 'North Dakota'
 court_name: 'North Dakota Court System'

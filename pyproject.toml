@@ -97,8 +97,6 @@ litigant_portal = [
   "app/static/**/*",
   "app/locale/**/*.po",
   "app/locale/**/*.mo",
-  "content/**/*.yml",
-  "content/**/*.yaml",
   "corpus/**/*.yml",
   "corpus/**/*.pdf",
   "corpus/courts/*/branding/*.svg",

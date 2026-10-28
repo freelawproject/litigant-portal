@@ -1,14 +1,13 @@
 # Eviction (Franklin County, OH), TENANT role. The directory locates the
 # court and topic; the file name is the flow slug. The tenant corpus has no
 # form packet yet (response forms are #610), so there is no packet and no
-# links. Ported from the wip library flow config; the content/ copy retires
-# once the page renders from these rows (#1012).
+# links. Ported from the wip library flow config.
 
 name: 'Responding to an Eviction (Tenant)'
 enabled: true
 order: 0
 
-# The page in the order content/ shows it. No `packet`: no forms yet (#610).
+# The page, top to bottom. No `packet`: no forms yet (#610).
 layout:
   - overview
   - notice_to_leave

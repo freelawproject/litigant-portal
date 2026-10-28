@@ -347,7 +347,7 @@ def test_interview_url_resolves_and_reverses():
 
 
 @pytest.mark.postgres
-def test_corpus_source_renders_the_synced_flow(client, synced):
+def test_get_renders_the_synced_flow(client, synced):
     response = client.get(URL)
     assert response.status_code == 200
     assert "pages/topic_flow.html" in [t.name for t in response.templates]
@@ -358,21 +358,19 @@ def test_corpus_source_renders_the_synced_flow(client, synced):
 
 
 @pytest.mark.postgres
-def test_corpus_source_emits_an_anchor_per_section_key_in_layout_order(
-    client, synced
-):
+def test_page_emits_an_anchor_per_section_key_in_layout_order(client, synced):
     assert _section_ids(client.get(URL).content.decode()) == ANCHORS
 
 
 @pytest.mark.postgres
-def test_corpus_source_renders_each_section_body(client, synced):
+def test_page_renders_each_section_body(client, synced):
     html = client.get(URL).content.decode()
     assert "Read this first." in html
     assert "Pay the fee." in html
 
 
 @pytest.mark.postgres
-def test_corpus_source_lists_every_section_in_the_left_region(client, synced):
+def test_page_lists_every_section_in_the_left_region(client, synced):
     html = client.get(URL).content.decode()
     for anchor in ANCHORS:
         assert f'href="#{anchor}"' in html
@@ -1009,10 +1007,8 @@ def test_contacts_download_uid_names_the_flow_and_the_contact_key(
 
 
 @pytest.mark.postgres
-def test_download_of_an_unknown_output_is_404_on_the_corpus_path(
-    client, synced
-):
-    # The content section ids are not ids here, and nor is a section key.
+def test_download_of_an_unknown_output_is_404(client, synced):
+    # Only the two output block names download; a section key is not an id.
     for output_id in ("save_contacts", "overview", "nope"):
         assert client.get(f"{DOWNLOAD_URL}{output_id}/").status_code == 404
     assert (
@@ -1025,17 +1021,17 @@ def test_download_of_an_unknown_output_is_404_on_the_corpus_path(
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_an_unknown_flow(client, synced):
+def test_unknown_flow_is_404(client, synced):
     assert client.get(f"/t/{COURT}/{TOPIC}/nope/").status_code == 404
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_a_disabled_flow(client, synced):
+def test_disabled_flow_is_404(client, synced):
     assert client.get(f"/t/{COURT}/{TOPIC}/retired/").status_code == 404
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_the_wrong_court_when_corpus_court_is_set(
+def test_the_wrong_court_is_404_when_corpus_court_is_set(
     client, synced, settings
 ):
     settings.CORPUS_COURT = COURT
@@ -1044,9 +1040,7 @@ def test_corpus_source_404s_the_wrong_court_when_corpus_court_is_set(
 
 
 @pytest.mark.postgres
-def test_corpus_source_404s_a_court_that_does_not_own_the_topic_row(
-    client, synced
-):
+def test_a_court_that_does_not_own_the_topic_row_is_404(client, synced):
     """``beta`` is a synced court, but ``pets`` is alpha's topic."""
     assert client.get(URL).status_code == 200
     assert client.get(f"/t/beta/{TOPIC}/{ROLE}/").status_code == 404
@@ -1057,7 +1051,7 @@ def test_corpus_source_404s_a_court_that_does_not_own_the_topic_row(
 
 
 @pytest.mark.postgres
-def test_corpus_source_first_time_visitor_creates_no_identity(client, synced):
+def test_first_time_visitor_creates_no_identity(client, synced):
     assert client.get(URL).status_code == 200
     assert UserIdentity.objects.count() == 0
 

@@ -29,9 +29,8 @@ def has_identity(request) -> bool:
 def topic_flow_row_get(court, topic, role, *, graph=True):
     """The enabled ``TopicFlow`` row behind a ``/t/<court>/<topic>/<role>/``
     URL; ``graph`` is passed to ``topic_flow_find``. The row's topic must
-    carry the URL's court, which
-    must also be the instance's court when ``CORPUS_COURT`` is set. Raises
-    ``Http404`` on any miss."""
+    carry the URL's court, which must also be the instance's court when
+    ``CORPUS_COURT`` is set. Raises ``Http404`` on any miss."""
     if settings.CORPUS_COURT is not None and court != settings.CORPUS_COURT:
         raise Http404(f"No Topic Flow for {court}/{topic}/{role}")
     flow = topic_flow_find(

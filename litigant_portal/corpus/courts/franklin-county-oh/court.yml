@@ -1,8 +1,7 @@
 # Franklin County (Columbus, OH) court-level content, scoped to the site
 # data models (court fields on Site, Contact, Resource). Ported from the wip
-# library; source copy: content/eviction-tenant.yml and
-# content/eviction-landlord.yml, contacts and resources merged across the
-# two roles with role-specific notes neutralized.
+# library's tenant and landlord eviction flows, contacts and resources merged
+# across the two roles with role-specific notes neutralized.
 
 name: 'Franklin County, Ohio'
 court_name: 'Franklin County Municipal Court'

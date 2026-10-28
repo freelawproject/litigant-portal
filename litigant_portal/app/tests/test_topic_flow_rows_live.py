@@ -97,7 +97,7 @@ def test_nd_calendar_and_contacts_download_from_the_real_rows(
     client, db, settings
 ):
     # A single-court sync, as on the ND instance: a multi-court sync pools
-    # every court's contacts into the one table the rows path lists.
+    # every court's contacts into the one table the page lists.
     settings.CORPUS_COURT = "north-dakota"
     corpus_sync(strict=True)
     client.get(ND_URL)

@@ -1,8 +1,7 @@
 # Civil traffic (Arizona, statewide), "know my options" flow. The court
 # that handles a case is the traffic_court fact, never assumed (#1040).
-# The content/ copy renders the public page today and retires once the page
-# renders from these rows (#1012). Sources and open SME questions are listed
-# in that file's header. LEGAL REVIEW REQUIRED.
+# Sources and open SME questions: corpus-sources/arizona/SOURCE.md.
+# LEGAL REVIEW REQUIRED.
 #
 # Gates are info copy for now: the intro gates (civil vs criminal, court date
 # passed) and the defensive driving screen become gated sections once the
@@ -14,7 +13,7 @@ name: Know my options
 enabled: true
 order: 0
 
-# The page in the order content/ shows it. No `packet`: this flow has no forms.
+# The page, top to bottom. No `packet`: this flow has no forms.
 layout:
   - overview
   - before_you_start
