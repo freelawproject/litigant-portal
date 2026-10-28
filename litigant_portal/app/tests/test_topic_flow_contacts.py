@@ -1,112 +1,29 @@
-"""Contact resolution for Topic Flow — pure, DB-free (runs in the fast suite).
+"""Contact flattening for Topic Flow — pure, DB-free (runs in the fast suite).
 
-``resolve_vcf_contacts`` is the shared resolver a vcf section's renderer AND its
-.vcf download view both call, so the page and the downloaded vCard build from
-one source. It duck-types on ``section.contact_ids`` and ``corpus.contacts``;
-the stand-ins below carry just those attributes (real Contact objects supply
-the fields the resolver reads).
+``contact_dicts`` is the one shape the page block and the ``.vcf`` download
+both consume, so the downloaded card can't drift from what's on the page.
 """
 
 from types import SimpleNamespace
 
-from litigant_portal.app.models import Contact as ContactRow
-from litigant_portal.app.topic_flow.contacts import (
-    contact_dicts,
-    resolve_vcf_contacts,
-)
-from litigant_portal.app.topic_flow.schema import Contact
+from litigant_portal.app.models import Contact
+from litigant_portal.app.topic_flow.contacts import contact_dicts
+
+FULL = {
+    "name": "Clerk of Court",
+    "phone": "555-1234",
+    "email": "clerk@court.gov",
+    "url": "https://court.gov",
+    "address": "100 Main St",
+    "hours": "9-4 M-F",
+    "note": "Window 3",
+}
 
 
-def _contact(id, name, **fields):
-    return Contact(id=id, name=name, **fields)
-
-
-def _section(*contact_ids):
-    return SimpleNamespace(contact_ids=list(contact_ids))
-
-
-def _corpus(*contacts):
-    return SimpleNamespace(contacts=list(contacts))
-
-
-def test_resolves_a_referenced_contacts_fields():
-    contact = _contact(
-        "clerk",
-        "Clerk of Court",
-        phone="555-1234",
-        email="clerk@court.gov",
-        url="https://court.gov",
-        address="100 Main St",
-        hours="9-4 M-F",
-        note="Window 3",
-    )
-    (resolved,) = resolve_vcf_contacts(_section("clerk"), _corpus(contact))
-    assert resolved == {
-        "id": "clerk",
-        "name": "Clerk of Court",
-        "phone": "555-1234",
-        "email": "clerk@court.gov",
-        "url": "https://court.gov",
-        "address": "100 Main St",
-        "hours": "9-4 M-F",
-        "note": "Window 3",
-    }
-
-
-def test_absent_optional_fields_resolve_to_none():
-    # Only id + name supplied; the rest must come through as None, not missing.
-    contact = _contact("aid", "Legal Aid")
-    (resolved,) = resolve_vcf_contacts(_section("aid"), _corpus(contact))
-    assert resolved["phone"] is None
-    assert resolved["email"] is None
-    assert resolved["note"] is None
-
-
-def test_resolves_in_contact_ids_order_not_corpus_order():
-    # Order follows the section's contact_ids, not corpus.contacts order.
-    clerk = _contact("clerk", "Clerk")
-    aid = _contact("aid", "Legal Aid")
-    resolved = resolve_vcf_contacts(
-        _section("aid", "clerk"), _corpus(clerk, aid)
-    )
-    assert [c["name"] for c in resolved] == ["Legal Aid", "Clerk"]
-
-
-def test_resolves_every_referenced_contact():
-    clerk = _contact("clerk", "Clerk")
-    aid = _contact("aid", "Legal Aid")
-    resolved = resolve_vcf_contacts(
-        _section("clerk", "aid"), _corpus(clerk, aid)
-    )
-    assert len(resolved) == 2
-
-
-def test_contact_dicts_flatten_rows_in_order():
-    # The rows path: a Contact row's ref (its key) is the dict id.
-    rows = [
-        ContactRow(
-            key="clerk",
-            name="Clerk of Court",
-            phone="555-1234",
-            email="clerk@court.gov",
-            url="https://court.gov",
-            address="100 Main St",
-            hours="9-4 M-F",
-            note="Window 3",
-        ),
-        ContactRow(key="aid", name="Legal Aid"),
-    ]
+def test_contact_dicts_flatten_rows_in_order_with_the_ref_as_id():
+    rows = [Contact(key="clerk", **FULL), Contact(key="aid", name="Legal Aid")]
     assert contact_dicts(rows, id_attr="ref") == [
-        {
-            "id": "clerk",
-            "name": "Clerk of Court",
-            "phone": "555-1234",
-            "email": "clerk@court.gov",
-            "url": "https://court.gov",
-            "address": "100 Main St",
-            "hours": "9-4 M-F",
-            "note": "Window 3",
-        },
+        {"id": "clerk", **FULL},
         {
             "id": "aid",
             "name": "Legal Aid",
@@ -118,3 +35,13 @@ def test_contact_dicts_flatten_rows_in_order():
             "note": "",
         },
     ]
+
+
+def test_contact_dicts_read_the_id_from_the_named_attribute():
+    contact = SimpleNamespace(
+        id="clerk", **{**dict.fromkeys(FULL), "name": "Clerk"}
+    )
+    (resolved,) = contact_dicts([contact])
+    assert resolved["id"] == "clerk"
+    assert resolved["name"] == "Clerk"
+    assert resolved["phone"] is None

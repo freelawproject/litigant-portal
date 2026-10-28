@@ -27,7 +27,7 @@ from litigant_portal.app.models.choices import (
 )
 from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
 from litigant_portal.app.topic_flow import rows
-from litigant_portal.app.topic_flow.renderer import RenderedSection
+from litigant_portal.app.topic_flow.rows import RenderedSection
 
 FACT_GATHER = "cotton/molecules/flow_section_fact_gather.html"
 
@@ -788,8 +788,8 @@ def test_private_question_renders_blank_and_marks_saved():
     assert _question(first_name)["saved"] is False
 
 
-def test_the_glossary_flag_decides_privacy_not_the_content_trees_set():
-    # ``first_name`` is in NEVER_PREFILL; the rows path reads the row.
+def test_the_glossary_flag_decides_privacy_not_the_variable_name():
+    # ``first_name`` is private in the real glossary; the page reads the row.
     first_name = _variable("first_name")
     assert _question(first_name, {"first_name": "Sandra"})["value"] == "Sandra"
 
