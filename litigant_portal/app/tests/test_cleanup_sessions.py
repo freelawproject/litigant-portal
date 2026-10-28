@@ -28,7 +28,7 @@ class CleanupSessionsTests(TestCase):
     def setUp(self):
         self.stale = UserIdentity.objects.create(session_key="stale")
         UserIdentity.objects.filter(pk=self.stale.pk).update(
-            created_at=timezone.now() - timedelta(days=60)
+            created_at=timezone.now() - timedelta(days=120)
         )
         self.thread = ChatThread.objects.create(identity=self.stale)
         self.upload = UserUpload.objects.create(
@@ -55,7 +55,7 @@ class CleanupSessionsTests(TestCase):
         self.assertIn("1 anonymous identities", output)
         self.assertIn("1 chat threads", output)
         self.assertIn("1 uploads", output)
-        self.assertIn("30-day retention window", output)
+        self.assertIn("90-day retention window", output)
         self.assertTrue(UserIdentity.objects.filter(pk=self.stale.pk).exists())
 
     def test_delete_removes_stale_identity_and_data(self):
@@ -79,7 +79,7 @@ class CleanupSessionsTests(TestCase):
         self.assertTrue(ChatThread.objects.filter(pk=self.thread.pk).exists())
 
     def test_old_chat_activity_does_not_keep_identity(self):
-        self._add_message(days_ago=45)
+        self._add_message(days_ago=100)
         _run("--delete")
         self.assertFalse(
             UserIdentity.objects.filter(pk=self.stale.pk).exists()
@@ -104,7 +104,7 @@ class CleanupSessionsTests(TestCase):
         self.assertTrue(ChatThread.objects.filter(pk=self.thread.pk).exists())
 
     def test_small_days_flag_still_deletes_quiet_identities(self):
-        self._add_message(days_ago=40)
+        self._add_message(days_ago=100)
         _run("--days=7", "--delete")
         self.assertFalse(
             UserIdentity.objects.filter(pk=self.stale.pk).exists()
