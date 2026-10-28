@@ -176,17 +176,27 @@ class VariableAnswerSetTests(TestCase):
         )
         self.assertTrue(answer.reviewed)
 
-    def test_unconfirmed_rewrite_of_same_value_resets_reviewed(self):
-        # Deliberately conservative: an AI re-writing the value a human
-        # already confirmed drops the confirmation, so the user re-confirms
-        # rather than a stale confirmation reaching the prefill payload.
-        variable_answer_set(
+    def test_unchanged_value_keeps_evidence_confirmation_and_timestamp(self):
+        evidence = {
+            "quote": "I live in Cass County.",
+            "upload_id": "document-id",
+        }
+        before = variable_answer_set(
             identity=self.identity,
             variable=self.variable,
             value="Cass",
             reviewed=True,
+            evidence=evidence,
         )
-        answer = variable_answer_set(
-            identity=self.identity, variable=self.variable, value="Cass"
-        )
-        self.assertFalse(answer.reviewed)
+        for reviewed in (False, True):
+            with self.subTest(reviewed=reviewed):
+                answer = variable_answer_set(
+                    identity=self.identity,
+                    variable=self.variable,
+                    value="Cass",
+                    reviewed=reviewed,
+                )
+                answer.refresh_from_db()
+                self.assertTrue(answer.reviewed)
+                self.assertEqual(answer.evidence, evidence)
+                self.assertEqual(answer.updated_at, before.updated_at)

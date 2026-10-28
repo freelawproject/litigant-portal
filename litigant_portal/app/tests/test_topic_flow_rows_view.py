@@ -1152,12 +1152,18 @@ def test_a_save_that_reveals_a_question_redirects_to_that_field(
 
 @pytest.mark.postgres
 def test_post_marks_saved_answers_reviewed(client, synced):
-    _store(client, "pet_kind", "dog", evidence={"quote": "I own a dog."})
+    evidence = {"quote": "I own a dog."}
+    _store(client, "pet_kind", "dog", evidence=evidence)
+    _store(client, "licensed", False, evidence={"quote": "No license yet."})
+    before = VariableAnswer.objects.get(variable__name="pet_kind")
     client.post(URL, PET_PAGE)
     assert all(reviewed for _value, reviewed in _rows().values())
-    assert (
-        VariableAnswer.objects.get(variable__name="pet_kind").evidence is None
-    )
+    unchanged = VariableAnswer.objects.get(variable__name="pet_kind")
+    assert unchanged.evidence == evidence
+    assert unchanged.updated_at == before.updated_at
+    changed = VariableAnswer.objects.get(variable__name="licensed")
+    assert changed.value is True
+    assert changed.evidence is None
     assert "I own a dog." not in _flat(client.get(URL))
 
 

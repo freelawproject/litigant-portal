@@ -91,7 +91,7 @@ def topic_flow(request, court, topic, role):
             lambda name, raw: rows.coerce_value(variables[name], raw),
             private,
         )
-        # An untouched field re-saves its stored value, not the form's
+        # An untouched field retains its stored value, not the form's
         # narrower string of it (a datetime's zone, a float's type).
         valid = rows.restore_unchanged(variables, submitted, answers, valid)
         # A gated answer whose gate stops matching is cleared with the save,
