@@ -100,6 +100,58 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
         quality = scored["uncapped"] if scored else None
         if row["status"] in {"error", "interrupted"}:
             overall = quality = 0
+        generations = [
+            call
+            for call in row["calls"]
+            if call.get("request", {}).get("stream")
+        ]
+        generation_settings = []
+        for call in generations:
+            request = call["request"]
+            settings = {
+                key: "provider_default"
+                if request.get(key) is None
+                else request[key]
+                for key in ("timeout", "num_retries")
+            }
+            settings.update(
+                {key: "unknown" for key in settings if key not in request}
+            )
+            if settings not in generation_settings:
+                generation_settings.append(settings)
+        generation_timeout = any(
+            call.get("error_category") == "timeout" for call in generations
+        )
+        if not generation_timeout and any(
+            "error_category" not in call for call in generations
+        ):
+            generation_timeout = None
+        export = row.get("detail", {}).get("thread_export")
+        if export is None:
+            export = next(
+                (
+                    event["data"]
+                    for event in reversed(row.get("events", []))
+                    if event.get("type") == "thread_export"
+                ),
+                None,
+            )
+        runtime_outcomes = Counter()
+        if export is not None:
+            for message in export["messages"]:
+                audit = message["data"]
+                if audit.get("kind") != "judge":
+                    continue
+                if audit.get("error"):
+                    runtime_outcomes[
+                        audit.get("error_category", "unknown_error")
+                    ] += 1
+                elif "verdict" in audit:
+                    runtime_outcomes[
+                        "approved"
+                        if audit["verdict"]["approved"]
+                        else "rejected"
+                    ] += 1
         records.append(
             {
                 "attempt": relative,
@@ -109,6 +161,20 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 "system": system,
                 "model": row["model"],
                 "status": row["status"],
+                "runtime_judge_model": row.get(
+                    "runtime_judge_model", "unknown"
+                )
+                if system == "current"
+                else None,
+                "generation_settings": generation_settings,
+                "generation_timeout": generation_timeout,
+                "attempt_timeout": row.get("error_category")
+                == "attempt_timeout"
+                if "error_category" in row or row["status"] == "completed"
+                else None,
+                "runtime_judge_outcomes": dict(runtime_outcomes)
+                if export is not None or system != "current"
+                else None,
                 "overall": overall,
                 "quality": quality,
                 "score": scored,
@@ -214,6 +280,15 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                             for failure in row["score"]["deal_breakers"]
                         }
                     )
+                runtime_outcomes = Counter()
+                generation_settings = []
+                for row in rows:
+                    runtime_outcomes.update(
+                        row["runtime_judge_outcomes"] or {}
+                    )
+                    for settings in row["generation_settings"]:
+                        if settings not in generation_settings:
+                            generation_settings.append(settings)
                 summaries.append(
                     {
                         "system": system,
@@ -224,6 +299,29 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                         "graded": len(graded),
                         "execution_failures": sum(
                             row["status"] in {"error", "interrupted"}
+                            for row in rows
+                        ),
+                        "generation_timeout_attempts": sum(
+                            row["generation_timeout"] is True for row in rows
+                        ),
+                        "generation_timeout_unknown_attempts": sum(
+                            row["generation_timeout"] is None for row in rows
+                        ),
+                        "attempt_timeouts": sum(
+                            row["attempt_timeout"] is True for row in rows
+                        ),
+                        "attempt_timeout_unknown_attempts": sum(
+                            row["attempt_timeout"] is None for row in rows
+                        ),
+                        "generation_settings": generation_settings,
+                        "runtime_judge_models": list(
+                            dict.fromkeys(
+                                row["runtime_judge_model"] for row in rows
+                            )
+                        ),
+                        "runtime_judge_outcomes": dict(runtime_outcomes),
+                        "runtime_judge_unknown_attempts": sum(
+                            row["runtime_judge_outcomes"] is None
                             for row in rows
                         ),
                         "ungraded": sum(
@@ -394,6 +492,10 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
             "Dimension means and deal-breaker rates use graded answers; see graded counts.",
             "Costs are estimates. Missing usage/pricing is unknown, not zero.",
             "Score variation describes attempts; it is not a confidence interval.",
+            "Judged and unjudged runs compare complete configurations, including generation timeouts and retries.",
+            "Generation timeouts count attempts; runtime judge outcomes count individual reviews, including corrections.",
+            "Provider defaults are recorded as provider_default; missing legacy diagnostics are unknown, not zero.",
+            "Runtime judge outcomes are separate from the external grading judge and use exported audit rows.",
         ],
     }
 
@@ -754,5 +856,19 @@ def report_runs(
         )
         for reason, count in report["grading"]["errors"].items():
             print(f"  {count}: {reason}", flush=True)
+        print(
+            f"Timeout diagnostics: {sum(row['generation_timeout_attempts'] for row in totals)} generation-timeout attempts; "
+            f"{sum(row['attempt_timeouts'] for row in totals)} attempt deadlines; "
+            f"{sum(row['generation_timeout_unknown_attempts'] for row in totals)} attempts with unknown generation-timeout diagnostics.",
+            flush=True,
+        )
+        runtime_outcomes = Counter()
+        for row in totals:
+            runtime_outcomes.update(row["runtime_judge_outcomes"])
+        print(
+            f"Runtime judge reviews: {dict(runtime_outcomes)}; "
+            f"{sum(row['runtime_judge_unknown_attempts'] for row in totals)} attempts without audit evidence.",
+            flush=True,
+        )
     print(f"Report: {output / 'summary.json'}", flush=True)
     return reports

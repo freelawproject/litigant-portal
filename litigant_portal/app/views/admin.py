@@ -59,6 +59,7 @@ def _site_payload(site: Site) -> dict:
         "official_resources_url": site.official_resources_url,
         "fast_model": site.fast_model or "",
         "assistant_model": site.assistant_model or "",
+        "judge_model": site.judge_model or "",
     }
 
 
@@ -99,7 +100,7 @@ def site_update_view(request: HttpRequest) -> JsonResponse:
                 return JsonResponse({"error": _("Invalid URL")}, status=400)
         urls[field] = url
     ai_models = {}
-    for field in ("fast_model", "assistant_model"):
+    for field in ("fast_model", "assistant_model", "judge_model"):
         model = (request.POST.get(field) or "").strip()
         if model and model not in BedrockModel.values:
             return JsonResponse({"error": _("Invalid model")}, status=400)

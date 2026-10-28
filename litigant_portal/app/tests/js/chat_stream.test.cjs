@@ -26,6 +26,11 @@ function makeApp(
     clearTimeout,
     window: {},
     document: {
+      body: {},
+      activeElement: null,
+      hasFocus() {
+        return true
+      },
       addEventListener(_name, callback) {
         callback()
       },
@@ -49,6 +54,7 @@ function makeApp(
   app.$nextTick = (callback) => callback()
   app.$refs = {}
   app.loadThreads = async () => {}
+  const updateThinking = app.updateThinking.bind(app)
   app.updateThinking = () => {}
   app.scrollToBottom = () => {}
   app.setThreadStatus = () => {}
@@ -57,7 +63,7 @@ function makeApp(
     app.attachments = []
     app.hasAttachments = false
   }
-  return { app, context }
+  return { app, context, updateThinking }
 }
 
 function newStream(app) {
@@ -82,6 +88,137 @@ function sse(type, fields = {}) {
     'data: ' + JSON.stringify({ type, ...fields }) + '\n\n'
   )
 }
+
+test('judging shows checking only on the attached stream and clears on progress or termination', () => {
+  for (const type of [
+    'heartbeat',
+    'content_delta',
+    'tool_call',
+    'done',
+    'error',
+  ]) {
+    const { app, updateThinking } = makeApp()
+    app.updateThinking = updateThinking
+    const stream = newStream(app)
+    app.handleEvent(stream, { type: 'judging' })
+    assert.equal(app.thinkingVisible, true)
+    assert.equal(app.checkingVisible, true)
+    assert.ok(stream.stallTimer)
+
+    app.messages = []
+    app.updateThinking()
+    assert.equal(app.checkingVisible, false)
+    app.messages = stream.messages
+    app.updateThinking()
+    assert.equal(app.checkingVisible, true)
+
+    app.handleEvent(stream, {
+      type,
+      content: 'Answer',
+      id: 'tool',
+      name: 'LoadTopicFlow',
+    })
+    assert.equal(app.checkingVisible, false)
+    app.handleEvent(stream, { type: 'done' })
+    assert.equal(app.thinkingVisible, false)
+  }
+})
+
+test('judging followed by silence reaches the fallback', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { app, updateThinking } = makeApp()
+  app.updateThinking = updateThinking
+  const stream = newStream(app)
+  app.handleEvent(stream, { type: 'judging' })
+  t.mock.timers.tick(59000)
+  assert.equal(stream.failureRendered, false)
+  t.mock.timers.tick(1000)
+  assert.equal(stream.failureRendered, true)
+  assert.equal(stream.controller.signal.aborted, true)
+  assert.equal(app.checkingVisible, false)
+  assert.match(app.messages.at(-1).html, /Browse the help topics/)
+})
+
+test('heartbeats keep buffered work alive without rendering or scrolling', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  for (const checking of [false, true]) {
+    const { app, updateThinking } = makeApp()
+    app.updateThinking = updateThinking
+    const stream = newStream(app)
+    app.handleEvent(stream, { type: checking ? 'judging' : 'heartbeat' })
+    app.scrollToBottom = () => assert.fail('heartbeat scrolled the view')
+    for (let index = 0; index < 8; index++) {
+      t.mock.timers.tick(10000)
+      app.handleEvent(stream, { type: 'heartbeat' })
+      assert.equal(stream.failureRendered, false)
+      assert.equal(app.checkingVisible, false)
+      assert.equal(app.messages.length, 0)
+    }
+    t.mock.timers.tick(59000)
+    assert.equal(stream.failureRendered, false)
+    app.scrollToBottom = () => {}
+    t.mock.timers.tick(1000)
+    assert.equal(stream.failureRendered, true)
+  }
+})
+
+test('a background rewrite clears checking before reattaching and reviewing again', () => {
+  const { app, updateThinking } = makeApp()
+  app.updateThinking = updateThinking
+  const stream = newStream(app)
+  app.handleEvent(stream, { type: 'judging' })
+  app.messages = []
+  app.updateThinking()
+  app.updateThinking = () =>
+    assert.fail('background heartbeat updated the view')
+  app.handleEvent(stream, { type: 'heartbeat' })
+  app.messages = stream.messages
+  app.updateThinking = updateThinking
+  app.updateThinking()
+  assert.equal(app.checkingVisible, false)
+  app.handleEvent(stream, { type: 'judging' })
+  assert.equal(app.checkingVisible, true)
+  app.handleEvent(stream, { type: 'done' })
+})
+
+test('review warnings survive streaming, reload and copying without changing answer text', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  for (const warning of [false, true]) {
+    const content = 'Answer [source:court/example]'
+    const item = { kind: 'assistant', content }
+    if (warning) item.review_warning = warning
+    const { app, context } = makeApp(async () => ({
+      ok: true,
+      json: async () => ({ id: 'thread-id', items: [item] }),
+    }))
+    app.reviewWarningText = 'Current translated warning'
+    let copied
+    context.navigator = {
+      clipboard: {
+        writeText(text) {
+          copied = text
+        },
+      },
+    }
+    const stream = newStream(app)
+    app.handleEvent(stream, { type: 'content_delta', ...item })
+    app.handleEvent(stream, { type: 'done' })
+    assert.equal(app.messages[0].content, content)
+    assert.equal(app.messages[0].reviewWarning, warning)
+    app.activeStream = null
+    app.streaming = false
+    await app.openThread('thread-id')
+    assert.equal(app.messages[0].content, content)
+    assert.equal(app.messages[0].reviewWarning, warning)
+    app.copyMessage({
+      currentTarget: { dataset: { messageId: app.messages[0].id } },
+    })
+    assert.equal(
+      copied,
+      warning ? app.reviewWarningText + '\n\nAnswer' : 'Answer'
+    )
+  }
+})
 
 test('network drop uses the fallback card renderer', async () => {
   const { app } = makeApp(async () => {
@@ -481,3 +618,67 @@ test('normal SSE completion keeps streamed output unchanged', async () => {
   assert.equal(released, true)
   assert.equal(app.streaming, false)
 })
+
+for (const scenario of [
+  'normal completion',
+  'judged completion',
+  'request failure',
+  'another control focused',
+  'thread switched',
+  'attachment dialog open',
+  'delete confirmation open',
+  'another stream started',
+  'page inactive',
+]) {
+  test(`composer focus after ${scenario}`, async () => {
+    const { app, context } = makeApp(async () => {
+      if (scenario === 'request failure') throw new Error('offline')
+      const chunks = [sse('content_delta', { content: 'Answer' }), sse('done')]
+      if (scenario === 'judged completion') chunks.unshift(sse('judging'))
+      return {
+        ok: true,
+        body: {
+          getReader: () => ({
+            read: async () => ({ value: chunks.shift(), done: false }),
+            cancel: async () => {},
+            releaseLock() {},
+          }),
+        },
+      }
+    })
+    const callbacks = []
+    let focused = false
+    app.$nextTick = (callback) => callbacks.push(callback)
+    app.$refs.input = {
+      disabled: true,
+      focus(options) {
+        assert.equal(this.disabled, false)
+        assert.equal(options.preventScroll, true)
+        focused = true
+      },
+    }
+    context.document.activeElement = context.document.body
+
+    await app.sendMessage('Help', null)
+
+    assert.equal(app.streaming, false)
+    assert.equal(focused, false)
+    // Alpine re-enables the input before nextTick callbacks run.
+    app.$refs.input.disabled = false
+    if (scenario === 'another control focused')
+      context.document.activeElement = {}
+    if (scenario === 'thread switched') app.messages = []
+    if (scenario === 'attachment dialog open') app.attachOpen = true
+    if (scenario === 'delete confirmation open') app.confirmingDelete = true
+    if (scenario === 'another stream started') app.streaming = true
+    if (scenario === 'page inactive') context.document.hasFocus = () => false
+    callbacks.forEach((callback) => callback())
+
+    assert.equal(
+      focused,
+      ['normal completion', 'judged completion', 'request failure'].includes(
+        scenario
+      )
+    )
+  })
+}

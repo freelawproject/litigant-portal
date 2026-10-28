@@ -63,6 +63,7 @@ class AssistantMessage(TypedDict, total=False):
     content: str
     tool_calls: list[ToolCall]
     unknown_citations: list[str]
+    review_warning: bool | str
 
 
 class ToolMessage(TypedDict, total=False):
@@ -80,10 +81,16 @@ class ToolMessage(TypedDict, total=False):
 
 
 class MetaMessage(TypedDict, total=False):
-    """An accounting-only record."""
+    """
+    An accounting or audit record, excluded from conversation replay.
+    """
 
     role: Literal["meta"]
     kind: str
+    content: str
+    verdict: dict[str, Any]
+    error: str
+    error_category: Literal["timeout", "provider_error", "invalid_output"]
 
 
 MessageSchema = Annotated[

@@ -236,6 +236,7 @@ function blankMessage() {
     id: 0,
     content: '',
     html: '',
+    reviewWarning: false,
     isUser: false,
     isAssistant: false,
     isTool: false,
@@ -262,7 +263,7 @@ function blankMessage() {
 // Build a message with precomputed style classes + rendered markdown (CSP-safe
 // — the template binds dot-paths only, no expressions).
 let messageSeq = 0
-function makeMessage(role, content, attachments) {
+function makeMessage(role, content, attachments, reviewWarning = false) {
   const isUser = role === 'user'
   const atts = attachments || []
   return {
@@ -270,6 +271,7 @@ function makeMessage(role, content, attachments) {
     id: ++messageSeq,
     role,
     content,
+    reviewWarning: !!reviewWarning,
     html: isUser ? '' : renderMarkdown(content),
     isUser,
     isAssistant: !isUser,
@@ -414,7 +416,8 @@ function buildItem(item) {
   return makeMessage(
     item.kind,
     item.content,
-    (item.attachments || []).map(messageAttachment)
+    (item.attachments || []).map(messageAttachment),
+    item.review_warning
   )
 }
 
@@ -522,6 +525,7 @@ document.addEventListener('alpine:init', () => {
     // Mount point of the agent's API (e.g. "/api/agents/assistant/") — the
     // component itself is agent-agnostic.
     base: '',
+    reviewWarningText: '',
     // History sidebar
     threads: [],
     showEmpty: false,
@@ -536,6 +540,7 @@ document.addEventListener('alpine:init', () => {
     menuOpen: false,
     confirmingDelete: false,
     thinkingVisible: false,
+    checkingVisible: false,
     // The in-flight stream context, if any. It owns the message array it
     // writes into, so switching threads mid-stream just detaches the view
     // while the stream keeps filling its own buffer in the background.
@@ -569,6 +574,7 @@ document.addEventListener('alpine:init', () => {
 
     init() {
       this.base = this.$root.dataset.agentBase
+      this.reviewWarningText = this.$root.dataset.reviewWarning
       setCitationChips(this.$root.dataset.citationChips === 'true')
       this.loadThreads()
       this.consumeQueryMessage()
@@ -825,6 +831,7 @@ document.addEventListener('alpine:init', () => {
         terminal: false,
         receivedFirstStreamEvent: false,
         inFlightToolIds: [],
+        judging: false,
         controller: new AbortController(),
       }
       this.activeStream = stream
@@ -917,6 +924,19 @@ document.addEventListener('alpine:init', () => {
         this.updateThinking()
         this.refreshSendState()
         this.loadThreads()
+        // Wait for Alpine to re-enable the input without taking focus elsewhere.
+        this.$nextTick(() => {
+          if (
+            this.attached(stream) &&
+            !this.streaming &&
+            !this.attachOpen &&
+            !this.confirmingDelete &&
+            document.hasFocus() &&
+            document.activeElement === document.body
+          ) {
+            this.$refs.input?.focus({ preventScroll: true })
+          }
+        })
       }
     },
 
@@ -932,6 +952,13 @@ document.addEventListener('alpine:init', () => {
       if (stream.inFlightToolIds.length === 0) {
         resetStallTimer(this, stream)
       }
+      if (event.type === 'heartbeat') {
+        if (stream.judging) {
+          stream.judging = false
+          if (this.attached(stream)) this.updateThinking()
+        }
+        return
+      }
       if (event.type === 'thread') {
         stream.threadId = event.thread_id
         this.setThreadStatus(stream.threadId, 'streaming')
@@ -943,9 +970,13 @@ document.addEventListener('alpine:init', () => {
         }
         // Surface the new thread's row (and its dot) right away.
         this.loadThreads()
+      } else if (event.type === 'judging') {
+        stream.judging = true
       } else if (event.type === 'content_delta') {
-        this.appendContent(stream, event.content || '')
+        stream.judging = false
+        this.appendContent(stream, event.content || '', event.review_warning)
       } else if (event.type === 'tool_call') {
+        stream.judging = false
         // A new tool starts a fresh text run after it.
         stream.openIndex = null
         stream.messages.push(makeToolFromCall(event))
@@ -969,6 +1000,7 @@ document.addEventListener('alpine:init', () => {
       } else if (event.type === 'error') {
         this.failStream(stream, event)
       } else if (event.type === 'done') {
+        stream.judging = false
         stream.terminal = true
         clearStreamTimers(stream)
       }
@@ -987,6 +1019,7 @@ document.addEventListener('alpine:init', () => {
 
     failStream(stream, event = {}) {
       if (stream.failureRendered || stream.terminal) return
+      stream.judging = false
       stream.failureRendered = true
       stream.terminal = true
       clearStreamTimers(stream)
@@ -1011,7 +1044,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Append streamed content to the open assistant part (creating it lazily).
-    appendContent(stream, text) {
+    appendContent(stream, text, reviewWarning = false) {
       if (text) stream.hadAssistantText = true
       if (stream.openIndex === null) {
         stream.messages.push(makeMessage('assistant', ''))
@@ -1022,6 +1055,7 @@ document.addEventListener('alpine:init', () => {
       stream.messages[stream.openIndex] = {
         ...msg,
         content,
+        reviewWarning: !!reviewWarning || msg.reviewWarning,
         html: renderMarkdown(content),
       }
     },
@@ -1058,12 +1092,19 @@ document.addEventListener('alpine:init', () => {
     // streaming text is already the most recent thing on screen. Only the
     // stream attached to the visible thread shows it.
     updateThinking() {
+      this.checkingVisible = false
       if (
         !this.streaming ||
         !this.activeStream ||
+        this.activeStream.terminal ||
         !this.attached(this.activeStream)
       ) {
         this.thinkingVisible = false
+        return
+      }
+      if (this.activeStream.judging) {
+        this.thinkingVisible = true
+        this.checkingVisible = true
         return
       }
       const last = this.messages[this.messages.length - 1]
@@ -1083,8 +1124,14 @@ document.addEventListener('alpine:init', () => {
       const id = Number(e.currentTarget.dataset.messageId)
       const message = this.messages.find((m) => m.id === id)
       if (!message) return
-      if (navigator.clipboard)
-        navigator.clipboard.writeText(copyableText(message.content))
+      if (navigator.clipboard) {
+        const content = copyableText(message.content)
+        navigator.clipboard.writeText(
+          message.reviewWarning
+            ? this.reviewWarningText + '\n\n' + content
+            : content
+        )
+      }
       message.copied = true
       message.notCopied = false
       setTimeout(() => {

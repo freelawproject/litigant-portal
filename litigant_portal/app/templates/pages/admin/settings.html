@@ -112,6 +112,20 @@
         {% endfor %}
       </select>
     </div>
+    <div class="rounded-xl border border-greyscale-200 bg-white p-4">
+      <label for="site-judge-model" class="block text-sm font-semibold text-greyscale-900">{% trans "Judge model" %}</label>
+      <p class="text-xs text-greyscale-500 mb-2">{% trans "Checks chat answers before they are shown. Adds a wait and model cost." %}</p>
+      <select id="site-judge-model"
+              data-field="siteJudgeModel"
+              x-bind:value="siteJudgeModel"
+              x-on:change="updateSiteField"
+              class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
+        <option value="">{% trans "Disabled" %}</option>
+        {% for value, label in model_choices %}
+          <option value="{{ value }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
     <div class="flex items-center gap-2">
       <button type="submit"
               class="rounded-lg bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700 cursor-pointer transition-colors">

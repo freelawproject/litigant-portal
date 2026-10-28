@@ -3,6 +3,7 @@ import json
 import logging
 from collections.abc import Callable, Iterator
 from dataclasses import asdict
+from time import monotonic
 from typing import Any
 
 import litellm
@@ -15,6 +16,7 @@ from django.utils.translation import gettext as _
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
 from litigant_portal.agents.citations import citation_ids, citation_ids_unknown
+from litigant_portal.agents.judge import AgentJudge, JudgeVerdict
 from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
 from litigant_portal.app.models import (
     ChatMessage,
@@ -26,7 +28,7 @@ from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_get,
 )
-from litigant_portal.app.selectors.site import site_get_model
+from litigant_portal.app.selectors.site import site_get, site_get_model
 from litigant_portal.app.selectors.topic_flow import topic_flow_url_kwargs
 from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
@@ -36,6 +38,8 @@ from litigant_portal.app.services.upload import (
 logger = logging.getLogger(__name__)
 
 MAX_STEPS = 30
+MAX_CORRECTIONS = 2
+HEARTBEAT_INTERVAL_SECONDS = 10
 
 DESCRIPTION_PROMPT = (
     "Write a very short title (at most 6 words) for the following "
@@ -368,7 +372,10 @@ def chat_thread_render_items(
         elif role == "assistant":
             content = msg.get("content", "")
             if content:
-                items.append({"kind": "assistant", "content": content})
+                item = {"kind": "assistant", "content": content}
+                if msg.get("review_warning"):
+                    item["review_warning"] = True
+                items.append(item)
             for tool_call in msg.get("tool_calls") or []:
                 items.append(_tool_item(tool_call, results, tools))
     return items
@@ -420,6 +427,69 @@ def _stream_error_event(thread: ChatThread) -> dict[str, str]:
     }
 
 
+def _judge_candidate(
+    *, thread: ChatThread, model: str, messages: list[dict], candidate: str
+) -> JudgeVerdict | None:
+    """
+    Audit one review, including usage when a returned verdict cannot parse.
+    """
+    verdict = None
+    cost, num_tokens = 0.0, 0
+    audit: dict[str, Any] = {"role": "meta", "kind": "judge"}
+    error_category = "provider_error"
+    try:
+        response = litellm.completion(
+            model=model,
+            messages=AgentJudge.request(
+                {"messages": messages, "state": thread.state}, candidate
+            ),
+            stream=False,
+            timeout=45,
+            num_retries=0,
+        )
+        error_category = "invalid_output"
+        if response.usage:
+            num_tokens = response.usage.completion_tokens or 0
+        try:
+            cost = litellm.completion_cost(
+                completion_response=response, model=model
+            )
+        except Exception as error:
+            logger.warning(
+                "Judge cost extraction failed (%s, model=%s)",
+                type(error).__name__,
+                model,
+            )
+        if response.choices:
+            audit["content"] = response.choices[0].message.content or ""
+        verdict = AgentJudge.review(response)
+        audit["verdict"] = verdict.model_dump(mode="json")
+    except Exception as error:
+        audit["error"] = "judge_failed"
+        audit["error_category"] = (
+            "timeout"
+            if isinstance(error, (litellm.Timeout, TimeoutError))
+            else error_category
+        )
+        logger.warning(
+            "chat_engine judge failed (%s); "
+            "releasing draft (thread=%s, model=%s)",
+            type(error).__name__,
+            thread.id,
+            model,
+        )
+    # A database failure must reach the stream's error handler, not fail open.
+    chat_message_create(
+        thread_id=thread.id,
+        data=audit,
+        model=model,
+        num_tokens=num_tokens,
+        cost=cost,
+        meta=True,
+    )
+    return verdict
+
+
 def chat_stream(
     *,
     identity: UserIdentity,
@@ -466,12 +536,14 @@ def chat_stream(
         attachment_cache: dict = {}
 
         try:
+            judge_model = site_get().judge_model
+            corrections = 0
             system_prompt = agent.generate_system_prompt(thread_id=thread.id)
             identity_prompt = agent.generate_identity_prompt(
                 thread_id=thread.id
             )
 
-            for _ in range(MAX_STEPS):
+            for step in range(MAX_STEPS):
                 tool_schemas = agent.tool_schemas or []
                 prompt_artifact = prompt_artifact_get_or_create(
                     system_prompt=system_prompt,
@@ -496,7 +568,17 @@ def chat_stream(
                 cost = 0.0
                 completion_tokens = None
 
+                if judge_model:
+                    call_args.update(timeout=45, num_retries=0)
+                    last_heartbeat = monotonic()
+                    yield _sse({"type": "heartbeat"})
+
                 for chunk in litellm.completion(**call_args):
+                    if judge_model:
+                        now = monotonic()
+                        if now - last_heartbeat >= HEARTBEAT_INTERVAL_SECONDS:
+                            last_heartbeat = now
+                            yield _sse({"type": "heartbeat"})
                     usage = getattr(chunk, "usage", None)
                     if usage:
                         try:
@@ -515,12 +597,13 @@ def chat_stream(
 
                     if delta.content:
                         content_parts.append(delta.content)
-                        yield _sse(
-                            {
-                                "type": "content_delta",
-                                "content": delta.content,
-                            }
-                        )
+                        if not judge_model:
+                            yield _sse(
+                                {
+                                    "type": "content_delta",
+                                    "content": delta.content,
+                                }
+                            )
 
                     for tc in delta.tool_calls or []:
                         while tc.index >= len(tool_calls):
@@ -555,8 +638,6 @@ def chat_stream(
                 }
                 if tool_calls:
                     assistant_msg["tool_calls"] = tool_calls
-                # Runs after the chips are already on screen; the UI
-                # treatment waits until we know how often this happens.
                 unknown = citation_ids_unknown(
                     assistant_msg["content"],
                     _supplied_citation_ids(system_prompt, history),
@@ -568,16 +649,69 @@ def chat_stream(
                         unknown,
                         thread.id,
                     )
+                verdict = None
+                if judge_model and not tool_calls:
+                    yield _sse({"type": "judging"})
+                    verdict = _judge_candidate(
+                        thread=thread,
+                        model=judge_model,
+                        messages=call_args["messages"],
+                        candidate=assistant_msg["content"],
+                    )
+                rejected = verdict is not None and not verdict.approved
                 history.append(assistant_msg)
+
+                if rejected:
+                    chat_message_create(
+                        thread_id=thread.id,
+                        data=assistant_msg,
+                        model=model,
+                        num_tokens=completion_tokens,
+                        cost=cost,
+                        prompt_artifact=prompt_artifact,
+                        identity_prompt=identity_prompt,
+                        meta=True,
+                    )
+                    if corrections < MAX_CORRECTIONS and step < MAX_STEPS - 1:
+                        corrections += 1
+                        history.append(AgentJudge.correction(verdict))
+                        continue
+                    logger.warning(
+                        "chat_engine judge corrections exhausted; "
+                        "releasing last draft (thread=%s)",
+                        thread.id,
+                    )
+
+                if (
+                    judge_model
+                    and not tool_calls
+                    and (rejected or verdict is None)
+                ):
+                    assistant_msg = {
+                        **assistant_msg,
+                        "review_warning": True,
+                    }
+                # Rejected drafts already own their generation usage in audit rows.
                 chat_message_create(
                     thread_id=thread.id,
                     data=assistant_msg,
                     model=model,
-                    num_tokens=completion_tokens,
-                    cost=cost,
+                    num_tokens=0 if rejected else completion_tokens,
+                    cost=0.0 if rejected else cost,
                     prompt_artifact=prompt_artifact,
                     identity_prompt=identity_prompt,
                 )
+
+                if judge_model and assistant_msg["content"]:
+                    event = {
+                        "type": "content_delta",
+                        "content": assistant_msg["content"],
+                    }
+                    if assistant_msg.get("review_warning"):
+                        event["review_warning"] = assistant_msg[
+                            "review_warning"
+                        ]
+                    yield _sse(event)
 
                 if not tool_calls:
                     break
