@@ -437,10 +437,14 @@ class SectionSchema(SourceSchema):
 
 class InterviewPageSchema(BaseSchema):
     """Populates a ``TopicFlowInterviewPage`` row and its
-    ``TopicFlowInterviewVariable`` rows."""
+    ``TopicFlowInterviewVariable`` rows.
+
+    ``on_page`` marks a page the guided page asks. The chat and the
+    docassemble handoff use every page, marked or not."""
 
     title: str = Field(min_length=1)
     description: str = ""
+    on_page: bool = False
     variables: list[VariableNameField] = Field(min_length=1)
 
 

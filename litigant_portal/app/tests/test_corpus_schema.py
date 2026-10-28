@@ -539,6 +539,20 @@ def test_variable_placed_on_two_pages_is_rejected():
         )
 
 
+def test_interview_page_stays_off_the_page_by_default():
+    flow = _flow_doc(interview=[{"title": "One", "variables": ["full_name"]}])
+    assert flow.interview[0].on_page is False
+
+
+def test_interview_page_keeps_its_on_page_mark():
+    flow = _flow_doc(
+        interview=[
+            {"title": "One", "variables": ["full_name"], "on_page": True}
+        ]
+    )
+    assert flow.interview[0].on_page is True
+
+
 def _section(id, heading="H"):
     return {"id": id, "heading": heading, "content": "Read."}
 

@@ -49,6 +49,7 @@ def _make_corpus(
     alpha_handoff=None,
     alpha_contacts=None,
     alpha_branding=None,
+    alpha_on_page=False,
 ):
     """A small valid corpus: two courts, two forms, one gated variable."""
     variables = {
@@ -130,6 +131,7 @@ def _make_corpus(
                 {
                     "title": "About your pet",
                     "variables": ["full_name", "pet_kind", "licensed"],
+                    "on_page": alpha_on_page,
                 }
             ],
             "packet": [{"form": "license"}],
@@ -463,6 +465,26 @@ class HandoffSyncTests(CorpusSyncTests):
         flow = self._alpha()
         self.assertEqual(flow.interview_reference, "")
         self.assertEqual(flow.interview_prefill, {})
+
+
+@pytest.mark.postgres
+class InterviewPageSyncTests(CorpusSyncTests):
+    def _alpha_page(self):
+        flow = TopicFlow.objects.get(topic__slug="pets", slug="standard")
+        return flow.interview_pages.get()
+
+    def test_a_marked_page_is_stored_as_on_page(self):
+        self._sync(_make_corpus(alpha_on_page=True), court=None)
+        self.assertTrue(self._alpha_page().on_page)
+
+    def test_an_unmarked_page_is_stored_as_off_the_page(self):
+        self._sync(_make_corpus(), court=None)
+        self.assertFalse(self._alpha_page().on_page)
+
+    def test_dropping_the_mark_clears_it(self):
+        self._sync(_make_corpus(alpha_on_page=True), court=None)
+        self._sync(_make_corpus(), court=None)
+        self.assertFalse(self._alpha_page().on_page)
 
 
 @pytest.mark.postgres
