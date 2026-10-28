@@ -24,6 +24,15 @@ class RecordFact(Tool):
             '{"county": "Burleigh", "date_of_birth": "1990-01-31"}'
         )
     )
+    evidence: dict[str, dict[str, str]] = Field(
+        default_factory=dict,
+        description=(
+            "Optional supporting evidence keyed by variable name, e.g. "
+            '{"county": {"quote": "I live in Burleigh County."}}. '
+            "Quote the user's actual statement or document excerpt. "
+            "For document excerpts, also include the document's upload_id."
+        ),
+    )
 
     tool_call_template = "tools/record_fact_call.html"
     tool_result_template = "tools/record_fact_result.html"
@@ -93,6 +102,7 @@ class RecordFact(Tool):
                     variable=variable,
                     value=value,
                     reviewed=False,
+                    evidence=self.evidence.get(name),
                 )
             except ValidationError as exc:
                 errors.append(

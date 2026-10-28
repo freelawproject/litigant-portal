@@ -92,7 +92,12 @@ def variable_value_validate(*, data_type: str, choices: list, value):
 
 
 def variable_answer_set(
-    *, identity, variable: Variable, value, reviewed: bool = False
+    *,
+    identity,
+    variable: Variable,
+    value,
+    reviewed: bool = False,
+    evidence: dict[str, str] | None = None,
 ) -> VariableAnswer:
     """Upsert an identity's answer to a variable.
 
@@ -109,10 +114,12 @@ def variable_answer_set(
     value = variable_value_validate(
         data_type=variable.data_type, choices=variable.choices, value=value
     )
+    if value is None or not evidence or not evidence.get("quote"):
+        evidence = None
     answer, _ = VariableAnswer.objects.update_or_create(
         identity=identity,
         variable=variable,
-        defaults={"value": value, "reviewed": reviewed},
+        defaults={"value": value, "reviewed": reviewed, "evidence": evidence},
     )
     return answer
 

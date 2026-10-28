@@ -53,14 +53,25 @@ def date_of_birth():
     )
 
 
-def test_stated_fact_lands_as_unconfirmed_answer(thread, county):
-    output = RecordFact(facts={"county": "burleigh"})(thread_id=thread.id)
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        {},
+        {"county": {"quote": "I live in Burleigh County."}},
+        {"county": {"quote": "County: Burleigh", "upload_id": "document-id"}},
+    ],
+)
+def test_stated_fact_lands_as_unconfirmed_answer(thread, county, evidence):
+    output = RecordFact(facts={"county": "burleigh"}, evidence=evidence)(
+        thread_id=thread.id
+    )
 
     answer = VariableAnswer.objects.get(
         identity=thread.identity, variable=county
     )
     assert answer.value == "burleigh"
     assert answer.reviewed is False
+    assert answer.evidence == evidence.get("county")
     assert "county" in output.result
 
 
@@ -87,6 +98,7 @@ def test_confirmed_answer_resaved_drops_back_to_unconfirmed(thread, county):
         variable=county,
         value="cass",
         reviewed=True,
+        evidence={"quote": "I live in Cass County."},
     )
 
     RecordFact(facts={"county": "burleigh"})(thread_id=thread.id)
@@ -96,6 +108,7 @@ def test_confirmed_answer_resaved_drops_back_to_unconfirmed(thread, county):
     )
     assert answer.value == "burleigh"
     assert answer.reviewed is False
+    assert answer.evidence is None
 
 
 def test_restated_confirmed_answer_keeps_its_confirmation(thread, county):
@@ -135,15 +148,20 @@ def test_clearing_a_confirmed_answer_drops_its_confirmation(thread, county):
         variable=county,
         value="cass",
         reviewed=True,
+        evidence={"quote": "I live in Cass County."},
     )
 
-    output = RecordFact(facts={"county": None})(thread_id=thread.id)
+    output = RecordFact(
+        facts={"county": None},
+        evidence={"county": {"quote": "Clear my county."}},
+    )(thread_id=thread.id)
 
     answer = VariableAnswer.objects.get(
         identity=thread.identity, variable=county
     )
     assert answer.value is None
     assert answer.reviewed is False
+    assert answer.evidence is None
     assert output.render_data["saved"][0]["cleared"] is True
 
 

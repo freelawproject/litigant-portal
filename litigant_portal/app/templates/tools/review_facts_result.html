@@ -1,4 +1,4 @@
-{# ReviewFacts result card. Context: `data` (facts: [{name, label, value, reviewed}], #}
+{# ReviewFacts result card. Context: `data` (facts: [{name, label, value, reviewed, evidence}], #}
 {# missing: [{name, label}], confirm_names, as_of, all_reviewed, court/topic/role, interview_available). #}
 {# Errors carry no render_data, so an empty `data` renders the error state. #}
 {# No request context, so no {% csrf_token %}: factReviewCard supplies the token. #}
@@ -18,6 +18,12 @@
             <div class="min-w-0">
               <p class="text-[10px] font-semibold uppercase tracking-wide text-greyscale-400">{{ fact.label }}</p>
               <p class="text-xs text-greyscale-700 leading-relaxed">{{ fact.value }}</p>
+              {% if not fact.reviewed and fact.evidence.quote %}
+                <p class="text-xs text-greyscale-500 leading-relaxed" data-role="evidence">
+                  {% if fact.evidence.upload_id %}{% trans "From your document:" %}{% else %}{% trans "Because you said:" %}{% endif %}
+                  {{ fact.evidence.quote }}
+                </p>
+              {% endif %}
             </div>
             {# Both badges render; factReviewCard flips them on confirm. The #}
             {# wrappers carry `hidden`: a bare conditional attribute on a #}
