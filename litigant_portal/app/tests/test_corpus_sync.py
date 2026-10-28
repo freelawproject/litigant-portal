@@ -423,12 +423,17 @@ class LayoutSyncTests(CorpusSyncTests):
 
     def test_an_authored_layout_is_stored_as_written(self):
         layout = ["packet", "start", "interview"]
-        self._sync(_make_corpus(alpha_layout=layout), court=None)
+        self._sync(
+            _make_corpus(alpha_layout=layout, alpha_on_page=True), court=None
+        )
         self.assertEqual(self._alpha_layout(), layout)
 
     def test_dropping_the_layout_restores_the_default_order(self):
         self._sync(
-            _make_corpus(alpha_layout=["packet", "start", "interview"]),
+            _make_corpus(
+                alpha_layout=["packet", "start", "interview"],
+                alpha_on_page=True,
+            ),
             court=None,
         )
         self._sync(_make_corpus(), court=None)

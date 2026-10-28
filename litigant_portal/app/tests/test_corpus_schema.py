@@ -577,7 +577,9 @@ def test_layout_defaults_to_sections_then_blocks():
 def test_authored_layout_is_kept_as_written():
     layout = ["start", "packet", "fees", "interview"]
     flow = _flow_doc(
-        sections=[_section("start"), _section("fees")], layout=layout
+        sections=[_section("start"), _section("fees")],
+        layout=layout,
+        interview=[{"title": "You", "variables": ["age"], "on_page": True}],
     )
     assert flow.resolved_layout == layout
 
@@ -611,7 +613,11 @@ def test_layout_rejects_an_unknown_name():
 
 
 _FILLED_BLOCKS = {
-    "interview": {"interview": [{"title": "About you", "variables": ["age"]}]},
+    "interview": {
+        "interview": [
+            {"title": "About you", "variables": ["age"], "on_page": True}
+        ]
+    },
     "packet": {"packet": [{"form": "license"}]},
     "calendar": {
         "deadlines": [
@@ -640,6 +646,39 @@ def test_layout_places_a_block_the_flow_fills(block):
 
 def test_layout_may_omit_an_empty_block():
     assert _flow_doc(layout=["start"]).resolved_layout == ["start"]
+
+
+# Only pages marked on_page count as interview content for the layout.
+
+_UNMARKED_PAGE = [{"title": "About you", "variables": ["age"]}]
+
+
+def test_layout_placing_interview_needs_a_marked_page():
+    with pytest.raises(ValidationError, match="no page is marked on_page"):
+        _flow_doc(layout=["start", "interview"], interview=_UNMARKED_PAGE)
+
+
+def test_layout_may_omit_interview_when_no_page_is_marked():
+    flow = _flow_doc(layout=["start"], interview=_UNMARKED_PAGE)
+    assert flow.resolved_layout == ["start"]
+
+
+@pytest.mark.parametrize(
+    ("slug", "titles"),
+    [
+        ("standard", ["The filing fee", "Your publication date"]),
+        ("waiver", ["The filing fee"]),
+    ],
+    ids=["standard", "waiver"],
+)
+def test_shipped_nd_flows_mark_the_pages_the_page_asks(slug, titles):
+    flow = corpus_load().flows[(*ND_TOPIC, slug)]
+    assert [page.title for page in flow.interview if page.on_page] == titles
+
+
+def test_every_shipped_flow_marks_at_least_one_page():
+    for key, flow in corpus_load().flows.items():
+        assert any(page.on_page for page in flow.interview), key
 
 
 def test_section_id_may_not_be_a_block_name():

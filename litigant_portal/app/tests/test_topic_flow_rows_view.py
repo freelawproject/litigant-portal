@@ -160,11 +160,13 @@ def _corpus():
     interview = [
         {
             "title": "About you",
+            "on_page": True,
             "variables": ["first_name", "full_name"],
         },
         {
             "title": "About your pet",
             "description": "A few facts the license needs.",
+            "on_page": True,
             "variables": [
                 "pet_kind",
                 "licensed",

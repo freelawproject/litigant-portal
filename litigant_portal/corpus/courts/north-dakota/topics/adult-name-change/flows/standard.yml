@@ -155,10 +155,8 @@ sections:
 
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
-# One page per docassemble interview page (title = the page's question,
-# description = its subquestion, or the ND context carried as help text).
-# Pages place glossary variables by name; the gated conviction
-# variables sit with their gate and only appear when it is satisfied.
+# The chat and the docassemble handoff use every page. The guided page asks
+# only the pages marked `on_page`: the facts the page itself reacts to (#1046).
 interview:
   - title: 'Your current legal name'
     variables:
@@ -186,15 +184,19 @@ interview:
       - name_change_conviction_class
       - name_change_conviction_court
       - name_change_conviction_year
-  - title: 'Publication of your notice'
-    description: "The standard path publishes a notice in the county's official newspaper."
-    variables:
-      - name_change_publication_date
-      - name_change_publication_newspaper
-      - name_change_publication_county
   - title: 'The filing fee'
+    on_page: true
     variables:
       - name_change_fee_waiver_needed
+  - title: 'Your publication date'
+    on_page: true
+    variables:
+      - name_change_publication_date
+  - title: 'Where your notice ran'
+    description: "The standard path publishes a notice in the county's official newspaper."
+    variables:
+      - name_change_publication_newspaper
+      - name_change_publication_county
   - title: 'A few more details for the rest of your packet'
     description: 'These appear on the Order, Declaration, and Confidential Information form, not just the Petition.'
     variables:

@@ -557,8 +557,9 @@ class FlowSchema(BaseSchema):
         - every name is a section id or a block name
         - every section id appears exactly once
         - every block name appears at most once
-        - a block the flow has content for (interview pages, packet
+        - a block the flow has content for (pages marked on_page, packet
           entries, deadlines) appears, or that content never renders
+        - a placed interview block has at least one page marked on_page
         """
         if not self.layout:
             return self
@@ -575,8 +576,9 @@ class FlowSchema(BaseSchema):
         missing = sorted(section_ids - set(self.layout))
         if missing:
             raise ValueError(f"layout is missing sections: {missing}")
+        marked_pages = [page for page in self.interview if page.on_page]
         filled = {
-            "interview": self.interview,
+            "interview": marked_pages,
             "packet": self.packet,
             "calendar": self.deadlines,
         }
@@ -588,6 +590,10 @@ class FlowSchema(BaseSchema):
         if unplaced:
             raise ValueError(
                 f"layout is missing blocks with content: {unplaced}"
+            )
+        if "interview" in self.layout and not marked_pages:
+            raise ValueError(
+                "layout places interview but no page is marked on_page"
             )
         return self
 
