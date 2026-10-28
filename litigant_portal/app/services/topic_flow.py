@@ -97,7 +97,7 @@ def variable_answer_set(
     variable: Variable,
     value,
     reviewed: bool = False,
-    evidence: dict[str, str] | None = None,
+    evidence: dict[str, str | None] | None = None,
 ) -> VariableAnswer:
     """Upsert an identity's answer to a variable.
 

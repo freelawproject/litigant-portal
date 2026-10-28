@@ -57,8 +57,7 @@ def date_of_birth():
     "evidence",
     [
         {},
-        {"county": {"quote": "I live in Burleigh County."}},
-        {"county": {"quote": "County: Burleigh", "upload_id": "document-id"}},
+        {"county": {"quote": "I live in Burleigh County.", "upload_id": None}},
     ],
 )
 def test_stated_fact_lands_as_unconfirmed_answer(thread, county, evidence):

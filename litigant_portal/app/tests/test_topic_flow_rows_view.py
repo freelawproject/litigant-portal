@@ -465,27 +465,34 @@ def test_glossary_default_preselects_until_an_answer_is_stored(client, synced):
 
 
 @pytest.mark.postgres
-@pytest.mark.parametrize("reviewed", [False, True])
-def test_stored_answer_prefills_the_field(client, synced, reviewed):
+def test_stored_answers_prefill_and_only_unreviewed_evidence_is_shown(
+    client, synced
+):
     _store(
         client,
         "pet_kind",
         "dog",
-        reviewed=reviewed,
         evidence={"quote": "I own a <dog>."},
     )
     _store(
         client,
         "licensed",
         False,
-        reviewed=reviewed,
         evidence={"quote": "License: none", "upload_id": "document-id"},
+    )
+    _store(
+        client,
+        "full_name",
+        "Jane Doe",
+        reviewed=True,
+        evidence={"quote": "My full name is Jane Doe."},
     )
     flat = _flat(client.get(URL))
     assert re.search(r'<option value="dog"[^>]*selected', flat)
     assert re.search(r'<option value="false"[^>]*selected', flat)
-    assert ("Because you said: I own a &lt;dog&gt;." in flat) is not reviewed
-    assert ("From your document: License: none" in flat) is not reviewed
+    assert "Because you said: I own a &lt;dog&gt;." in flat
+    assert "From your document: License: none" in flat
+    assert "My full name is Jane Doe." not in flat
     assert "I own a <dog>." not in flat
 
 

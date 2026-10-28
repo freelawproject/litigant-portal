@@ -24,12 +24,12 @@ class RecordFact(Tool):
             '{"county": "Burleigh", "date_of_birth": "1990-01-31"}'
         )
     )
-    evidence: dict[str, dict[str, str]] = Field(
+    evidence: dict[str, dict[str, str | None]] = Field(
         default_factory=dict,
         description=(
             "Optional supporting evidence keyed by variable name, e.g. "
             '{"county": {"quote": "I live in Burleigh County."}}. '
-            "Quote the user's actual statement or document excerpt. "
+            "Quote a short excerpt of the user's statement or document. "
             "For document excerpts, also include the document's upload_id."
         ),
     )
