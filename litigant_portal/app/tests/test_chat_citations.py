@@ -14,6 +14,7 @@ from litigant_portal.agents.base import Agent, Tool, ToolOutput
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
 from litigant_portal.app.services import chat_engine as engine
 from litigant_portal.app.services.chat_engine import chat_stream
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 
 MODEL = "gpt-5-mini"
 FLOW_RESULT = (
@@ -83,7 +84,7 @@ class UnknownCitationTests(TestCase):
                 message="Help me.",
                 agent_class=CitingAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             list(response.streaming_content)

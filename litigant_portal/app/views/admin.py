@@ -13,7 +13,6 @@ from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.app.models import Site, Topic
 from litigant_portal.app.models.choices import (
-    BedrockModel,
     JurisdictionLevel,
     State,
 )
@@ -46,6 +45,7 @@ from litigant_portal.app.views.utils import (
     manage_developers_required,
     manage_site_required,
 )
+from lp_agent.adapters.bedrock_models import MODEL_TIERS
 
 USERS_PER_PAGE = 20
 
@@ -100,9 +100,14 @@ def site_update_view(request: HttpRequest) -> JsonResponse:
                 return JsonResponse({"error": _("Invalid URL")}, status=400)
         urls[field] = url
     ai_models = {}
+    site = site_get()
     for field in ("fast_model", "assistant_model", "judge_model"):
         model = (request.POST.get(field) or "").strip()
-        if model and model not in BedrockModel.values:
+        if (
+            model
+            and model not in MODEL_TIERS
+            and model != getattr(site, field)
+        ):
             return JsonResponse({"error": _("Invalid model")}, status=400)
         ai_models[field] = model
     return JsonResponse(

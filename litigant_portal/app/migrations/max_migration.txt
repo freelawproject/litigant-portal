@@ -1,1 +1,1 @@
-0035_haiku_model_discovery
+0036_curated_bedrock_models

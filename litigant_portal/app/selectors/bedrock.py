@@ -1,20 +1,24 @@
 import hashlib
+import json
 import logging
 from contextlib import closing
+from dataclasses import asdict
+from uuid import uuid4
 
 from botocore.exceptions import BotoCoreError, ClientError
 from django.conf import settings
 from django.core.cache import cache
 from pydantic import ValidationError
 
-from litigant_portal.app.models.choices import BedrockModel
 from lp_agent.adapters.bedrock_discovery import (
     bedrock_client,
     discover_catalog,
     resolve_catalog,
 )
 from lp_agent.adapters.bedrock_models import (
+    ENABLED_MODEL_CLASSES,
     MODEL_CLASSES,
+    MODEL_TIERS,
     BedrockModelUnavailable,
     BedrockPolicy,
     ResolvedBedrockModel,
@@ -26,11 +30,37 @@ logger = logging.getLogger(__name__)
 def bedrock_policy() -> BedrockPolicy:
     return BedrockPolicy(
         settings.AWS_REGION,
-        getattr(settings, "BEDROCK_ALLOWED_GEOGRAPHY", "US"),
-        frozenset(
-            getattr(settings, "BEDROCK_ENABLED_MODEL_CLASSES", MODEL_CLASSES)
-        ),
+        settings.BEDROCK_ALLOWED_GEOGRAPHY,
     )
+
+
+def _cache_scope(policy: BedrockPolicy) -> str:
+    fingerprint = hashlib.sha256(
+        json.dumps(
+            (
+                policy.region,
+                policy.geography,
+                sorted(ENABLED_MODEL_CLASSES),
+                MODEL_TIERS,
+                {
+                    name: asdict(definition)
+                    for name, definition in MODEL_CLASSES.items()
+                },
+                settings.BEDROCK_API_KEY,
+            ),
+            sort_keys=True,
+            default=sorted,
+        ).encode()
+    ).hexdigest()
+    return f"bedrock:v3:{fingerprint}"
+
+
+def bedrock_model_failed(error: Exception) -> None:
+    """
+    Refresh account metadata after access or model-route failures, without retrying inference.
+    """
+    if getattr(error, "status_code", None) in {400, 401, 403, 404}:
+        cache.delete(_cache_scope(bedrock_policy()))
 
 
 def bedrock_model_target(
@@ -40,17 +70,9 @@ def bedrock_model_target(
 ) -> ResolvedBedrockModel:
     policy = bedrock_policy()
     policy.preference(model)
-    fingerprint = hashlib.sha256(
-        repr(
-            (
-                policy.region,
-                policy.geography,
-                sorted(policy.enabled_classes),
-                settings.BEDROCK_API_KEY,
-            )
-        ).encode()
-    ).hexdigest()
-    catalog_key = f"bedrock:catalog:v2:{fingerprint}"
+    scope = _cache_scope(policy)
+    generation = cache.get_or_set(scope, lambda: uuid4().hex, timeout=3600)
+    catalog_key = f"{scope}:{generation}"
     resolution_key = f"{catalog_key}:{model}:{','.join(sorted(required))}"
     if resolved := cache.get(resolution_key):
         return resolved
@@ -76,20 +98,3 @@ def bedrock_model_target(
         cache.set(resolution_key, resolved, timeout=3600)
     logger.info("Resolved Bedrock model: %s", resolved.model)
     return resolved
-
-
-def bedrock_model_resolve(*, model: str) -> str:
-    if model == BedrockModel.CLAUDE_HAIKU_AUTO:
-        return bedrock_haiku_model()
-    if model == BedrockModel.CLAUDE_HAIKU_4_5:
-        return bedrock_haiku_model(version="4.5")
-    return model
-
-
-def bedrock_haiku_model(*, version: str | None = None) -> str:
-    preference = (
-        f"bedrock_mantle/anthropic.claude-haiku-{version.replace('.', '-')}"
-        if version
-        else BedrockModel.CLAUDE_HAIKU_AUTO
-    )
-    return bedrock_model_target(model=preference).model

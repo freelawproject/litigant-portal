@@ -24,7 +24,10 @@ from litigant_portal.app.selectors.agent import Court, agent_scope_choices
 from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.views.utils import manage_developers_required
 from lp_agent import AgentValidationError, RunLimits
-from lp_agent.adapters.bedrock import MODEL_CHOICES
+from lp_agent.adapters.bedrock_models import (
+    MODEL_CHOICES,
+    BedrockModelUnavailable,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +126,12 @@ def development_stream(request: HttpRequest) -> HttpResponse:
             model=data["model"],
             runtime="Direct",
             limits=RunLimits(max_active_seconds=data["max_active_seconds"]),
+        )
+    except BedrockModelUnavailable:
+        logger.warning("Agent model discovery failed.")
+        return JsonResponse(
+            {"error": "Agent service is unavailable. Please try again later."},
+            status=503,
         )
     except (AgentValidationError, ValidationError):
         logger.warning("Agent initialization failed: invalid configuration.")

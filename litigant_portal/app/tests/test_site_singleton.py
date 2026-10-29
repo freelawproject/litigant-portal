@@ -7,12 +7,14 @@ inside an open transaction and is dropped only once it lands.
 """
 
 import uuid
-from unittest.mock import patch
+from importlib import import_module
+from types import SimpleNamespace
 
 import pytest
+from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
-from django.db import IntegrityError, transaction
+from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 
 from litigant_portal.app.cache import (
@@ -44,6 +46,7 @@ from litigant_portal.app.selectors.topic_flow import (
 )
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.services.topic_flow import topic_create, topic_delete
+from lp_agent.adapters.bedrock_models import MODEL_CHOICES
 
 
 @pytest.mark.postgres
@@ -117,15 +120,12 @@ class SiteCacheTests(TestCase):
             site_get_model(role="assistant"), DEFAULT_BEDROCK_MODEL
         )
 
-    def test_site_get_model_fast_role_resolves_the_default_haiku(self):
+    def test_fast_role_retains_its_internal_default(self):
         with self.captureOnCommitCallbacks(execute=True):
             site_update(fast_model="")
-        with patch(
-            "litigant_portal.app.selectors.bedrock.bedrock_haiku_model",
-            return_value="discovered-haiku",
-        ) as resolve:
-            self.assertEqual(site_get_model(role="fast"), "discovered-haiku")
-        resolve.assert_called_once_with()
+        self.assertEqual(
+            site_get_model(role="fast"), BedrockModel.CLAUDE_HAIKU_AUTO
+        )
 
     def test_site_get_model_prefers_the_configured_model(self):
         # Not the default model, so the assertion below can't pass on a
@@ -141,7 +141,7 @@ class SiteCacheTests(TestCase):
             username="judge-admin", email="judge@example.test", password="test"
         )
         self.client.force_login(user)
-        for model in (BedrockModel.GPT_5_6_SOL, ""):
+        for model in (BedrockModel.BEST, ""):
             with self.captureOnCommitCallbacks(execute=True):
                 response = self.client.post(
                     "/api/admin/site/update/", {"judge_model": model}
@@ -158,6 +158,74 @@ class SiteCacheTests(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertIsNone(Site.objects.get().judge_model)
+
+    def test_all_settings_dropdowns_offer_tiers_and_preserve_saved_legacy_values(
+        self,
+    ):
+        user = get_user_model().objects.create_superuser(
+            username="model-admin"
+        )
+        self.client.force_login(user)
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(fast_model=BedrockModel.CLAUDE_HAIKU_AUTO)
+        response = self.client.get("/admin/")
+        self.assertEqual(response.context["model_choices"], MODEL_CHOICES)
+        for value, label in MODEL_CHOICES:
+            self.assertContains(
+                response,
+                f'<option value="{value}">{label}</option>',
+                count=3,
+                html=True,
+            )
+        self.assertContains(response, 'value="auto/anthropic.haiku" disabled')
+        self.assertEqual(
+            self.client.post(
+                "/api/admin/site/update/",
+                {
+                    "fast_model": BedrockModel.CLAUDE_HAIKU_AUTO,
+                    "assistant_model": BedrockModel.BALANCED,
+                    "judge_model": BedrockModel.BEST,
+                },
+            ).status_code,
+            200,
+        )
+        self.assertEqual(
+            self.client.post(
+                "/api/admin/site/update/",
+                {
+                    "assistant_model": BedrockModel.GPT_5_6_LUNA,
+                },
+            ).status_code,
+            400,
+        )
+
+    def test_model_migration_preserves_classes_and_disabled_judging(self):
+        migration = import_module(
+            "litigant_portal.app.migrations.0036_curated_bedrock_models"
+        )
+        schema_editor = SimpleNamespace(connection=connection)
+        for old, new in migration.MODEL_MAPPING.items():
+            Site.objects.update(
+                assistant_model=old, fast_model=old, judge_model=""
+            )
+            migration.migrate_preferences(apps, schema_editor)
+            site = Site.objects.get()
+            self.assertEqual(
+                (site.assistant_model, site.fast_model, site.judge_model),
+                (new, new, ""),
+            )
+        Site.objects.update(
+            assistant_model="unknown", fast_model="", judge_model=None
+        )
+        with self.assertWarnsRegex(
+            UserWarning, "Unrecognized assistant_model"
+        ):
+            migration.migrate_preferences(apps, schema_editor)
+        site = Site.objects.get()
+        self.assertEqual(
+            (site.assistant_model, site.fast_model, site.judge_model),
+            ("unknown", "", None),
+        )
 
 
 @pytest.mark.postgres

@@ -4,10 +4,11 @@ Normalize LiteLLM's Bedrock stream without exposing provider objects to core.
 
 import asyncio
 import logging
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 
 from pydantic import BaseModel, SecretStr, TypeAdapter, ValidationError
 
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 from lp_agent.errors import AgentValidationError
 from lp_agent.types import (
     ModelEvent,
@@ -26,12 +27,6 @@ from lp_agent.types import (
 
 logger = logging.getLogger(__name__)
 
-MODEL_CHOICES = (
-    ("bedrock_mantle/openai.gpt-5.6-luna", "GPT-5.6 Luna"),
-    ("bedrock_mantle/openai.gpt-5.6-terra", "GPT-5.6 Terra"),
-    ("bedrock_mantle/openai.gpt-5.6-sol", "GPT-5.6 Sol"),
-    ("bedrock_mantle/zai.glm-4.7-flash", "GLM 4.7 Flash"),
-)
 
 _OUTPUT_MODELS = {
     model.model_fields["type"].default: model
@@ -217,10 +212,18 @@ class BedrockClient:
     Use an allowlisted model and explicitly supplied Bedrock credentials.
     """
 
-    def __init__(self, model: str, *, api_key: str | SecretStr) -> None:
-        if not isinstance(model, str) or model not in dict(MODEL_CHOICES):
-            raise AgentValidationError("Select an available Bedrock model.")
-        self.model = model
+    def __init__(
+        self,
+        model: ResolvedBedrockModel,
+        *,
+        api_key: str | SecretStr,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> None:
+        if not isinstance(model, ResolvedBedrockModel):
+            raise AgentValidationError("A resolved Bedrock model is required.")
+        self.target = model
+        self.model = model.model
+        self._on_error = on_error
         try:
             self._api_key = TypeAdapter(SecretStr).validate_python(api_key)
         except ValidationError:
@@ -238,7 +241,7 @@ class BedrockClient:
             for item in request.input
         ):
             raise NotImplementedError("Tool calls are not connected yet.")
-        translated = self.model == "bedrock_mantle/zai.glm-4.7-flash"
+        translated = not self.target.native_responses
         if translated:
             for item in request.input:
                 if (
@@ -259,17 +262,28 @@ class BedrockClient:
                         "This model cannot preserve the supplied continuation metadata."
                     )
         # Import the optional SDK only when this adapter executes a request.
-        from litellm import aresponses
+        from litellm import aresponses, register_model
         from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 
+        if self.target.native_responses and self.model.startswith("openai/"):
+            # LiteLLM otherwise buffers unknown model releases as fake streams.
+            register_model(
+                {
+                    self.model: {
+                        "litellm_provider": "openai",
+                        "supports_native_streaming": True,
+                    }
+                }
+            )
         options = (
             {} if translated else {"include": ["reasoning.encrypted_content"]}
         )
         client = AsyncHTTPHandler()
         try:
             response = await aresponses(
-                model=self.model,
+                **self.target.invocation_options(),
                 api_key=self._api_key.get_secret_value(),
+                max_output_tokens=4096,
                 client=client,
                 instructions=request.instructions,
                 input=[item.model_dump(mode="json") for item in request.input],
@@ -328,5 +342,9 @@ class BedrockClient:
                     yield _finish(result, response, items)
             finally:
                 await _close_stream(response)
+        except Exception as error:
+            if self._on_error is not None:
+                self._on_error(error)
+            raise
         finally:
             await client.close()

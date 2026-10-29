@@ -5,7 +5,7 @@ The host wrapper translates identity and forwards options to the package.
 import asyncio
 import inspect
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 from uuid import uuid4
 
 import pytest
@@ -17,10 +17,24 @@ from pydantic import SecretStr
 from litigant_portal.agent import PortalAgent
 from litigant_portal.app.models import UserIdentity
 from lp_agent import AgentValidationError
-from lp_agent.adapters.bedrock import MODEL_CHOICES
+from lp_agent.adapters.bedrock_models import (
+    MODEL_CHOICES,
+    ResolvedBedrockModel,
+)
 from lp_agent.adapters.environment import create_environment
 from lp_agent.corpus.file_search import get_file_based_corpus
 from lp_agent.types import Scope
+
+
+@pytest.fixture(autouse=True)
+def model_resolver():
+    with patch(
+        "litigant_portal.agent.bedrock_model_target",
+        side_effect=lambda *, model, **kwargs: ResolvedBedrockModel(
+            model, "us-east-1"
+        ),
+    ) as resolver:
+        yield resolver
 
 
 def portal_options():
@@ -53,7 +67,7 @@ def test_portal_declares_host_inputs_and_workers_default():
     [(True, False), (False, False), (True, True), (False, True)],
 )
 def test_portal_translates_identity_and_forwards_callbacks_and_settings(
-    registered, lazy, django_user_model
+    registered, lazy, django_user_model, model_resolver
 ):
     options = portal_options()
     options = {
@@ -79,10 +93,16 @@ def test_portal_translates_identity_and_forwards_callbacks_and_settings(
         identity_id=str(identity.pk),
         api_key=SecretStr("test-only-key"),
         resource_root=settings.BASE_DIR,
+        model_resolver=ANY,
+        on_model_error=ANY,
         **options,
     )
     for name in ("model", "judge"):
         options[name].assert_called_once_with()
+    assert [call.kwargs for call in model_resolver.call_args_list] == [
+        {"model": value, "required": frozenset({"text", "stream"})}
+        for value in (MODEL_CHOICES[0][0], MODEL_CHOICES[1][0])
+    ]
     assert agent.environment.access.identity_id == str(identity.pk)
     assert agent.runtime == "Workers"
     with pytest.raises(NotImplementedError, match="Workers"):

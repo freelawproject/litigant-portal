@@ -19,6 +19,7 @@ from litigant_portal.app.services.chat_engine import (
     chat_stream,
     chat_thread_render_items,
 )
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 MODEL = BedrockModel.GPT_5_6_LUNA
@@ -85,6 +86,12 @@ def stream():
         cache.clear()
         with (
             patch(
+                "litigant_portal.app.services.chat_engine.bedrock_model_target",
+                side_effect=lambda *, model, **kwargs: ResolvedBedrockModel(
+                    model, "us-east-1"
+                ),
+            ),
+            patch(
                 "litigant_portal.app.services.chat_engine.litellm.completion",
                 side_effect=responses,
             ) as completion,
@@ -141,20 +148,6 @@ def test_disabled_preserves_streaming(stream, judge_model):
     assert not any(event["type"] == "heartbeat" for event in events)
     assert not thread.messages.filter(meta=True).exists()
     assert not any("review_warning" in event for event in events)
-
-
-def test_haiku_judge_resolves_its_preference(stream):
-    _, run = stream
-    with patch(
-        "litigant_portal.app.selectors.bedrock.bedrock_haiku_model",
-        return_value="discovered-haiku",
-    ):
-        events, calls = run(
-            [generation("Answer"), review(True)],
-            BedrockModel.CLAUDE_HAIKU_AUTO,
-        )
-    assert calls[1].kwargs["model"] == "discovered-haiku"
-    assert events[-1] == {"type": "done"}
 
 
 @pytest.mark.parametrize("rejections", [0, 1, 2, 3])

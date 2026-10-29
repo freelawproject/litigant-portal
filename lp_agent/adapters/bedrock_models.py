@@ -8,8 +8,10 @@ from typing import Literal
 
 from pydantic import AliasPath, AwareDatetime, BaseModel, Field
 
+from lp_agent.errors import AgentError
 
-class BedrockModelUnavailable(RuntimeError):
+
+class BedrockModelUnavailable(AgentError):
     """
     No model satisfies the deployment's selection and routing requirements.
     """
@@ -19,9 +21,10 @@ class BedrockModelUnavailable(RuntimeError):
 class ModelClass:
     label: str
     patterns: tuple[str, ...]
-    native_api: Literal["converse", "openai"]
+    native_api: Literal["converse", "openai"] | None
     mantle_api: Literal["chat", "responses"] | None
-    vision: bool = False
+    capabilities: frozenset[str] = frozenset()
+    mantle_base: str = "v1"
 
 
 # AWS catalogs do not identify model classes or all supported inference APIs.
@@ -33,7 +36,8 @@ MODEL_CLASSES = {
             (rf"openai\.gpt-(?P<version>\d+(?:\.\d+)*)-{tier}",),
             "openai",
             "responses",
-            True,
+            frozenset({"text", "stream", "tools", "image", "continuation"}),
+            "openai/v1",
         )
         for tier in ("luna", "terra", "sol")
     },
@@ -45,15 +49,53 @@ MODEL_CLASSES = {
         ),
         "converse",
         None,
-        True,
+        frozenset({"text", "stream", "tools", "image"}),
     ),
     "zai.glm-flash": ModelClass(
         "GLM Flash",
         (r"zai\.glm-(?P<version>\d+(?:\.\d+)*)-flash",),
         "converse",
         "chat",
+        frozenset({"text", "stream", "tools"}),
     ),
 }
+
+ENABLED_MODEL_CLASSES = frozenset(MODEL_CLASSES)
+MODEL_TIERS = {
+    "tier/economy": ("Economy", "openai.luna"),
+    "tier/balanced": ("Balanced", "openai.terra"),
+    "tier/best": ("Best", "openai.sol"),
+}
+MODEL_CHOICES = tuple((key, label) for key, (label, _) in MODEL_TIERS.items())
+PINNED_MODEL_CHOICES = {
+    **{
+        f"GPT_5_6_{tier.upper()}": (
+            f"bedrock_mantle/openai.gpt-5.6-{tier}",
+            f"GPT-5.6 {tier.title()}",
+        )
+        for tier in ("luna", "terra", "sol")
+    },
+    "CLAUDE_HAIKU_4_5": (
+        "bedrock_mantle/anthropic.claude-haiku-4-5",
+        "Claude Haiku 4.5",
+    ),
+    "GLM_4_7_FLASH": ("bedrock_mantle/zai.glm-4.7-flash", "GLM 4.7 Flash"),
+}
+MODEL_CHOICE_DEFINITIONS = {
+    (
+        "CLAUDE_HAIKU_AUTO"
+        if class_id == "anthropic.haiku"
+        else f"{class_id.replace('.', '_').replace('-', '_').upper()}_AUTO"
+    ): (f"auto/{class_id}", f"{definition.label} (automatic)")
+    for class_id, definition in MODEL_CLASSES.items()
+}
+MODEL_CHOICE_DEFINITIONS.update(PINNED_MODEL_CHOICES)
+MODEL_CHOICE_DEFINITIONS.update(
+    {
+        key.removeprefix("tier/").upper(): (key, label)
+        for key, label in MODEL_CHOICES
+    }
+)
 
 # These are geographic boundaries, not model availability tables. Unknown
 # regions fail closed until their geography has been reviewed.
@@ -120,7 +162,6 @@ def model_class(model_id: str) -> tuple[str, str] | None:
 class BedrockPolicy:
     region: str
     geography: str = "US"
-    enabled_classes: frozenset[str] = frozenset(MODEL_CLASSES)
 
     def __post_init__(self) -> None:
         if self.region not in GEOGRAPHY_REGIONS.get(self.geography, ()):
@@ -128,8 +169,8 @@ class BedrockPolicy:
                 "AWS_REGION must belong to BEDROCK_ALLOWED_GEOGRAPHY."
             )
         if (
-            not self.enabled_classes
-            or self.enabled_classes - MODEL_CLASSES.keys()
+            not ENABLED_MODEL_CLASSES
+            or ENABLED_MODEL_CLASSES - MODEL_CLASSES.keys()
         ):
             raise BedrockModelUnavailable(
                 "Invalid enabled Bedrock model classes."
@@ -138,11 +179,22 @@ class BedrockPolicy:
     def preference(self, model: str) -> tuple[str, str | None]:
         if not isinstance(model, str):
             raise BedrockModelUnavailable("Select an enabled Bedrock model.")
-        if model.startswith("auto/"):
+        if model in MODEL_TIERS:
+            selection = MODEL_TIERS[model][1], None
+        elif model.startswith("auto/"):
             selection = model.removeprefix("auto/"), None
         else:
-            selection = model_class(model.removeprefix("bedrock_mantle/"))
-        if selection is None or selection[0] not in self.enabled_classes:
+            model_id = (
+                model.removeprefix(f"bedrock/converse/{self.region}/")
+                .removeprefix(f"bedrock_mantle/{self.region}/")
+                .removeprefix("bedrock_mantle/")
+                .removeprefix("openai/")
+            )
+            prefix, _, unprefixed = model_id.partition(".")
+            if prefix.upper() in GEOGRAPHY_REGIONS:
+                model_id = unprefixed
+            selection = model_class(model_id)
+        if selection is None or selection[0] not in ENABLED_MODEL_CLASSES:
             raise BedrockModelUnavailable(
                 "The selected model class is not enabled."
             )
@@ -201,6 +253,7 @@ class ResolvedBedrockModel:
     api_base: str | None = None
     native_responses: bool = False
     capabilities: frozenset[str] = frozenset()
+    billing_model: str | None = None
 
     def invocation_options(self) -> dict[str, str]:
         options = {"model": self.model}
@@ -209,3 +262,19 @@ class ResolvedBedrockModel:
         if not self.model.startswith("openai/"):
             options["aws_region_name"] = self.region
         return options
+
+    def completion_cost(self, usage: BaseModel | dict) -> float:
+        """
+        Price the resolved Bedrock route, independent of transport metadata.
+        """
+        from litellm import completion_cost
+
+        return completion_cost(
+            completion_response={
+                "usage": usage.model_dump()
+                if isinstance(usage, BaseModel)
+                else usage,
+            },
+            model=self.billing_model or self.model,
+            region_name=self.region,
+        )

@@ -12,6 +12,7 @@ from litigant_portal.agents.base import Agent, ToolOutput
 from litigant_portal.app.models import Topic, TopicFlow
 from litigant_portal.app.selectors.bedrock import BedrockModelUnavailable
 from litigant_portal.app.services.chat_engine import chat_stream
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 
 
 class FailingAgent(Agent):
@@ -53,7 +54,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 return_value=0,
             ),
             patch(
-                "litigant_portal.app.services.chat_engine._resolve_thread",
+                "litigant_portal.app.services.chat_engine.chat_thread_get",
                 return_value=self.thread,
             ),
             patch(
@@ -77,7 +78,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 message="Please help.",
                 agent_class=FailingAgent,
                 thread_type="test_agent",
-                model="test-model",
+                model=ResolvedBedrockModel("test-model", "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             events = [
@@ -251,7 +252,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
         )
         with (
             patch(
-                "litigant_portal.app.selectors.bedrock.bedrock_haiku_model",
+                "litigant_portal.app.services.chat_engine.site_get_model_target",
                 side_effect=BedrockModelUnavailable("No eligible Haiku"),
             ),
             self.assertLogs(

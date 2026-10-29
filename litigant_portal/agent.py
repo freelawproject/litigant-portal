@@ -8,6 +8,10 @@ from django.conf import settings
 from pydantic import SecretStr
 
 from litigant_portal.app.models import UserIdentity
+from litigant_portal.app.selectors.bedrock import (
+    bedrock_model_failed,
+    bedrock_model_target,
+)
 from lp_agent import AgentValidationError, LPAgent, RunLimits
 from lp_agent.adapters.environment import Option, create_environment
 from lp_agent.types import InterruptBehavior, Runtime
@@ -45,6 +49,11 @@ class PortalAgent(LPAgent):
                 judge=judge,
                 api_key=SecretStr(settings.BEDROCK_API_KEY),
                 resource_root=settings.BASE_DIR,
+                model_resolver=lambda model: bedrock_model_target(
+                    model=model,
+                    required=frozenset({"text", "stream"}),
+                ),
+                on_model_error=bedrock_model_failed,
             ),
             runtime=runtime,
             interrupt_behavior=interrupt_behavior,

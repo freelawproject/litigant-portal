@@ -143,17 +143,18 @@ def resolve_catalog(
         if (
             (pinned is not None and identity[1] != pinned)
             or model.status != "ACTIVE"
+            or definition.native_api is None
             or model.released is None
             or "TEXT" not in model.input_modalities & model.output_modalities
         ):
             continue
-        capabilities = {"text", "tools"}
-        if model.streaming:
-            capabilities.add("stream")
-        if definition.vision and "IMAGE" in model.input_modalities:
-            capabilities.add("image")
-        if definition.native_api == "openai":
-            capabilities.add("continuation")
+        capabilities = set(definition.capabilities)
+        if not model.streaming:
+            capabilities.discard("stream")
+        if "IMAGE" not in model.input_modalities:
+            capabilities.discard("image")
+        if definition.native_api != "openai":
+            capabilities.discard("continuation")
         if not required <= capabilities:
             continue
         routes = _native_routes(model, catalog, policy)
@@ -187,6 +188,7 @@ def resolve_catalog(
                 ),
                 native_responses=native_responses,
                 capabilities=frozenset(capabilities),
+                billing_model=invocation_id,
             )
             candidates.append((model.released, identity, priority, target))
     for model in catalog.mantle:
@@ -202,20 +204,22 @@ def resolve_catalog(
         dates = release_dates.get(identity, {model.created})
         if len(dates) != 1:
             raise BedrockModelUnavailable("Ambiguous model release metadata.")
-        capabilities = {"text", "stream", "tools"}
-        if definition.vision:
-            capabilities.add("image")
+        capabilities = set(definition.capabilities)
         native_responses = definition.mantle_api == "responses"
-        if native_responses:
-            capabilities.add("continuation")
+        if not native_responses:
+            capabilities.discard("continuation")
         if required <= capabilities:
-            segment = "openai/v1" if native_responses else "v1"
             target = ResolvedBedrockModel(
-                f"bedrock_mantle/{policy.region}/{model.id}",
+                (
+                    f"openai/{model.id}"
+                    if native_responses
+                    else f"bedrock_mantle/{policy.region}/{model.id}"
+                ),
                 policy.region,
-                f"https://bedrock-mantle.{policy.region}.api.aws/{segment}",
+                f"https://bedrock-mantle.{policy.region}.api.aws/{definition.mantle_base}",
                 native_responses,
                 frozenset(capabilities),
+                f"bedrock_mantle/{model.id}",
             )
             candidates.append((next(iter(dates)), identity, 1, target))
     if not candidates:
@@ -233,26 +237,30 @@ def resolve_catalog(
     )[3]
 
 
-def resolve_model(
+def resolve_models(
     *,
     policy: BedrockPolicy,
     api_key: str,
-    preference: str,
+    preferences: tuple[str, ...],
     required: frozenset[str] = frozenset({"text"}),
-) -> ResolvedBedrockModel:
+) -> dict[str, ResolvedBedrockModel]:
     """
-    Resolve once for standalone consumers without importing Django or a cache.
+    Share one discovery snapshot across standalone model and judge selections.
     """
     from botocore.exceptions import BotoCoreError, ClientError
     from pydantic import ValidationError
 
-    policy.preference(preference)
+    for preference in preferences:
+        policy.preference(preference)
     try:
         with closing(bedrock_client(policy, api_key)) as client:
             catalog = discover_catalog(client, policy, api_key)
-            return resolve_catalog(
-                catalog, client, policy, preference, required
-            )
+            return {
+                preference: resolve_catalog(
+                    catalog, client, policy, preference, required
+                )
+                for preference in dict.fromkeys(preferences)
+            }
     except (BotoCoreError, ClientError, ValidationError) as error:
         raise BedrockModelUnavailable(
             f"Bedrock discovery failed ({type(error).__name__}). Check model access and configuration."

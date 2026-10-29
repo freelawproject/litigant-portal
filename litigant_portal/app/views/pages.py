@@ -23,8 +23,6 @@ from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
-    DEFAULT_FAST_BEDROCK_MODEL,
-    BedrockModel,
     JurisdictionLevel,
     State,
 )
@@ -35,6 +33,7 @@ from litigant_portal.app.views.utils import (
     briefcase_answers,
     topic_flow_cards,
 )
+from lp_agent.adapters.bedrock_models import MODEL_CHOICES, MODEL_TIERS
 
 
 # The Atomic Design summary page frames the real home page as its "page"
@@ -159,6 +158,7 @@ def admin(request: HttpRequest) -> HttpResponse:
     context processor, so a court admin gets the Users tab alone."""
     if not admin_tabs(request.user):
         raise PermissionDenied
+    site = site_get()
     return render(
         request,
         "pages/admin/index.html",
@@ -166,9 +166,13 @@ def admin(request: HttpRequest) -> HttpResponse:
             "bedrock_available": bool(
                 os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
             ),
-            "model_choices": BedrockModel.choices,
+            "model_choices": MODEL_CHOICES,
+            "legacy_model_choices": {
+                field: value
+                for field in ("fast_model", "assistant_model", "judge_model")
+                if (value := getattr(site, field)) and value not in MODEL_TIERS
+            },
             "default_model_label": DEFAULT_BEDROCK_MODEL.label,
-            "default_fast_model_label": DEFAULT_FAST_BEDROCK_MODEL.label,
             "jurisdiction_choices": JurisdictionLevel.choices,
             "state_choices": State.choices,
         },

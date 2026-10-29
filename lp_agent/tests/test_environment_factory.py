@@ -5,9 +5,12 @@ from unittest.mock import Mock
 import pytest
 
 from lp_agent import AgentAccessError, AgentValidationError
-from lp_agent.adapters.bedrock import MODEL_CHOICES
 from lp_agent.adapters.environment import create_environment
-from lp_agent.tests.helpers import environment_options
+from lp_agent.tests.helpers import (
+    MODEL_CHOICES,
+    environment_options,
+    resolved_model,
+)
 from lp_agent.types import AccessContext, Scope, ScopeSelection
 
 
@@ -16,7 +19,7 @@ def test_callbacks_resolve_once_at_initialization_and_are_not_retained(
 ):
     options = environment_options() | {
         "resource_root": tmp_path / "missing-corpus",
-        "judge": MODEL_CHOICES[1][0],
+        "judge": resolved_model(MODEL_CHOICES[1][0]),
     }
     callbacks = {
         name: Mock(return_value=value)
@@ -50,7 +53,7 @@ def test_callbacks_resolve_once_at_initialization_and_are_not_retained(
         {"court": " "},
         {"topic": {}},
         {"model": "https://untrusted.example/model"},
-        {"model": "bedrock_mantle/anthropic.claude-haiku-4-5"},
+        {"model": "auto/not-enabled"},
         {"model": []},
         {"judge": " "},
         {"judge": "https://untrusted.example/judge"},
@@ -133,7 +136,7 @@ def test_scope_callbacks_are_rejected_without_being_called(field):
     "judge_options", [{}, {"judge": None}, {"judge": lambda: None}]
 )
 def test_unset_judge_reuses_the_primary_model(judge_options):
-    model = Mock(return_value=MODEL_CHOICES[0][0])
+    model = Mock(return_value=resolved_model())
     environment = create_environment(
         **(environment_options() | {"model": model} | judge_options)
     )

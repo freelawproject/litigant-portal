@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from django.http import HttpRequest, JsonResponse
@@ -16,6 +17,12 @@ from litigant_portal.app.services.chat_engine import (
     chat_thread_delete,
     chat_thread_render_items,
 )
+from lp_agent.adapters.bedrock_models import (
+    BedrockModelUnavailable,
+    ResolvedBedrockModel,
+)
+
+logger = logging.getLogger(__name__)
 
 
 def stream(
@@ -23,7 +30,7 @@ def stream(
     *,
     agent_class: type[Agent],
     thread_type: str,
-    model: str,
+    model: str | ResolvedBedrockModel,
 ):
     """Stream an agent reply for a message within a thread."""
     message = request.POST.get("message", "").strip()
@@ -60,6 +67,12 @@ def stream(
         )
     except ChatThread.DoesNotExist:
         return JsonResponse({"error": _("Thread not found")}, status=404)
+    except BedrockModelUnavailable:
+        logger.exception("Assistant model discovery failed")
+        return JsonResponse(
+            {"error": _("The assistant is temporarily unavailable.")},
+            status=503,
+        )
 
 
 def thread_list(request: HttpRequest, *, thread_type: str) -> JsonResponse:

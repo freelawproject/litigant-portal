@@ -72,7 +72,7 @@
     <div class="border-t border-greyscale-200 pt-4 flex items-start justify-between gap-2">
       <div>
         <h4 class="text-sm font-semibold text-greyscale-900">{% trans "Models" %}</h4>
-        <p class="text-xs text-greyscale-500">{% trans "Which AI model each part of the pipeline uses." %}</p>
+        <p class="text-xs text-greyscale-500">{% trans "FLP curates these choices. Economy prioritizes lower cost, Balanced balances cost and capability, and Best prioritizes capability." %}</p>
       </div>
       {# Credential badge — shown when Bedrock credentials are configured #}
       <div class="flex items-center gap-1.5 flex-shrink-0">
@@ -92,7 +92,10 @@
               x-bind:value="siteFastModel"
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
-        <option value="">{% blocktrans %}Default ({{ default_fast_model_label }}){% endblocktrans %}</option>
+        <option value="">{% trans "FLP default" %}</option>
+        {% if legacy_model_choices.fast_model %}
+          <option value="{{ legacy_model_choices.fast_model }}" disabled>{% trans "Current FLP configuration" %}</option>
+        {% endif %}
         {% for value, label in model_choices %}
           <option value="{{ value }}">{{ label }}</option>
         {% endfor %}
@@ -107,6 +110,9 @@
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% blocktrans %}Default ({{ default_model_label }}){% endblocktrans %}</option>
+        {% if legacy_model_choices.assistant_model %}
+          <option value="{{ legacy_model_choices.assistant_model }}" disabled>{% trans "Current FLP configuration" %}</option>
+        {% endif %}
         {% for value, label in model_choices %}
           <option value="{{ value }}">{{ label }}</option>
         {% endfor %}
@@ -121,6 +127,9 @@
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% trans "Disabled" %}</option>
+        {% if legacy_model_choices.judge_model %}
+          <option value="{{ legacy_model_choices.judge_model }}" disabled>{% trans "Current FLP configuration" %}</option>
+        {% endif %}
         {% for value, label in model_choices %}
           <option value="{{ value }}">{{ label }}</option>
         {% endfor %}

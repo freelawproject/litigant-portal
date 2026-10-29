@@ -11,7 +11,8 @@ from litigant_portal.app.models.choices import (
     DEFAULT_FAST_BEDROCK_MODEL,
     ContactKind,
 )
-from litigant_portal.app.selectors.bedrock import bedrock_model_resolve
+from litigant_portal.app.selectors.bedrock import bedrock_model_target
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 
 _ROLE_DEFAULT_MODELS = {"fast": DEFAULT_FAST_BEDROCK_MODEL}
 
@@ -70,4 +71,15 @@ def site_get_model(*, role: str) -> str:
     model = getattr(site_get(), f"{role}_model") or _ROLE_DEFAULT_MODELS.get(
         role, DEFAULT_BEDROCK_MODEL
     )
-    return bedrock_model_resolve(model=model)
+    return model
+
+
+def site_get_model_target(
+    *, role: str, required: frozenset[str] = frozenset({"text"})
+) -> ResolvedBedrockModel:
+    """
+    Resolve a site's role preference to one concrete invocation target.
+    """
+    return bedrock_model_target(
+        model=site_get_model(role=role), required=required
+    )

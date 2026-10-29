@@ -22,24 +22,26 @@ and Topic Grounding and Safety Boundaries, before main-chat integration.
 ## Calling the agent
 
 `LPAgent` defaults to Direct execution. Supply a host-verified identity ID, a model
-from [`MODEL_CHOICES`](adapters/bedrock.py), and a server-held Bedrock API key.
+from [`MODEL_CHOICES`](adapters/bedrock_models.py), and a server-held Bedrock API key.
 Both court and topic are required to run. `resource_root` is the directory
 containing `corpus/` (`litigant_portal/` in this checkout).
 
-The supplied factory builds a Bedrock environment. For custom services, assemble
+The supplied factory resolves model preferences once using an explicit region and geography. It builds a Bedrock environment. For custom services, assemble
 an [`AgentIdentity`](identity.py) from the [service contracts](interfaces.py).
 
 ```python
 from lp_agent import LPAgent
 from lp_agent.adapters.environment import create_environment
+from lp_agent.adapters.bedrock_models import BedrockPolicy
 
 
-async def first_response(identity_id, model, api_key, resource_root):
+async def first_response(identity_id, model, api_key, resource_root, region):
     environment = create_environment(
         identity_id=identity_id,
         model=model,
         api_key=api_key,
         resource_root=resource_root,
+        policy=BedrockPolicy(region=region, geography="US"),
         court="north-dakota",
         topic="adult-name-change",
     )

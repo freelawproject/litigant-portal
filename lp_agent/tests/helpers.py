@@ -4,7 +4,10 @@ Shared model scripts and environment builders without host dependencies.
 
 from pathlib import Path
 
-from lp_agent.adapters.bedrock import MODEL_CHOICES
+from lp_agent.adapters.bedrock_models import (
+    PINNED_MODEL_CHOICES,
+    ResolvedBedrockModel,
+)
 from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
 from lp_agent.identity import AgentIdentity, ResourceScope
 from lp_agent.types import (
@@ -14,6 +17,8 @@ from lp_agent.types import (
     OutputText,
     ScopeSelection,
 )
+
+MODEL_CHOICES = tuple(PINNED_MODEL_CHOICES.values())
 
 
 def answer_item(text):
@@ -77,12 +82,20 @@ def environment_for(model):
     )
 
 
+def resolved_model(model=MODEL_CHOICES[0][0]):
+    return ResolvedBedrockModel(
+        model=model,
+        region="us-east-1",
+        native_responses="openai.gpt-" in model,
+    )
+
+
 def environment_options():
     return {
         "identity_id": "identity-1",
         "court": "court",
         "topic": "topic",
-        "model": MODEL_CHOICES[0][0],
+        "model": resolved_model(),
         "api_key": "test-only-key",
         "resource_root": Path("unused-corpus"),
     }

@@ -34,7 +34,10 @@ def snapshot_current() -> dict:
     from litigant_portal.agents.tools.load_topic_flow import (
         topic_flow_markdown,
     )
-    from litigant_portal.app.selectors.site import site_get, site_get_model
+    from litigant_portal.app.selectors.site import (
+        site_get,
+        site_get_model_target,
+    )
     from litigant_portal.app.selectors.topic_flow import (
         topic_flow_find,
         topic_flow_list,
@@ -52,7 +55,7 @@ def snapshot_current() -> dict:
         )
     return {
         "site": {field: getattr(site, field) for field in SITE_FIELDS},
-        "fast_model": site_get_model(role="fast"),
+        "fast_model": site_get_model_target(role="fast").model,
         "enabled_flows": flows,
     }
 
@@ -198,10 +201,11 @@ def corpus_session(
         yield
         return
     from litigant_portal.app.models import Site
-    from litigant_portal.app.selectors.site import site_get_model
+    from litigant_portal.app.selectors.site import site_get_model_target
 
     with fixture_lock():
         site = Site.objects.get()
+        original_fast_model = site_get_model_target(role="fast").model
         write_json(
             run / "fixture-state.json",
             {
@@ -209,9 +213,8 @@ def corpus_session(
                     field: getattr(site, field)
                     for field in (*SITE_FIELDS, "fast_model")
                 },
-                "original_fast_model": site_get_model(role="fast"),
-                "effective_fast_model": fast_model
-                or site_get_model(role="fast"),
+                "original_fast_model": original_fast_model,
+                "effective_fast_model": fast_model or original_fast_model,
                 "restored": False,
             },
         )

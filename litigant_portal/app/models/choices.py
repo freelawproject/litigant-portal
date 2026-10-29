@@ -1,24 +1,11 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from lp_agent.adapters.bedrock_models import MODEL_CHOICE_DEFINITIONS
 
-class BedrockModel(models.TextChoices):
-    """
-    Model preferences resolved to LiteLLM strings by site_get_model.
-    """
+BedrockModel = models.TextChoices("BedrockModel", MODEL_CHOICE_DEFINITIONS)
 
-    GPT_5_6_LUNA = "bedrock_mantle/openai.gpt-5.6-luna", "GPT-5.6 Luna"
-    GPT_5_6_TERRA = "bedrock_mantle/openai.gpt-5.6-terra", "GPT-5.6 Terra"
-    GPT_5_6_SOL = "bedrock_mantle/openai.gpt-5.6-sol", "GPT-5.6 Sol"
-    CLAUDE_HAIKU_AUTO = "auto/anthropic.haiku", "Claude Haiku (automatic)"
-    CLAUDE_HAIKU_4_5 = (
-        "bedrock_mantle/anthropic.claude-haiku-4-5",
-        "Claude Haiku 4.5",
-    )
-    GLM_4_7_FLASH = "bedrock_mantle/zai.glm-4.7-flash", "GLM 4.7 Flash"
-
-
-DEFAULT_BEDROCK_MODEL = BedrockModel.GPT_5_6_LUNA
+DEFAULT_BEDROCK_MODEL = BedrockModel.ECONOMY
 DEFAULT_FAST_BEDROCK_MODEL = BedrockModel.CLAUDE_HAIKU_AUTO
 
 

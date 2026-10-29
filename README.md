@@ -53,8 +53,9 @@ Visit: http://localhost (Caddy serves on port 80).
 | `REDIS_URL`                                                                               | Redis connection URL                            |
 | `AWS_BEARER_TOKEN_BEDROCK`                                                                | AWS Bedrock API key                             |
 | `AWS_REGION`                                                                              | Source region for model discovery and inference |
+| `BEDROCK_ALLOWED_GEOGRAPHY`                                                               | Allowed processing geography; defaults to `US`  |
 
-Automatic model selection uses the deployment's AWS credentials and `AWS_REGION` to find the latest eligible version within the selected model class. It prefers inference in that region and restricts cross-region routing to the same geography, such as the US; global routing is excluded. Explicit version selections remain pinned. Each court configures its own region; local Compose defaults to `us-east-1`.
+FLP curates the Economy, Balanced, and Best tiers in code. Each deployment uses its AWS key and `AWS_REGION` to find the latest eligible version in the selected model class. Inference prefers that region and may use cross-region routes only within `BEDROCK_ALLOWED_GEOGRAPHY`; global routing is excluded. Local Compose defaults to `us-east-1` and `US`.
 
 ## Contributing
 

@@ -21,9 +21,14 @@ from litellm.types.llms.openai import ResponsesAPIResponse
 from litellm.types.utils import ModelResponseStream
 
 from lp_agent import AgentValidationError, LPAgent, RunLimits
-from lp_agent.adapters.bedrock import MODEL_CHOICES, BedrockClient
+from lp_agent.adapters.bedrock import BedrockClient
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 from lp_agent.adapters.environment import create_environment
-from lp_agent.tests.helpers import environment_options
+from lp_agent.tests.helpers import (
+    MODEL_CHOICES,
+    environment_options,
+    resolved_model,
+)
 from lp_agent.types import (
     ModelMessage,
     ModelOutputItem,
@@ -130,7 +135,8 @@ def collect(*values):
             return [
                 event
                 async for event in BedrockClient(
-                    MODEL_CHOICES[0][0], api_key="test-only-key"
+                    resolved_model(MODEL_CHOICES[0][0]),
+                    api_key="test-only-key",
                 ).stream(ModelRequest(input=()))
             ]
 
@@ -239,7 +245,7 @@ def test_unfamiliar_fields_are_ignored_once_without_changing_known_metadata(
             return [
                 event
                 async for event in BedrockClient(
-                    model, api_key="test-key"
+                    resolved_model(model), api_key="test-key"
                 ).stream(ModelRequest(input=()))
             ]
 
@@ -306,7 +312,7 @@ def test_invalid_output_retains_valid_items_and_original_interruption(
                 closed = True
 
         environment = create_environment(
-            **(environment_options() | {"model": model})
+            **(environment_options() | {"model": resolved_model(model)})
         )
         with patch("litellm.aresponses", AsyncMock(return_value=provider())):
             async with LPAgent(
@@ -368,7 +374,7 @@ def test_native_request_preserves_instructions_and_continuation_and_closes():
             result = [
                 event
                 async for event in BedrockClient(
-                    MODEL_CHOICES[0][0], api_key="explicit-key"
+                    resolved_model(MODEL_CHOICES[0][0]), api_key="explicit-key"
                 ).stream(request)
             ]
         assert result[-1].reason == "stop"
@@ -453,7 +459,7 @@ def test_translated_model_rejects_unrepresentable_continuation_before_call(
                 _ = [
                     event
                     async for event in BedrockClient(
-                        GLM_MODEL, api_key="test-key"
+                        resolved_model(GLM_MODEL), api_key="test-key"
                     ).stream(ModelRequest(input=(item,)))
                 ]
             call.assert_not_called()
@@ -483,7 +489,7 @@ def test_tools_remain_explicitly_unavailable_before_call():
                 _ = [
                     event
                     async for event in BedrockClient(
-                        MODEL_CHOICES[0][0], api_key="test-key"
+                        resolved_model(MODEL_CHOICES[0][0]), api_key="test-key"
                     ).stream(request)
                 ]
             call.assert_not_called()
@@ -564,7 +570,7 @@ def test_http_client_closes_after_request_or_response_cleanup_failure(
             _ = [
                 event
                 async for event in BedrockClient(
-                    MODEL_CHOICES[0][0], api_key="test-key"
+                    resolved_model(MODEL_CHOICES[0][0]), api_key="test-key"
                 ).stream(ModelRequest(input=()))
             ]
         assert http_clients and all(
@@ -745,7 +751,10 @@ def test_repeated_sync_requests_close_clients_and_connections(
         with patch.object(AsyncHTTPHandler, "post", local_post):
             for _ in range(3):
                 environment = create_environment(
-                    **(environment_options() | {"model": model})
+                    **(
+                        environment_options()
+                        | {"model": resolved_model(model)}
+                    )
                 )
                 output = [
                     json.loads(line)
@@ -767,9 +776,15 @@ def test_repeated_sync_requests_close_clients_and_connections(
 
 
 @pytest.mark.parametrize("early", [False, True])
-@pytest.mark.parametrize("choice", [0, 1, 2])
+@pytest.mark.parametrize(
+    "endpoint",
+    [
+        "bedrock-runtime.us-east-2.amazonaws.com",
+        "bedrock-mantle.us-east-2.api.aws",
+    ],
+)
 def test_real_native_litellm_stream_releases_http_response(
-    early, choice, http_clients
+    early, endpoint, http_clients
 ):
     async def scenario():
         body, http_response = native_response(
@@ -784,7 +799,13 @@ def test_real_native_litellm_stream_releases_http_response(
             AsyncHTTPHandler, "post", AsyncMock(return_value=http_response)
         ) as post:
             stream = BedrockClient(
-                MODEL_CHOICES[choice][0], api_key="test-key"
+                ResolvedBedrockModel(
+                    "openai/openai.gpt-6.1-sol",
+                    "us-east-2",
+                    api_base=f"https://{endpoint}/openai/v1",
+                    native_responses=True,
+                ),
+                api_key="test-key",
             ).stream(
                 ModelRequest(
                     instructions="Scope",
@@ -802,7 +823,11 @@ def test_real_native_litellm_stream_releases_http_response(
         assert http_clients and all(
             client.is_closed for client in http_clients
         )
-        assert "/responses" in str(post.call_args)
+        assert (
+            post.call_args.kwargs["url"]
+            == f"https://{endpoint}/openai/v1/responses"
+        )
+        assert post.call_args.kwargs["json"]["model"] == "openai.gpt-6.1-sol"
 
     asyncio.run(scenario())
 
@@ -845,7 +870,7 @@ def test_real_translated_litellm_stream_preserves_reasoning_and_finish(
             result = [
                 event
                 async for event in BedrockClient(
-                    GLM_MODEL, api_key="test-key"
+                    resolved_model(GLM_MODEL), api_key="test-key"
                 ).stream(
                     ModelRequest(
                         instructions="Scope",
@@ -913,7 +938,11 @@ def test_agent_cancellation_and_timeout_close_actual_litellm_wrappers(
         environment = create_environment(
             **(
                 environment_options()
-                | {"model": GLM_MODEL if translated else MODEL_CHOICES[0][0]}
+                | {
+                    "model": resolved_model(
+                        GLM_MODEL if translated else MODEL_CHOICES[0][0]
+                    )
+                }
             )
         )
         with provider_patch:

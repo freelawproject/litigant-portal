@@ -27,6 +27,7 @@ from litigant_portal.app.services.chat_engine import (
     prompt_artifact_content_hash,
     prompt_artifact_get_or_create,
 )
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 
 MODEL = "gpt-5-mini"
 
@@ -230,7 +231,7 @@ class PromptArtifactCaptureTests(TestCase):
                 message="Help me without tools.",
                 agent_class=NoToolsAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             list(response.streaming_content)
@@ -309,7 +310,7 @@ class PromptArtifactCaptureTests(TestCase):
                 message="Help me.",
                 agent_class=RefreshingAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             list(response.streaming_content)
@@ -387,7 +388,7 @@ class PromptArtifactCaptureTests(TestCase):
                 message="Help me.",
                 agent_class=IdentityAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(thread.id),
             )
             list(response.streaming_content)
@@ -478,7 +479,7 @@ class PromptArtifactCaptureTests(TestCase):
                 message="Help me.",
                 agent_class=NoToolsAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             list(response.streaming_content)

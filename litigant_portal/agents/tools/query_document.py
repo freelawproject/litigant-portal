@@ -1,6 +1,9 @@
 import litellm
+from django.conf import settings
 
 from litigant_portal.agents.base import Field, Tool, ToolOutput
+from litigant_portal.app.selectors.bedrock import bedrock_model_failed
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 
 READER_SYSTEM_PROMPT = (
     "You are a document analyzer. Answer the request using only the "
@@ -29,7 +32,7 @@ class QueryDocument(Tool):
 
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.app.models import ChatThread, UserUpload
-        from litigant_portal.app.selectors.site import site_get_model
+        from litigant_portal.app.selectors.site import site_get_model_target
         from litigant_portal.app.services.upload import (
             user_upload_content_part,
             user_upload_reader_limit_error,
@@ -58,7 +61,6 @@ class QueryDocument(Tool):
                 )
             )
 
-        model = site_get_model(role="assistant")
         part = user_upload_content_part(upload=upload, data=data)
         if part is None:
             return ToolOutput(
@@ -68,7 +70,15 @@ class QueryDocument(Tool):
                 )
             )
 
-        answer, cost = self.ask(upload.name, part, model)
+        required = frozenset(
+            {"text", "image"} if part.get("type") == "image_url" else {"text"}
+        )
+        model = site_get_model_target(role="assistant", required=required)
+        try:
+            answer, cost = self.ask(upload.name, part, model)
+        except Exception as error:
+            bedrock_model_failed(error)
+            raise
         return ToolOutput(
             result=answer,
             cost=cost,
@@ -80,10 +90,14 @@ class QueryDocument(Tool):
             },
         )
 
-    def ask(self, name: str, part: dict, model: str) -> tuple[str, float]:
+    def ask(
+        self, name: str, part: dict, model: ResolvedBedrockModel
+    ) -> tuple[str, float]:
         """One reader call; returns the answer and what it cost."""
         response = litellm.completion(
-            model=model,
+            **model.invocation_options(),
+            api_key=settings.BEDROCK_API_KEY,
+            max_tokens=4096,
             messages=[
                 {"role": "system", "content": READER_SYSTEM_PROMPT},
                 {
@@ -99,7 +113,7 @@ class QueryDocument(Tool):
             ],
         )
         try:
-            cost = litellm.completion_cost(completion_response=response)
+            cost = model.completion_cost(response.usage)
         except Exception:
             cost = 0.0
         return (response.choices[0].message.content or "").strip(), cost

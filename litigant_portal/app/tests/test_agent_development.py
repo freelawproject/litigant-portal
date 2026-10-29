@@ -23,7 +23,10 @@ from litigant_portal.app.selectors.agent import Court, agent_scope_choices
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.views.agent import AgentMessageForm
 from lp_agent import AgentValidationError, RunLimits
-from lp_agent.adapters.bedrock import MODEL_CHOICES
+from lp_agent.adapters.bedrock_models import (
+    MODEL_CHOICES,
+    ResolvedBedrockModel,
+)
 from lp_agent.tests.helpers import answer_item
 from lp_agent.types import Choice, ModelFinished, ModelTextDelta
 
@@ -80,12 +83,10 @@ class AgentDevelopmentPageTests(TestCase):
 
     def test_page_uses_the_configured_assistant_model(self):
         with self.captureOnCommitCallbacks(execute=True):
-            site_update(assistant_model=BedrockModel.GPT_5_6_SOL)
+            site_update(assistant_model=BedrockModel.BEST)
         self.client.force_login(self.developer)
         response = self.client.get(self.url)
-        self.assertEqual(
-            response.context["selected_model"], BedrockModel.GPT_5_6_SOL
-        )
+        self.assertEqual(response.context["selected_model"], BedrockModel.BEST)
 
     def test_unsupported_site_default_requires_explicit_model_selection(self):
         with self.captureOnCommitCallbacks(execute=True):
@@ -112,20 +113,14 @@ class AgentDevelopmentPageTests(TestCase):
 
 
 class AgentModelChoicesTests(SimpleTestCase):
-    def test_adapter_models_match_application_choices_with_explicit_exclusions(
-        self,
-    ):
-        unsupported = {
-            BedrockModel.CLAUDE_HAIKU_4_5,
-            BedrockModel.CLAUDE_HAIKU_AUTO,
-        }
+    def test_only_curated_tiers_are_selectable(self):
         self.assertEqual(
-            dict(MODEL_CHOICES),
-            {
-                model: label
-                for model, label in BedrockModel.choices
-                if model not in unsupported
-            },
+            MODEL_CHOICES,
+            (
+                ("tier/economy", "Economy"),
+                ("tier/balanced", "Balanced"),
+                ("tier/best", "Best"),
+            ),
         )
 
 
@@ -242,9 +237,17 @@ class AgentDevelopmentStreamTests(TestCase):
             "message": "  Hello  ",
             "court": court.choice_id,
             "topic": court.topics[0].choice_id,
-            "model": BedrockModel.GPT_5_6_LUNA,
+            "model": BedrockModel.ECONOMY,
             "max_active_seconds": "5",
         }
+        resolver = patch(
+            "litigant_portal.agent.bedrock_model_target",
+            side_effect=lambda *, model, **kwargs: ResolvedBedrockModel(
+                model, "us-east-1"
+            ),
+        )
+        self.resolve_model = resolver.start()
+        self.addCleanup(resolver.stop)
 
     def test_stream_requires_login_permission_flag_post_and_csrf(self):
         agent = self.enterContext(
