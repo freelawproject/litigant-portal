@@ -528,6 +528,7 @@ document.addEventListener('alpine:init', () => {
     reviewWarningText: '',
     // Server-rendered briefcase fragment, re-fetched when a tool saves a fact.
     briefcaseUrl: '',
+    briefcaseFetches: 0,
     // History sidebar
     threads: [],
     showEmpty: false,
@@ -945,16 +946,18 @@ document.addEventListener('alpine:init', () => {
 
     // Swap in the server-rendered briefcase when a tool saved or corrected
     // an answer (#941). Django renders the panel; this only replaces the
-    // mounted copy with the fresh markup.
+    // mounted copy with the fresh markup. Only the latest fetch swaps, so an
+    // earlier response that resolves late can't put back stale facts.
     async refreshBriefcase() {
       if (!this.briefcaseUrl) return
+      const fetchId = ++this.briefcaseFetches
       try {
         const res = await fetch(this.briefcaseUrl)
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         const fresh = new DOMParser()
           .parseFromString(await res.text(), 'text/html')
           .querySelector('[data-briefcase-facts]')
-        if (!fresh) return
+        if (!fresh || fetchId !== this.briefcaseFetches) return
         this.$root.querySelectorAll('[data-briefcase-facts]').forEach((el) => {
           el.replaceWith(fresh.cloneNode(true))
         })
