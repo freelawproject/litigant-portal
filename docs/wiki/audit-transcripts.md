@@ -62,11 +62,13 @@ The `values` map exists for a later step: redacting a transcript on user delete 
 
 ## Retention
 
-Anonymous conversations are kept for at least **30 days** after their last activity (the `AUDIT_RETENTION_DAYS` setting). The `cleanup_sessions` job never deletes a conversation with activity inside that window. Conversations belonging to logged-in accounts are not deleted by the cleanup job at all. If you need a transcript preserved past the window, download it.
+Anonymous conversations are kept for at least **90 days** after their last activity (the `AUDIT_RETENTION_DAYS` setting). The `cleanup_sessions` job never deletes a conversation with activity inside that window. Conversations belonging to logged-in accounts are not deleted by the cleanup job at all. If you need a transcript preserved past the window, download it.
+
+The 90-day value was set for the pilot, so a transcript spot-check does not have to happen inside 30 days; a long-term policy comes after the pilot. Because `cleanup_sessions` deletes by identity, anonymous identities and their uploads also live 90 days, not only the transcripts.
 
 The identity part of each prompt is stored on the message, so it falls under the same rule: it is gone when the conversation is gone, whether by the cleanup job or by the user's own delete. The shared prompt artifacts hold nothing personal and are not subject to this window.
 
-A spot-check has to happen inside that 30-day window, or the transcript has to be downloaded before it closes. Nothing warns you that a conversation is about to age out.
+A spot-check has to happen inside that 90-day window, or the transcript has to be downloaded before it closes. Nothing warns you that a conversation is about to age out.
 
 ## Known limits
 
