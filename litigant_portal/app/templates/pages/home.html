@@ -6,6 +6,14 @@
   {% trans "Litigant Portal" %} - {% trans "Free Legal Help" %}
 {% endblock title %}
 
+{% block frame_left %}
+  {% if activity_threads %}
+    {% include "pages/chat/partials/_thread_list_static.html" %}
+  {% else %}
+    {{ block.super }}
+  {% endif %}
+{% endblock frame_left %}
+
 {% block content %}
   <c-organisms.topic-grid />
   <c-organisms.hero />
