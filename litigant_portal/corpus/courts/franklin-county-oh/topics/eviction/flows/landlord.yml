@@ -72,8 +72,10 @@ sections:
 
       If the tenant appeals and obtains a stay with any required bond, the set out pauses until the court orders otherwise. The tenant may also offer to agree on a move-out date, which can save you the cost of the writ.
 
+# The guided page asks only the pages marked `on_page` (#1046).
 interview:
   - title: 'Your notice date'
+    on_page: true
     variables:
       - eviction_notice_served_date
 

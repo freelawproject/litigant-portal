@@ -1,6 +1,12 @@
-"""Django system checks for the corpus in ``litigant_portal/corpus/``."""
+"""Django system checks for the corpus in ``litigant_portal/corpus/``.
 
-from django.core.checks import Error, Tags, register
+``corpus.E001`` fails boot on an invalid corpus. ``corpus.W001`` warns when
+a flow decides a deadline, a packet form or a gated question from a
+variable no page marked ``on_page`` asks, so only the chat can set it
+(#1046).
+"""
+
+from django.core.checks import Error, Tags, Warning, register
 
 from litigant_portal.app.selectors.corpus import (
     CORPUS_DIR,
@@ -68,3 +74,24 @@ def check_corpus(app_configs, **kwargs):
             Error(str(exc), id="corpus.E001", obj="litigant_portal/corpus")
         ]
     return []
+
+
+@register(Tags.compatibility)
+def check_corpus_asks_decision_variables(app_configs, **kwargs):
+    """One warning per flow whose page cannot ask a variable it reacts to."""
+    try:
+        corpus = corpus_load()
+    except ValueError:
+        # corpus.E001 reports it; not this check's business.
+        return []
+    return [
+        Warning(
+            f"flow {'/'.join(slugs)}: the guided page reacts to "
+            f"{', '.join(unasked)}, asked on no page marked on_page, "
+            "so only the chat can set the answer.",
+            hint="Mark the page that places them with on_page: true.",
+            id="corpus.W001",
+        )
+        for slugs, flow in sorted(corpus.flows.items())
+        if (unasked := flow.unasked_decision_variables(corpus.variables))
+    ]

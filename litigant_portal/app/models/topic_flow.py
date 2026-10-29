@@ -354,7 +354,10 @@ class TopicFlowFormCondition(BaseModel):
 
 
 class TopicFlowInterviewPage(BaseModel):
-    """A page of a flow's guided interview. Purely cosmetic grouping."""
+    """A page of a flow's guided interview: a grouping of its variables.
+
+    ``on_page`` marks a page the guided page asks; the chat and the
+    docassemble handoff use every page."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     flow = models.ForeignKey(
@@ -364,6 +367,7 @@ class TopicFlowInterviewPage(BaseModel):
     )
     title = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
+    on_page = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:

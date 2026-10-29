@@ -378,7 +378,7 @@ if not DEBUG:
 CORPUS_COURT = os.environ.get("CORPUS_COURT") or None
 
 # Audit window: cleanup_sessions keeps chat activity this many days.
-AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "30"))
+AUDIT_RETENTION_DAYS = int(os.environ.get("AUDIT_RETENTION_DAYS", "90"))
 
 # docassemble. Every URL is built from these settings; the corpus contributes
 # only the interview reference (#879). With neither URL set, packet sections

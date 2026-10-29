@@ -104,8 +104,10 @@ sections:
 
       You may be able to agree with your landlord on a move-out date instead. That saves the landlord the cost of the writ and gives you certainty about your timing. Put any agreement in writing.
 
+# The guided page asks only the pages marked `on_page` (#1046).
 interview:
   - title: 'Your key dates'
+    on_page: true
     variables:
       - eviction_papers_received_date
       - eviction_hearing_date

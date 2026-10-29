@@ -148,8 +148,10 @@ sections:
       Act quickly. A case left in default can go to a collection agency, which adds collection fees and can garnish your wages. It can also stop you from re-registering your vehicle in Arizona, and the court can have your Arizona tax refund or lottery winnings taken.
 
       If your registration won't renew or your license was suspended because of an unpaid ticket, start with the court. Once the court case is resolved, the court notifies the Motor Vehicle Division.
+# The guided page asks only the pages marked `on_page` (#1046).
 interview:
   - title: Your ticket
+    on_page: true
     variables:
       - traffic_court
       - traffic_violation_date

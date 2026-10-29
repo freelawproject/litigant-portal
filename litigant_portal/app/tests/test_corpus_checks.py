@@ -1,20 +1,26 @@
-"""Tests for the corpus system check.
+"""Tests for the corpus system checks.
 
-The check has two halves: the directory-structure walk and the schema
-load. Both surface as ``corpus.E001``, so a broken corpus fails at boot
-instead of serving wrong content. The structure tests point the check at
-a throwaway corpus tree; the paths are module globals in two namespaces
+``check_corpus`` has two halves: the directory-structure walk and the
+schema load. Both surface as ``corpus.E001``, so a broken corpus fails at
+boot instead of serving wrong content. The structure tests point the check
+at a throwaway corpus tree; the paths are module globals in two namespaces
 (the selectors define them, the checks import them), so both get patched.
+``corpus.W001`` warns when a flow decides a deadline, a packet form or a
+gated question from a variable no marked page asks.
 """
+
+from types import SimpleNamespace
 
 import pytest
 
 from litigant_portal.app.checks import corpus as checks
 from litigant_portal.app.checks.corpus import (
     check_corpus,
+    check_corpus_asks_decision_variables,
     check_corpus_directory_structure,
 )
 from litigant_portal.app.selectors import corpus as selectors
+from litigant_portal.app.selectors.corpus import FlowSchema, VariableSchema
 
 
 @pytest.fixture
@@ -119,3 +125,86 @@ def test_invalid_corpus_returns_e001(corpus_dir):
     (errors,) = check_corpus(None)
     assert errors.id == "corpus.E001"
     assert "duplicate variable names" in errors.msg
+
+
+# corpus.W001: a decision variable asked on no marked page
+
+
+# adopted_on sets the deadline; adoption_shelter is asked only once adopted.
+_GLOSSARY = {
+    "adopted_on": VariableSchema(name="adopted_on", label="Adopted on"),
+    "adopted": VariableSchema(name="adopted", label="Adopted"),
+    "adoption_shelter": VariableSchema(
+        name="adoption_shelter",
+        label="Shelter",
+        asked_when={"variable": "adopted", "value": True},
+    ),
+}
+
+
+def _flow(*pages):
+    """A flow with one page per ``(variables, on_page)`` and a deadline
+    counted from ``adopted_on``."""
+    return FlowSchema.model_validate(
+        {
+            "name": "Pets",
+            "sections": [{"id": "start", "heading": "Start", "content": "C"}],
+            "interview": [
+                {"title": "Page", "variables": variables, "on_page": on_page}
+                for variables, on_page in pages
+            ],
+            "deadlines": [
+                {
+                    "id": "due",
+                    "label": "Due",
+                    "offset_days": 30,
+                    "offset_from": "adopted_on",
+                }
+            ],
+        }
+    )
+
+
+def _corpus(monkeypatch, flow):
+    corpus = SimpleNamespace(
+        flows={("alpha", "pets", "standard"): flow}, variables=_GLOSSARY
+    )
+    monkeypatch.setattr(checks, "corpus_load", lambda: corpus)
+
+
+def test_shipped_corpus_asks_every_decision_variable():
+    assert check_corpus_asks_decision_variables(None) == []
+
+
+def test_an_unmarked_deadline_source_warns_naming_the_flow_and_variable(
+    monkeypatch,
+):
+    _corpus(monkeypatch, _flow((["adopted_on"], False)))
+    (warning,) = check_corpus_asks_decision_variables(None)
+    assert warning.id == "corpus.W001"
+    assert "alpha/pets/standard" in warning.msg
+    assert "adopted_on" in warning.msg
+
+
+def test_a_marked_deadline_source_does_not_warn(monkeypatch):
+    _corpus(monkeypatch, _flow((["adopted_on"], True)))
+    assert check_corpus_asks_decision_variables(None) == []
+
+
+def test_an_unmarked_gate_of_a_marked_question_warns(monkeypatch):
+    _corpus(
+        monkeypatch,
+        _flow(
+            (["adopted_on", "adopted"], False), (["adoption_shelter"], True)
+        ),
+    )
+    (warning,) = check_corpus_asks_decision_variables(None)
+    assert "adopted, adopted_on" in warning.msg
+
+
+def test_a_corpus_that_fails_to_load_leaves_the_warning_to_e001(monkeypatch):
+    def broken():
+        raise ValueError("bad corpus")
+
+    monkeypatch.setattr(checks, "corpus_load", broken)
+    assert check_corpus_asks_decision_variables(None) == []

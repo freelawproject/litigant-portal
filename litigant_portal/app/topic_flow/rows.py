@@ -6,8 +6,9 @@ and nothing here touches the database or the request.
 
 The flow's ``layout`` orders the page. A section key renders as an info
 section anchored on that key, so chat citations can link to it. The
-``interview`` block renders one fact-gather form per interview page, anchored
-``interview-1``, ``interview-2``, ... in page order. The ``packet`` block
+``interview`` block renders one fact-gather form per page marked ``on_page``,
+anchored ``interview-1``, ``interview-2``, ... in page order; the chat and the
+docassemble handoff keep using every page. The ``packet`` block
 lists the flow's forms whose condition holds against the stored answers,
 with the docassemble handoff when the flow has one and the environment
 serves it; the ``calendar`` block its deadlines, each computed from the
@@ -112,11 +113,14 @@ def flow_layout(flow, sections) -> list[str]:
 
 
 def flow_pages(flow) -> list[tuple]:
-    """``[(page, [variable, ...]), ...]`` in page then placement order, read
-    from the rows ``topic_flow_find`` prefetched."""
+    """``[(page, [variable, ...]), ...]`` for the pages marked ``on_page``,
+    in page then placement order, read from the rows ``topic_flow_find``
+    prefetched. The one list every page-side helper reads: anchors,
+    ``asked_names``, ``private_names``, ``gate_names``."""
     return [
         (page, [placed.variable for placed in page.variables.all()])
         for page in flow.interview_pages.all()
+        if page.on_page
     ]
 
 
