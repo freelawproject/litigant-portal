@@ -11,6 +11,7 @@ from litigant_portal.app.models.choices import (
     DEFAULT_FAST_BEDROCK_MODEL,
     ContactKind,
 )
+from litigant_portal.app.selectors.bedrock import bedrock_model_resolve
 
 _ROLE_DEFAULT_MODELS = {"fast": DEFAULT_FAST_BEDROCK_MODEL}
 
@@ -66,6 +67,7 @@ def resource_list(*, court: str | None = None) -> list[Resource]:
 
 def site_get_model(*, role: str) -> str:
     """The site's AI model for a pipeline role."""
-    return getattr(site_get(), f"{role}_model") or _ROLE_DEFAULT_MODELS.get(
+    model = getattr(site_get(), f"{role}_model") or _ROLE_DEFAULT_MODELS.get(
         role, DEFAULT_BEDROCK_MODEL
     )
+    return bedrock_model_resolve(model=model)

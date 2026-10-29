@@ -3,11 +3,14 @@ from django.utils.translation import gettext_lazy as _
 
 
 class BedrockModel(models.TextChoices):
-    """Models on AWS Bedrock as LiteLLM model strings."""
+    """
+    Model preferences resolved to LiteLLM strings by site_get_model.
+    """
 
     GPT_5_6_LUNA = "bedrock_mantle/openai.gpt-5.6-luna", "GPT-5.6 Luna"
     GPT_5_6_TERRA = "bedrock_mantle/openai.gpt-5.6-terra", "GPT-5.6 Terra"
     GPT_5_6_SOL = "bedrock_mantle/openai.gpt-5.6-sol", "GPT-5.6 Sol"
+    CLAUDE_HAIKU_AUTO = "auto/anthropic.haiku", "Claude Haiku (automatic)"
     CLAUDE_HAIKU_4_5 = (
         "bedrock_mantle/anthropic.claude-haiku-4-5",
         "Claude Haiku 4.5",
@@ -16,8 +19,7 @@ class BedrockModel(models.TextChoices):
 
 
 DEFAULT_BEDROCK_MODEL = BedrockModel.GPT_5_6_LUNA
-# The fast role defaults to the cheapest model, as get_default_model did.
-DEFAULT_FAST_BEDROCK_MODEL = BedrockModel.CLAUDE_HAIKU_4_5
+DEFAULT_FAST_BEDROCK_MODEL = BedrockModel.CLAUDE_HAIKU_AUTO
 
 
 class ContactKind(models.TextChoices):

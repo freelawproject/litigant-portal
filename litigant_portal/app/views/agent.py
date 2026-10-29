@@ -19,8 +19,9 @@ from django.views.decorators.http import require_GET, require_POST
 from pydantic import ValidationError
 
 from litigant_portal.agent import PortalAgent
+from litigant_portal.app.models.choices import DEFAULT_BEDROCK_MODEL
 from litigant_portal.app.selectors.agent import Court, agent_scope_choices
-from litigant_portal.app.selectors.site import site_get_model
+from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.views.utils import manage_developers_required
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock import MODEL_CHOICES
@@ -37,7 +38,7 @@ def development_page(request: HttpRequest) -> HttpResponse:
     """
     if not settings.LP_AGENT_DEV_ENABLED:
         raise Http404
-    selected_model = site_get_model(role="assistant")
+    selected_model = site_get().assistant_model or DEFAULT_BEDROCK_MODEL
     if selected_model not in dict(MODEL_CHOICES):
         selected_model = None
     return render(

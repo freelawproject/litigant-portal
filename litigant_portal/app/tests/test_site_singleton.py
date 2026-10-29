@@ -7,6 +7,7 @@ inside an open transaction and is dropped only once it lands.
 """
 
 import uuid
+from unittest.mock import patch
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -28,7 +29,6 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import (
     DEFAULT_BEDROCK_MODEL,
-    DEFAULT_FAST_BEDROCK_MODEL,
     BedrockModel,
 )
 from litigant_portal.app.models.site import SITE_ID
@@ -117,12 +117,15 @@ class SiteCacheTests(TestCase):
             site_get_model(role="assistant"), DEFAULT_BEDROCK_MODEL
         )
 
-    def test_site_get_model_fast_role_falls_back_to_the_cheap_default(self):
+    def test_site_get_model_fast_role_resolves_the_default_haiku(self):
         with self.captureOnCommitCallbacks(execute=True):
             site_update(fast_model="")
-        self.assertEqual(
-            site_get_model(role="fast"), DEFAULT_FAST_BEDROCK_MODEL
-        )
+        with patch(
+            "litigant_portal.app.selectors.bedrock.bedrock_haiku_model",
+            return_value="discovered-haiku",
+        ) as resolve:
+            self.assertEqual(site_get_model(role="fast"), "discovered-haiku")
+        resolve.assert_called_once_with()
 
     def test_site_get_model_prefers_the_configured_model(self):
         # Not the default model, so the assertion below can't pass on a

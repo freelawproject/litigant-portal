@@ -1339,6 +1339,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
+    { name = "boto3" },
     { name = "cryptography" },
     { name = "django" },
     { name = "django-allauth" },
@@ -1383,6 +1384,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.14.3" },
+    { name = "boto3", specifier = ">=1.43.41" },
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "django", specifier = ">=6.0.5" },
     { name = "django-allauth", specifier = ">=65.0" },

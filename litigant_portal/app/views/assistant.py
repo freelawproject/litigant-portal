@@ -1,3 +1,5 @@
+import logging
+
 from django.http import HttpRequest, JsonResponse
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
@@ -5,6 +7,7 @@ from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.agents import LitigantAssistant
 from litigant_portal.app.models import UserUpload
+from litigant_portal.app.selectors.bedrock import BedrockModelUnavailable
 from litigant_portal.app.selectors.site import site_get_model
 from litigant_portal.app.selectors.upload import user_upload_list
 from litigant_portal.app.services.upload import (
@@ -16,6 +19,7 @@ from litigant_portal.app.services.upload import (
 from litigant_portal.app.views import chat_engine
 
 THREAD_TYPE = "user_chat"
+logger = logging.getLogger(__name__)
 
 
 # General chat endpoints
@@ -24,11 +28,19 @@ THREAD_TYPE = "user_chat"
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
 def stream(request: HttpRequest):
+    try:
+        model = site_get_model(role="assistant")
+    except BedrockModelUnavailable:
+        logger.exception("Assistant model discovery failed")
+        return JsonResponse(
+            {"error": _("The assistant is temporarily unavailable.")},
+            status=503,
+        )
     return chat_engine.stream(
         request,
         agent_class=LitigantAssistant,
         thread_type=THREAD_TYPE,
-        model=site_get_model(role="assistant"),
+        model=model,
     )
 
 

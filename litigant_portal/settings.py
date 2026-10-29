@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 BEDROCK_API_KEY = os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "")
+AWS_REGION = os.environ.get("AWS_REGION", "").strip()
 
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 

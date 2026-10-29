@@ -44,14 +44,17 @@ Visit: http://localhost (Caddy serves on port 80).
 
 **Required environment** (see `.env.example`):
 
-| Variable                                                                                  | Description                                   |
-| ----------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `SECRET_KEY`                                                                              | Django secret key                             |
-| `DEBUG=false`, `DEPLOYMENT_ENV`                                                           | Prod mode + environment label (`qa` / `prod`) |
-| `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves      |
-| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                           |
-| `REDIS_URL`                                                                               | Redis connection URL                          |
-| `AWS_BEARER_TOKEN_BEDROCK`                                                                | AWS Bedrock API key                           |
+| Variable                                                                                  | Description                                     |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `SECRET_KEY`                                                                              | Django secret key                               |
+| `DEBUG=false`, `DEPLOYMENT_ENV`                                                           | Prod mode + environment label (`qa` / `prod`)   |
+| `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves        |
+| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                             |
+| `REDIS_URL`                                                                               | Redis connection URL                            |
+| `AWS_BEARER_TOKEN_BEDROCK`                                                                | AWS Bedrock API key                             |
+| `AWS_REGION`                                                                              | Source region for model discovery and inference |
+
+Automatic model selection uses the deployment's AWS credentials and `AWS_REGION` to find the latest eligible version within the selected model class. It prefers inference in that region and restricts cross-region routing to the same geography, such as the US; global routing is excluded. Explicit version selections remain pinned. Each court configures its own region; local Compose defaults to `us-east-1`.
 
 ## Contributing
 

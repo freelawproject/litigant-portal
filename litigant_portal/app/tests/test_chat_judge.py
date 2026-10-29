@@ -143,6 +143,20 @@ def test_disabled_preserves_streaming(stream, judge_model):
     assert not any("review_warning" in event for event in events)
 
 
+def test_haiku_judge_resolves_its_preference(stream):
+    _, run = stream
+    with patch(
+        "litigant_portal.app.selectors.bedrock.bedrock_haiku_model",
+        return_value="discovered-haiku",
+    ):
+        events, calls = run(
+            [generation("Answer"), review(True)],
+            BedrockModel.CLAUDE_HAIKU_AUTO,
+        )
+    assert calls[1].kwargs["model"] == "discovered-haiku"
+    assert events[-1] == {"type": "done"}
+
+
 @pytest.mark.parametrize("rejections", [0, 1, 2, 3])
 def test_review_loop_audit_and_cost(stream, rejections, caplog):
     thread, run = stream

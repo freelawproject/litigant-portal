@@ -24,6 +24,7 @@ from litigant_portal.app.models import (
     PromptArtifact,
     UserIdentity,
 )
+from litigant_portal.app.selectors.bedrock import bedrock_model_resolve
 from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_get,
@@ -438,6 +439,7 @@ def _judge_candidate(
     audit: dict[str, Any] = {"role": "meta", "kind": "judge"}
     error_category = "provider_error"
     try:
+        model = bedrock_model_resolve(model=model)
         response = litellm.completion(
             model=model,
             messages=AgentJudge.request(

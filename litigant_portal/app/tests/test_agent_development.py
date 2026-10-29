@@ -115,7 +115,10 @@ class AgentModelChoicesTests(SimpleTestCase):
     def test_adapter_models_match_application_choices_with_explicit_exclusions(
         self,
     ):
-        unsupported = {BedrockModel.CLAUDE_HAIKU_4_5}
+        unsupported = {
+            BedrockModel.CLAUDE_HAIKU_4_5,
+            BedrockModel.CLAUDE_HAIKU_AUTO,
+        }
         self.assertEqual(
             dict(MODEL_CHOICES),
             {
