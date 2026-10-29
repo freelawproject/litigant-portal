@@ -318,7 +318,7 @@ class BriefcaseSampleTests(SimpleTestCase):
 
 @pytest.mark.postgres
 class BriefcaseEndpointTests(TestCase):
-    """The briefcase fragment chat re-fetches after a turn (#941)."""
+    """The briefcase fragment chat re-fetches when a tool saves a fact (#941)."""
 
     def test_returns_the_visitors_current_groups(self):
         self.client.session.save()

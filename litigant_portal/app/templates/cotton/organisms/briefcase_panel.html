@@ -12,7 +12,7 @@
 {# Shared by the desktop column and the mobile drawer, so the two can't drift. #}
 {# Always renders — an empty briefcase is an empty state, never a missing panel. #}
 <div class="flex-1 overflow-y-auto min-h-0">
-  {# chatApp.refreshBriefcase replaces this block with a fresh render after a turn (#941). #}
+  {# chatApp.refreshBriefcase replaces this block with a fresh render when a tool saves a fact (#941). #}
   <div data-briefcase-facts>
     {% if groups %}
       <div class="p-4 space-y-5">

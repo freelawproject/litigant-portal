@@ -430,6 +430,10 @@ You won't edit this, but it helps to know the contract.
 - **State is pushed to the browser** via the `state` event after any step that
   ran tools, and returned on reload — which is how the artifact sidebar stays in
   sync.
+- **A saved fact is announced** with a `briefcase_changed` event, emitted after
+  `state` whenever a tool in that step set `refresh_system_prompt`. The chat
+  page re-fetches the briefcase panel on it, so a stored answer shows up while
+  the reply is still streaming.
 
 ### One canonical store, two projections
 

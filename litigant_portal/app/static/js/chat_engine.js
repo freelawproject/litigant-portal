@@ -526,7 +526,7 @@ document.addEventListener('alpine:init', () => {
     // component itself is agent-agnostic.
     base: '',
     reviewWarningText: '',
-    // Server-rendered briefcase fragment, re-fetched after each turn.
+    // Server-rendered briefcase fragment, re-fetched when a tool saves a fact.
     briefcaseUrl: '',
     // History sidebar
     threads: [],
@@ -927,7 +927,6 @@ document.addEventListener('alpine:init', () => {
         this.updateThinking()
         this.refreshSendState()
         this.loadThreads()
-        this.refreshBriefcase()
         // Wait for Alpine to re-enable the input without taking focus elsewhere.
         this.$nextTick(() => {
           if (
@@ -944,9 +943,9 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    // Swap in the server-rendered briefcase after a turn, since tools may
-    // have saved or corrected answers (#941). Django renders the panel; this
-    // only replaces the mounted copy with the fresh markup.
+    // Swap in the server-rendered briefcase when a tool saved or corrected
+    // an answer (#941). Django renders the panel; this only replaces the
+    // mounted copy with the fresh markup.
     async refreshBriefcase() {
       if (!this.briefcaseUrl) return
       try {
@@ -1021,6 +1020,9 @@ document.addEventListener('alpine:init', () => {
         if (this.attached(stream)) this.threadTitle = event.description
       } else if (event.type === 'state') {
         if (this.attached(stream)) this.setState(event.state)
+      } else if (event.type === 'briefcase_changed') {
+        // Session-scoped, not thread-scoped: refresh even for a detached stream.
+        this.refreshBriefcase()
       } else if (event.type === 'error') {
         this.failStream(stream, event)
       } else if (event.type === 'done') {

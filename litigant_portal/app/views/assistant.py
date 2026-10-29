@@ -75,7 +75,7 @@ def thread_delete(request: HttpRequest, thread_id) -> JsonResponse:
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def briefcase(request: HttpRequest) -> HttpResponse:
-    """The chat page's briefcase panel alone, swapped in after a turn (#941).
+    """The chat page's briefcase panel alone, swapped in when a tool saves a fact (#941).
 
     Same component and context as the page's first paint, so a refreshed
     panel can't drift from a server-rendered one.
