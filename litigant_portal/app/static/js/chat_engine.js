@@ -426,6 +426,10 @@ const MAX_INPUT_HEIGHT = 160
 // Title shown for threads that don't have a generated description yet.
 const NEW_CHAT_TITLE = 'New chat'
 
+// Shape of a thread id, as the "threads/<uuid:thread_id>/" route accepts it.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // --- Attachments -------------------------------------------------------------
 
 // Mirrors the backend's allowed types (services/upload.py) so obviously bad
@@ -583,7 +587,8 @@ document.addEventListener('alpine:init', () => {
 
     // Landing with "?thread=..." opens that thread (the home page's static
     // Activity list links here). The param is stripped like "?q=" below, so
-    // a refresh or share of the page won't re-pin the thread.
+    // a refresh or share of the page won't re-pin the thread. Only a UUID is
+    // accepted: anything else is URL input that must not reach the fetch.
     consumeQueryThread() {
       const params = new URLSearchParams(window.location.search)
       if (!params.has('thread')) return
@@ -595,7 +600,7 @@ document.addEventListener('alpine:init', () => {
         (query ? '?' + query : '') +
         window.location.hash
       window.history.replaceState(null, '', url)
-      if (threadId) this.openThread(threadId)
+      if (UUID_RE.test(threadId)) this.openThread(threadId)
     },
 
     // Landing with "?q=..." fires that message as the start of a fresh chat.
@@ -772,9 +777,10 @@ document.addEventListener('alpine:init', () => {
       }
 
       try {
-        const res = await fetch(this.base + 'threads/' + threadId + '/', {
-          headers: { Accept: 'application/json' },
-        })
+        const res = await fetch(
+          this.base + 'threads/' + encodeURIComponent(threadId) + '/',
+          { headers: { Accept: 'application/json' } }
+        )
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         const data = await res.json()
         this.threadId = data.id
