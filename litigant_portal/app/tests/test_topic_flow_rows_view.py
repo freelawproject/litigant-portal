@@ -85,7 +85,7 @@ LAYOUT = [
     "resources",
 ]
 # The anchors the layout renders as: the interview block is one section
-# per interview page, numbered in page order.
+# per page marked on_page, numbered in page order.
 ANCHORS = [
     "fees",
     "interview-1",
@@ -148,6 +148,7 @@ def _corpus():
             "label": "Date licensed",
             "data_type": "date",
         },
+        "vet_name": {"name": "vet_name", "label": "Your vet"},
     }
     sections = [
         {
@@ -160,11 +161,13 @@ def _corpus():
     interview = [
         {
             "title": "About you",
+            "on_page": True,
             "variables": ["first_name", "full_name"],
         },
         {
             "title": "About your pet",
             "description": "A few facts the license needs.",
+            "on_page": True,
             "variables": [
                 "pet_kind",
                 "licensed",
@@ -173,6 +176,8 @@ def _corpus():
                 "license_date",
             ],
         },
+        # Not marked on_page: the chat asks it, the page does not.
+        {"title": "Your vet", "variables": ["vet_name"]},
     ]
     # A form with the court's PDF url and one without; the checklist joins
     # the packet only once the pet is licensed.
@@ -390,6 +395,13 @@ def test_each_interview_page_renders_a_post_form_with_a_field_per_variable(
     for name in ("first_name", "full_name", "pet_kind", "licensed"):
         assert _field_tag(flat, name), name
     assert re.search(r"<h2[^>]*>\s*About your pet\s*</h2>", flat)
+
+
+@pytest.mark.postgres
+def test_a_page_not_marked_on_page_is_not_rendered(client, synced):
+    flat = _flat(client.get(URL))
+    assert "Your vet" not in flat
+    assert not _field_tag(flat, "vet_name")
 
 
 @pytest.mark.postgres
@@ -1118,6 +1130,15 @@ def test_a_save_that_reveals_a_question_redirects_to_that_field(
     assert response["Location"] == f"{URL}#vaccinated"
     response = client.post(URL, {"licensed": "false"})
     assert response["Location"] == f"{URL}#interview-2"
+
+
+@pytest.mark.postgres
+def test_post_ignores_a_variable_from_a_page_not_marked_on_page(
+    client, synced
+):
+    response = client.post(URL, {**PET_PAGE, "vet_name": "Dr. Vet"})
+    assert response.status_code == 302
+    assert "vet_name" not in _values()
 
 
 @pytest.mark.postgres

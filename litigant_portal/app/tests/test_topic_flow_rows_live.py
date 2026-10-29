@@ -20,11 +20,11 @@ from litigant_portal.app.services.topic_flow import variable_answer_set
 
 
 def _expected_anchors(flow):
-    """The layout with the interview block expanded to its pages."""
+    """The layout with the interview block expanded to its marked pages."""
     anchors = []
     for name in flow.layout:
         if name == "interview":
-            pages = flow.interview_pages.count()
+            pages = flow.interview_pages.filter(on_page=True).count()
             anchors += [f"interview-{n}" for n in range(1, pages + 1)]
         else:
             anchors.append(name)
@@ -54,17 +54,12 @@ def test_every_live_flow_renders_with_an_anchor_per_section_key(
             anchors
         ), url
 
-    # Save the "The name you want" page of the ND standard flow: three text
-    # variables, two required, none gated, all private, so the blank middle
-    # name is "keep", not "erase", and writes no row. The anchor is not
-    # hard-coded, since page order in standard.yml can change.
+    # Save the "The filing fee" page of the ND standard flow: one boolean
+    # the packet reacts to. The anchor is not hard-coded, since page order
+    # in standard.yml can change.
     url = "/t/north-dakota/adult-name-change/standard/"
-    posted = {
-        "name_change_requested_first": " Jane ",
-        "name_change_requested_middle": "",
-        "name_change_requested_last": "Doe",
-    }
-    response = client.post(url, posted)
+    assert "Petition for Fee Waiver" not in client.get(url).content.decode()
+    response = client.post(url, {"name_change_fee_waiver_needed": "true"})
     assert response.status_code == 302
     assert response["Location"].startswith(f"{url}#interview-")
     stored = dict(
@@ -72,10 +67,8 @@ def test_every_live_flow_renders_with_an_anchor_per_section_key(
             "variable__name", "value"
         )
     )
-    assert stored == {
-        "name_change_requested_first": "Jane",
-        "name_change_requested_last": "Doe",
-    }
+    assert stored == {"name_change_fee_waiver_needed": True}
+    assert "Petition for Fee Waiver" in client.get(url).content.decode()
 
 
 # --- the ND output files ----------------------------------------------------

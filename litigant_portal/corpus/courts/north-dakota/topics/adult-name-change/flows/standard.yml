@@ -124,9 +124,11 @@ sections:
       North Dakota law does not say how many times the notice has to run. The statute requires only that 30 days of notice be given before a judge can act. The North Dakota Legal Self Help Center cannot interpret this, so ask the newspaper and the Clerk of Court what your county expects before you pay for publication. Newspapers handle these notices routinely and can tell you what they normally run.
 
   - id: your_information_privacy
-    heading: 'How your information is used'
+    heading: 'The questions this page asks'
     content: |
-      What you enter below is used to fill out your court forms. For your privacy on a shared or public computer, your saved answers are not shown back on this page.
+      Two questions below shape your packet: whether you need the filing fee waived, and the date your notice was published. The fee answer decides which forms are in your packet. The publication date sets your 30-day waiting period and is carried into the forms.
+
+      The rest of your details are asked when you fill out your forms from the packet section. For your privacy on a shared or public computer, your saved publication date is not shown back on this page.
 
   - id: form_gotchas
     heading: 'Before you sign'
@@ -155,10 +157,8 @@ sections:
 
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
-# One page per docassemble interview page (title = the page's question,
-# description = its subquestion, or the ND context carried as help text).
-# Pages place glossary variables by name; the gated conviction
-# variables sit with their gate and only appear when it is satisfied.
+# The chat and the docassemble handoff use every page. The guided page asks
+# only the pages marked `on_page`: the facts the page itself reacts to (#1046).
 interview:
   - title: 'Your current legal name'
     variables:
@@ -186,15 +186,19 @@ interview:
       - name_change_conviction_class
       - name_change_conviction_court
       - name_change_conviction_year
-  - title: 'Publication of your notice'
-    description: "The standard path publishes a notice in the county's official newspaper."
-    variables:
-      - name_change_publication_date
-      - name_change_publication_newspaper
-      - name_change_publication_county
   - title: 'The filing fee'
+    on_page: true
     variables:
       - name_change_fee_waiver_needed
+  - title: 'Your publication date'
+    on_page: true
+    variables:
+      - name_change_publication_date
+  - title: 'Where your notice ran'
+    description: "The standard path publishes a notice in the county's official newspaper."
+    variables:
+      - name_change_publication_newspaper
+      - name_change_publication_county
   - title: 'A few more details for the rest of your packet'
     description: 'These appear on the Order, Declaration, and Confidential Information form, not just the Petition.'
     variables:

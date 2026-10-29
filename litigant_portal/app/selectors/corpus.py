@@ -437,10 +437,14 @@ class SectionSchema(SourceSchema):
 
 class InterviewPageSchema(BaseSchema):
     """Populates a ``TopicFlowInterviewPage`` row and its
-    ``TopicFlowInterviewVariable`` rows."""
+    ``TopicFlowInterviewVariable`` rows.
+
+    ``on_page`` marks a page the guided page asks. The chat and the
+    docassemble handoff use every page, marked or not."""
 
     title: str = Field(min_length=1)
     description: str = ""
+    on_page: bool = False
     variables: list[VariableNameField] = Field(min_length=1)
 
 
@@ -526,6 +530,29 @@ class FlowSchema(BaseSchema):
         """The authored layout, or the default when none is authored."""
         return list(self.layout) or default_layout(s.id for s in self.sections)
 
+    def unasked_decision_variables(self, variables) -> list[str]:
+        """The variables the page reacts to (deadline sources, packet
+        conditions, the gates of the variables it asks) that no page marked
+        ``on_page`` asks, sorted. ``variables`` is the glossary, which
+        holds the gates. Only the chat can set them, which ``corpus.W001``
+        warns about. The same set ``rows.flow_variable_names`` reads."""
+        asked = {
+            name
+            for page in self.interview
+            if page.on_page
+            for name in page.variables
+        }
+        decided = (
+            {deadline.offset_from for deadline in self.deadlines}
+            | {entry.when.variable for entry in self.packet if entry.when}
+            | {
+                variables[name].asked_when.variable
+                for name in asked
+                if name in variables and variables[name].asked_when
+            }
+        )
+        return sorted(decided - asked)
+
     @model_validator(mode="after")
     def _unique_source_ids(self):
         """Validates:
@@ -553,8 +580,9 @@ class FlowSchema(BaseSchema):
         - every name is a section id or a block name
         - every section id appears exactly once
         - every block name appears at most once
-        - a block the flow has content for (interview pages, packet
+        - a block the flow has content for (pages marked on_page, packet
           entries, deadlines) appears, or that content never renders
+        - a placed interview block has at least one page marked on_page
         """
         if not self.layout:
             return self
@@ -571,8 +599,9 @@ class FlowSchema(BaseSchema):
         missing = sorted(section_ids - set(self.layout))
         if missing:
             raise ValueError(f"layout is missing sections: {missing}")
+        marked_pages = [page for page in self.interview if page.on_page]
         filled = {
-            "interview": self.interview,
+            "interview": marked_pages,
             "packet": self.packet,
             "calendar": self.deadlines,
         }
@@ -584,6 +613,10 @@ class FlowSchema(BaseSchema):
         if unplaced:
             raise ValueError(
                 f"layout is missing blocks with content: {unplaced}"
+            )
+        if "interview" in self.layout and not marked_pages:
+            raise ValueError(
+                "layout places interview but no page is marked on_page"
             )
         return self
 
