@@ -577,7 +577,25 @@ document.addEventListener('alpine:init', () => {
       this.reviewWarningText = this.$root.dataset.reviewWarning
       setCitationChips(this.$root.dataset.citationChips === 'true')
       this.loadThreads()
+      this.consumeQueryThread()
       this.consumeQueryMessage()
+    },
+
+    // Landing with "?thread=..." opens that thread (the home page's static
+    // Activity list links here). The param is stripped like "?q=" below, so
+    // a refresh or share of the page won't re-pin the thread.
+    consumeQueryThread() {
+      const params = new URLSearchParams(window.location.search)
+      if (!params.has('thread')) return
+      const threadId = (params.get('thread') || '').trim()
+      params.delete('thread')
+      const query = params.toString()
+      const url =
+        window.location.pathname +
+        (query ? '?' + query : '') +
+        window.location.hash
+      window.history.replaceState(null, '', url)
+      if (threadId) this.openThread(threadId)
     },
 
     // Landing with "?q=..." fires that message as the start of a fresh chat.
