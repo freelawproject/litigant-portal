@@ -13,6 +13,7 @@ from litigant_portal.app.models.choices import BedrockModel
 from litigant_portal.app.selectors.bedrock import (
     BedrockModelUnavailable,
     bedrock_haiku_model,
+    bedrock_model_target,
 )
 from litigant_portal.app.services.chat_engine import (
     chat_thread_generate_description,
@@ -26,6 +27,7 @@ NEW_MODEL = "anthropic.claude-haiku-5-5"
 @pytest.fixture
 def discovery(settings):
     settings.AWS_REGION = "us-east-1"
+    settings.BEDROCK_ALLOWED_GEOGRAPHY = "US"
     settings.BEDROCK_API_KEY = "test-bedrock-key"
     client = Mock(
         spec=[
@@ -42,6 +44,7 @@ def discovery(settings):
             "providerName": "Anthropic",
             "inputModalities": ["TEXT"],
             "outputModalities": ["TEXT"],
+            "responseStreamingSupported": True,
             "inferenceTypesSupported": ["INFERENCE_PROFILE"],
             "modelLifecycle": {
                 "status": "ACTIVE",
@@ -79,7 +82,14 @@ def discovery(settings):
         "regionAvailability": "AVAILABLE",
         "agreementAvailability": {"status": "AVAILABLE"},
     }
-    with patch("boto3.client", return_value=client) as create_client:
+    with (
+        patch(
+            "litigant_portal.app.selectors.bedrock.bedrock_client",
+            return_value=client,
+        ) as create_client,
+        patch("openai.OpenAI") as mantle,
+    ):
+        mantle.return_value.__enter__.return_value.models.list.return_value = []
         yield SimpleNamespace(
             client=client,
             models=models,
@@ -172,6 +182,7 @@ def test_discovery_respects_access_and_geography(
         expected = OLD_MODEL
     elif scenario == "eu":
         settings.AWS_REGION = region = "eu-west-1"
+        settings.BEDROCK_ALLOWED_GEOGRAPHY = "EU"
         prefix = "eu."
         for profile in discovery.profiles:
             profile["inferenceProfileId"] = profile[
@@ -188,7 +199,7 @@ def test_discovery_respects_access_and_geography(
         bedrock_haiku_model()
         == f"bedrock/converse/{region}/{prefix}{expected}"
     )
-    assert discovery.create_client.call_args.kwargs["region_name"] == region
+    assert discovery.create_client.call_args.args[0].region == region
 
 
 def test_cache_is_scoped_to_region_credentials_and_preference(
@@ -200,6 +211,7 @@ def test_cache_is_scoped_to_region_credentials_and_preference(
     discovery.create_client.assert_called_once()
     assert bedrock_haiku_model(version="4.5").endswith(OLD_MODEL)
     settings.AWS_REGION = "eu-west-1"
+    settings.BEDROCK_ALLOWED_GEOGRAPHY = "EU"
     assert "/eu-west-1/" in bedrock_haiku_model()
     settings.BEDROCK_API_KEY = "rotated-test-key"
     bedrock_haiku_model()
@@ -217,6 +229,23 @@ def test_missing_region_fails_before_discovery_with_safe_service_error(
     assert response.status_code == 503
     assert b"temporarily unavailable" in response.content
     discovery.create_client.assert_not_called()
+
+
+def test_geography_does_not_confuse_india_with_other_asia_pacific_regions(
+    discovery, settings
+):
+    settings.AWS_REGION = "ap-south-1"
+    settings.BEDROCK_ALLOWED_GEOGRAPHY = "IN"
+    for profile in discovery.profiles:
+        profile["inferenceProfileId"] = profile["inferenceProfileId"].replace(
+            "us.", "apac."
+        )
+        for model in profile["models"]:
+            model["modelArn"] = model["modelArn"].replace(
+                "us-east-1", "ap-southeast-2"
+            )
+    with pytest.raises(BedrockModelUnavailable):
+        bedrock_haiku_model()
 
 
 @pytest.mark.parametrize(
@@ -238,16 +267,34 @@ def test_discovery_fails_explicitly_and_does_not_cache_failures(
     elif failure == "no_route":
         discovery.profiles.clear()
     elif failure == "timestamp":
-        discovery.models[1]["modelLifecycle"].pop("startOfLifeTime")
+        for model in discovery.models:
+            model["modelLifecycle"].pop("startOfLifeTime")
     else:
-        discovery.profiles.append(
-            {
-                **discovery.profiles[1],
-                "inferenceProfileId": f"alternative.{NEW_MODEL}",
-            }
-        )
+        discovery.models[0]["modelLifecycle"] = discovery.models[1][
+            "modelLifecycle"
+        ].copy()
     for _ in range(2):
         with pytest.raises(BedrockModelUnavailable) as error:
             bedrock_haiku_model()
         assert "provider-secret" not in str(error.value)
     assert discovery.create_client.call_count == 2
+
+
+@pytest.mark.parametrize(
+    ("class_id", "older", "newer"),
+    [
+        ("openai.luna", "openai.gpt-5.6-luna", "openai.gpt-6-luna"),
+        ("openai.terra", "openai.gpt-5.6-terra", "openai.gpt-6.1-terra"),
+        ("openai.sol", "openai.gpt-5.6-sol", "openai.gpt-6.1-sol"),
+        ("zai.glm-flash", "zai.glm-4.7-flash", "zai.glm-5-flash"),
+    ],
+)
+def test_automatic_selection_is_shared_across_model_classes(
+    discovery, class_id, older, newer
+):
+    for model, model_id in zip(discovery.models, (older, newer), strict=True):
+        model["modelId"] = model_id
+        model["inferenceTypesSupported"] = ["ON_DEMAND"]
+    target = bedrock_model_target(model=f"auto/{class_id}")
+    assert target.model.endswith(newer)
+    assert target.region == "us-east-1"
