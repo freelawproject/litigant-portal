@@ -9,7 +9,7 @@ from unittest.mock import Mock, patch
 from django.test import SimpleTestCase
 from django.urls import reverse
 
-from litigant_portal.agents.base import Agent, ToolOutput
+from litigant_portal.agents.base import Agent, Tool, ToolOutput
 from litigant_portal.app.models import Topic, TopicFlow
 from litigant_portal.app.services.chat_engine import chat_stream
 
@@ -398,3 +398,26 @@ class ChatStreamFallbackTests(SimpleTestCase):
         self.assertNotIn(
             "briefcase_changed", [event["type"] for event in events]
         )
+
+    def test_tool_call_event_says_whether_its_card_follows_the_reply(self):
+        # The live stream carries the flag the reload path carries, so the
+        # chat can place the card below the reply as it streams (#1091).
+        deferred = type("tool", (Tool,), {"render_after_reply": True})
+        for tools, expected in (([deferred], True), ([], False)):
+            with (
+                self.subTest(after_reply=expected),
+                patch.object(FailingAgent, "tools", tools),
+                patch(
+                    "litigant_portal.app.services.chat_engine._execute_tool",
+                    return_value=ToolOutput(result="Card shown"),
+                ),
+            ):
+                events = self.stream_events(
+                    completions=[
+                        iter([_tool_chunk("call-1")]),
+                        iter([_text_chunk("Healthy answer")]),
+                    ]
+                )
+
+            tool_call = next(e for e in events if e["type"] == "tool_call")
+            self.assertIs(tool_call["after_reply"], expected)

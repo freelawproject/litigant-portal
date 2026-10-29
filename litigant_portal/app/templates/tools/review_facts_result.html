@@ -69,7 +69,8 @@
               target="_blank"
               rel="noopener"
         >
-          <c-atoms.button type="submit" variant="primary" size="sm">
+          {# One way forward, not the card's main action: confirming is (#1091). #}
+          <c-atoms.button type="submit" variant="outline" size="sm">
             <c-atoms.icon name="pencil-square" class="w-4 h-4" />
             {% trans "Fill out your forms" %}
             <span class="sr-only">{% trans "(opens in a new tab)" %}</span>

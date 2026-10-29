@@ -50,6 +50,9 @@ class Tool(BaseModel):
 
     tool_call_template: ClassVar[str | bool | None] = None
     tool_result_template: ClassVar[str | bool | None] = None
+    # A card the person acts on (a review step, a next action) belongs below
+    # the reply that explains it, not above it where it streamed in (#1091).
+    render_after_reply: ClassVar[bool] = False
 
     def __call__(self, *, thread_id) -> ToolOutput:
         """Run the tool against ``thread_id`` and return its output."""

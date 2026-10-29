@@ -257,6 +257,7 @@ function blankMessage() {
     showCallDefault: false,
     showResultCustom: false,
     showResultDefault: false,
+    afterReply: false,
   }
 }
 
@@ -384,6 +385,7 @@ function makeToolFromCall(event) {
     argsJson: prettyJson(event.args || {}),
     callMode: event.render_mode,
     callHtml: event.render_html || '',
+    afterReply: !!event.after_reply,
     resultMode: 'pending',
     resultHtml: '',
     renderDataJson: '',
@@ -402,12 +404,41 @@ function makeToolFromItem(item) {
     argsJson: prettyJson(item.args || {}),
     callMode: item.call_render_mode,
     callHtml: item.call_render_html || '',
+    afterReply: !!item.after_reply,
     resultMode: item.result_render_mode,
     resultHtml: item.result_render_html || '',
     renderDataJson: prettyJson(item.render_data),
     status: 'done',
     rowClass: 'items-start',
   })
+}
+
+// A card the person acts on (the review step) streams in before the reply
+// that explains it, but belongs below it (#1091). New parts go in ahead of
+// the turn's trailing after-reply cards, so those cards stay last.
+function replyInsertIndex(messages) {
+  let index = messages.length
+  while (index > 0 && messages[index - 1].afterReply) index--
+  return index
+}
+
+// The same placement for a reloaded thread: each turn's after-reply cards
+// move to the end of that turn, in order. A user message starts a turn.
+function placeCardsAfterReply(parts) {
+  const placed = []
+  let deferred = []
+  for (const part of parts) {
+    if (part.afterReply) {
+      deferred.push(part)
+      continue
+    }
+    if (part.isUser) {
+      placed.push(...deferred)
+      deferred = []
+    }
+    placed.push(part)
+  }
+  return placed.concat(deferred)
 }
 
 // Build a render item (from the reload endpoint) into a message/tool part.
@@ -765,7 +796,7 @@ document.addEventListener('alpine:init', () => {
         const data = await res.json()
         this.threadId = data.id
         this.threadTitle = data.description || NEW_CHAT_TITLE
-        this.messages = (data.items || []).map(buildItem)
+        this.messages = placeCardsAfterReply((data.items || []).map(buildItem))
         this.setState(data.state)
         this.conversationEmpty = this.messages.length === 0
         this.clearInput()
@@ -1005,7 +1036,11 @@ document.addEventListener('alpine:init', () => {
         stream.judging = false
         // A new tool starts a fresh text run after it.
         stream.openIndex = null
-        stream.messages.push(makeToolFromCall(event))
+        const tool = makeToolFromCall(event)
+        const index = tool.afterReply
+          ? stream.messages.length
+          : replyInsertIndex(stream.messages)
+        stream.messages.splice(index, 0, tool)
         if (!stream.inFlightToolIds.includes(event.id)) {
           stream.inFlightToolIds.push(event.id)
         }
@@ -1076,8 +1111,12 @@ document.addEventListener('alpine:init', () => {
     appendContent(stream, text, reviewWarning = false) {
       if (text) stream.hadAssistantText = true
       if (stream.openIndex === null) {
-        stream.messages.push(makeMessage('assistant', ''))
-        stream.openIndex = stream.messages.length - 1
+        stream.openIndex = replyInsertIndex(stream.messages)
+        stream.messages.splice(
+          stream.openIndex,
+          0,
+          makeMessage('assistant', '')
+        )
       }
       const msg = stream.messages[stream.openIndex]
       const content = msg.content + text
@@ -1141,7 +1180,9 @@ document.addEventListener('alpine:init', () => {
         this.thinkingVisible = false
         return
       }
-      if (last && last.isAssistant && last.content) {
+      // Reply text streams in above any after-reply card, so look past those.
+      const reply = this.messages[replyInsertIndex(this.messages) - 1]
+      if (reply && reply.isAssistant && reply.content) {
         this.thinkingVisible = false
         return
       }

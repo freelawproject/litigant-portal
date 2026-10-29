@@ -34,6 +34,7 @@ class ReviewFacts(Tool):
 
     tool_call_template = "tools/review_facts_call.html"
     tool_result_template = "tools/review_facts_result.html"
+    render_after_reply = True
 
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.app.models import ChatThread

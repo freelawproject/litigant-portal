@@ -228,6 +228,11 @@ ordinary Django + cotton.
 > the last thing on screen (perfect for a "working…" spinner). The **result**
 > card persists.
 
+Cards show in the order their tools ran, so a tool's card lands above the reply
+the model writes after it. For a card the person acts on (a review step, a next
+action), set `render_after_reply = True`: the chat keeps it below the rest of
+that turn, both while streaming and on reload. `ReviewFacts` is the example.
+
 ---
 
 ## Build an agent end to end: the Weather demo

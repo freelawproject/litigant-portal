@@ -14,7 +14,7 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.translation import gettext as _
 
-from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
+from litigant_portal.agents.base import Agent, IdentityPrompt, Tool, ToolOutput
 from litigant_portal.agents.citations import citation_ids, citation_ids_unknown
 from litigant_portal.agents.judge import AgentJudge, JudgeVerdict
 from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
@@ -305,6 +305,11 @@ def _render_tool(template: str | bool | None, context: dict) -> dict[str, Any]:
     }
 
 
+def _renders_after_reply(tool_class: type[Tool] | None) -> bool:
+    """Whether the chat shows this tool's card below the turn's reply."""
+    return tool_class is not None and tool_class.render_after_reply
+
+
 def _tool_item(tool_call: dict, results: dict, tools: dict) -> dict[str, Any]:
     """Build a frontend tool descriptor from a stored assistant tool call."""
     fn = tool_call.get("function", {})
@@ -337,6 +342,7 @@ def _tool_item(tool_call: dict, results: dict, tools: dict) -> dict[str, Any]:
         "call_render_html": call.get("render_html", ""),
         "result_render_mode": result["render_mode"],
         "result_render_html": result.get("render_html", ""),
+        "after_reply": _renders_after_reply(tool_class),
     }
 
 
@@ -733,6 +739,7 @@ def chat_stream(
                             "id": tool_id,
                             "name": name,
                             "args": args,
+                            "after_reply": _renders_after_reply(tool_class),
                             **(
                                 _render_tool(
                                     tool_class.tool_call_template,

@@ -769,3 +769,48 @@ test('only the latest briefcase fetch swaps the panel', async () => {
 
   assert.deepEqual(panel.replaced, ['<div data-briefcase-facts>Burleigh</div>'])
 })
+
+// An after-reply card streams in before the reply that explains it. The chat
+// keeps it below that reply as the text arrives (#1091).
+test('a streamed after-reply card stays below the reply', () => {
+  const { app } = makeApp()
+  const stream = newStream(app)
+  stream.messages.push({ isUser: true, content: 'here is my ticket' })
+
+  app.handleEvent(stream, {
+    type: 'tool_call',
+    id: 'review',
+    name: 'ReviewFacts',
+    after_reply: true,
+  })
+  app.handleEvent(stream, { type: 'tool_response', id: 'review' })
+  app.handleEvent(stream, { type: 'tool_call', id: 'lookup', name: 'Lookup' })
+  app.handleEvent(stream, { type: 'tool_response', id: 'lookup' })
+  app.handleEvent(stream, { type: 'content_delta', content: 'Your court ' })
+  app.handleEvent(stream, { type: 'content_delta', content: 'date is May 4.' })
+
+  assert.deepEqual(
+    Array.from(stream.messages, (m) => m.toolId || m.content),
+    ['here is my ticket', 'lookup', 'Your court date is May 4.', 'review']
+  )
+})
+
+test('streaming text above an after-reply card hides the thinking row', () => {
+  const { app, updateThinking } = makeApp()
+  app.updateThinking = updateThinking
+  const stream = newStream(app)
+  app.messages = stream.messages
+  stream.messages.push({ isUser: true, content: 'here is my ticket' })
+
+  app.handleEvent(stream, {
+    type: 'tool_call',
+    id: 'review',
+    name: 'ReviewFacts',
+    after_reply: true,
+  })
+  assert.equal(app.thinkingVisible, false, 'card spinner is showing')
+  app.handleEvent(stream, { type: 'tool_response', id: 'review' })
+  assert.equal(app.thinkingVisible, true, 'waiting on the reply')
+  app.handleEvent(stream, { type: 'content_delta', content: 'Your court' })
+  assert.equal(app.thinkingVisible, false, 'the reply is streaming')
+})

@@ -52,6 +52,7 @@ const {
   makeToolFromCall,
   makeToolFromItem,
   buildItem,
+  placeCardsAfterReply,
   formatSize,
   fileStyle,
   uploadCardClass,
@@ -259,6 +260,46 @@ test('buildItem maps attachments into chips', () => {
   })
   assert.equal(msg.attachments.length, 1)
   assert.equal(msg.attachments[0].sizeLabel, '2 KB')
+})
+
+// A reloaded turn, as the reload endpoint lists it: the review card was
+// stored before the reply that explains it (#1091).
+const reloadedTurn = (afterReply) => [
+  buildItem({ kind: 'user', content: 'here is my ticket' }),
+  buildItem({
+    kind: 'tool',
+    id: 'review',
+    name: 'ReviewFacts',
+    args: {},
+    after_reply: afterReply,
+  }),
+  buildItem({ kind: 'assistant', content: 'Your court date is May 4.' }),
+]
+
+test("a reloaded after-reply card moves below its turn's reply", () => {
+  const parts = placeCardsAfterReply([
+    ...reloadedTurn(true),
+    ...reloadedTurn(true),
+  ])
+  assert.deepEqual(
+    Array.from(parts, (p) => p.toolId || p.content),
+    [
+      'here is my ticket',
+      'Your court date is May 4.',
+      'review',
+      'here is my ticket',
+      'Your court date is May 4.',
+      'review',
+    ]
+  )
+})
+
+test('other reloaded tool cards keep their place', () => {
+  const parts = placeCardsAfterReply(reloadedTurn(false))
+  assert.deepEqual(
+    Array.from(parts, (p) => p.toolId || p.content),
+    ['here is my ticket', 'review', 'Your court date is May 4.']
+  )
 })
 
 // ============================================================================
