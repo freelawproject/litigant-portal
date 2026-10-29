@@ -283,7 +283,6 @@ class BedrockClient:
             response = await aresponses(
                 **self.target.invocation_options(),
                 api_key=self._api_key.get_secret_value(),
-                max_output_tokens=4096,
                 client=client,
                 instructions=request.instructions,
                 input=[item.model_dump(mode="json") for item in request.input],

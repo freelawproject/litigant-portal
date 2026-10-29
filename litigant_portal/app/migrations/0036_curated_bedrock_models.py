@@ -25,6 +25,15 @@ MODEL_MAPPING = {
     "bedrock_mantle/anthropic.claude-haiku-4-5": "auto/anthropic.haiku",
     "bedrock_mantle/zai.glm-4.7-flash": "auto/zai.glm-flash",
 }
+REVERSE_MODEL_MAPPING = {
+    "tier/economy": "bedrock_mantle/openai.gpt-5.6-luna",
+    "tier/balanced": "bedrock_mantle/openai.gpt-5.6-terra",
+    "tier/best": "bedrock_mantle/openai.gpt-5.6-sol",
+    "auto/openai.luna": "bedrock_mantle/openai.gpt-5.6-luna",
+    "auto/openai.terra": "bedrock_mantle/openai.gpt-5.6-terra",
+    "auto/openai.sol": "bedrock_mantle/openai.gpt-5.6-sol",
+    "auto/zai.glm-flash": "bedrock_mantle/zai.glm-4.7-flash",
+}
 
 
 def migrate_preferences(apps, schema_editor):
@@ -57,9 +66,8 @@ def restore_preferences(apps, schema_editor):
         schema_editor.connection.alias
     )
     for field in MODEL_FIELDS:
-        for old, new in MODEL_MAPPING.items():
-            if new != "auto/anthropic.haiku":
-                sites.filter(**{field: new}).update(**{field: old})
+        for new, old in REVERSE_MODEL_MAPPING.items():
+            sites.filter(**{field: new}).update(**{field: old})
 
 
 class Migration(migrations.Migration):

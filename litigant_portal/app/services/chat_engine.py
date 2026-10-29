@@ -193,7 +193,6 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
     response = litellm.completion(
         **target.invocation_options(),
         api_key=settings.BEDROCK_API_KEY,
-        max_tokens=256,
         messages=[
             {"role": "system", "content": DESCRIPTION_PROMPT},
             {"role": "user", "content": conversation[:4000]},
@@ -438,7 +437,6 @@ def _judge_candidate(
         response = litellm.completion(
             **target.invocation_options(),
             api_key=settings.BEDROCK_API_KEY,
-            max_tokens=4096,
             messages=AgentJudge.request(
                 {"messages": messages, "state": thread.state}, candidate
             ),
@@ -564,7 +562,6 @@ def chat_stream(
                     tool_schemas=tool_schemas,
                 )
                 call_args: dict[str, Any] = {
-                    "max_tokens": 4096,
                     **agent.completion_args,
                     **target.invocation_options(),
                     "api_key": settings.BEDROCK_API_KEY,

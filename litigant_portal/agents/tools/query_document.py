@@ -97,7 +97,6 @@ class QueryDocument(Tool):
         response = litellm.completion(
             **model.invocation_options(),
             api_key=settings.BEDROCK_API_KEY,
-            max_tokens=4096,
             messages=[
                 {"role": "system", "content": READER_SYSTEM_PROMPT},
                 {

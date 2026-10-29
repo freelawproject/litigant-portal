@@ -227,6 +227,43 @@ class SiteCacheTests(TestCase):
             ("unknown", "", None),
         )
 
+    def test_model_migration_restores_preferences_supported_before_tiers(self):
+        migration = import_module(
+            "litigant_portal.app.migrations.0036_curated_bedrock_models"
+        )
+        previous_gpt_models = (
+            BedrockModel.GPT_5_6_LUNA,
+            BedrockModel.GPT_5_6_TERRA,
+            BedrockModel.GPT_5_6_SOL,
+        )
+        cases = (
+            (
+                ("auto/openai.luna", "auto/openai.terra", "auto/openai.sol"),
+                previous_gpt_models,
+            ),
+            (
+                ("tier/economy", "tier/balanced", "tier/best"),
+                previous_gpt_models,
+            ),
+            (
+                ("auto/zai.glm-flash", "auto/anthropic.haiku", None),
+                (BedrockModel.GLM_4_7_FLASH, "auto/anthropic.haiku", None),
+            ),
+            (("unknown", "", None), ("unknown", "", None)),
+        )
+        for before, expected in cases:
+            with self.subTest(before=before):
+                Site.objects.update(
+                    **dict(zip(migration.MODEL_FIELDS, before, strict=True))
+                )
+                migration.restore_preferences(
+                    apps, SimpleNamespace(connection=connection)
+                )
+                self.assertEqual(
+                    Site.objects.values_list(*migration.MODEL_FIELDS).get(),
+                    expected,
+                )
+
 
 @pytest.mark.postgres
 class TopicScopingTests(TestCase):
