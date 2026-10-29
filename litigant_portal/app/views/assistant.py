@@ -5,7 +5,7 @@ from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.agents import LitigantAssistant
 from litigant_portal.app.models import UserUpload
-from litigant_portal.app.selectors.site import site_get_model
+from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.selectors.upload import user_upload_list
 from litigant_portal.app.services.upload import (
     UploadValidationError,
@@ -28,7 +28,7 @@ def stream(request: HttpRequest):
         request,
         agent_class=LitigantAssistant,
         thread_type=THREAD_TYPE,
-        model=site_get_model(role="assistant"),
+        model=site_get().assistant_model,
     )
 
 

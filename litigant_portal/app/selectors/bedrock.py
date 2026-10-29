@@ -10,15 +10,13 @@ from django.conf import settings
 from django.core.cache import cache
 from pydantic import ValidationError
 
+from lp_agent.adapters import bedrock_models
 from lp_agent.adapters.bedrock_discovery import (
     bedrock_client,
     discover_catalog,
     resolve_catalog,
 )
 from lp_agent.adapters.bedrock_models import (
-    ENABLED_MODEL_CLASSES,
-    MODEL_CLASSES,
-    MODEL_TIERS,
     BedrockModelUnavailable,
     BedrockPolicy,
     ResolvedBedrockModel,
@@ -40,19 +38,19 @@ def _cache_scope(policy: BedrockPolicy) -> str:
             (
                 policy.region,
                 policy.geography,
-                sorted(ENABLED_MODEL_CLASSES),
-                MODEL_TIERS,
-                {
-                    name: asdict(definition)
-                    for name, definition in MODEL_CLASSES.items()
-                },
+                bedrock_models.MODEL_MAPPING,
+                bedrock_models.MODEL_CHOICES,
+                [
+                    asdict(definition)
+                    for definition in bedrock_models.MODEL_SERIES
+                ],
                 settings.BEDROCK_API_KEY,
             ),
             sort_keys=True,
             default=sorted,
         ).encode()
     ).hexdigest()
-    return f"bedrock:v3:{fingerprint}"
+    return f"bedrock:v4:{fingerprint}"
 
 
 def bedrock_model_failed(error: Exception) -> None:
@@ -68,13 +66,54 @@ def bedrock_model_target(
     model: str,
     required: frozenset[str] = frozenset({"text"}),
 ) -> ResolvedBedrockModel:
+    return _model_targets((model,), required=required)[model]
+
+
+def bedrock_available_models(
+    *,
+    required: frozenset[str] = frozenset({"text"}),
+) -> dict[str, ResolvedBedrockModel]:
+    """
+    Resolve enabled choices together against one cached discovery snapshot.
+    """
+    return _model_targets(
+        tuple(bedrock_models.model_tiers()),
+        required=required,
+        available_only=True,
+    )
+
+
+def bedrock_model_choices() -> tuple[tuple[str, str], ...]:
+    available = bedrock_available_models()
+    return tuple(
+        (model, label)
+        for model, label in bedrock_models.model_choices()
+        if model in available
+    )
+
+
+def _model_targets(
+    models: tuple[str, ...],
+    *,
+    required: frozenset[str],
+    available_only: bool = False,
+) -> dict[str, ResolvedBedrockModel]:
     policy = bedrock_policy()
-    policy.preference(model)
+    for model in models:
+        policy.preference(model)
     scope = _cache_scope(policy)
     generation = cache.get_or_set(scope, lambda: uuid4().hex, timeout=3600)
     catalog_key = f"{scope}:{generation}"
-    resolution_key = f"{catalog_key}:{model}:{','.join(sorted(required))}"
-    if resolved := cache.get(resolution_key):
+    keys = {
+        model: f"{catalog_key}:{model}:{','.join(sorted(required))}"
+        for model in models
+    }
+    resolved = {
+        model: target
+        for model, key in keys.items()
+        if (target := cache.get(key)) is not None
+    }
+    if len(resolved) == len(keys):
         return resolved
     try:
         with closing(
@@ -87,14 +126,23 @@ def bedrock_model_target(
                 )
                 if catalog.complete:
                     cache.set(catalog_key, catalog, timeout=3600)
-            resolved = resolve_catalog(
-                catalog, client, policy, model, required
-            )
+            for model, key in keys.items():
+                if model in resolved:
+                    continue
+                try:
+                    target = resolve_catalog(
+                        catalog, client, policy, model, required
+                    )
+                except BedrockModelUnavailable:
+                    if not available_only:
+                        raise
+                    continue
+                resolved[model] = target
+                if catalog.complete:
+                    cache.set(key, target, timeout=3600)
+                logger.info("Resolved Bedrock model: %s", target.model)
     except (BotoCoreError, ClientError, ValidationError) as error:
         raise BedrockModelUnavailable(
             f"Bedrock discovery failed ({type(error).__name__}). Check model access and configuration."
         ) from None
-    if catalog.complete:
-        cache.set(resolution_key, resolved, timeout=3600)
-    logger.info("Resolved Bedrock model: %s", resolved.model)
     return resolved

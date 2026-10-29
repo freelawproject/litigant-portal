@@ -1,4 +1,3 @@
-import os
 from urllib.parse import urlsplit
 
 from django.contrib import messages
@@ -22,10 +21,10 @@ from litigant_portal.app.features import features
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
 from litigant_portal.app.models.choices import (
-    DEFAULT_BEDROCK_MODEL,
     JurisdictionLevel,
     State,
 )
+from litigant_portal.app.selectors.bedrock import bedrock_model_choices
 from litigant_portal.app.selectors.site import contact_help_list, site_get
 from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.views.utils import (
@@ -33,7 +32,10 @@ from litigant_portal.app.views.utils import (
     briefcase_answers,
     topic_flow_cards,
 )
-from lp_agent.adapters.bedrock_models import MODEL_CHOICES, MODEL_TIERS
+from lp_agent.adapters.bedrock_models import (
+    BedrockModelUnavailable,
+    default_model,
+)
 
 
 # The Atomic Design summary page frames the real home page as its "page"
@@ -156,23 +158,39 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
 def admin(request: HttpRequest) -> HttpResponse:
     """Admin dashboard shell. Its tabs come from ``admin_tabs`` in the
     context processor, so a court admin gets the Users tab alone."""
-    if not admin_tabs(request.user):
+    tabs = admin_tabs(request.user)
+    if not tabs:
         raise PermissionDenied
     site = site_get()
+    choices = ()
+    model_error = ""
+    if "settings" in tabs:
+        try:
+            choices = bedrock_model_choices()
+            if not choices:
+                model_error = _("No configured models are available.")
+        except BedrockModelUnavailable as error:
+            model_error = str(error)
+    labels = dict(choices)
+    defaults = {}
+    for role in ("fast", "assistant"):
+        try:
+            defaults[role] = labels[default_model(role, labels)]
+        except BedrockModelUnavailable:
+            defaults[role] = _("Unavailable")
     return render(
         request,
         "pages/admin/index.html",
         {
-            "bedrock_available": bool(
-                os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
-            ),
-            "model_choices": MODEL_CHOICES,
-            "legacy_model_choices": {
+            "bedrock_available": bool(choices),
+            "model_choices": choices,
+            "model_error": model_error,
+            "unavailable_model_choices": {
                 field: value
                 for field in ("fast_model", "assistant_model", "judge_model")
-                if (value := getattr(site, field)) and value not in MODEL_TIERS
+                if (value := getattr(site, field)) and value not in labels
             },
-            "default_model_label": DEFAULT_BEDROCK_MODEL.label,
+            "default_model_labels": defaults,
             "jurisdiction_choices": JurisdictionLevel.choices,
             "state_choices": State.choices,
         },

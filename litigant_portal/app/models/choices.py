@@ -1,13 +1,6 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from lp_agent.adapters.bedrock_models import MODEL_CHOICE_DEFINITIONS
-
-BedrockModel = models.TextChoices("BedrockModel", MODEL_CHOICE_DEFINITIONS)
-
-DEFAULT_BEDROCK_MODEL = BedrockModel.ECONOMY
-DEFAULT_FAST_BEDROCK_MODEL = BedrockModel.CLAUDE_HAIKU_AUTO
-
 
 class ContactKind(models.TextChoices):
     """What a contact does for a litigant, so the help page can pick the

@@ -8,7 +8,6 @@ from typing import Any
 
 from lp_agent.adapters.bedrock_models import (
     GEOGRAPHY_REGIONS,
-    MODEL_CLASSES,
     BedrockCatalog,
     BedrockModelUnavailable,
     BedrockPolicy,
@@ -17,6 +16,7 @@ from lp_agent.adapters.bedrock_models import (
     MantleModel,
     ResolvedBedrockModel,
     model_class,
+    model_series,
 )
 
 logger = logging.getLogger(__name__)
@@ -131,7 +131,7 @@ def resolve_catalog(
     Select newest eligible version first, then prefer regional inference.
     """
     class_id, pinned = policy.preference(preference)
-    definition = MODEL_CLASSES[class_id]
+    definition = model_series(class_id)
     candidates = []
     release_dates = {}
     for model in catalog.native:

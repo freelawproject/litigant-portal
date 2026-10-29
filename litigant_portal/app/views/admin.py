@@ -16,6 +16,7 @@ from litigant_portal.app.models.choices import (
     JurisdictionLevel,
     State,
 )
+from litigant_portal.app.selectors.bedrock import bedrock_model_choices
 from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.selectors.topic_flow import topic_get, topic_list
 from litigant_portal.app.selectors.user import (
@@ -45,7 +46,10 @@ from litigant_portal.app.views.utils import (
     manage_developers_required,
     manage_site_required,
 )
-from lp_agent.adapters.bedrock_models import MODEL_TIERS
+from lp_agent.adapters.bedrock_models import (
+    BedrockModelUnavailable,
+    model_choices,
+)
 
 USERS_PER_PAGE = 20
 
@@ -102,14 +106,28 @@ def site_update_view(request: HttpRequest) -> JsonResponse:
     ai_models = {}
     site = site_get()
     for field in ("fast_model", "assistant_model", "judge_model"):
-        model = (request.POST.get(field) or "").strip()
-        if (
-            model
-            and model not in MODEL_TIERS
-            and model != getattr(site, field)
-        ):
+        ai_models[field] = (
+            request.POST.get(field, getattr(site, field)) or ""
+        ).strip()
+    changed_models = {
+        model
+        for field, model in ai_models.items()
+        if model and model != getattr(site, field)
+    }
+    if changed_models:
+        if not changed_models <= dict(model_choices()).keys():
             return JsonResponse({"error": _("Invalid model")}, status=400)
-        ai_models[field] = model
+        try:
+            available = dict(bedrock_model_choices())
+        except BedrockModelUnavailable:
+            return JsonResponse(
+                {"error": _("Model availability could not be checked.")},
+                status=503,
+            )
+        if not changed_models <= available.keys():
+            return JsonResponse(
+                {"error": _("Selected model is unavailable")}, status=400
+            )
     return JsonResponse(
         _site_payload(
             site_update(

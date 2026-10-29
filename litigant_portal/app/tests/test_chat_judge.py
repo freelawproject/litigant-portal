@@ -8,7 +8,6 @@ from litellm import Timeout
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
 from litigant_portal.app.models import ChatThread, Site, UserIdentity
-from litigant_portal.app.models.choices import BedrockModel
 from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_export_data,
@@ -22,8 +21,8 @@ from litigant_portal.app.services.chat_engine import (
 from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
-MODEL = BedrockModel.GPT_5_6_LUNA
-JUDGE = BedrockModel.GPT_5_6_SOL
+MODEL = "bedrock_mantle/openai.gpt-5.6-luna"
+JUDGE = "bedrock_mantle/openai.gpt-5.6-sol"
 FINDING = {"code": "unsupported_claim", "message": "Remove the invented fee."}
 WARNING = (
     "Warning: This answer could not be fully verified and may contain errors."

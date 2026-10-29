@@ -18,12 +18,14 @@ from litigant_portal.agent import PortalAgent
 from litigant_portal.app.models import UserIdentity
 from lp_agent import AgentValidationError
 from lp_agent.adapters.bedrock_models import (
-    MODEL_CHOICES,
     ResolvedBedrockModel,
+    model_choices,
 )
 from lp_agent.adapters.environment import create_environment
 from lp_agent.corpus.file_search import get_file_based_corpus
 from lp_agent.types import Scope
+
+MODEL_CHOICES = model_choices()
 
 
 @pytest.fixture(autouse=True)

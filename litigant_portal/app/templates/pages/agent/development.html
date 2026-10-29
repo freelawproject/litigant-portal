@@ -49,6 +49,7 @@
           </fieldset>
 
           {% trans "Bedrock model" as model_label %}
+          {% if model_error %}<p role="alert" class="text-sm text-red-600">{{ model_error }}</p>{% endif %}
           {% if selected_model %}
             {% trans "Defaults to the site's assistant model." as model_help %}
           {% else %}

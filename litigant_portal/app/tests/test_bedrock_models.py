@@ -9,11 +9,14 @@ from django.test import RequestFactory
 
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import ChatThread, Site
-from litigant_portal.app.models.choices import BedrockModel
 from litigant_portal.app.selectors.bedrock import (
     BedrockModelUnavailable,
+    bedrock_model_choices,
     bedrock_model_failed,
     bedrock_model_target,
+)
+from litigant_portal.app.selectors.site import (
+    site_get_model_target,
 )
 from litigant_portal.app.services.chat_engine import (
     chat_thread_generate_description,
@@ -22,6 +25,68 @@ from litigant_portal.app.views.assistant import stream
 
 OLD_MODEL = "anthropic.claude-haiku-4-5-20251001-v1:0"
 NEW_MODEL = "anthropic.claude-haiku-5-5"
+
+
+def test_new_family_needs_only_mapping_and_tier_configuration(
+    discovery, monkeypatch
+):
+    from lp_agent.adapters import bedrock_models
+
+    monkeypatch.setattr(
+        bedrock_models,
+        "MODEL_MAPPING",
+        {"auto/anthropic.sonnet": "Claude Sonnet"},
+        raising=False,
+    )
+    monkeypatch.setattr(
+        bedrock_models,
+        "MODEL_CHOICES",
+        {"economy": ["Claude Sonnet"], "balanced": [], "best": []},
+    )
+    for model in discovery.models:
+        model["modelId"] = model["modelId"].replace("haiku", "sonnet")
+        model["inferenceTypesSupported"] = ["ON_DEMAND"]
+    assert bedrock_models.model_class("anthropic.claude-sonnet-5-5") == (
+        "anthropic.sonnet",
+        "5.5",
+    )
+    assert bedrock_model_target(model="auto/anthropic.sonnet").model.endswith(
+        "anthropic.claude-sonnet-5-5"
+    )
+    assert bedrock_model_choices() == (
+        ("auto/anthropic.sonnet", "Claude Sonnet (economy)"),
+    )
+
+
+def test_available_choices_and_defaults_share_discovery_without_switching_saved_models(
+    discovery,
+):
+    assert bedrock_model_choices() == (
+        ("auto/anthropic.haiku", "Claude Haiku (economy)"),
+    )
+    assert site_get_model_target(role="fast").model.endswith(NEW_MODEL)
+    with pytest.raises(BedrockModelUnavailable, match="Judging is disabled"):
+        site_get_model_target(role="judge")
+    with pytest.raises(BedrockModelUnavailable, match="No available balanced"):
+        site_get_model_target(role="assistant")
+    cache.set(SITE_CACHE_KEY, Site(fast_model="auto/openai.luna"))
+    with pytest.raises(BedrockModelUnavailable):
+        site_get_model_target(role="fast")
+    discovery.client.list_foundation_models.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "labels", [["Unknown"], ["GPT Luna", "GPT Luna"], ["GPT Terra"]]
+)
+def test_invalid_curation_fails_before_discovery(
+    discovery, monkeypatch, labels
+):
+    from lp_agent.adapters.bedrock_models import MODEL_CHOICES
+
+    monkeypatch.setitem(MODEL_CHOICES, "economy", labels)
+    with pytest.raises(BedrockModelUnavailable, match="unknown or duplicate"):
+        bedrock_model_choices()
+    discovery.create_client.assert_not_called()
 
 
 @pytest.fixture
@@ -101,7 +166,10 @@ def discovery(settings):
 
 @pytest.mark.parametrize(
     ("preference", "model_id"),
-    [("", NEW_MODEL), (BedrockModel.CLAUDE_HAIKU_4_5, OLD_MODEL)],
+    [
+        ("", NEW_MODEL),
+        ("bedrock_mantle/anthropic.claude-haiku-4-5", OLD_MODEL),
+    ],
 )
 def test_description_uses_discovered_model_and_books_usage(
     discovery, preference, model_id
@@ -197,7 +265,7 @@ def test_discovery_respects_access_and_geography(
         discovery.models[1]["inferenceTypesSupported"] = ["ON_DEMAND"]
         prefix = ""
     assert (
-        bedrock_model_target(model=BedrockModel.CLAUDE_HAIKU_AUTO).model
+        bedrock_model_target(model="auto/anthropic.haiku").model
         == f"bedrock/converse/{region}/{prefix}{expected}"
     )
     assert discovery.create_client.call_args.args[0].region == region
@@ -209,31 +277,30 @@ def test_cache_is_scoped_to_region_credentials_and_preference(
     for model in discovery.models:
         model["inferenceTypesSupported"] = ["ON_DEMAND"]
     assert (
-        bedrock_model_target(model=BedrockModel.CLAUDE_HAIKU_AUTO).model
-        == bedrock_model_target(model=BedrockModel.CLAUDE_HAIKU_AUTO).model
+        bedrock_model_target(model="auto/anthropic.haiku").model
+        == bedrock_model_target(model="auto/anthropic.haiku").model
     )
     discovery.create_client.assert_called_once()
     assert bedrock_model_target(
-        model=BedrockModel.CLAUDE_HAIKU_4_5
+        model="bedrock_mantle/anthropic.claude-haiku-4-5"
     ).model.endswith(OLD_MODEL)
     settings.AWS_REGION = "eu-west-1"
     settings.BEDROCK_ALLOWED_GEOGRAPHY = "EU"
     assert (
         "/eu-west-1/"
-        in bedrock_model_target(model=BedrockModel.CLAUDE_HAIKU_AUTO).model
+        in bedrock_model_target(model="auto/anthropic.haiku").model
     )
     settings.BEDROCK_API_KEY = "rotated-test-key"
-    bedrock_model_target(model=BedrockModel.CLAUDE_HAIKU_AUTO)
+    bedrock_model_target(model="auto/anthropic.haiku")
     assert discovery.create_client.call_count == 4
 
 
+@pytest.mark.parametrize("preference", [None, "auto/anthropic.haiku"])
 def test_missing_region_fails_before_discovery_with_safe_service_error(
-    discovery, settings
+    discovery, settings, preference
 ):
     settings.AWS_REGION = ""
-    cache.set(
-        SITE_CACHE_KEY, Site(assistant_model=BedrockModel.CLAUDE_HAIKU_AUTO)
-    )
+    cache.set(SITE_CACHE_KEY, Site(assistant_model=preference))
     request = RequestFactory().post("/", {"message": "Help"})
     request.identity = Mock()
     response = stream(request)
@@ -256,7 +323,7 @@ def test_geography_does_not_confuse_india_with_other_asia_pacific_regions(
                 "us-east-1", "ap-southeast-2"
             )
     with pytest.raises(BedrockModelUnavailable):
-        bedrock_model_target(model=BedrockModel.CLAUDE_HAIKU_AUTO)
+        bedrock_model_target(model="auto/anthropic.haiku")
 
 
 @pytest.mark.parametrize(
@@ -286,7 +353,7 @@ def test_discovery_fails_explicitly_and_does_not_cache_failures(
         ].copy()
     for _ in range(2):
         with pytest.raises(BedrockModelUnavailable) as error:
-            bedrock_model_target(model=BedrockModel.CLAUDE_HAIKU_AUTO)
+            bedrock_model_target(model="auto/anthropic.haiku")
         assert "provider-secret" not in str(error.value)
     assert discovery.create_client.call_count == 2
 
@@ -294,15 +361,18 @@ def test_discovery_fails_explicitly_and_does_not_cache_failures(
 @pytest.mark.parametrize(
     ("preference", "older", "newer"),
     [
-        ("tier/economy", "openai.gpt-5.6-luna", "openai.gpt-6-luna"),
-        ("tier/balanced", "openai.gpt-5.6-terra", "openai.gpt-6.1-terra"),
-        ("tier/best", "openai.gpt-5.6-sol", "openai.gpt-6.1-sol"),
+        ("auto/openai.luna", "openai.gpt-5.6-luna", "openai.gpt-6-luna"),
+        ("auto/openai.terra", "openai.gpt-5.6-terra", "openai.gpt-6.1-terra"),
+        ("auto/openai.sol", "openai.gpt-5.6-sol", "openai.gpt-6.1-sol"),
         ("auto/zai.glm-flash", "zai.glm-4.7-flash", "zai.glm-5-flash"),
     ],
 )
 def test_automatic_selection_is_shared_across_model_classes(
-    discovery, preference, older, newer
+    discovery, monkeypatch, preference, older, newer
 ):
+    from lp_agent.adapters.bedrock_models import MODEL_CHOICES
+
+    monkeypatch.setitem(MODEL_CHOICES, "best", ["GPT Sol", "GLM Flash"])
     for model, model_id in zip(discovery.models, (older, newer), strict=True):
         model["modelId"] = model_id
         model["inferenceTypesSupported"] = ["ON_DEMAND"]
@@ -339,7 +409,7 @@ def test_regional_catalogs_and_native_capabilities_are_endpoint_specific(
             discover_catalog(discovery.client, policy, "test-key"),
             discovery.client,
             policy,
-            "tier/economy",
+            "auto/openai.luna",
             required,
         )
 
@@ -360,7 +430,7 @@ def test_access_failure_refreshes_catalog_and_partial_catalogs_are_not_cached(
 ):
     from openai import APIConnectionError
 
-    preference = BedrockModel.CLAUDE_HAIKU_AUTO
+    preference = "auto/anthropic.haiku"
     bedrock_model_target(model=preference)
     bedrock_model_failed(SimpleNamespace(status_code=403))
     discovery.models.pop()

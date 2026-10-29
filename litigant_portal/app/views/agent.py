@@ -19,14 +19,15 @@ from django.views.decorators.http import require_GET, require_POST
 from pydantic import ValidationError
 
 from litigant_portal.agent import PortalAgent
-from litigant_portal.app.models.choices import DEFAULT_BEDROCK_MODEL
 from litigant_portal.app.selectors.agent import Court, agent_scope_choices
+from litigant_portal.app.selectors.bedrock import bedrock_model_choices
 from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.views.utils import manage_developers_required
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock_models import (
-    MODEL_CHOICES,
     BedrockModelUnavailable,
+    default_model,
+    model_choices,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,15 +42,24 @@ def development_page(request: HttpRequest) -> HttpResponse:
     """
     if not settings.LP_AGENT_DEV_ENABLED:
         raise Http404
-    selected_model = site_get().assistant_model or DEFAULT_BEDROCK_MODEL
-    if selected_model not in dict(MODEL_CHOICES):
+    choices = ()
+    model_error = ""
+    selected_model = site_get().assistant_model
+    try:
+        choices = bedrock_model_choices()
+        if not selected_model:
+            selected_model = default_model("assistant", dict(choices))
+    except BedrockModelUnavailable as error:
+        model_error = str(error)
+    if selected_model not in dict(choices):
         selected_model = None
     return render(
         request,
         "pages/agent/development.html",
         {
             "courts": agent_scope_choices(),
-            "model_choices": MODEL_CHOICES,
+            "model_choices": choices,
+            "model_error": model_error,
             "selected_model": selected_model,
             "limits": RunLimits(),
         },
@@ -71,15 +81,21 @@ class AgentMessageForm(forms.Form):
         }
     )
     model = forms.ChoiceField(
-        choices=MODEL_CHOICES,
         error_messages={
             "invalid_choice": "Select an available Bedrock model."
         },
     )
     max_active_seconds = forms.FloatField(min_value=0.1)
 
-    def __init__(self, *args, courts: tuple[Court, ...], **kwargs):
+    def __init__(
+        self,
+        *args,
+        courts: tuple[Court, ...],
+        model_choices: tuple[tuple[str, str], ...],
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
+        self.fields["model"].choices = model_choices
         self.fields["court"].choices = [
             (court.choice_id, court.label) for court in courts
         ]
@@ -106,7 +122,11 @@ def development_stream(request: HttpRequest) -> HttpResponse:
     """
     if not settings.LP_AGENT_DEV_ENABLED:
         raise Http404
-    form = AgentMessageForm(request.POST, courts=agent_scope_choices())
+    form = AgentMessageForm(
+        request.POST,
+        courts=agent_scope_choices(),
+        model_choices=model_choices(),
+    )
     if not form.is_valid():
         return JsonResponse({"errors": form.errors}, status=400)
     if not settings.BEDROCK_API_KEY.strip():
@@ -117,8 +137,11 @@ def development_stream(request: HttpRequest) -> HttpResponse:
             {"error": "Agent service is unavailable. Please try again later."},
             status=503,
         )
-    data = form.cleaned_data
     try:
+        data = form.cleaned_data
+        if data["model"] not in dict(bedrock_model_choices()):
+            form.add_error("model", "Select an available Bedrock model.")
+            return JsonResponse({"errors": form.errors}, status=400)
         agent = PortalAgent(
             identity=request.identity,
             court=data["court"],

@@ -3,8 +3,10 @@ import uuid
 from django.core.files.storage import storages
 from django.db import models
 
+from lp_agent.adapters.bedrock_models import model_choices
+
 from .base import BaseModel
-from .choices import BedrockModel, ContactKind, JurisdictionLevel, State
+from .choices import ContactKind, JurisdictionLevel, State
 
 SITE_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
 
@@ -39,19 +41,19 @@ class Site(BaseModel):
         max_length=128,
         blank=True,
         null=True,
-        choices=BedrockModel.choices,
+        choices=model_choices,
     )
     assistant_model = models.CharField(
         max_length=128,
         blank=True,
         null=True,
-        choices=BedrockModel.choices,
+        choices=model_choices,
     )
     judge_model = models.CharField(
         max_length=128,
         blank=True,
         null=True,
-        choices=BedrockModel.choices,
+        choices=model_choices,
     )
 
     class Meta:

@@ -3,6 +3,7 @@ Model classes and deployment policy, independent of Django and AWS clients.
 """
 
 import re
+from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Literal
 
@@ -18,8 +19,8 @@ class BedrockModelUnavailable(AgentError):
 
 
 @dataclass(frozen=True)
-class ModelClass:
-    label: str
+class ModelSeries:
+    class_prefix: str
     patterns: tuple[str, ...]
     native_api: Literal["converse", "openai"] | None
     mantle_api: Literal["chat", "responses"] | None
@@ -27,75 +28,108 @@ class ModelClass:
     mantle_base: str = "v1"
 
 
-# AWS catalogs do not identify model classes or all supported inference APIs.
-# Keep that compatibility information here, without pinning release versions.
-MODEL_CLASSES = {
-    **{
-        f"openai.{tier}": ModelClass(
-            f"GPT {tier.title()}",
-            (rf"openai\.gpt-(?P<version>\d+(?:\.\d+)*)-{tier}",),
-            "openai",
-            "responses",
-            frozenset({"text", "stream", "tools", "image", "continuation"}),
-            "openai/v1",
-        )
-        for tier in ("luna", "terra", "sol")
-    },
-    "anthropic.haiku": ModelClass(
-        "Claude Haiku",
+MODEL_MAPPING: dict[str, str] = {
+    "auto/openai.luna": "GPT Luna",
+    "auto/openai.terra": "GPT Terra",
+    "auto/openai.sol": "GPT Sol",
+    "auto/anthropic.haiku": "Claude Haiku",
+    "auto/zai.glm-flash": "GLM Flash",
+}
+MODEL_CHOICES: dict[str, list[str]] = {
+    "economy": ["GPT Luna", "Claude Haiku"],
+    "balanced": ["GPT Terra"],
+    "best": ["GPT Sol"],
+}
+
+# Catalogs do not describe every inference API. These rules describe supported
+# model series; deployment curation belongs only in the two mappings above.
+MODEL_SERIES = (
+    ModelSeries(
+        "openai.",
+        (r"openai\.gpt-(?P<version>\d+(?:\.\d+)*)-(?P<family>[a-z]+)",),
+        "openai",
+        "responses",
+        frozenset({"text", "stream", "tools", "image", "continuation"}),
+        "openai/v1",
+    ),
+    ModelSeries(
+        "anthropic.",
         (
-            r"anthropic\.claude-haiku-(?P<version>\d+(?:-\d{1,2})?)(?:-\d{8})?(?:-v\d+:\d+)?",
-            r"anthropic\.claude-(?P<version>\d+(?:-\d{1,2})?)-haiku(?:-\d{8})?(?:-v\d+:\d+)?",
+            r"anthropic\.claude-(?P<family>[a-z]+)-(?P<version>\d+(?:-\d{1,2})?)(?:-\d{8})?(?:-v\d+:\d+)?",
+            r"anthropic\.claude-(?P<version>\d+(?:-\d{1,2})?)-(?P<family>[a-z]+)(?:-\d{8})?(?:-v\d+:\d+)?",
         ),
         "converse",
         None,
         frozenset({"text", "stream", "tools", "image"}),
     ),
-    "zai.glm-flash": ModelClass(
-        "GLM Flash",
-        (r"zai\.glm-(?P<version>\d+(?:\.\d+)*)-flash",),
+    ModelSeries(
+        "zai.glm",
+        (r"zai\.glm-(?P<version>\d+(?:\.\d+)*)(?P<family>(?:-[a-z]+)*)",),
         "converse",
         "chat",
         frozenset({"text", "stream", "tools"}),
     ),
-}
-
-ENABLED_MODEL_CLASSES = frozenset(MODEL_CLASSES)
-MODEL_TIERS = {
-    "tier/economy": ("Economy", "openai.luna"),
-    "tier/balanced": ("Balanced", "openai.terra"),
-    "tier/best": ("Best", "openai.sol"),
-}
-MODEL_CHOICES = tuple((key, label) for key, (label, _) in MODEL_TIERS.items())
-PINNED_MODEL_CHOICES = {
-    **{
-        f"GPT_5_6_{tier.upper()}": (
-            f"bedrock_mantle/openai.gpt-5.6-{tier}",
-            f"GPT-5.6 {tier.title()}",
-        )
-        for tier in ("luna", "terra", "sol")
-    },
-    "CLAUDE_HAIKU_4_5": (
-        "bedrock_mantle/anthropic.claude-haiku-4-5",
-        "Claude Haiku 4.5",
-    ),
-    "GLM_4_7_FLASH": ("bedrock_mantle/zai.glm-4.7-flash", "GLM 4.7 Flash"),
-}
-MODEL_CHOICE_DEFINITIONS = {
-    (
-        "CLAUDE_HAIKU_AUTO"
-        if class_id == "anthropic.haiku"
-        else f"{class_id.replace('.', '_').replace('-', '_').upper()}_AUTO"
-    ): (f"auto/{class_id}", f"{definition.label} (automatic)")
-    for class_id, definition in MODEL_CLASSES.items()
-}
-MODEL_CHOICE_DEFINITIONS.update(PINNED_MODEL_CHOICES)
-MODEL_CHOICE_DEFINITIONS.update(
-    {
-        key.removeprefix("tier/").upper(): (key, label)
-        for key, label in MODEL_CHOICES
-    }
 )
+
+
+def model_tiers() -> dict[str, str]:
+    """
+    Validate curation and index enabled model identifiers in display order.
+    """
+    by_label = {label: model for model, label in MODEL_MAPPING.items()}
+    if len(by_label) != len(MODEL_MAPPING) or any(
+        not model.startswith("auto/") or not label
+        for model, label in MODEL_MAPPING.items()
+    ):
+        raise BedrockModelUnavailable(
+            "Invalid MODEL_MAPPING identifiers or labels."
+        )
+    if MODEL_CHOICES.keys() != {"economy", "balanced", "best"}:
+        raise BedrockModelUnavailable(
+            "MODEL_CHOICES must define economy, balanced, and best."
+        )
+    tiers = {}
+    for tier in ("economy", "balanced", "best"):
+        for label in MODEL_CHOICES[tier]:
+            model = by_label.get(label)
+            if model is None or model in tiers:
+                raise BedrockModelUnavailable(
+                    "MODEL_CHOICES contains an unknown or duplicate model."
+                )
+            model_series(model.removeprefix("auto/"))
+            tiers[model] = tier
+    return tiers
+
+
+def model_choices() -> tuple[tuple[str, str], ...]:
+    """
+    Static choices for validation, without AWS access during model loading.
+    """
+    return tuple(
+        (model, f"{MODEL_MAPPING[model]} ({tier})")
+        for model, tier in model_tiers().items()
+    )
+
+
+def default_model(role: str, available: Collection[str]) -> str:
+    """
+    Choose the first available model in the role's default tier.
+    """
+    tier = {"fast": "economy", "assistant": "balanced"}[role]
+    for model, model_tier in model_tiers().items():
+        if model_tier == tier and model in available:
+            return model
+    raise BedrockModelUnavailable(
+        f"No available {tier} model for the {role} role."
+    )
+
+
+def model_series(class_id: str) -> ModelSeries:
+    for definition in MODEL_SERIES:
+        if class_id.startswith(definition.class_prefix):
+            return definition
+    raise BedrockModelUnavailable("Unsupported Bedrock model series.")
+
 
 # These are geographic boundaries, not model availability tables. Unknown
 # regions fail closed until their geography has been reviewed.
@@ -151,10 +185,13 @@ def model_class(model_id: str) -> tuple[str, str] | None:
     """
     Associate native and Mantle identifiers only through known class patterns.
     """
-    for class_id, definition in MODEL_CLASSES.items():
+    for definition in MODEL_SERIES:
         for pattern in definition.patterns:
             if match := re.fullmatch(pattern, model_id):
-                return class_id, match["version"].replace("-", ".")
+                return (
+                    f"{definition.class_prefix}{match['family']}",
+                    match["version"].replace("-", "."),
+                )
     return None
 
 
@@ -168,20 +205,12 @@ class BedrockPolicy:
             raise BedrockModelUnavailable(
                 "AWS_REGION must belong to BEDROCK_ALLOWED_GEOGRAPHY."
             )
-        if (
-            not ENABLED_MODEL_CLASSES
-            or ENABLED_MODEL_CLASSES - MODEL_CLASSES.keys()
-        ):
-            raise BedrockModelUnavailable(
-                "Invalid enabled Bedrock model classes."
-            )
+        model_tiers()
 
     def preference(self, model: str) -> tuple[str, str | None]:
         if not isinstance(model, str):
             raise BedrockModelUnavailable("Select an enabled Bedrock model.")
-        if model in MODEL_TIERS:
-            selection = MODEL_TIERS[model][1], None
-        elif model.startswith("auto/"):
+        if model.startswith("auto/"):
             selection = model.removeprefix("auto/"), None
         else:
             model_id = (
@@ -194,7 +223,7 @@ class BedrockPolicy:
             if prefix.upper() in GEOGRAPHY_REGIONS:
                 model_id = unprefixed
             selection = model_class(model_id)
-        if selection is None or selection[0] not in ENABLED_MODEL_CLASSES:
+        if selection is None or f"auto/{selection[0]}" not in model_tiers():
             raise BedrockModelUnavailable(
                 "The selected model class is not enabled."
             )

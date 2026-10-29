@@ -22,7 +22,8 @@ and Topic Grounding and Safety Boundaries, before main-chat integration.
 ## Calling the agent
 
 `LPAgent` defaults to Direct execution. Supply a host-verified identity ID, a model
-from [`MODEL_CHOICES`](adapters/bedrock_models.py), and a server-held Bedrock API key.
+identified by an `auto/...` key in [`MODEL_MAPPING`](adapters/bedrock_models.py)
+and enabled in `MODEL_CHOICES`, and a server-held Bedrock API key.
 Both court and topic are required to run. `resource_root` is the directory
 containing `corpus/` (`litigant_portal/` in this checkout).
 

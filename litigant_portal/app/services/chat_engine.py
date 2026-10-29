@@ -492,7 +492,7 @@ def chat_stream(
     message: str,
     agent_class: type[Agent],
     thread_type: str,
-    model: str | ResolvedBedrockModel,
+    model: str | ResolvedBedrockModel | None,
     thread_id: str | None = None,
     attachment_ids: list[str] | None = None,
 ) -> StreamingHttpResponse:
@@ -508,11 +508,12 @@ def chat_stream(
     required = frozenset(
         {"text", "stream"} | ({"tools"} if agent.tools else set())
     )
-    target = (
-        model
-        if isinstance(model, ResolvedBedrockModel)
-        else bedrock_model_target(model=model, required=required)
-    )
+    if isinstance(model, ResolvedBedrockModel):
+        target = model
+    elif model:
+        target = bedrock_model_target(model=model, required=required)
+    else:
+        target = site_get_model_target(role="assistant", required=required)
     model = target.model
     thread = thread or ChatThread.objects.create(
         identity=identity, thread_type=thread_type

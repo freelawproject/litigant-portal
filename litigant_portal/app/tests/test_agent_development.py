@@ -14,21 +14,26 @@ from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from pydantic import ValidationError
 
-from litigant_portal.app.models.choices import (
-    DEFAULT_BEDROCK_MODEL,
-    BedrockModel,
-)
 from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
 from litigant_portal.app.selectors.agent import Court, agent_scope_choices
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.views.agent import AgentMessageForm
 from lp_agent import AgentValidationError, RunLimits
 from lp_agent.adapters.bedrock_models import (
-    MODEL_CHOICES,
     ResolvedBedrockModel,
+    model_choices,
 )
 from lp_agent.tests.helpers import answer_item
 from lp_agent.types import Choice, ModelFinished, ModelTextDelta
+
+MODEL_CHOICES = model_choices()
+
+
+@pytest.fixture(autouse=True)
+def available_models(monkeypatch):
+    monkeypatch.setattr(
+        "litigant_portal.app.views.agent.bedrock_model_choices", model_choices
+    )
 
 
 @override_settings(LP_AGENT_DEV_ENABLED=True, SITE_PASSWORD="")
@@ -66,7 +71,7 @@ class AgentDevelopmentPageTests(TestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
-            response.context["selected_model"], DEFAULT_BEDROCK_MODEL
+            response.context["selected_model"], "auto/openai.terra"
         )
         self.assertEqual(response.context["model_choices"], MODEL_CHOICES)
         court = response.context["courts"][0]
@@ -83,14 +88,16 @@ class AgentDevelopmentPageTests(TestCase):
 
     def test_page_uses_the_configured_assistant_model(self):
         with self.captureOnCommitCallbacks(execute=True):
-            site_update(assistant_model=BedrockModel.BEST)
+            site_update(assistant_model="auto/openai.sol")
         self.client.force_login(self.developer)
         response = self.client.get(self.url)
-        self.assertEqual(response.context["selected_model"], BedrockModel.BEST)
+        self.assertEqual(response.context["selected_model"], "auto/openai.sol")
 
     def test_unsupported_site_default_requires_explicit_model_selection(self):
         with self.captureOnCommitCallbacks(execute=True):
-            site_update(assistant_model=BedrockModel.CLAUDE_HAIKU_4_5)
+            site_update(
+                assistant_model="bedrock_mantle/anthropic.claude-haiku-4-5"
+            )
         self.client.force_login(self.developer)
         response = self.client.get(self.url)
         self.assertIsNone(response.context["selected_model"])
@@ -104,7 +111,9 @@ class AgentDevelopmentPageTests(TestCase):
             response.content.decode(),
             r'<select[^>]*id="agent-model"[^>]*required',
         )
-        self.assertNotContains(response, BedrockModel.CLAUDE_HAIKU_4_5)
+        self.assertNotContains(
+            response, "bedrock_mantle/anthropic.claude-haiku-4-5"
+        )
 
     def test_page_does_not_accept_message_submissions(self):
         self.client.force_login(self.developer)
@@ -113,13 +122,14 @@ class AgentDevelopmentPageTests(TestCase):
 
 
 class AgentModelChoicesTests(SimpleTestCase):
-    def test_only_curated_tiers_are_selectable(self):
+    def test_only_curated_models_are_selectable_with_derived_tier_labels(self):
         self.assertEqual(
             MODEL_CHOICES,
             (
-                ("tier/economy", "Economy"),
-                ("tier/balanced", "Balanced"),
-                ("tier/best", "Best"),
+                ("auto/openai.luna", "GPT Luna (economy)"),
+                ("auto/anthropic.haiku", "Claude Haiku (economy)"),
+                ("auto/openai.terra", "GPT Terra (balanced)"),
+                ("auto/openai.sol", "GPT Sol (best)"),
             ),
         )
 
@@ -196,11 +206,13 @@ class AgentScopeChoicesTests(SimpleTestCase):
                     "topic": court.topics[0].choice_id,
                 },
                 courts=courts,
+                model_choices=MODEL_CHOICES,
             )
             self.assertTrue(form.is_valid(), form.errors)
         form = AgentMessageForm(
             data | {"court": "first-court", "topic": "second-topic"},
             courts=courts,
+            model_choices=MODEL_CHOICES,
         )
         self.assertFalse(form.is_valid())
         self.assertEqual(set(form.errors), {"topic"})
@@ -237,7 +249,7 @@ class AgentDevelopmentStreamTests(TestCase):
             "message": "  Hello  ",
             "court": court.choice_id,
             "topic": court.topics[0].choice_id,
-            "model": BedrockModel.ECONOMY,
+            "model": "auto/openai.luna",
             "max_active_seconds": "5",
         }
         resolver = patch(
@@ -282,7 +294,7 @@ class AgentDevelopmentStreamTests(TestCase):
             {"topic": "missing"},
             {"model": ""},
             {"model": "https://other.example/model"},
-            {"model": BedrockModel.CLAUDE_HAIKU_4_5},
+            {"model": "bedrock_mantle/anthropic.claude-haiku-4-5"},
             {"max_active_seconds": "nan"},
             {"max_active_seconds": "0"},
         ]

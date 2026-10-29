@@ -8,12 +8,15 @@ inside an open transaction and is dropped only once it lands.
 
 import uuid
 from importlib import import_module
+from io import StringIO
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 from django.apps import apps
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
+from django.core.management import call_command
 from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 
@@ -29,16 +32,12 @@ from litigant_portal.app.models import (
     Topic,
     TopicFlow,
 )
-from litigant_portal.app.models.choices import (
-    DEFAULT_BEDROCK_MODEL,
-    BedrockModel,
-)
 from litigant_portal.app.models.site import SITE_ID
 from litigant_portal.app.selectors.site import (
     contact_list,
     resource_list,
     site_get,
-    site_get_model,
+    site_get_model_target,
 )
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_list,
@@ -46,7 +45,28 @@ from litigant_portal.app.selectors.topic_flow import (
 )
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.services.topic_flow import topic_create, topic_delete
-from lp_agent.adapters.bedrock_models import MODEL_CHOICES
+from lp_agent.adapters.bedrock_models import (
+    ResolvedBedrockModel,
+    model_choices,
+)
+
+MODEL_CHOICES = model_choices()
+
+
+@pytest.fixture(autouse=True)
+def available_models(monkeypatch):
+    for module in ("pages", "admin"):
+        monkeypatch.setattr(
+            f"litigant_portal.app.views.{module}.bedrock_model_choices",
+            model_choices,
+        )
+    monkeypatch.setattr(
+        "litigant_portal.app.selectors.site.bedrock_available_models",
+        lambda **kwargs: {
+            model: ResolvedBedrockModel(model, "us-east-1")
+            for model, _ in model_choices()
+        },
+    )
 
 
 @pytest.mark.postgres
@@ -113,27 +133,35 @@ class SiteCacheTests(TestCase):
             self.assertEqual([c.key for c in contact_list()], ["clerk"])
             self.assertEqual([r.key for r in resource_list()], ["fees"])
 
-    def test_site_get_model_falls_back_when_unset(self):
+    def test_assistant_defaults_to_the_first_balanced_model(self):
         with self.captureOnCommitCallbacks(execute=True):
             site_update(assistant_model="")
         self.assertEqual(
-            site_get_model(role="assistant"), DEFAULT_BEDROCK_MODEL
+            site_get_model_target(role="assistant").model, "auto/openai.terra"
         )
 
-    def test_fast_role_retains_its_internal_default(self):
+    def test_fast_role_defaults_to_the_first_economy_model(self):
         with self.captureOnCommitCallbacks(execute=True):
             site_update(fast_model="")
         self.assertEqual(
-            site_get_model(role="fast"), BedrockModel.CLAUDE_HAIKU_AUTO
+            site_get_model_target(role="fast").model, "auto/openai.luna"
         )
 
-    def test_site_get_model_prefers_the_configured_model(self):
+    def test_site_model_resolution_preserves_an_explicit_selection(self):
         # Not the default model, so the assertion below can't pass on a
         # broken fallback.
-        model = BedrockModel.GPT_5_6_SOL
+        model = "bedrock_mantle/openai.gpt-5.6-sol"
         with self.captureOnCommitCallbacks(execute=True):
             site_update(assistant_model=model)
-        self.assertEqual(site_get_model(role="assistant"), model)
+        with patch(
+            "litigant_portal.app.selectors.site.bedrock_model_target"
+        ) as resolve:
+            self.assertIs(
+                site_get_model_target(role="assistant"), resolve.return_value
+            )
+        resolve.assert_called_once_with(
+            model=model, required=frozenset({"text"})
+        )
 
     def test_judge_setting_round_trip_and_validation(self):
         self.assertIsNone(site_get().judge_model)
@@ -141,7 +169,7 @@ class SiteCacheTests(TestCase):
             username="judge-admin", email="judge@example.test", password="test"
         )
         self.client.force_login(user)
-        for model in (BedrockModel.BEST, ""):
+        for model in ("auto/openai.sol", ""):
             with self.captureOnCommitCallbacks(execute=True):
                 response = self.client.post(
                     "/api/admin/site/update/", {"judge_model": model}
@@ -159,7 +187,7 @@ class SiteCacheTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIsNone(Site.objects.get().judge_model)
 
-    def test_all_settings_dropdowns_offer_tiers_and_preserve_saved_legacy_values(
+    def test_all_settings_dropdowns_offer_available_models_and_preserve_saved_values(
         self,
     ):
         user = get_user_model().objects.create_superuser(
@@ -167,7 +195,7 @@ class SiteCacheTests(TestCase):
         )
         self.client.force_login(user)
         with self.captureOnCommitCallbacks(execute=True):
-            site_update(fast_model=BedrockModel.CLAUDE_HAIKU_AUTO)
+            site_update(fast_model="auto/zai.glm-flash")
         response = self.client.get("/admin/")
         self.assertEqual(response.context["model_choices"], MODEL_CHOICES)
         for value, label in MODEL_CHOICES:
@@ -177,14 +205,30 @@ class SiteCacheTests(TestCase):
                 count=3,
                 html=True,
             )
-        self.assertContains(response, 'value="auto/anthropic.haiku" disabled')
+        self.assertNotContains(response, '<option value="auto/zai.glm-flash">')
+        self.assertContains(
+            response, 'value="auto/zai.glm-flash" hidden disabled'
+        )
+        self.assertContains(response, "The saved model is unavailable.")
+        with patch(
+            "litigant_portal.app.views.admin.bedrock_model_choices",
+            return_value=(),
+        ):
+            unavailable = self.client.post(
+                "/api/admin/site/update/",
+                {"assistant_model": "auto/openai.luna"},
+            )
+        self.assertEqual(unavailable.status_code, 400)
+        self.assertEqual(
+            unavailable.json()["error"], "Selected model is unavailable"
+        )
         self.assertEqual(
             self.client.post(
                 "/api/admin/site/update/",
                 {
-                    "fast_model": BedrockModel.CLAUDE_HAIKU_AUTO,
-                    "assistant_model": BedrockModel.BALANCED,
-                    "judge_model": BedrockModel.BEST,
+                    "fast_model": "auto/zai.glm-flash",
+                    "assistant_model": "auto/openai.terra",
+                    "judge_model": "auto/openai.sol",
                 },
             ).status_code,
             200,
@@ -193,26 +237,73 @@ class SiteCacheTests(TestCase):
             self.client.post(
                 "/api/admin/site/update/",
                 {
-                    "assistant_model": BedrockModel.GPT_5_6_LUNA,
+                    "assistant_model": "bedrock_mantle/openai.gpt-5.6-luna",
                 },
             ).status_code,
             400,
         )
 
+    def test_discovery_failure_keeps_settings_and_saved_models_accessible(
+        self,
+    ):
+        from lp_agent.adapters.bedrock_models import BedrockModelUnavailable
+
+        user = get_user_model().objects.create_superuser(
+            username="offline-admin"
+        )
+        self.client.force_login(user)
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(assistant_model="auto/openai.sol")
+        with patch(
+            "litigant_portal.app.views.pages.bedrock_model_choices",
+            side_effect=BedrockModelUnavailable("Discovery failed."),
+        ):
+            response = self.client.get("/admin/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Discovery failed.")
+        self.assertEqual(response.context["model_choices"], ())
+        response = self.client.post(
+            "/api/admin/site/update/", {"court_name": "Changed"}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["assistant_model"], "auto/openai.sol")
+
+    def test_model_curation_changes_need_no_migration_or_aws(self):
+        from lp_agent.adapters.bedrock_models import (
+            MODEL_CHOICES,
+            MODEL_MAPPING,
+        )
+
+        with (
+            patch.dict(
+                MODEL_MAPPING, {"auto/anthropic.sonnet": "Claude Sonnet"}
+            ),
+            patch.dict(MODEL_CHOICES, {"best": ["Claude Sonnet", "GPT Sol"]}),
+            patch(
+                "litigant_portal.app.selectors.bedrock.bedrock_client"
+            ) as client,
+        ):
+            call_command(
+                "makemigrations", check=True, dry_run=True, stdout=StringIO()
+            )
+        client.assert_not_called()
+
     def test_model_migration_preserves_classes_and_disabled_judging(self):
         migration = import_module(
-            "litigant_portal.app.migrations.0036_curated_bedrock_models"
+            "litigant_portal.app.migrations.0035_bedrock_model_choices"
         )
         schema_editor = SimpleNamespace(connection=connection)
         for old, new in migration.MODEL_MAPPING.items():
-            Site.objects.update(
-                assistant_model=old, fast_model=old, judge_model=""
-            )
+            Site.objects.update(**dict.fromkeys(migration.MODEL_FIELDS, old))
             migration.migrate_preferences(apps, schema_editor)
-            site = Site.objects.get()
             self.assertEqual(
-                (site.assistant_model, site.fast_model, site.judge_model),
-                (new, new, ""),
+                Site.objects.values_list(*migration.MODEL_FIELDS).get(),
+                (new, new, new),
+            )
+            migration.restore_preferences(apps, schema_editor)
+            self.assertEqual(
+                Site.objects.values_list(*migration.MODEL_FIELDS).get(),
+                (old, old, old),
             )
         Site.objects.update(
             assistant_model="unknown", fast_model="", judge_model=None
@@ -221,48 +312,12 @@ class SiteCacheTests(TestCase):
             UserWarning, "Unrecognized assistant_model"
         ):
             migration.migrate_preferences(apps, schema_editor)
+        migration.restore_preferences(apps, schema_editor)
         site = Site.objects.get()
         self.assertEqual(
             (site.assistant_model, site.fast_model, site.judge_model),
             ("unknown", "", None),
         )
-
-    def test_model_migration_restores_preferences_supported_before_tiers(self):
-        migration = import_module(
-            "litigant_portal.app.migrations.0036_curated_bedrock_models"
-        )
-        previous_gpt_models = (
-            BedrockModel.GPT_5_6_LUNA,
-            BedrockModel.GPT_5_6_TERRA,
-            BedrockModel.GPT_5_6_SOL,
-        )
-        cases = (
-            (
-                ("auto/openai.luna", "auto/openai.terra", "auto/openai.sol"),
-                previous_gpt_models,
-            ),
-            (
-                ("tier/economy", "tier/balanced", "tier/best"),
-                previous_gpt_models,
-            ),
-            (
-                ("auto/zai.glm-flash", "auto/anthropic.haiku", None),
-                (BedrockModel.GLM_4_7_FLASH, "auto/anthropic.haiku", None),
-            ),
-            (("unknown", "", None), ("unknown", "", None)),
-        )
-        for before, expected in cases:
-            with self.subTest(before=before):
-                Site.objects.update(
-                    **dict(zip(migration.MODEL_FIELDS, before, strict=True))
-                )
-                migration.restore_preferences(
-                    apps, SimpleNamespace(connection=connection)
-                )
-                self.assertEqual(
-                    Site.objects.values_list(*migration.MODEL_FIELDS).get(),
-                    expected,
-                )
 
 
 @pytest.mark.postgres

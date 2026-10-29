@@ -30,7 +30,7 @@ def stream(
     *,
     agent_class: type[Agent],
     thread_type: str,
-    model: str | ResolvedBedrockModel,
+    model: str | ResolvedBedrockModel | None,
 ):
     """Stream an agent reply for a message within a thread."""
     message = request.POST.get("message", "").strip()

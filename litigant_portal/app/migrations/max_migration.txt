@@ -1,1 +1,1 @@
-0036_curated_bedrock_models
+0035_bedrock_model_choices

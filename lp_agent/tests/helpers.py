@@ -4,10 +4,7 @@ Shared model scripts and environment builders without host dependencies.
 
 from pathlib import Path
 
-from lp_agent.adapters.bedrock_models import (
-    PINNED_MODEL_CHOICES,
-    ResolvedBedrockModel,
-)
+from lp_agent.adapters.bedrock_models import ResolvedBedrockModel
 from lp_agent.adapters.memory import MemoryConversationStore, MemoryRunStore
 from lp_agent.identity import AgentIdentity, ResourceScope
 from lp_agent.types import (
@@ -18,7 +15,13 @@ from lp_agent.types import (
     ScopeSelection,
 )
 
-MODEL_CHOICES = tuple(PINNED_MODEL_CHOICES.values())
+MODEL_CHOICES = (
+    ("bedrock_mantle/openai.gpt-5.6-luna", "GPT Luna"),
+    ("bedrock_mantle/openai.gpt-5.6-terra", "GPT Terra"),
+    ("bedrock_mantle/openai.gpt-5.6-sol", "GPT Sol"),
+    ("bedrock_mantle/anthropic.claude-haiku-4-5", "Claude Haiku"),
+    ("bedrock_mantle/zai.glm-4.7-flash", "GLM Flash"),
+)
 
 
 def answer_item(text):

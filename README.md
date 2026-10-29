@@ -55,7 +55,7 @@ Visit: http://localhost (Caddy serves on port 80).
 | `AWS_REGION`                                                                              | Source region for model discovery and inference |
 | `BEDROCK_ALLOWED_GEOGRAPHY`                                                               | Allowed processing geography; defaults to `US`  |
 
-FLP curates the Economy, Balanced, and Best tiers in code. Each deployment uses its AWS key and `AWS_REGION` to find the latest eligible version in the selected model class. Inference prefers that region and may use cross-region routes only within `BEDROCK_ALLOWED_GEOGRAPHY`; global routing is excluded. Local Compose defaults to `us-east-1` and `US`.
+FLP names model families in `MODEL_MAPPING` and enables them through the ordered Economy, Balanced, and Best lists in `MODEL_CHOICES`. Dropdowns show available models with their tier. Unset fast and assistant models use the first available Economy and Balanced choices respectively; judging is disabled until selected. Each deployment uses its AWS key and `AWS_REGION` to find the latest eligible version in the selected model class. Inference prefers that region and may use cross-region routes only within `BEDROCK_ALLOWED_GEOGRAPHY`; global routing is excluded. Local Compose defaults to `us-east-1` and `US`.
 
 ## Contributing
 
