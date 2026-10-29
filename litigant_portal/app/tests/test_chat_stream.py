@@ -1,4 +1,5 @@
-"""Safe fallback payloads for failed assistant streams."""
+"""Safe fallback payloads for failed assistant streams, and the events a
+healthy tool round emits. All DB-free: the engine's collaborators are patched."""
 
 import json
 import uuid
@@ -23,6 +24,38 @@ def _flow(court="franklin-county-oh"):
         topic=Topic(slug="eviction", court=court),
         slug="tenant",
         name="Tenant eviction guide",
+    )
+
+
+def _text_chunk(content):
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                delta=SimpleNamespace(content=content, tool_calls=[])
+            )
+        ]
+    )
+
+
+def _tool_chunk(*call_ids):
+    return SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                delta=SimpleNamespace(
+                    content=None,
+                    tool_calls=[
+                        SimpleNamespace(
+                            index=index,
+                            id=call_id,
+                            function=SimpleNamespace(
+                                name="tool", arguments="{}"
+                            ),
+                        )
+                        for index, call_id in enumerate(call_ids)
+                    ],
+                )
+            )
+        ]
     )
 
 
@@ -266,33 +299,8 @@ class ChatStreamFallbackTests(SimpleTestCase):
         )
 
     def test_normal_text_and_tool_turns_still_complete(self):
-        text_chunk = SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    delta=SimpleNamespace(
-                        content="Healthy answer", tool_calls=[]
-                    )
-                )
-            ]
-        )
-        tool_chunk = SimpleNamespace(
-            choices=[
-                SimpleNamespace(
-                    delta=SimpleNamespace(
-                        content=None,
-                        tool_calls=[
-                            SimpleNamespace(
-                                index=0,
-                                id="call-1",
-                                function=SimpleNamespace(
-                                    name="tool", arguments="{}"
-                                ),
-                            )
-                        ],
-                    )
-                )
-            ]
-        )
+        text_chunk = _text_chunk("Healthy answer")
+        tool_chunk = _tool_chunk("call-1")
         for with_tool in (False, True):
             with (
                 self.subTest(with_tool=with_tool),
@@ -335,3 +343,58 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 self.thread.refresh_from_db.assert_called_with(
                     fields=["state"]
                 )
+
+    def test_tool_round_that_stores_a_fact_announces_it_after_its_responses(
+        self,
+    ):
+        # Two tools in one round, only the first stores something: the
+        # announcement comes once, after both responses and the state push,
+        # so the panel refetch sees every write from the round.
+        with patch(
+            "litigant_portal.app.services.chat_engine._execute_tool",
+            side_effect=[
+                ToolOutput(result="Saved", refresh_system_prompt=True),
+                ToolOutput(result="Nothing to save"),
+            ],
+        ):
+            events = self.stream_events(
+                completions=[
+                    iter([_tool_chunk("call-1", "call-2")]),
+                    iter([_text_chunk("Healthy answer")]),
+                ]
+            )
+
+        self.assertEqual(
+            [event["type"] for event in events],
+            [
+                "thread",
+                "state",
+                "tool_call",
+                "tool_response",
+                "tool_call",
+                "tool_response",
+                "state",
+                "briefcase_changed",
+                "content_delta",
+                "done",
+            ],
+        )
+        self.assertEqual(events[7], {"type": "briefcase_changed"})
+
+    def test_tool_round_that_stores_nothing_announces_no_briefcase_change(
+        self,
+    ):
+        with patch(
+            "litigant_portal.app.services.chat_engine._execute_tool",
+            return_value=ToolOutput(result="Tool finished"),
+        ):
+            events = self.stream_events(
+                completions=[
+                    iter([_tool_chunk("call-1")]),
+                    iter([_text_chunk("Healthy answer")]),
+                ]
+            )
+
+        self.assertNotIn(
+            "briefcase_changed", [event["type"] for event in events]
+        )

@@ -682,3 +682,90 @@ for (const scenario of [
     )
   })
 }
+
+// The briefcase refresh runs with no DOM in Node, so the parser and the
+// mounted panel are stand-ins that only honor the selector the app uses.
+function mountBriefcase(app, context) {
+  context.DOMParser = class {
+    parseFromString(html) {
+      return {
+        querySelector(selector) {
+          if (selector !== '[data-briefcase-facts]') return null
+          if (!html.includes('data-briefcase-facts')) return null
+          return { html, cloneNode: () => ({ html }) }
+        },
+      }
+    }
+  }
+  const panel = { html: 'initial', replaced: [] }
+  panel.replaceWith = (node) => panel.replaced.push(node.html)
+  app.$root = {
+    dataset: {
+      agentBase: '/api/agents/assistant/',
+      briefcaseUrl: '/chat/briefcase/',
+      citationChips: 'false',
+      reviewWarning: 'Warning',
+    },
+    querySelectorAll: (selector) =>
+      selector === '[data-briefcase-facts]' ? [panel] : [],
+  }
+  app.consumeQueryMessage = () => {}
+  app.init()
+  return panel
+}
+
+test('briefcase_changed swaps in the fetched fragment, even for a detached stream', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const requested = []
+  const { app, context } = makeApp(async (url) => {
+    requested.push(url)
+    return {
+      ok: true,
+      text: async () => '<div data-briefcase-facts>County: Cass</div>',
+    }
+  })
+  const panel = mountBriefcase(app, context)
+  const stream = newStream(app)
+  app.messages = []
+
+  app.handleEvent(stream, { type: 'briefcase_changed' })
+  for (let index = 0; index < 10; index++) await Promise.resolve()
+
+  assert.deepEqual(requested, ['/chat/briefcase/'])
+  assert.deepEqual(panel.replaced, [
+    '<div data-briefcase-facts>County: Cass</div>',
+  ])
+})
+
+test('a fragment without the briefcase hook leaves the panel alone', async () => {
+  const { app, context } = makeApp(async () => ({
+    ok: true,
+    text: async () => '<p>Not the panel</p>',
+  }))
+  const panel = mountBriefcase(app, context)
+
+  await app.refreshBriefcase()
+
+  assert.deepEqual(panel.replaced, [])
+})
+
+test('only the latest briefcase fetch swaps the panel', async () => {
+  const pending = []
+  const { app, context } = makeApp(
+    () =>
+      new Promise((resolve) => {
+        pending.push((html) => resolve({ ok: true, text: async () => html }))
+      })
+  )
+  const panel = mountBriefcase(app, context)
+
+  // Two refreshes in flight; the earlier request resolves last.
+  const first = app.refreshBriefcase()
+  const second = app.refreshBriefcase()
+  pending[1]('<div data-briefcase-facts>Burleigh</div>')
+  await second
+  pending[0]('<div data-briefcase-facts>Cass</div>')
+  await first
+
+  assert.deepEqual(panel.replaced, ['<div data-briefcase-facts>Burleigh</div>'])
+})
