@@ -1,11 +1,16 @@
+from datetime import timedelta
 from functools import wraps
 
 from django.conf import settings
 from django.http import Http404, JsonResponse
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.timesince import timesince
 from django.utils.translation import gettext as _
 
 from litigant_portal.app.features import features
+from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
+from litigant_portal.app.selectors.chat_engine import chat_thread_list
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
     topic_flow_list,
@@ -103,6 +108,40 @@ def briefcase_answers(request) -> list[dict]:
     if not has_identity(request):
         return []
     return variable_answer_groups(identity=request.identity)
+
+
+def activity_threads(request) -> list[dict]:
+    """The visitor's chats, serialized for a static Activity list.
+
+    Mirrors the assistant thread-list API's shape so the home page's
+    server-rendered region shows the same rows the chat page's live
+    sidebar does. Empty for a visitor with no identity yet.
+    """
+    if not has_identity(request):
+        return []
+    threads = []
+    for thread in chat_thread_list(
+        identity=request.identity, thread_type=USER_CHAT_THREAD_TYPE
+    ):
+        last_at = thread.last_message_at or thread.updated_at
+        threads.append(
+            {
+                "id": str(thread.id),
+                "description": thread.description,
+                "snippet": (thread.snippet or "")[:500],
+                "last_at": last_at,
+                "when": _activity_when(last_at),
+            }
+        )
+    return threads
+
+
+def _activity_when(last_at) -> str:
+    """A thread's age as the chat sidebar's timeSince() words it, so the two
+    lists agree — timesince alone says "0 minutes" under a minute."""
+    if timezone.now() - last_at < timedelta(minutes=1):
+        return _("just now")
+    return _("%(when)s ago") % {"when": timesince(last_at)}
 
 
 def _perm_required(codename: str):

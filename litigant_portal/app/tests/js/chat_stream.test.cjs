@@ -220,6 +220,49 @@ test('review warnings survive streaming, reload and copying without changing ans
   }
 })
 
+// Builds an app landing on "/chat/?thread=<value>", recording the fetches
+// it makes and the URL it leaves in the address bar.
+function makeAppWithThreadParam(value) {
+  const fetched = []
+  const { app, context } = makeApp(async (url) => {
+    fetched.push(url)
+    return { ok: true, json: async () => ({ id: value, items: [] }) }
+  })
+  context.window.location = {
+    pathname: '/chat/',
+    search: '?thread=' + encodeURIComponent(value) + '&q=hello',
+    hash: '',
+  }
+  let replaced
+  context.window.history = {
+    replaceState(_state, _title, url) {
+      replaced = url
+    },
+  }
+  return { app, fetched, replacedUrl: () => replaced }
+}
+
+test('a UUID ?thread= opens that thread and leaves the URL', async () => {
+  const id = '123e4567-e89b-12d3-a456-426614174000'
+  const { app, fetched, replacedUrl } = makeAppWithThreadParam(id)
+  app.consumeQueryThread()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(fetched, ['/api/agents/assistant/threads/' + id + '/'])
+  assert.equal(app.threadId, id)
+  assert.equal(replacedUrl(), '/chat/?q=hello')
+})
+
+test('a non-UUID ?thread= makes no fetch and still leaves the URL', async () => {
+  for (const value of ['../../media/x', 'threads/../..?', 'not-a-uuid']) {
+    const { app, fetched, replacedUrl } = makeAppWithThreadParam(value)
+    app.consumeQueryThread()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.deepEqual(fetched, [])
+    assert.equal(app.threadId, null)
+    assert.equal(replacedUrl(), '/chat/?q=hello')
+  }
+})
+
 test('network drop uses the fallback card renderer', async () => {
   const { app } = makeApp(async () => {
     throw new Error('connection dropped')
@@ -709,6 +752,7 @@ function mountBriefcase(app, context) {
     querySelectorAll: (selector) =>
       selector === '[data-briefcase-facts]' ? [panel] : [],
   }
+  app.consumeQueryThread = () => {}
   app.consumeQueryMessage = () => {}
   app.init()
   return panel
