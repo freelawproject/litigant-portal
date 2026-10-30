@@ -5,7 +5,6 @@ Thin adapters around the raw provider and unchanged application entry points.
 import asyncio
 import json
 import os
-from pathlib import Path
 
 from .provider import close_stream, data
 from .schema import normalize_system
@@ -194,49 +193,8 @@ def current(case, model: str, identity, emit) -> dict:
     }
 
 
-async def standalone(
-    case, model: str, identity, emit, resource_root: str | None
-) -> dict:
-    from django.test.utils import override_settings
-
-    from litigant_portal.agent import PortalAgent
-
-    options = {"BASE_DIR": Path(resource_root)} if resource_root else {}
-    with override_settings(**options):
-        agent = PortalAgent(
-            identity=identity,
-            model=model,
-            court=case.court,
-            topic=case.topic,
-            runtime="Direct",
-        )
-    async with agent:
-        handle = await agent.run(message=case.question)
-        async for event in handle.events():
-            payload = event.payload.model_dump(mode="json")
-            emit(payload)
-            if payload["type"] == "question":
-                raise RuntimeError(
-                    "Agent requested input in a single-turn case."
-                )
-        outcome = await handle.result()
-        if outcome.state != "completed":
-            raise RuntimeError(f"Agent ended in state {outcome.state}.")
-        return {"outcome": outcome.model_dump(mode="json")}
-
-
-def invoke(system, case, model, identity, emit, resource_root=None):
+def invoke(system, case, model, identity, emit):
     system = normalize_system(system)
     if system == "raw":
         return asyncio.run(raw(case, model, emit))
-    if system == "current":
-        return current(case, model, identity, emit)
-    if system == "standalone":
-        if case.history:
-            raise RuntimeError(
-                "The standalone system supports single-turn cases only."
-            )
-        return asyncio.run(
-            standalone(case, model, identity, emit, resource_root)
-        )
-    raise ValueError(f"Unknown system: {system}")
+    return current(case, model, identity, emit)

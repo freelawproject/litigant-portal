@@ -30,7 +30,6 @@ from .schema import (
     fingerprint,
     normalize_system,
     read_cases,
-    runs_on,
     verify_references,
     write_json,
 )
@@ -44,11 +43,7 @@ def stamp() -> str:
 
 def source_state(root: Path = ROOT, *, application=False) -> dict:
     files = {}
-    folders = (
-        ("lp_agent", "litigant_portal")
-        if application
-        else ("scripts/agent_eval",)
-    )
+    folders = ("litigant_portal",) if application else ("scripts/agent_eval",)
     for folder in folders:
         for directory, dirs, names in os.walk(root / folder):
             dirs[:] = sorted(
@@ -131,11 +126,8 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
             for name in ("litellm", "pydantic", "PyYAML", "matplotlib")
         },
         "python": sys.version,
-        "planned_attempts": sum(
-            runs_on(system, case.history)
-            for case in cases
-            for system in config.systems
-        )
+        "planned_attempts": len(cases)
+        * len(config.systems)
         * len(config.models)
         * config.repetitions,
         "attempts": [],
@@ -279,14 +271,12 @@ def worker(run: Path, path: Path, grading: bool):
                     )
                 )
             else:
-                resource = record.get("resource_root")
                 detail = systems.invoke(
                     record["system"],
                     Case.model_validate(record["case"]),
                     record["model_id"],
                     identity,
                     emit,
-                    str(run / resource) if resource else None,
                 )
                 record["detail"] = safe(detail)
                 if not record["answer"].strip():
@@ -337,16 +327,14 @@ def run_suite(config: Config, output: Path) -> Path:
             for variant in dict.fromkeys(case.fixture for case in cases):
                 if remote:
                     remote.request("fixture", variant=variant)
-                jobs = [
-                    job
-                    for job in itertools.product(
+                jobs = list(
+                    itertools.product(
                         [case for case in cases if case.fixture == variant],
                         config.systems,
                         config.models,
                         range(1, config.repetitions + 1),
                     )
-                    if runs_on(job[1], job[0].history)
-                ]
+                )
                 rng.shuffle(jobs)
                 for case, system, model, repeat in jobs:
                     relative = (
@@ -364,9 +352,6 @@ def run_suite(config: Config, output: Path) -> Path:
                         "first_text_seconds": None,
                         "events": [],
                         "calls": [],
-                        "resource_root": f"corpora/{variant}"
-                        if variant != "current" and system != "raw"
-                        else None,
                     }
                     write_json(run / relative, row)
                     manifest["attempts"].append(str(relative))

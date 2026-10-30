@@ -26,15 +26,6 @@ PILOT = parse_pilot(os.environ.get("PILOT"))
 # `or`, not a default: compose passes an unset variable through as blank.
 FEEDBACK_EMAIL = os.environ.get("FEEDBACK_EMAIL") or "LpFeedback@free.law"
 
-# The new agent's development page also requires developer permission. QA
-# exists to test it, so the label turns it on without a second variable.
-LP_AGENT_DEV_ENABLED = (
-    os.environ.get(
-        "LP_AGENT_DEV_ENABLED", "true" if DEPLOYMENT_ENV == "qa" else "false"
-    ).lower()
-    == "true"
-)
-
 # Provenance of the running build, shown in the dev/QA header so testers can
 # tell which deploy they are looking at. All three are baked in at image build
 # and empty on a local bind mount, where the working tree may carry uncommitted

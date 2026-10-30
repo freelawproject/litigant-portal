@@ -79,9 +79,6 @@ jobs:
           COVERAGE_FLOOR: 85
         run: .tox/py313/bin/coverage report --format=total --fail-under="$COVERAGE_FLOOR"
 
-      - name: Test agent without Django
-        run: tox run -e agent
-
       # Browser JS, via Node's built-in test runner. No install step: there is
       # no package.json, no bundler and no lockfile, which keeps the no-build
       # stance the static assets already rely on.
