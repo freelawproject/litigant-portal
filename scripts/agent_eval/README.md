@@ -10,7 +10,7 @@ It does not install evaluation dependencies into the application environment or
 Docker image.
 
 ```bash
-# Grounded-chat baseline: 2 systems × 2 models × 25 cases × 3 attempts = 300 attempts.
+# Default run: 2 systems × 2 models × 25 cases × 3 attempts = 300 attempts.
 make agent-eval
 
 # Small live run, including the separate Sol judge.
@@ -18,19 +18,21 @@ make agent-eval ARGS='run --models luna --cases nd-fee --repetitions 1 --slug sm
 
 # Generate answers now; grade them separately later.
 make agent-eval ARGS='run --systems raw --models luna --cases nd-fee --repetitions 1 --no-judge'
-make agent-eval ARGS='judge evals/YYYYMMDD_HHMMSS-initial-baseline'
-make agent-eval ARGS='judge evals/YYYYMMDD_HHMMSS-initial-baseline --model sol'
+make agent-eval ARGS='judge /path/to/run'
+make agent-eval ARGS='judge /path/to/run --model sol'
 
 # Recover saved judge responses without API calls, then retry only failures.
-make agent-eval ARGS='recover evals/RUN --dry-run'
-make agent-eval ARGS='recover evals/RUN'
-make agent-eval ARGS='judge evals/RUN --retry-failed --dry-run'
-make agent-eval ARGS='judge evals/RUN --retry-failed'
+make agent-eval ARGS='recover /path/to/run --dry-run'
+make agent-eval ARGS='recover /path/to/run'
+make agent-eval ARGS='judge /path/to/run --retry-failed --dry-run'
+make agent-eval ARGS='judge /path/to/run --retry-failed'
 
 # Offline: rebuild charts, compare compatible runs, or try different weights.
-make agent-eval ARGS='report evals/RUN_A evals/RUN_B'
-make agent-eval ARGS='report evals/RUN_A --facts-weight 0.8'
+make agent-eval ARGS='report /path/to/run-a /path/to/run-b'
+make agent-eval ARGS='report /path/to/run --facts-weight 0.8'
 ```
+
+Replace `/path/to/run` and the comparison paths with the output directories printed by your own runs.
 
 The CLI is `python -m scripts.agent_eval` in the evaluation environment, run
 from the repository root. Edit [config.yml](config.yml) for the systems, model
@@ -41,26 +43,14 @@ Orchestration, raw calls, judging, and charts run locally. Export
 `AWS_BEARER_TOKEN_BEDROCK` locally for raw calls and judging. Raw-only runs,
 judging saved answers, and offline reports do not require Docker.
 
-Current chat calls require the usual **already-running** Django development container and its database/Redis services. The runner uses `docker compose exec -T django` to upload a temporary Python worker. That worker imports the container's app, uses its credentials and services, and streams artifacts back to local `evals/`. No image rebuild, new container, volume mount, or application endpoint is needed. It creates normal database conversation records under an evaluation identity; those records remain after the run. It does not migrate or reset the database.
+Current chat calls require the usual **already-running** Django development container and its database/Redis services. The runner uses `docker compose exec -T django` to upload a temporary Python worker. That worker imports the container's app, uses its credentials and services, and streams artifacts back to the local run directory. No image rebuild, new container, volume mount, or application endpoint is needed. It creates normal database conversation records under an evaluation identity; those records remain after the run. It does not migrate or reset the database.
 
-## Legacy configuration and fixtures
+## Chat engine configuration and fixtures
 
-The legacy agent also calls the site's fast model to generate a chat title.
-The original smoke run's answers succeeded, but its Haiku title calls failed
-because that model did not support the selected chat-completions API endpoint.
-`legacy_fast_model: luna` temporarily selects Luna through the existing site
-setting; `null` preserves the current setting. Original/effective models are
-recorded, and the setting is restored afterward. Legacy agent code is unchanged.
+The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model: luna` temporarily selects Luna through the existing site setting; `null` preserves the current setting. The original and effective models are recorded, and the setting is restored afterward.
 
 [cases.yml](cases.yml) contains fifteen real-reference cases, six fictional cases, and four multi-turn conversation cases. Cases with `history` are reported in the `conversation` group, separately from single-turn cases. Both systems run all selected cases.
-[references/](references/) freezes repository corpus content for answer keys,
-with provenance and draft review status. It is not independently verified law.
-When the corpus changes, copy the source files over the frozen ones and update
-the hashes in `provenance.json`; a stale reference makes the judge penalize
-answers that follow the current corpus. The frozen files carry the authored
-source ids from #949, which the citation check depends on. The post-949 baseline
-references include the current ND corpus. Keep cases, references, and the rubric
-unchanged between this baseline and its later judged-chat comparison.
+[references/](references/) freezes repository corpus content for answer keys, with provenance and draft review status. It is not independently verified law. When updating the benchmark corpus, update the frozen files and their hashes in `provenance.json`, preserving the authored source IDs used by citation checks. Keep cases, references, and the rubric unchanged across runs you intend to compare.
 
 A case may carry `history`: user turns sent on the same thread before `question`. Their replies are recorded in the attempt's `detail.transcript` and shown to the judge as context; only the final answer is graded. The current system continues one chat thread across turns and clears the evaluation identity's stored facts before each case, recording what the agent stored as `detail.stored_facts`. Raw replays the turns as a message list. Timing covers all turns of the case. The conversation cases (`nd-convo-*`) follow the personas in `docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
 
@@ -80,14 +70,10 @@ deal breaker; cases without the flag are not affected.
 
 The fictional chicken-law variants change the fee and procedural order while retaining identical questions. Both include the 200-square-feet-per-chicken boundary. Fixtures enter the current chat engine through normal corpus files and an evaluation database flow. Raw receives no corpus.
 
-Legacy runs temporarily change site settings and may enable the fictional flow;
-other development requests can see those changes while the run is active. The
-worker holds the fixture lock, enforces child-process timeouts, and restores
-settings on normal exit, Ctrl-C, or controller disconnect. After a hard kill or
-failed cleanup, use the locally saved recovery journal:
+Evaluations of the chat engine temporarily change site settings and may enable the fictional flow; other development requests can see those changes while the run is active. The worker holds the fixture lock, enforces child-process timeouts, and restores settings on normal exit, Ctrl-C, or controller disconnect. After a hard kill or failed cleanup, use the locally saved recovery journal:
 
 ```bash
-make agent-eval ARGS='restore evals/YOUR_INTERRUPTED_RUN'
+make agent-eval ARGS='restore /path/to/run'
 ```
 
 ## Scores and charts
@@ -125,11 +111,7 @@ Each observed call records `request.timeout` and `request.num_retries`, includin
 
 Reports include generation-timeout attempt counts, attempt-deadline counts, runtime judge review outcomes from exported audit rows, and the existing external grading diagnostics. Runtime review counts include every correction review and are not counts of failed answers. Unknown legacy diagnostics remain unknown; missing metadata is not evidence of zero failures. Report settings use `provider_default` for recorded null values and `unknown` for absent legacy fields. Scores, costs, and execution-failure treatment are unchanged.
 
-Results live in ignored `evals/YYYYMMDD_HHMMSS-slug/` (UTC). JSON and logs capture
-visible answers, tool/model traces, usage, timing, judgments, corpus snapshots,
-and recovery state. Local evaluator and container application provenance are
-recorded separately. Timing excludes setup and external grading, but includes runtime judge calls; timeouts bound the actual
-candidate child process. Temporary worker files are removed when its session ends.
+By default, results are written beneath Git-ignored `evals/`, in directories named `YYYYMMDD_HHMMSS-slug` (UTC). These files are generated locally and are not included in the repository. JSON and logs capture visible answers, tool/model traces, usage, timing, judgments, corpus snapshots, and recovery state. Local evaluator and container application provenance are recorded separately. Timing excludes setup and external grading, but includes runtime judge calls; timeouts bound the actual candidate child process. Temporary worker files are removed when its session ends.
 
 Rejudging saves a new batch and preserves earlier answers and judgments. Reports
 use the latest batch, including incomplete grading. Reweighting/comparison writes
