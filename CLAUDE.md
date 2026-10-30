@@ -340,7 +340,7 @@ The portal runs on a general-purpose chat engine (threads, streaming, tool-calli
 ### How It Works
 
 1. **Alpine.js** (`chatApp` in `chat_engine.js`) POSTs the message to `/api/agents/assistant/stream/`
-2. **Django** (`services/chat_engine.py`) runs the agent loop — LLM turns plus tool calls — and streams SSE events (`thread`, `content_delta`, `tool_call`, `tool_response`, `state`, `done`, `error`) via `StreamingHttpResponse`
+2. **Django** (`services/chat_engine.py`) runs the agent loop — LLM turns plus tool calls — and streams SSE events (`thread`, `content_delta`, `tool_call`, `tool_response`, `state`, `briefcase_changed`, `done`, `error`) via `StreamingHttpResponse`
 3. **Alpine.js** updates the UI progressively as events arrive
 4. Thread list/history/usage and uploads live under the same `/api/agents/assistant/` namespace, bound in `views/assistant.py`
 

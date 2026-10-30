@@ -801,6 +801,8 @@ def chat_stream(
                 yield _sse({"type": "state", "state": thread.state})
 
                 if refresh:
+                    # A tool stored something: the briefcase panel is stale.
+                    yield _sse({"type": "briefcase_changed"})
                     system_prompt = agent.generate_system_prompt(
                         thread_id=thread.id
                     )
