@@ -6,6 +6,7 @@ reviewed=True, and nothing a bad fact does can block its valid siblings.
 """
 
 import pytest
+from django.utils import timezone
 
 from litigant_portal.agents.tools.record_fact import RecordFact
 from litigant_portal.app.models import (
@@ -16,7 +17,10 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.topic_flow import variable_answer_list
-from litigant_portal.app.services.topic_flow import variable_answer_set
+from litigant_portal.app.services.topic_flow import (
+    variable_answer_confirm,
+    variable_answer_set,
+)
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
@@ -53,14 +57,24 @@ def date_of_birth():
     )
 
 
-def test_stated_fact_lands_as_unconfirmed_answer(thread, county):
-    output = RecordFact(facts={"county": "burleigh"})(thread_id=thread.id)
+@pytest.mark.parametrize(
+    "evidence",
+    [
+        {},
+        {"county": {"quote": "I live in Burleigh County.", "upload_id": None}},
+    ],
+)
+def test_stated_fact_lands_as_unconfirmed_answer(thread, county, evidence):
+    output = RecordFact(facts={"county": "burleigh"}, evidence=evidence)(
+        thread_id=thread.id
+    )
 
     answer = VariableAnswer.objects.get(
         identity=thread.identity, variable=county
     )
     assert answer.value == "burleigh"
     assert answer.reviewed is False
+    assert answer.evidence == evidence.get("county")
     assert "county" in output.result
 
 
@@ -87,6 +101,7 @@ def test_confirmed_answer_resaved_drops_back_to_unconfirmed(thread, county):
         variable=county,
         value="cass",
         reviewed=True,
+        evidence={"quote": "I live in Cass County."},
     )
 
     RecordFact(facts={"county": "burleigh"})(thread_id=thread.id)
@@ -96,6 +111,7 @@ def test_confirmed_answer_resaved_drops_back_to_unconfirmed(thread, county):
     )
     assert answer.value == "burleigh"
     assert answer.reviewed is False
+    assert answer.evidence is None
 
 
 def test_restated_confirmed_answer_keeps_its_confirmation(thread, county):
@@ -112,7 +128,7 @@ def test_restated_confirmed_answer_keeps_its_confirmation(thread, county):
         identity=thread.identity, variable=county
     )
     assert answer.reviewed is True
-    assert "Already saved, unchanged: county." in output.result
+    assert "Answer values unchanged: county." in output.result
     assert "Saved as" not in output.result
     assert output.refresh_system_prompt is False
 
@@ -129,21 +145,63 @@ def test_restated_unconfirmed_answer_is_not_rewritten(thread, county):
     assert answer.updated_at == before.updated_at
 
 
+def test_restated_fact_adds_evidence_and_can_still_be_confirmed(
+    thread, county
+):
+    RecordFact(facts={"county": "cass"})(thread_id=thread.id)
+    before = VariableAnswer.objects.get(
+        identity=thread.identity, variable=county
+    )
+    shown_at = timezone.now()
+    evidence = {
+        "quote": "Property located in Cass County.",
+        "upload_id": "lease-1",
+    }
+
+    output = RecordFact(
+        facts={"county": "cass"}, evidence={"county": evidence}
+    )(thread_id=thread.id)
+
+    answer = VariableAnswer.objects.get(pk=before.pk)
+    assert answer.value == "cass"
+    assert answer.evidence == evidence
+    assert answer.reviewed is False
+    assert answer.updated_at == before.updated_at
+    assert output.render_data["saved"] == []
+    assert [fact["name"] for fact in output.render_data["unchanged"]] == [
+        "county"
+    ]
+    assert output.refresh_system_prompt is False
+    assert (
+        variable_answer_confirm(
+            identity=thread.identity, names=["county"], as_of=shown_at
+        )
+        == 1
+    )
+    answer.refresh_from_db()
+    assert answer.reviewed is True
+
+
 def test_clearing_a_confirmed_answer_drops_its_confirmation(thread, county):
     variable_answer_set(
         identity=thread.identity,
         variable=county,
         value="cass",
         reviewed=True,
+        evidence={"quote": "I live in Cass County."},
     )
 
-    output = RecordFact(facts={"county": None})(thread_id=thread.id)
+    output = RecordFact(
+        facts={"county": None},
+        evidence={"county": {"quote": "Clear my county."}},
+    )(thread_id=thread.id)
 
     answer = VariableAnswer.objects.get(
         identity=thread.identity, variable=county
     )
     assert answer.value is None
     assert answer.reviewed is False
+    assert answer.evidence is None
     assert output.render_data["saved"][0]["cleared"] is True
 
 

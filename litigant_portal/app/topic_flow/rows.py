@@ -256,16 +256,16 @@ def _form_value(variable, value) -> str:
 
 
 def restore_unchanged(variables, submitted, answers, valid) -> dict:
-    """``valid`` with each answer the litigant left as the form showed it
+    """
+    ``valid`` with each answer the litigant left as the form showed it
     put back to its stored value.
 
     The form string is narrower than the store: a datetime input drops
     the zone and seconds, a number input the float type. Writing the
     posted string back would quietly rewrite an answer the litigant never
-    touched, so an unchanged field re-saves what is stored. The row is
-    still written, so it is marked reviewed. A private field renders blank,
-    so a blank there is skipped upstream and a typed value is never
-    "unchanged".
+    touched, so an unchanged field retains what is stored. Saving still
+    marks it reviewed. A private field renders blank, so a blank there is
+    skipped upstream and a typed value is never "unchanged".
     """
     restored = {}
     for name, value in valid.items():

@@ -91,7 +91,7 @@ def topic_flow(request, court, topic, role):
             lambda name, raw: rows.coerce_value(variables[name], raw),
             private,
         )
-        # An untouched field re-saves its stored value, not the form's
+        # An untouched field retains its stored value, not the form's
         # narrower string of it (a datetime's zone, a float's type).
         valid = rows.restore_unchanged(variables, submitted, answers, valid)
         # A gated answer whose gate stops matching is cleared with the save,
@@ -217,6 +217,25 @@ def _flash_saved(request, valid, protected, revealed=()):
 def _render_flow_page(request, page_title, rendered_sections, **extra):
     """Render ``pages/topic_flow.html`` from an ordered ``RenderedSection``
     list."""
+    briefcase_groups = briefcase_answers(request)
+    evidence_by_name = {
+        answer.variable.name: answer.evidence
+        for group in briefcase_groups
+        for answer in group["answers"]
+        if not answer.reviewed and not answer.variable.is_private
+    }
+    for section in rendered_sections:
+        for question in section.context.get("questions", ()):
+            evidence = evidence_by_name.get(question["id"])
+            if evidence and evidence.get("quote"):
+                prefix = (
+                    _("From your document:")
+                    if evidence.get("upload_id")
+                    else _("Because you said:")
+                )
+                question["help_text"] = (
+                    f"{question['help_text']} {prefix} {evidence['quote']}"
+                ).strip()
     section_links = [
         {"anchor": section.anchor_id, "heading": section.heading}
         for section in rendered_sections
@@ -231,7 +250,7 @@ def _render_flow_page(request, page_title, rendered_sections, **extra):
             "section_links": section_links,
             "frame_left_label": _("Sections"),
             "frame_left_icon": "list-bullet",
-            "briefcase_groups": briefcase_answers(request),
+            "briefcase_groups": briefcase_groups,
             **extra,
         },
     )

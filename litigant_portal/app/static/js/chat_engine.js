@@ -1504,6 +1504,7 @@ document.addEventListener('alpine:init', () => {
       this.showNote('stale-note', false)
       this.showAll('badge-pending', false)
       this.showAll('badge-confirmed', true)
+      this.showAll('evidence', false)
     },
 
     showAll(role, show) {
