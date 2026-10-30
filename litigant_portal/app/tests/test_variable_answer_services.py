@@ -188,15 +188,57 @@ class VariableAnswerSetTests(TestCase):
             reviewed=True,
             evidence=evidence,
         )
-        for reviewed in (False, True):
-            with self.subTest(reviewed=reviewed):
+        for reviewed, new_evidence in (
+            (False, None),
+            (False, {"quote": "Property located in Cass County."}),
+            (True, None),
+        ):
+            with self.subTest(reviewed=reviewed, evidence=new_evidence):
                 answer = variable_answer_set(
                     identity=self.identity,
                     variable=self.variable,
                     value="Cass",
                     reviewed=reviewed,
+                    evidence=new_evidence,
                 )
                 answer.refresh_from_db()
                 self.assertTrue(answer.reviewed)
                 self.assertEqual(answer.evidence, evidence)
                 self.assertEqual(answer.updated_at, before.updated_at)
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("was_reviewed", "confirm", "expected_reviewed"),
+    [(False, False, False), (True, False, True), (False, True, True)],
+)
+def test_unchanged_value_adds_missing_evidence(
+    was_reviewed, confirm, expected_reviewed
+):
+    identity = UserIdentity.objects.create(session_key="missing-evidence")
+    variable = Variable.objects.create(name="county")
+    before = variable_answer_set(
+        identity=identity,
+        variable=variable,
+        value="Cass",
+        reviewed=was_reviewed,
+    )
+    evidence = {
+        "quote": "Property located in Cass County.",
+        "upload_id": "lease-1",
+    }
+
+    answer = variable_answer_set(
+        identity=identity,
+        variable=variable,
+        value="Cass",
+        reviewed=confirm,
+        evidence=evidence,
+    )
+
+    answer.refresh_from_db()
+    assert answer.value == "Cass"
+    assert answer.evidence == evidence
+    assert answer.reviewed is expected_reviewed
+    assert answer.updated_at == before.updated_at

@@ -103,10 +103,11 @@ def variable_answer_set(
     """
     Upsert an identity's answer to a variable.
 
-    Validate first. Unchanged values keep their evidence and confirmation;
-    only an explicit human confirmation can update reviewed. Changed values
-    replace evidence and use the caller's reviewed status, defaulting to
-    False for AI writes. Only reviewed answers may reach docassemble prefill.
+    Validate first. Unchanged values can gain missing evidence but keep
+    existing evidence and their timestamp; only an explicit human
+    confirmation can update reviewed. Changed values replace evidence and
+    use the caller's reviewed status, defaulting to False for AI writes.
+    Only reviewed answers may reach docassemble prefill.
     """
     value = variable_value_validate(
         data_type=variable.data_type, choices=variable.choices, value=value
@@ -121,9 +122,15 @@ def variable_answer_set(
     if created:
         return answer
     if answer.value == value:
+        updated_fields = []
+        if answer.evidence is None and evidence is not None:
+            answer.evidence = evidence
+            updated_fields.append("evidence")
         if reviewed and not answer.reviewed:
             answer.reviewed = True
-            answer.save(update_fields=["reviewed"])
+            updated_fields.append("reviewed")
+        if updated_fields:
+            answer.save(update_fields=updated_fields)
         return answer
 
     answer.value = value
