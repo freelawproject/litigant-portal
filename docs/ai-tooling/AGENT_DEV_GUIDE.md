@@ -378,7 +378,7 @@ example — it binds `LitigantAssistant` and adds the upload endpoints:
 
 ```python
 # litigant_portal/app/views/assistant.py
-THREAD_TYPE = "user_chat"
+from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 
 
 @require_POST
@@ -387,7 +387,7 @@ def stream(request: HttpRequest):
     return chat_engine.stream(
         request,
         agent_class=LitigantAssistant,
-        thread_type=THREAD_TYPE,
+        thread_type=USER_CHAT_THREAD_TYPE,
         model=site_get_model(role="assistant"),
     )
 
@@ -395,7 +395,7 @@ def stream(request: HttpRequest):
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def thread_list(request: HttpRequest) -> JsonResponse:
-    return chat_engine.thread_list(request, thread_type=THREAD_TYPE)
+    return chat_engine.thread_list(request, thread_type=USER_CHAT_THREAD_TYPE)
 ```
 
 Mount the surface under its own URL namespace in `urls.py`:

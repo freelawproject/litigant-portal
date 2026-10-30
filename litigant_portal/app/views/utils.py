@@ -9,6 +9,7 @@ from django.utils.timesince import timesince
 from django.utils.translation import gettext as _
 
 from litigant_portal.app.features import features
+from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 from litigant_portal.app.selectors.chat_engine import chat_thread_list
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
@@ -114,17 +115,13 @@ def activity_threads(request) -> list[dict]:
 
     Mirrors the assistant thread-list API's shape so the home page's
     server-rendered region shows the same rows the chat page's live
-    sidebar does. Empty for a visitor with no identity yet. Imports
-    THREAD_TYPE lazily: views.assistant builds the agent stack at import,
-    which this module's other callers never need.
+    sidebar does. Empty for a visitor with no identity yet.
     """
-    from litigant_portal.app.views.assistant import THREAD_TYPE
-
     if not has_identity(request):
         return []
     threads = []
     for thread in chat_thread_list(
-        identity=request.identity, thread_type=THREAD_TYPE
+        identity=request.identity, thread_type=USER_CHAT_THREAD_TYPE
     ):
         last_at = thread.last_message_at or thread.updated_at
         threads.append(
