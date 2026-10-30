@@ -530,6 +530,9 @@ document.addEventListener('alpine:init', () => {
     // component itself is agent-agnostic.
     base: '',
     reviewWarningText: '',
+    // Server-rendered briefcase fragment, re-fetched when a tool saves a fact.
+    briefcaseUrl: '',
+    briefcaseFetches: 0,
     // History sidebar
     threads: [],
     showEmpty: false,
@@ -579,6 +582,7 @@ document.addEventListener('alpine:init', () => {
     init() {
       this.base = this.$root.dataset.agentBase
       this.reviewWarningText = this.$root.dataset.reviewWarning
+      this.briefcaseUrl = this.$root.dataset.briefcaseUrl
       setCitationChips(this.$root.dataset.citationChips === 'true')
       this.loadThreads()
       this.consumeQueryThread()
@@ -964,6 +968,28 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // Swap in the server-rendered briefcase when a tool saved or corrected
+    // an answer (#941). Django renders the panel; this only replaces the
+    // mounted copy with the fresh markup. Only the latest fetch swaps, so an
+    // earlier response that resolves late can't put back stale facts.
+    async refreshBriefcase() {
+      if (!this.briefcaseUrl) return
+      const fetchId = ++this.briefcaseFetches
+      try {
+        const res = await fetch(this.briefcaseUrl)
+        if (!res.ok) throw new Error('Request failed: ' + res.status)
+        const fresh = new DOMParser()
+          .parseFromString(await res.text(), 'text/html')
+          .querySelector('[data-briefcase-facts]')
+        if (!fresh || fetchId !== this.briefcaseFetches) return
+        this.$root.querySelectorAll('[data-briefcase-facts]').forEach((el) => {
+          el.replaceWith(fresh.cloneNode(true))
+        })
+      } catch (e) {
+        console.error('Failed to refresh briefcase:', e)
+      }
+    },
+
     handleEvent(stream, event) {
       if (
         !event ||
@@ -1021,6 +1047,9 @@ document.addEventListener('alpine:init', () => {
         if (this.attached(stream)) this.threadTitle = event.description
       } else if (event.type === 'state') {
         if (this.attached(stream)) this.setState(event.state)
+      } else if (event.type === 'briefcase_changed') {
+        // Session-scoped, not thread-scoped: refresh even for a detached stream.
+        this.refreshBriefcase()
       } else if (event.type === 'error') {
         this.failStream(stream, event)
       } else if (event.type === 'done') {
