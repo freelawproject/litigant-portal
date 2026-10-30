@@ -15,7 +15,6 @@ from .schema import (
     Weights,
     fingerprint,
     normalize_system,
-    runs_on,
     verify_references,
     write_json,
 )
@@ -247,11 +246,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                     == (system, model, group)
                 ]
                 planned = (
-                    sum(
-                        case["group"] == group
-                        and runs_on(system, case.get("history", []))
-                        for case in manifest["cases"]
-                    )
+                    sum(case["group"] == group for case in manifest["cases"])
                     * manifest["config"]["repetitions"]
                 )
                 if not planned:
@@ -512,8 +507,8 @@ def charts(reports: list[dict], output: Path):
     plt.rcParams.update(
         {"font.size": 10, "axes.spines.top": False, "axes.spines.right": False}
     )
-    colors = {"raw": "#64748b", "current": "#e09f3e", "standalone": "#168aad"}
-    markers = {"raw": "o", "current": "s", "standalone": "^"}
+    colors = {"raw": "#64748b", "current": "#e09f3e"}
+    markers = {"raw": "o", "current": "s"}
     failure_legend = Line2D(
         [],
         [],

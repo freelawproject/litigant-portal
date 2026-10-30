@@ -23,7 +23,7 @@ QUALITY_DIMENSIONS = ("clarity", "actionability", "relevance")
 DIMENSIONS = FACT_DIMENSIONS + QUALITY_DIMENSIONS
 SLUG = r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
 type Slug = Annotated[str, Field(pattern=SLUG)]
-type System = Literal["raw", "current", "standalone"]
+type System = Literal["raw", "current"]
 type FactStatus = Literal["supported", "contradicted", "omitted", "uncertain"]
 type FailureCategory = Literal[
     "citation",
@@ -39,12 +39,14 @@ type PassageID = Annotated[int, Field(gt=0, strict=True)]
 
 def normalize_system(system: str) -> str:
     """
-    Translate legacy eval tags on read without rewriting saved evidence.
+    Normalize the legacy chat tag and reject unsupported evaluation systems.
     """
     if system == "old":
         return "current"
-    if system == "new":
-        return "standalone"
+    if system not in get_args(System.__value__):
+        raise ValueError(
+            f"Unsupported evaluation system: {system}. Use raw or current."
+        )
     return system
 
 
@@ -77,7 +79,7 @@ class Price(Schema):
 class Config(Schema):
     slug: Slug = "initial-baseline"
     systems: list[Annotated[System, BeforeValidator(normalize_system)]] = (
-        Field(default=["raw", "current", "standalone"], min_length=1)
+        Field(default=["raw", "current"], min_length=1)
     )
     models: list[Slug] = Field(default=["luna", "terra"], min_length=1)
     model_ids: dict[Slug, str] = Field(
@@ -229,13 +231,6 @@ def read_cases(config: Config) -> list[Case]:
             raise ValueError("Select at least one known case ID.")
         cases = [case for case in cases if case.id in config.cases]
     return cases
-
-
-def runs_on(system: str, history: list[str]) -> bool:
-    """
-    The standalone system takes single-turn cases only; skip rather than error.
-    """
-    return not (normalize_system(system) == "standalone" and history)
 
 
 def write_json(path: Path, value) -> None:

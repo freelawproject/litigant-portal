@@ -59,8 +59,7 @@ Two things make this work:
   callback never fires, so the Alpine components inside it are never
   constructed. A test of the pure functions does not drag in Alpine.
 
-This pattern comes from `agent_development.test.cjs` — follow it rather than
-introducing a second approach.
+See `chat_engine_markdown.test.cjs` for an existing example of this pattern.
 
 ## Gotcha: values from the vm are cross-realm
 

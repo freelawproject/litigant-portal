@@ -35,7 +35,6 @@ services:
       - DEPLOYMENT_ENV=${DEPLOYMENT_ENV:-dev}
       - PILOT=${PILOT:-}
       - FEEDBACK_EMAIL=${FEEDBACK_EMAIL:-}
-      - LP_AGENT_DEV_ENABLED=true
       - SECRET_KEY=dev
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=postgres
@@ -54,7 +53,6 @@ services:
       - DOCASSEMBLE_PUBLIC_URL=${DOCASSEMBLE_PUBLIC_URL}
     volumes:
       - ./litigant_portal:/app/litigant_portal
-      - ./lp_agent:/app/lp_agent
     stdin_open: true
     tty: true
     depends_on:

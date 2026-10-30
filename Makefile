@@ -34,12 +34,9 @@ lint: ## Run pre-commit hooks to lint and format code
 # after the container is rebuilt or recreated.
 PYTEST_CACHE := -o cache_dir=/app/litigant_portal/.pytest_cache
 
-# Test paths after the target (make test path/to/test.py) run in the Django
-# env only: the agent env runs without Django and can't load app/ tests,
-# while py313 collects lp_agent/ too. The bare target still runs every env.
 test: test-js ## Run tests
 	$(require-docker)
-	docker compose exec django docker/django/entrypoint.sh test $(if $(filter-out $@,$(MAKECMDGOALS)),-e py313) -q -- -q --tb=short $(PYTEST_CACHE) $(filter-out $@,$(MAKECMDGOALS))
+	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short $(PYTEST_CACHE) $(filter-out $@,$(MAKECMDGOALS))
 
 test-js: ## Run the browser JS tests (Node's built-in runner, no install needed)
 	node --test litigant_portal/app/tests/js/*.test.cjs

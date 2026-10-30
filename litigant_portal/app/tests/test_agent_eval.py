@@ -78,10 +78,13 @@ def test_every_case_in_cases_yml_loads():
 
 
 def test_system_tags() -> None:
-    expected = ["raw", "current", "standalone"]
+    expected = ["raw", "current"]
     assert Config().systems == expected
-    for tags in (expected, ["raw", "old", "new"]):
+    for tags in (expected, ["raw", "old"]):
         assert Config.model_validate({"systems": tags}).systems == expected
+    for system in ("standalone", "new"):
+        with pytest.raises(ValueError, match="Unsupported evaluation system"):
+            Config.model_validate({"systems": [system]})
 
 
 @pytest.mark.parametrize(

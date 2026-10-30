@@ -12,7 +12,7 @@ from .schema import HERE, ROOT, Config, Weights, read_config
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare raw, current, and standalone agent outputs."
+        description="Compare raw model and current chat engine outputs."
     )
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser(

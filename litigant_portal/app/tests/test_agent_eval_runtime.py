@@ -189,6 +189,17 @@ def write_run(path, rows):
     return path / manifest["attempts"][0]
 
 
+@pytest.mark.parametrize("system", ["standalone", "new"])
+def test_report_rejects_retired_systems(tmp_path, system):
+    write_run(tmp_path, [{}])
+    path = tmp_path / "manifest.json"
+    manifest = json.loads(path.read_text())
+    manifest["config"]["systems"] = [system]
+    write_json(path, manifest)
+    with pytest.raises(ValueError, match="Unsupported evaluation system"):
+        report.summarize(tmp_path)
+
+
 @pytest.mark.parametrize("judge_model", [None, "synthetic-judge"])
 def test_failed_attempt_retains_judge_configuration(tmp_path, judge_model):
     target = write_run(tmp_path, [{}])

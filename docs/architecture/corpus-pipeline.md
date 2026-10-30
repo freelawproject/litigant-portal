@@ -66,9 +66,6 @@ litigant states in chat as `VariableAnswer` rows marked unreviewed (#947).
 **docassemble prefill** sends only reviewed answers, so a fact the chat recorded
 reaches a court form only after a person confirms it.
 
-`/dev/agent` runs the separate `lp_agent` harness. It is a development tool and not part
-of the chat path above.
-
 ## Known gaps
 
 - No contract or tooling between source documents and `corpus/`, and no coverage check.

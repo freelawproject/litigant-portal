@@ -11,9 +11,6 @@ from litigant_portal.app.views import (
     admin as admin_views,
 )
 from litigant_portal.app.views import (
-    agent as agent_views,
-)
-from litigant_portal.app.views import (
     assistant,
     design_system,
     health,
@@ -27,12 +24,6 @@ app_patterns = [
     path("", pages.home, name="home"),
     path("chat/", pages.chat_view, name="chat"),
     path("chat/briefcase/", assistant.briefcase, name="briefcase"),
-    path("dev/agent/", agent_views.development_page, name="agent_development"),
-    path(
-        "dev/agent/stream/",
-        agent_views.development_stream,
-        name="agent_development_stream",
-    ),
     path(
         "t/<slug:court>/<slug:topic>/<slug:role>/",
         topic_flow_views.topic_flow,
