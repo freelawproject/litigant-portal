@@ -220,6 +220,8 @@
               </button>
             </div>
           </template>
+          {# Until the assistant answers an upload on its own (#944), say how it gets the file. #}
+          <p class="w-full text-2xs text-greyscale-500">{% trans "Send a message to share these files with the assistant." %}</p>
         </div>
         <div class="relative">
           <textarea x-ref="input"
@@ -282,6 +284,9 @@
       </div>
     </div>
   </div>
+  {# Upload status for screen readers (WCAG 4.1.3). Outside the modal, so a #}
+  {# batch that finishes after the dialog closes is still announced. #}
+  <p class="sr-only" aria-live="polite" x-text="uploadStatusText"></p>
   {# Attach files modal #}
   <div x-show="attachOpen"
        x-cloak
@@ -343,18 +348,22 @@
             {% trans "PDF, Word, Excel, images & text — up to 20 MB each" %}
           </span>
         </button>
-        <p x-show="hasUploadError"
-           x-cloak
-           class="mt-2 text-xs text-red-600"
-           x-text="uploadError"></p>
       </div>
-      {# In-flight uploads #}
-      <div x-show="hasPending" x-cloak class="px-6 mt-3 space-y-1.5">
-        <template x-for="p in pendingUploads" :key="p.id">
-          <div class="flex items-center gap-2.5 rounded-lg border border-greyscale-200 bg-greyscale-50 px-3 py-2">
-            <c-atoms.icon name="arrow-path" class="w-4 h-4 text-primary-600 animate-spin flex-shrink-0" />
-            <span class="text-xs font-medium text-greyscale-700 truncate" x-text="p.name"></span>
-            <span class="ml-auto text-2xs font-medium uppercase tracking-wide text-greyscale-500 flex-shrink-0">{% trans "Uploading…" %}</span>
+      {# This batch's uploads: one row per file, uploading → done or failed (#1124). #}
+      {# The live region outside the modal announces them; these rows are visual. #}
+      <div x-show="hasUploadRows" x-cloak class="px-6 mt-3 space-y-1.5">
+        <template x-for="row in uploadRows" :key="row.id">
+          <div class="rounded-lg border border-greyscale-200 bg-greyscale-50 px-3 py-2">
+            <div class="flex items-center gap-2.5">
+              <c-atoms.icon x-show="row.isUploading" name="arrow-path" class="w-4 h-4 text-primary-600 animate-spin flex-shrink-0" />
+              <c-atoms.icon x-show="row.isDone" name="check-circle" class="w-4 h-4 text-green-700 flex-shrink-0" />
+              <c-atoms.icon x-show="row.isFailed" name="exclamation-triangle" class="w-4 h-4 text-red-700 flex-shrink-0" />
+              <span class="text-xs font-medium text-greyscale-700 truncate" x-text="row.name"></span>
+              <span x-show="row.isUploading" class="ml-auto text-2xs font-medium uppercase tracking-wide text-greyscale-500 flex-shrink-0">{% trans "Uploading…" %}</span>
+              <span x-show="row.isDone" class="ml-auto text-2xs font-medium uppercase tracking-wide text-green-700 flex-shrink-0">{% trans "Uploaded" %}</span>
+              <span x-show="row.isFailed" class="ml-auto text-2xs font-medium uppercase tracking-wide text-red-700 flex-shrink-0">{% trans "Could not upload" %}</span>
+            </div>
+            <p x-show="row.isFailed" class="mt-1 text-xs text-red-700" x-text="row.reason"></p>
           </div>
         </template>
       </div>

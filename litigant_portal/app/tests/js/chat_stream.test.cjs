@@ -683,6 +683,71 @@ for (const scenario of [
   })
 }
 
+// An upload batch gives each file a status row and announces the batch to
+// screen readers when it starts and when it ends (#1124).
+function storedUpload(name) {
+  return {
+    id: 'u-' + name,
+    name,
+    size: 10,
+    content_type: 'application/pdf',
+    is_image: false,
+    created_at: new Date().toISOString(),
+  }
+}
+
+test("an upload batch shows each file's status and announces start and end", async () => {
+  let finishUpload
+  const { app } = makeApp(
+    () =>
+      new Promise((resolve) => {
+        finishUpload = () =>
+          resolve({
+            ok: true,
+            json: async () => ({ upload: storedUpload('ticket.pdf') }),
+          })
+      })
+  )
+
+  const batch = app.uploadFiles([
+    { name: 'ticket.pdf', size: 10 },
+    { name: 'notes.exe', size: 10 },
+  ])
+  assert.equal(app.uploadStatusText, 'Uploading 1 file.')
+  assert.deepEqual(
+    Array.from(app.uploadRows, (r) => r.name + ': ' + r.state),
+    ['ticket.pdf: uploading', 'notes.exe: failed']
+  )
+
+  finishUpload()
+  await batch
+
+  assert.equal(
+    app.uploadStatusText,
+    '1 file uploaded. notes.exe could not upload: unsupported file type.'
+  )
+  assert.deepEqual(
+    Array.from(app.uploadRows, (r) => r.name + ': ' + r.state),
+    ['ticket.pdf: done', 'notes.exe: failed']
+  )
+  assert.equal(app.uploads[0].name, 'ticket.pdf')
+})
+
+test("a server-side upload failure shows the server's reason on its row", async () => {
+  const { app } = makeApp(async () => ({
+    ok: false,
+    json: async () => ({ error: 'File is empty' }),
+  }))
+
+  await app.uploadFiles([{ name: 'blank.pdf', size: 10 }])
+
+  assert.equal(app.uploadRows[0].reason, 'File is empty')
+  assert.equal(
+    app.uploadStatusText,
+    'blank.pdf could not upload: File is empty.'
+  )
+})
+
 // The briefcase refresh runs with no DOM in Node, so the parser and the
 // mounted panel are stand-ins that only honor the selector the app uses.
 function mountBriefcase(app, context) {

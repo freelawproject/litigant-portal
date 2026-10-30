@@ -516,6 +516,49 @@ function decorateUpload(upload, selected) {
   }
 }
 
+// One file's line in the attach dialog while its batch uploads (#1124). Each
+// state is its own flag: the template shows one icon and label per state,
+// and the CSP build can't negate or compare.
+let uploadRowSeq = 0
+function uploadRow(name, state, reason = '') {
+  return {
+    id: 'upload-row-' + ++uploadRowSeq,
+    name,
+    state,
+    isUploading: state === 'uploading',
+    isDone: state === 'done',
+    isFailed: state === 'failed',
+    reason: state === 'failed' ? reason : '',
+  }
+}
+
+function fileCount(count) {
+  return count === 1 ? '1 file' : count + ' files'
+}
+
+// What the dialog's live region says about a batch: that it's uploading
+// while any file is in flight, then how many made it and why each failure
+// failed. One message per change, so a screen reader hears the whole batch
+// rather than a race of per-file updates.
+function uploadAnnouncement(rows) {
+  const uploading = rows.filter((r) => r.isUploading).length
+  if (uploading) return 'Uploading ' + fileCount(uploading) + '.'
+  const done = rows.filter((r) => r.isDone).length
+  const parts = done ? [fileCount(done) + ' uploaded.'] : []
+  rows
+    .filter((r) => r.isFailed)
+    .forEach((r) => parts.push(r.name + ' could not upload: ' + r.reason + '.'))
+  return parts.join(' ')
+}
+
+// Why a file can't be uploaded, checked before it's sent; '' when it can.
+function uploadProblem(file) {
+  const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
+  if (!UPLOAD_EXTENSIONS.includes(ext)) return 'unsupported file type'
+  if (file.size > MAX_UPLOAD_SIZE) return 'too large (max 20 MB)'
+  return ''
+}
+
 document.addEventListener('alpine:init', () => {
   // A single component managing every part of the chat: the history sidebar
   // and the center conversation (messages, input, streaming). The stream URL
@@ -561,11 +604,11 @@ document.addEventListener('alpine:init', () => {
     uploads: [],
     hasUploads: false,
     uploadsEmpty: false,
-    pendingUploads: [],
+    // One status row per file in the current upload batch (#1124).
+    uploadRows: [],
+    hasUploadRows: false,
     hasPending: false,
-    pendingSeq: 0,
-    uploadError: '',
-    hasUploadError: false,
+    uploadStatusText: '',
     dragDepth: 0,
     dropzoneClass: DROPZONE_IDLE,
     attachments: [],
@@ -1173,7 +1216,7 @@ document.addEventListener('alpine:init', () => {
 
     async openAttach() {
       this.attachOpen = true
-      this.setUploadError('')
+      this.clearFinishedUploadRows()
       // Dialog focus management: move focus into the modal on open and
       // return it to the trigger on close.
       this.attachTrigger = document.activeElement
@@ -1213,7 +1256,7 @@ document.addEventListener('alpine:init', () => {
     // Recompute the CSP-safe labels/flags the modal binds to.
     refreshAttachState() {
       this.hasUploads = this.uploads.length > 0
-      this.hasPending = this.pendingUploads.length > 0
+      this.hasPending = this.uploadRows.some((r) => r.isUploading)
       this.uploadsEmpty = !this.hasUploads && !this.hasPending
       this.uploadCountLabel =
         this.uploads.length === 1 ? '1 file' : this.uploads.length + ' files'
@@ -1230,9 +1273,15 @@ document.addEventListener('alpine:init', () => {
       this.attachDisabled = count === 0 && this.attachments.length === 0
     },
 
-    setUploadError(message) {
-      this.uploadError = message
-      this.hasUploadError = !!message
+    // Rows from a finished batch go; files still uploading keep theirs.
+    clearFinishedUploadRows() {
+      this.setUploadRows(this.uploadRows.filter((r) => r.isUploading))
+    },
+
+    setUploadRows(rows) {
+      this.uploadRows = rows
+      this.hasUploadRows = rows.length > 0
+      this.refreshAttachState()
     },
 
     browseFiles() {
@@ -1264,31 +1313,26 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Upload files concurrently; each success lands in the grid pre-selected.
+    // Every file gets a status row, and the live region announces the batch
+    // when it starts and again when the last file settles.
     async uploadFiles(fileList) {
       const files = Array.from(fileList || [])
       if (!files.length) return
-      this.setUploadError('')
-      const errors = []
+      const sends = []
+      const rows = files.map((file) => {
+        const problem = uploadProblem(file)
+        if (problem) return uploadRow(file.name, 'failed', problem)
+        const row = uploadRow(file.name, 'uploading')
+        sends.push({ file, row })
+        return row
+      })
+      this.clearFinishedUploadRows()
+      this.setUploadRows(this.uploadRows.concat(rows))
+      this.uploadStatusText = uploadAnnouncement(rows)
 
       await Promise.all(
-        files.map(async (file) => {
-          const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
-          if (!UPLOAD_EXTENSIONS.includes(ext)) {
-            errors.push(file.name + ': unsupported file type')
-            return
-          }
-          if (file.size > MAX_UPLOAD_SIZE) {
-            errors.push(file.name + ': too large (max 20 MB)')
-            return
-          }
-
-          const pending = {
-            id: 'pending-' + ++this.pendingSeq,
-            name: file.name,
-          }
-          this.pendingUploads.push(pending)
-          this.refreshAttachState()
-
+        sends.map(async ({ file, row }) => {
+          let settled
           try {
             const body = new FormData()
             body.append('file', file)
@@ -1300,18 +1344,18 @@ document.addEventListener('alpine:init', () => {
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'upload failed')
             this.uploads.unshift(decorateUpload(data.upload, true))
+            settled = uploadRow(file.name, 'done')
           } catch (err) {
-            errors.push(file.name + ': ' + err.message)
-          } finally {
-            this.pendingUploads = this.pendingUploads.filter(
-              (p) => p.id !== pending.id
-            )
-            this.refreshAttachState()
+            settled = uploadRow(file.name, 'failed', err.message)
           }
+          rows[rows.indexOf(row)] = settled
+          this.setUploadRows(
+            this.uploadRows.map((r) => (r.id === row.id ? settled : r))
+          )
         })
       )
 
-      this.setUploadError(errors.join(' · '))
+      this.uploadStatusText = uploadAnnouncement(rows)
     },
 
     // Toggle a card's selection — the upload id rides on the element.
