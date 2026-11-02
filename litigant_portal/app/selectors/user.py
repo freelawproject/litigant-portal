@@ -3,10 +3,9 @@ from django.contrib.auth.models import Group, User
 from django.db.models import Exists, OuterRef, QuerySet
 
 from litigant_portal.app.permissions import (
-    ADMINS_GROUP,
-    DEVELOPERS_GROUP,
-    STAFF_GROUPS,
-    USER_ADMINS_GROUP,
+    COURT_ADMINS_GROUP,
+    FLP_STAFF_GROUP,
+    Tier,
 )
 
 
@@ -20,27 +19,26 @@ def user_get(*, user_id: int) -> User:
 
 
 def user_list(
-    *, search: str = "", app_users_only: bool = False
+    *, search: str = "", max_tier: Tier = Tier.SUPERUSER
 ) -> QuerySet[User]:
     """Users for the admin users tab, filtered by email substring, each
-    annotated with its group memberships.
+    annotated with its role memberships.
 
-    ``app_users_only`` leaves out staff (superusers, Django admin staff,
-    Admins, Developers),
-    which is all a user admin sees. Disabled accounts stay listed so they
-    can be enabled again.
+    ``max_tier`` is the highest tier listed: a viewer sees their own tier
+    and below, so a Court Admin never sees FLP Staff and only a superuser
+    sees superusers. Disabled accounts stay listed so they can be enabled
+    again.
     """
     users = User.objects.order_by("email").annotate(
-        is_admin_member=_member_of(ADMINS_GROUP),
-        is_developer_member=_member_of(DEVELOPERS_GROUP),
-        is_user_admin_member=_member_of(USER_ADMINS_GROUP),
+        is_flp_staff_member=_member_of(FLP_STAFF_GROUP),
+        is_court_admin_member=_member_of(COURT_ADMINS_GROUP),
     )
     if search:
         users = users.filter(email__icontains=search)
-    if app_users_only:
-        users = users.filter(is_superuser=False, is_staff=False).exclude(
-            groups__name__in=STAFF_GROUPS
-        )
+    if max_tier < Tier.SUPERUSER:
+        users = users.filter(is_superuser=False)
+    if max_tier < Tier.FLP_STAFF:
+        users = users.filter(is_staff=False, is_flp_staff_member=False)
     return users
 
 
@@ -59,30 +57,40 @@ def user_email_taken(*, email: str) -> bool:
     )
 
 
-def user_is_manageable(*, viewer: User, target: User) -> bool:
-    """Whether ``viewer`` may reset, disable, enable, or delete ``target``.
+def user_tier(*, user: User) -> Tier:
+    """The account's tier (#1135), read from the account itself.
 
-    Staff are managed only from above: superusers, Django admin staff
-    (``is_staff``, which can read every transcript there), and user admins
-    by superusers; developers by those who manage developers; admins by
-    those who manage the site. Every other account is an app user, open to
-    anyone holding ``manage_app_users``.
-
-    Every protection the target carries applies at once, not just the first
-    one found: otherwise a site admin could add a user admin to Admins and
-    then reach them through the Admins rule (#1073).
+    Not from ``has_perm``, which answers False for a disabled account and
+    would drop a disabled FLP Staff account into a Court Admin's reach.
+    Django admin staff (``is_staff``, which can read every transcript
+    there) rank as FLP Staff even without the group. Uses the
+    ``user_list`` annotations when the row has them.
     """
-    groups = set(target.groups.values_list("name", flat=True))
-    rules = [viewer.has_perm("app.manage_app_users")]
-    if target.is_superuser or target.is_staff:
-        rules.append(viewer.is_superuser)
-    if DEVELOPERS_GROUP in groups:
-        rules.append(viewer.has_perm("app.manage_developers"))
-    if ADMINS_GROUP in groups:
-        rules.append(viewer.has_perm("app.manage_site"))
-    if USER_ADMINS_GROUP in groups:
-        # Only a superuser touches a user admin, so one can't remove another.
-        # Their own password is the exception; the views refuse the rest as
-        # self-lockout.
-        rules.append(viewer.is_superuser or viewer.pk == target.pk)
-    return all(rules)
+    if user.is_superuser:
+        return Tier.SUPERUSER
+    if hasattr(user, "is_flp_staff_member"):
+        flp_staff = user.is_flp_staff_member
+        court_admin = user.is_court_admin_member
+    else:
+        groups = set(user.groups.values_list("name", flat=True))
+        flp_staff = FLP_STAFF_GROUP in groups
+        court_admin = COURT_ADMINS_GROUP in groups
+    if user.is_staff or flp_staff:
+        return Tier.FLP_STAFF
+    if court_admin:
+        return Tier.COURT_ADMIN
+    return Tier.APP_USER
+
+
+def user_is_manageable(*, viewer: User, target: User) -> bool:
+    """Whether ``viewer`` may reset, disable, enable, or delete ``target``:
+    only an account in a lower tier, so never one's own tier or oneself.
+    Holding ``app.manage_app_users`` is the view's guard, not this one's."""
+    return user_tier(user=viewer) > user_tier(user=target)
+
+
+def user_assignable_roles(*, viewer: User) -> list[Tier]:
+    """The roles ``viewer`` may give an account, highest first: every tier
+    below their own. Superuser is never one; that's infra's to grant."""
+    tier = user_tier(user=viewer)
+    return [t for t in reversed(Tier) if t < tier and t < Tier.SUPERUSER]

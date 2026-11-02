@@ -35,7 +35,7 @@
     {% endif %}
   </div>
 
-  {% if show_agent_state and perms.app.manage_developers %}
+  {% if show_agent_state and perms.app.manage_site %}
     <details class="mt-2 border-t border-greyscale-200">
       <summary class="px-4 py-2 text-xs text-greyscale-600 cursor-pointer">{% trans "Agent state" %}</summary>
       {% include "pages/chat/partials/_agent_state.html" %}

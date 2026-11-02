@@ -15,7 +15,7 @@ from django.contrib.auth.models import Group
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
-from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
+from litigant_portal.app.permissions import FLP_STAFF_GROUP
 
 CHAT_TEMPLATE_PATH = Path(
     "litigant_portal/app/templates/pages/chat/index.html"
@@ -52,14 +52,14 @@ class HandRolledEyebrowGuardTests(SimpleTestCase):
 class ChatPageEyebrowTests(TestCase):
     """Every chat-page eyebrow renders a heading at its declared level."""
 
-    def test_developer_sees_every_eyebrow_heading(self):
+    def test_flp_staff_see_every_eyebrow_heading(self):
         User = get_user_model()
-        developer = User.objects.create_user(
+        staff = User.objects.create_user(
             username="eyebrow_dev",
             email="eyebrow_dev@example.com",
             password="pw",
         )
-        developer.groups.add(Group.objects.get(name=DEVELOPERS_GROUP))
+        staff.groups.add(Group.objects.get(name=FLP_STAFF_GROUP))
         self.client.login(username="eyebrow_dev", password="pw")
 
         response = self.client.get(reverse("pages:chat"))
@@ -84,7 +84,7 @@ class AdminPageEyebrowTests(TestCase):
             email="eyebrow_admin@example.com",
             password="pw",
         )
-        site_admin.groups.add(Group.objects.get(name=ADMINS_GROUP))
+        site_admin.groups.add(Group.objects.get(name=FLP_STAFF_GROUP))
         self.client.login(username="eyebrow_admin", password="pw")
 
         response = self.client.get(reverse("pages:admin_dashboard"))

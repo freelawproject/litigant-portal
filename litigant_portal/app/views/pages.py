@@ -33,6 +33,7 @@ from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.views.utils import (
     admin_tabs,
     briefcase_answers,
+    role_choices,
     topic_flow_cards,
 )
 
@@ -167,6 +168,7 @@ def admin(request: HttpRequest) -> HttpResponse:
                 os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
             ),
             "model_choices": BedrockModel.choices,
+            "role_choices": role_choices(request.user),
             "default_model_label": DEFAULT_BEDROCK_MODEL.label,
             "default_fast_model_label": DEFAULT_FAST_BEDROCK_MODEL.label,
             "jurisdiction_choices": JurisdictionLevel.choices,
