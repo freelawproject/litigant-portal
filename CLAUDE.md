@@ -21,7 +21,7 @@ Getting each court partner's own instance ready for its subject-matter experts t
 | Local dev   | AWS Bedrock   | `docker-compose.yml` + `.env`        |
 | CI          | None (mocked) | `tox.ini` — tests mock all providers |
 
-Model families are curated through `MODEL_MAPPING` and `MODEL_CHOICES` in `litigant_portal/agents/bedrock.py` and selected in admin settings. Unset assistant/fast roles use the first available Balanced/Economy model, currently GPT Terra/GPT Luna; the previous defaults were GPT Luna/Claude Haiku. Judging is disabled until selected. `site_get_model_target` resolves role preferences to concrete routes. `AWS_REGION` is required; `BEDROCK_ALLOWED_GEOGRAPHY` is optional and defaults to `US`. Setup commands live under Commands below.
+Model families are curated through `MODEL_MAPPING` and `MODEL_CHOICES` in `litigant_portal/agents/bedrock.py` and selected in admin settings. Unset assistant/fast roles use the first available Balanced/Economy model, currently GPT Terra/GPT Luna; the previous defaults were GPT Luna/Claude Haiku. Judging is disabled until selected. `site_get_model_target` resolves role preferences to concrete routes. `AWS_REGION` is optional and defaults to `us-east-1`; `BEDROCK_ALLOWED_GEOGRAPHY` is optional and defaults to `US`. Setup commands live under Commands below.
 
 ## Commands
 
