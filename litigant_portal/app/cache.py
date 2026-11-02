@@ -54,4 +54,4 @@ def bedrock_catalog_cache_key(policy: bedrock.BedrockPolicy) -> str:
             default=sorted,
         ).encode()
     ).hexdigest()
-    return f"bedrock:catalog:v2:{fingerprint}"
+    return f"bedrock:catalog:v3:{fingerprint}"

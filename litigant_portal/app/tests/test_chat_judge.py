@@ -87,7 +87,7 @@ def stream():
             patch(
                 "litigant_portal.app.services.chat_engine.bedrock_model_target",
                 side_effect=lambda *, model, **kwargs: ResolvedBedrockModel(
-                    model, "us-east-1"
+                    model, "us-east-1", small_task_effort="low"
                 ),
             ),
             patch(

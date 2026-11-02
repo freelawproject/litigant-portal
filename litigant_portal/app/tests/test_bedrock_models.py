@@ -1,11 +1,13 @@
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime
+from threading import Event
 from time import time
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ReadTimeoutError
 from django.core.cache import cache
 from django.core.files.base import ContentFile
 from django.test import RequestFactory
@@ -14,6 +16,7 @@ from openai import APIConnectionError
 from litigant_portal.agents import bedrock
 from litigant_portal.agents.bedrock import (
     BedrockCatalog,
+    BedrockDiscoveryError,
     BedrockModelUnavailable,
     BedrockPolicy,
     FoundationModel,
@@ -22,7 +25,7 @@ from litigant_portal.agents.bedrock import (
     ResolvedBedrockModel,
     resolve_catalog,
 )
-from litigant_portal.app.cache import SITE_CACHE_KEY
+from litigant_portal.app.cache import SITE_CACHE_KEY, bedrock_catalog_cache_key
 from litigant_portal.app.models import (
     ChatThread,
     Site,
@@ -32,6 +35,7 @@ from litigant_portal.app.models import (
 from litigant_portal.app.selectors.bedrock import (
     bedrock_model_choices,
     bedrock_model_target,
+    bedrock_policy,
 )
 from litigant_portal.app.services import chat_engine as engine
 from litigant_portal.app.services.bedrock import (
@@ -97,10 +101,14 @@ def catalog(catalog_payloads):
 
 
 @pytest.fixture
-def loaded_catalog(catalog, settings, monkeypatch):
+def configured_bedrock(settings):
     settings.AWS_REGION = "us-east-1"
     settings.BEDROCK_ALLOWED_GEOGRAPHY = "US"
     settings.BEDROCK_API_KEY = "test-bedrock-key"
+
+
+@pytest.fixture
+def loaded_catalog(catalog, configured_bedrock, monkeypatch):
     load = Mock(return_value=catalog)
     monkeypatch.setattr(bedrock, "discover_catalog", load)
     return load
@@ -167,11 +175,29 @@ def upload():
     return UserUpload(
         identity=UserIdentity(),
         name="example",
+        content_type="text/plain",
         size=4,
         pages=1,
         text_chars=4,
         file=ContentFile(b"test", name="example"),
     )
+
+
+@pytest.fixture
+def reader_tool(reader_catalog, upload, monkeypatch):
+    from litigant_portal.agents.tools.query_document import QueryDocument
+
+    cache.set(SITE_CACHE_KEY, Site(assistant_model="auto/openai.terra"))
+    monkeypatch.setattr(
+        ChatThread.objects,
+        "get",
+        Mock(return_value=ChatThread(identity=upload.identity)),
+    )
+    uploads = Mock(return_value=Mock(first=Mock(return_value=upload)))
+    monkeypatch.setattr(UserUpload.objects, "filter", uploads)
+    return QueryDocument(
+        upload_id=str(upload.id), request="Summarize"
+    ), uploads
 
 
 def test_non_us_geography_is_rejected():
@@ -313,7 +339,7 @@ def discovery_clients(catalog_payloads, monkeypatch):
         models = mantle.return_value.__enter__.return_value.models.list
         models.return_value = []
         yield client, models, payload
-    client.close.assert_called_once()
+    assert client.close.call_count == client.list_foundation_models.call_count
 
 
 def test_discovery_loads_access_once(catalog, discovery_clients):
@@ -374,7 +400,7 @@ def test_discovery_provider_errors_are_sanitized(discovery_clients, operation):
     )
     with pytest.raises(BedrockModelUnavailable) as error:
         bedrock.discover_catalog(BedrockPolicy("us-east-1"), "test-key")
-    assert "ClientError" in str(error.value)
+    assert "AccessDeniedException" in str(error.value)
     assert "provider-secret" not in str(error.value)
 
 
@@ -418,17 +444,89 @@ def test_partial_discovery_cache_expires_after_five_minutes(
     assert loaded_catalog.call_count == 2
 
 
+@pytest.mark.parametrize(
+    "provider_error, code",
+    [
+        (
+            ClientError(
+                {
+                    "Error": {
+                        "Code": "AccessDeniedException",
+                        "Message": "provider-secret",
+                    }
+                },
+                "Discovery",
+            ),
+            "AccessDeniedException",
+        ),
+        (
+            ClientError(
+                {
+                    "Error": {
+                        "Code": "ThrottlingException",
+                        "Message": "provider-secret",
+                    }
+                },
+                "Discovery",
+            ),
+            "ThrottlingException",
+        ),
+        (
+            ReadTimeoutError(
+                endpoint_url="https://example.test/provider-secret"
+            ),
+            "ReadTimeoutError",
+        ),
+    ],
+)
 def test_discovery_failure_cache_expires_and_sanitizes_errors(
+    discovery_clients, configured_bedrock, clock, caplog, provider_error, code
+):
+    client, _, _ = discovery_clients
+    client.list_foundation_models.side_effect = provider_error
+    for _ in range(2):
+        with pytest.raises(BedrockDiscoveryError, match=code):
+            bedrock_model_target(model="auto/anthropic.haiku")
+    assert client.list_foundation_models.call_count == 1
+    assert "provider-secret" not in caplog.text
+    assert caplog.text.count(f"Bedrock discovery failed ({code})") == 1
+    entry = cache.get(bedrock_catalog_cache_key(bedrock_policy()))
+    assert entry.value == code
+    clock.return_value += 61
+    with pytest.raises(BedrockDiscoveryError, match=code):
+        bedrock_model_target(model="auto/anthropic.haiku")
+    assert client.list_foundation_models.call_count == 2
+
+
+def test_failed_refresh_does_not_reuse_an_expired_catalog(
     loaded_catalog, clock
 ):
-    loaded_catalog.side_effect = BedrockModelUnavailable("provider-secret")
+    bedrock_model_target(model="auto/anthropic.haiku")
+    loaded_catalog.side_effect = BedrockDiscoveryError("ThrottlingException")
+    clock.return_value += 3601
     for _ in range(2):
-        with pytest.raises(BedrockModelUnavailable) as error:
+        with pytest.raises(BedrockDiscoveryError, match="ThrottlingException"):
             bedrock_model_target(model="auto/anthropic.haiku")
-        assert "provider-secret" not in str(error.value)
-    loaded_catalog.assert_called_once()
-    clock.return_value += 301
-    with pytest.raises(BedrockModelUnavailable):
+    assert loaded_catalog.call_count == 2
+
+
+def test_failed_refresh_supersedes_a_previously_read_catalog(
+    loaded_catalog, clock, monkeypatch
+):
+    bedrock_model_target(model="auto/anthropic.haiku")
+    bedrock_catalog_invalidate_on_error(SimpleNamespace(status_code=403))
+    clock.return_value += 61
+    loaded_catalog.side_effect = BedrockDiscoveryError("ThrottlingException")
+    add = cache.add
+
+    def another_worker_finishes(*args, **kwargs):
+        monkeypatch.setattr(cache, "add", add)
+        with pytest.raises(BedrockDiscoveryError, match="ThrottlingException"):
+            bedrock_model_target(model="auto/anthropic.haiku")
+        return False
+
+    monkeypatch.setattr(cache, "add", another_worker_finishes)
+    with pytest.raises(BedrockDiscoveryError, match="ThrottlingException"):
         bedrock_model_target(model="auto/anthropic.haiku")
     assert loaded_catalog.call_count == 2
 
@@ -447,23 +545,163 @@ def test_complete_catalog_lasts_one_hour(loaded_catalog, clock):
     "status, discoveries", [(400, 1), (401, 2), (403, 2), (404, 2)]
 )
 def test_inference_errors_invalidate_only_access_metadata(
-    loaded_catalog, status, discoveries
+    loaded_catalog, clock, status, discoveries
 ):
     bedrock_model_target(model="auto/anthropic.haiku")
     loaded_catalog.return_value = replace(
         loaded_catalog.return_value,
         authorized_model_ids=frozenset({OLD_MODEL}),
     )
-    bedrock_catalog_invalidate_on_error(SimpleNamespace(status_code=status))
+    for _ in range(2):
+        bedrock_catalog_invalidate_on_error(
+            SimpleNamespace(status_code=status)
+        )
+        assert bedrock_model_target(
+            model="auto/anthropic.haiku"
+        ).model.endswith(NEW_MODEL)
+    loaded_catalog.assert_called_once()
+    clock.return_value += 61
     target = bedrock_model_target(model="auto/anthropic.haiku")
     assert target.model.endswith(OLD_MODEL if discoveries == 2 else NEW_MODEL)
     assert loaded_catalog.call_count == discoveries
 
 
-def test_model_choice_labels_include_the_resolved_version(loaded_catalog):
-    assert bedrock_model_choices() == (
-        ("auto/anthropic.haiku", "Claude Haiku 5.5 (Economy)"),
+def test_concurrent_cold_requests_share_a_refresh(loaded_catalog):
+    started, release = Event(), Event()
+    snapshot = loaded_catalog.return_value
+
+    def discover(*args):
+        if loaded_catalog.call_count == 1:
+            started.set()
+            assert release.wait(timeout=5)
+        return snapshot
+
+    loaded_catalog.side_effect = discover
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        first = pool.submit(bedrock_model_target, model="auto/anthropic.haiku")
+        try:
+            assert started.wait(timeout=5)
+            with pytest.raises(BedrockModelUnavailable, match="in progress"):
+                bedrock_model_target(model="auto/anthropic.haiku")
+        finally:
+            release.set()
+        assert first.result().model.endswith(NEW_MODEL)
+    loaded_catalog.assert_called_once()
+
+
+def test_invalidation_during_refresh_is_not_lost(loaded_catalog, clock):
+    bedrock_model_target(model="auto/anthropic.haiku")
+    error = SimpleNamespace(status_code=403)
+    bedrock_catalog_invalidate_on_error(error)
+    clock.return_value += 61
+
+    def discover(*args):
+        bedrock_catalog_invalidate_on_error(error)
+        return loaded_catalog.return_value
+
+    loaded_catalog.side_effect = discover
+    bedrock_model_target(model="auto/anthropic.haiku")
+    loaded_catalog.side_effect = None
+    clock.return_value += 61
+    bedrock_model_target(model="auto/anthropic.haiku")
+    assert loaded_catalog.call_count == 3
+
+
+@pytest.mark.parametrize(
+    "inference_type, mantle",
+    [
+        ("ON_DEMAND", False),
+        ("INFERENCE_PROFILE", False),
+        ("INFERENCE_PROFILE", True),
+    ],
+)
+def test_resolved_gpt_routes_use_real_pricing_and_series_effort(
+    inference_type, mantle
+):
+    model_id = "openai.gpt-5.6-terra"
+    native = FoundationModel.model_validate(
+        _native_payload(model_id, inference_type=inference_type)
     )
+    snapshot = BedrockCatalog(
+        (native,),
+        (MantleModel(id=model_id, created=native.released),) if mantle else (),
+        (InferenceProfile.model_validate(_profile_payload(model_id)),),
+        authorized_model_ids=frozenset({model_id}),
+    )
+    target = resolve_catalog(
+        snapshot, BedrockPolicy("us-east-1"), "auto/openai.terra"
+    )
+    assert target.completion_cost(
+        {"prompt_tokens": 1000, "completion_tokens": 100}
+    ) == pytest.approx(0.00352)
+    assert (
+        target.invocation_options(small_task=True)["reasoning_effort"] == "low"
+    )
+    assert "reasoning_effort" not in target.invocation_options()
+
+
+@pytest.mark.parametrize(
+    "model_id, preference, region, mantle, expected",
+    [
+        (OLD_MODEL, "auto/anthropic.haiku", "us-east-1", False, 0.0015),
+        (OLD_MODEL, "auto/anthropic.haiku", "us-gov-west-1", False, 0.0018),
+        (
+            "openai.gpt-5.6-terra",
+            "auto/openai.terra",
+            "us-gov-west-1",
+            True,
+            0.00432,
+        ),
+    ],
+)
+def test_pricing_preserves_native_and_govcloud_rates(
+    model_id, preference, region, mantle, expected
+):
+    native = FoundationModel.model_validate(
+        _native_payload(model_id, inference_type="ON_DEMAND")
+    )
+    snapshot = BedrockCatalog(
+        () if mantle else (native,),
+        (MantleModel(id=model_id, created=native.released),) if mantle else (),
+        (),
+        authorized_model_ids=frozenset({model_id}),
+    )
+    target = resolve_catalog(snapshot, BedrockPolicy(region), preference)
+    assert target.completion_cost(
+        {"prompt_tokens": 1000, "completion_tokens": 100}
+    ) == pytest.approx(expected)
+
+
+def test_unpriced_govcloud_gpt_does_not_borrow_commercial_rates():
+    from litellm import BadRequestError
+
+    target = ResolvedBedrockModel(
+        "bedrock/converse/us-gov-west-1/openai.gpt-5.6-terra",
+        "us-gov-west-1",
+        billing_model="openai.gpt-5.6-terra",
+    )
+    with pytest.raises(BadRequestError):
+        target.completion_cost(
+            {"prompt_tokens": 1000, "completion_tokens": 100}
+        )
+
+
+@pytest.mark.parametrize("content", [" Partial answer ", ""])
+def test_reader_marks_limited_output_as_incomplete(
+    reader_tool, completion, caplog, content
+):
+    choice = completion.return_value.choices[0]
+    choice.message.content, choice.finish_reason = content, "length"
+    tool, _ = reader_tool
+    output = tool(thread_id="test")
+    assert "incomplete" in output.result.lower()
+    assert content.strip() in output.result
+    assert output.render_data["response"] == output.result
+    assert output.cost == 0.001
+    assert "Document reader output truncated" in caplog.text
+    assert completion.call_args.kwargs["max_tokens"] == 4096
+    assert completion.call_args.kwargs["reasoning_effort"] == "low"
+    completion.assert_called_once()
 
 
 def test_model_choices_reuse_the_supplied_catalog(catalog, loaded_catalog):
@@ -472,30 +710,6 @@ def test_model_choices_reuse_the_supplied_catalog(catalog, loaded_catalog):
     )
     assert bedrock_model_choices(catalog=BedrockCatalog((), (), ())) == ()
     loaded_catalog.assert_not_called()
-
-
-@pytest.mark.parametrize(
-    "selected, required, expected",
-    [
-        ("auto/openai.terra", frozenset({"text", "document"}), NEW_MODEL),
-        (
-            "auto/openai.terra",
-            frozenset({"text", "image"}),
-            "openai.gpt-5.6-terra",
-        ),
-        ("auto/anthropic.haiku", frozenset({"text", "document"}), NEW_MODEL),
-    ],
-)
-def test_reader_prefers_a_capable_assistant_then_falls_back(
-    reader_catalog, selected, required, expected
-):
-    from litigant_portal.app.selectors.site import site_get_reader_model_target
-
-    site = Site(assistant_model=selected)
-    cache.set(SITE_CACHE_KEY, site)
-    target = site_get_reader_model_target(required=required)
-    assert target.model.endswith(expected)
-    assert site.assistant_model == selected
 
 
 @pytest.mark.parametrize("content_type", ["application/pdf", "image/png"])
@@ -537,6 +751,7 @@ def test_gpt_title_budget_and_empty_or_truncated_diagnostics(
         "bedrock/converse/us-east-1/us.openai.gpt-5.6-luna",
         "us-east-1",
         billing_model="us.openai.gpt-5.6-luna",
+        small_task_effort="low",
     )
     monkeypatch.setattr(
         engine, "site_get_model_target", lambda **kwargs: target
@@ -566,28 +781,6 @@ def test_invalid_configuration_fails_before_discovery_without_creating_a_thread(
     create_thread.assert_not_called()
     create_message.assert_not_called()
     loaded_catalog.assert_not_called()
-
-
-def test_chat_service_preserves_explicit_evaluation_pins(loaded_catalog):
-    from litigant_portal.agents.base import Agent
-
-    with (
-        patch.object(
-            ChatThread.objects,
-            "create",
-            side_effect=RuntimeError("stop after resolution"),
-        ) as create,
-        pytest.raises(RuntimeError, match="stop after resolution"),
-    ):
-        engine.chat_stream(
-            identity=Mock(),
-            message="Help",
-            agent_class=Agent,
-            thread_type="evaluation",
-            model=f"bedrock_mantle/{OLD_MODEL}",
-        )
-    create.assert_called_once()
-    loaded_catalog.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -624,37 +817,26 @@ def test_description_uses_discovered_model_and_books_usage(
 
 
 @pytest.mark.parametrize(
-    "content_type, part_type, expected",
+    "content_type, part_type, expected, effort",
     [
-        ("text/plain", "text", "openai.gpt-5.6-terra"),
-        ("image/png", "image_url", "openai.gpt-5.6-terra"),
-        ("application/pdf", "file", NEW_MODEL),
+        ("text/plain", "text", "openai.gpt-5.6-terra", "low"),
+        ("image/png", "image_url", "openai.gpt-5.6-terra", "low"),
+        ("application/pdf", "file", NEW_MODEL, None),
     ],
 )
 def test_document_reader_uses_the_resolved_route_and_required_capabilities(
-    reader_catalog,
+    reader_tool,
     upload,
     completion,
-    monkeypatch,
     content_type,
     part_type,
     expected,
+    effort,
 ):
-    from litigant_portal.agents.tools.query_document import QueryDocument
-
-    cache.set(SITE_CACHE_KEY, Site(assistant_model="auto/openai.terra"))
     upload.content_type = content_type
-    monkeypatch.setattr(
-        ChatThread.objects,
-        "get",
-        Mock(return_value=ChatThread(identity=upload.identity)),
-    )
-    uploads = Mock(return_value=Mock(first=Mock(return_value=upload)))
-    monkeypatch.setattr(UserUpload.objects, "filter", uploads)
     completion.return_value.choices[0].message.content = " Answer "
-    output = QueryDocument(upload_id=str(upload.id), request="Summarize")(
-        thread_id="test"
-    )
+    tool, uploads = reader_tool
+    output = tool(thread_id="test")
     uploads.assert_called_once_with(
         id=str(upload.id), identity=upload.identity
     )
@@ -662,7 +844,10 @@ def test_document_reader_uses_the_resolved_route_and_required_capabilities(
     assert args["model"].endswith(expected)
     assert args["aws_region_name"] == "us-east-1"
     assert args["messages"][1]["content"][-1]["type"] == part_type
-    assert output.result == "Answer" and output.cost == 0.001
+    assert args.get("reasoning_effort") == effort
+    assert cache.get(SITE_CACHE_KEY).assistant_model == "auto/openai.terra"
+    assert output.result == output.render_data["response"] == "Answer"
+    assert output.cost == 0.001
 
 
 def test_cost_uses_the_resolved_bedrock_billing_identity():

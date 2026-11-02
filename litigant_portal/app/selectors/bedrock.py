@@ -1,14 +1,27 @@
+import logging
+from dataclasses import dataclass
+
 from django.conf import settings
 from django.core.cache import cache
 
 from litigant_portal.agents import bedrock
 from litigant_portal.agents.bedrock import (
     BedrockCatalog,
+    BedrockDiscoveryError,
     BedrockModelUnavailable,
     BedrockPolicy,
     ResolvedBedrockModel,
 )
 from litigant_portal.app.cache import bedrock_catalog_cache_key
+
+logger = logging.getLogger(__name__)
+_REFRESH_SECONDS = 60
+
+
+@dataclass(frozen=True)
+class _CatalogEntry:
+    value: BedrockCatalog | str
+    invalidation: str | None
 
 
 def bedrock_policy() -> BedrockPolicy:
@@ -19,29 +32,41 @@ def bedrock_policy() -> BedrockPolicy:
 
 def bedrock_catalog_get() -> BedrockCatalog:
     """
-    Share discovery snapshots, including short-lived partial/error results.
+    Share fresh discovery results and limit refresh starts across workers.
     """
     policy = bedrock_policy()
     key = bedrock_catalog_cache_key(policy)
-    catalog = cache.get(key)
-    if catalog is None:
-        try:
-            catalog = bedrock.discover_catalog(
-                policy, settings.BEDROCK_API_KEY
-            )
-        except BedrockModelUnavailable:
-            # Cache safe text, never SDK exceptions with request credentials.
-            catalog = "Bedrock discovery failed. Check model access and configuration."
-        cache.set(
-            key,
-            catalog,
-            timeout=3600
-            if isinstance(catalog, BedrockCatalog) and catalog.complete
-            else 300,
+    entry: _CatalogEntry | None = cache.get(key)
+    invalidation = cache.get(f"{key}:invalidated")
+    refresh = entry is None or (
+        isinstance(entry.value, BedrockCatalog)
+        and invalidation is not None
+        and entry.invalidation != invalidation
+    )
+    if refresh:
+        # Let the guard expire naturally; deleting it could release another
+        # worker's claim after a slow discovery outlives this interval.
+        if cache.add(f"{key}:refresh", True, timeout=_REFRESH_SECONDS):
+            value: BedrockCatalog | str
+            try:
+                value = bedrock.discover_catalog(
+                    policy, settings.BEDROCK_API_KEY
+                )
+                timeout = 3600 if value.complete else 300
+            except BedrockDiscoveryError as error:
+                value, timeout = error.code, _REFRESH_SECONDS
+                logger.warning("Bedrock discovery failed (%s)", error.code)
+            entry = _CatalogEntry(value, invalidation)
+            cache.set(key, entry, timeout=timeout)
+        else:
+            entry = cache.get(key)
+    if entry is None:
+        raise BedrockModelUnavailable(
+            "Bedrock discovery is in progress. Please try again shortly."
         )
-    if isinstance(catalog, str):
-        raise BedrockModelUnavailable(catalog)
-    return catalog
+    if isinstance(entry.value, str):
+        raise BedrockDiscoveryError(entry.value)
+    return entry.value
 
 
 def bedrock_model_target(

@@ -15,6 +15,11 @@ READER_SYSTEM_PROMPT = (
     "so plainly."
 )
 
+READER_TRUNCATION_NOTICE = (
+    "This answer is incomplete because the document reader reached its "
+    "response limit. Ask a more specific question for the missing details."
+)
+
 
 class QueryDocument(Tool):
     """Read a file the user attached and answer a request about it.
@@ -106,7 +111,7 @@ class QueryDocument(Tool):
         Make one reader call and return the answer and its cost.
         """
         response = litellm.completion(
-            **model.invocation_options(),
+            **model.invocation_options(small_task=True),
             api_key=settings.BEDROCK_API_KEY,
             max_tokens=4096,
             messages=[
@@ -132,4 +137,13 @@ class QueryDocument(Tool):
                 model.model,
             )
             cost = 0.0
-        return (response.choices[0].message.content or "").strip(), cost
+        choice = response.choices[0]
+        answer = (choice.message.content or "").strip()
+        if getattr(choice, "finish_reason", None) == "length":
+            logger.warning(
+                "Document reader output truncated (model=%s, upload_id=%s)",
+                model.model,
+                self.upload_id,
+            )
+            answer = f"{READER_TRUNCATION_NOTICE}\n\n{answer}".strip()
+        return answer, cost

@@ -27,6 +27,23 @@ class BedrockModelUnavailable(Exception):
     """
 
 
+class BedrockDiscoveryError(BedrockModelUnavailable):
+    """
+    Expose a diagnostic code without retaining a provider response or message.
+    """
+
+    def __init__(self, code: str) -> None:
+        self.code = (
+            code
+            if isinstance(code, str)
+            and re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,79}", code)
+            else "UnknownError"
+        )
+        super().__init__(
+            f"Bedrock discovery failed ({self.code}). Check model access and configuration."
+        )
+
+
 @dataclass(frozen=True)
 class ModelSeries:
     class_prefix: str
@@ -34,6 +51,8 @@ class ModelSeries:
     native_capabilities: frozenset[str]
     mantle_capabilities: frozenset[str] = frozenset()
     mantle_base: str = "v1"
+    small_task_effort: str | None = None
+    regional_pricing_alias: str | None = None
 
 
 MODEL_MAPPING: dict[str, str] = {
@@ -59,6 +78,8 @@ MODEL_SERIES = (
         # Mantle chat completions cannot preserve function tools with reasoning.
         frozenset({"text", "stream", "image"}),
         "openai/v1",
+        small_task_effort="low",
+        regional_pricing_alias="us.",
     ),
     ModelSeries(
         "anthropic.",
@@ -262,19 +283,41 @@ class ResolvedBedrockModel:
     api_base: str | None = None
     capabilities: frozenset[str] = frozenset()
     billing_model: str | None = None
+    small_task_effort: str | None = None
 
-    def invocation_options(self) -> dict[str, str]:
+    def invocation_options(
+        self, *, small_task: bool = False
+    ) -> dict[str, str]:
         options = {"model": self.model}
         if self.api_base:
             options["api_base"] = self.api_base
         options["aws_region_name"] = self.region
+        if small_task and self.small_task_effort:
+            options["reasoning_effort"] = self.small_task_effort
         return options
 
     def completion_cost(self, usage: BaseModel | dict) -> float:
         """
         Price the resolved Bedrock route, independent of transport metadata.
         """
-        from litellm import completion_cost
+        from litellm import completion_cost, model_cost
+
+        billing_model = self.billing_model or self.model
+        regional = f"bedrock/{self.region}/{billing_model}"
+        identity = model_class(billing_model)
+        if regional in model_cost:
+            billing_model = regional
+        elif (
+            billing_model not in model_cost
+            and identity is not None
+            and self.region in US_REGIONS
+            and not self.region.startswith("us-gov-")
+            and (alias := model_series(identity[0]).regional_pricing_alias)
+            and (alias_model := f"{alias}{billing_model}") in model_cost
+        ):
+            # Commercial GPT in-region and US geographic rates match for
+            # the same release. This changes pricing identity, never routing.
+            billing_model = alias_model
 
         return completion_cost(
             completion_response={
@@ -282,7 +325,7 @@ class ResolvedBedrockModel:
                 if isinstance(usage, BaseModel)
                 else usage,
             },
-            model=self.billing_model or self.model,
+            model=billing_model,
             region_name=self.region,
         )
 
@@ -297,7 +340,7 @@ def _bedrock_client(policy: BedrockPolicy, api_key: str) -> Any:
     from botocore.tokens import ScopedEnvTokenProvider, TokenProviderChain
 
     if not api_key.strip():
-        raise BedrockModelUnavailable("A Bedrock API key is required.")
+        raise BedrockDiscoveryError("MissingApiKey")
     session = Session()
     session.register_component(
         "token_provider",
@@ -354,7 +397,9 @@ def discover_catalog(policy: BedrockPolicy, api_key: str) -> BedrockCatalog:
                     )
             except APIError as error:
                 logger.warning(
-                    "Mantle catalog unavailable (%s)", type(error).__name__
+                    "Mantle catalog unavailable (%s, status=%s)",
+                    type(error).__name__,
+                    getattr(error, "status_code", None),
                 )
                 models, complete = (), False
             catalog = BedrockCatalog(
@@ -391,10 +436,12 @@ def discover_catalog(policy: BedrockPolicy, api_key: str) -> BedrockCatalog:
                 complete=complete,
                 authorized_model_ids=frozenset(authorized),
             )
-    except (BotoCoreError, ClientError, ValidationError) as error:
-        raise BedrockModelUnavailable(
-            f"Bedrock discovery failed ({type(error).__name__}). Check model access and configuration."
+    except ClientError as error:
+        raise BedrockDiscoveryError(
+            error.response.get("Error", {}).get("Code", "ClientError")
         ) from None
+    except (BotoCoreError, ValidationError) as error:
+        raise BedrockDiscoveryError(type(error).__name__) from None
 
 
 def _native_routes(
@@ -472,6 +519,7 @@ def resolve_catalog(
                 region=policy.region,
                 capabilities=frozenset(capabilities),
                 billing_model=invocation_id,
+                small_task_effort=definition.small_task_effort,
             )
             candidates.append((model.released, identity, priority, target))
     for model in catalog.mantle:
@@ -495,6 +543,7 @@ def resolve_catalog(
                 f"https://bedrock-mantle.{policy.region}.api.aws/{definition.mantle_base}",
                 frozenset(capabilities),
                 f"bedrock_mantle/{model.id}",
+                small_task_effort=definition.small_task_effort,
             )
             candidates.append((next(iter(dates)), identity, 1, target))
     if not candidates:

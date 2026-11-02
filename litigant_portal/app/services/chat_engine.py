@@ -183,11 +183,6 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
     """Generate and store a short description of a thread's conversation."""
     target = site_get_model_target(role="fast")
     model = target.model
-    options = target.invocation_options()
-    if "openai.gpt-" in model and litellm.supports_reasoning(
-        model=target.billing_model or model
-    ):
-        options["reasoning_effort"] = "low"
     conversation = "\n".join(
         f"{m.data.get('role')}: {m.data.get('content')}"
         for m in chat_message_list(
@@ -197,7 +192,7 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
         and m.data.get("content")
     )
     response = litellm.completion(
-        **options,
+        **target.invocation_options(small_task=True),
         api_key=settings.BEDROCK_API_KEY,
         max_tokens=1024,
         messages=[
@@ -457,13 +452,8 @@ def _judge_candidate(
     try:
         target = bedrock_model_target(model=model)
         model = target.model
-        options = target.invocation_options()
-        if "openai.gpt-" in model and litellm.supports_reasoning(
-            model=target.billing_model or model
-        ):
-            options["reasoning_effort"] = "low"
         response = litellm.completion(
-            **options,
+            **target.invocation_options(small_task=True),
             api_key=settings.BEDROCK_API_KEY,
             max_tokens=4096,
             messages=AgentJudge.request(
