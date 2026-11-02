@@ -25,7 +25,7 @@ class GitShaSettingTests(SimpleTestCase):
 
 class BedrockSettingTests(SimpleTestCase):
     def test_geography_is_optional_and_defaults_to_us(self):
-        for value in (None, "", "   ", "us", "EU"):
+        for value in (None, "", "   ", "us"):
             with self.subTest(value=value):
                 environ = (
                     {}
@@ -36,5 +36,5 @@ class BedrockSettingTests(SimpleTestCase):
                     config = runpy.run_path(litigant_portal.settings.__file__)
                 self.assertEqual(
                     config["BEDROCK_ALLOWED_GEOGRAPHY"],
-                    "EU" if value == "EU" else "US",
+                    "US",
                 )

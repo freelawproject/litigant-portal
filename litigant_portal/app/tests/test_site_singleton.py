@@ -53,7 +53,7 @@ from litigant_portal.app.services.topic_flow import topic_create, topic_delete
 MODEL_CHOICES = model_choices()
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def available_models(monkeypatch):
     for module in ("pages", "admin"):
         monkeypatch.setattr(
@@ -133,6 +133,10 @@ class SiteCacheTests(TestCase):
             self.assertEqual([c.key for c in contact_list()], ["clerk"])
             self.assertEqual([r.key for r in resource_list()], ["fees"])
 
+
+@pytest.mark.postgres
+@pytest.mark.usefixtures("available_models")
+class SiteModelSelectionTests(TestCase):
     def test_assistant_defaults_to_the_first_balanced_model(self):
         with self.captureOnCommitCallbacks(execute=True):
             site_update(assistant_model="")
@@ -163,6 +167,10 @@ class SiteCacheTests(TestCase):
             model=model, required=frozenset({"text"})
         )
 
+
+@pytest.mark.postgres
+@pytest.mark.usefixtures("available_models")
+class SiteAdminSettingsTests(TestCase):
     def test_judge_setting_round_trip_and_validation(self):
         self.assertIsNone(site_get().judge_model)
         user = get_user_model().objects.create_superuser(
@@ -187,9 +195,7 @@ class SiteCacheTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIsNone(Site.objects.get().judge_model)
 
-    def test_all_settings_dropdowns_offer_available_models_and_preserve_saved_values(
-        self,
-    ):
+    def test_settings_keep_an_unavailable_saved_model(self):
         user = get_user_model().objects.create_superuser(
             username="model-admin"
         )
@@ -197,54 +203,38 @@ class SiteCacheTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             site_update(fast_model="auto/zai.glm-flash")
         response = self.client.get("/admin/")
+        enabled = {model for model, _ in MODEL_CHOICES}
+        for options in response.context["model_choices"].values():
+            self.assertEqual({model for model, _ in options}, enabled)
         self.assertEqual(
-            response.context["model_choices"],
-            dict.fromkeys(("fast", "assistant", "judge"), MODEL_CHOICES),
+            response.context["unavailable_model_choices"],
+            {"fast_model": "auto/zai.glm-flash"},
         )
-        for value, label in MODEL_CHOICES:
-            self.assertContains(
-                response,
-                f'<option value="{value}">{label}</option>',
-                count=3,
-                html=True,
-            )
-        self.assertNotContains(response, '<option value="auto/zai.glm-flash">')
-        self.assertContains(
-            response, 'value="auto/zai.glm-flash" hidden disabled'
+        response = self.client.post(
+            "/api/admin/site/update/", {"court_name": "Changed"}
         )
-        self.assertContains(response, "The saved model is unavailable.")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["fast_model"], "auto/zai.glm-flash")
+
+    def test_settings_reject_new_unavailable_or_invalid_models(self):
+        user = get_user_model().objects.create_superuser(
+            username="model-admin"
+        )
+        self.client.force_login(user)
         with patch(
             "litigant_portal.app.views.admin.bedrock_model_choices",
             return_value=(),
         ):
-            unavailable = self.client.post(
-                "/api/admin/site/update/",
-                {"assistant_model": "auto/openai.luna"},
-            )
-        self.assertEqual(unavailable.status_code, 400)
-        self.assertEqual(
-            unavailable.json()["error"], "Selected model is unavailable"
-        )
-        self.assertEqual(
-            self.client.post(
-                "/api/admin/site/update/",
-                {
-                    "fast_model": "auto/zai.glm-flash",
-                    "assistant_model": "auto/openai.terra",
-                    "judge_model": "auto/openai.sol",
-                },
-            ).status_code,
-            200,
-        )
-        self.assertEqual(
-            self.client.post(
-                "/api/admin/site/update/",
-                {
-                    "assistant_model": "bedrock_mantle/openai.gpt-5.6-luna",
-                },
-            ).status_code,
-            400,
-        )
+            for model in (
+                "auto/openai.luna",
+                "bedrock_mantle/openai.gpt-5.6-luna",
+            ):
+                with self.subTest(model=model):
+                    response = self.client.post(
+                        "/api/admin/site/update/", {"assistant_model": model}
+                    )
+                    self.assertEqual(response.status_code, 400)
+        self.assertIsNone(Site.objects.get().assistant_model)
 
     def test_discovery_failure_keeps_settings_and_saved_models_accessible(
         self,
@@ -274,6 +264,9 @@ class SiteCacheTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["assistant_model"], "auto/openai.sol")
 
+
+@pytest.mark.postgres
+class SiteModelMigrationTests(TestCase):
     def test_model_curation_changes_need_no_migration_or_aws(self):
         from litigant_portal.agents.bedrock import (
             MODEL_CHOICES,
@@ -285,9 +278,7 @@ class SiteCacheTests(TestCase):
                 MODEL_MAPPING, {"auto/anthropic.sonnet": "Claude Sonnet"}
             ),
             patch.dict(MODEL_CHOICES, {"best": ["Claude Sonnet", "GPT Sol"]}),
-            patch(
-                "litigant_portal.app.selectors.bedrock.bedrock_client"
-            ) as client,
+            patch("litigant_portal.agents.bedrock._bedrock_client") as client,
         ):
             call_command(
                 "makemigrations", check=True, dry_run=True, stdout=StringIO()

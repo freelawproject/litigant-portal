@@ -1,13 +1,24 @@
 """
-Model classes and deployment policy, independent of Django and AWS clients.
+Bedrock catalog discovery and model selection, independent of Django.
 """
 
+import logging
 import re
 from collections.abc import Collection
-from dataclasses import dataclass, field
-from typing import Literal
+from contextlib import closing
+from dataclasses import dataclass
+from typing import Any
 
-from pydantic import AliasPath, AwareDatetime, BaseModel, Field
+from botocore.exceptions import BotoCoreError, ClientError
+from pydantic import (
+    AliasPath,
+    AwareDatetime,
+    BaseModel,
+    Field,
+    ValidationError,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class BedrockModelUnavailable(Exception):
@@ -20,9 +31,8 @@ class BedrockModelUnavailable(Exception):
 class ModelSeries:
     class_prefix: str
     patterns: tuple[str, ...]
-    native_api: Literal["converse"] | None
-    mantle_api: Literal["chat"] | None
-    capabilities: frozenset[str] = frozenset()
+    native_capabilities: frozenset[str]
+    mantle_capabilities: frozenset[str] = frozenset()
     mantle_base: str = "v1"
 
 
@@ -45,9 +55,9 @@ MODEL_SERIES = (
     ModelSeries(
         "openai.",
         (r"openai\.gpt-(?P<version>\d+(?:\.\d+)*)-(?P<family>[a-z]+)",),
-        "converse",
-        "chat",
         frozenset({"text", "stream", "tools", "image"}),
+        # Mantle chat completions cannot preserve function tools with reasoning.
+        frozenset({"text", "stream", "image"}),
         "openai/v1",
     ),
     ModelSeries(
@@ -56,15 +66,12 @@ MODEL_SERIES = (
             r"anthropic\.claude-(?P<family>[a-z]+)-(?P<version>\d+(?:-\d{1,2})?)(?:-\d{8})?(?:-v\d+:\d+)?",
             r"anthropic\.claude-(?P<version>\d+(?:-\d{1,2})?)-(?P<family>[a-z]+)(?:-\d{8})?(?:-v\d+:\d+)?",
         ),
-        "converse",
-        None,
         frozenset({"text", "stream", "tools", "image", "document"}),
     ),
     ModelSeries(
         "zai.glm",
         (r"zai\.glm-(?P<version>\d+(?:\.\d+)*)(?P<family>(?:-[a-z]+)*)",),
-        "converse",
-        "chat",
+        frozenset({"text", "stream", "tools"}),
         frozenset({"text", "stream", "tools"}),
     ),
 )
@@ -138,54 +145,17 @@ def model_series(class_id: str) -> ModelSeries:
     raise BedrockModelUnavailable("Unsupported Bedrock model series.")
 
 
-# These are geographic boundaries, not model availability tables. Unknown
-# regions fail closed until their geography has been reviewed.
-GEOGRAPHY_REGIONS = {
-    "US": frozenset(
-        [
-            "us-east-1",
-            "us-east-2",
-            "us-west-1",
-            "us-west-2",
-            "us-gov-east-1",
-            "us-gov-west-1",
-        ]
-    ),
-    "CA": frozenset(["ca-central-1", "ca-west-1"]),
-    "EU": frozenset(
-        [
-            "eu-central-1",
-            "eu-central-2",
-            "eu-west-1",
-            "eu-west-2",
-            "eu-west-3",
-            "eu-north-1",
-            "eu-south-1",
-            "eu-south-2",
-        ]
-    ),
-    "JP": frozenset(["ap-northeast-1", "ap-northeast-3"]),
-    "AU": frozenset(["ap-southeast-2", "ap-southeast-4"]),
-    "IN": frozenset(["ap-south-1", "ap-south-2"]),
-    "APAC": frozenset(
-        [
-            "ap-east-2",
-            "ap-northeast-1",
-            "ap-northeast-2",
-            "ap-northeast-3",
-            "ap-south-1",
-            "ap-south-2",
-            "ap-southeast-1",
-            "ap-southeast-2",
-            "ap-southeast-3",
-            "ap-southeast-4",
-            "ap-southeast-5",
-            "ap-southeast-6",
-            "ap-southeast-7",
-            "me-central-1",
-        ]
-    ),
-}
+# Unknown regions fail closed until their US routing has been reviewed.
+US_REGIONS = frozenset(
+    {
+        "us-east-1",
+        "us-east-2",
+        "us-west-1",
+        "us-west-2",
+        "us-gov-east-1",
+        "us-gov-west-1",
+    }
+)
 
 
 def model_class(model_id: str) -> tuple[str, str] | None:
@@ -208,9 +178,13 @@ class BedrockPolicy:
     geography: str = "US"
 
     def __post_init__(self) -> None:
-        if self.region not in GEOGRAPHY_REGIONS.get(self.geography, ()):
+        if self.geography != "US":
             raise BedrockModelUnavailable(
-                "AWS_REGION must belong to BEDROCK_ALLOWED_GEOGRAPHY."
+                "Only US Bedrock routing is supported."
+            )
+        if self.region not in US_REGIONS:
+            raise BedrockModelUnavailable(
+                "AWS_REGION must be a reviewed US region."
             )
         model_tiers()
 
@@ -226,9 +200,7 @@ class BedrockPolicy:
                 .removeprefix("bedrock_mantle/")
                 .removeprefix("openai/")
             )
-            prefix, _, unprefixed = model_id.partition(".")
-            if prefix.upper() in GEOGRAPHY_REGIONS:
-                model_id = unprefixed
+            model_id = model_id.removeprefix("us.")
             selection = model_class(model_id)
         if selection is None or f"auto/{selection[0]}" not in model_tiers():
             raise BedrockModelUnavailable(
@@ -280,7 +252,7 @@ class BedrockCatalog:
     mantle: tuple[MantleModel, ...]
     profiles: tuple[InferenceProfile, ...]
     complete: bool = True
-    availability: dict[str, bool] = field(default_factory=dict)
+    authorized_model_ids: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True)
@@ -313,3 +285,228 @@ class ResolvedBedrockModel:
             model=self.billing_model or self.model,
             region_name=self.region,
         )
+
+
+def _bedrock_client(policy: BedrockPolicy, api_key: str) -> Any:
+    """
+    Use the caller's token without reading or changing global credentials.
+    """
+    import boto3
+    from botocore.config import Config
+    from botocore.session import Session
+    from botocore.tokens import ScopedEnvTokenProvider, TokenProviderChain
+
+    if not api_key.strip():
+        raise BedrockModelUnavailable("A Bedrock API key is required.")
+    session = Session()
+    session.register_component(
+        "token_provider",
+        TokenProviderChain(
+            [
+                ScopedEnvTokenProvider(
+                    session, {"AWS_BEARER_TOKEN_BEDROCK": api_key}
+                )
+            ]
+        ),
+    )
+    return boto3.Session(botocore_session=session).client(
+        "bedrock",
+        region_name=policy.region,
+        config=Config(
+            signature_version="bearer",
+            connect_timeout=3,
+            read_timeout=5,
+            retries={"mode": "standard", "total_max_attempts": 2},
+        ),
+    )
+
+
+def discover_catalog(policy: BedrockPolicy, api_key: str) -> BedrockCatalog:
+    """
+    Load account metadata and access once, without inference or Django state.
+    """
+    from openai import APIError, OpenAI
+
+    try:
+        with closing(_bedrock_client(policy, api_key)) as client:
+            native = tuple(
+                FoundationModel.model_validate(model)
+                for model in client.list_foundation_models()["modelSummaries"]
+            )
+            profiles = tuple(
+                InferenceProfile.model_validate(profile)
+                for page in client.get_paginator(
+                    "list_inference_profiles"
+                ).paginate(typeEquals="SYSTEM_DEFINED")
+                for profile in page["inferenceProfileSummaries"]
+            )
+            complete = True
+            try:
+                with OpenAI(
+                    api_key=api_key,
+                    base_url=f"https://bedrock-mantle.{policy.region}.api.aws/v1",
+                    timeout=5,
+                    max_retries=1,
+                ) as mantle:
+                    models = tuple(
+                        MantleModel.model_validate(model.model_dump())
+                        for model in mantle.models.list()
+                    )
+            except APIError as error:
+                logger.warning(
+                    "Mantle catalog unavailable (%s)", type(error).__name__
+                )
+                models, complete = (), False
+            catalog = BedrockCatalog(
+                native, models, profiles, complete=complete
+            )
+            enabled = {model.removeprefix("auto/") for model in model_tiers()}
+            authorized = set()
+            for model in native:
+                identity = model_class(model.model_id)
+                if (
+                    identity is None
+                    or identity[0] not in enabled
+                    or not _native_routes(model, catalog, policy)
+                ):
+                    continue
+                availability = client.get_foundation_model_availability(
+                    modelId=model.model_id
+                )
+                if (
+                    availability.get("authorizationStatus") == "AUTHORIZED"
+                    and availability.get("entitlementAvailability")
+                    == "AVAILABLE"
+                    and availability.get("regionAvailability") == "AVAILABLE"
+                    and availability.get("agreementAvailability", {}).get(
+                        "status"
+                    )
+                    == "AVAILABLE"
+                ):
+                    authorized.add(model.model_id)
+            return BedrockCatalog(
+                native,
+                models,
+                profiles,
+                complete=complete,
+                authorized_model_ids=frozenset(authorized),
+            )
+    except (BotoCoreError, ClientError, ValidationError) as error:
+        raise BedrockModelUnavailable(
+            f"Bedrock discovery failed ({type(error).__name__}). Check model access and configuration."
+        ) from None
+
+
+def _native_routes(
+    model: FoundationModel, catalog: BedrockCatalog, policy: BedrockPolicy
+) -> list[tuple[int, str]]:
+    if (
+        model.status != "ACTIVE"
+        or model.released is None
+        or "TEXT" not in model.input_modalities & model.output_modalities
+    ):
+        return []
+    if "ON_DEMAND" in model.inference_types:
+        return [(0, model.model_id)]
+    routes = []
+    partition = "aws-us-gov" if policy.region.startswith("us-gov-") else "aws"
+    for profile in catalog.profiles:
+        if (
+            profile.status != "ACTIVE"
+            or profile.type != "SYSTEM_DEFINED"
+            or not profile.id.startswith("us.")
+            or not profile.models
+        ):
+            continue
+        destinations = [item.arn.split(":", 5) for item in profile.models]
+        if all(
+            len(arn) == 6
+            and arn[:3] == ["arn", partition, "bedrock"]
+            and arn[3] in US_REGIONS
+            and arn[4] == ""
+            and arn[5] == f"foundation-model/{model.model_id}"
+            for arn in destinations
+        ):
+            routes.append((2, profile.id))
+    return routes
+
+
+def resolve_catalog(
+    catalog: BedrockCatalog,
+    policy: BedrockPolicy,
+    preference: str,
+    required: frozenset[str] = frozenset({"text"}),
+) -> ResolvedBedrockModel:
+    """
+    Select newest eligible version first, then prefer regional inference.
+    """
+    class_id, pinned = policy.preference(preference)
+    definition = model_series(class_id)
+    candidates = []
+    release_dates = {}
+    for model in catalog.native:
+        identity = model_class(model.model_id)
+        if identity is None or identity[0] != class_id:
+            continue
+        if model.released is not None:
+            release_dates.setdefault(identity, set()).add(model.released)
+        if (
+            (pinned is not None and identity[1] != pinned)
+            or model.model_id not in catalog.authorized_model_ids
+            or model.released is None
+        ):
+            continue
+        capabilities = set(definition.native_capabilities)
+        if not model.streaming:
+            capabilities.discard("stream")
+        if "IMAGE" not in model.input_modalities:
+            capabilities.discard("image")
+        if not required <= capabilities:
+            continue
+        routes = _native_routes(model, catalog, policy)
+        if not routes:
+            continue
+        for priority, invocation_id in routes:
+            target = ResolvedBedrockModel(
+                model=f"bedrock/converse/{policy.region}/{invocation_id}",
+                region=policy.region,
+                capabilities=frozenset(capabilities),
+                billing_model=invocation_id,
+            )
+            candidates.append((model.released, identity, priority, target))
+    for model in catalog.mantle:
+        identity = model_class(model.id)
+        if (
+            identity is None
+            or identity[0] != class_id
+            or (pinned is not None and identity[1] != pinned)
+            or model.status != "available"
+            or not definition.mantle_capabilities
+        ):
+            continue
+        dates = release_dates.get(identity, {model.created})
+        if len(dates) != 1:
+            raise BedrockModelUnavailable("Ambiguous model release metadata.")
+        capabilities = definition.mantle_capabilities
+        if required <= capabilities:
+            target = ResolvedBedrockModel(
+                f"bedrock_mantle/{policy.region}/{model.id}",
+                policy.region,
+                f"https://bedrock-mantle.{policy.region}.api.aws/{definition.mantle_base}",
+                frozenset(capabilities),
+                f"bedrock_mantle/{model.id}",
+            )
+            candidates.append((next(iter(dates)), identity, 1, target))
+    if not candidates:
+        raise BedrockModelUnavailable(
+            "No eligible model is available for the selected class and geography."
+        )
+    newest = max(candidate[0] for candidate in candidates)
+    latest = [candidate for candidate in candidates if candidate[0] == newest]
+    if len({candidate[1] for candidate in latest}) != 1:
+        raise BedrockModelUnavailable(
+            "Cannot distinguish the newest model version."
+        )
+    return min(
+        latest, key=lambda candidate: (candidate[2], candidate[3].model)
+    )[3]

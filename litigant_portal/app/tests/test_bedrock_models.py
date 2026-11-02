@@ -1,3 +1,4 @@
+from dataclasses import replace
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
@@ -6,17 +7,24 @@ import pytest
 from botocore.exceptions import ClientError
 from django.core.cache import cache
 from django.test import RequestFactory
+from openai import APIConnectionError
 
+from litigant_portal.agents import bedrock
+from litigant_portal.agents.bedrock import (
+    BedrockCatalog,
+    BedrockModelUnavailable,
+    BedrockPolicy,
+    FoundationModel,
+    InferenceProfile,
+    MantleModel,
+    resolve_catalog,
+)
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import ChatThread, Site
 from litigant_portal.app.selectors.bedrock import (
-    BedrockModelUnavailable,
     bedrock_model_choices,
     bedrock_model_failed,
     bedrock_model_target,
-)
-from litigant_portal.app.selectors.site import (
-    site_get_model_target,
 )
 from litigant_portal.app.services.chat_engine import (
     chat_thread_generate_description,
@@ -27,81 +35,204 @@ OLD_MODEL = "anthropic.claude-haiku-4-5-20251001-v1:0"
 NEW_MODEL = "anthropic.claude-haiku-5-5"
 
 
-def test_new_family_needs_only_mapping_and_tier_configuration(
-    discovery, monkeypatch
-):
-    from litigant_portal.agents import bedrock as bedrock_models
-
-    monkeypatch.setattr(
-        bedrock_models,
-        "MODEL_MAPPING",
-        {"auto/anthropic.sonnet": "Claude Sonnet"},
-        raising=False,
+@pytest.fixture
+def catalog():
+    native = tuple(
+        FoundationModel.model_validate(
+            {
+                "modelId": model_id,
+                "inputModalities": ["TEXT", "IMAGE"],
+                "outputModalities": ["TEXT"],
+                "inferenceTypesSupported": ["INFERENCE_PROFILE"],
+                "responseStreamingSupported": True,
+                "modelLifecycle": {
+                    "status": "ACTIVE",
+                    "startOfLifeTime": datetime(year, 10, 1, tzinfo=UTC),
+                },
+            }
+        )
+        for model_id, year in ((OLD_MODEL, 2025), (NEW_MODEL, 2026))
     )
-    monkeypatch.setattr(
-        bedrock_models,
-        "MODEL_CHOICES",
-        {"economy": ["Claude Sonnet"], "balanced": [], "best": []},
+    profiles = tuple(
+        InferenceProfile.model_validate(
+            {
+                "inferenceProfileId": f"us.{model.model_id}",
+                "type": "SYSTEM_DEFINED",
+                "status": "ACTIVE",
+                "models": [
+                    {
+                        "modelArn": f"arn:aws:bedrock:us-east-1::foundation-model/{model.model_id}"
+                    }
+                ],
+            }
+        )
+        for model in native
     )
-    for model in discovery.models:
-        model["modelId"] = model["modelId"].replace("haiku", "sonnet")
-        model["inferenceTypesSupported"] = ["ON_DEMAND"]
-    assert bedrock_models.model_class("anthropic.claude-sonnet-5-5") == (
-        "anthropic.sonnet",
-        "5.5",
+    return BedrockCatalog(
+        native,
+        (),
+        profiles,
+        authorized_model_ids=frozenset({OLD_MODEL, NEW_MODEL}),
     )
-    assert bedrock_model_target(model="auto/anthropic.sonnet").model.endswith(
-        "anthropic.claude-sonnet-5-5"
-    )
-    assert bedrock_model_choices() == (
-        ("auto/anthropic.sonnet", "Claude Sonnet (economy)"),
-    )
-
-
-def test_available_choices_and_defaults_share_discovery_without_switching_saved_models(
-    discovery,
-):
-    assert bedrock_model_choices() == (
-        ("auto/anthropic.haiku", "Claude Haiku (economy)"),
-    )
-    assert site_get_model_target(role="fast").model.endswith(NEW_MODEL)
-    with pytest.raises(BedrockModelUnavailable, match="Judging is disabled"):
-        site_get_model_target(role="judge")
-    with pytest.raises(BedrockModelUnavailable, match="No available balanced"):
-        site_get_model_target(role="assistant")
-    cache.set(SITE_CACHE_KEY, Site(fast_model="auto/openai.luna"))
-    with pytest.raises(BedrockModelUnavailable):
-        site_get_model_target(role="fast")
-
-
-def test_account_access_checks_are_shared_across_role_resolutions(discovery):
-    bedrock_model_choices(role="fast")
-    bedrock_model_choices(role="assistant")
-    bedrock_model_choices(role="judge")
-    discovery.client.list_foundation_models.assert_called_once()
-    assert discovery.client.get_foundation_model_availability.call_count == 2
-    discovery.client.list_foundation_models.assert_called_once()
-
-
-@pytest.mark.parametrize(
-    "labels", [["Unknown"], ["GPT Luna", "GPT Luna"], ["GPT Terra"]]
-)
-def test_invalid_curation_fails_before_discovery(
-    discovery, monkeypatch, labels
-):
-    from litigant_portal.agents.bedrock import MODEL_CHOICES
-
-    monkeypatch.setitem(MODEL_CHOICES, "economy", labels)
-    with pytest.raises(BedrockModelUnavailable, match="unknown or duplicate"):
-        bedrock_model_choices()
-    discovery.create_client.assert_not_called()
 
 
 @pytest.fixture
-def discovery(settings):
+def loaded_catalog(catalog, settings, monkeypatch):
     settings.AWS_REGION = "us-east-1"
     settings.BEDROCK_ALLOWED_GEOGRAPHY = "US"
     settings.BEDROCK_API_KEY = "test-bedrock-key"
+    load = Mock(return_value=catalog)
+    monkeypatch.setattr(bedrock, "discover_catalog", load)
+    return load
+
+
+def test_non_us_geography_is_rejected():
+    with pytest.raises(BedrockModelUnavailable, match="Only US"):
+        BedrockPolicy("eu-west-1", "EU")
+    with pytest.raises(BedrockModelUnavailable, match="US region"):
+        BedrockPolicy("eu-west-1")
+
+
+@pytest.mark.parametrize(
+    "preference, older, newer",
+    [
+        ("auto/openai.luna", "openai.gpt-5.6-luna", "openai.gpt-6-luna"),
+        ("auto/anthropic.haiku", OLD_MODEL, NEW_MODEL),
+        ("auto/zai.glm-flash", "zai.glm-4.7-flash", "zai.glm-5-flash"),
+    ],
+)
+def test_family_selection_preserves_version_pins(
+    catalog, monkeypatch, preference, older, newer
+):
+    monkeypatch.setitem(
+        bedrock.MODEL_CHOICES, "best", ["GPT Sol", "GLM Flash"]
+    )
+    catalog = replace(
+        catalog,
+        native=tuple(
+            model.model_copy(
+                update={
+                    "model_id": model_id,
+                    "inference_types": frozenset({"ON_DEMAND"}),
+                }
+            )
+            for model, model_id in zip(
+                catalog.native, (older, newer), strict=True
+            )
+        ),
+        authorized_model_ids=frozenset({older, newer}),
+    )
+    policy = BedrockPolicy("us-east-1")
+    assert resolve_catalog(catalog, policy, preference).model.endswith(newer)
+    assert resolve_catalog(
+        catalog, policy, f"bedrock_mantle/{older}"
+    ).model.endswith(older)
+
+
+@pytest.mark.parametrize(
+    "scenario",
+    [
+        "regional",
+        "profile",
+        "global",
+        "foreign",
+        "denied",
+        "inactive",
+        "timestamp",
+    ],
+)
+def test_us_route_eligibility(catalog, scenario):
+    newest, profile = catalog.native[1], catalog.profiles[1]
+    expected = f"us.{NEW_MODEL}"
+    if scenario == "regional":
+        newest = newest.model_copy(
+            update={"inference_types": frozenset({"ON_DEMAND"})}
+        )
+        expected = NEW_MODEL
+    elif scenario == "global":
+        profile = profile.model_copy(update={"id": f"global.{NEW_MODEL}"})
+    elif scenario == "foreign":
+        destination = profile.models[0]
+        profile = profile.model_copy(
+            update={
+                "models": (
+                    destination.model_copy(
+                        update={
+                            "arn": destination.arn.replace(
+                                "us-east-1", "eu-west-1"
+                            )
+                        }
+                    ),
+                )
+            }
+        )
+    elif scenario == "denied":
+        catalog = replace(catalog, authorized_model_ids=frozenset({OLD_MODEL}))
+    elif scenario == "inactive":
+        newest = newest.model_copy(update={"status": "LEGACY"})
+    elif scenario == "timestamp":
+        newest = newest.model_copy(update={"released": None})
+    if scenario not in {"regional", "profile"}:
+        expected = f"us.{OLD_MODEL}"
+    catalog = replace(
+        catalog,
+        native=(catalog.native[0], newest),
+        profiles=(catalog.profiles[0], profile),
+    )
+    target = resolve_catalog(
+        catalog, BedrockPolicy("us-east-1"), "auto/anthropic.haiku"
+    )
+    assert target.model == f"bedrock/converse/us-east-1/{expected}"
+
+
+def test_endpoint_capabilities_choose_a_compatible_route(catalog):
+    model_id = "openai.gpt-6-luna"
+    model = catalog.native[1].model_copy(update={"model_id": model_id})
+    profile = catalog.profiles[1].model_copy(
+        update={
+            "id": f"us.{model_id}",
+            "models": (
+                catalog.profiles[1]
+                .models[0]
+                .model_copy(
+                    update={
+                        "arn": f"arn:aws:bedrock:us-east-1::foundation-model/{model_id}"
+                    }
+                ),
+            ),
+        }
+    )
+    catalog = replace(
+        catalog,
+        native=(model,),
+        profiles=(profile,),
+        mantle=(MantleModel(id=model_id, created=model.released),),
+        authorized_model_ids=frozenset({model_id}),
+    )
+    policy = BedrockPolicy("us-east-1")
+    preference = "auto/openai.luna"
+    assert resolve_catalog(catalog, policy, preference).model.startswith(
+        "bedrock_mantle/"
+    )
+    required = frozenset({"text", "stream", "tools", "image"})
+    assert resolve_catalog(
+        catalog, policy, preference, required
+    ).model.startswith("bedrock/converse/")
+    catalog = replace(
+        catalog, native=(model.model_copy(update={"streaming": False}),)
+    )
+    with pytest.raises(BedrockModelUnavailable):
+        resolve_catalog(catalog, policy, preference, required)
+    with pytest.raises(BedrockModelUnavailable):
+        resolve_catalog(catalog, policy, preference, frozenset({"document"}))
+
+
+@pytest.mark.parametrize(
+    "failure", [None, "native", "availability", "denied", "mantle", "schema"]
+)
+def test_discovery_validates_and_loads_access_once(
+    catalog, monkeypatch, failure
+):
     client = Mock(
         spec=[
             "list_foundation_models",
@@ -110,44 +241,24 @@ def discovery(settings):
             "close",
         ]
     )
-    models = [
-        {
-            "modelId": model_id,
-            "modelName": f"Claude Haiku {version}",
-            "providerName": "Anthropic",
-            "inputModalities": ["TEXT"],
-            "outputModalities": ["TEXT"],
-            "responseStreamingSupported": True,
-            "inferenceTypesSupported": ["INFERENCE_PROFILE"],
+    payload = [
+        model.model_dump(by_alias=True, exclude={"status", "released"})
+        | {
             "modelLifecycle": {
-                "status": "ACTIVE",
-                "startOfLifeTime": datetime(year, 10, 1, tzinfo=UTC),
+                "status": model.status,
+                "startOfLifeTime": model.released,
             },
         }
-        for model_id, version, year in (
-            (OLD_MODEL, "4.5", 2025),
-            (NEW_MODEL, "5.5", 2026),
-        )
+        for model in catalog.native
     ]
-    profiles = [
+    client.list_foundation_models.return_value = {"modelSummaries": payload}
+    client.get_paginator.return_value.paginate.return_value = [
         {
-            "inferenceProfileId": f"us.{model['modelId']}",
-            "type": "SYSTEM_DEFINED",
-            "status": "ACTIVE",
-            "models": [
-                {
-                    "modelArn": (
-                        "arn:aws:bedrock:us-east-1::foundation-model/"
-                        f"{model['modelId']}"
-                    )
-                }
+            "inferenceProfileSummaries": [
+                profile.model_dump(by_alias=True)
+                for profile in catalog.profiles
             ],
         }
-        for model in models
-    ]
-    client.list_foundation_models.return_value = {"modelSummaries": models}
-    client.get_paginator.return_value.paginate.return_value = [
-        {"inferenceProfileSummaries": profiles}
     ]
     client.get_foundation_model_availability.return_value = {
         "authorizationStatus": "AUTHORIZED",
@@ -155,21 +266,138 @@ def discovery(settings):
         "regionAvailability": "AVAILABLE",
         "agreementAvailability": {"status": "AVAILABLE"},
     }
+    monkeypatch.setattr(bedrock, "_bedrock_client", Mock(return_value=client))
+    with patch("openai.OpenAI") as mantle:
+        mantle.return_value.__enter__.return_value.models.list.return_value = []
+        if failure in {"native", "availability"}:
+            operation = (
+                client.list_foundation_models
+                if failure == "native"
+                else client.get_foundation_model_availability
+            )
+            operation.side_effect = ClientError(
+                {
+                    "Error": {
+                        "Code": "AccessDeniedException",
+                        "Message": "provider-secret",
+                    }
+                },
+                "Discovery",
+            )
+        elif failure == "schema":
+            payload[0]["modelLifecycle"]["startOfLifeTime"] = "invalid-time"
+        elif failure == "denied":
+            available = client.get_foundation_model_availability.return_value
+            client.get_foundation_model_availability.side_effect = (
+                lambda *, modelId: {
+                    **available,
+                    "agreementAvailability": {
+                        "status": "NOT_AVAILABLE"
+                        if modelId == NEW_MODEL
+                        else "AVAILABLE"
+                    },
+                }
+            )
+        elif failure == "mantle":
+            mantle.return_value.__enter__.return_value.models.list.side_effect = APIConnectionError(
+                request=Mock()
+            )
+        if failure in {"native", "availability", "schema"}:
+            with pytest.raises(BedrockModelUnavailable) as error:
+                bedrock.discover_catalog(
+                    BedrockPolicy("us-east-1"), "test-key"
+                )
+            assert "provider-secret" not in str(error.value)
+        else:
+            snapshot = bedrock.discover_catalog(
+                BedrockPolicy("us-east-1"), "test-key"
+            )
+            assert snapshot.authorized_model_ids == (
+                frozenset({OLD_MODEL})
+                if failure == "denied"
+                else catalog.authorized_model_ids
+            )
+            assert snapshot.complete == (failure != "mantle")
+            for required in (
+                frozenset({"text"}),
+                frozenset({"text", "stream", "tools"}),
+            ):
+                resolve_catalog(
+                    snapshot,
+                    BedrockPolicy("us-east-1"),
+                    "auto/anthropic.haiku",
+                    required,
+                )
+            assert client.get_foundation_model_availability.call_count == 2
+    client.close.assert_called_once()
+
+
+def test_catalog_cache_is_shared_scoped_and_invalidated(
+    loaded_catalog, settings, monkeypatch
+):
+    for role in ("fast", "assistant", "judge"):
+        bedrock_model_choices(role=role)
+    bedrock_model_target(model=f"bedrock_mantle/{OLD_MODEL}")
+    loaded_catalog.assert_called_once()
+    settings.AWS_REGION = "us-west-2"
+    assert (
+        "/us-west-2/"
+        in bedrock_model_target(model="auto/anthropic.haiku").model
+    )
+    settings.BEDROCK_API_KEY = "rotated-test-key"
+    bedrock_model_target(model="auto/anthropic.haiku")
+    monkeypatch.setitem(bedrock.MODEL_CHOICES, "best", [])
+    bedrock_model_target(model="auto/anthropic.haiku")
+    assert loaded_catalog.call_count == 4
+    loaded_catalog.return_value = replace(
+        loaded_catalog.return_value,
+        authorized_model_ids=frozenset({OLD_MODEL}),
+    )
+    bedrock_model_failed(SimpleNamespace(status_code=403))
+    assert bedrock_model_target(model="auto/anthropic.haiku").model.endswith(
+        OLD_MODEL
+    )
+    assert loaded_catalog.call_count == 5
+
+
+@pytest.mark.parametrize("incomplete", [False, True])
+def test_failed_or_incomplete_discovery_is_not_cached(
+    loaded_catalog, incomplete
+):
+    if incomplete:
+        loaded_catalog.return_value = replace(
+            loaded_catalog.return_value, complete=False
+        )
+        for _ in range(2):
+            bedrock_model_target(model="auto/anthropic.haiku")
+    else:
+        loaded_catalog.side_effect = BedrockModelUnavailable(
+            "Discovery failed."
+        )
+        for _ in range(2):
+            with pytest.raises(BedrockModelUnavailable):
+                bedrock_model_target(model="auto/anthropic.haiku")
+    assert loaded_catalog.call_count == 2
+
+
+def test_invalid_configuration_fails_before_discovery_without_creating_a_thread(
+    loaded_catalog, settings
+):
+    settings.AWS_REGION = ""
+    request = RequestFactory().post("/", {"message": "Help"})
+    request.identity = Mock()
     with (
         patch(
-            "litigant_portal.app.selectors.bedrock.bedrock_client",
-            return_value=client,
-        ) as create_client,
-        patch("openai.OpenAI") as mantle,
+            "litigant_portal.app.services.chat_engine.ChatThread.objects.create"
+        ) as create_thread,
+        patch(
+            "litigant_portal.app.services.chat_engine.chat_message_create"
+        ) as create_message,
     ):
-        mantle.return_value.__enter__.return_value.models.list.return_value = []
-        yield SimpleNamespace(
-            client=client,
-            models=models,
-            profiles=profiles,
-            create_client=create_client,
-            mantle=mantle.return_value.__enter__.return_value,
-        )
+        assert stream(request).status_code == 503
+    create_thread.assert_not_called()
+    create_message.assert_not_called()
+    loaded_catalog.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -180,7 +408,7 @@ def discovery(settings):
     ],
 )
 def test_description_uses_discovered_model_and_books_usage(
-    discovery, preference, model_id
+    loaded_catalog, preference, model_id
 ):
     cache.set(SITE_CACHE_KEY, Site(fast_model=preference))
     thread = ChatThread()
@@ -226,234 +454,6 @@ def test_description_uses_discovered_model_and_books_usage(
 
 
 @pytest.mark.parametrize(
-    "scenario", ["agreement", "global", "other_geography", "eu", "regional"]
-)
-def test_discovery_respects_access_and_geography(
-    discovery, settings, scenario
-):
-    region, prefix, expected = "us-east-1", "us.", NEW_MODEL
-    if scenario == "agreement":
-        available = (
-            discovery.client.get_foundation_model_availability.return_value
-        )
-        discovery.client.get_foundation_model_availability.side_effect = (
-            lambda *, modelId: {
-                **available,
-                "agreementAvailability": {
-                    "status": "NOT_AVAILABLE"
-                    if modelId == NEW_MODEL
-                    else "AVAILABLE"
-                },
-            }
-        )
-        expected = OLD_MODEL
-    elif scenario == "global":
-        discovery.profiles[1]["inferenceProfileId"] = f"global.{NEW_MODEL}"
-        expected = OLD_MODEL
-    elif scenario == "other_geography":
-        discovery.profiles[1]["models"].append(
-            {
-                "modelArn": f"arn:aws:bedrock:eu-west-1::foundation-model/{NEW_MODEL}"
-            }
-        )
-        expected = OLD_MODEL
-    elif scenario == "eu":
-        settings.AWS_REGION = region = "eu-west-1"
-        settings.BEDROCK_ALLOWED_GEOGRAPHY = "EU"
-        prefix = "eu."
-        for profile in discovery.profiles:
-            profile["inferenceProfileId"] = profile[
-                "inferenceProfileId"
-            ].replace("us.", "eu.")
-            for model in profile["models"]:
-                model["modelArn"] = model["modelArn"].replace(
-                    "us-east-1", region
-                )
-    else:
-        discovery.models[1]["inferenceTypesSupported"] = ["ON_DEMAND"]
-        prefix = ""
-    assert (
-        bedrock_model_target(model="auto/anthropic.haiku").model
-        == f"bedrock/converse/{region}/{prefix}{expected}"
-    )
-    assert discovery.create_client.call_args.args[0].region == region
-
-
-def test_cache_is_scoped_to_region_credentials_and_preference(
-    discovery, settings
-):
-    for model in discovery.models:
-        model["inferenceTypesSupported"] = ["ON_DEMAND"]
-    assert (
-        bedrock_model_target(model="auto/anthropic.haiku").model
-        == bedrock_model_target(model="auto/anthropic.haiku").model
-    )
-    discovery.create_client.assert_called_once()
-    assert bedrock_model_target(
-        model="bedrock_mantle/anthropic.claude-haiku-4-5"
-    ).model.endswith(OLD_MODEL)
-    settings.AWS_REGION = "eu-west-1"
-    settings.BEDROCK_ALLOWED_GEOGRAPHY = "EU"
-    assert (
-        "/eu-west-1/"
-        in bedrock_model_target(model="auto/anthropic.haiku").model
-    )
-    settings.BEDROCK_API_KEY = "rotated-test-key"
-    bedrock_model_target(model="auto/anthropic.haiku")
-    assert discovery.create_client.call_count == 4
-
-
-@pytest.mark.parametrize("preference", [None, "auto/anthropic.haiku"])
-def test_missing_region_fails_before_discovery_with_safe_service_error(
-    discovery, settings, preference
-):
-    settings.AWS_REGION = ""
-    cache.set(SITE_CACHE_KEY, Site(assistant_model=preference))
-    request = RequestFactory().post("/", {"message": "Help"})
-    request.identity = Mock()
-    with (
-        patch(
-            "litigant_portal.app.services.chat_engine.ChatThread.objects.create"
-        ) as create_thread,
-        patch(
-            "litigant_portal.app.services.chat_engine.chat_message_create"
-        ) as create_message,
-    ):
-        response = stream(request)
-    create_thread.assert_not_called()
-    create_message.assert_not_called()
-    assert response.status_code == 503
-    assert b"temporarily unavailable" in response.content
-    discovery.create_client.assert_not_called()
-
-
-def test_geography_does_not_confuse_india_with_other_asia_pacific_regions(
-    discovery, settings
-):
-    settings.AWS_REGION = "ap-south-1"
-    settings.BEDROCK_ALLOWED_GEOGRAPHY = "IN"
-    for profile in discovery.profiles:
-        profile["inferenceProfileId"] = profile["inferenceProfileId"].replace(
-            "us.", "apac."
-        )
-        for model in profile["models"]:
-            model["modelArn"] = model["modelArn"].replace(
-                "us-east-1", "ap-southeast-2"
-            )
-    with pytest.raises(BedrockModelUnavailable):
-        bedrock_model_target(model="auto/anthropic.haiku")
-
-
-@pytest.mark.parametrize(
-    "failure", ["denied", "availability", "no_route", "timestamp", "ambiguous"]
-)
-def test_discovery_fails_explicitly_and_does_not_cache_failures(
-    discovery, failure
-):
-    if failure in {"denied", "availability"}:
-        operation = (
-            discovery.client.list_foundation_models
-            if failure == "denied"
-            else discovery.client.get_foundation_model_availability
-        )
-        operation.side_effect = ClientError(
-            {
-                "Error": {
-                    "Code": "AccessDeniedException",
-                    "Message": "provider-secret",
-                }
-            },
-            "ListFoundationModels",
-        )
-    elif failure == "no_route":
-        discovery.profiles.clear()
-    elif failure == "timestamp":
-        for model in discovery.models:
-            model["modelLifecycle"].pop("startOfLifeTime")
-    else:
-        discovery.models[0]["modelLifecycle"] = discovery.models[1][
-            "modelLifecycle"
-        ].copy()
-    for _ in range(2):
-        with pytest.raises(BedrockModelUnavailable) as error:
-            bedrock_model_target(model="auto/anthropic.haiku")
-        assert "provider-secret" not in str(error.value)
-    assert discovery.create_client.call_count == 2
-
-
-@pytest.mark.parametrize(
-    ("preference", "older", "newer"),
-    [
-        ("auto/openai.luna", "openai.gpt-5.6-luna", "openai.gpt-6-luna"),
-        ("auto/openai.terra", "openai.gpt-5.6-terra", "openai.gpt-6.1-terra"),
-        ("auto/openai.sol", "openai.gpt-5.6-sol", "openai.gpt-6.1-sol"),
-        ("auto/zai.glm-flash", "zai.glm-4.7-flash", "zai.glm-5-flash"),
-    ],
-)
-def test_automatic_selection_is_shared_across_model_classes(
-    discovery, monkeypatch, preference, older, newer
-):
-    from litigant_portal.agents.bedrock import MODEL_CHOICES
-
-    monkeypatch.setitem(MODEL_CHOICES, "best", ["GPT Sol", "GLM Flash"])
-    for model, model_id in zip(discovery.models, (older, newer), strict=True):
-        model["modelId"] = model_id
-        model["inferenceTypesSupported"] = ["ON_DEMAND"]
-    target = bedrock_model_target(model=preference)
-    assert target.model.endswith(newer)
-    assert target.region == "us-east-1"
-    assert bedrock_model_target(model=target.model) == target
-
-
-def test_regional_catalogs_and_native_capabilities_are_endpoint_specific(
-    discovery,
-):
-    from litigant_portal.agents.bedrock import BedrockPolicy
-    from litigant_portal.app.selectors.bedrock import (
-        discover_catalog,
-        resolve_catalog,
-    )
-
-    model_id = "openai.gpt-6-luna"
-    discovery.models[1]["modelId"] = model_id
-    discovery.models[1]["inputModalities"].append("IMAGE")
-    discovery.profiles[1]["inferenceProfileId"] = f"us.{model_id}"
-    discovery.profiles[1]["models"][0]["modelArn"] = (
-        f"arn:aws:bedrock:us-east-1::foundation-model/{model_id}"
-    )
-    discovery.mantle.models.list.return_value = [
-        Mock(model_dump=Mock(return_value={"id": model_id, "created": 1}))
-    ]
-    policy = BedrockPolicy("us-east-1")
-    required = frozenset({"text", "stream", "image"})
-
-    def resolve():
-        return resolve_catalog(
-            discover_catalog(discovery.client, policy, "test-key"),
-            discovery.client,
-            policy,
-            "auto/openai.luna",
-            required,
-        )
-
-    assert "bedrock-mantle" in resolve().api_base
-    discovery.models[1]["inferenceTypesSupported"] = ["ON_DEMAND"]
-    target = resolve()
-    assert target.model == f"bedrock/converse/us-east-1/{model_id}"
-    assert required <= target.capabilities
-    assert "auto/openai.luna" in dict(bedrock_model_choices(role="assistant"))
-    discovery.models[1]["responseStreamingSupported"] = False
-    cache.clear()
-    assert "auto/openai.luna" not in dict(
-        bedrock_model_choices(role="assistant")
-    )
-    assert "bedrock-mantle" in resolve().api_base
-    discovery.mantle.models.list.return_value = []
-    with pytest.raises(BedrockModelUnavailable):
-        resolve()
-
-
-@pytest.mark.parametrize(
     "part_type, required",
     [
         ("text", {"text"}),
@@ -462,7 +462,7 @@ def test_regional_catalogs_and_native_capabilities_are_endpoint_specific(
     ],
 )
 def test_document_reader_uses_the_resolved_route_and_required_capabilities(
-    discovery, part_type, required
+    part_type, required
 ):
     from io import BytesIO
 
@@ -523,27 +523,6 @@ def test_document_reader_uses_the_resolved_route_and_required_capabilities(
     assert output.result == "Answer" and output.cost == 0.01
 
 
-def test_access_failure_refreshes_catalog_and_partial_catalogs_are_not_cached(
-    discovery,
-):
-    from openai import APIConnectionError
-
-    preference = "auto/anthropic.haiku"
-    bedrock_model_target(model=preference)
-    bedrock_model_failed(SimpleNamespace(status_code=403))
-    discovery.models.pop()
-    assert bedrock_model_target(model=preference).model.endswith(OLD_MODEL)
-    assert discovery.client.list_foundation_models.call_count == 2
-
-    cache.clear()
-    discovery.mantle.models.list.side_effect = APIConnectionError(
-        request=Mock()
-    )
-    for _ in range(2):
-        assert bedrock_model_target(model=preference).model.endswith(OLD_MODEL)
-    assert discovery.client.list_foundation_models.call_count == 4
-
-
 def test_cost_uses_the_resolved_bedrock_billing_identity():
     import litellm
 
@@ -568,27 +547,3 @@ def test_cost_uses_the_resolved_bedrock_billing_identity():
         assert target.completion_cost(
             {"prompt_tokens": 10, "completion_tokens": 7}
         ) == pytest.approx(0.000024)
-
-
-def test_default_fast_model_uses_a_compatible_title_route(discovery):
-    thread = ChatThread()
-    thread.save = Mock()
-    response = SimpleNamespace(
-        choices=[SimpleNamespace(message=SimpleNamespace(content="Help"))],
-        usage=None,
-    )
-    with (
-        patch(
-            "litigant_portal.app.services.chat_engine.chat_message_list",
-            return_value=[],
-        ),
-        patch("litellm.completion", return_value=response) as completion,
-        patch("litellm.completion_cost", return_value=0),
-        patch(
-            "litigant_portal.app.services.chat_engine.chat_message_inject_meta"
-        ),
-    ):
-        chat_thread_generate_description(thread=thread)
-    assert completion.call_args.kwargs["model"] != (
-        "bedrock_mantle/anthropic.claude-haiku-4-5"
-    )
