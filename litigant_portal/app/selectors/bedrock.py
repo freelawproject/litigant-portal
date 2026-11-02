@@ -1,7 +1,3 @@
-import hashlib
-import json
-from dataclasses import asdict
-
 from django.conf import settings
 from django.core.cache import cache
 
@@ -12,6 +8,7 @@ from litigant_portal.agents.bedrock import (
     BedrockPolicy,
     ResolvedBedrockModel,
 )
+from litigant_portal.app.cache import bedrock_catalog_cache_key
 
 
 def bedrock_policy() -> BedrockPolicy:
@@ -20,40 +17,31 @@ def bedrock_policy() -> BedrockPolicy:
     )
 
 
-def _cache_key(policy: BedrockPolicy) -> str:
-    fingerprint = hashlib.sha256(
-        json.dumps(
-            (
-                policy.region,
-                policy.geography,
-                bedrock.MODEL_MAPPING,
-                bedrock.MODEL_CHOICES,
-                [asdict(definition) for definition in bedrock.MODEL_SERIES],
-                settings.BEDROCK_API_KEY,
-            ),
-            sort_keys=True,
-            default=sorted,
-        ).encode()
-    ).hexdigest()
-    return f"bedrock:catalog:v1:{fingerprint}"
-
-
-def _catalog(policy: BedrockPolicy) -> BedrockCatalog:
-    key = _cache_key(policy)
+def bedrock_catalog_get() -> BedrockCatalog:
+    """
+    Share discovery snapshots, including short-lived partial/error results.
+    """
+    policy = bedrock_policy()
+    key = bedrock_catalog_cache_key(policy)
     catalog = cache.get(key)
     if catalog is None:
-        catalog = bedrock.discover_catalog(policy, settings.BEDROCK_API_KEY)
-        if catalog.complete:
-            cache.set(key, catalog, timeout=3600)
+        try:
+            catalog = bedrock.discover_catalog(
+                policy, settings.BEDROCK_API_KEY
+            )
+        except BedrockModelUnavailable:
+            # Cache safe text, never SDK exceptions with request credentials.
+            catalog = "Bedrock discovery failed. Check model access and configuration."
+        cache.set(
+            key,
+            catalog,
+            timeout=3600
+            if isinstance(catalog, BedrockCatalog) and catalog.complete
+            else 300,
+        )
+    if isinstance(catalog, str):
+        raise BedrockModelUnavailable(catalog)
     return catalog
-
-
-def bedrock_model_failed(error: Exception) -> None:
-    """
-    Invalidate account metadata without retrying the failed inference.
-    """
-    if getattr(error, "status_code", None) in {400, 401, 403, 404}:
-        cache.delete(_cache_key(bedrock_policy()))
 
 
 def bedrock_model_target(
@@ -61,14 +49,16 @@ def bedrock_model_target(
 ) -> ResolvedBedrockModel:
     policy = bedrock_policy()
     policy.preference(model)
-    return bedrock.resolve_catalog(_catalog(policy), policy, model, required)
+    return bedrock.resolve_catalog(
+        bedrock_catalog_get(), policy, model, required
+    )
 
 
-def bedrock_available_models(
+def bedrock_model_list(
     *, required: frozenset[str] = frozenset({"text"})
 ) -> dict[str, ResolvedBedrockModel]:
     policy = bedrock_policy()
-    catalog = _catalog(policy)
+    catalog = bedrock_catalog_get()
     available = {}
     for model in bedrock.model_tiers():
         try:
@@ -83,11 +73,12 @@ def bedrock_available_models(
 def bedrock_model_choices(
     *, role: str = "fast"
 ) -> tuple[tuple[str, str], ...]:
-    available = bedrock_available_models(
-        required=bedrock.model_requirements(role)
-    )
-    return tuple(
-        (model, label)
-        for model, label in bedrock.model_choices()
-        if model in available
-    )
+    available = bedrock_model_list(required=bedrock.model_requirements(role))
+    tiers = bedrock.model_tiers()
+    choices = []
+    for model, target in available.items():
+        model_id = target.model.rsplit("/", 1)[-1].removeprefix("us.")
+        _, version = bedrock.model_class(model_id)
+        label = f"{bedrock.MODEL_MAPPING[model]} {version} ({tiers[model].capitalize()})"
+        choices.append((model, label))
+    return tuple(choices)

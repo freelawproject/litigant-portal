@@ -21,6 +21,7 @@ from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 
 from litigant_portal.agents.bedrock import (
+    BedrockCatalog,
     ResolvedBedrockModel,
     model_choices,
 )
@@ -55,13 +56,17 @@ MODEL_CHOICES = model_choices()
 
 @pytest.fixture
 def available_models(monkeypatch):
+    monkeypatch.setattr(
+        "litigant_portal.app.views.pages.bedrock_catalog_get",
+        lambda: BedrockCatalog((), (), ()),
+    )
     for module in ("pages", "admin"):
         monkeypatch.setattr(
             f"litigant_portal.app.views.{module}.bedrock_model_choices",
             lambda **kwargs: model_choices(),
         )
     monkeypatch.setattr(
-        "litigant_portal.app.selectors.site.bedrock_available_models",
+        "litigant_portal.app.selectors.site.bedrock_model_list",
         lambda **kwargs: {
             model: ResolvedBedrockModel(model, "us-east-1")
             for model, _ in model_choices()
@@ -254,6 +259,13 @@ class SiteAdminSettingsTests(TestCase):
             response = self.client.get("/admin/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Discovery failed.")
+        self.assertNotContains(response, "The saved model is unavailable.")
+        self.assertEqual(response.context["unavailable_model_choices"], {})
+        self.assertEqual(
+            response.context["retained_model_choices"],
+            {"assistant_model": "auto/openai.sol"},
+        )
+        self.assertContains(response, "Saved selection (auto/openai.sol)")
         self.assertEqual(
             response.context["model_choices"],
             dict.fromkeys(("fast", "assistant", "judge"), ()),
@@ -263,6 +275,48 @@ class SiteAdminSettingsTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["assistant_model"], "auto/openai.sol")
+
+    def test_saved_availability_requires_complete_discovery(self):
+        user = get_user_model().objects.create_superuser(
+            username="availability-admin"
+        )
+        self.client.force_login(user)
+        with self.captureOnCommitCallbacks(execute=True):
+            site_update(assistant_model="auto/openai.sol")
+        partial_choices = tuple(
+            option
+            for option in MODEL_CHOICES
+            if option[0] != "auto/openai.sol"
+        )
+        for complete, options, unavailable in (
+            (False, partial_choices, {}),
+            (True, (), {"assistant_model": "auto/openai.sol"}),
+        ):
+            with (
+                self.subTest(complete=complete),
+                patch(
+                    "litigant_portal.app.views.pages.bedrock_catalog_get",
+                    return_value=BedrockCatalog((), (), (), complete=complete),
+                ),
+                patch(
+                    "litigant_portal.app.views.pages.bedrock_model_choices",
+                    return_value=options,
+                ),
+            ):
+                response = self.client.get("/admin/")
+                self.assertEqual(
+                    response.context["unavailable_model_choices"], unavailable
+                )
+                self.assertEqual(
+                    response.context["retained_model_choices"],
+                    {"assistant_model": "auto/openai.sol"},
+                )
+                self.assertEqual(
+                    response.context["model_choices"]["fast"], options
+                )
+                self.assertContains(
+                    response, "Saved selection (auto/openai.sol)"
+                )
 
 
 @pytest.mark.postgres

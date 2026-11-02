@@ -201,11 +201,17 @@ def corpus_session(
         yield
         return
     from litigant_portal.app.models import Site
+    from litigant_portal.app.selectors.bedrock import bedrock_model_target
     from litigant_portal.app.selectors.site import site_get_model_target
 
     with fixture_lock():
         site = Site.objects.get()
         original_fast_model = site_get_model_target(role="fast").model
+        effective_fast_model = (
+            bedrock_model_target(model=fast_model).model
+            if fast_model
+            else original_fast_model
+        )
         write_json(
             run / "fixture-state.json",
             {
@@ -214,7 +220,7 @@ def corpus_session(
                     for field in (*SITE_FIELDS, "fast_model")
                 },
                 "original_fast_model": original_fast_model,
-                "effective_fast_model": fast_model or original_fast_model,
+                "effective_fast_model": effective_fast_model,
                 "restored": False,
             },
         )

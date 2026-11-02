@@ -22,6 +22,49 @@ from scripts.agent_eval.schema import (  # noqa: E402
 )
 
 
+def test_fixture_journal_resolves_overrides_and_restores_raw_values(tmp_path):
+    from contextlib import nullcontext
+
+    from scripts.agent_eval import corpus
+
+    original = {field: f"original-{field}" for field in corpus.SITE_FIELDS}
+    original["fast_model"] = "auto/openai.luna"
+    with (
+        patch.object(corpus, "fixture_lock", return_value=nullcontext()),
+        patch(
+            "litigant_portal.app.models.Site.objects.get",
+            return_value=SimpleNamespace(**original),
+        ),
+        patch("litigant_portal.app.models.Site.objects.update") as update,
+        patch("litigant_portal.app.models.TopicFlow.objects.filter"),
+        patch(
+            "litigant_portal.app.selectors.site.site_get_model_target",
+            return_value=SimpleNamespace(model="resolved-original"),
+        ),
+        patch(
+            "litigant_portal.app.selectors.bedrock.bedrock_model_target",
+            return_value=SimpleNamespace(model="resolved-override"),
+        ) as resolve,
+    ):
+        with (
+            pytest.raises(InterruptedError),
+            corpus.corpus_session(
+                tmp_path, True, fast_model="auto/anthropic.haiku"
+            ),
+        ):
+            journal = json.loads((tmp_path / "fixture-state.json").read_text())
+            assert journal["original_fast_model"] == "resolved-original"
+            assert journal["effective_fast_model"] == "resolved-override"
+            assert journal["site"] == original
+            update.assert_called_once_with(fast_model="auto/anthropic.haiku")
+            raise InterruptedError
+        resolve.assert_called_once_with(model="auto/anthropic.haiku")
+        assert update.call_args.kwargs == original
+        assert json.loads((tmp_path / "fixture-state.json").read_text())[
+            "restored"
+        ]
+
+
 @pytest.mark.parametrize("asynchronous", [False, True])
 @pytest.mark.parametrize("stage", ["request", "stream"])
 @pytest.mark.parametrize("category", [None, "timeout", "provider_error"])

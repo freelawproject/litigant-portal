@@ -152,7 +152,12 @@ class HiddenMessageProjectionTests(TestCase):
         history = [dict(m.data) for m in chat_message_list(thread=self.thread)]
         contents = [
             m["content"]
-            for m in _messages_for_llm("sys", history, attachment_cache={})
+            for m in _messages_for_llm(
+                "sys",
+                history,
+                attachment_cache={},
+                capabilities=frozenset({"text"}),
+            )
         ]
         self.assertIn("HIDDEN CONTEXT", contents)
 

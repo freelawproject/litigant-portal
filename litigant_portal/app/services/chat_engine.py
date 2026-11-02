@@ -15,7 +15,6 @@ from django.urls import reverse
 from django.utils.translation import gettext as _
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
-from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.agents.citations import citation_ids, citation_ids_unknown
 from litigant_portal.agents.judge import AgentJudge, JudgeVerdict
 from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
@@ -26,7 +25,6 @@ from litigant_portal.app.models import (
     UserIdentity,
 )
 from litigant_portal.app.selectors.bedrock import (
-    bedrock_model_failed,
     bedrock_model_target,
 )
 from litigant_portal.app.selectors.chat_engine import (
@@ -35,6 +33,9 @@ from litigant_portal.app.selectors.chat_engine import (
 )
 from litigant_portal.app.selectors.site import site_get, site_get_model_target
 from litigant_portal.app.selectors.topic_flow import topic_flow_url_kwargs
+from litigant_portal.app.services.bedrock import (
+    bedrock_catalog_invalidate_on_error,
+)
 from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
     user_upload_render_list,
@@ -182,6 +183,11 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
     """Generate and store a short description of a thread's conversation."""
     target = site_get_model_target(role="fast")
     model = target.model
+    options = target.invocation_options()
+    if "openai.gpt-" in model and litellm.supports_reasoning(
+        model=target.billing_model or model
+    ):
+        options["reasoning_effort"] = "low"
     conversation = "\n".join(
         f"{m.data.get('role')}: {m.data.get('content')}"
         for m in chat_message_list(
@@ -191,9 +197,9 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
         and m.data.get("content")
     )
     response = litellm.completion(
-        **target.invocation_options(),
+        **options,
         api_key=settings.BEDROCK_API_KEY,
-        max_tokens=128,
+        max_tokens=1024,
         messages=[
             {"role": "system", "content": DESCRIPTION_PROMPT},
             {"role": "user", "content": conversation[:4000]},
@@ -218,6 +224,14 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
         cost=cost,
     )
     description = (response.choices[0].message.content or "").strip()[:255]
+    finish_reason = getattr(response.choices[0], "finish_reason", None)
+    if not description or finish_reason == "length":
+        logger.warning(
+            "Thread title empty or truncated (thread=%s, model=%s, finish_reason=%s)",
+            thread.id,
+            model,
+            finish_reason,
+        )
     if description:
         thread.description = description
         thread.save(update_fields=["description", "updated_at"])
@@ -278,10 +292,13 @@ def _messages_for_llm(
     history: list[dict[str, Any]],
     *,
     attachment_cache: dict,
+    capabilities: frozenset[str],
 ) -> list[dict[str, Any]]:
     """Prepend the (never-stored) system prompt and project to litellm shape,
     and inject attachment content parts or stubs."""
-    hydrated = user_upload_llm_parts(history=history, cache=attachment_cache)
+    hydrated = user_upload_llm_parts(
+        history=history, cache=attachment_cache, capabilities=capabilities
+    )
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt}
     ]
@@ -440,10 +457,15 @@ def _judge_candidate(
     try:
         target = bedrock_model_target(model=model)
         model = target.model
+        options = target.invocation_options()
+        if "openai.gpt-" in model and litellm.supports_reasoning(
+            model=target.billing_model or model
+        ):
+            options["reasoning_effort"] = "low"
         response = litellm.completion(
-            **target.invocation_options(),
+            **options,
             api_key=settings.BEDROCK_API_KEY,
-            max_tokens=2048,
+            max_tokens=4096,
             messages=AgentJudge.request(
                 {"messages": messages, "state": thread.state}, candidate
             ),
@@ -467,7 +489,7 @@ def _judge_candidate(
         verdict = AgentJudge.review(response)
         audit["verdict"] = verdict.model_dump(mode="json")
     except Exception as error:
-        bedrock_model_failed(error)
+        bedrock_catalog_invalidate_on_error(error)
         audit["error"] = "judge_failed"
         audit["error_category"] = (
             "timeout"
@@ -499,7 +521,7 @@ def chat_stream(
     message: str,
     agent_class: type[Agent],
     thread_type: str,
-    model: str | ResolvedBedrockModel | None,
+    model: str | None = None,
     thread_id: str | None = None,
     attachment_ids: list[str] | None = None,
 ) -> StreamingHttpResponse:
@@ -515,9 +537,7 @@ def chat_stream(
     required = frozenset(
         {"text", "stream"} | ({"tools"} if agent.tools else set())
     )
-    if isinstance(model, ResolvedBedrockModel):
-        target = model
-    elif model:
+    if model:
         target = bedrock_model_target(model=model, required=required)
     else:
         target = site_get_model_target(role="assistant", required=required)
@@ -570,7 +590,6 @@ def chat_stream(
                     tool_schemas=tool_schemas,
                 )
                 call_args: dict[str, Any] = {
-                    "max_tokens": 4096,
                     **agent.completion_args,
                     **target.invocation_options(),
                     "api_key": settings.BEDROCK_API_KEY,
@@ -578,6 +597,7 @@ def chat_stream(
                         _system_prompt_text(system_prompt, identity_prompt),
                         history,
                         attachment_cache=attachment_cache,
+                        capabilities=target.capabilities,
                     ),
                     "stream": True,
                     "stream_options": {"include_usage": True},
@@ -831,7 +851,7 @@ def chat_stream(
                             }
                         )
                 except Exception as error:
-                    bedrock_model_failed(error)
+                    bedrock_catalog_invalidate_on_error(error)
                     logger.exception(
                         "chat_engine description generation failed"
                     )
@@ -839,7 +859,7 @@ def chat_stream(
             thread.save(update_fields=["updated_at"])
             yield _sse({"type": "done"})
         except Exception as error:
-            bedrock_model_failed(error)
+            bedrock_catalog_invalidate_on_error(error)
             logger.exception("chat_engine stream failed")
             yield _sse(_stream_error_event(thread))
             yield _sse({"type": "done"})

@@ -35,8 +35,12 @@ class QueryDocument(Tool):
 
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.app.models import ChatThread, UserUpload
-        from litigant_portal.app.selectors.bedrock import bedrock_model_failed
-        from litigant_portal.app.selectors.site import site_get_model_target
+        from litigant_portal.app.selectors.site import (
+            site_get_reader_model_target,
+        )
+        from litigant_portal.app.services.bedrock import (
+            bedrock_catalog_invalidate_on_error,
+        )
         from litigant_portal.app.services.upload import (
             user_upload_content_part,
             user_upload_reader_limit_error,
@@ -78,11 +82,11 @@ class QueryDocument(Tool):
             part.get("type"), "text"
         )
         required = frozenset({"text", modality})
-        model = site_get_model_target(role="assistant", required=required)
+        model = site_get_reader_model_target(required=required)
         try:
             answer, cost = self.ask(upload.name, part, model)
         except Exception as error:
-            bedrock_model_failed(error)
+            bedrock_catalog_invalidate_on_error(error)
             raise
         return ToolOutput(
             result=answer,

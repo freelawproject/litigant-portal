@@ -6,14 +6,16 @@ import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
 from django.test import SimpleTestCase
 from django.urls import reverse
 
 from litigant_portal.agents.base import Agent, ToolOutput
-from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import Topic, TopicFlow
 from litigant_portal.app.selectors.bedrock import BedrockModelUnavailable
 from litigant_portal.app.services.chat_engine import chat_stream
+
+pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 
 
 class FailingAgent(Agent):
@@ -81,7 +83,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                     if completions is not None
                     else RuntimeError("secret-provider-detail")
                 ),
-            ),
+            ) as completion,
             patch(
                 "litigant_portal.app.services.chat_engine.litellm.token_counter",
                 return_value=0,
@@ -111,7 +113,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 message="Please help.",
                 agent_class=FailingAgent,
                 thread_type="test_agent",
-                model=ResolvedBedrockModel("test-model", "us-east-1"),
+                model="test-model",
                 thread_id=str(self.thread.id),
             )
             events = [
@@ -123,7 +125,19 @@ class ChatStreamFallbackTests(SimpleTestCase):
             self.persisted_messages = [
                 call.kwargs["data"] for call in create_message.call_args_list
             ]
+            self.completion_calls = completion.call_args_list
             return events
+
+    def test_default_chat_budget_is_left_to_the_provider(self):
+        self.stream_events([iter([_text_chunk("Answer")])])
+        self.assertNotIn("max_tokens", self.completion_calls[0].kwargs)
+
+    def test_agent_defined_chat_budget_is_preserved(self):
+        with patch.object(
+            FailingAgent, "completion_args", {"max_tokens": 321}
+        ):
+            self.stream_events([iter([_text_chunk("Answer")])])
+        self.assertEqual(self.completion_calls[0].kwargs["max_tokens"], 321)
 
     def test_active_valid_flow_gets_guided_fallback_and_safe_error(self):
         self.thread.state = {"active_topic_flow": "eviction/tenant"}

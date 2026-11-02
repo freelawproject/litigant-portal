@@ -13,7 +13,7 @@ from litigant_portal.app.cache import (
 from litigant_portal.app.models import Contact, Resource, Site
 from litigant_portal.app.models.choices import ContactKind
 from litigant_portal.app.selectors.bedrock import (
-    bedrock_available_models,
+    bedrock_model_list,
     bedrock_model_target,
 )
 
@@ -77,5 +77,22 @@ def site_get_model_target(
         return bedrock_model_target(model=model, required=required)
     if role == "judge":
         raise BedrockModelUnavailable("Judging is disabled.")
-    available = bedrock_available_models(required=required)
+    available = bedrock_model_list(required=required)
     return available[default_model(role, available)]
+
+
+def site_get_reader_model_target(
+    *, required: frozenset[str]
+) -> ResolvedBedrockModel:
+    """
+    Prefer the assistant, then an enabled capable reader in curation order.
+    """
+    try:
+        return site_get_model_target(role="assistant", required=required)
+    except BedrockModelUnavailable:
+        available = bedrock_model_list(required=required)
+        if available:
+            return next(iter(available.values()))
+        raise BedrockModelUnavailable(
+            "No enabled reader model supports this attachment."
+        ) from None

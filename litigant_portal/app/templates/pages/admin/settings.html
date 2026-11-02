@@ -97,8 +97,8 @@
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% blocktrans with model=default_model_labels.fast %}Default ({{ model }}){% endblocktrans %}</option>
-        {% if unavailable_model_choices.fast_model %}
-          <option value="{{ unavailable_model_choices.fast_model }}" hidden disabled>{% trans "Saved selection unavailable" %}</option>
+        {% if retained_model_choices.fast_model %}
+          <option value="{{ retained_model_choices.fast_model }}" hidden disabled>{% blocktrans with model=retained_model_choices.fast_model %}Saved selection ({{ model }}){% endblocktrans %}</option>
         {% endif %}
         {% for value, label in model_choices.fast %}
           <option value="{{ value }}">{{ label }}</option>
@@ -117,8 +117,8 @@
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% blocktrans with model=default_model_labels.assistant %}Default ({{ model }}){% endblocktrans %}</option>
-        {% if unavailable_model_choices.assistant_model %}
-          <option value="{{ unavailable_model_choices.assistant_model }}" hidden disabled>{% trans "Saved selection unavailable" %}</option>
+        {% if retained_model_choices.assistant_model %}
+          <option value="{{ retained_model_choices.assistant_model }}" hidden disabled>{% blocktrans with model=retained_model_choices.assistant_model %}Saved selection ({{ model }}){% endblocktrans %}</option>
         {% endif %}
         {% for value, label in model_choices.assistant %}
           <option value="{{ value }}">{{ label }}</option>
@@ -137,8 +137,8 @@
               x-on:change="updateSiteField"
               class="block w-full rounded-lg border border-greyscale-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-600">
         <option value="">{% trans "Disabled" %}</option>
-        {% if unavailable_model_choices.judge_model %}
-          <option value="{{ unavailable_model_choices.judge_model }}" hidden disabled>{% trans "Saved selection unavailable" %}</option>
+        {% if retained_model_choices.judge_model %}
+          <option value="{{ retained_model_choices.judge_model }}" hidden disabled>{% blocktrans with model=retained_model_choices.judge_model %}Saved selection ({{ model }}){% endblocktrans %}</option>
         {% endif %}
         {% for value, label in model_choices.judge %}
           <option value="{{ value }}">{{ label }}</option>

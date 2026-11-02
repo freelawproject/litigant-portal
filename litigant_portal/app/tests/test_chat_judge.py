@@ -144,6 +144,7 @@ def test_disabled_preserves_streaming(stream, judge_model):
     assert len(calls) == 1
     assert "timeout" not in calls[0].kwargs
     assert "num_retries" not in calls[0].kwargs
+    assert "max_tokens" not in calls[0].kwargs
     assert not any(event["type"] == "heartbeat" for event in events)
     assert not thread.messages.filter(meta=True).exists()
     assert not any("review_warning" in event for event in events)
@@ -164,6 +165,9 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
     ]
     assert sum(e["type"] == "judging" for e in events) == attempts
     assert sum(e["type"] == "heartbeat" for e in events) == attempts
+    for call in (call for call in calls if not call.kwargs["stream"]):
+        assert call.kwargs["max_tokens"] == 4096
+        assert call.kwargs["reasoning_effort"] == "low"
     for call in calls:
         assert call.kwargs["timeout"] == 45
         assert call.kwargs["num_retries"] == 0

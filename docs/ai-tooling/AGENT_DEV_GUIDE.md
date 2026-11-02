@@ -99,9 +99,11 @@ completion_args = {"max_tokens": 1000}
 ```
 
 These are spread into `litellm.completion(...)`. **Don't put `model` here** — you'll get an error if you try.
-The model is supplied to the engine by the endpoint (from the site's
-model config via `site_get_model`), not the agent, and setting it in
-`completion_args` raises.
+The engine resolves the site's assistant preference through `site_get_model_target`, returning a concrete route from the families curated in `agents/bedrock.py`. Setting `model` in `completion_args` raises. The HTTP wrapper uses site defaults; direct service callers such as evaluations may pass a model string to `chat_stream` for a strict override. The engine adds no default chat token limit, so an agent's explicit limit is preserved and an omitted limit uses provider behavior.
+
+Unset assistant/fast roles use the first available Balanced/Economy model, currently GPT Terra/GPT Luna instead of the previous GPT Luna/Claude Haiku defaults. Judging remains disabled until selected. Admin labels include the resolved release: family selections can advance when discovery refreshes and can differ across accounts. `AWS_REGION` must be configured, while `BEDROCK_ALLOWED_GEOGRAPHY` is optional and defaults to `US`.
+
+Attachment hydration respects the resolved chat target's capabilities. Unsupported native documents or images become stubs for `QueryDocument`, which prefers the selected assistant when capable and otherwise uses the first enabled capable model in Economy, Balanced, then Best order. The saved assistant selection is unchanged.
 
 ### 2. The state — `state_schema`
 
@@ -388,7 +390,6 @@ def stream(request: HttpRequest):
         request,
         agent_class=LitigantAssistant,
         thread_type=THREAD_TYPE,
-        model=site_get_model(role="assistant"),
     )
 
 

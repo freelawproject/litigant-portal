@@ -28,7 +28,10 @@ from litigant_portal.app.models.choices import (
     JurisdictionLevel,
     State,
 )
-from litigant_portal.app.selectors.bedrock import bedrock_model_choices
+from litigant_portal.app.selectors.bedrock import (
+    bedrock_catalog_get,
+    bedrock_model_choices,
+)
 from litigant_portal.app.selectors.site import contact_help_list, site_get
 from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.views.utils import (
@@ -164,22 +167,37 @@ def admin(request: HttpRequest) -> HttpResponse:
     site = site_get()
     choices = dict.fromkeys(("fast", "assistant", "judge"), ())
     model_error = ""
+    discovery_complete = False
     if "settings" in tabs:
         try:
+            discovery_complete = bedrock_catalog_get().complete
             choices = {
                 role: bedrock_model_choices(role=role) for role in choices
             }
-            if not any(choices.values()):
+            if not discovery_complete:
+                model_error = _(
+                    "Model discovery is incomplete. Some availability is unknown."
+                )
+            elif not any(choices.values()):
                 model_error = _("No configured models are available.")
         except BedrockModelUnavailable as error:
+            discovery_complete = False
             model_error = str(error)
     labels = {role: dict(options) for role, options in choices.items()}
+    retained = {
+        field: value
+        for field in ("fast_model", "assistant_model", "judge_model")
+        if (value := getattr(site, field))
+        and value not in labels[field.removesuffix("_model")]
+    }
     defaults = {}
     for role in ("fast", "assistant"):
         try:
             defaults[role] = labels[role][default_model(role, labels[role])]
         except BedrockModelUnavailable:
-            defaults[role] = _("Unavailable")
+            defaults[role] = (
+                _("Unavailable") if discovery_complete else _("Unknown")
+            )
     return render(
         request,
         "pages/admin/index.html",
@@ -187,12 +205,10 @@ def admin(request: HttpRequest) -> HttpResponse:
             "bedrock_available": any(choices.values()),
             "model_choices": choices,
             "model_error": model_error,
-            "unavailable_model_choices": {
-                field: value
-                for field in ("fast_model", "assistant_model", "judge_model")
-                if (value := getattr(site, field))
-                and value not in labels[field.removesuffix("_model")]
-            },
+            "retained_model_choices": retained,
+            "unavailable_model_choices": retained
+            if discovery_complete
+            else {},
             "default_model_labels": defaults,
             "jurisdiction_choices": JurisdictionLevel.choices,
             "state_choices": State.choices,

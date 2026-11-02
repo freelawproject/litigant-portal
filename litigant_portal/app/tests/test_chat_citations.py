@@ -11,10 +11,11 @@ import pytest
 from django.test import TestCase
 
 from litigant_portal.agents.base import Agent, Tool, ToolOutput
-from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
 from litigant_portal.app.services import chat_engine as engine
 from litigant_portal.app.services.chat_engine import chat_stream
+
+pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 
 MODEL = "gpt-5-mini"
 FLOW_RESULT = (
@@ -84,7 +85,7 @@ class UnknownCitationTests(TestCase):
                 message="Help me.",
                 agent_class=CitingAgent,
                 thread_type="test_agent",
-                model=ResolvedBedrockModel(MODEL, "us-east-1"),
+                model=MODEL,
                 thread_id=str(self.thread.id),
             )
             list(response.streaming_content)

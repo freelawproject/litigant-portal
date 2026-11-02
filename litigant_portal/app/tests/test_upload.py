@@ -79,7 +79,11 @@ class AttachmentHydrationTests(TestCase):
     def test_text_file_inlines_as_labeled_text_part(self):
         upload = self._upload("notes.txt", "text/plain", b"secret: BANANA-42")
         history = self._history([upload])
-        hydrated = user_upload_llm_parts(history=history, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history,
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
+        )
         parts = hydrated[0]
         self.assertEqual(parts[0], {"type": "text", "text": "message 0"})
         self.assertEqual(parts[1]["type"], "text")
@@ -90,7 +94,9 @@ class AttachmentHydrationTests(TestCase):
     def test_image_inlines_as_image_part(self):
         upload = self._upload("photo.png", "image/png", b"\x89PNGfake")
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), cache={}
+            history=self._history([upload]),
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "image_url")
@@ -101,7 +107,9 @@ class AttachmentHydrationTests(TestCase):
     def test_pdf_inlines_as_file_part(self):
         upload = self._upload("lease.pdf", "application/pdf", make_pdf())
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), cache={}
+            history=self._history([upload]),
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "file")
@@ -112,14 +120,18 @@ class AttachmentHydrationTests(TestCase):
         # parses docx bytes — invalid ones still ship as a file part.
         upload = self._upload("motion.docx", DOCX_TYPE, b"not a real docx")
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), cache={}
+            history=self._history([upload]),
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
         )
         self.assertEqual(hydrated[0][1]["type"], "file")
 
     def test_rtf_stubs_as_unreadable(self):
         upload = self._upload("old.rtf", "application/rtf", b"{\\rtf1}")
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), cache={}
+            history=self._history([upload]),
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "text")
@@ -132,7 +144,9 @@ class AttachmentHydrationTests(TestCase):
         )
         cache: dict = {}
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), cache=cache
+            history=self._history([upload]),
+            cache=cache,
+            capabilities=frozenset({"text", "image", "document"}),
         )
         part = hydrated[0][1]
         self.assertIn("too large", part["text"])
@@ -146,7 +160,9 @@ class AttachmentHydrationTests(TestCase):
         )
         self.assertIsNone(upload.pages)
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), cache={}
+            history=self._history([upload]),
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "text")
@@ -160,7 +176,9 @@ class AttachmentHydrationTests(TestCase):
             "long.pdf", "application/pdf", make_pdf(2), pages=150
         )
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), cache={}
+            history=self._history([upload]),
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "text")
@@ -174,7 +192,9 @@ class AttachmentHydrationTests(TestCase):
             "tome.docx", DOCX_TYPE, b"tiny bytes", text_chars=500_000
         )
         hydrated = user_upload_llm_parts(
-            history=self._history([upload]), cache={}
+            history=self._history([upload]),
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
         )
         part = hydrated[0][1]
         self.assertEqual(part["type"], "text")
@@ -186,7 +206,11 @@ class AttachmentHydrationTests(TestCase):
             for i in range(5)
         ]
         history = self._history(*[[u] for u in uploads])
-        hydrated = user_upload_llm_parts(history=history, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history,
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
+        )
         # Budget is 4 docs, newest first: the oldest message gets a stub.
         self.assertEqual(hydrated[0][1]["type"], "text")
         self.assertIn("no longer inlined", hydrated[0][1]["text"])
@@ -200,7 +224,11 @@ class AttachmentHydrationTests(TestCase):
             for i in range(4)
         ]
         history = self._history([text], *[[u] for u in pdfs])
-        hydrated = user_upload_llm_parts(history=history, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history,
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
+        )
         self.assertEqual(hydrated[0][1]["type"], "text")
         self.assertIn("no longer inlined", hydrated[0][1]["text"])
         for i in range(1, 5):
@@ -214,12 +242,23 @@ class AttachmentHydrationTests(TestCase):
                 "attachments": ["00000000-0000-0000-0000-000000000000"],
             }
         ]
-        hydrated = user_upload_llm_parts(history=history, cache={})
+        hydrated = user_upload_llm_parts(
+            history=history,
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
+        )
         self.assertIn("no longer available", hydrated[0][1]["text"])
 
     def test_no_attachments_returns_empty(self):
         history = [{"role": "user", "content": "hi"}]
-        self.assertEqual(user_upload_llm_parts(history=history, cache={}), {})
+        self.assertEqual(
+            user_upload_llm_parts(
+                history=history,
+                cache={},
+                capabilities=frozenset({"text", "image", "document"}),
+            ),
+            {},
+        )
 
 
 @pytest.mark.postgres

@@ -10,9 +10,10 @@ import pytest
 from django.test import SimpleTestCase, TestCase
 
 from litigant_portal.agents.base import Agent
-from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import ChatThread, UserIdentity
 from litigant_portal.app.services.chat_engine import chat_stream
+
+pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 
 
 class PreparingAgent(Agent):
@@ -72,7 +73,7 @@ class PrepareThreadEngineTests(TestCase):
                 message="Hello.",
                 agent_class=PreparingAgent,
                 thread_type="test_agent",
-                model=ResolvedBedrockModel("gpt-5-mini", "us-east-1"),
+                model="gpt-5-mini",
                 thread_id=str(self.thread.id),
             )
             frames = [
