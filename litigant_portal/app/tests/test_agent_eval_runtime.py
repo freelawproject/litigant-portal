@@ -13,13 +13,17 @@ import pytest
 pytest.importorskip("scripts.agent_eval.schema")
 
 from scripts.agent_eval import report, runner, systems  # noqa: E402
-from scripts.agent_eval.provider import Observer  # noqa: E402
+from scripts.agent_eval.provider import Observer, usage_cost  # noqa: E402
 from scripts.agent_eval.schema import (  # noqa: E402
     Config,
     fingerprint,
     read_cases,
     write_json,
 )
+
+MODEL_ID = "openai.gpt-99-luna"
+BILLING_MODEL = f"bedrock_mantle/{MODEL_ID}"
+INVOCATION_MODEL = f"bedrock/converse/us-east-1/us.{MODEL_ID}"
 
 
 def test_fixture_journal_resolves_overrides_and_restores_raw_values(tmp_path):
@@ -160,6 +164,64 @@ def test_observer_records_unset_options_without_passing_them():
     original.assert_called_once_with(model="synthetic")
     assert calls[0]["request"]["timeout"] is None
     assert calls[0]["request"]["num_retries"] is None
+    assert calls[0]["cost_usd"] is None
+
+
+def test_observer_uses_shared_bedrock_pricing():
+    import litellm
+
+    model = f"bedrock_mantle/us-east-1/{MODEL_ID}"
+    response = {"usage": {"prompt_tokens": 2, "completion_tokens": 3}}
+    rates = {
+        "litellm_provider": "bedrock_mantle",
+        "input_cost_per_token": 1,
+        "output_cost_per_token": 2,
+    }
+    calls = []
+    with (
+        patch.dict(litellm.model_cost, {BILLING_MODEL: rates}, clear=True),
+        patch.object(litellm, "completion", return_value=response) as original,
+        Observer(calls, Config()),
+    ):
+        assert litellm.completion(model=model) is response
+    original.assert_called_once_with(model=model)
+    call = calls[0]
+    assert call["model"] == call["request"]["model"] == model
+    assert call["cost_usd"] == 8
+    assert call["pricing"]["model"] == BILLING_MODEL
+    assert call["pricing"]["rates"]["input_cost_per_token"] == 1
+
+
+@pytest.mark.parametrize(
+    "prices, expected",
+    [
+        ({BILLING_MODEL: 1}, 1),
+        ({BILLING_MODEL: 1, INVOCATION_MODEL: 2}, 2),
+        ({"bedrock_mantle/openai.gpt-100-luna": 1}, None),
+        ({f"bedrock_mantle/us-gov-west-1/{MODEL_ID}": 1}, None),
+        ({BILLING_MODEL: 1, f"us.{MODEL_ID}": 2}, None),
+    ],
+)
+def test_bedrock_price_overrides(prices, expected):
+    import litellm
+
+    config = Config(
+        prices={
+            model: {
+                "input_per_million": rate,
+                "output_per_million": 0,
+                "source": "test",
+            }
+            for model, rate in prices.items()
+        }
+    )
+    with patch.dict(litellm.model_cost, {}, clear=True):
+        result = usage_cost(
+            {"usage": {"prompt_tokens": 1_000_000, "completion_tokens": 0}},
+            INVOCATION_MODEL,
+            config,
+        )
+    assert result["cost_usd"] == expected
 
 
 @pytest.mark.parametrize("field", ["message", "error"])

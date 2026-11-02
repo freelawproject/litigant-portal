@@ -105,6 +105,8 @@ separate. Missing usage/pricing keeps total cost unknown. Known subtotals includ
 priced calls even when another call's cost is missing. These are estimates;
 SDK-internal retries without usage cannot be reconstructed as billed costs.
 
+Qualified Bedrock routes use the application's region-aware pricing rules, while recorded requests retain their invocation identifiers. Pricing snapshots record the effective pricing identifier and rates. Exact price-override keys take precedence; otherwise an unambiguous override for the same Bedrock family and release applies across route formats. Overrides qualified for another region or release do not match, and ambiguous overrides leave cost unknown.
+
 ## Artifacts and manual checks
 
 Each observed call records `request.timeout` and `request.num_retries`, including null when the application leaves the value to provider defaults. This records the request without changing it. Calls also record `error_category` (`timeout`, `provider_error`, or null for no observed failure), including errors raised while consuming a stream. Each `current` attempt saves `runtime_judge_model` before invoking the chat engine; null means disabled. The worker's whole-attempt deadline is recorded separately as `attempt_timeout`.

@@ -22,8 +22,10 @@ from django.test import SimpleTestCase, TestCase
 
 from litigant_portal.agents.bedrock import (
     BedrockCatalog,
+    BedrockPolicy,
     ResolvedBedrockModel,
     model_choices,
+    model_tiers,
 )
 from litigant_portal.app.cache import (
     SITE_CACHE_KEY,
@@ -141,20 +143,21 @@ class SiteCacheTests(TestCase):
 
 @pytest.mark.usefixtures("available_models")
 class SiteModelSelectionTests(SimpleTestCase):
-    def test_assistant_defaults_to_the_first_balanced_model(self):
-        self.assertEqual(
-            site_get_model_target(role="assistant").model, "auto/openai.terra"
-        )
-
-    def test_fast_role_defaults_to_the_first_economy_model(self):
-        self.assertEqual(
-            site_get_model_target(role="fast").model, "auto/openai.luna"
-        )
+    def test_defaults_use_the_first_model_in_the_preferred_tier(self):
+        tiers = model_tiers()
+        for role, tier in (("assistant", "balanced"), ("fast", "economy")):
+            with self.subTest(role=role):
+                expected = next(
+                    model for model, level in tiers.items() if level == tier
+                )
+                self.assertEqual(
+                    site_get_model_target(role=role).model, expected
+                )
 
     def test_site_model_resolution_preserves_an_explicit_selection(self):
         # Not the default model, so the assertion below can't pass on a
         # broken fallback.
-        model = "bedrock_mantle/openai.gpt-5.6-sol"
+        model = "explicit-model"
         cache.set(SITE_CACHE_KEY, Site(assistant_model=model))
         with patch(
             "litigant_portal.app.selectors.site.bedrock_model_target"
@@ -200,21 +203,29 @@ class SiteAdminSettingsTests(TestCase):
         self.assertIsNone(Site.objects.get().judge_model)
 
     def test_settings_keep_an_unavailable_saved_model(self):
+        saved_model = MODEL_CHOICES[-1][0]
         with self.captureOnCommitCallbacks(execute=True):
-            site_update(fast_model="auto/zai.glm-flash")
-        response = self.client.get("/admin/")
-        enabled = {model for model, _ in MODEL_CHOICES}
+            site_update(fast_model=saved_model)
+        available_choices = tuple(
+            choice for choice in MODEL_CHOICES if choice[0] != saved_model
+        )
+        with patch(
+            "litigant_portal.app.views.pages.bedrock_model_choices",
+            return_value=available_choices,
+        ):
+            response = self.client.get("/admin/")
+        enabled = {model for model, _ in available_choices}
         for options in response.context["model_choices"].values():
             self.assertEqual({model for model, _ in options}, enabled)
         self.assertEqual(
             response.context["unavailable_model_choices"],
-            {"fast_model": "auto/zai.glm-flash"},
+            {"fast_model": saved_model},
         )
         response = self.client.post(
             "/api/admin/site/update/", {"court_name": "Changed"}
         )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["fast_model"], "auto/zai.glm-flash")
+        self.assertEqual(response.json()["fast_model"], saved_model)
 
     def test_settings_reject_new_unavailable_or_invalid_models(self):
         with patch(
@@ -333,6 +344,10 @@ class SiteModelMigrationTests(TestCase):
             self.assertEqual(
                 Site.objects.values_list(*migration.MODEL_FIELDS).get(),
                 (new, new, new),
+            )
+            self.assertEqual(
+                BedrockPolicy("us-east-1").preference(new)[0],
+                new.removeprefix("auto/"),
             )
             migration.restore_preferences(apps, schema_editor)
             self.assertEqual(

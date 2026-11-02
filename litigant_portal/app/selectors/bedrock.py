@@ -1,4 +1,5 @@
 import logging
+import time
 from dataclasses import dataclass
 
 from django.conf import settings
@@ -22,6 +23,7 @@ _REFRESH_SECONDS = 60
 class _CatalogEntry:
     value: BedrockCatalog | str
     invalidation: str | None
+    refresh_after: float
 
 
 def bedrock_policy() -> BedrockPolicy:
@@ -40,8 +42,12 @@ def bedrock_catalog_get() -> BedrockCatalog:
     invalidation = cache.get(f"{key}:invalidated")
     refresh = entry is None or (
         isinstance(entry.value, BedrockCatalog)
-        and invalidation is not None
-        and entry.invalidation != invalidation
+        and (
+            time.time() >= entry.refresh_after
+            or (
+                invalidation is not None and entry.invalidation != invalidation
+            )
+        )
     )
     if refresh:
         # Let the guard expire naturally; deleting it could release another
@@ -53,10 +59,12 @@ def bedrock_catalog_get() -> BedrockCatalog:
                     policy, settings.BEDROCK_API_KEY
                 )
                 timeout = 3600 if value.complete else 300
+                refresh_after = time.time() + (3300 if value.complete else 240)
             except BedrockDiscoveryError as error:
                 value, timeout = error.code, _REFRESH_SECONDS
+                refresh_after = time.time() + _REFRESH_SECONDS
                 logger.warning("Bedrock discovery failed (%s)", error.code)
-            entry = _CatalogEntry(value, invalidation)
+            entry = _CatalogEntry(value, invalidation, refresh_after)
             cache.set(key, entry, timeout=timeout)
         else:
             entry = cache.get(key)

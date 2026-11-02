@@ -21,7 +21,7 @@ Getting each court partner's own instance ready for its subject-matter experts t
 | Local dev   | AWS Bedrock   | `docker-compose.yml` + `.env`        |
 | CI          | None (mocked) | `tox.ini` — tests mock all providers |
 
-Model families are curated through `MODEL_MAPPING` and `MODEL_CHOICES` in `litigant_portal/agents/bedrock.py` and selected in admin settings. Unset assistant/fast roles use the first available Balanced/Economy model, currently GPT Terra/GPT Luna; the previous defaults were GPT Luna/Claude Haiku. Judging is disabled until selected. `site_get_model_target` resolves role preferences to concrete routes. `AWS_REGION` is optional and defaults to `us-east-1`; `BEDROCK_ALLOWED_GEOGRAPHY` is optional and defaults to `US`. Setup commands live under Commands below.
+Model families are curated through `MODEL_MAPPING` and `MODEL_CHOICES` in `litigant_portal/agents/bedrock.py` and selected in admin settings. Unset assistant/fast roles use the first available Balanced/Economy model, currently GPT Terra/GPT Luna; the previous defaults were GPT Luna/Claude Haiku. An unset assistant can fall back from Balanced to Economy; the fast role stays in Economy. Judging is disabled until selected. `site_get_model_target` resolves role preferences to concrete routes. `AWS_REGION` is optional and defaults to `us-east-1`; `BEDROCK_ALLOWED_GEOGRAPHY` is optional and defaults to `US`. Setup commands live under Commands below.
 
 ## Commands
 
@@ -203,7 +203,7 @@ The compact rules (sizing history, anchors, and calibration records are JI-team 
 
 **Cached database reads are invalidated at commit, never before.** A selector that caches wears a `timeout=None`, and every service that writes the same rows wears `@busts_cache(KEY)` from `services/utils.py`. Deferring the delete to commit is the whole point: an immediate delete lets a reader on another connection repopulate the key with the pre-commit value, and nothing busts it a second time, so the stale copy is permanent. The same rule binds management commands — `transaction.on_commit`, not a bare `cache.delete`.
 
-Bedrock catalog metadata is external to database transactions: complete snapshots expire after one hour, partial snapshots after five minutes, and discovery failures after one minute. Access-related invalidation signals a refresh; atomic cache guards limit refresh starts to once per minute per credential/configuration fingerprint. Failed refreshes fail closed without stale fallback. Discovery failures retain safe error codes without provider messages or credentials.
+Bedrock catalog metadata is external to database transactions: complete snapshots expire after one hour, partial snapshots after five minutes, and discovery failures after one minute. Complete and partial snapshots refresh on request after 55 and four minutes respectively, while concurrent readers can reuse the unexpired snapshot. Access-related invalidation signals a refresh; atomic cache guards limit refresh starts to once per minute per credential/configuration fingerprint. Failed refreshes fail closed without stale fallback. Discovery failures retain safe error codes without provider messages or credentials.
 
 **Permissions.** Admin access is the `app.manage_site` and `app.manage_developers` permissions, carried by the `Admins` and `Developers` groups (provisioned by a `post_migrate` receiver in `signals.py`). Check them with `request.user.has_perm(...)` in views and `{% if perms.app.manage_site %}` in templates — don't wrap either in a selector. Page views use Django's `@permission_required(..., raise_exception=True)`; the JSON API keeps its own `manage_site_required` / `manage_developers_required` decorators, because the built-in renders an HTML 403 where those endpoints must return a JSON body. These are deliberately separate from the auto-generated `add/change/delete/view` permissions that gate Django admin. Full reference: [`docs/wiki/permissions.md`](docs/wiki/permissions.md).
 
@@ -351,7 +351,7 @@ No WebSockets, no Django Channels - just SSE over standard HTTP.
 
 ### LLM Provider
 
-Using **LiteLLM**. All models are served through AWS Bedrock (credential: `AWS_BEARER_TOKEN_BEDROCK`). `site_get_model_target(role="assistant")` resolves the Site's preference to a concrete route, using the first available Balanced model when unset. `MODEL_MAPPING` and `MODEL_CHOICES` in `agents/bedrock.py` define the enabled families and tier order; portal selectors discover account availability and build versioned labels. Direct `chat_stream` callers can supply a strict model-string override for evaluations, while HTTP callers use site settings.
+Using **LiteLLM**. All models are served through AWS Bedrock (credential: `AWS_BEARER_TOKEN_BEDROCK`). `site_get_model_target(role="assistant")` resolves the Site's preference to a concrete route, preferring Balanced and falling back only to Economy when unset. `MODEL_MAPPING` and `MODEL_CHOICES` in `agents/bedrock.py` define the enabled families and tier order; portal selectors discover account availability and build versioned labels. Direct `chat_stream` callers can supply a strict model-string override for evaluations, while HTTP callers use site settings.
 
 ## Key Files
 

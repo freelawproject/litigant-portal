@@ -45,6 +45,7 @@ from litigant_portal.app.views.assistant import stream
 
 OLD_MODEL = "anthropic.claude-haiku-4-5-20251001-v1:0"
 NEW_MODEL = "anthropic.claude-haiku-5-5"
+GPT_MODEL = "openai.gpt-99-luna"
 
 
 def _native_payload(
@@ -200,6 +201,23 @@ def reader_tool(reader_catalog, upload, monkeypatch):
     ), uploads
 
 
+def test_defaults_fall_back_only_to_cheaper_tiers(monkeypatch):
+    monkeypatch.setattr(
+        bedrock,
+        "model_tiers",
+        lambda: {
+            "cheap": "economy",
+            "preferred": "balanced",
+            "premium": "best",
+        },
+    )
+    assert bedrock.default_model("assistant", {"cheap", "premium"}) == "cheap"
+    with pytest.raises(BedrockModelUnavailable):
+        bedrock.default_model("assistant", {"premium"})
+    with pytest.raises(BedrockModelUnavailable):
+        bedrock.default_model("fast", {"preferred", "premium"})
+
+
 def test_non_us_geography_is_rejected():
     with pytest.raises(BedrockModelUnavailable, match="Only US"):
         BedrockPolicy("eu-west-1", "EU")
@@ -216,11 +234,8 @@ def test_non_us_geography_is_rejected():
     ],
 )
 def test_family_selection_preserves_version_pins(
-    catalog, monkeypatch, preference, older, newer
+    catalog, preference, older, newer
 ):
-    monkeypatch.setitem(
-        bedrock.MODEL_CHOICES, "best", ["GPT Sol", "GLM Flash"]
-    )
     catalog = replace(
         catalog,
         native=tuple(
@@ -430,16 +445,20 @@ def test_catalog_cache_is_shared_and_scoped(
     assert loaded_catalog.call_count == 4
 
 
-def test_partial_discovery_cache_expires_after_five_minutes(
-    loaded_catalog, clock
+@pytest.mark.parametrize(
+    "complete, refresh_after", [(True, 55 * 60), (False, 4 * 60)]
+)
+def test_catalog_refreshes_before_expiry(
+    loaded_catalog, clock, complete, refresh_after
 ):
     loaded_catalog.return_value = replace(
-        loaded_catalog.return_value, complete=False
+        loaded_catalog.return_value, complete=complete
     )
-    for _ in range(2):
-        bedrock_model_target(model="auto/anthropic.haiku")
+    bedrock_model_target(model="auto/anthropic.haiku")
+    clock.return_value += refresh_after - 1
+    bedrock_model_target(model="auto/anthropic.haiku")
     loaded_catalog.assert_called_once()
-    clock.return_value += 301
+    clock.return_value += 2
     bedrock_model_target(model="auto/anthropic.haiku")
     assert loaded_catalog.call_count == 2
 
@@ -498,12 +517,13 @@ def test_discovery_failure_cache_expires_and_sanitizes_errors(
     assert client.list_foundation_models.call_count == 2
 
 
-def test_failed_refresh_does_not_reuse_an_expired_catalog(
-    loaded_catalog, clock
+@pytest.mark.parametrize("elapsed", [55 * 60 + 1, 60 * 60 + 1])
+def test_failed_refresh_does_not_reuse_a_previous_catalog(
+    loaded_catalog, clock, elapsed
 ):
     bedrock_model_target(model="auto/anthropic.haiku")
     loaded_catalog.side_effect = BedrockDiscoveryError("ThrottlingException")
-    clock.return_value += 3601
+    clock.return_value += elapsed
     for _ in range(2):
         with pytest.raises(BedrockDiscoveryError, match="ThrottlingException"):
             bedrock_model_target(model="auto/anthropic.haiku")
@@ -566,14 +586,17 @@ def test_inference_errors_invalidate_only_access_metadata(
     assert loaded_catalog.call_count == discoveries
 
 
-def test_concurrent_cold_requests_share_a_refresh(loaded_catalog):
+@pytest.mark.parametrize("warm", [False, True])
+def test_concurrent_requests_share_a_refresh(loaded_catalog, clock, warm):
+    if warm:
+        bedrock_model_target(model="auto/anthropic.haiku")
+        clock.return_value += 60 * 60 - 10
     started, release = Event(), Event()
     snapshot = loaded_catalog.return_value
 
     def discover(*args):
-        if loaded_catalog.call_count == 1:
-            started.set()
-            assert release.wait(timeout=5)
+        started.set()
+        assert release.wait(timeout=5)
         return snapshot
 
     loaded_catalog.side_effect = discover
@@ -581,12 +604,17 @@ def test_concurrent_cold_requests_share_a_refresh(loaded_catalog):
         first = pool.submit(bedrock_model_target, model="auto/anthropic.haiku")
         try:
             assert started.wait(timeout=5)
+            if warm:
+                assert bedrock_model_target(
+                    model="auto/anthropic.haiku"
+                ).model.endswith(NEW_MODEL)
+                clock.return_value += 11
             with pytest.raises(BedrockModelUnavailable, match="in progress"):
                 bedrock_model_target(model="auto/anthropic.haiku")
         finally:
             release.set()
         assert first.result().model.endswith(NEW_MODEL)
-    loaded_catalog.assert_called_once()
+    assert loaded_catalog.call_count == (2 if warm else 1)
 
 
 def test_invalidation_during_refresh_is_not_lost(loaded_catalog, clock):
@@ -615,9 +643,7 @@ def test_invalidation_during_refresh_is_not_lost(loaded_catalog, clock):
         ("INFERENCE_PROFILE", True),
     ],
 )
-def test_resolved_gpt_routes_use_real_pricing_and_series_effort(
-    inference_type, mantle
-):
+def test_resolved_gpt_routes_apply_small_task_effort(inference_type, mantle):
     model_id = "openai.gpt-5.6-terra"
     native = FoundationModel.model_validate(
         _native_payload(model_id, inference_type=inference_type)
@@ -631,9 +657,6 @@ def test_resolved_gpt_routes_use_real_pricing_and_series_effort(
     target = resolve_catalog(
         snapshot, BedrockPolicy("us-east-1"), "auto/openai.terra"
     )
-    assert target.completion_cost(
-        {"prompt_tokens": 1000, "completion_tokens": 100}
-    ) == pytest.approx(0.00352)
     assert (
         target.invocation_options(small_task=True)["reasoning_effort"] == "low"
     )
@@ -641,48 +664,39 @@ def test_resolved_gpt_routes_use_real_pricing_and_series_effort(
 
 
 @pytest.mark.parametrize(
-    "model_id, preference, region, mantle, expected",
+    "billing_model, provider",
     [
-        (OLD_MODEL, "auto/anthropic.haiku", "us-east-1", False, 0.0015),
-        (OLD_MODEL, "auto/anthropic.haiku", "us-gov-west-1", False, 0.0018),
-        (
-            "openai.gpt-5.6-terra",
-            "auto/openai.terra",
-            "us-gov-west-1",
-            True,
-            0.00432,
-        ),
+        (OLD_MODEL, "bedrock"),
+        (f"bedrock_mantle/{GPT_MODEL}", "bedrock_mantle"),
     ],
 )
-def test_pricing_preserves_native_and_govcloud_rates(
-    model_id, preference, region, mantle, expected
-):
-    native = FoundationModel.model_validate(
-        _native_payload(model_id, inference_type="ON_DEMAND")
+def test_pricing_prefers_exact_regional_rates(billing_model, provider):
+    import litellm
+
+    region = "us-gov-west-1"
+    regional = (
+        f"{provider}/{region}/{billing_model.removeprefix('bedrock_mantle/')}"
     )
-    snapshot = BedrockCatalog(
-        () if mantle else (native,),
-        (MantleModel(id=model_id, created=native.released),) if mantle else (),
-        (),
-        authorized_model_ids=frozenset({model_id}),
+    target = ResolvedBedrockModel(
+        billing_model, region, billing_model=billing_model
     )
-    target = resolve_catalog(snapshot, BedrockPolicy(region), preference)
-    assert target.completion_cost(
-        {"prompt_tokens": 1000, "completion_tokens": 100}
-    ) == pytest.approx(expected)
+    with patch.dict(
+        litellm.model_cost, {billing_model: {}, regional: {}}, clear=True
+    ):
+        assert target.pricing_model() == regional
 
 
-def test_unpriced_govcloud_gpt_does_not_borrow_commercial_rates():
-    from litellm import BadRequestError
+def test_commercial_pricing_alias_is_not_used_in_govcloud():
+    import litellm
 
     target = ResolvedBedrockModel(
-        "bedrock/converse/us-gov-west-1/openai.gpt-5.6-terra",
-        "us-gov-west-1",
-        billing_model="openai.gpt-5.6-terra",
+        GPT_MODEL, "us-east-1", billing_model=GPT_MODEL
     )
-    with pytest.raises(BadRequestError):
-        target.completion_cost(
-            {"prompt_tokens": 1000, "completion_tokens": 100}
+    with patch.dict(litellm.model_cost, {f"us.{GPT_MODEL}": {}}, clear=True):
+        assert target.pricing_model() == f"us.{GPT_MODEL}"
+        assert (
+            replace(target, region="us-gov-west-1").pricing_model()
+            == GPT_MODEL
         )
 
 
@@ -848,27 +862,3 @@ def test_document_reader_uses_the_resolved_route_and_required_capabilities(
     assert cache.get(SITE_CACHE_KEY).assistant_model == "auto/openai.terra"
     assert output.result == output.render_data["response"] == "Answer"
     assert output.cost == 0.001
-
-
-def test_cost_uses_the_resolved_bedrock_billing_identity():
-    import litellm
-
-    billing_model = "bedrock_mantle/openai.gpt-99-luna"
-    target = ResolvedBedrockModel(
-        "bedrock_mantle/us-east-1/openai.gpt-99-luna",
-        "us-east-1",
-        billing_model=billing_model,
-    )
-    with patch.dict(
-        litellm.model_cost,
-        {
-            billing_model: {
-                "litellm_provider": "bedrock_mantle",
-                "input_cost_per_token": 0.000001,
-                "output_cost_per_token": 0.000002,
-            }
-        },
-    ):
-        assert target.completion_cost(
-            {"prompt_tokens": 10, "completion_tokens": 7}
-        ) == pytest.approx(0.000024)

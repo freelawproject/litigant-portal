@@ -63,7 +63,7 @@ MODEL_MAPPING: dict[str, str] = {
     "auto/zai.glm-flash": "GLM Flash",
 }
 MODEL_CHOICES: dict[str, list[str]] = {
-    "economy": ["GPT Luna", "Claude Haiku"],
+    "economy": ["GPT Luna", "Claude Haiku", "GLM Flash"],
     "balanced": ["GPT Terra"],
     "best": ["GPT Sol"],
 }
@@ -139,14 +139,16 @@ def model_choices() -> tuple[tuple[str, str], ...]:
 
 def default_model(role: str, available: Collection[str]) -> str:
     """
-    Choose the first available model in the role's default tier.
+    Prefer the role's default tier, allowing only cheaper-tier fallbacks.
     """
-    tier = {"fast": "economy", "assistant": "balanced"}[role]
-    for model, model_tier in model_tiers().items():
-        if model_tier == tier and model in available:
-            return model
+    tiers = {"fast": ("economy",), "assistant": ("balanced", "economy")}[role]
+    enabled = model_tiers()
+    for tier in tiers:
+        for model, model_tier in enabled.items():
+            if model_tier == tier and model in available:
+                return model
     raise BedrockModelUnavailable(
-        f"No available {tier} model for the {role} role."
+        f"No available model in the allowed tiers for the {role} role."
     )
 
 
@@ -296,14 +298,18 @@ class ResolvedBedrockModel:
             options["reasoning_effort"] = self.small_task_effort
         return options
 
-    def completion_cost(self, usage: BaseModel | dict) -> float:
+    def pricing_model(self) -> str:
         """
-        Price the resolved Bedrock route, independent of transport metadata.
+        Resolve a pricing identity without changing the invocation route.
         """
-        from litellm import completion_cost, model_cost
+        from litellm import model_cost
 
         billing_model = self.billing_model or self.model
-        regional = f"bedrock/{self.region}/{billing_model}"
+        regional = (
+            f"bedrock_mantle/{self.region}/{billing_model.removeprefix('bedrock_mantle/')}"
+            if billing_model.startswith("bedrock_mantle/")
+            else f"bedrock/{self.region}/{billing_model}"
+        )
         identity = model_class(billing_model)
         if regional in model_cost:
             billing_model = regional
@@ -319,13 +325,21 @@ class ResolvedBedrockModel:
             # the same release. This changes pricing identity, never routing.
             billing_model = alias_model
 
+        return billing_model
+
+    def completion_cost(self, usage: BaseModel | dict) -> float:
+        """
+        Price the resolved Bedrock route, independent of transport metadata.
+        """
+        from litellm import completion_cost
+
         return completion_cost(
             completion_response={
                 "usage": usage.model_dump()
                 if isinstance(usage, BaseModel)
                 else usage,
             },
-            model=billing_model,
+            model=self.pricing_model(),
             region_name=self.region,
         )
 
