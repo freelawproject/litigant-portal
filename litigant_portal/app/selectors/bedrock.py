@@ -55,10 +55,13 @@ def bedrock_model_target(
 
 
 def bedrock_model_list(
-    *, required: frozenset[str] = frozenset({"text"})
+    *,
+    required: frozenset[str] = frozenset({"text"}),
+    catalog: BedrockCatalog | None = None,
 ) -> dict[str, ResolvedBedrockModel]:
     policy = bedrock_policy()
-    catalog = bedrock_catalog_get()
+    if catalog is None:
+        catalog = bedrock_catalog_get()
     available = {}
     for model in bedrock.model_tiers():
         try:
@@ -71,9 +74,11 @@ def bedrock_model_list(
 
 
 def bedrock_model_choices(
-    *, role: str = "fast"
+    *, role: str = "fast", catalog: BedrockCatalog | None = None
 ) -> tuple[tuple[str, str], ...]:
-    available = bedrock_model_list(required=bedrock.model_requirements(role))
+    available = bedrock_model_list(
+        required=bedrock.model_requirements(role), catalog=catalog
+    )
     tiers = bedrock.model_tiers()
     choices = []
     for model, target in available.items():

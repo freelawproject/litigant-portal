@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 from botocore.exceptions import ClientError
 from django.core.cache import cache
+from django.core.files.base import ContentFile
 from django.test import RequestFactory
 from openai import APIConnectionError
 
@@ -18,19 +19,23 @@ from litigant_portal.agents.bedrock import (
     FoundationModel,
     InferenceProfile,
     MantleModel,
+    ResolvedBedrockModel,
     resolve_catalog,
 )
 from litigant_portal.app.cache import SITE_CACHE_KEY
-from litigant_portal.app.models import ChatThread, Site
+from litigant_portal.app.models import (
+    ChatThread,
+    Site,
+    UserIdentity,
+    UserUpload,
+)
 from litigant_portal.app.selectors.bedrock import (
     bedrock_model_choices,
     bedrock_model_target,
 )
+from litigant_portal.app.services import chat_engine as engine
 from litigant_portal.app.services.bedrock import (
     bedrock_catalog_invalidate_on_error,
-)
-from litigant_portal.app.services.chat_engine import (
-    chat_thread_generate_description,
 )
 from litigant_portal.app.views.assistant import stream
 
@@ -38,44 +43,56 @@ OLD_MODEL = "anthropic.claude-haiku-4-5-20251001-v1:0"
 NEW_MODEL = "anthropic.claude-haiku-5-5"
 
 
+def _native_payload(
+    model_id: str,
+    year: int = 2026,
+    *,
+    inference_type: str = "INFERENCE_PROFILE",
+) -> dict:
+    return {
+        "modelId": model_id,
+        "inputModalities": ["TEXT", "IMAGE"],
+        "outputModalities": ["TEXT"],
+        "inferenceTypesSupported": [inference_type],
+        "responseStreamingSupported": True,
+        "modelLifecycle": {
+            "status": "ACTIVE",
+            "startOfLifeTime": datetime(year, 10, 1, tzinfo=UTC),
+        },
+    }
+
+
+def _profile_payload(
+    model_id: str, *, prefix: str = "us", region: str = "us-east-1"
+) -> dict:
+    return {
+        "inferenceProfileId": f"{prefix}.{model_id}",
+        "type": "SYSTEM_DEFINED",
+        "status": "ACTIVE",
+        "models": [
+            {
+                "modelArn": f"arn:aws:bedrock:{region}::foundation-model/{model_id}"
+            }
+        ],
+    }
+
+
 @pytest.fixture
-def catalog():
-    native = tuple(
-        FoundationModel.model_validate(
-            {
-                "modelId": model_id,
-                "inputModalities": ["TEXT", "IMAGE"],
-                "outputModalities": ["TEXT"],
-                "inferenceTypesSupported": ["INFERENCE_PROFILE"],
-                "responseStreamingSupported": True,
-                "modelLifecycle": {
-                    "status": "ACTIVE",
-                    "startOfLifeTime": datetime(year, 10, 1, tzinfo=UTC),
-                },
-            }
-        )
-        for model_id, year in ((OLD_MODEL, 2025), (NEW_MODEL, 2026))
-    )
-    profiles = tuple(
-        InferenceProfile.model_validate(
-            {
-                "inferenceProfileId": f"us.{model.model_id}",
-                "type": "SYSTEM_DEFINED",
-                "status": "ACTIVE",
-                "models": [
-                    {
-                        "modelArn": f"arn:aws:bedrock:us-east-1::foundation-model/{model.model_id}"
-                    }
-                ],
-            }
-        )
-        for model in native
-    )
+def catalog_payloads():
+    native = [_native_payload(OLD_MODEL, 2025), _native_payload(NEW_MODEL)]
+    return native, [_profile_payload(model["modelId"]) for model in native]
+
+
+@pytest.fixture
+def catalog(catalog_payloads):
+    native, profiles = catalog_payloads
     return BedrockCatalog(
-        native,
+        tuple(FoundationModel.model_validate(model) for model in native),
         (),
-        profiles,
-        authorized_model_ids=frozenset({OLD_MODEL, NEW_MODEL}),
+        tuple(
+            InferenceProfile.model_validate(profile) for profile in profiles
+        ),
+        authorized_model_ids=frozenset(model["modelId"] for model in native),
     )
 
 
@@ -87,6 +104,74 @@ def loaded_catalog(catalog, settings, monkeypatch):
     load = Mock(return_value=catalog)
     monkeypatch.setattr(bedrock, "discover_catalog", load)
     return load
+
+
+@pytest.fixture
+def clock(monkeypatch):
+    now = Mock(return_value=time())
+    monkeypatch.setattr("django.core.cache.backends.base.time.time", now)
+    return now
+
+
+@pytest.fixture
+def reader_catalog(loaded_catalog):
+    terra = FoundationModel.model_validate(
+        _native_payload("openai.gpt-5.6-terra", inference_type="ON_DEMAND")
+    )
+    loaded_catalog.return_value = replace(
+        loaded_catalog.return_value,
+        native=(*loaded_catalog.return_value.native, terra),
+        authorized_model_ids=loaded_catalog.return_value.authorized_model_ids
+        | {terra.model_id},
+    )
+    return loaded_catalog
+
+
+@pytest.fixture
+def completion(monkeypatch):
+    response = SimpleNamespace(
+        choices=[
+            SimpleNamespace(
+                message=SimpleNamespace(content=" Name Change Help "),
+                finish_reason="stop",
+            )
+        ],
+        usage=SimpleNamespace(total_tokens=16),
+    )
+    complete = Mock(return_value=response)
+    monkeypatch.setattr("litellm.completion", complete)
+    monkeypatch.setattr("litellm.completion_cost", Mock(return_value=0.001))
+    return complete
+
+
+@pytest.fixture
+def title_thread(monkeypatch):
+    thread = ChatThread()
+    thread.save = Mock()
+    monkeypatch.setattr(
+        engine,
+        "chat_message_list",
+        Mock(
+            return_value=[
+                SimpleNamespace(data={"role": "user", "content": "Help"})
+            ],
+        ),
+    )
+    inject = Mock()
+    monkeypatch.setattr(engine, "chat_message_inject_meta", inject)
+    return thread, inject
+
+
+@pytest.fixture
+def upload():
+    return UserUpload(
+        identity=UserIdentity(),
+        name="example",
+        size=4,
+        pages=1,
+        text_chars=4,
+        file=ContentFile(b"test", name="example"),
+    )
 
 
 def test_non_us_geography_is_rejected():
@@ -113,15 +198,10 @@ def test_family_selection_preserves_version_pins(
     catalog = replace(
         catalog,
         native=tuple(
-            model.model_copy(
-                update={
-                    "model_id": model_id,
-                    "inference_types": frozenset({"ON_DEMAND"}),
-                }
+            FoundationModel.model_validate(
+                _native_payload(model_id, year, inference_type="ON_DEMAND")
             )
-            for model, model_id in zip(
-                catalog.native, (older, newer), strict=True
-            )
+            for model_id, year in ((older, 2025), (newer, 2026))
         ),
         authorized_model_ids=frozenset({older, newer}),
     )
@@ -133,89 +213,44 @@ def test_family_selection_preserves_version_pins(
 
 
 @pytest.mark.parametrize(
-    "native_updates, profile_prefix, destination_region, authorized, expected",
+    "native_updates, profile_updates, authorized, expected",
     [
-        pytest.param(
-            {"inference_types": frozenset({"ON_DEMAND"})},
-            "us",
-            "us-east-1",
-            {OLD_MODEL, NEW_MODEL},
-            NEW_MODEL,
-            id="regional",
-        ),
-        pytest.param(
-            {},
-            "us",
-            "us-east-1",
-            {OLD_MODEL, NEW_MODEL},
-            f"us.{NEW_MODEL}",
-            id="profile",
-        ),
-        pytest.param(
-            {},
-            "global",
-            "us-east-1",
-            {OLD_MODEL, NEW_MODEL},
-            f"us.{OLD_MODEL}",
-            id="global",
-        ),
-        pytest.param(
-            {},
-            "us",
-            "eu-west-1",
-            {OLD_MODEL, NEW_MODEL},
-            f"us.{OLD_MODEL}",
-            id="foreign",
-        ),
-        pytest.param(
-            {}, "us", "us-east-1", {OLD_MODEL}, f"us.{OLD_MODEL}", id="denied"
-        ),
-        pytest.param(
-            {"status": "LEGACY"},
-            "us",
-            "us-east-1",
-            {OLD_MODEL, NEW_MODEL},
-            f"us.{OLD_MODEL}",
-            id="inactive",
-        ),
-        pytest.param(
-            {"released": None},
-            "us",
-            "us-east-1",
-            {OLD_MODEL, NEW_MODEL},
-            f"us.{OLD_MODEL}",
-            id="timestamp",
-        ),
+        ({"inference_types": frozenset({"ON_DEMAND"})}, {}, None, NEW_MODEL),
+        ({}, {}, None, f"us.{NEW_MODEL}"),
+        ({}, {"prefix": "global"}, None, f"us.{OLD_MODEL}"),
+        ({}, {"region": "eu-west-1"}, None, f"us.{OLD_MODEL}"),
+        ({}, {}, {OLD_MODEL}, f"us.{OLD_MODEL}"),
+        ({"status": "LEGACY"}, {}, None, f"us.{OLD_MODEL}"),
+        ({"released": None}, {}, None, f"us.{OLD_MODEL}"),
+    ],
+    ids=[
+        "regional",
+        "profile",
+        "global",
+        "foreign",
+        "denied",
+        "inactive",
+        "timestamp",
     ],
 )
 def test_us_route_eligibility(
-    catalog,
-    native_updates,
-    profile_prefix,
-    destination_region,
-    authorized,
-    expected,
+    catalog, native_updates, profile_updates, authorized, expected
 ):
-    newest = catalog.native[1].model_copy(update=native_updates)
-    profile = catalog.profiles[1].model_copy(
-        update={
-            "id": f"{profile_prefix}.{NEW_MODEL}",
-            "models": (
-                catalog.profiles[1]
-                .models[0]
-                .model_copy(
-                    update={
-                        "arn": f"arn:aws:bedrock:{destination_region}::foundation-model/{NEW_MODEL}",
-                    }
-                ),
-            ),
-        }
-    )
     catalog = replace(
         catalog,
-        native=(catalog.native[0], newest),
-        profiles=(catalog.profiles[0], profile),
-        authorized_model_ids=frozenset(authorized),
+        native=(
+            catalog.native[0],
+            catalog.native[1].model_copy(update=native_updates),
+        ),
+        profiles=(
+            catalog.profiles[0],
+            InferenceProfile.model_validate(
+                _profile_payload(NEW_MODEL, **profile_updates)
+            ),
+        ),
+        authorized_model_ids=catalog.authorized_model_ids
+        if authorized is None
+        else frozenset(authorized),
     )
     target = resolve_catalog(
         catalog, BedrockPolicy("us-east-1"), "auto/anthropic.haiku"
@@ -225,30 +260,17 @@ def test_us_route_eligibility(
 
 def test_endpoint_capabilities_choose_a_compatible_route(catalog):
     model_id = "openai.gpt-6-luna"
-    model = catalog.native[1].model_copy(update={"model_id": model_id})
-    profile = catalog.profiles[1].model_copy(
-        update={
-            "id": f"us.{model_id}",
-            "models": (
-                catalog.profiles[1]
-                .models[0]
-                .model_copy(
-                    update={
-                        "arn": f"arn:aws:bedrock:us-east-1::foundation-model/{model_id}"
-                    }
-                ),
-            ),
-        }
-    )
+    model = FoundationModel.model_validate(_native_payload(model_id))
     catalog = replace(
         catalog,
         native=(model,),
-        profiles=(profile,),
+        profiles=(
+            InferenceProfile.model_validate(_profile_payload(model_id)),
+        ),
         mantle=(MantleModel(id=model_id, created=model.released),),
         authorized_model_ids=frozenset({model_id}),
     )
-    policy = BedrockPolicy("us-east-1")
-    preference = "auto/openai.luna"
+    policy, preference = BedrockPolicy("us-east-1"), "auto/openai.luna"
     assert resolve_catalog(catalog, policy, preference).model.startswith(
         "bedrock_mantle/"
     )
@@ -266,7 +288,7 @@ def test_endpoint_capabilities_choose_a_compatible_route(catalog):
 
 
 @pytest.fixture
-def discovery_clients(catalog, monkeypatch):
+def discovery_clients(catalog_payloads, monkeypatch):
     client = Mock(
         spec=[
             "list_foundation_models",
@@ -275,24 +297,10 @@ def discovery_clients(catalog, monkeypatch):
             "close",
         ]
     )
-    payload = [
-        model.model_dump(by_alias=True, exclude={"status", "released"})
-        | {
-            "modelLifecycle": {
-                "status": model.status,
-                "startOfLifeTime": model.released,
-            }
-        }
-        for model in catalog.native
-    ]
+    payload, profiles = catalog_payloads
     client.list_foundation_models.return_value = {"modelSummaries": payload}
     client.get_paginator.return_value.paginate.return_value = [
-        {
-            "inferenceProfileSummaries": [
-                profile.model_dump(by_alias=True)
-                for profile in catalog.profiles
-            ],
-        }
+        {"inferenceProfileSummaries": profiles}
     ]
     client.get_foundation_model_availability.return_value = {
         "authorizationStatus": "AUTHORIZED",
@@ -377,7 +385,7 @@ def test_discovery_rejects_malformed_metadata(discovery_clients):
         bedrock.discover_catalog(BedrockPolicy("us-east-1"), "test-key")
 
 
-def test_catalog_cache_is_shared_scoped_and_invalidated(
+def test_catalog_cache_is_shared_and_scoped(
     loaded_catalog, settings, monkeypatch
 ):
     for role in ("fast", "assistant", "judge"):
@@ -394,60 +402,44 @@ def test_catalog_cache_is_shared_scoped_and_invalidated(
     monkeypatch.setitem(bedrock.MODEL_CHOICES, "best", [])
     bedrock_model_target(model="auto/anthropic.haiku")
     assert loaded_catalog.call_count == 4
-    loaded_catalog.return_value = replace(
-        loaded_catalog.return_value,
-        authorized_model_ids=frozenset({OLD_MODEL}),
-    )
-    bedrock_catalog_invalidate_on_error(SimpleNamespace(status_code=403))
-    assert bedrock_model_target(model="auto/anthropic.haiku").model.endswith(
-        OLD_MODEL
-    )
-    assert loaded_catalog.call_count == 5
 
 
-def test_partial_discovery_cache_expires_after_five_minutes(loaded_catalog):
+def test_partial_discovery_cache_expires_after_five_minutes(
+    loaded_catalog, clock
+):
     loaded_catalog.return_value = replace(
         loaded_catalog.return_value, complete=False
     )
     for _ in range(2):
         bedrock_model_target(model="auto/anthropic.haiku")
     loaded_catalog.assert_called_once()
-    with patch(
-        "django.core.cache.backends.base.time.time", return_value=time() + 301
-    ):
-        bedrock_model_target(model="auto/anthropic.haiku")
+    clock.return_value += 301
+    bedrock_model_target(model="auto/anthropic.haiku")
     assert loaded_catalog.call_count == 2
 
 
-def test_discovery_failure_cache_expires_and_sanitizes_errors(loaded_catalog):
+def test_discovery_failure_cache_expires_and_sanitizes_errors(
+    loaded_catalog, clock
+):
     loaded_catalog.side_effect = BedrockModelUnavailable("provider-secret")
     for _ in range(2):
         with pytest.raises(BedrockModelUnavailable) as error:
             bedrock_model_target(model="auto/anthropic.haiku")
         assert "provider-secret" not in str(error.value)
     loaded_catalog.assert_called_once()
-    with (
-        patch(
-            "django.core.cache.backends.base.time.time",
-            return_value=time() + 301,
-        ),
-        pytest.raises(BedrockModelUnavailable),
-    ):
+    clock.return_value += 301
+    with pytest.raises(BedrockModelUnavailable):
         bedrock_model_target(model="auto/anthropic.haiku")
     assert loaded_catalog.call_count == 2
 
 
-def test_complete_catalog_lasts_one_hour(loaded_catalog):
+def test_complete_catalog_lasts_one_hour(loaded_catalog, clock):
     bedrock_model_target(model="auto/anthropic.haiku")
-    with patch(
-        "django.core.cache.backends.base.time.time", return_value=time() + 301
-    ):
-        bedrock_model_target(model="auto/anthropic.haiku")
+    clock.return_value += 301
+    bedrock_model_target(model="auto/anthropic.haiku")
     loaded_catalog.assert_called_once()
-    with patch(
-        "django.core.cache.backends.base.time.time", return_value=time() + 3601
-    ):
-        bedrock_model_target(model="auto/anthropic.haiku")
+    clock.return_value += 3300
+    bedrock_model_target(model="auto/anthropic.haiku")
     assert loaded_catalog.call_count == 2
 
 
@@ -458,8 +450,13 @@ def test_inference_errors_invalidate_only_access_metadata(
     loaded_catalog, status, discoveries
 ):
     bedrock_model_target(model="auto/anthropic.haiku")
+    loaded_catalog.return_value = replace(
+        loaded_catalog.return_value,
+        authorized_model_ids=frozenset({OLD_MODEL}),
+    )
     bedrock_catalog_invalidate_on_error(SimpleNamespace(status_code=status))
-    bedrock_model_target(model="auto/anthropic.haiku")
+    target = bedrock_model_target(model="auto/anthropic.haiku")
+    assert target.model.endswith(OLD_MODEL if discoveries == 2 else NEW_MODEL)
     assert loaded_catalog.call_count == discoveries
 
 
@@ -467,6 +464,14 @@ def test_model_choice_labels_include_the_resolved_version(loaded_catalog):
     assert bedrock_model_choices() == (
         ("auto/anthropic.haiku", "Claude Haiku 5.5 (Economy)"),
     )
+
+
+def test_model_choices_reuse_the_supplied_catalog(catalog, loaded_catalog):
+    assert bedrock_model_choices(role="assistant", catalog=catalog) == (
+        ("auto/anthropic.haiku", "Claude Haiku 5.5 (Economy)"),
+    )
+    assert bedrock_model_choices(catalog=BedrockCatalog((), (), ())) == ()
+    loaded_catalog.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -482,22 +487,10 @@ def test_model_choice_labels_include_the_resolved_version(loaded_catalog):
     ],
 )
 def test_reader_prefers_a_capable_assistant_then_falls_back(
-    loaded_catalog, selected, required, expected
+    reader_catalog, selected, required, expected
 ):
     from litigant_portal.app.selectors.site import site_get_reader_model_target
 
-    terra = loaded_catalog.return_value.native[1].model_copy(
-        update={
-            "model_id": "openai.gpt-5.6-terra",
-            "inference_types": frozenset({"ON_DEMAND"}),
-        }
-    )
-    loaded_catalog.return_value = replace(
-        loaded_catalog.return_value,
-        native=(*loaded_catalog.return_value.native, terra),
-        authorized_model_ids=loaded_catalog.return_value.authorized_model_ids
-        | {terra.model_id},
-    )
     site = Site(assistant_model=selected)
     cache.set(SITE_CACHE_KEY, site)
     target = site_get_reader_model_target(required=required)
@@ -506,25 +499,16 @@ def test_reader_prefers_a_capable_assistant_then_falls_back(
 
 
 @pytest.mark.parametrize("content_type", ["application/pdf", "image/png"])
-def test_hydration_stubs_unsupported_native_parts(content_type):
-    from io import BytesIO
-
+def test_hydration_stubs_unsupported_native_parts(content_type, upload):
     from litigant_portal.app.services.upload import user_upload_llm_parts
 
-    upload = SimpleNamespace(
-        id="attachment",
-        name="example",
-        content_type=content_type,
-        size=4,
-        pages=1,
-        text_chars=None,
-        file=Mock(open=Mock(return_value=BytesIO(b"test"))),
-    )
+    upload.content_type = content_type
+    upload_id = str(upload.id)
     parts = user_upload_llm_parts(
         history=[
-            {"role": "user", "content": "Read", "attachments": ["attachment"]}
+            {"role": "user", "content": "Read", "attachments": [upload_id]}
         ],
-        cache={"uploads": {"attachment": upload}},
+        cache={"uploads": {upload_id: upload}},
         capabilities=frozenset({"text"}),
     )
     assert parts[0][1]["type"] == "text"
@@ -547,45 +531,23 @@ def test_reader_reports_when_no_enabled_model_is_capable(loaded_catalog):
     "content, finish_reason", [("", "stop"), ("Partial", "length")]
 )
 def test_gpt_title_budget_and_empty_or_truncated_diagnostics(
-    content, finish_reason, caplog
+    title_thread, completion, monkeypatch, content, finish_reason, caplog
 ):
-    from litigant_portal.agents.bedrock import ResolvedBedrockModel
-
     target = ResolvedBedrockModel(
         "bedrock/converse/us-east-1/us.openai.gpt-5.6-luna",
         "us-east-1",
         billing_model="us.openai.gpt-5.6-luna",
     )
-    thread = ChatThread()
-    thread.save = Mock()
-    response = SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(content=content),
-                finish_reason=finish_reason,
-            )
-        ],
-        usage=None,
+    monkeypatch.setattr(
+        engine, "site_get_model_target", lambda **kwargs: target
     )
-    with (
-        patch(
-            "litigant_portal.app.services.chat_engine.site_get_model_target",
-            return_value=target,
-        ),
-        patch(
-            "litigant_portal.app.services.chat_engine.chat_message_list",
-            return_value=[],
-        ),
-        patch(
-            "litigant_portal.app.services.chat_engine.chat_message_inject_meta"
-        ),
-        patch("litellm.completion", return_value=response) as complete,
-        patch("litellm.completion_cost", return_value=0),
-    ):
-        assert chat_thread_generate_description(thread=thread) == content
-    assert complete.call_args.kwargs["max_tokens"] == 1024
-    assert complete.call_args.kwargs["reasoning_effort"] == "low"
-    complete.assert_called_once()
+    choice = completion.return_value.choices[0]
+    choice.message.content, choice.finish_reason = content, finish_reason
+    thread, _ = title_thread
+    assert engine.chat_thread_generate_description(thread=thread) == content
+    assert completion.call_args.kwargs["max_tokens"] == 1024
+    assert completion.call_args.kwargs["reasoning_effort"] == "low"
+    completion.assert_called_once()
     assert "Thread title empty or truncated" in caplog.text
     assert bool(thread.save.call_count) == bool(content)
 
@@ -597,12 +559,8 @@ def test_invalid_configuration_fails_before_discovery_without_creating_a_thread(
     request = RequestFactory().post("/", {"message": "Help"})
     request.identity = Mock()
     with (
-        patch(
-            "litigant_portal.app.services.chat_engine.ChatThread.objects.create"
-        ) as create_thread,
-        patch(
-            "litigant_portal.app.services.chat_engine.chat_message_create"
-        ) as create_message,
+        patch.object(ChatThread.objects, "create") as create_thread,
+        patch.object(engine, "chat_message_create") as create_message,
     ):
         assert stream(request).status_code == 503
     create_thread.assert_not_called()
@@ -612,16 +570,16 @@ def test_invalid_configuration_fails_before_discovery_without_creating_a_thread(
 
 def test_chat_service_preserves_explicit_evaluation_pins(loaded_catalog):
     from litigant_portal.agents.base import Agent
-    from litigant_portal.app.services.chat_engine import chat_stream
 
     with (
-        patch(
-            "litigant_portal.app.services.chat_engine.ChatThread.objects.create",
+        patch.object(
+            ChatThread.objects,
+            "create",
             side_effect=RuntimeError("stop after resolution"),
         ) as create,
         pytest.raises(RuntimeError, match="stop after resolution"),
     ):
-        chat_stream(
+        engine.chat_stream(
             identity=Mock(),
             message="Help",
             agent_class=Agent,
@@ -640,36 +598,14 @@ def test_chat_service_preserves_explicit_evaluation_pins(loaded_catalog):
     ],
 )
 def test_description_uses_discovered_model_and_books_usage(
-    loaded_catalog, preference, model_id
+    loaded_catalog, title_thread, completion, preference, model_id
 ):
     cache.set(SITE_CACHE_KEY, Site(fast_model=preference))
-    thread = ChatThread()
-    thread.save = Mock()
-    response = SimpleNamespace(
-        choices=[
-            SimpleNamespace(
-                message=SimpleNamespace(content=" Name Change Help ")
-            )
-        ],
-        usage=SimpleNamespace(total_tokens=16),
+    thread, inject_meta = title_thread
+    assert (
+        engine.chat_thread_generate_description(thread=thread)
+        == "Name Change Help"
     )
-    with (
-        patch(
-            "litigant_portal.app.services.chat_engine.chat_message_list",
-            return_value=[
-                SimpleNamespace(data={"role": "user", "content": "Help"})
-            ],
-        ),
-        patch("litellm.completion", return_value=response) as completion,
-        patch("litellm.completion_cost", return_value=0.001),
-        patch(
-            "litigant_portal.app.services.chat_engine.chat_message_inject_meta"
-        ) as inject_meta,
-    ):
-        assert (
-            chat_thread_generate_description(thread=thread)
-            == "Name Change Help"
-        )
     resolved = f"bedrock/converse/us-east-1/us.{model_id}"
     assert completion.call_args.kwargs["model"] == resolved
     assert completion.call_args.kwargs["max_tokens"] == 1024
@@ -688,77 +624,49 @@ def test_description_uses_discovered_model_and_books_usage(
 
 
 @pytest.mark.parametrize(
-    "part_type, required",
+    "content_type, part_type, expected",
     [
-        ("text", {"text"}),
-        ("image_url", {"text", "image"}),
-        ("file", {"text", "document"}),
+        ("text/plain", "text", "openai.gpt-5.6-terra"),
+        ("image/png", "image_url", "openai.gpt-5.6-terra"),
+        ("application/pdf", "file", NEW_MODEL),
     ],
 )
 def test_document_reader_uses_the_resolved_route_and_required_capabilities(
-    part_type, required
+    reader_catalog,
+    upload,
+    completion,
+    monkeypatch,
+    content_type,
+    part_type,
+    expected,
 ):
-    from io import BytesIO
-
-    from litigant_portal.agents.bedrock import ResolvedBedrockModel
     from litigant_portal.agents.tools.query_document import QueryDocument
 
-    target = ResolvedBedrockModel(
-        "bedrock/converse/us-east-1/test", "us-east-1"
+    cache.set(SITE_CACHE_KEY, Site(assistant_model="auto/openai.terra"))
+    upload.content_type = content_type
+    monkeypatch.setattr(
+        ChatThread.objects,
+        "get",
+        Mock(return_value=ChatThread(identity=upload.identity)),
     )
-    upload = SimpleNamespace(
-        id="test",
-        name="example",
-        identity=Mock(),
-        file=Mock(open=Mock(return_value=BytesIO(b"test"))),
+    uploads = Mock(return_value=Mock(first=Mock(return_value=upload)))
+    monkeypatch.setattr(UserUpload.objects, "filter", uploads)
+    completion.return_value.choices[0].message.content = " Answer "
+    output = QueryDocument(upload_id=str(upload.id), request="Summarize")(
+        thread_id="test"
     )
-    with (
-        patch(
-            "litigant_portal.app.models.ChatThread.objects.get",
-            return_value=SimpleNamespace(identity=upload.identity),
-        ),
-        patch(
-            "litigant_portal.app.models.UserUpload.objects.filter"
-        ) as uploads,
-        patch(
-            "litigant_portal.app.services.upload.user_upload_reader_limit_error",
-            return_value=None,
-        ),
-        patch(
-            "litigant_portal.app.services.upload.user_upload_content_part",
-            return_value={"type": part_type},
-        ),
-        patch(
-            "litigant_portal.app.selectors.site.site_get_reader_model_target",
-            return_value=target,
-        ) as resolve,
-        patch(
-            "litellm.completion",
-            return_value=SimpleNamespace(
-                choices=[
-                    SimpleNamespace(
-                        message=SimpleNamespace(content=" Answer ")
-                    )
-                ],
-                usage={},
-            ),
-        ) as complete,
-        patch("litellm.completion_cost", return_value=0.01),
-    ):
-        uploads.return_value.first.return_value = upload
-        output = QueryDocument(upload_id="test", request="Summarize")(
-            thread_id="test"
-        )
-    resolve.assert_called_once_with(required=frozenset(required))
-    assert complete.call_args.kwargs["model"] == target.model
-    assert complete.call_args.kwargs["aws_region_name"] == "us-east-1"
-    assert output.result == "Answer" and output.cost == 0.01
+    uploads.assert_called_once_with(
+        id=str(upload.id), identity=upload.identity
+    )
+    args = completion.call_args.kwargs
+    assert args["model"].endswith(expected)
+    assert args["aws_region_name"] == "us-east-1"
+    assert args["messages"][1]["content"][-1]["type"] == part_type
+    assert output.result == "Answer" and output.cost == 0.001
 
 
 def test_cost_uses_the_resolved_bedrock_billing_identity():
     import litellm
-
-    from litigant_portal.agents.bedrock import ResolvedBedrockModel
 
     billing_model = "bedrock_mantle/openai.gpt-99-luna"
     target = ResolvedBedrockModel(

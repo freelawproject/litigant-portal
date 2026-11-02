@@ -20,7 +20,10 @@ from litigant_portal.app.models.choices import (
     JurisdictionLevel,
     State,
 )
-from litigant_portal.app.selectors.bedrock import bedrock_model_choices
+from litigant_portal.app.selectors.bedrock import (
+    bedrock_catalog_get,
+    bedrock_model_choices,
+)
 from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.selectors.topic_flow import topic_get, topic_list
 from litigant_portal.app.selectors.user import (
@@ -118,10 +121,13 @@ def site_update_view(request: HttpRequest) -> JsonResponse:
         if not set(changed_models.values()) <= dict(model_choices()).keys():
             return JsonResponse({"error": _("Invalid model")}, status=400)
         try:
+            catalog = bedrock_catalog_get()
             unavailable = any(
                 model
                 not in dict(
-                    bedrock_model_choices(role=field.removesuffix("_model"))
+                    bedrock_model_choices(
+                        role=field.removesuffix("_model"), catalog=catalog
+                    )
                 )
                 for field, model in changed_models.items()
             )

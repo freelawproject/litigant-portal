@@ -18,7 +18,7 @@ from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.core.management import call_command
 from django.db import IntegrityError, connection, transaction
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from litigant_portal.agents.bedrock import (
     BedrockCatalog,
@@ -56,11 +56,11 @@ MODEL_CHOICES = model_choices()
 
 @pytest.fixture
 def available_models(monkeypatch):
-    monkeypatch.setattr(
-        "litigant_portal.app.views.pages.bedrock_catalog_get",
-        lambda: BedrockCatalog((), (), ()),
-    )
     for module in ("pages", "admin"):
+        monkeypatch.setattr(
+            f"litigant_portal.app.views.{module}.bedrock_catalog_get",
+            lambda: BedrockCatalog((), (), ()),
+        )
         monkeypatch.setattr(
             f"litigant_portal.app.views.{module}.bedrock_model_choices",
             lambda **kwargs: model_choices(),
@@ -139,19 +139,14 @@ class SiteCacheTests(TestCase):
             self.assertEqual([r.key for r in resource_list()], ["fees"])
 
 
-@pytest.mark.postgres
 @pytest.mark.usefixtures("available_models")
-class SiteModelSelectionTests(TestCase):
+class SiteModelSelectionTests(SimpleTestCase):
     def test_assistant_defaults_to_the_first_balanced_model(self):
-        with self.captureOnCommitCallbacks(execute=True):
-            site_update(assistant_model="")
         self.assertEqual(
             site_get_model_target(role="assistant").model, "auto/openai.terra"
         )
 
     def test_fast_role_defaults_to_the_first_economy_model(self):
-        with self.captureOnCommitCallbacks(execute=True):
-            site_update(fast_model="")
         self.assertEqual(
             site_get_model_target(role="fast").model, "auto/openai.luna"
         )
@@ -160,8 +155,7 @@ class SiteModelSelectionTests(TestCase):
         # Not the default model, so the assertion below can't pass on a
         # broken fallback.
         model = "bedrock_mantle/openai.gpt-5.6-sol"
-        with self.captureOnCommitCallbacks(execute=True):
-            site_update(assistant_model=model)
+        cache.set(SITE_CACHE_KEY, Site(assistant_model=model))
         with patch(
             "litigant_portal.app.selectors.site.bedrock_model_target"
         ) as resolve:
@@ -176,12 +170,17 @@ class SiteModelSelectionTests(TestCase):
 @pytest.mark.postgres
 @pytest.mark.usefixtures("available_models")
 class SiteAdminSettingsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = get_user_model().objects.create_superuser(
+            username="model-admin"
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
     def test_judge_setting_round_trip_and_validation(self):
         self.assertIsNone(site_get().judge_model)
-        user = get_user_model().objects.create_superuser(
-            username="judge-admin", email="judge@example.test", password="test"
-        )
-        self.client.force_login(user)
         for model in ("auto/openai.sol", ""):
             with self.captureOnCommitCallbacks(execute=True):
                 response = self.client.post(
@@ -201,10 +200,6 @@ class SiteAdminSettingsTests(TestCase):
         self.assertIsNone(Site.objects.get().judge_model)
 
     def test_settings_keep_an_unavailable_saved_model(self):
-        user = get_user_model().objects.create_superuser(
-            username="model-admin"
-        )
-        self.client.force_login(user)
         with self.captureOnCommitCallbacks(execute=True):
             site_update(fast_model="auto/zai.glm-flash")
         response = self.client.get("/admin/")
@@ -222,10 +217,6 @@ class SiteAdminSettingsTests(TestCase):
         self.assertEqual(response.json()["fast_model"], "auto/zai.glm-flash")
 
     def test_settings_reject_new_unavailable_or_invalid_models(self):
-        user = get_user_model().objects.create_superuser(
-            username="model-admin"
-        )
-        self.client.force_login(user)
         with patch(
             "litigant_portal.app.views.admin.bedrock_model_choices",
             return_value=(),
@@ -246,10 +237,6 @@ class SiteAdminSettingsTests(TestCase):
     ):
         from litigant_portal.agents.bedrock import BedrockModelUnavailable
 
-        user = get_user_model().objects.create_superuser(
-            username="offline-admin"
-        )
-        self.client.force_login(user)
         with self.captureOnCommitCallbacks(execute=True):
             site_update(assistant_model="auto/openai.sol")
         with patch(
@@ -277,10 +264,6 @@ class SiteAdminSettingsTests(TestCase):
         self.assertEqual(response.json()["assistant_model"], "auto/openai.sol")
 
     def test_saved_availability_requires_complete_discovery(self):
-        user = get_user_model().objects.create_superuser(
-            username="availability-admin"
-        )
-        self.client.force_login(user)
         with self.captureOnCommitCallbacks(execute=True):
             site_update(assistant_model="auto/openai.sol")
         partial_choices = tuple(

@@ -170,9 +170,11 @@ def admin(request: HttpRequest) -> HttpResponse:
     discovery_complete = False
     if "settings" in tabs:
         try:
-            discovery_complete = bedrock_catalog_get().complete
+            catalog = bedrock_catalog_get()
+            discovery_complete = catalog.complete
             choices = {
-                role: bedrock_model_choices(role=role) for role in choices
+                role: bedrock_model_choices(role=role, catalog=catalog)
+                for role in choices
             }
             if not discovery_complete:
                 model_error = _(
