@@ -1,5 +1,6 @@
 import importlib
 import os
+import runpy
 from unittest import mock
 
 from django.test import SimpleTestCase
@@ -20,3 +21,20 @@ class GitShaSettingTests(SimpleTestCase):
     def test_git_sha_reads_environment(self):
         module = self._reload_settings({"GIT_SHA": "abc1234"})
         self.assertEqual(module.GIT_SHA, "abc1234")
+
+
+class BedrockSettingTests(SimpleTestCase):
+    def test_geography_is_optional_and_defaults_to_us(self):
+        for value in (None, "", "   ", "us", "EU"):
+            with self.subTest(value=value):
+                environ = (
+                    {}
+                    if value is None
+                    else {"BEDROCK_ALLOWED_GEOGRAPHY": value}
+                )
+                with mock.patch.dict(os.environ, environ, clear=True):
+                    config = runpy.run_path(litigant_portal.settings.__file__)
+                self.assertEqual(
+                    config["BEDROCK_ALLOWED_GEOGRAPHY"],
+                    "EU" if value == "EU" else "US",
+                )

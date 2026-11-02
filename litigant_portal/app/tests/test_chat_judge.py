@@ -7,8 +7,8 @@ from django.core.cache import cache
 from litellm import Timeout
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
+from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import ChatThread, Site, UserIdentity
-from litigant_portal.app.models.choices import BedrockModel
 from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_export_data,
@@ -21,8 +21,8 @@ from litigant_portal.app.services.chat_engine import (
 )
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
-MODEL = BedrockModel.GPT_5_6_LUNA
-JUDGE = BedrockModel.GPT_5_6_SOL
+MODEL = "bedrock_mantle/openai.gpt-5.6-luna"
+JUDGE = "bedrock_mantle/openai.gpt-5.6-sol"
 FINDING = {"code": "unsupported_claim", "message": "Remove the invented fee."}
 WARNING = (
     "Warning: This answer could not be fully verified and may contain errors."
@@ -84,6 +84,12 @@ def stream():
         Site.objects.update(judge_model=judge_model)
         cache.clear()
         with (
+            patch(
+                "litigant_portal.app.services.chat_engine.bedrock_model_target",
+                side_effect=lambda *, model, **kwargs: ResolvedBedrockModel(
+                    model, "us-east-1"
+                ),
+            ),
             patch(
                 "litigant_portal.app.services.chat_engine.litellm.completion",
                 side_effect=responses,

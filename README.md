@@ -44,14 +44,19 @@ Visit: http://localhost (Caddy serves on port 80).
 
 **Required environment** (see `.env.example`):
 
-| Variable                                                                                  | Description                                   |
-| ----------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `SECRET_KEY`                                                                              | Django secret key                             |
-| `DEBUG=false`, `DEPLOYMENT_ENV`                                                           | Prod mode + environment label (`qa` / `prod`) |
-| `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves      |
-| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                           |
-| `REDIS_URL`                                                                               | Redis connection URL                          |
-| `AWS_BEARER_TOKEN_BEDROCK`                                                                | AWS Bedrock API key                           |
+| Variable                                                                                  | Description                                     |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `SECRET_KEY`                                                                              | Django secret key                               |
+| `DEBUG=false`, `DEPLOYMENT_ENV`                                                           | Prod mode + environment label (`qa` / `prod`)   |
+| `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves        |
+| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                             |
+| `REDIS_URL`                                                                               | Redis connection URL                            |
+| `AWS_BEARER_TOKEN_BEDROCK`                                                                | AWS Bedrock API key                             |
+| `AWS_REGION`                                                                              | Source region for model discovery and inference |
+
+FLP curates model families in `litigant_portal/agents/bedrock.py`. `MODEL_MAPPING` names supported families, and the ordered Economy, Balanced, and Best lists in `MODEL_CHOICES` enable them. Dropdowns show available models with their tier. An unset fast model uses the first available Economy choice; an unset assistant uses the first available Balanced choice. Judging stays disabled until selected. Saved selections are retained when unavailable.
+
+Each deployment uses its Bedrock key and `AWS_REGION` to discover the latest eligible release in the selected family. For that release, inference prefers a native regional route, then a compatible regional Mantle route, then an inference profile whose destinations all stay within the allowed geography. Global routing is excluded. `BEDROCK_ALLOWED_GEOGRAPHY` is an optional override: omitted or blank values default to `US`. Local Compose defaults to `us-east-1` and requires no geography configuration. The key needs permission to list foundation models and inference profiles, check foundation model availability, list Mantle models, and invoke the selected models.
 
 ## Contributing
 

@@ -10,7 +10,9 @@ from django.test import SimpleTestCase
 from django.urls import reverse
 
 from litigant_portal.agents.base import Agent, ToolOutput
+from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import Topic, TopicFlow
+from litigant_portal.app.selectors.bedrock import BedrockModelUnavailable
 from litigant_portal.app.services.chat_engine import chat_stream
 
 
@@ -85,7 +87,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 return_value=0,
             ),
             patch(
-                "litigant_portal.app.services.chat_engine._resolve_thread",
+                "litigant_portal.app.services.chat_engine.chat_thread_get",
                 return_value=self.thread,
             ),
             patch(
@@ -109,7 +111,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 message="Please help.",
                 agent_class=FailingAgent,
                 thread_type="test_agent",
-                model="test-model",
+                model=ResolvedBedrockModel("test-model", "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             events = [
@@ -268,6 +270,35 @@ class ChatStreamFallbackTests(SimpleTestCase):
                     [{"role": "user", "content": "Please help."}],
                 )
                 self.thread.save.assert_not_called()
+
+    def test_description_discovery_failure_does_not_fail_the_reply(self):
+        self.thread.description = ""
+        chunk = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(
+                        content="Here is help.", tool_calls=[]
+                    ),
+                    finish_reason="stop",
+                )
+            ]
+        )
+        with (
+            patch(
+                "litigant_portal.app.services.chat_engine.site_get_model_target",
+                side_effect=BedrockModelUnavailable("No eligible Haiku"),
+            ),
+            self.assertLogs(
+                "litigant_portal.app.services.chat_engine", level="ERROR"
+            ),
+        ):
+            events = self.stream_events(completions=[iter([chunk])])
+        self.assertEqual(events[-1], {"type": "done"})
+        self.assertNotIn("error", [event["type"] for event in events])
+        self.assertIn(
+            {"role": "assistant", "content": "Here is help."},
+            self.persisted_messages,
+        )
 
     def test_midstream_provider_failure_preserves_text_and_emits_safe_fallback(
         self,

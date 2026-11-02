@@ -12,6 +12,7 @@ from litigant_portal.agents.base import (
     Tool,
     ToolOutput,
 )
+from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import (
     ChatMessage,
     ChatThread,
@@ -230,7 +231,7 @@ class PromptArtifactCaptureTests(TestCase):
                 message="Help me without tools.",
                 agent_class=NoToolsAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             list(response.streaming_content)
@@ -309,7 +310,7 @@ class PromptArtifactCaptureTests(TestCase):
                 message="Help me.",
                 agent_class=RefreshingAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             list(response.streaming_content)
@@ -387,7 +388,7 @@ class PromptArtifactCaptureTests(TestCase):
                 message="Help me.",
                 agent_class=IdentityAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(thread.id),
             )
             list(response.streaming_content)
@@ -478,7 +479,7 @@ class PromptArtifactCaptureTests(TestCase):
                 message="Help me.",
                 agent_class=NoToolsAgent,
                 thread_type="test_agent",
-                model=MODEL,
+                model=ResolvedBedrockModel(MODEL, "us-east-1"),
                 thread_id=str(self.thread.id),
             )
             list(response.streaming_content)
