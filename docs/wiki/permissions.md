@@ -79,8 +79,11 @@ below their own.
 - **App users:** sign up themselves, or anyone with the Users tab adds
   them. A Court Admin adds app users only, so they see no picker.
 
-No one manages their own account from the Users tab. A Court Admin who
-needs a new password asks FLP Staff; FLP Staff ask a superuser.
+No one manages anyone else at their own tier, or their own account, from
+the Users tab. Anyone signed in changes their own password at
+`/accounts/password/change/` (linked from the Users tab), which needs the
+current one. A Court Admin who has forgotten theirs asks FLP Staff; FLP
+Staff ask a superuser.
 
 ## Users tab behavior
 

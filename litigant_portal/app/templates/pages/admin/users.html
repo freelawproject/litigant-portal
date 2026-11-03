@@ -16,8 +16,11 @@
       {% if perms.app.manage_site %}
         <p class="text-sm text-greyscale-500">{% trans "All registered users." %}</p>
       {% else %}
-        <p class="text-sm text-greyscale-500">{% trans "Everyone who signs in to the app here. To reset your own password, ask FLP Staff." %}</p>
+        <p class="text-sm text-greyscale-500">{% trans "Everyone who signs in to the app here." %}</p>
       {% endif %}
+      <p class="text-sm text-greyscale-500">
+        <c-atoms.link href="{% url 'account_change_password' %}">{% trans "Change your own password" %}</c-atoms.link>
+      </p>
     </div>
     {% if features.user_admin and perms.app.manage_app_users %}
       <c-atoms.button size="sm" x-on:click="openUserCreate">{% trans "Add account" %}</c-atoms.button>
