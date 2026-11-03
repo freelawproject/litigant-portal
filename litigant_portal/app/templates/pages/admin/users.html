@@ -125,7 +125,7 @@
             {% for value, label in role_choices reversed %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
           </c-molecules.form-field-select>
         {% endif %}
-        <c-molecules.form-field label="{{ password_label }}" type="password" name="password" id="user-create-password" autocomplete="new-password" help_text="{{ add_password_help }}" required />
+        <c-molecules.form-field label="{{ password_label }}" type="password" name="password" id="user-create-password" autocomplete="new-password" help_text="{{ password_rules }} {{ add_password_help }}" required />
         <c-molecules.form-field label="{{ confirm_password_label }}" type="password" name="password_confirm" id="user-create-password-confirm" autocomplete="new-password" required />
         <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
         <div class="flex justify-end gap-2">
@@ -139,7 +139,7 @@
       <form x-on:submit.prevent="setUserPassword" class="space-y-4">
         {% csrf_token %}
         <p class="text-sm text-greyscale-600" x-text="userDialogEmail"></p>
-        <c-molecules.form-field label="{{ new_password_label }}" type="password" name="password" id="user-password" autocomplete="new-password" help_text="{{ reset_password_help }}" required />
+        <c-molecules.form-field label="{{ new_password_label }}" type="password" name="password" id="user-password" autocomplete="new-password" help_text="{{ password_rules }} {{ reset_password_help }}" required />
         <c-molecules.form-field label="{{ confirm_password_label }}" type="password" name="password_confirm" id="user-password-confirm" autocomplete="new-password" required />
         <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
         <div class="flex justify-end gap-2">

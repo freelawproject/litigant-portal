@@ -118,6 +118,23 @@ class AdminPageTests(TierSetup):
                     roles,
                 )
 
+    @override_settings(
+        AUTH_PASSWORD_VALIDATORS=[
+            {
+                "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+                "OPTIONS": {"min_length": 12},
+            }
+        ]
+    )
+    def test_password_rules_come_from_the_configured_validators(self):
+        # The dialogs state the rules up front, so they must be the ones
+        # validate_password enforces on submit, not copy that can drift.
+        response = self.client.get("/admin/")
+        self.assertEqual(
+            response.context["password_rules"],
+            "Your password must contain at least 12 characters.",
+        )
+
     def test_site_and_topic_endpoints_refuse_court_admins(self):
         for path in ("/api/admin/site/", "/api/admin/topics/"):
             with self.subTest(path=path):
