@@ -408,6 +408,20 @@ def test_the_reveal_button_is_a_button_named_after_the_fact(client, visitor):
 
 @pytest.mark.postgres
 @pytest.mark.django_db
+def test_the_private_row_carries_the_reveal_toggle_bindings(client, visitor):
+    _answered(visitor, "dob", "Date of birth", "1990-04-02", is_private=True)
+
+    content = _chat_page(client)
+
+    assert re.search(r'<dd\b[^>]*x-data="revealToggle"[^>]*>', content)
+    button = REVEAL_BUTTON_RE.search(content).group()
+    assert 'x-on:click="toggle"' in button
+    assert 'x-bind:aria-pressed="revealed"' in button
+    assert re.search(r"\bx-cloak\b", button)
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
 def test_a_public_row_renders_its_value_with_no_mask_or_button(
     client, visitor
 ):
