@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 from botocore.exceptions import ClientError, ReadTimeoutError
-from django.core.cache import cache
+from django.core.cache import cache, caches
 from django.core.files.base import ContentFile
 from django.test import RequestFactory
 from openai import APIConnectionError
@@ -537,15 +537,19 @@ def test_failed_refresh_supersedes_a_previously_read_catalog(
     bedrock_catalog_invalidate_on_error(SimpleNamespace(status_code=403))
     clock.return_value += 61
     loaded_catalog.side_effect = BedrockDiscoveryError("ThrottlingException")
-    add = cache.add
+    # Patch the backend, not the `cache` proxy: pytest 9.2's monkeypatch
+    # deletes on undo when the target's __dict__ lacks the name, and the
+    # proxy's never has it, so teardown would delete `add` twice.
+    backend = caches["default"]
+    add = backend.add
 
     def another_worker_finishes(*args, **kwargs):
-        monkeypatch.setattr(cache, "add", add)
+        monkeypatch.setattr(backend, "add", add)
         with pytest.raises(BedrockDiscoveryError, match="ThrottlingException"):
             bedrock_model_target(model="auto/anthropic.haiku")
         return False
 
-    monkeypatch.setattr(cache, "add", another_worker_finishes)
+    monkeypatch.setattr(backend, "add", another_worker_finishes)
     with pytest.raises(BedrockDiscoveryError, match="ThrottlingException"):
         bedrock_model_target(model="auto/anthropic.haiku")
     assert loaded_catalog.call_count == 2
