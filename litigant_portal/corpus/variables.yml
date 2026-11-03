@@ -109,6 +109,7 @@ variables:
 
   - name: name_change_citizenship
     label: 'Citizenship status'
+    private: true
     data_type: choice
     required: true
     choices:
