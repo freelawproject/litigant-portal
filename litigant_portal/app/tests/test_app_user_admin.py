@@ -476,7 +476,7 @@ class UserActionTests(TierSetup):
         self.assertFalse(VariableAnswer.objects.exists())
         self.assertFalse(UserUpload.objects.exists())
         # The rows cascade on their own; the stored file only goes because
-        # the delete runs the identity reset first.
+        # the delete runs through user_identities_delete.
         storage_delete.assert_called_once_with(file_name)
 
 
