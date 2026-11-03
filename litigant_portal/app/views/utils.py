@@ -1,10 +1,17 @@
 from functools import wraps
 
 from django.conf import settings
+from django.contrib.auth.password_validation import (
+    CommonPasswordValidator,
+    MinimumLengthValidator,
+    NumericPasswordValidator,
+    UserAttributeSimilarityValidator,
+    get_default_password_validators,
+)
 from django.http import Http404, JsonResponse
 from django.urls import reverse
 from django.utils.translation import gettext as _
-from django.utils.translation import gettext_lazy
+from django.utils.translation import gettext_lazy, ngettext
 
 from litigant_portal.app.features import features
 from litigant_portal.app.permissions import Tier
@@ -196,3 +203,58 @@ def role_choices(user) -> list[tuple[str, str]]:
         (role_value(t), ROLE_LABELS[t])
         for t in user_assignable_roles(viewer=user)
     ]
+
+
+# What each validator rules out, as "Can't be ___", in the order said.
+_PASSWORD_EXCLUSIONS = [
+    (NumericPasswordValidator, gettext_lazy("all numbers")),
+    (CommonPasswordValidator, gettext_lazy("a common password")),
+    (UserAttributeSimilarityValidator, gettext_lazy("similar to email")),
+]
+
+
+def _or_list(items: list[str]) -> str:
+    """``a``, ``a or b``, ``a, b, or c``."""
+    if len(items) < 3:
+        return _(" or ").join(items)
+    return _("%(items)s, or %(last)s") % {
+        "items": ", ".join(items[:-1]),
+        "last": items[-1],
+    }
+
+
+def password_rule() -> str:
+    """The password rules every new-password field states up front, built
+    from the configured validators so they match what ``validate_password``
+    enforces on submit: the length, then what the password can't be. A
+    validator we haven't phrased adds Django's own help text, so no rule
+    goes unsaid."""
+    validators = get_default_password_validators()
+    sentences = [
+        ngettext(
+            "At least %(count)d character.",
+            "At least %(count)d characters.",
+            v.min_length,
+        )
+        % {"count": v.min_length}
+        for v in validators
+        if isinstance(v, MinimumLengthValidator)
+    ]
+    exclusions = [
+        str(phrase)
+        for kind, phrase in _PASSWORD_EXCLUSIONS
+        if any(isinstance(v, kind) for v in validators)
+    ]
+    if exclusions:
+        sentences.append(
+            _("Can't be %(exclusions)s.")
+            % {"exclusions": _or_list(exclusions)}
+        )
+    known = (
+        MinimumLengthValidator,
+        *(kind for kind, _phrase in _PASSWORD_EXCLUSIONS),
+    )
+    sentences += [
+        v.get_help_text() for v in validators if not isinstance(v, known)
+    ]
+    return " ".join(sentences)

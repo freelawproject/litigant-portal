@@ -8,7 +8,7 @@ from litigant_portal.app.selectors.topic_flow import (
     topic_flow_list,
     topic_flow_url_kwargs,
 )
-from litigant_portal.app.views.utils import admin_tabs
+from litigant_portal.app.views.utils import admin_tabs, password_rule
 
 
 def _tester_flow_links(court: str | None) -> list[dict]:
@@ -42,6 +42,8 @@ def app_meta(request):
             if tools.flow_links
             else []
         ),
+        # Every new-password field states the same rules (#1135).
+        "password_rules": password_rule(),
         "app_build_time": settings.APP_BUILD_TIME,
         "app_git_sha": settings.GIT_SHA,
         "app_git_branch": settings.GIT_BRANCH,

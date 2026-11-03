@@ -4,9 +4,6 @@ from urllib.parse import urlsplit
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.password_validation import (
-    password_validators_help_texts,
-)
 from django.core.exceptions import PermissionDenied
 from django.http import (
     Http404,
@@ -172,9 +169,6 @@ def admin(request: HttpRequest) -> HttpResponse:
             ),
             "model_choices": BedrockModel.choices,
             "role_choices": role_choices(request.user),
-            # The rules validate_password enforces on submit, shown up
-            # front in the password dialogs.
-            "password_rules": " ".join(password_validators_help_texts()),
             "default_model_label": DEFAULT_BEDROCK_MODEL.label,
             "default_fast_model_label": DEFAULT_FAST_BEDROCK_MODEL.label,
             "jurisdiction_choices": JurisdictionLevel.choices,

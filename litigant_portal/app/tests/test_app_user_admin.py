@@ -127,13 +127,39 @@ class AdminPageTests(TierSetup):
         ]
     )
     def test_password_rules_come_from_the_configured_validators(self):
-        # The dialogs state the rules up front, so they must be the ones
+        # The dialogs state the length up front, so it must be the one
         # validate_password enforces on submit, not copy that can drift.
         response = self.client.get("/admin/")
         self.assertEqual(
             response.context["password_rules"],
-            "Your password must contain at least 12 characters.",
+            "At least 12 characters.",
         )
+
+    def test_password_rules_state_every_configured_validator(self):
+        response = self.client.get("/admin/")
+        self.assertEqual(
+            response.context["password_rules"],
+            "At least 15 characters. "
+            "Can't be all numbers, a common password, or similar to email.",
+        )
+
+    @override_settings(
+        AUTH_PASSWORD_VALIDATORS=[
+            {"NAME": f"django.contrib.auth.password_validation.{name}"}
+            for name in ("CommonPasswordValidator", "NumericPasswordValidator")
+        ]
+    )
+    def test_two_exclusions_read_as_one_or(self):
+        response = self.client.get("/admin/")
+        self.assertEqual(
+            response.context["password_rules"],
+            "Can't be all numbers or a common password.",
+        )
+
+    @override_settings(AUTH_PASSWORD_VALIDATORS=[])
+    def test_no_password_rules_without_validators(self):
+        response = self.client.get("/admin/")
+        self.assertEqual(response.context["password_rules"], "")
 
     def test_site_and_topic_endpoints_refuse_court_admins(self):
         for path in ("/api/admin/site/", "/api/admin/topics/"):
