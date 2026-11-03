@@ -1339,6 +1339,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
+    { name = "boto3" },
     { name = "cryptography" },
     { name = "django" },
     { name = "django-allauth" },
@@ -1352,6 +1353,7 @@ dependencies = [
     { name = "heroicons" },
     { name = "litellm" },
     { name = "mammoth" },
+    { name = "openai" },
     { name = "openpyxl" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
@@ -1383,6 +1385,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.14.3" },
+    { name = "boto3", specifier = ">=1.43.41" },
     { name = "cryptography", specifier = ">=50.0.0" },
     { name = "django", specifier = ">=6.0.5" },
     { name = "django-allauth", specifier = ">=65.0" },
@@ -1398,6 +1401,7 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.98" },
     { name = "mammoth", specifier = ">=1.8" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.19.1" },
+    { name = "openai", specifier = ">=2.24.0" },
     { name = "openpyxl", specifier = ">=3.1" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.5.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },

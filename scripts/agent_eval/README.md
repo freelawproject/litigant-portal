@@ -70,7 +70,7 @@ deal breaker; cases without the flag are not affected.
 
 The fictional chicken-law variants change the fee and procedural order while retaining identical questions. Both include the 200-square-feet-per-chicken boundary. Fixtures enter the current chat engine through normal corpus files and an evaluation database flow. Raw receives no corpus.
 
-Evaluations of the chat engine temporarily change site settings and may enable the fictional flow; other development requests can see those changes while the run is active. The worker holds the fixture lock, enforces child-process timeouts, and restores settings on normal exit, Ctrl-C, or controller disconnect. After a hard kill or failed cleanup, use the locally saved recovery journal:
+Evaluations of the chat engine temporarily change site settings and may enable the fictional flow; other development requests can see those changes while the run is active. The worker holds the fixture lock, enforces child-process timeouts, and restores settings on normal exit, Ctrl-C, or controller disconnect. The journal records `original_fast_model` and `effective_fast_model` as concrete routes resolved during setup, including explicit overrides. These are snapshots; per-call records show actual invocations if discovery later changes. The original raw site values remain separate for restoration. After a hard kill or failed cleanup, use the locally saved recovery journal:
 
 ```bash
 make agent-eval ARGS='restore /path/to/run'
@@ -104,6 +104,8 @@ System cost includes all observed calls, including titles; judge costs are
 separate. Missing usage/pricing keeps total cost unknown. Known subtotals include
 priced calls even when another call's cost is missing. These are estimates;
 SDK-internal retries without usage cannot be reconstructed as billed costs.
+
+Qualified Bedrock routes use the application's region-aware pricing rules, while recorded requests retain their invocation identifiers. Pricing snapshots record the effective pricing identifier and rates. Exact price-override keys take precedence; otherwise an unambiguous override for the same Bedrock family and release applies across route formats. Overrides qualified for another region or release do not match, and ambiguous overrides leave cost unknown.
 
 ## Artifacts and manual checks
 

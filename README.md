@@ -44,14 +44,19 @@ Visit: http://localhost (Caddy serves on port 80).
 
 **Required environment** (see `.env.example`):
 
-| Variable                                                                                  | Description                                   |
-| ----------------------------------------------------------------------------------------- | --------------------------------------------- |
-| `SECRET_KEY`                                                                              | Django secret key                             |
-| `DEBUG=false`, `DEPLOYMENT_ENV`                                                           | Prod mode + environment label (`qa` / `prod`) |
-| `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves      |
-| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                           |
-| `REDIS_URL`                                                                               | Redis connection URL                          |
-| `AWS_BEARER_TOKEN_BEDROCK`                                                                | AWS Bedrock API key                           |
+| Variable                                                                                  | Description                                     |
+| ----------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `SECRET_KEY`                                                                              | Django secret key                               |
+| `DEBUG=false`, `DEPLOYMENT_ENV`                                                           | Prod mode + environment label (`qa` / `prod`)   |
+| `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves        |
+| `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                             |
+| `REDIS_URL`                                                                               | Redis connection URL                            |
+| `AWS_BEARER_TOKEN_BEDROCK`                                                                | AWS Bedrock API key                             |
+| `AWS_REGION`                                                                              | Source region for model discovery and inference |
+
+FLP curates model families in `litigant_portal/agents/bedrock.py`. `MODEL_MAPPING` names supported families, and the ordered Economy, Balanced, and Best lists in `MODEL_CHOICES` enable them. Dropdowns show available models with their resolved version and tier. An unset fast model uses the first available Economy choice; an unset assistant uses the first available Balanced choice, falling back only to Economy. Economy includes GPT Luna, Claude Haiku, and GLM Flash in that order. Judging stays disabled until selected. With the current curation, assistant/fast defaults are GPT Terra/GPT Luna, replacing the previous GPT Luna/Claude Haiku defaults. Saved selections are retained when unavailable or when discovery cannot confirm availability.
+
+Each deployment uses its Bedrock key and `AWS_REGION` to discover the latest eligible release in the selected family. For that release, inference prefers a native regional route, then a compatible regional Mantle route, then an inference profile whose destinations all stay in the US. Global routing is excluded. `BEDROCK_ALLOWED_GEOGRAPHY` is optional: omitted or blank values default to `US`, and other values are rejected before discovery. `AWS_REGION` is optional: omitted or blank values default to `us-east-1`, and explicit region overrides are preserved. Local Compose uses the same region and geography defaults. A complete catalog, including native model access, is cached for one hour per credential and configuration fingerprint. Partial catalogs are cached for five minutes and sanitized discovery failures for one minute. Complete and partial catalogs refresh on request after 55 and four minutes respectively, while concurrent readers can reuse the unexpired snapshot. Refresh starts are shared across workers and limited to once per minute per fingerprint. Failed refreshes fail closed; expired catalogs are not reused. Family selections can adopt a newer eligible release after refresh, and accounts with different access can resolve differently. Authorization or missing-model errors request a refresh within that limit; ordinary bad-input errors do not. Failed inference is never replayed automatically. Attachments that the assistant cannot consume inline become reader stubs. The reader prefers the selected assistant when capable, otherwise the first enabled capable model in Economy, Balanced, then Best order without changing the saved selection. Titles, judging, and document reading use curated low-effort GPT options independently of pricing metadata; reader answers that reach the output limit are marked incomplete in the tool result and displayed response. The key needs permission to list foundation models and inference profiles, check foundation model availability, list Mantle models, and invoke the selected models.
 
 ## Contributing
 

@@ -1,4 +1,3 @@
-import os
 from urllib.parse import urlsplit
 
 from django.contrib import messages
@@ -18,15 +17,20 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.generic import DetailView, UpdateView
 
+from litigant_portal.agents.bedrock import (
+    BedrockModelUnavailable,
+    default_model,
+)
 from litigant_portal.app.features import features
 from litigant_portal.app.forms import UserProfileForm
 from litigant_portal.app.models import UserProfile
 from litigant_portal.app.models.choices import (
-    DEFAULT_BEDROCK_MODEL,
-    DEFAULT_FAST_BEDROCK_MODEL,
-    BedrockModel,
     JurisdictionLevel,
     State,
+)
+from litigant_portal.app.selectors.bedrock import (
+    bedrock_catalog_get,
+    bedrock_model_choices,
 )
 from litigant_portal.app.selectors.site import contact_help_list, site_get
 from litigant_portal.app.services.user import user_identity_reset
@@ -159,18 +163,57 @@ class ProfileEditView(LoginRequiredMixin, UpdateView):
 def admin(request: HttpRequest) -> HttpResponse:
     """Admin dashboard shell. Its tabs come from ``admin_tabs`` in the
     context processor, so a court admin gets the Users tab alone."""
-    if not admin_tabs(request.user):
+    tabs = admin_tabs(request.user)
+    if not tabs:
         raise PermissionDenied
+    site = site_get()
+    choices = dict.fromkeys(("fast", "assistant", "judge"), ())
+    model_error = ""
+    discovery_complete = False
+    if "settings" in tabs:
+        try:
+            catalog = bedrock_catalog_get()
+            discovery_complete = catalog.complete
+            choices = {
+                role: bedrock_model_choices(role=role, catalog=catalog)
+                for role in choices
+            }
+            if not discovery_complete:
+                model_error = _(
+                    "Model discovery is incomplete. Some availability is unknown."
+                )
+            elif not any(choices.values()):
+                model_error = _("No configured models are available.")
+        except BedrockModelUnavailable as error:
+            discovery_complete = False
+            model_error = str(error)
+    labels = {role: dict(options) for role, options in choices.items()}
+    retained = {
+        field: value
+        for field in ("fast_model", "assistant_model", "judge_model")
+        if (value := getattr(site, field))
+        and value not in labels[field.removesuffix("_model")]
+    }
+    defaults = {}
+    for role in ("fast", "assistant"):
+        try:
+            defaults[role] = labels[role][default_model(role, labels[role])]
+        except BedrockModelUnavailable:
+            defaults[role] = (
+                _("Unavailable") if discovery_complete else _("Unknown")
+            )
     return render(
         request,
         "pages/admin/index.html",
         {
-            "bedrock_available": bool(
-                os.environ.get("AWS_BEARER_TOKEN_BEDROCK")
-            ),
-            "model_choices": BedrockModel.choices,
-            "default_model_label": DEFAULT_BEDROCK_MODEL.label,
-            "default_fast_model_label": DEFAULT_FAST_BEDROCK_MODEL.label,
+            "bedrock_available": any(choices.values()),
+            "model_choices": choices,
+            "model_error": model_error,
+            "retained_model_choices": retained,
+            "unavailable_model_choices": retained
+            if discovery_complete
+            else {},
+            "default_model_labels": defaults,
             "jurisdiction_choices": JurisdictionLevel.choices,
             "state_choices": State.choices,
         },

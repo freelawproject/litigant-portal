@@ -1,18 +1,21 @@
 from django.core.cache import cache
 
+from litigant_portal.agents.bedrock import (
+    BedrockModelUnavailable,
+    ResolvedBedrockModel,
+    default_model,
+)
 from litigant_portal.app.cache import (
     CONTACT_LIST_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
     SITE_CACHE_KEY,
 )
 from litigant_portal.app.models import Contact, Resource, Site
-from litigant_portal.app.models.choices import (
-    DEFAULT_BEDROCK_MODEL,
-    DEFAULT_FAST_BEDROCK_MODEL,
-    ContactKind,
+from litigant_portal.app.models.choices import ContactKind
+from litigant_portal.app.selectors.bedrock import (
+    bedrock_model_list,
+    bedrock_model_target,
 )
-
-_ROLE_DEFAULT_MODELS = {"fast": DEFAULT_FAST_BEDROCK_MODEL}
 
 
 def site_get() -> Site:
@@ -64,8 +67,32 @@ def resource_list(*, court: str | None = None) -> list[Resource]:
     return _court_rows(_cached_list(RESOURCE_LIST_CACHE_KEY, Resource), court)
 
 
-def site_get_model(*, role: str) -> str:
-    """The site's AI model for a pipeline role."""
-    return getattr(site_get(), f"{role}_model") or _ROLE_DEFAULT_MODELS.get(
-        role, DEFAULT_BEDROCK_MODEL
-    )
+def site_get_model_target(
+    *, role: str, required: frozenset[str] = frozenset({"text"})
+) -> ResolvedBedrockModel:
+    """
+    Resolve a site's role preference to one concrete invocation target.
+    """
+    if model := getattr(site_get(), f"{role}_model"):
+        return bedrock_model_target(model=model, required=required)
+    if role == "judge":
+        raise BedrockModelUnavailable("Judging is disabled.")
+    available = bedrock_model_list(required=required)
+    return available[default_model(role, available)]
+
+
+def site_get_reader_model_target(
+    *, required: frozenset[str]
+) -> ResolvedBedrockModel:
+    """
+    Prefer the assistant, then an enabled capable reader in curation order.
+    """
+    try:
+        return site_get_model_target(role="assistant", required=required)
+    except BedrockModelUnavailable:
+        available = bedrock_model_list(required=required)
+        if available:
+            return next(iter(available.values()))
+        raise BedrockModelUnavailable(
+            "No enabled reader model supports this attachment."
+        ) from None

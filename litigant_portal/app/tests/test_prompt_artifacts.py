@@ -28,6 +28,8 @@ from litigant_portal.app.services.chat_engine import (
     prompt_artifact_get_or_create,
 )
 
+pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
+
 MODEL = "gpt-5-mini"
 
 

@@ -6,12 +6,17 @@ import uuid
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+import pytest
 from django.test import SimpleTestCase
 from django.urls import reverse
 
 from litigant_portal.agents.base import Agent, ToolOutput
+from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import Topic, TopicFlow
+from litigant_portal.app.selectors.bedrock import BedrockModelUnavailable
 from litigant_portal.app.services.chat_engine import chat_stream
+
+pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 
 
 class FailingAgent(Agent):
@@ -70,7 +75,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
             save=Mock(),
         )
 
-    def stream_events(self, completions=None):
+    def stream_events(self, completions=None, *, model="test-model"):
         with (
             patch(
                 "litigant_portal.app.services.chat_engine.litellm.completion",
@@ -79,13 +84,13 @@ class ChatStreamFallbackTests(SimpleTestCase):
                     if completions is not None
                     else RuntimeError("secret-provider-detail")
                 ),
-            ),
+            ) as completion,
             patch(
                 "litigant_portal.app.services.chat_engine.litellm.token_counter",
                 return_value=0,
             ),
             patch(
-                "litigant_portal.app.services.chat_engine._resolve_thread",
+                "litigant_portal.app.services.chat_engine.chat_thread_get",
                 return_value=self.thread,
             ),
             patch(
@@ -109,7 +114,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 message="Please help.",
                 agent_class=FailingAgent,
                 thread_type="test_agent",
-                model="test-model",
+                model=model,
                 thread_id=str(self.thread.id),
             )
             events = [
@@ -121,7 +126,36 @@ class ChatStreamFallbackTests(SimpleTestCase):
             self.persisted_messages = [
                 call.kwargs["data"] for call in create_message.call_args_list
             ]
+            self.completion_calls = completion.call_args_list
             return events
+
+    def test_explicit_model_pin_reaches_inference(self):
+        model_id = "anthropic.claude-haiku-4-5-20251001-v1:0"
+        pinned = f"bedrock_mantle/{model_id}"
+        resolved = f"bedrock/converse/us-east-1/us.{model_id}"
+        with patch(
+            "litigant_portal.app.services.chat_engine.bedrock_model_target",
+            return_value=ResolvedBedrockModel(resolved, "us-east-1"),
+        ) as resolve:
+            events = self.stream_events(
+                [iter([_text_chunk("Answer")])], model=pinned
+            )
+        resolve.assert_called_once_with(
+            model=pinned, required=frozenset({"text", "stream"})
+        )
+        self.assertEqual(self.completion_calls[0].kwargs["model"], resolved)
+        self.assertIn({"type": "content_delta", "content": "Answer"}, events)
+
+    def test_default_chat_budget_is_left_to_the_provider(self):
+        self.stream_events([iter([_text_chunk("Answer")])])
+        self.assertNotIn("max_tokens", self.completion_calls[0].kwargs)
+
+    def test_agent_defined_chat_budget_is_preserved(self):
+        with patch.object(
+            FailingAgent, "completion_args", {"max_tokens": 321}
+        ):
+            self.stream_events([iter([_text_chunk("Answer")])])
+        self.assertEqual(self.completion_calls[0].kwargs["max_tokens"], 321)
 
     def test_active_valid_flow_gets_guided_fallback_and_safe_error(self):
         self.thread.state = {"active_topic_flow": "eviction/tenant"}
@@ -268,6 +302,35 @@ class ChatStreamFallbackTests(SimpleTestCase):
                     [{"role": "user", "content": "Please help."}],
                 )
                 self.thread.save.assert_not_called()
+
+    def test_description_discovery_failure_does_not_fail_the_reply(self):
+        self.thread.description = ""
+        chunk = SimpleNamespace(
+            choices=[
+                SimpleNamespace(
+                    delta=SimpleNamespace(
+                        content="Here is help.", tool_calls=[]
+                    ),
+                    finish_reason="stop",
+                )
+            ]
+        )
+        with (
+            patch(
+                "litigant_portal.app.services.chat_engine.site_get_model_target",
+                side_effect=BedrockModelUnavailable("No eligible Haiku"),
+            ),
+            self.assertLogs(
+                "litigant_portal.app.services.chat_engine", level="ERROR"
+            ),
+        ):
+            events = self.stream_events(completions=[iter([chunk])])
+        self.assertEqual(events[-1], {"type": "done"})
+        self.assertNotIn("error", [event["type"] for event in events])
+        self.assertIn(
+            {"role": "assistant", "content": "Here is help."},
+            self.persisted_messages,
+        )
 
     def test_midstream_provider_failure_preserves_text_and_emits_safe_fallback(
         self,

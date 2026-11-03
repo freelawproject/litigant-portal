@@ -13,6 +13,8 @@ from litigant_portal.agents.base import Agent
 from litigant_portal.app.models import ChatThread, UserIdentity
 from litigant_portal.app.services.chat_engine import chat_stream
 
+pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
+
 
 class PreparingAgent(Agent):
     events: list = []
