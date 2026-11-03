@@ -824,7 +824,10 @@
             <code>:answer</code> prop. The label falls back to the
             variable's name, and the value comes from
             <code>display_value</code>, so lists and booleans read as words
-            rather than Python literals.
+            rather than Python literals. A private fact (the variable's
+            <code>is_private</code> flag) renders masked, with a reveal
+            button that shows the value on request. Without JavaScript the
+            row stays masked and no button is shown.
           </p>
           <dl class="space-y-2.5 max-w-xs mb-6">
             {% for answer in briefcase_groups.0.answers %}

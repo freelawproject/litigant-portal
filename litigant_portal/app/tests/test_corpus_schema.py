@@ -414,6 +414,7 @@ def test_private_is_an_optional_glossary_flag_authored_as_private():
         "name_change_requested_first",
         "name_change_requested_middle",
         "name_change_requested_last",
+        "name_change_citizenship",
         "name_change_criminal_history",
         "name_change_conviction_charge",
         "name_change_conviction_class",

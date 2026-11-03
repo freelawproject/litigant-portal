@@ -1,6 +1,33 @@
+{% load i18n %}
+
 {# One stored fact: its label over its value. Label falls back to the #}
 {# variable's name so a corpus entry with no label still reads. #}
-<div>
-  <dt class="text-xs text-greyscale-500">{{ answer.variable.label|default:answer.variable.name }}</dt>
-  <dd class="text-sm text-greyscale-800 break-words">{{ answer.display_value }}</dd>
-</div>
+{# A private fact is masked until revealed. #}
+{% with label=answer.variable.label|default:answer.variable.name %}
+  <div>
+    <dt class="text-xs text-greyscale-500">{{ label }}</dt>
+    {% if answer.variable.is_private %}
+      {% blocktrans with label=label asvar reveal_label %}Show {{ label }}{% endblocktrans %}
+      <dd class="flex items-center gap-1 text-sm text-greyscale-800 break-words"
+          x-data="revealToggle">
+        <span aria-hidden="true" x-show="masked">••••••</span>
+        <span class="sr-only" x-show="masked">{% trans "Hidden for your privacy" %}</span>
+        <span class="min-w-0" x-show="revealed" x-cloak>{{ answer.display_value }}</span>
+        <c-atoms.button type="button"
+                        variant="ghost"
+                        size="icon"
+                        class="-my-2"
+                        aria_label="{{ reveal_label }}"
+                        aria-pressed="false"
+                        x-bind:aria-pressed="revealed"
+                        x-on:click="toggle"
+                        x-cloak>
+          <c-atoms.icon name="eye" class="w-4 h-4" x-show="masked" />
+          <c-atoms.icon name="eye-slash" class="w-4 h-4" x-show="revealed" x-cloak />
+        </c-atoms.button>
+      </dd>
+    {% else %}
+      <dd class="text-sm text-greyscale-800 break-words">{{ answer.display_value }}</dd>
+    {% endif %}
+  </div>
+{% endwith %}

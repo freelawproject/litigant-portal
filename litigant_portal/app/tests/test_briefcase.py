@@ -4,7 +4,12 @@ The panel shows an identity's stored facts grouped for reading. Grouping is
 derived from each answered variable's own interview placement, not from an
 "active flow" — the chat page has no flow server-side, so a placement-driven
 grouping is the only one available without a model change.
+
+The private-fact tests render the molecule through the chat page and the
+briefcase fragment; they are postgres-marked like the context tests.
 """
+
+import re
 
 import pytest
 from django.test import SimpleTestCase, TestCase
@@ -28,6 +33,19 @@ def _place(page, variable, order):
     return TopicFlowInterviewVariable.objects.create(
         page=page, variable=variable, order=order
     )
+
+
+MASKED_VALUE_RE = re.compile(
+    r"<span\b[^>]*\bx-cloak\b[^>]*>\s*([^<]*?)\s*</span>"
+)
+
+MASK_RE = re.compile(
+    r'<span\b[^>]*aria-hidden="true"[^>]*>\s*••••••\s*</span>'
+)
+
+REVEAL_BUTTON_RE = re.compile(
+    r"<button\b[^>]*\baria-label=\"Show ([^\"]*)\"[^>]*>"
+)
 
 
 @pytest.mark.postgres
@@ -314,6 +332,132 @@ class BriefcaseSampleTests(SimpleTestCase):
 
     def test_a_plain_text_fact_is_untouched(self):
         self.assertEqual(self._fact("tenant_first").display_value, "Jamie")
+
+    def test_the_sample_has_a_private_fact_so_the_masked_row_is_shown(self):
+        self.assertTrue(self._fact("tenant_dob").variable.is_private)
+
+
+@pytest.fixture
+def visitor(client):
+    client.session.save()
+    identity = UserIdentity.objects.create(
+        session_key=client.session.session_key
+    )
+    topic = Topic.objects.create(slug="name-change", order=0)
+    flow = TopicFlow.objects.create(
+        topic=topic, slug="adult", order=0, enabled=True
+    )
+    page = TopicFlowInterviewPage.objects.create(
+        flow=flow, title="About you", order=0
+    )
+    return identity, page
+
+
+def _answered(visitor, name, label, value, *, is_private=False, order=0):
+    identity, page = visitor
+    variable = Variable.objects.create(
+        name=name, label=label, is_private=is_private
+    )
+    VariableAnswer.objects.create(
+        identity=identity, variable=variable, value=value
+    )
+    _place(page, variable, order)
+    return variable
+
+
+def _chat_page(client):
+    return client.get(reverse("pages:chat")).content.decode()
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_a_private_value_is_only_inside_the_cloaked_span(client, visitor):
+    _answered(visitor, "dob", "Date of birth", "1990-04-02", is_private=True)
+
+    content = _chat_page(client)
+
+    hidden = [m.group(1) for m in MASKED_VALUE_RE.finditer(content)]
+    assert "1990-04-02" in hidden
+    assert "1990-04-02" not in MASKED_VALUE_RE.sub("", content)
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_a_private_row_shows_its_label_and_the_mask(client, visitor):
+    _answered(visitor, "dob", "Date of birth", "1990-04-02", is_private=True)
+
+    content = _chat_page(client)
+
+    assert "Date of birth" in content
+    assert MASK_RE.search(content)
+    assert "Hidden for your privacy" in content
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_the_reveal_button_is_a_button_named_after_the_fact(client, visitor):
+    _answered(visitor, "dob", "Date of birth", "1990-04-02", is_private=True)
+
+    content = _chat_page(client)
+
+    button = REVEAL_BUTTON_RE.search(content)
+    assert button.group(1) == "Date of birth"
+    assert 'type="button"' in button.group()
+    assert 'aria-pressed="false"' in button.group()
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_the_private_row_carries_the_reveal_toggle_bindings(client, visitor):
+    _answered(visitor, "dob", "Date of birth", "1990-04-02", is_private=True)
+
+    content = _chat_page(client)
+
+    assert re.search(r'<dd\b[^>]*x-data="revealToggle"[^>]*>', content)
+    button = REVEAL_BUTTON_RE.search(content).group()
+    assert 'x-on:click="toggle"' in button
+    assert 'x-bind:aria-pressed="revealed"' in button
+    assert re.search(r"\bx-cloak\b", button)
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_a_public_row_renders_its_value_with_no_mask_or_button(
+    client, visitor
+):
+    _answered(visitor, "first", "First name", "Jamie")
+
+    content = _chat_page(client)
+
+    assert re.search(r"<dd\b[^>]*>\s*Jamie\s*</dd>", content)
+    assert not MASK_RE.search(content)
+    assert not REVEAL_BUTTON_RE.search(content)
+    assert "revealToggle" not in content
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_the_fragment_masks_a_private_value_too(client, visitor):
+    _answered(visitor, "dob", "Date of birth", "1990-04-02", is_private=True)
+
+    content = client.get(reverse("pages:briefcase")).content.decode()
+
+    assert MASK_RE.search(content)
+    assert "1990-04-02" not in MASKED_VALUE_RE.sub("", content)
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_a_group_of_only_private_facts_keeps_its_title(client, visitor):
+    _answered(visitor, "dob", "Date of birth", "1990-04-02", is_private=True)
+    _answered(
+        visitor, "ssn_last4", "Last 4 of SSN", "1234", is_private=True, order=1
+    )
+
+    content = _chat_page(client)
+
+    assert re.search(r"<h3\b[^>]*>\s*About you\s*</h3>", content)
+    assert len(REVEAL_BUTTON_RE.findall(content)) == 2
 
 
 @pytest.mark.postgres
