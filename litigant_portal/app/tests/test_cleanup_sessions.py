@@ -6,7 +6,7 @@ from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
@@ -16,6 +16,9 @@ from litigant_portal.app.models import (
     UserIdentity,
     UserUpload,
 )
+from litigant_portal.app.services.user import user_identities_delete
+
+COMMAND = "litigant_portal.app.management.commands.cleanup_sessions"
 
 
 def _run(*args):
@@ -80,6 +83,42 @@ class CleanupSessionsTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             _run()
         storage_delete.assert_not_called()
+
+    def test_activity_after_the_scan_is_rechecked_per_batch(self):
+        def delete_after_new_message(*, identities):
+            self._add_message()
+            return user_identities_delete(identities=identities)
+
+        with mock.patch(f"{COMMAND}.user_identities_delete") as service:
+            service.side_effect = delete_after_new_message
+            output = _run("--delete")
+        self.assertTrue(UserIdentity.objects.filter(pk=self.stale.pk).exists())
+        self.assertIn("Deleted 0 anonymous identities", output)
+
+    def test_failed_batch_reports_what_was_deleted(self):
+        second = UserIdentity.objects.create(session_key="stale-2")
+        UserIdentity.objects.filter(pk=second.pk).update(
+            created_at=timezone.now() - timedelta(days=120)
+        )
+
+        def fail_on_second_batch(*, identities):
+            if service.call_count > 1:
+                raise RuntimeError("boom")
+            return user_identities_delete(identities=identities)
+
+        out = StringIO()
+        with (
+            mock.patch(f"{COMMAND}.BATCH_SIZE", 1),
+            mock.patch(f"{COMMAND}.user_identities_delete") as service,
+        ):
+            service.side_effect = fail_on_second_batch
+            with self.assertRaises(CommandError):
+                call_command("cleanup_sessions", "--delete", stdout=out)
+        self.assertIn("Deleted 1 anonymous identities", out.getvalue())
+        self.assertFalse(
+            UserIdentity.objects.filter(pk=self.stale.pk).exists()
+        )
+        self.assertTrue(UserIdentity.objects.filter(pk=second.pk).exists())
 
     def test_dry_run_reports_counts_without_deleting(self):
         output = _run()
