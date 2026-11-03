@@ -15,6 +15,8 @@ from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
 from litigant_portal.app.services import chat_engine as engine
 from litigant_portal.app.services.chat_engine import chat_stream
 
+pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
+
 MODEL = "gpt-5-mini"
 FLOW_RESULT = (
     "## Filing fee [source:adult-name-change/standard/filing_fee]\n$160."

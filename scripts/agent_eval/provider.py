@@ -7,9 +7,13 @@ import os
 import time
 from contextlib import ExitStack
 from contextvars import ContextVar
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 from .schema import Config
+
+if TYPE_CHECKING:
+    from litigant_portal.agents.bedrock import ResolvedBedrockModel
 
 _OBSERVING = ContextVar("agent_eval_observing", default=False)
 REQUEST_FIELDS = {
@@ -56,6 +60,30 @@ def safe(value):
     return value
 
 
+def _bedrock_pricing_target(model: str) -> "ResolvedBedrockModel | None":
+    """
+    Interpret known qualified routes without discovery or Django startup.
+    """
+    if not isinstance(model, str):
+        return None
+    match model.split("/"):
+        case ["bedrock", "converse", region, model_id] | [
+            "bedrock",
+            region,
+            model_id,
+        ]:
+            billing_model = model_id
+        case ["bedrock_mantle", region, model_id]:
+            billing_model = f"bedrock_mantle/{model_id}"
+        case _:
+            return None
+    from litigant_portal.agents.bedrock import US_REGIONS, ResolvedBedrockModel
+
+    if region not in US_REGIONS:
+        return None
+    return ResolvedBedrockModel(model, region, billing_model=billing_model)
+
+
 def usage_cost(response, model: str, config: Config) -> dict:
     """
     Keep unknown usage/pricing distinct from measured zero expenditure.
@@ -85,6 +113,35 @@ def usage_cost(response, model: str, config: Config) -> dict:
     if incoming is None or outgoing is None:
         return result
     override = config.prices.get(model)
+    target = None
+    if override is None:
+        try:
+            target = _bedrock_pricing_target(model)
+        except ImportError:
+            return result
+    if override is None and target is not None:
+        from litigant_portal.agents.bedrock import model_class
+
+        def identity(value: str) -> tuple[str, str] | None:
+            candidate = _bedrock_pricing_target(value)
+            if candidate:
+                if candidate.region != target.region:
+                    return None
+                value = candidate.billing_model or value
+            return model_class(
+                value.removeprefix("bedrock_mantle/").removeprefix("us.")
+            )
+
+        selected = identity(model)
+        matches = [
+            price
+            for key, price in config.prices.items()
+            if selected is not None and identity(key) == selected
+        ]
+        if len(matches) > 1:
+            result["pricing"] = {"basis": "ambiguous config overrides"}
+            return result
+        override = matches[0] if matches else None
     if override:
         result["pricing"] = {
             "basis": "config override",
@@ -101,7 +158,12 @@ def usage_cost(response, model: str, config: Config) -> dict:
         ) / 1_000_000
         return result
     try:
-        info = litellm.get_model_info(model=model)
+        pricing_model = target.pricing_model() if target else model
+        info = (
+            litellm.model_cost.get(pricing_model, {})
+            if target
+            else litellm.get_model_info(model=model)
+        )
         if any(
             info.get(key) is None
             for key in ("input_cost_per_token", "output_cost_per_token")
@@ -109,14 +171,19 @@ def usage_cost(response, model: str, config: Config) -> dict:
             return result
         result["pricing"] = {
             "basis": "LiteLLM model pricing snapshot",
+            "model": pricing_model,
             "rates": {
                 key: value
                 for key, value in info.items()
                 if "cost" in key and value is not None
             },
         }
-        cost = litellm.completion_cost(
-            completion_response=response, model=model
+        cost = (
+            target.completion_cost(usage)
+            if target
+            else litellm.completion_cost(
+                completion_response=response, model=model
+            )
         )
         if cost is not None and cost >= 0:
             result["cost_usd"] = cost

@@ -120,6 +120,10 @@ document.addEventListener('alpine:init', () => {
 
     // --- Site settings ---
 
+    modelUnavailable() {
+      return this[this.$el.dataset.field] === this.$el.dataset.model
+    },
+
     async loadSite() {
       try {
         const res = await fetch('/api/admin/site/', {

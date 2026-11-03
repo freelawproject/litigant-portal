@@ -24,12 +24,18 @@ from litigant_portal.app.models import (
     PromptArtifact,
     UserIdentity,
 )
+from litigant_portal.app.selectors.bedrock import (
+    bedrock_model_target,
+)
 from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_get,
 )
-from litigant_portal.app.selectors.site import site_get, site_get_model
+from litigant_portal.app.selectors.site import site_get, site_get_model_target
 from litigant_portal.app.selectors.topic_flow import topic_flow_url_kwargs
+from litigant_portal.app.services.bedrock import (
+    bedrock_catalog_invalidate_on_error,
+)
 from litigant_portal.app.services.upload import (
     user_upload_llm_parts,
     user_upload_render_list,
@@ -175,7 +181,8 @@ def chat_message_inject_meta(
 
 def chat_thread_generate_description(*, thread: ChatThread) -> str:
     """Generate and store a short description of a thread's conversation."""
-    model = site_get_model(role="fast")
+    target = site_get_model_target(role="fast")
+    model = target.model
     conversation = "\n".join(
         f"{m.data.get('role')}: {m.data.get('content')}"
         for m in chat_message_list(
@@ -185,15 +192,22 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
         and m.data.get("content")
     )
     response = litellm.completion(
-        model=model,
+        **target.invocation_options(small_task=True),
+        api_key=settings.BEDROCK_API_KEY,
+        max_tokens=1024,
         messages=[
             {"role": "system", "content": DESCRIPTION_PROMPT},
             {"role": "user", "content": conversation[:4000]},
         ],
     )
     try:
-        cost = litellm.completion_cost(completion_response=response)
-    except Exception:
+        cost = target.completion_cost(response.usage)
+    except Exception as error:
+        logger.warning(
+            "Title cost extraction failed (%s, model=%s)",
+            type(error).__name__,
+            model,
+        )
         cost = 0.0
     usage = getattr(response, "usage", None)
     # Book the call's tokens/cost so chat_thread_usage reflects it.
@@ -205,23 +219,18 @@ def chat_thread_generate_description(*, thread: ChatThread) -> str:
         cost=cost,
     )
     description = (response.choices[0].message.content or "").strip()[:255]
+    finish_reason = getattr(response.choices[0], "finish_reason", None)
+    if not description or finish_reason == "length":
+        logger.warning(
+            "Thread title empty or truncated (thread=%s, model=%s, finish_reason=%s)",
+            thread.id,
+            model,
+            finish_reason,
+        )
     if description:
         thread.description = description
         thread.save(update_fields=["description", "updated_at"])
     return description
-
-
-def _resolve_thread(
-    *, identity: UserIdentity, thread_id: str | None, thread_type: str
-) -> ChatThread:
-    """Return the identity's thread, creating a fresh one when no id is given."""
-    if thread_id:
-        return chat_thread_get(
-            identity=identity, thread_id=thread_id, thread_type=thread_type
-        )
-    return ChatThread.objects.create(
-        identity=identity, thread_type=thread_type
-    )
 
 
 def _sse(payload: dict[str, Any]) -> str:
@@ -278,10 +287,13 @@ def _messages_for_llm(
     history: list[dict[str, Any]],
     *,
     attachment_cache: dict,
+    capabilities: frozenset[str],
 ) -> list[dict[str, Any]]:
     """Prepend the (never-stored) system prompt and project to litellm shape,
     and inject attachment content parts or stubs."""
-    hydrated = user_upload_llm_parts(history=history, cache=attachment_cache)
+    hydrated = user_upload_llm_parts(
+        history=history, cache=attachment_cache, capabilities=capabilities
+    )
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": system_prompt}
     ]
@@ -438,8 +450,12 @@ def _judge_candidate(
     audit: dict[str, Any] = {"role": "meta", "kind": "judge"}
     error_category = "provider_error"
     try:
+        target = bedrock_model_target(model=model)
+        model = target.model
         response = litellm.completion(
-            model=model,
+            **target.invocation_options(small_task=True),
+            api_key=settings.BEDROCK_API_KEY,
+            max_tokens=4096,
             messages=AgentJudge.request(
                 {"messages": messages, "state": thread.state}, candidate
             ),
@@ -451,9 +467,7 @@ def _judge_candidate(
         if response.usage:
             num_tokens = response.usage.completion_tokens or 0
         try:
-            cost = litellm.completion_cost(
-                completion_response=response, model=model
-            )
+            cost = target.completion_cost(response.usage)
         except Exception as error:
             logger.warning(
                 "Judge cost extraction failed (%s, model=%s)",
@@ -465,6 +479,7 @@ def _judge_candidate(
         verdict = AgentJudge.review(response)
         audit["verdict"] = verdict.model_dump(mode="json")
     except Exception as error:
+        bedrock_catalog_invalidate_on_error(error)
         audit["error"] = "judge_failed"
         audit["error_category"] = (
             "timeout"
@@ -496,15 +511,30 @@ def chat_stream(
     message: str,
     agent_class: type[Agent],
     thread_type: str,
-    model: str,
+    model: str | None = None,
     thread_id: str | None = None,
     attachment_ids: list[str] | None = None,
 ) -> StreamingHttpResponse:
     """Stream an agent's reply for ``message``, running the tool loop."""
-    thread = _resolve_thread(
-        identity=identity, thread_id=thread_id, thread_type=thread_type
+    thread = (
+        chat_thread_get(
+            identity=identity, thread_id=thread_id, thread_type=thread_type
+        )
+        if thread_id
+        else None
     )
     agent = agent_class()
+    required = frozenset(
+        {"text", "stream"} | ({"tools"} if agent.tools else set())
+    )
+    if model:
+        target = bedrock_model_target(model=model, required=required)
+    else:
+        target = site_get_model_target(role="assistant", required=required)
+    model = target.model
+    thread = thread or ChatThread.objects.create(
+        identity=identity, thread_type=thread_type
+    )
 
     if "model" in agent.completion_args:
         raise ValueError(
@@ -551,11 +581,13 @@ def chat_stream(
                 )
                 call_args: dict[str, Any] = {
                     **agent.completion_args,
-                    "model": model,
+                    **target.invocation_options(),
+                    "api_key": settings.BEDROCK_API_KEY,
                     "messages": _messages_for_llm(
                         _system_prompt_text(system_prompt, identity_prompt),
                         history,
                         attachment_cache=attachment_cache,
+                        capabilities=target.capabilities,
                     ),
                     "stream": True,
                     "stream_options": {"include_usage": True},
@@ -582,9 +614,7 @@ def chat_stream(
                     usage = getattr(chunk, "usage", None)
                     if usage:
                         try:
-                            cost = litellm.completion_cost(
-                                completion_response=chunk, model=model
-                            )
+                            cost = target.completion_cost(usage)
                             completion_tokens = usage.completion_tokens
                         except Exception:
                             logger.exception(
@@ -810,14 +840,16 @@ def chat_stream(
                                 "description": description,
                             }
                         )
-                except Exception:
+                except Exception as error:
+                    bedrock_catalog_invalidate_on_error(error)
                     logger.exception(
                         "chat_engine description generation failed"
                     )
 
             thread.save(update_fields=["updated_at"])
             yield _sse({"type": "done"})
-        except Exception:
+        except Exception as error:
+            bedrock_catalog_invalidate_on_error(error)
             logger.exception("chat_engine stream failed")
             yield _sse(_stream_error_event(thread))
             yield _sse({"type": "done"})

@@ -42,7 +42,7 @@ def forwards(apps, schema_editor):
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("app", "0034_topicflowinterviewpage_on_page"),
+        ("app", "0036_bedrock_model_choices"),
         ("auth", "0012_alter_user_first_name_max_length"),
         ("contenttypes", "0002_remove_content_type_name"),
     ]

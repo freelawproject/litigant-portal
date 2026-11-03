@@ -7,8 +7,8 @@ from django.core.cache import cache
 from litellm import Timeout
 
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
+from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import ChatThread, Site, UserIdentity
-from litigant_portal.app.models.choices import BedrockModel
 from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_export_data,
@@ -21,8 +21,8 @@ from litigant_portal.app.services.chat_engine import (
 )
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
-MODEL = BedrockModel.GPT_5_6_LUNA
-JUDGE = BedrockModel.GPT_5_6_SOL
+MODEL = "bedrock_mantle/openai.gpt-5.6-luna"
+JUDGE = "bedrock_mantle/openai.gpt-5.6-sol"
 FINDING = {"code": "unsupported_claim", "message": "Remove the invented fee."}
 WARNING = (
     "Warning: This answer could not be fully verified and may contain errors."
@@ -85,6 +85,12 @@ def stream():
         cache.clear()
         with (
             patch(
+                "litigant_portal.app.services.chat_engine.bedrock_model_target",
+                side_effect=lambda *, model, **kwargs: ResolvedBedrockModel(
+                    model, "us-east-1", small_task_effort="low"
+                ),
+            ),
+            patch(
                 "litigant_portal.app.services.chat_engine.litellm.completion",
                 side_effect=responses,
             ) as completion,
@@ -138,6 +144,7 @@ def test_disabled_preserves_streaming(stream, judge_model):
     assert len(calls) == 1
     assert "timeout" not in calls[0].kwargs
     assert "num_retries" not in calls[0].kwargs
+    assert "max_tokens" not in calls[0].kwargs
     assert not any(event["type"] == "heartbeat" for event in events)
     assert not thread.messages.filter(meta=True).exists()
     assert not any("review_warning" in event for event in events)
@@ -158,6 +165,9 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
     ]
     assert sum(e["type"] == "judging" for e in events) == attempts
     assert sum(e["type"] == "heartbeat" for e in events) == attempts
+    for call in (call for call in calls if not call.kwargs["stream"]):
+        assert call.kwargs["max_tokens"] == 4096
+        assert call.kwargs["reasoning_effort"] == "low"
     for call in calls:
         assert call.kwargs["timeout"] == 45
         assert call.kwargs["num_retries"] == 0

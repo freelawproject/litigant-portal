@@ -348,6 +348,7 @@ def _hydrate_attachment(
     uploads: dict[str, UserUpload],
     cache: dict,
     budgets: dict[str, int],
+    capabilities: frozenset[str],
 ) -> dict[str, Any]:
     """Inline one attachment as a content part, or degrade to a stub."""
     upload = uploads.get(upload_id)
@@ -376,6 +377,16 @@ def _hydrate_attachment(
             upload, "this file type can't be read by the assistant"
         )
 
+    modality = {"image_url": "image", "file": "document"}.get(
+        part["type"], "text"
+    )
+    if modality not in capabilities:
+        return _attachment_stub(
+            upload,
+            "use the query_document tool to read it; "
+            "this assistant cannot read this file inline",
+        )
+
     aged = _attachment_stub(
         upload,
         "attached earlier and no longer inlined; "
@@ -390,7 +401,10 @@ def _hydrate_attachment(
 
 
 def user_upload_llm_parts(
-    *, history: list[dict[str, Any]], cache: dict
+    *,
+    history: list[dict[str, Any]],
+    cache: dict,
+    capabilities: frozenset[str],
 ) -> dict[int, list[dict[str, Any]]]:
     """Inject llm content parts for user messages that carry attachments."""
     ids = {
@@ -421,7 +435,9 @@ def user_upload_llm_parts(
         parts = [{"type": "text", "text": msg.get("content", "")}]
         for upload_id in msg["attachments"]:
             parts.append(
-                _hydrate_attachment(str(upload_id), uploads, cache, budgets)
+                _hydrate_attachment(
+                    str(upload_id), uploads, cache, budgets, capabilities
+                )
             )
         hydrated[i] = parts
     return hydrated

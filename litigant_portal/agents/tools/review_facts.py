@@ -88,6 +88,7 @@ class ReviewFacts(Tool):
                         # str(): lazy translation proxies break JSON encoding.
                         "value": str(answer.display_value),
                         "reviewed": answer.reviewed,
+                        "evidence": answer.evidence,
                     }
                 )
             elif variable.required and variable.is_asked(values):

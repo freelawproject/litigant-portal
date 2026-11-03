@@ -24,6 +24,17 @@ class RecordFact(Tool):
             '{"county": "Burleigh", "date_of_birth": "1990-01-31"}'
         )
     )
+    evidence: dict[str, dict[str, str | None]] = Field(
+        default_factory=dict,
+        description=(
+            "Optional supporting evidence keyed by variable name, e.g. "
+            '{"county": {"quote": "I live in Burleigh County."}}. '
+            "Quote a short excerpt of the user's statement or document. "
+            "For document excerpts, also include the document's upload_id. "
+            "For unchanged answers, evidence is added only when none is "
+            "stored; existing evidence is kept."
+        ),
+    )
 
     tool_call_template = "tools/record_fact_call.html"
     tool_result_template = "tools/record_fact_result.html"
@@ -75,24 +86,13 @@ class RecordFact(Tool):
                     }
                 )
                 continue
-            # A restated fact must not reset a confirmation the user gave
-            # on the guided page.
-            existing = answers.get(variable.pk)
-            if existing is not None and existing.value == value:
-                unchanged.append(
-                    {
-                        "name": name,
-                        "label": variable.label or name,
-                        "value": str(existing.display_value),
-                    }
-                )
-                continue
             try:
                 answer = variable_answer_set(
                     identity=identity,
                     variable=variable,
                     value=value,
                     reviewed=False,
+                    evidence=self.evidence.get(name),
                 )
             except ValidationError as exc:
                 errors.append(
@@ -100,6 +100,16 @@ class RecordFact(Tool):
                         "name": name,
                         "label": variable.label or name,
                         "message": "; ".join(exc.messages),
+                    }
+                )
+                continue
+            existing = answers.get(variable.pk)
+            if existing is not None and existing.value == answer.value:
+                unchanged.append(
+                    {
+                        "name": name,
+                        "label": variable.label or name,
+                        "value": str(answer.display_value),
                     }
                 )
                 continue
@@ -125,7 +135,7 @@ class RecordFact(Tool):
             parts.append(f"Cleared saved answers: {', '.join(cleared)}.")
         if unchanged:
             parts.append(
-                "Already saved, unchanged: "
+                "Answer values unchanged: "
                 f"{', '.join(fact['name'] for fact in unchanged)}."
             )
         if errors:

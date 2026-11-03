@@ -6,6 +6,23 @@ from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import Site
 
 
+@pytest.fixture
+def resolved_bedrock_model(monkeypatch):
+    """
+    Isolate unrelated engine tests from AWS catalog discovery.
+    """
+    from litigant_portal.agents.bedrock import ResolvedBedrockModel
+
+    monkeypatch.setattr(
+        "litigant_portal.app.services.chat_engine.bedrock_model_target",
+        lambda *, model, **kwargs: ResolvedBedrockModel(
+            model,
+            "us-east-1",
+            capabilities=frozenset({"text", "image", "document"}),
+        ),
+    )
+
+
 @pytest.fixture(autouse=True)
 def test_cache(settings):
     """Patch settings to isolate tests from Redis."""

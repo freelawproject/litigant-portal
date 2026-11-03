@@ -10,13 +10,20 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
+from litigant_portal.agents.bedrock import (
+    BedrockModelUnavailable,
+    model_choices,
+)
 from litigant_portal.app.models import Site, Topic
 from litigant_portal.app.models.choices import (
-    BedrockModel,
     JurisdictionLevel,
     State,
 )
 from litigant_portal.app.permissions import Tier
+from litigant_portal.app.selectors.bedrock import (
+    bedrock_catalog_get,
+    bedrock_model_choices,
+)
 from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.selectors.topic_flow import topic_get, topic_list
 from litigant_portal.app.selectors.user import (
@@ -102,11 +109,39 @@ def site_update_view(request: HttpRequest) -> JsonResponse:
                 return JsonResponse({"error": _("Invalid URL")}, status=400)
         urls[field] = url
     ai_models = {}
+    site = site_get()
     for field in ("fast_model", "assistant_model", "judge_model"):
-        model = (request.POST.get(field) or "").strip()
-        if model and model not in BedrockModel.values:
+        ai_models[field] = (
+            request.POST.get(field, getattr(site, field)) or ""
+        ).strip()
+    changed_models = {
+        field: model
+        for field, model in ai_models.items()
+        if model and model != getattr(site, field)
+    }
+    if changed_models:
+        if not set(changed_models.values()) <= dict(model_choices()).keys():
             return JsonResponse({"error": _("Invalid model")}, status=400)
-        ai_models[field] = model
+        try:
+            catalog = bedrock_catalog_get()
+            unavailable = any(
+                model
+                not in dict(
+                    bedrock_model_choices(
+                        role=field.removesuffix("_model"), catalog=catalog
+                    )
+                )
+                for field, model in changed_models.items()
+            )
+        except BedrockModelUnavailable:
+            return JsonResponse(
+                {"error": _("Model availability could not be checked.")},
+                status=503,
+            )
+        if unavailable:
+            return JsonResponse(
+                {"error": _("Selected model is unavailable")}, status=400
+            )
     return JsonResponse(
         _site_payload(
             site_update(

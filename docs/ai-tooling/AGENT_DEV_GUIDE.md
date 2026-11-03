@@ -99,9 +99,11 @@ completion_args = {"max_tokens": 1000}
 ```
 
 These are spread into `litellm.completion(...)`. **Don't put `model` here** — you'll get an error if you try.
-The model is supplied to the engine by the endpoint (from the site's
-model config via `site_get_model`), not the agent, and setting it in
-`completion_args` raises.
+The engine resolves the site's assistant preference through `site_get_model_target`, returning a concrete route from the families curated in `agents/bedrock.py`. Setting `model` in `completion_args` raises. The HTTP wrapper uses site defaults; direct service callers such as evaluations may pass a model string to `chat_stream` for a strict override. The engine adds no default chat token limit, so an agent's explicit limit is preserved and an omitted limit uses provider behavior.
+
+Unset assistant/fast roles use the first available Balanced/Economy model, currently GPT Terra/GPT Luna instead of the previous GPT Luna/Claude Haiku defaults. An unset assistant can fall back from Balanced to Economy; the fast role stays in Economy. Judging remains disabled until selected. Admin labels include the resolved release: family selections can advance when discovery refreshes and can differ across accounts. `AWS_REGION` is optional and defaults to `us-east-1`, while `BEDROCK_ALLOWED_GEOGRAPHY` is optional and defaults to `US`.
+
+Attachment hydration respects the resolved chat target's capabilities. Unsupported native documents or images become stubs for `QueryDocument`, which prefers the selected assistant when capable and otherwise uses the first enabled capable model in Economy, Balanced, then Best order. The saved assistant selection is unchanged.
 
 ### 2. The state — `state_schema`
 
@@ -369,7 +371,8 @@ Two pieces make this work:
 - **Generic views** — [`views/chat_engine.py`](../../litigant_portal/app/views/chat_engine.py)
   provides `stream`, `thread_list`, `message_list`, `thread_usage`, and
   `thread_delete` as abstract views. Each takes the surface's bindings as
-  keyword args: `agent_class`, `thread_type`, and (for `stream`) `model`.
+  keyword args: `agent_class` and `thread_type`. Streaming resolves the
+  site's model preference in the service.
 
 A surface module fills in those blanks and adds the HTTP concerns (method
 decorators, rate limits) plus any surface-specific endpoints.
@@ -378,7 +381,7 @@ example — it binds `LitigantAssistant` and adds the upload endpoints:
 
 ```python
 # litigant_portal/app/views/assistant.py
-THREAD_TYPE = "user_chat"
+from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 
 
 @require_POST
@@ -387,15 +390,14 @@ def stream(request: HttpRequest):
     return chat_engine.stream(
         request,
         agent_class=LitigantAssistant,
-        thread_type=THREAD_TYPE,
-        model=site_get_model(role="assistant"),
+        thread_type=USER_CHAT_THREAD_TYPE,
     )
 
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def thread_list(request: HttpRequest) -> JsonResponse:
-    return chat_engine.thread_list(request, thread_type=THREAD_TYPE)
+    return chat_engine.thread_list(request, thread_type=USER_CHAT_THREAD_TYPE)
 ```
 
 Mount the surface under its own URL namespace in `urls.py`:
@@ -554,7 +556,7 @@ engine already uses for tool data and hidden messages.
    (each imported by its module path under `tools/`); export the agent from
    `agents/__init__.py`.
 7. Give it a surface: a view module that binds the generic `views/chat_engine.py`
-   views with your `agent_class`, a unique `thread_type`, and a model (see
+   views with your `agent_class` and a unique `thread_type` (see
    `views/assistant.py`), mounted under `api/agents/<name>/` in `urls.py`.
 
 No engine edits. No frontend edits (unless you _want_ custom cards). That's the

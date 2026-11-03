@@ -292,7 +292,7 @@ def _has_option(flat, value, label):
     )
 
 
-def _store(client, name, value, reviewed=False):
+def _store(client, name, value, reviewed=False, evidence=None):
     """Store an answer the way another surface would (the assistant, say),
     on the identity the middleware will resolve for this client."""
     identity, _ = UserIdentity.objects.get_or_create(
@@ -303,6 +303,7 @@ def _store(client, name, value, reviewed=False):
         variable=Variable.objects.get(name=name),
         value=value,
         reviewed=reviewed,
+        evidence=evidence,
     )
 
 
@@ -476,12 +477,35 @@ def test_glossary_default_preselects_until_an_answer_is_stored(client, synced):
 
 
 @pytest.mark.postgres
-def test_stored_answer_prefills_the_field(client, synced):
-    _store(client, "pet_kind", "dog")
-    _store(client, "licensed", False)
+def test_stored_answers_prefill_and_only_unreviewed_evidence_is_shown(
+    client, synced
+):
+    _store(
+        client,
+        "pet_kind",
+        "dog",
+        evidence={"quote": "I own a <dog>."},
+    )
+    _store(
+        client,
+        "licensed",
+        False,
+        evidence={"quote": "License: none", "upload_id": "document-id"},
+    )
+    _store(
+        client,
+        "full_name",
+        "Jane Doe",
+        reviewed=True,
+        evidence={"quote": "My full name is Jane Doe."},
+    )
     flat = _flat(client.get(URL))
     assert re.search(r'<option value="dog"[^>]*selected', flat)
     assert re.search(r'<option value="false"[^>]*selected', flat)
+    assert "Because you said: I own a &lt;dog&gt;." in flat
+    assert "From your document: License: none" in flat
+    assert "My full name is Jane Doe." not in flat
+    assert "I own a <dog>." not in flat
 
 
 @pytest.mark.postgres
@@ -497,11 +521,17 @@ def test_gated_field_appears_after_the_gate_answer_is_stored(client, synced):
 def test_protected_field_never_echoes_the_stored_value(client, synced):
     before = _flat(client.get(URL))
     assert 'name="first_name__clear"' not in before
-    _store(client, "first_name", "Sandra")
+    _store(
+        client,
+        "first_name",
+        "Sandra",
+        evidence={"quote": "My name is Sandra."},
+    )
     after = _flat(client.get(URL))
     # The input stays blank (the briefcase panel may still list the fact).
     field = _field_tag(after, "first_name")
     assert field and "Sandra" not in field
+    assert "My name is Sandra." not in after
     assert re.search(
         r'<input[^>]*type="checkbox"[^>]*name="first_name__clear"', after
     )
@@ -1143,8 +1173,19 @@ def test_post_ignores_a_variable_from_a_page_not_marked_on_page(
 
 @pytest.mark.postgres
 def test_post_marks_saved_answers_reviewed(client, synced):
+    evidence = {"quote": "I own a dog."}
+    _store(client, "pet_kind", "dog", evidence=evidence)
+    _store(client, "licensed", False, evidence={"quote": "No license yet."})
+    before = VariableAnswer.objects.get(variable__name="pet_kind")
     client.post(URL, PET_PAGE)
     assert all(reviewed for _value, reviewed in _rows().values())
+    unchanged = VariableAnswer.objects.get(variable__name="pet_kind")
+    assert unchanged.evidence == evidence
+    assert unchanged.updated_at == before.updated_at
+    changed = VariableAnswer.objects.get(variable__name="licensed")
+    assert changed.value is True
+    assert changed.evidence is None
+    assert "I own a dog." not in _flat(client.get(URL))
 
 
 @pytest.mark.postgres

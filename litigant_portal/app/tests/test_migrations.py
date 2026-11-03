@@ -80,18 +80,18 @@ def test_0020_deletes_facts_artifact_and_unlinks_its_message(migrator):
     assert kept.num_tokens == 7
 
 
-# 0035: the tiered roles (#1135). Admins becomes FLP Staff, User admins
+# 0037: the tiered roles (#1135). Admins becomes FLP Staff, User admins
 # becomes Court Admins, and Developers folds into FLP Staff. Membership must
 # carry over: a court's account that loses its group loses its access.
 
 
-def test_0035_carries_role_membership_into_the_renamed_groups(migrator):
-    migrator.rewind("0034_topicflowinterviewpage_on_page")
-    # Planted with the live auth models: 0034's historical registry stops
+def test_0037_carries_role_membership_into_the_renamed_groups(migrator):
+    migrator.rewind("0036_bedrock_model_choices")
+    # Planted with the live auth models: 0036's historical registry stops
     # short of contenttypes' own later migrations (its ContentType still
     # has a ``name`` column), and none of these tables change with ours.
     # Rewinding runs no post_migrate, so the head's groups are still here;
-    # clear them to plant the world as 0034 left it.
+    # clear them to plant the world as 0036 left it.
     Group.objects.all().delete()
     admins = Group.objects.create(name="Admins")
     developers = Group.objects.create(name="Developers")
@@ -111,7 +111,7 @@ def test_0035_carries_role_membership_into_the_renamed_groups(migrator):
         defaults={"name": "Can manage developer access"},
     )
 
-    migrator.migrate("0035_tiered_admin_roles")
+    migrator.migrate("0037_tiered_admin_roles")
 
     assert sorted(Group.objects.values_list("name", flat=True)) == [
         "Court Admins",

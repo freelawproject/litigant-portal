@@ -1,3 +1,11 @@
+import hashlib
+import json
+from dataclasses import asdict
+
+from django.conf import settings
+
+from litigant_portal.agents import bedrock
+
 # The singleton Site row. Read through site_get, dropped on commit by the
 # busts_cache on the site services.
 SITE_CACHE_KEY = "site"
@@ -26,3 +34,24 @@ DATA_MODEL_CACHE_KEYS = [
     CONTACT_LIST_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
 ]
+
+
+def bedrock_catalog_cache_key(policy: bedrock.BedrockPolicy) -> str:
+    """
+    Isolate account metadata by credentials, routing policy, and curation.
+    """
+    fingerprint = hashlib.sha256(
+        json.dumps(
+            (
+                policy.region,
+                policy.geography,
+                bedrock.MODEL_MAPPING,
+                bedrock.MODEL_CHOICES,
+                [asdict(definition) for definition in bedrock.MODEL_SERIES],
+                settings.BEDROCK_API_KEY,
+            ),
+            sort_keys=True,
+            default=sorted,
+        ).encode()
+    ).hexdigest()
+    return f"bedrock:catalog:v4:{fingerprint}"
