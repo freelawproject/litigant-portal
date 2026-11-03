@@ -15,9 +15,11 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import transaction
 from django.utils import timezone
 
 from litigant_portal.app.models import UserIdentity
+from litigant_portal.app.services.user import user_identity_reset
 
 
 class Command(BaseCommand):
@@ -75,14 +77,20 @@ class Command(BaseCommand):
             )
             return
 
+        thread_count, upload_count = _count_owned(old_identities)
+
         if delete:
-            deleted, details = old_identities.delete()
+            for identity in old_identities:
+                with transaction.atomic():
+                    user_identity_reset(identity=identity)
+                    identity.delete()
             self.stdout.write(
-                self.style.SUCCESS(f"Deleted {deleted} objects: {details}")
+                self.style.SUCCESS(
+                    f"Deleted {count} anonymous identities "
+                    f"({thread_count} chat threads, {upload_count} uploads)."
+                )
             )
         else:
-            thread_count = sum(i.chat_threads.count() for i in old_identities)
-            upload_count = sum(i.uploads.count() for i in old_identities)
             self.stdout.write(
                 self.style.WARNING(
                     f"DRY RUN: Would delete {count} anonymous identities "
@@ -91,3 +99,9 @@ class Command(BaseCommand):
                     f"Run with --delete to actually remove them."
                 )
             )
+
+
+def _count_owned(identities):
+    thread_count = sum(i.chat_threads.count() for i in identities)
+    upload_count = sum(i.uploads.count() for i in identities)
+    return thread_count, upload_count

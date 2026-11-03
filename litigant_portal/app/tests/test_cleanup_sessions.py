@@ -2,6 +2,7 @@
 
 from datetime import timedelta
 from io import StringIO
+from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -49,6 +50,37 @@ class CleanupSessionsTests(TestCase):
         )
         return message
 
+    def _storage_delete(self):
+        storage = UserUpload._meta.get_field("file").storage
+        patcher = mock.patch.object(storage, "delete")
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def test_delete_removes_stored_files(self):
+        storage_delete = self._storage_delete()
+        with self.captureOnCommitCallbacks(execute=True):
+            _run("--delete")
+        storage_delete.assert_called_once_with("uploads/x/notes.txt")
+
+    def test_delete_leaves_other_identities_files(self):
+        UserUpload.objects.create(
+            identity=self.fresh,
+            file="uploads/y/keep.txt",
+            name="keep.txt",
+            content_type="text/plain",
+            size=5,
+        )
+        storage_delete = self._storage_delete()
+        with self.captureOnCommitCallbacks(execute=True):
+            _run("--delete")
+        storage_delete.assert_called_once_with("uploads/x/notes.txt")
+
+    def test_dry_run_leaves_stored_files(self):
+        storage_delete = self._storage_delete()
+        with self.captureOnCommitCallbacks(execute=True):
+            _run()
+        storage_delete.assert_not_called()
+
     def test_dry_run_reports_counts_without_deleting(self):
         output = _run()
         self.assertIn("DRY RUN", output)
@@ -59,7 +91,10 @@ class CleanupSessionsTests(TestCase):
         self.assertTrue(UserIdentity.objects.filter(pk=self.stale.pk).exists())
 
     def test_delete_removes_stale_identity_and_data(self):
-        _run("--delete")
+        output = _run("--delete")
+        self.assertIn("Deleted 1 anonymous identities", output)
+        self.assertIn("1 chat threads", output)
+        self.assertIn("1 uploads", output)
         self.assertFalse(
             UserIdentity.objects.filter(pk=self.stale.pk).exists()
         )
