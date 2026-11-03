@@ -38,6 +38,7 @@ from litigant_portal.app.views.utils import (
     activity_threads,
     admin_tabs,
     briefcase_answers,
+    role_choices,
     topic_flow_cards,
 )
 
@@ -214,6 +215,7 @@ def admin(request: HttpRequest) -> HttpResponse:
             if discovery_complete
             else {},
             "default_model_labels": defaults,
+            "role_choices": role_choices(request.user),
             "jurisdiction_choices": JurisdictionLevel.choices,
             "state_choices": State.choices,
         },

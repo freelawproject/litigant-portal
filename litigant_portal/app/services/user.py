@@ -6,42 +6,39 @@ from django.db import transaction
 
 from litigant_portal.app.models import UserIdentity, UserUpload
 from litigant_portal.app.permissions import (
-    ADMINS_GROUP,
-    DEVELOPERS_GROUP,
-    USER_ADMINS_GROUP,
+    COURT_ADMINS_GROUP,
+    FLP_STAFF_GROUP,
+    Tier,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def _group_toggle(*, user: User, name: str) -> bool:
-    """Flip a user's membership in a group; returns the new state."""
-    group = Group.objects.get(name=name)
-    if user.groups.filter(pk=group.pk).exists():
-        user.groups.remove(group)
-        return False
-    user.groups.add(group)
-    return True
-
-
-def user_admin_toggle(*, user: User) -> bool:
-    """Flip a user's membership in the Admins group."""
-    return _group_toggle(user=user, name=ADMINS_GROUP)
-
-
-def user_developer_toggle(*, user: User) -> bool:
-    """Flip a user's membership in the Developers group."""
-    return _group_toggle(user=user, name=DEVELOPERS_GROUP)
-
-
-def user_user_admin_toggle(*, user: User) -> bool:
-    """Flip a user's membership in the User admins group."""
-    return _group_toggle(user=user, name=USER_ADMINS_GROUP)
+_ROLE_GROUPS = {
+    Tier.FLP_STAFF: FLP_STAFF_GROUP,
+    Tier.COURT_ADMIN: COURT_ADMINS_GROUP,
+}
 
 
 @transaction.atomic
-def user_create(*, email: str, password: str) -> User:
-    """Create an app user with a password an admin set.
+def user_role_set(*, user: User, role: Tier) -> None:
+    """Put an account in exactly one role (#1135). FLP Staff also get
+    Django admin staff access, which is how they read transcripts; every
+    other role loses it. Who may give which role is the view's check."""
+    if role == Tier.SUPERUSER:
+        raise ValueError("Superuser is granted by infra, not assigned")
+    user.groups.remove(*Group.objects.filter(name__in=_ROLE_GROUPS.values()))
+    if role in _ROLE_GROUPS:
+        user.groups.add(Group.objects.get(name=_ROLE_GROUPS[role]))
+    user.is_staff = role == Tier.FLP_STAFF
+    user.save(update_fields=["is_staff"])
+
+
+@transaction.atomic
+def user_create(
+    *, email: str, password: str, role: Tier = Tier.APP_USER
+) -> User:
+    """Create an account with a password an admin set, in ``role``.
 
     The pilots send no email, so there's no invite: the account can log in
     as soon as it exists, and its address is recorded as verified the way
@@ -53,6 +50,8 @@ def user_create(*, email: str, password: str) -> User:
     EmailAddress.objects.create(
         user=user, email=email, verified=True, primary=True
     )
+    if role != Tier.APP_USER:
+        user_role_set(user=user, role=role)
     return user
 
 

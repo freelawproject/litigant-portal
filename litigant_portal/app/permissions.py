@@ -1,20 +1,22 @@
-ADMINS_GROUP = "Admins"
-DEVELOPERS_GROUP = "Developers"
-# Manages the app users on its own instance from the admin Users tab
-# (#1043). The same role on QA (an FLP test account) and on a court's pilot
-# (the court's own account); the instance decides whose accounts it covers.
-USER_ADMINS_GROUP = "User admins"
+from enum import IntEnum
 
-# Accounts in these groups are staff. The user admin role never reaches
-# them, so only the people who run the portal can change each other.
-STAFF_GROUPS = (ADMINS_GROUP, DEVELOPERS_GROUP)
+# FLP's own people: every admin tab, and every account below them.
+FLP_STAFF_GROUP = "FLP Staff"
+# A court's own account: the app users on its instance, from the Users tab.
+COURT_ADMINS_GROUP = "Court Admins"
 
 GROUP_PERMISSIONS = {
-    ADMINS_GROUP: ["manage_site", "manage_app_users"],
-    DEVELOPERS_GROUP: [
-        "manage_site",
-        "manage_developers",
-        "manage_app_users",
-    ],
-    USER_ADMINS_GROUP: ["manage_app_users"],
+    FLP_STAFF_GROUP: ["manage_site", "manage_app_users"],
+    COURT_ADMINS_GROUP: ["manage_app_users"],
 }
+
+
+class Tier(IntEnum):
+    """Who may manage whom (#1135). Each tier manages the tiers below it,
+    never its own tier, itself, or anything above. Every tier is also an
+    app user."""
+
+    APP_USER = 0
+    COURT_ADMIN = 1
+    FLP_STAFF = 2
+    SUPERUSER = 3

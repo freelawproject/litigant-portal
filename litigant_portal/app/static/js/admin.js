@@ -4,9 +4,6 @@
 // toggles the data-active attribute, so the server-rendered default
 // (settings active) paints correctly before Alpine loads.
 const ADMIN_TABS = ['settings', 'users', 'knowledge', 'simulate']
-// On/off pill styles for the per-user permission toggles.
-const PILL_ON = 'bg-primary-100 text-primary-700 hover:bg-primary-200'
-const PILL_OFF = 'bg-greyscale-100 text-greyscale-500 hover:bg-greyscale-200'
 
 // Heroicons (outline) path data for the topic icons. Topic cards are
 // client-rendered, so the server-side icon component can't supply these;
@@ -382,20 +379,11 @@ document.addEventListener('alpine:init', () => {
     decorateUser(u) {
       return {
         ...u,
-        notAdmin: !u.is_admin,
-        notDeveloper: !u.is_developer,
-        notUserAdmin: !u.is_user_admin,
         notActive: !u.is_active,
-        canDisable: u.can_lock_out && u.is_active,
-        canEnable: u.can_lock_out && !u.is_active,
-        adminToggleClass: u.is_admin ? PILL_ON : PILL_OFF,
-        devToggleClass: u.is_developer ? PILL_ON : PILL_OFF,
-        userAdminToggleClass: u.is_user_admin ? PILL_ON : PILL_OFF,
-        // Self-revocation guard mirrors the server: you can't drop your
-        // own highest permission, so those toggles render disabled.
-        adminToggleDisabled: !u.can_toggle_admin,
-        devToggleDisabled: !u.can_toggle_developer,
-        userAdminToggleDisabled: !u.can_lock_out,
+        canDisable: u.can_manage && u.is_active,
+        canEnable: u.can_manage && !u.is_active,
+        // Rows the viewer can't re-role show the role as text (#1135).
+        cannotSetRole: !u.can_set_role,
       }
     },
 
@@ -408,50 +396,20 @@ document.addEventListener('alpine:init', () => {
       )
     },
 
-    // Toggle membership in the Admins group (admin access).
-    async toggleUserAdmin(e) {
+    // Give an account another role. The response is the whole row, so the
+    // label follows; on a refusal, reload so the picker shows the real role.
+    async setUserRole(e) {
       const userId = e.currentTarget.dataset.userId
-      try {
-        const body = new FormData()
-        body.append('csrfmiddlewaretoken', this.csrfToken())
-        const res = await fetch(
-          '/api/admin/users/' + userId + '/admin/toggle/',
-          { method: 'POST', body }
-        )
-        if (!res.ok) throw new Error('Request failed: ' + res.status)
-        const data = await res.json()
-        this.patchUser(userId, { is_admin: data.is_admin })
-      } catch (err) {
-        console.error('Failed to toggle admin access:', err)
-      }
-    },
-
-    // Toggle membership in the Developers group.
-    async toggleUserDeveloper(e) {
-      const userId = e.currentTarget.dataset.userId
-      try {
-        const body = new FormData()
-        body.append('csrfmiddlewaretoken', this.csrfToken())
-        const res = await fetch(
-          '/api/admin/users/' + userId + '/developer/toggle/',
-          { method: 'POST', body }
-        )
-        if (!res.ok) throw new Error('Request failed: ' + res.status)
-        const data = await res.json()
-        this.patchUser(userId, { is_developer: data.is_developer })
-      } catch (err) {
-        console.error('Failed to toggle developer status:', err)
-      }
-    },
-
-    // Toggle membership in the User admins group.
-    async toggleUserUserAdmin(e) {
-      const userId = e.currentTarget.dataset.userId
-      const { ok, data } = await this.postUserAction(
-        userId,
-        'user-admin/toggle'
+      const body = new FormData()
+      body.append('csrfmiddlewaretoken', this.csrfToken())
+      body.append('role', e.currentTarget.value)
+      const { ok, data } = await this.postUserForm(
+        '/api/admin/users/' + userId + '/role/',
+        body
       )
-      if (ok) this.patchUser(userId, { is_user_admin: data.is_user_admin })
+      this.usersActionError = ok ? '' : data.error
+      if (ok) this.patchUser(userId, data)
+      else await this.loadUsers()
     },
 
     // POST an app user account action. Resolves to the parsed body and

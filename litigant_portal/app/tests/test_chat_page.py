@@ -3,7 +3,7 @@
 These pin the contract: the chat page (and the admin dashboard, see
 `AdminHeaderTests`) renders the one shared site header, the Briefcase
 agent-state aside gated
-server-side to the `manage_developers` permission, an accessible live
+server-side to the `manage_site` permission, an accessible live
 region on the messages container, and a handful of Tailwind hygiene
 swaps.
 """
@@ -19,7 +19,7 @@ from django.template.loader import render_to_string
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from litigant_portal.app.permissions import DEVELOPERS_GROUP
+from litigant_portal.app.permissions import FLP_STAFF_GROUP
 
 TEMPLATE_PATH = Path("litigant_portal/app/templates/pages/chat/index.html")
 MAIN_CSS_PATH = Path("litigant_portal/app/src/main.css")
@@ -134,16 +134,16 @@ class AdminHeaderTests(TestCase):
 class AgentStateGatingTests(TestCase):
     """The Briefcase panel itself is for everyone; the raw agent-state dump
     inside it is only present in the response body for users holding
-    `manage_developers` — server-side gated, not just CSS/Alpine-hidden."""
+    `manage_site` — server-side gated, not just CSS/Alpine-hidden."""
 
     def setUp(self):
         self.client = Client()
         User = get_user_model()
-        developers = Group.objects.get(name=DEVELOPERS_GROUP)
-        self.developer = User.objects.create_user(
+        flp_staff = Group.objects.get(name=FLP_STAFF_GROUP)
+        self.staff = User.objects.create_user(
             username="dev", email="dev@example.com", password="pw"
         )
-        self.developer.groups.add(developers)
+        self.staff.groups.add(flp_staff)
         self.regular_user = User.objects.create_user(
             username="regular", email="regular@example.com", password="pw"
         )
@@ -154,21 +154,21 @@ class AgentStateGatingTests(TestCase):
         self.assertRegex(content, BRIEFCASE_CHROME_RE)
         self.assertNotIn(AGENT_STATE_MARKER, content)
 
-    def test_non_developer_sees_the_briefcase_but_not_agent_state(self):
+    def test_app_user_sees_the_briefcase_but_not_agent_state(self):
         self.client.login(username="regular", password="pw")
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
         self.assertRegex(content, BRIEFCASE_CHROME_RE)
         self.assertNotIn(AGENT_STATE_MARKER, content)
 
-    def test_developer_sees_agent_state(self):
+    def test_flp_staff_see_agent_state(self):
         self.client.login(username="dev", password="pw")
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
         self.assertIn(AGENT_STATE_MARKER, content)
         self.assertRegex(content, BRIEFCASE_CHROME_RE)
 
-    def test_developer_sees_agent_state_once(self):
+    def test_flp_staff_see_agent_state_once(self):
         self.client.login(username="dev", password="pw")
         response = self.client.get(reverse("pages:chat"))
         content = response.content.decode()
@@ -244,5 +244,5 @@ class ChatTemplateHygieneTests(TestCase):
 
     def test_agent_state_partial_contrast_left_untouched(self):
         # Accepted gap: _agent_state.html's own greyscale-400 text is out
-        # of scope for this phase, since that partial requires manage_developers.
+        # of scope for this phase, since that partial requires manage_site.
         self.assertIn("text-greyscale-400", AGENT_STATE_PATH.read_text())

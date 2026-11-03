@@ -1,10 +1,10 @@
-"""Tests for the group/permission system that replaced SiteMembership.
+"""Tests for the tiered admin roles (#1135).
 
-Covers the three layers the admin panel's access control rests on: the
-groups the post_migrate receiver provisions, the services that grant and
-revoke them, and the view guards that read them. The guards are a security
-boundary, so the negative cases (no permission -> 403) matter more than
-the happy paths.
+Four tiers: Superuser → FLP Staff → Court Admin → App user. Covers the
+groups the post_migrate receiver provisions, how an account's tier is read,
+and the view guards that rest on both. The guards are a security boundary,
+so the negative cases (no permission -> 403) matter more than the happy
+paths.
 """
 
 import pytest
@@ -12,12 +12,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.test import Client, TestCase
 
-from litigant_portal.app.permissions import ADMINS_GROUP, DEVELOPERS_GROUP
-from litigant_portal.app.selectors.user import user_list
-from litigant_portal.app.services.user import (
-    user_admin_toggle,
-    user_developer_toggle,
+from litigant_portal.app.permissions import (
+    COURT_ADMINS_GROUP,
+    FLP_STAFF_GROUP,
+    Tier,
 )
+from litigant_portal.app.selectors.user import user_list, user_tier
 
 User = get_user_model()
 
@@ -38,77 +38,93 @@ def reload(user: User) -> User:
     return User.objects.get(pk=user.pk)
 
 
+def join(user: User, group_name: str) -> User:
+    """Add ``user`` to a group and return a fresh copy."""
+    user.groups.add(Group.objects.get(name=group_name))
+    return reload(user)
+
+
 @pytest.mark.postgres
 class PermissionGroupTests(TestCase):
     """The groups the post_migrate receiver guarantees."""
 
-    def test_both_groups_exist(self):
-        self.assertTrue(Group.objects.filter(name=ADMINS_GROUP).exists())
-        self.assertTrue(Group.objects.filter(name=DEVELOPERS_GROUP).exists())
+    def test_only_the_two_role_groups_exist(self):
+        self.assertEqual(
+            sorted(Group.objects.values_list("name", flat=True)),
+            sorted([COURT_ADMINS_GROUP, FLP_STAFF_GROUP]),
+        )
 
-    def test_admins_manage_the_site_and_app_users(self):
-        group = Group.objects.get(name=ADMINS_GROUP)
+    def test_flp_staff_manage_the_site_and_app_users(self):
+        group = Group.objects.get(name=FLP_STAFF_GROUP)
         self.assertEqual(
             sorted(p.codename for p in group.permissions.all()),
             ["manage_app_users", "manage_site"],
         )
 
-    def test_developers_are_a_superset_of_admins(self):
-        group = Group.objects.get(name=DEVELOPERS_GROUP)
+    def test_court_admins_manage_app_users_only(self):
+        group = Group.objects.get(name=COURT_ADMINS_GROUP)
         self.assertEqual(
-            sorted(p.codename for p in group.permissions.all()),
-            ["manage_app_users", "manage_developers", "manage_site"],
+            [p.codename for p in group.permissions.all()],
+            ["manage_app_users"],
         )
 
     def test_permissions_belong_to_the_app_label(self):
         # The guards check "app.manage_site"; a permission created under
         # another content type would never match.
-        codenames = Permission.objects.filter(
-            content_type__app_label="app",
-            codename__in=[
-                "manage_site",
-                "manage_developers",
-                "manage_app_users",
-            ],
-        ).count()
-        self.assertEqual(codenames, 3)
+        codenames = set(
+            Permission.objects.filter(
+                content_type__app_label="app",
+                codename__startswith="manage_",
+            ).values_list("codename", flat=True)
+        )
+        self.assertEqual(codenames, {"manage_site", "manage_app_users"})
 
 
 @pytest.mark.postgres
-class GroupToggleTests(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(username="u", password="p")
+class UserTierTests(TestCase):
+    def test_each_account_kind_reads_as_its_tier(self):
+        superuser = User.objects.create_superuser(username="s", password="p")
+        staff = join(User.objects.create_user(username="f"), FLP_STAFF_GROUP)
+        court = join(
+            User.objects.create_user(username="c"), COURT_ADMINS_GROUP
+        )
+        app_user = User.objects.create_user(username="u")
+        cases = [
+            (superuser, Tier.SUPERUSER),
+            (staff, Tier.FLP_STAFF),
+            (court, Tier.COURT_ADMIN),
+            (app_user, Tier.APP_USER),
+        ]
+        for user, tier in cases:
+            with self.subTest(user=user.username):
+                self.assertEqual(user_tier(user=user), tier)
 
-    def test_new_user_holds_neither_permission(self):
-        self.assertFalse(self.user.has_perm("app.manage_site"))
-        self.assertFalse(self.user.has_perm("app.manage_developers"))
+    def test_django_admin_staff_rank_as_flp_staff_without_the_group(self):
+        # is_staff opens Django admin, where every transcript is readable,
+        # so it can never sit low enough for a Court Admin to reach.
+        user = User.objects.create_user(username="st", is_staff=True)
+        self.assertEqual(user_tier(user=user), Tier.FLP_STAFF)
 
-    def test_admin_toggle_grants_then_revokes(self):
-        self.assertTrue(user_admin_toggle(user=self.user))
-        self.assertTrue(reload(self.user).has_perm("app.manage_site"))
+    def test_the_highest_role_wins(self):
+        user = User.objects.create_user(username="both")
+        join(user, COURT_ADMINS_GROUP)
+        user = join(user, FLP_STAFF_GROUP)
+        self.assertEqual(user_tier(user=user), Tier.FLP_STAFF)
 
-        self.assertFalse(user_admin_toggle(user=self.user))
-        self.assertFalse(reload(self.user).has_perm("app.manage_site"))
+    def test_a_disabled_account_keeps_its_tier(self):
+        # has_perm answers False for inactive users, so the tier must come
+        # from the account itself or a disabled FLP Staff account would
+        # drop to a tier a Court Admin can reach.
+        user = join(User.objects.create_user(username="f"), FLP_STAFF_GROUP)
+        user.is_active = False
+        user.save()
+        self.assertEqual(user_tier(user=reload(user)), Tier.FLP_STAFF)
 
-    def test_developer_toggle_grants_both_permissions(self):
-        user_developer_toggle(user=self.user)
-        user = reload(self.user)
-        self.assertTrue(user.has_perm("app.manage_site"))
-        self.assertTrue(user.has_perm("app.manage_developers"))
-
-    def test_dropping_admins_keeps_site_access_while_developer(self):
-        # Developers carry manage_site in their own right, so revoking the
-        # Admins group must not strip it.
-        user_admin_toggle(user=self.user)
-        user_developer_toggle(user=self.user)
-        user_admin_toggle(user=self.user)
-        self.assertTrue(reload(self.user).has_perm("app.manage_site"))
-
-    def test_user_list_annotates_group_membership(self):
-        user_admin_toggle(user=self.user)
-        row = user_list().get(pk=self.user.pk)
-        self.assertTrue(row.is_admin_member)
-        self.assertFalse(row.is_developer_member)
+    def test_user_list_annotates_role_membership(self):
+        user = join(User.objects.create_user(username="c"), COURT_ADMINS_GROUP)
+        row = user_list().get(pk=user.pk)
+        self.assertTrue(row.is_court_admin_member)
+        self.assertFalse(row.is_flp_staff_member)
 
 
 @pytest.mark.postgres
@@ -124,36 +140,31 @@ class SuperuserTests(TestCase):
             username="s", password="p"
         )
 
-    def test_holds_both_permissions_with_no_group_membership(self):
+    def test_holds_every_permission_with_no_group_membership(self):
         self.assertEqual(self.superuser.groups.count(), 0)
         self.assertTrue(self.superuser.has_perm("app.manage_site"))
-        self.assertTrue(self.superuser.has_perm("app.manage_developers"))
+        self.assertTrue(self.superuser.has_perm("app.manage_app_users"))
 
-    def test_passes_the_page_guard_and_both_json_guards(self):
+    def test_passes_the_page_guard_and_the_json_guard(self):
         client = client_for(self.superuser)
         self.assertEqual(client.get("/admin/").status_code, 200)
         self.assertEqual(client.get("/api/admin/users/").status_code, 200)
 
-        target = User.objects.create_user(username="t", password="p")
-        response = client.post(
-            f"/api/admin/users/{target.pk}/developer/toggle/"
-        )
-        self.assertEqual(response.status_code, 200)
-
 
 @pytest.mark.postgres
 class AdminPageGuardTests(TestCase):
-    """The dashboard shell is guarded by login_required + permission_required."""
+    """The dashboard shell is guarded by login_required + its tab check."""
 
     def setUp(self):
-        self.admin = User.objects.create_user(username="a", password="p")
-        user_admin_toggle(user=self.admin)
-        self.admin = reload(self.admin)
+        self.staff = join(
+            User.objects.create_user(username="a", password="p"),
+            FLP_STAFF_GROUP,
+        )
         self.nobody = User.objects.create_user(username="n", password="p")
 
-    def test_permitted_user_gets_the_page(self):
+    def test_flp_staff_get_the_page(self):
         self.assertEqual(
-            client_for(self.admin).get("/admin/").status_code, 200
+            client_for(self.staff).get("/admin/").status_code, 200
         )
 
     def test_user_without_permission_is_forbidden(self):
@@ -169,14 +180,10 @@ class AdminPageGuardTests(TestCase):
 @pytest.mark.postgres
 class AdminApiGuardTests(TestCase):
     def setUp(self):
-        self.admin = User.objects.create_user(username="a", password="p")
-        user_admin_toggle(user=self.admin)
-        self.admin = reload(self.admin)
-
-        self.developer = User.objects.create_user(username="d", password="p")
-        user_developer_toggle(user=self.developer)
-        self.developer = reload(self.developer)
-
+        self.staff = join(
+            User.objects.create_user(username="a", password="p"),
+            FLP_STAFF_GROUP,
+        )
         self.nobody = User.objects.create_user(username="n", password="p")
 
     def test_manage_site_endpoints_reject_users_without_permission(self):
@@ -186,69 +193,9 @@ class AdminApiGuardTests(TestCase):
                 self.assertEqual(response.status_code, 403)
                 self.assertEqual(response.json()["error"], "Forbidden")
 
-    def test_manage_site_endpoints_allow_admins(self):
+    def test_manage_site_endpoints_allow_flp_staff(self):
         for path in ("/api/admin/users/", "/api/admin/site/"):
             with self.subTest(path=path):
                 self.assertEqual(
-                    client_for(self.admin).get(path).status_code, 200
+                    client_for(self.staff).get(path).status_code, 200
                 )
-
-    def test_developer_toggle_requires_manage_developers(self):
-        # An Admin holds manage_site but not manage_developers, so they
-        # cannot promote anyone to developer.
-        target = User.objects.create_user(username="t", password="p")
-        path = f"/api/admin/users/{target.pk}/developer/toggle/"
-
-        self.assertEqual(client_for(self.admin).post(path).status_code, 403)
-        self.assertEqual(
-            client_for(self.developer).post(path).status_code, 200
-        )
-
-    def test_admin_toggle_round_trips_and_reports_state(self):
-        target = User.objects.create_user(username="t", password="p")
-        path = f"/api/admin/users/{target.pk}/admin/toggle/"
-
-        response = client_for(self.admin).post(path)
-        self.assertTrue(response.json()["is_admin"])
-        self.assertTrue(reload(target).has_perm("app.manage_site"))
-
-        response = client_for(self.admin).post(path)
-        self.assertFalse(response.json()["is_admin"])
-        self.assertFalse(reload(target).has_perm("app.manage_site"))
-
-    def test_admin_cannot_revoke_their_own_admin_access(self):
-        response = client_for(self.admin).post(
-            f"/api/admin/users/{self.admin.pk}/admin/toggle/"
-        )
-        self.assertEqual(response.status_code, 403)
-        self.assertTrue(reload(self.admin).has_perm("app.manage_site"))
-
-    def test_developer_may_change_their_own_admin_access(self):
-        # A developer keeps manage_site through the Developers group, so
-        # there's nothing to lock themselves out of.
-        response = client_for(self.developer).post(
-            f"/api/admin/users/{self.developer.pk}/admin/toggle/"
-        )
-        self.assertEqual(response.status_code, 200)
-
-    def test_developer_cannot_revoke_their_own_developer_status(self):
-        response = client_for(self.developer).post(
-            f"/api/admin/users/{self.developer.pk}/developer/toggle/"
-        )
-        self.assertEqual(response.status_code, 403)
-        self.assertTrue(
-            reload(self.developer).has_perm("app.manage_developers")
-        )
-
-    def test_user_payload_reports_group_membership_not_effective_access(self):
-        # The pills track group membership directly: a Developer is not in
-        # the Admins group, so "is_admin" is False even though they hold
-        # manage_site through Developers. The toggles grant groups, so this
-        # is what makes them round-trip honestly.
-        response = client_for(self.developer).get("/api/admin/users/")
-        rows = {u["id"]: u for u in response.json()["users"]}
-
-        self.assertFalse(rows[self.developer.pk]["is_admin"])
-        self.assertTrue(rows[self.developer.pk]["is_developer"])
-        self.assertTrue(rows[self.admin.pk]["is_admin"])
-        self.assertFalse(rows[self.admin.pk]["is_developer"])

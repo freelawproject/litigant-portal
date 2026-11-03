@@ -149,19 +149,9 @@ admin_api_patterns = [
         name="user_delete",
     ),
     path(
-        "users/<int:user_id>/user-admin/toggle/",
-        admin_views.user_user_admin_toggle_view,
-        name="user_user_admin_toggle",
-    ),
-    path(
-        "users/<int:user_id>/admin/toggle/",
-        admin_views.user_admin_toggle_view,
-        name="user_admin_toggle",
-    ),
-    path(
-        "users/<int:user_id>/developer/toggle/",
-        admin_views.user_developer_toggle_view,
-        name="user_developer_toggle",
+        "users/<int:user_id>/role/",
+        admin_views.user_role_view,
+        name="user_role",
     ),
 ]
 

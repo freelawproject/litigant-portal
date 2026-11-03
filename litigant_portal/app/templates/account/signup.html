@@ -22,8 +22,7 @@
     <c-molecules.form-field label="{{ email_label }}" type="email" name="email" id="id_email" placeholder="{{ email_placeholder }}" required autocomplete="email" value="{{ form.email.value|default:'' }}" :errors="form.email.errors" />
     {% trans "Password" as password_label %}
     {% trans "Create a password" as password_placeholder %}
-    {% trans "At least 8 characters" as password_help %}
-    <c-molecules.form-field label="{{ password_label }}" type="password" name="password1" id="id_password1" placeholder="{{ password_placeholder }}" required autocomplete="new-password" help_text="{{ password_help }}" :errors="form.password1.errors" />
+    <c-molecules.form-field label="{{ password_label }}" type="password" name="password1" id="id_password1" placeholder="{{ password_placeholder }}" required autocomplete="new-password" help_text="{{ password_rules }}" :errors="form.password1.errors" />
     {% trans "Confirm password" as confirm_label %}
     {% trans "Confirm your password" as confirm_placeholder %}
     <c-molecules.form-field label="{{ confirm_label }}" type="password" name="password2" id="id_password2" placeholder="{{ confirm_placeholder }}" required autocomplete="new-password" :errors="form.password2.errors" />

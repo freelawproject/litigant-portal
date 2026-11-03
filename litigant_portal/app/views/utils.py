@@ -2,14 +2,23 @@ from datetime import timedelta
 from functools import wraps
 
 from django.conf import settings
+from django.contrib.auth.password_validation import (
+    CommonPasswordValidator,
+    MinimumLengthValidator,
+    NumericPasswordValidator,
+    UserAttributeSimilarityValidator,
+    get_default_password_validators,
+)
 from django.http import Http404, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.timesince import timesince
 from django.utils.translation import gettext as _
+from django.utils.translation import gettext_lazy, ngettext
 
 from litigant_portal.app.features import features
 from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
+from litigant_portal.app.permissions import Tier
 from litigant_portal.app.selectors.chat_engine import chat_thread_list
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
@@ -19,6 +28,7 @@ from litigant_portal.app.selectors.topic_flow import (
     variable_answer_groups,
     variable_answer_map,
 )
+from litigant_portal.app.selectors.user import user_assignable_roles
 
 
 def has_identity(request) -> bool:
@@ -160,19 +170,15 @@ def _perm_required(codename: str):
 
 
 manage_site_required = _perm_required("app.manage_site")
-"""JSON guard: requires ``app.manage_site`` (held by the Admins and
-Developers groups and, implicitly, superusers)."""
-
-manage_developers_required = _perm_required("app.manage_developers")
-"""JSON guard: requires ``app.manage_developers`` (held by the Developers
-group and, implicitly, superusers)."""
+"""JSON guard: requires ``app.manage_site`` (held by FLP Staff and,
+implicitly, superusers)."""
 
 
 def can_manage_app_users(user) -> bool:
     """Whether ``user`` reaches app user management on this deployment.
 
-    Off where the ``user_admin`` feature is off (plain prod), so the User
-    admins group grants nothing there (#1043).
+    Off where the ``user_admin`` feature is off (plain prod), so the Court
+    Admins group grants nothing there (#1043).
     """
     return features().user_admin and user.has_perm("app.manage_app_users")
 
@@ -183,7 +189,7 @@ ADMIN_TABS = ["settings", "users", "knowledge", "simulate"]
 def admin_tabs(user) -> list[str]:
     """The admin dashboard tabs ``user`` may open; empty means no dashboard.
 
-    A user admin gets the Users tab alone: the Site and Topics rows are
+    A Court Admin gets the Users tab alone: the Site and Topics rows are
     FLP's, and ``sync_corpus`` overwrites them on every deploy anyway.
     """
     if user.has_perm("app.manage_site"):
@@ -206,3 +212,88 @@ def app_user_admin_required(view):
         return view(request, *args, **kwargs)
 
     return wrapped
+
+
+ROLE_LABELS = {
+    Tier.SUPERUSER: gettext_lazy("Superuser"),
+    Tier.FLP_STAFF: gettext_lazy("FLP Staff"),
+    Tier.COURT_ADMIN: gettext_lazy("Court Admin"),
+    Tier.APP_USER: gettext_lazy("App user"),
+}
+
+
+def role_value(tier: Tier) -> str:
+    """How a role travels in forms and JSON: ``court_admin``."""
+    return tier.name.lower()
+
+
+def role_parse(value: str) -> Tier | None:
+    """The assignable role a form value names, or None. Superuser is never
+    one."""
+    for tier in Tier:
+        if tier < Tier.SUPERUSER and role_value(tier) == value:
+            return tier
+    return None
+
+
+def role_choices(user) -> list[tuple[str, str]]:
+    """``(value, label)`` for every role ``user`` may give an account."""
+    return [
+        (role_value(t), ROLE_LABELS[t])
+        for t in user_assignable_roles(viewer=user)
+    ]
+
+
+# What each validator rules out, as "Can't be ___", in the order said.
+_PASSWORD_EXCLUSIONS = [
+    (NumericPasswordValidator, gettext_lazy("all numbers")),
+    (CommonPasswordValidator, gettext_lazy("a common password")),
+    (UserAttributeSimilarityValidator, gettext_lazy("similar to email")),
+]
+
+
+def _or_list(items: list[str]) -> str:
+    """``a``, ``a or b``, ``a, b, or c``."""
+    if len(items) < 3:
+        return _(" or ").join(items)
+    return _("%(items)s, or %(last)s") % {
+        "items": ", ".join(items[:-1]),
+        "last": items[-1],
+    }
+
+
+def password_rule() -> str:
+    """The password rules every new-password field states up front, built
+    from the configured validators so they match what ``validate_password``
+    enforces on submit: the length, then what the password can't be. A
+    validator we haven't phrased adds Django's own help text, so no rule
+    goes unsaid."""
+    validators = get_default_password_validators()
+    sentences = [
+        ngettext(
+            "At least %(count)d character.",
+            "At least %(count)d characters.",
+            v.min_length,
+        )
+        % {"count": v.min_length}
+        for v in validators
+        if isinstance(v, MinimumLengthValidator)
+    ]
+    exclusions = [
+        str(phrase)
+        for kind, phrase in _PASSWORD_EXCLUSIONS
+        if any(isinstance(v, kind) for v in validators)
+    ]
+    if exclusions:
+        sentences.append(
+            _("Can't be %(exclusions)s.")
+            % {"exclusions": _or_list(exclusions)}
+        )
+    known = (
+        MinimumLengthValidator,
+        *(kind for kind, _phrase in _PASSWORD_EXCLUSIONS),
+    )
+    sentences += [
+        v.get_help_text() for v in validators if not isinstance(v, known)
+    ]
+    return " ".join(sentences)

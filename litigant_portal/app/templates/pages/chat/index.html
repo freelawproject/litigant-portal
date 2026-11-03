@@ -173,8 +173,8 @@
     </div>
     {# Input #}
     <div class="border-t border-greyscale-200 p-3 flex-shrink-0">
-      {% if perms.app.manage_developers %}
-        {# Dev-only token/cost readout for the active thread #}
+      {% if perms.app.manage_site %}
+        {# FLP Staff token/cost readout for the active thread #}
         <div x-data="chatUsage"
              x-cloak
              class="flex items-center gap-1.5 mb-2 text-xs text-greyscale-500 select-none">

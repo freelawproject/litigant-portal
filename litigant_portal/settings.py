@@ -145,7 +145,10 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
     },
     {
+        # NIST SP 800-63B rev 4 sets 15 for a password that's the only
+        # login factor, as it is on the pilots (8 only alongside MFA).
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 15},
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
