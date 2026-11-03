@@ -543,6 +543,9 @@ document.addEventListener('alpine:init', () => {
     threadId: null,
     threadTitle: '',
     streaming: false,
+    // True while openThread() is fetching, so a send can't race the load
+    // and land in the wrong thread.
+    loadingThread: false,
     sendDisabled: true,
     menuOpen: false,
     confirmingDelete: false,
@@ -780,6 +783,9 @@ document.addEventListener('alpine:init', () => {
         return
       }
 
+      this.loadingThread = true
+      this.clearInput()
+      this.clearAttachments()
       try {
         const res = await fetch(
           this.base + 'threads/' + encodeURIComponent(threadId) + '/',
@@ -792,13 +798,14 @@ document.addEventListener('alpine:init', () => {
         this.messages = (data.items || []).map(buildItem)
         this.setState(data.state)
         this.conversationEmpty = this.messages.length === 0
-        this.clearInput()
-        this.clearAttachments()
         this.markActive()
         this.updateThinking()
         this.scrollToBottom()
       } catch (e) {
         console.error('Failed to load thread:', e)
+      } finally {
+        this.loadingThread = false
+        this.refreshSendState()
       }
     },
 
@@ -810,9 +817,11 @@ document.addEventListener('alpine:init', () => {
       this.refreshSendState()
     },
 
-    // The send button is disabled while streaming or when the input is empty.
+    // The send button is disabled while streaming, while a thread is
+    // loading, or when the input is empty.
     refreshSendState() {
-      this.sendDisabled = this.streaming || !this.input.trim()
+      this.sendDisabled =
+        this.streaming || this.loadingThread || !this.input.trim()
     },
 
     handleKeydown(e) {
@@ -837,7 +846,7 @@ document.addEventListener('alpine:init', () => {
 
     send() {
       const message = this.input.trim()
-      if (!message || this.streaming) return
+      if (!message || this.streaming || this.loadingThread) return
       this.clearInput()
       this.sendMessage(message, this.threadId)
     },

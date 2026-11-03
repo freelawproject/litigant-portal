@@ -263,6 +263,45 @@ test('a non-UUID ?thread= makes no fetch and still leaves the URL', async () => 
   }
 })
 
+test('sending is blocked until the opened thread has loaded', async () => {
+  const id = '123e4567-e89b-12d3-a456-426614174000'
+  let resolveFetch
+  const { app } = makeApp(
+    () =>
+      new Promise((resolve) => {
+        resolveFetch = () =>
+          resolve({ ok: true, json: async () => ({ id, items: [] }) })
+      })
+  )
+  const sent = []
+  app.sendMessage = async (message, threadId) => {
+    sent.push([message, threadId])
+  }
+
+  const opened = app.openThread(id)
+  app.updateInput({ target: { value: 'hello', style: {} } })
+  assert.equal(app.loadingThread, true)
+  assert.equal(app.sendDisabled, true)
+  app.send()
+  assert.deepEqual(sent, [])
+  assert.equal(app.input, 'hello')
+
+  resolveFetch()
+  await opened
+  assert.equal(app.loadingThread, false)
+  assert.equal(app.sendDisabled, false)
+  app.send()
+  assert.deepEqual(sent, [['hello', id]])
+})
+
+test('a failed thread load still releases the send guard', async () => {
+  const { app } = makeApp(async () => ({ ok: false, status: 500 }))
+  await app.openThread('123e4567-e89b-12d3-a456-426614174000')
+  assert.equal(app.loadingThread, false)
+  app.updateInput({ target: { value: 'hello', style: {} } })
+  assert.equal(app.sendDisabled, false)
+})
+
 test('network drop uses the fallback card renderer', async () => {
   const { app } = makeApp(async () => {
     throw new Error('connection dropped')
