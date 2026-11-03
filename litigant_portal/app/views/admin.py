@@ -211,6 +211,9 @@ def topic_delete_view(request: HttpRequest, topic_id) -> JsonResponse:
 def _user_payload(user: User, *, viewer: User, viewer_tier: Tier) -> dict:
     tier = user_tier(user=user)
     can_manage = can_manage_app_users(viewer) and viewer_tier > tier
+    # A choice only when there's more than one role below the viewer, and
+    # not behind the user_admin feature: user_role_view isn't either.
+    can_set_role = viewer_tier > Tier.COURT_ADMIN and viewer_tier > tier
     return {
         "id": user.id,
         "email": user.email,
@@ -220,8 +223,7 @@ def _user_payload(user: User, *, viewer: User, viewer_tier: Tier) -> dict:
         "role": role_value(tier),
         "role_label": str(ROLE_LABELS[tier]),
         "can_manage": can_manage,
-        # A choice only when there's more than one role below the viewer.
-        "can_set_role": can_manage and viewer_tier > Tier.COURT_ADMIN,
+        "can_set_role": can_set_role,
     }
 
 
@@ -398,10 +400,14 @@ def user_delete_view(request: HttpRequest, user_id: int) -> JsonResponse:
 
 @require_POST
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
-@app_user_admin_required
+@manage_site_required
 def user_role_view(request: HttpRequest, user_id: int) -> JsonResponse:
     """Give an account a role below the viewer's (#1135): FLP Staff make
-    Court Admins, and only a superuser makes FLP Staff."""
+    Court Admins, and only a superuser makes FLP Staff.
+
+    Open on every deploy, unlike the account actions: plain prod still
+    needs its FLP Staff, and a Court Admin has no role below theirs to give.
+    """
     target, error_response = _managed_user(request, user_id)
     if error_response:
         return error_response

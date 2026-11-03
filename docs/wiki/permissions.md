@@ -88,7 +88,9 @@ needs a new password asks FLP Staff; FLP Staff ask a superuser.
   users and Court Admins; FLP Staff see everyone but superusers.
 - **Gated by the `user_admin` feature,** on for dev, QA, and pilots
   (`app/features.py`). Where it's off (plain prod), the account actions
-  answer 404 and the Court Admins group grants nothing.
+  answer 404 and the Court Admins group grants nothing. The Role picker is
+  not gated: plain prod still needs its FLP Staff, so a superuser can make
+  them there.
 - **No email.** The pilots send none, so whoever adds or resets an account
   sets the password, entered twice, and shares it directly.
 - **Disable** sets `is_active=False`: the account can't log in, keeps its
@@ -122,8 +124,9 @@ sent to log in rather than shown a bare 403.
 
 **JSON endpoints** use the app's decorators from
 [`views/utils.py`](../../litigant_portal/app/views/utils.py):
-`manage_site_required`, and `app_user_admin_required` for the account
-actions (404 where the feature is off, 403 without `manage_app_users`).
+`manage_site_required` (including the role change), and
+`app_user_admin_required` for the account actions (404 where the feature
+is off, 403 without `manage_app_users`).
 They exist because the built-in renders an **HTML** 403, and these
 endpoints must answer with `{"error": "Forbidden"}`.
 

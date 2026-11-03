@@ -63,7 +63,7 @@
             </td>
             <td class="px-4 py-2.5 text-greyscale-500" x-text="user.joined"></td>
             <td class="px-4 py-2.5 text-greyscale-700">
-              {% if features.user_admin and role_choices|length > 1 %}
+              {% if role_choices|length > 1 %}
                 {# The roles below the viewer's; the server checks it too (#1135). #}
                 <div x-show="user.can_set_role" class="w-44">
                   <c-atoms.select aria_label="{{ role_label }}" x-bind:value="user.role" x-bind:data-user-id="user.id" x-on:change="setUserRole">

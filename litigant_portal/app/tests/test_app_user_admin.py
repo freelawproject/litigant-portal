@@ -180,10 +180,48 @@ class AccountsOffOnProdTests(TierSetup):
         self.assertEqual(response.status_code, 403)
 
     def test_actions_are_not_found(self):
-        paths = ["/api/admin/users/create/", *action_paths(self.app_user.pk)]
+        paths = [
+            "/api/admin/users/create/",
+            *court_admin_action_paths(self.app_user.pk),
+        ]
         for path in paths:
             with self.subTest(path=path):
                 self.assertEqual(self.client.post(path).status_code, 404)
+
+
+@pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=False)
+class RolesOnProdTests(TierSetup):
+    """Roles are set from the Users tab on every deploy: the ``user_admin``
+    feature gates the account actions, not who holds which role."""
+
+    def set_role(self, viewer, target, role):
+        return client_for(viewer).post(
+            f"/api/admin/users/{target.pk}/role/", {"role": role}
+        )
+
+    def test_superuser_makes_flp_staff(self):
+        response = self.set_role(self.superuser, self.app_user, "flp_staff")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(reload(self.app_user).is_staff)
+
+    def test_flp_staff_make_court_admins(self):
+        response = self.set_role(self.staff, self.app_user, "court_admin")
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(
+            reload(self.app_user)
+            .groups.filter(name=COURT_ADMINS_GROUP)
+            .exists()
+        )
+
+    def test_rows_offer_the_role_picker_but_no_account_actions(self):
+        row = self.rows(self.staff)["jane@example.com"]
+        self.assertTrue(row["can_set_role"])
+        self.assertFalse(row["can_manage"])
+
+    def test_court_admin_cannot_set_roles(self):
+        response = self.set_role(self.court_admin, self.app_user, "app_user")
+        self.assertEqual(response.status_code, 403)
 
 
 @pytest.mark.postgres
