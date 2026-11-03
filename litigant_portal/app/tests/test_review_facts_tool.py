@@ -89,12 +89,13 @@ def active_flow(thread, flow):
     return flow
 
 
-def _store(thread, name, value, reviewed=False):
+def _store(thread, name, value, reviewed=False, evidence=None):
     variable_answer_set(
         identity=thread.identity,
         variable=Variable.objects.get(name=name),
         value=value,
         reviewed=reviewed,
+        evidence=evidence,
     )
 
 
@@ -113,7 +114,8 @@ def test_answered_flow_variables_are_listed_with_their_review_state(
     thread, active_flow
 ):
     _store(thread, "first_name", "Sandra", reviewed=True)
-    _store(thread, "county", "Cass")
+    evidence = {"quote": "I live in Cass County."}
+    _store(thread, "county", "Cass", evidence=evidence)
     data = ReviewFacts()(thread_id=thread.id).render_data
     assert data["facts"] == [
         {
@@ -121,12 +123,14 @@ def test_answered_flow_variables_are_listed_with_their_review_state(
             "label": "First name",
             "value": "Sandra",
             "reviewed": True,
+            "evidence": None,
         },
         {
             "name": "county",
             "label": "County",
             "value": "Cass",
             "reviewed": False,
+            "evidence": evidence,
         },
     ]
     assert data["confirm_names"] == ["first_name", "county"]

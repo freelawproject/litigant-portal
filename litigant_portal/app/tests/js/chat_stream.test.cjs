@@ -220,6 +220,88 @@ test('review warnings survive streaming, reload and copying without changing ans
   }
 })
 
+// Builds an app landing on "/chat/?thread=<value>", recording the fetches
+// it makes and the URL it leaves in the address bar.
+function makeAppWithThreadParam(value) {
+  const fetched = []
+  const { app, context } = makeApp(async (url) => {
+    fetched.push(url)
+    return { ok: true, json: async () => ({ id: value, items: [] }) }
+  })
+  context.window.location = {
+    pathname: '/chat/',
+    search: '?thread=' + encodeURIComponent(value) + '&q=hello',
+    hash: '',
+  }
+  let replaced
+  context.window.history = {
+    replaceState(_state, _title, url) {
+      replaced = url
+    },
+  }
+  return { app, fetched, replacedUrl: () => replaced }
+}
+
+test('a UUID ?thread= opens that thread and leaves the URL', async () => {
+  const id = '123e4567-e89b-12d3-a456-426614174000'
+  const { app, fetched, replacedUrl } = makeAppWithThreadParam(id)
+  app.consumeQueryThread()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.deepEqual(fetched, ['/api/agents/assistant/threads/' + id + '/'])
+  assert.equal(app.threadId, id)
+  assert.equal(replacedUrl(), '/chat/?q=hello')
+})
+
+test('a non-UUID ?thread= makes no fetch and still leaves the URL', async () => {
+  for (const value of ['../../media/x', 'threads/../..?', 'not-a-uuid']) {
+    const { app, fetched, replacedUrl } = makeAppWithThreadParam(value)
+    app.consumeQueryThread()
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.deepEqual(fetched, [])
+    assert.equal(app.threadId, null)
+    assert.equal(replacedUrl(), '/chat/?q=hello')
+  }
+})
+
+test('sending is blocked until the opened thread has loaded', async () => {
+  const id = '123e4567-e89b-12d3-a456-426614174000'
+  let resolveFetch
+  const { app } = makeApp(
+    () =>
+      new Promise((resolve) => {
+        resolveFetch = () =>
+          resolve({ ok: true, json: async () => ({ id, items: [] }) })
+      })
+  )
+  const sent = []
+  app.sendMessage = async (message, threadId) => {
+    sent.push([message, threadId])
+  }
+
+  const opened = app.openThread(id)
+  app.updateInput({ target: { value: 'hello', style: {} } })
+  assert.equal(app.loadingThread, true)
+  assert.equal(app.sendDisabled, true)
+  app.send()
+  assert.deepEqual(sent, [])
+  assert.equal(app.input, 'hello')
+
+  resolveFetch()
+  await opened
+  assert.equal(app.loadingThread, false)
+  assert.equal(app.sendDisabled, false)
+  app.send()
+  assert.deepEqual(sent, [['hello', id]])
+})
+
+test('a failed thread load still releases the send guard', async () => {
+  const { app } = makeApp(async () => ({ ok: false, status: 500 }))
+  await app.openThread('123e4567-e89b-12d3-a456-426614174000')
+  assert.equal(app.loadingThread, false)
+  app.updateInput({ target: { value: 'hello', style: {} } })
+  assert.equal(app.sendDisabled, false)
+})
+
 test('network drop uses the fallback card renderer', async () => {
   const { app } = makeApp(async () => {
     throw new Error('connection dropped')
@@ -709,6 +791,7 @@ function mountBriefcase(app, context) {
     querySelectorAll: (selector) =>
       selector === '[data-briefcase-facts]' ? [panel] : [],
   }
+  app.consumeQueryThread = () => {}
   app.consumeQueryMessage = () => {}
   app.init()
   return panel

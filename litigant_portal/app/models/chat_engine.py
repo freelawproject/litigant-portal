@@ -7,6 +7,10 @@ from litigant_portal.agents.message_schema import MessageSchema
 
 from .base import BaseModel
 
+# The assistant surface's thread_type. Every surface scopes its thread
+# queries by one of these; the views import it from here.
+USER_CHAT_THREAD_TYPE = "user_chat"
+
 
 class ChatThread(BaseModel):
     """A chat conversation thread."""
@@ -18,7 +22,7 @@ class ChatThread(BaseModel):
         related_name="chat_threads",
     )
     thread_type = models.CharField(
-        max_length=50, db_index=True, default="user_chat"
+        max_length=50, db_index=True, default=USER_CHAT_THREAD_TYPE
     )
     state = models.JSONField(default=dict, blank=True)
     description = models.CharField(max_length=255, blank=True, default="")

@@ -49,7 +49,7 @@ def restore_preferences(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-    dependencies = [("app", "0034_topicflowinterviewpage_on_page")]
+    dependencies = [("app", "0035_variableanswer_evidence")]
     operations = [
         migrations.RunPython(migrate_preferences, restore_preferences),
         *[

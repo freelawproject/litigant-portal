@@ -426,6 +426,10 @@ const MAX_INPUT_HEIGHT = 160
 // Title shown for threads that don't have a generated description yet.
 const NEW_CHAT_TITLE = 'New chat'
 
+// Shape of a thread id, as the "threads/<uuid:thread_id>/" route accepts it.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 // --- Attachments -------------------------------------------------------------
 
 // Mirrors the backend's allowed types (services/upload.py) so obviously bad
@@ -539,6 +543,9 @@ document.addEventListener('alpine:init', () => {
     threadId: null,
     threadTitle: '',
     streaming: false,
+    // True while openThread() is fetching, so a send can't race the load
+    // and land in the wrong thread.
+    loadingThread: false,
     sendDisabled: true,
     menuOpen: false,
     confirmingDelete: false,
@@ -581,7 +588,26 @@ document.addEventListener('alpine:init', () => {
       this.briefcaseUrl = this.$root.dataset.briefcaseUrl
       setCitationChips(this.$root.dataset.citationChips === 'true')
       this.loadThreads()
+      this.consumeQueryThread()
       this.consumeQueryMessage()
+    },
+
+    // Landing with "?thread=..." opens that thread (the home page's static
+    // Activity list links here). The param is stripped like "?q=" below, so
+    // a refresh or share of the page won't re-pin the thread. Only a UUID is
+    // accepted: anything else is URL input that must not reach the fetch.
+    consumeQueryThread() {
+      const params = new URLSearchParams(window.location.search)
+      if (!params.has('thread')) return
+      const threadId = (params.get('thread') || '').trim()
+      params.delete('thread')
+      const query = params.toString()
+      const url =
+        window.location.pathname +
+        (query ? '?' + query : '') +
+        window.location.hash
+      window.history.replaceState(null, '', url)
+      if (UUID_RE.test(threadId)) this.openThread(threadId)
     },
 
     // Landing with "?q=..." fires that message as the start of a fresh chat.
@@ -757,10 +783,14 @@ document.addEventListener('alpine:init', () => {
         return
       }
 
+      this.loadingThread = true
+      this.clearInput()
+      this.clearAttachments()
       try {
-        const res = await fetch(this.base + 'threads/' + threadId + '/', {
-          headers: { Accept: 'application/json' },
-        })
+        const res = await fetch(
+          this.base + 'threads/' + encodeURIComponent(threadId) + '/',
+          { headers: { Accept: 'application/json' } }
+        )
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         const data = await res.json()
         this.threadId = data.id
@@ -768,13 +798,14 @@ document.addEventListener('alpine:init', () => {
         this.messages = (data.items || []).map(buildItem)
         this.setState(data.state)
         this.conversationEmpty = this.messages.length === 0
-        this.clearInput()
-        this.clearAttachments()
         this.markActive()
         this.updateThinking()
         this.scrollToBottom()
       } catch (e) {
         console.error('Failed to load thread:', e)
+      } finally {
+        this.loadingThread = false
+        this.refreshSendState()
       }
     },
 
@@ -786,9 +817,11 @@ document.addEventListener('alpine:init', () => {
       this.refreshSendState()
     },
 
-    // The send button is disabled while streaming or when the input is empty.
+    // The send button is disabled while streaming, while a thread is
+    // loading, or when the input is empty.
     refreshSendState() {
-      this.sendDisabled = this.streaming || !this.input.trim()
+      this.sendDisabled =
+        this.streaming || this.loadingThread || !this.input.trim()
     },
 
     handleKeydown(e) {
@@ -813,7 +846,7 @@ document.addEventListener('alpine:init', () => {
 
     send() {
       const message = this.input.trim()
-      if (!message || this.streaming) return
+      if (!message || this.streaming || this.loadingThread) return
       this.clearInput()
       this.sendMessage(message, this.threadId)
     },
@@ -1504,6 +1537,7 @@ document.addEventListener('alpine:init', () => {
       this.showNote('stale-note', false)
       this.showAll('badge-pending', false)
       this.showAll('badge-confirmed', true)
+      this.showAll('evidence', false)
     },
 
     showAll(role, show) {

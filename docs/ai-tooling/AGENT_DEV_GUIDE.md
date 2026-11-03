@@ -371,7 +371,8 @@ Two pieces make this work:
 - **Generic views** — [`views/chat_engine.py`](../../litigant_portal/app/views/chat_engine.py)
   provides `stream`, `thread_list`, `message_list`, `thread_usage`, and
   `thread_delete` as abstract views. Each takes the surface's bindings as
-  keyword args: `agent_class`, `thread_type`, and (for `stream`) `model`.
+  keyword args: `agent_class` and `thread_type`. Streaming resolves the
+  site's model preference in the service.
 
 A surface module fills in those blanks and adds the HTTP concerns (method
 decorators, rate limits) plus any surface-specific endpoints.
@@ -380,7 +381,7 @@ example — it binds `LitigantAssistant` and adds the upload endpoints:
 
 ```python
 # litigant_portal/app/views/assistant.py
-THREAD_TYPE = "user_chat"
+from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 
 
 @require_POST
@@ -389,14 +390,14 @@ def stream(request: HttpRequest):
     return chat_engine.stream(
         request,
         agent_class=LitigantAssistant,
-        thread_type=THREAD_TYPE,
+        thread_type=USER_CHAT_THREAD_TYPE,
     )
 
 
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def thread_list(request: HttpRequest) -> JsonResponse:
-    return chat_engine.thread_list(request, thread_type=THREAD_TYPE)
+    return chat_engine.thread_list(request, thread_type=USER_CHAT_THREAD_TYPE)
 ```
 
 Mount the surface under its own URL namespace in `urls.py`:
@@ -555,7 +556,7 @@ engine already uses for tool data and hidden messages.
    (each imported by its module path under `tools/`); export the agent from
    `agents/__init__.py`.
 7. Give it a surface: a view module that binds the generic `views/chat_engine.py`
-   views with your `agent_class`, a unique `thread_type`, and a model (see
+   views with your `agent_class` and a unique `thread_type` (see
    `views/assistant.py`), mounted under `api/agents/<name>/` in `urls.py`.
 
 No engine edits. No frontend edits (unless you _want_ custom cards). That's the

@@ -32,6 +32,7 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
   const staleNote = { hidden: true }
   const pendingBadges = [{ hidden: false }, { hidden: false }]
   const confirmedBadges = [{ hidden: true }, { hidden: true }]
+  const evidence = [{ hidden: false }]
 
   // Inputs the card puts into the message flow, in DOM order.
   const cardInputs = []
@@ -74,6 +75,7 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
     querySelectorAll(selector) {
       if (selector === '[data-role=badge-pending]') return pendingBadges
       if (selector === '[data-role=badge-confirmed]') return confirmedBadges
+      if (selector === '[data-role=evidence]') return evidence
       return []
     },
   }
@@ -127,6 +129,7 @@ function mountCard({ allReviewed = false, names = 'first_name,county' } = {}) {
     staleNote,
     pendingBadges,
     confirmedBadges,
+    evidence,
     cardInputs,
     fetchCalls,
     failNextFetch() {
@@ -191,11 +194,12 @@ test('a successful confirm disables the button and shows the note', async () => 
   assert.equal(card.done, true)
 })
 
-test('a successful confirm flips every badge from pending to confirmed', async () => {
-  const { card, pendingBadges, confirmedBadges } = mountCard()
+test('a successful confirm flips the badges and hides evidence', async () => {
+  const { card, pendingBadges, confirmedBadges, evidence } = mountCard()
   await card.confirmFacts()
   assert.ok(pendingBadges.every((b) => b.hidden))
   assert.ok(confirmedBadges.every((b) => !b.hidden))
+  assert.ok(evidence.every((element) => element.hidden))
 })
 
 test('a failed confirm leaves the badges pending', async () => {

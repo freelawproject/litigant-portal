@@ -335,7 +335,7 @@ class SiteModelMigrationTests(TestCase):
 
     def test_model_migration_preserves_classes_and_disabled_judging(self):
         migration = import_module(
-            "litigant_portal.app.migrations.0035_bedrock_model_choices"
+            "litigant_portal.app.migrations.0036_bedrock_model_choices"
         )
         schema_editor = SimpleNamespace(connection=connection)
         for old, new in migration.MODEL_MAPPING.items():

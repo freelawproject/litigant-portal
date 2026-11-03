@@ -174,6 +174,7 @@ class VariableAnswer(BaseModel):
     )
     value = models.JSONField(null=True, blank=True)
     reviewed = models.BooleanField(default=False)
+    evidence = models.JSONField(null=True, blank=True)
 
     @property
     def display_value(self) -> str:

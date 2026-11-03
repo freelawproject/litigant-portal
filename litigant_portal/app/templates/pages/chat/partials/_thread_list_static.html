@@ -1,0 +1,32 @@
+{% load i18n %}
+
+{# Server-rendered twin of _thread_list.html for pages without chatApp. #}
+{# Rows come from activity_threads (views/utils.py) and deep-link into #}
+{# the chat page, which opens the thread from the ?thread= param. #}
+<div class="flex-1 overflow-y-auto min-h-0 p-2 space-y-1">
+  {% trans "New chat" as new_chat_title %}
+  {% for thread in activity_threads %}
+    <a href="{% url 'pages:chat' %}?thread={{ thread.id }}"
+       class="block rounded-lg px-3 py-2 select-none transition-colors border border-transparent hover:bg-greyscale-100">
+      <div class="flex items-center gap-2">
+        {# Status dot — always idle grey here; live status needs chatApp #}
+        <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-greyscale-300"></span>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <p class="text-sm font-medium text-greyscale-800 truncate">{{ thread.description|default:new_chat_title }}</p>
+            <time class="text-xs text-greyscale-400 flex-shrink-0" datetime="{{ thread.last_at|date:'c' }}">{{ thread.when }}</time>
+          </div>
+          <p class="text-xs text-greyscale-500 truncate mt-0.5">{{ thread.snippet }}</p>
+        </div>
+      </div>
+    </a>
+  {% endfor %}
+  {# The chat page offers New chat from its toolbar; home has no toolbar, #}
+  {# so the list carries its own way to start one. #}
+  <div class="px-3 py-2">
+    <c-atoms.link href="{% url 'pages:chat' %}" variant="primary" class="inline-flex items-center gap-1.5 text-sm font-medium">
+      <c-atoms.icon name="plus" class="w-4 h-4" />
+      {% trans "Start a chat" %}
+    </c-atoms.link>
+  </div>
+</div>
