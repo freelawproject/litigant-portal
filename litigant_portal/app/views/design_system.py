@@ -382,9 +382,16 @@ def _briefcase_sample() -> list[dict]:
     visitor's answers.
     """
 
-    def fact(name, label, value, data_type=VariableDataType.TEXT):
+    def fact(
+        name, label, value, data_type=VariableDataType.TEXT, is_private=False
+    ):
         return VariableAnswer(
-            variable=Variable(name=name, label=label, data_type=data_type),
+            variable=Variable(
+                name=name,
+                label=label,
+                data_type=data_type,
+                is_private=is_private,
+            ),
             value=value,
         )
 
@@ -394,6 +401,13 @@ def _briefcase_sample() -> list[dict]:
             "answers": [
                 fact("tenant_first", "First name", "Jamie"),
                 fact("tenant_last", "Last name", "Rivera"),
+                fact(
+                    "tenant_dob",
+                    "Date of birth",
+                    "1990-04-02",
+                    VariableDataType.DATE,
+                    is_private=True,
+                ),
             ],
         },
         {
