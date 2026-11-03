@@ -26,10 +26,6 @@
     {% trans "Sign in" %}
     </c-atoms.button>
   </form>
-  {# Forgot password link #}
-  <div class="mt-4 text-center">
-    <c-atoms.link href="{% url 'account_reset_password' %}" variant="primary" class="text-sm">{% trans "Forgot your password?" %}</c-atoms.link>
-  </div>
 {% endblock auth_content %}
 
 {% block auth_footer %}

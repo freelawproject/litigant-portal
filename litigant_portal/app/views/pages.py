@@ -31,6 +31,7 @@ from litigant_portal.app.models.choices import (
 from litigant_portal.app.selectors.site import contact_help_list, site_get
 from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.views.utils import (
+    activity_threads,
     admin_tabs,
     briefcase_answers,
     topic_flow_cards,
@@ -48,6 +49,7 @@ def home(request):
         {
             "topic_cards": topic_flow_cards(),
             "briefcase_groups": briefcase_answers(request),
+            "activity_threads": activity_threads(request),
         },
     )
 
