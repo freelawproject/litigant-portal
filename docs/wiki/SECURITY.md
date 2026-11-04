@@ -27,6 +27,8 @@ When `DEBUG=False`, Django enables these security settings:
 
 Secrets are set in the `.env` file and exported to the environment. See `.env.example` for examples.
 
+`SECRET_KEY` is required when `DEBUG` is off: settings raise `ImproperlyConfigured` at startup instead of falling back to a random key per worker.
+
 ---
 
 ## Content Security Policy (CSP)

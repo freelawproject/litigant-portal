@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
 
 from litigant_portal.app.features import parse_deployment_env, parse_pilot
@@ -38,7 +39,11 @@ GIT_SHA = os.environ.get("GIT_SHA", "unknown")
 GIT_BRANCH = os.environ.get("GIT_BRANCH", "")
 APP_BUILD_TIME = os.environ.get("BUILD_TIME", "")
 
-SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
+SECRET_KEY = os.environ.get("SECRET_KEY", "")
+if not SECRET_KEY.strip():
+    if not DEBUG:
+        raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG is off")
+    SECRET_KEY = get_random_secret_key()
 
 # Temporary site-wide password gate; empty disables it. See
 # SitePasswordMiddleware.
