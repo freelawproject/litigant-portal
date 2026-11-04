@@ -3,8 +3,9 @@ import logging
 from allauth.account.models import EmailAddress
 from django.contrib.auth.models import Group, User
 from django.db import transaction
+from django.db.models import QuerySet
 
-from litigant_portal.app.models import UserIdentity, UserUpload
+from litigant_portal.app.models import ChatThread, UserIdentity, UserUpload
 from litigant_portal.app.permissions import (
     COURT_ADMINS_GROUP,
     FLP_STAFF_GROUP,
@@ -72,9 +73,7 @@ def user_active_set(*, user: User, active: bool) -> None:
 def user_delete(*, user: User) -> None:
     """Delete an account and everything it owns, stored upload files
     included. Permanent."""
-    identity = UserIdentity.objects.filter(user=user).first()
-    if identity is not None:
-        user_identity_reset(identity=identity)
+    user_identities_delete(identities=UserIdentity.objects.filter(user=user))
     user.delete()
 
 
@@ -155,12 +154,45 @@ def user_identity_reset(*, identity: UserIdentity) -> None:
     to no identity, so it stays. The identity row stays too, so the session
     or signed-in user keeps working.
     """
-    uploads = identity.uploads.all()
-    files = [(u.pk, u.file.name) for u in uploads if u.file]
-    uploads.delete()
+    _uploads_delete(identity.uploads.all())
     identity.chat_threads.all().delete()
     identity.variable_answers.all().delete()
+
+
+@transaction.atomic
+def user_identities_delete(
+    *, identities: QuerySet[UserIdentity]
+) -> tuple[int, int, int]:
+    """Delete identities and everything they own, stored upload files
+    included. ``identities`` is re-run under lock, so a row that stopped
+    matching is kept. Returns (identities, threads, uploads) deleted."""
+    locked = _identities_lock(identities)
+    pks = list(identities.filter(pk__in=locked).values_list("pk", flat=True))
+    upload_count = _uploads_delete(UserUpload.objects.filter(identity__in=pks))
+    _, deleted = UserIdentity.objects.filter(pk__in=pks).delete()
+    return (
+        deleted.get(UserIdentity._meta.label, 0),
+        deleted.get(ChatThread._meta.label, 0),
+        upload_count,
+    )
+
+
+def _identities_lock(identities: QuerySet[UserIdentity]) -> list:
+    """Lock the identities and their threads, so new uploads, threads and
+    messages for them wait on the commit. Returns the identity pks."""
+    pks = list(identities.select_for_update().values_list("pk", flat=True))
+    threads = ChatThread.objects.filter(identity__in=pks).select_for_update()
+    list(threads.values_list("pk", flat=True))
+    return pks
+
+
+def _uploads_delete(uploads: QuerySet[UserUpload]) -> int:
+    """Delete upload rows now and their stored files once committed.
+    Returns the number of uploads deleted."""
+    files = list(uploads.exclude(file="").values_list("pk", "file"))
+    _, deleted = uploads.delete()
     transaction.on_commit(lambda: _upload_files_delete(files))
+    return deleted.get(UserUpload._meta.label, 0)
 
 
 def _upload_files_delete(files: list[tuple]) -> None:
