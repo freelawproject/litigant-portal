@@ -36,7 +36,7 @@ Secrets are set in the `.env` file and exported to the environment. See `.env.ex
 | Login                  | Limit                                                                     | Over the limit         |
 | ---------------------- | ------------------------------------------------------------------------- | ---------------------- |
 | allauth (`/accounts/`) | allauth default: 10 failures/min per IP, 5 failures per 5 min per account | allauth's own response |
-| Django admin           | 10/min per IP, 5 per 5 min per account                                    | 403                    |
+| Django admin           | 10 failures/min per IP, 5 failures per 5 min per account                  | 429, "try again" page  |
 | Site password gate     | 10/min per IP                                                             | 429, gate page message |
 
 The admin and site gate limits use fixed windows, so a blocked visitor waits until the current window ends: up to 1 minute for an IP limit, up to 5 minutes for an account limit.

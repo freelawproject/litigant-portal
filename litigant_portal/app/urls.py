@@ -6,7 +6,6 @@ from django.contrib import admin
 from django.urls import include, path, re_path
 from django.views.i18n import JavaScriptCatalog
 from django.views.static import serve
-from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.app.views import (
     admin as admin_views,
@@ -14,6 +13,7 @@ from litigant_portal.app.views import (
 from litigant_portal.app.views import (
     assistant,
     design_system,
+    django_admin,
     health,
     pages,
 )
@@ -156,23 +156,6 @@ admin_api_patterns = [
     ),
 ]
 
-
-def _login_account(group, request):
-    return request.POST.get("username", "").strip().lower()
-
-
-admin.site.login = ratelimit(
-    group="admin_login_ip", key="ip", rate="10/m", method="POST", block=True
-)(
-    ratelimit(
-        group="admin_login_account",
-        key=_login_account,
-        rate="5/5m",
-        method="POST",
-        block=True,
-    )(admin.site.login)
-)
-
 urlpatterns = [
     # App Routes
     *i18n_patterns(
@@ -203,6 +186,7 @@ urlpatterns = [
     # Allauth Routes
     path("accounts/", include("allauth.urls")),
     # Django Admin
+    path("django-admin/login/", django_admin.login),
     path("django-admin/", admin.site.urls),
     # i18n Routes
     path("i18n/", include("django.conf.urls.i18n")),
