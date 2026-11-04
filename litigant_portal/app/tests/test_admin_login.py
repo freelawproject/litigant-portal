@@ -10,11 +10,6 @@ pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 LOGIN_URL = "/django-admin/login/"
 
 
-@pytest.fixture
-def ratelimited(settings):
-    settings.RATELIMIT_ENABLE = True
-
-
 def _login(client, username, url=LOGIN_URL):
     return client.post(
         url, {"username": username, "password": "wrong-password"}

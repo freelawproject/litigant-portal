@@ -112,9 +112,8 @@ def test_site_gate_lets_api_through(site_gate, client):
 
 
 def test_site_gate_refuses_even_the_right_password_after_ten_attempts(
-    site_gate, settings, client
+    site_gate, ratelimited, client
 ):
-    settings.RATELIMIT_ENABLE = True
     for _ in range(10):
         client.post("/", {"site_password": "wrong"})
 
