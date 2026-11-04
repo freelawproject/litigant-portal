@@ -19,6 +19,7 @@ layout:
   - eligibility
   - costs
   - criminal_history
+  - where_to_file
   - your_information_privacy
   - interview
   - packet
@@ -76,6 +77,11 @@ sections:
       If the judge requires one, you request it at edo.cjis.gov and pay the cost yourself.
 
       If you have a felony conviction, North Dakota law assumes a name-change request is made in bad faith. A judge may still grant it, but you would need to show by clear and convincing evidence that your request is made in good faith and not to defraud, mislead, injure anyone, or compromise public safety.
+
+  - id: where_to_file
+    heading: 'Where to file'
+    content: |
+      File in the district court for the county where you have lived for the past 6 months. Your driver's license, lease, or a utility bill usually shows this. The court locator link in the contacts at the end of this page can also help.
 
   - id: your_information_privacy
     heading: 'The question this page asks'

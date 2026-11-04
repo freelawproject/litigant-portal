@@ -152,6 +152,13 @@ def test_shipped_flows_carry_their_page_content():
             assert "calendar" in flow.layout, f"{key} does not place calendar"
     standard = corpus.flows[(*ND_TOPIC, "standard")]
     waiver = corpus.flows[(*ND_TOPIC, "waiver")]
+    filing_section = next(
+        section
+        for section in standard.sections
+        if section.id == "where_to_file"
+    )
+    assert filing_section in waiver.sections
+    assert "where_to_file" in waiver.layout
     assert standard.handoff is not None, "ND standard flow has no handoff"
     assert waiver.handoff is not None, "ND waiver flow has no handoff"
     assert standard.handoff.interview_reference.endswith(
