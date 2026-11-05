@@ -80,7 +80,10 @@ class HeaderCourtContextTests(TestCase):
         self.assertIn(PLACEHOLDER_COURT_LOGO, html)
         self.assertNotIn(FLP_LOGO, html)
 
+    @override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
     def test_header_without_court_context_shows_the_flp_logo(self):
+        """Without the court switcher. With it (dev and QA), no court reads
+        as Omni Court instead (#886)."""
         response = self.client.get(reverse("pages:home"))
 
         self.assertIn(FLP_LOGO, response.content.decode())
