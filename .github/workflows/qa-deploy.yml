@@ -25,14 +25,42 @@ concurrency:
   group: litigant-qa-deploy
   cancel-in-progress: false
 
+# The secrets live in the `qa` environment, which only main can enter (#1157),
+# so a branch's own copy of this workflow never sees them. To deploy a branch,
+# run this workflow from main and set deploy_ref to it.
 jobs:
+  # Only the code owners deploy QA. This check is the copy on main, because
+  # only main's copy of this workflow can reach the `qa` environment.
+  authorize:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          sparse-checkout: .github/CODEOWNERS
+          sparse-checkout-cone-mode: false
+      - name: Check the run is from main, by a code owner
+        env:
+          # triggering_actor, not actor: a re-run starts with whoever re-ran it.
+          DEPLOYER: ${{ github.triggering_actor }}
+        run: |
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Run this workflow from main, and set deploy_ref to the branch to deploy."
+            exit 1
+          fi
+          if ! grep -v '^[[:space:]]*#' .github/CODEOWNERS | tr -s '[:space:]' '\n' | grep -qixF "@$DEPLOYER"; then
+            echo "::error::$DEPLOYER is not in .github/CODEOWNERS, so can't deploy QA."
+            exit 1
+          fi
+
   tests:
+    needs: authorize
     uses: ./.github/workflows/tests.yml
     with:
       ref: ${{ github.event.inputs.deploy_ref || github.sha }}
 
   build:
     needs: tests
+    environment: qa
     runs-on: ubuntu-latest
     outputs:
       sha_short: ${{ steps.vars.outputs.sha_short }}
@@ -53,6 +81,7 @@ jobs:
 
   setup-deploy:
     needs: build
+    environment: qa
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
@@ -150,6 +179,7 @@ jobs:
 
   deploy-web:
     needs: [build, setup-deploy]
+    environment: qa
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
