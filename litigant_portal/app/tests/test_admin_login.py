@@ -2,6 +2,9 @@
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
+
+from litigant_portal.app.views import django_admin
 
 User = get_user_model()
 
@@ -62,6 +65,23 @@ def test_admin_login_counts_only_failures(ratelimited, client):
         client.logout()
 
     assert _login(client, "admin@example.com").status_code == 200
+
+
+def test_admin_login_counts_the_attempt_before_authenticating(
+    ratelimited, client, monkeypatch
+):
+    for _ in range(4):
+        _login(client, "admin@example.com")
+    seen = {}
+
+    def stub_login(request, extra_context=None):
+        seen["taken"] = django_admin._consume(request, dry_run=True) is None
+        return HttpResponse()
+
+    monkeypatch.setattr(django_admin.admin.site, "login", stub_login)
+    _login(client, "admin@example.com")
+
+    assert seen["taken"]
 
 
 def test_admin_login_account_limit_is_per_account(ratelimited, client):
