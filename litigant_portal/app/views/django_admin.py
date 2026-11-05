@@ -18,6 +18,7 @@ def _login_account(request):
 def _consume(request, **kwargs):
     return ratelimit.consume(
         request,
+        app="admin",
         action="admin_login",
         config=RATE_LIMITS,
         key=_login_account(request),
