@@ -35,7 +35,10 @@ from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.selectors.site import contact_list, resource_list
 from litigant_portal.app.selectors.topic_flow import topic_flow_list
 from litigant_portal.app.services import corpus as services
-from litigant_portal.app.services.corpus import corpus_sync
+from litigant_portal.app.services.corpus import (
+    corpus_court_switch,
+    corpus_sync,
+)
 
 START_SECTION = {"id": "start", "heading": "Start", "content": "Read."}
 
@@ -331,6 +334,16 @@ class CourtScopingTests(CorpusSyncTests):
     def test_unknown_court_is_rejected(self):
         with self.assertRaises(ValueError):
             self._sync(_make_corpus(), court="gamma")
+
+    @override_settings(CORPUS_COURT="alpha")
+    def test_court_unset_means_every_court_whatever_the_setting(self):
+        # The CORPUS_COURT fallback belongs to the sync_corpus command, so
+        # the court switcher's "all courts" can't be overridden by it.
+        self._sync(_make_corpus(), court=None)
+        self.assertEqual(
+            set(Topic.objects.values_list("slug", flat=True)),
+            {"pets", "eviction"},
+        )
 
 
 BRANDING = {
@@ -648,3 +661,91 @@ class TrustBoundaryTests(CorpusSyncTests):
         self.assertEqual(answer.value, "Jane Doe")
         self.assertTrue(answer.reviewed)
         self.assertEqual(answer.variable_id, variable.id)
+
+
+@pytest.mark.postgres
+class CourtSwitchTests(CorpusSyncTests):
+    """corpus_court_switch, the QA court switcher's service (#886)."""
+
+    def _switch(self, corpus, **kwargs):
+        with (
+            mock.patch.object(services, "corpus_load", return_value=corpus),
+            mock.patch.object(services, "FORMS_DIR", self.forms_dir),
+            mock.patch.object(services, "COURTS_DIR", self.courts_dir),
+        ):
+            return corpus_court_switch(**kwargs)
+
+    def test_switching_to_one_court_drops_the_other_courts_rows(self):
+        corpus = _make_corpus(alpha_branding=BRANDING)
+        self._switch(corpus, court=None)
+        self._switch(corpus, court="alpha")
+        self.assertEqual(
+            set(Topic.objects.values_list("slug", flat=True)), {"pets"}
+        )
+        self.assertEqual(
+            set(Contact.objects.values_list("court", flat=True)), {"alpha"}
+        )
+        site = Site.objects.get()
+        self.assertEqual(site.court_name, "Alpha District Court")
+        self.assertEqual(site.branding_name, "Alpha State Courts")
+
+    def test_switching_to_all_courts_clears_the_sites_court(self):
+        corpus = _make_corpus(alpha_branding=BRANDING)
+        self._switch(corpus, court="alpha")
+        Site.objects.update(
+            jurisdiction_level="municipal",
+            state="AZ",
+            official_url="https://alpha.test",
+            official_resources_url="https://alpha.test/help",
+        )
+        self._switch(corpus, court=None)
+        site = Site.objects.get()
+        self.assertEqual(
+            set(Topic.objects.values_list("slug", flat=True)),
+            {"pets", "eviction"},
+        )
+        for field in (
+            "court_name",
+            "jurisdiction_level",
+            "state",
+            "official_url",
+            "official_resources_url",
+            "branding_name",
+        ):
+            self.assertEqual(getattr(site, field), "", field)
+        self.assertFalse(site.logo)
+        self.assertFalse(site.name_image)
+
+    def test_switching_to_all_courts_deletes_the_stored_branding(self):
+        self._switch(_make_corpus(alpha_branding=BRANDING), court="alpha")
+        logo = Site.objects.get().logo
+        storage, name = logo.storage, logo.name
+        self._switch(_make_corpus(alpha_branding=BRANDING), court=None)
+        self.assertFalse(storage.exists(name))
+
+    def test_switching_to_all_courts_keeps_the_model_choices(self):
+        self._switch(_make_corpus(), court="alpha")
+        Site.objects.update(assistant_model="balanced", fast_model="economy")
+        self._switch(_make_corpus(), court=None)
+        site = Site.objects.get()
+        self.assertEqual(site.assistant_model, "balanced")
+        self.assertEqual(site.fast_model, "economy")
+
+    def test_answers_survive_a_switch_and_back(self):
+        corpus = _make_corpus()
+        self._switch(corpus, court="alpha")
+        answer = VariableAnswer.objects.create(
+            identity=UserIdentity.objects.create(),
+            variable=Variable.objects.get(name="full_name"),
+            value="Jane Doe",
+        )
+        self._switch(corpus, court="beta")
+        self._switch(corpus, court="alpha")
+        answer.refresh_from_db()
+        self.assertEqual(answer.value, "Jane Doe")
+
+    def test_unknown_court_is_rejected_and_changes_nothing(self):
+        self._switch(_make_corpus(), court="alpha")
+        with self.assertRaises(ValueError):
+            self._switch(_make_corpus(), court="gamma")
+        self.assertEqual(Site.objects.get().court_name, "Alpha District Court")

@@ -1,5 +1,8 @@
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
+from litigant_portal.app.features import features
+from litigant_portal.app.selectors.topic_flow import topic_court_find
 from litigant_portal.app.services.corpus import corpus_sync
 
 
@@ -11,10 +14,11 @@ class Command(BaseCommand):
             "--court",
             default=None,
             help="Court slug to deploy: its topics, flows, and site config. "
-            "Defaults to the CORPUS_COURT setting. With neither set, every "
-            "court's topics, flows, contacts, and resources sync, and "
-            "the site's court fields are left alone. A blank court name "
-            "is treated as multi-court mode.",
+            "Defaults to the CORPUS_COURT setting. With neither set, a site "
+            "with the court switcher keeps the court its topics are on. "
+            "Otherwise, or with a blank --court, every court's topics, "
+            "flows, contacts, and resources sync, and the site's court "
+            "fields are left alone.",
         )
         parser.add_argument(
             "--strict",
@@ -23,9 +27,16 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        court = options["court"]
+        if court is None:
+            court = settings.CORPUS_COURT
+        if court is None and features().court_switcher:
+            # Keep a court switched to on dev or QA through a restart or a
+            # deploy that keeps the database (#886).
+            court = topic_court_find()
         try:
             summary = corpus_sync(
-                court=options["court"], strict=options["strict"]
+                court=court or None, strict=options["strict"]
             )
         except ValueError as exc:
             raise CommandError(str(exc)) from exc
