@@ -153,10 +153,14 @@ def test_shipped_flows_carry_their_page_content():
     standard = corpus.flows[(*ND_TOPIC, "standard")]
     waiver = corpus.flows[(*ND_TOPIC, "waiver")]
     filing_section = next(
-        section
-        for section in standard.sections
-        if section.id == "where_to_file"
+        (
+            section
+            for section in standard.sections
+            if section.id == "where_to_file"
+        ),
+        None,
     )
+    assert filing_section is not None, "ND standard flow has no filing section"
     assert filing_section in waiver.sections
     assert "where_to_file" in waiver.layout
     assert standard.handoff is not None, "ND standard flow has no handoff"

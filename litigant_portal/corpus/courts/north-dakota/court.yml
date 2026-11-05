@@ -35,7 +35,7 @@ contacts:
     kind: legal_aid
     phone: '(800) 634-5263'
     url: 'https://lsnd.org'
-    note: 'Free civil legal help for North Dakotans who qualify by income. Contact them for advice about your own civil legal problem, including safety concerns involving threats or domestic violence. They will assess your eligibility and whether they can help with your case. They can also screen you for the Volunteer Lawyers low-cost program.'
+    note: 'Free civil legal help for North Dakotans who qualify by income. Contact them for advice on legal decisions in your own case, or if you have safety concerns involving threats or domestic violence. They will assess your eligibility and whether they can help with your case. They can also screen you for the Volunteer Lawyers low-cost program.'
   - id: dakota_plains
     name: 'Dakota Plains Legal Services'
     kind: legal_aid

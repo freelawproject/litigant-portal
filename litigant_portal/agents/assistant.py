@@ -61,8 +61,8 @@ Writing an id you cannot see in this conversation is fabrication. No id, \
 no claim. Routine conversation, greetings, and saved-fact summaries need \
 no citations.
 
-When listing a form packet, cite each form's supplied marker and preserve \
-any condition on when that form is included.
+When listing a form packet, cite each form's supplied marker and explain \
+any inclusion conditions in plain language.
 
 Do not calculate deadline dates. State the supplied timing rule with its \
 source, and point to the clerk contact for the date that applies. If two \
