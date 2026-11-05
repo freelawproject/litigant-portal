@@ -7,6 +7,7 @@ from django.test import RequestFactory, SimpleTestCase, TestCase
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.context_processors import app_meta, court_branding
 from litigant_portal.app.models import Site, Topic, TopicFlow
+from litigant_portal.app.selectors.corpus import corpus_load_courts
 
 
 class AppMetaTests(SimpleTestCase):
@@ -110,6 +111,39 @@ class TesterFlowLinkTests(TestCase):
             self._urls(CORPUS_COURT=None),
             ["/t/arizona/civil-traffic/options/"],
         )
+
+
+@pytest.mark.postgres
+class TesterCourtChoiceTests(TestCase):
+    """The court switcher's choices (#886): every corpus court plus all
+    courts, with the court the site is on now selected."""
+
+    def setUp(self):
+        self.request = RequestFactory().get("/")
+
+    def _choices(self, env="dev"):
+        with self.settings(DEPLOYMENT_ENV=env, PILOT=env == "prod"):
+            return app_meta(self.request)["tester_court_choices"]
+
+    def _selected(self):
+        return [c["value"] for c in self._choices() if c["selected"]]
+
+    def test_no_choices_where_the_switcher_is_off(self):
+        self.assertEqual(self._choices(env="prod"), [])
+
+    def test_choices_are_all_courts_then_every_corpus_court(self):
+        values = [c["value"] for c in self._choices()]
+        self.assertEqual(values[0], "all")
+        self.assertEqual(set(values[1:]), set(corpus_load_courts()))
+
+    def test_a_site_on_one_court_selects_that_court(self):
+        Topic.objects.create(slug="adult-name-change", court="north-dakota")
+        self.assertEqual(self._selected(), ["north-dakota"])
+
+    def test_a_site_on_several_courts_selects_all_courts(self):
+        Topic.objects.create(slug="adult-name-change", court="north-dakota")
+        Topic.objects.create(slug="civil-traffic", court="arizona")
+        self.assertEqual(self._selected(), ["all"])
 
 
 @pytest.mark.postgres

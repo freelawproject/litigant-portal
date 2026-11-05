@@ -51,6 +51,7 @@ app_patterns = [
     ),
     path("about/", pages.about, name="about"),
     path("start-over/", pages.start_over, name="start_over"),
+    path("court-switch/", pages.court_switch, name="court_switch"),
     path("privacy/", pages.privacy, name="privacy"),
     path("help/", pages.get_help, name="help"),
     path("accessibility/", pages.accessibility, name="accessibility"),

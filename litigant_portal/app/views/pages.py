@@ -8,6 +8,7 @@ from django.http import (
     Http404,
     HttpRequest,
     HttpResponse,
+    HttpResponseBadRequest,
     HttpResponseNotAllowed,
 )
 from django.shortcuts import redirect, render
@@ -32,9 +33,12 @@ from litigant_portal.app.selectors.bedrock import (
     bedrock_catalog_get,
     bedrock_model_choices,
 )
+from litigant_portal.app.selectors.corpus import corpus_load_courts
 from litigant_portal.app.selectors.site import contact_help_list, site_get
+from litigant_portal.app.services.corpus import corpus_court_switch
 from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.views.utils import (
+    ALL_COURTS,
     activity_threads,
     admin_tabs,
     briefcase_answers,
@@ -103,6 +107,40 @@ def start_over(request):
     ):
         next_url = reverse("pages:home")
     return redirect(urlsplit(next_url).path)
+
+
+def court_switch(request):
+    """Tester tool: resync this site to one court, or to every court
+    (#886). On wherever ``features().court_switcher`` is (dev and QA).
+
+    The switch is site-wide, so it changes the court for everyone on the
+    site until the next switch, deploy or restart. It never touches
+    sessions or answers. No login check: the site password already guards
+    QA, as it does for ``start_over``. Returns home, since the old court's
+    flow pages no longer exist.
+    """
+    # Before the method check, as in start_over: where it's off, every
+    # method 404s.
+    if not features().court_switcher:
+        raise Http404
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    slug = request.POST.get("court", "")
+    courts = corpus_load_courts()
+    if slug != ALL_COURTS and slug not in courts:
+        return HttpResponseBadRequest()
+    if slug == ALL_COURTS:
+        summary = corpus_court_switch(court=None)
+        court_label = _("all courts")
+    else:
+        summary = corpus_court_switch(court=slug)
+        court_label = courts[slug].name
+    messages.success(
+        request,
+        _("Switched to %(court)s: %(topics)d topics, %(flows)d flows.")
+        % {"court": court_label, **summary},
+    )
+    return redirect("pages:home")
 
 
 def about(request):

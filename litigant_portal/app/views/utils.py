@@ -30,6 +30,10 @@ from litigant_portal.app.selectors.topic_flow import (
 )
 from litigant_portal.app.selectors.user import user_assignable_roles
 
+# The court switcher's value for "every court" (#886); the service takes it
+# as ``court=None``.
+ALL_COURTS = "all"
+
 
 def has_identity(request) -> bool:
     """Whether this visitor already has an identity worth reading.

@@ -1,14 +1,21 @@
 from django.conf import settings
 from django.contrib.messages import get_messages
 from django.urls import reverse
+from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.features import features
+from litigant_portal.app.selectors.corpus import corpus_load_courts
 from litigant_portal.app.selectors.site import site_get
 from litigant_portal.app.selectors.topic_flow import (
+    topic_court_find,
     topic_flow_list,
     topic_flow_url_kwargs,
 )
-from litigant_portal.app.views.utils import admin_tabs, password_rule
+from litigant_portal.app.views.utils import (
+    ALL_COURTS,
+    admin_tabs,
+    password_rule,
+)
 
 
 def _tester_flow_links(court: str | None) -> list[dict]:
@@ -27,6 +34,19 @@ def _tester_flow_links(court: str | None) -> list[dict]:
     return links
 
 
+def _tester_court_choices() -> list[dict]:
+    """The court switcher's choices (#886): all courts, then each corpus
+    court, with the court the site is on now selected."""
+    courts = corpus_load_courts()
+    current = topic_court_find() or ALL_COURTS
+    choices = [(ALL_COURTS, _("All courts"))]
+    choices += [(slug, court.name) for slug, court in courts.items()]
+    return [
+        {"value": value, "label": label, "selected": value == current}
+        for value, label in choices
+    ]
+
+
 def app_meta(request):
     """App-level metadata available in every template."""
     tools = features()
@@ -41,6 +61,9 @@ def app_meta(request):
             _tester_flow_links(settings.CORPUS_COURT)
             if tools.flow_links
             else []
+        ),
+        "tester_court_choices": (
+            _tester_court_choices() if tools.court_switcher else []
         ),
         # Every new-password field states the same rules (#1135).
         "password_rules": password_rule(),
