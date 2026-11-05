@@ -2,7 +2,9 @@ import pytest
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
+from django.templatetags.static import static
 from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.urls import reverse
 
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.context_processors import app_meta, court_branding
@@ -136,6 +138,31 @@ class TesterCourtChoiceTests(TestCase):
         self.assertEqual(values[0], "all")
         self.assertEqual(set(values[1:]), set(corpus_load_courts()))
 
+    def test_a_court_choice_carries_its_branding(self):
+        choices = {c["value"]: c for c in self._choices()}
+        north_dakota = choices["north-dakota"]
+        self.assertEqual(north_dakota["label"], "State of North Dakota Courts")
+        self.assertEqual(
+            north_dakota["logo_url"],
+            reverse(
+                "pages:court_branding",
+                kwargs={"court": "north-dakota", "field": "logo"},
+            ),
+        )
+        self.assertEqual(
+            north_dakota["name_image_url"],
+            reverse(
+                "pages:court_branding",
+                kwargs={"court": "north-dakota", "field": "name_image"},
+            ),
+        )
+        # Arizona brands under its AOC's name and has no name image.
+        self.assertEqual(choices["arizona"]["label"], "Arizona Supreme Court")
+        self.assertEqual(choices["arizona"]["name_image_url"], "")
+        # All courts is Omni Court, with the FLP logo as its seal.
+        self.assertEqual(choices["all"]["label"], "Omni Court")
+        self.assertEqual(choices["all"]["logo_url"], static("images/logo.svg"))
+
     def test_a_site_on_one_court_selects_that_court(self):
         Topic.objects.create(slug="adult-name-change", court="north-dakota")
         self.assertEqual(self._selected(), ["north-dakota"])
@@ -178,9 +205,25 @@ class CourtBrandingTests(TestCase):
         self.assertEqual(result["court_name"], "Alpha State Courts")
 
     def test_a_site_with_no_court_leaves_the_header_to_free_law_project(self):
-        result = court_branding(self.request)
+        with self.settings(DEPLOYMENT_ENV="prod", PILOT=True):
+            result = court_branding(self.request)
 
         self.assertEqual(
             result,
             {"court_name": "", "court_logo": "", "court_name_image": ""},
+        )
+
+    def test_with_the_court_switcher_no_court_reads_as_omni_court(self):
+        """On dev and QA, all-courts mode is branded as a court of its own
+        (#886): the FLP logo as its seal, named Omni Court."""
+        with self.settings(DEPLOYMENT_ENV="qa"):
+            result = court_branding(self.request)
+
+        self.assertEqual(
+            result,
+            {
+                "court_name": "Omni Court",
+                "court_logo": static("images/logo.svg"),
+                "court_name_image": "",
+            },
         )

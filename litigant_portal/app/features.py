@@ -69,7 +69,6 @@ class Features:
                 self.flow_links,
                 self.style_guide,
                 self.feedback_url,
-                self.court_switcher,
             )
         )
 

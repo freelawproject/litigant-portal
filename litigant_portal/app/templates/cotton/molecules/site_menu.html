@@ -1,6 +1,6 @@
 {% load i18n %}
 
-<c-vars confirm_id="start-over-confirm" switch_id="court-switch" />
+<c-vars confirm_id="start-over-confirm" />
 {# The header's site menu (#988): Get help and the pages the footer used to #}
 {# link, in every environment, plus the account links on phones (where the #}
 {# user menu is hidden) and a tester group wherever features allow (#1037). A native <details> #}
@@ -80,25 +80,6 @@
                 <c-atoms.icon name="arrow-path" class="w-5 h-5 text-greyscale-500" />
                 {% trans "Start over" %}
               </c-atoms.button>
-            </li>
-          {% endif %}
-          {% if features.court_switcher %}
-            <li class="px-4 py-2">
-              {# The court switcher (#886): a plain POST form, so it works without JS. #}
-              {# It resyncs the whole site, so the note says who it affects. #}
-              <form method="post" action="{% url 'pages:court_switch' %}" class="flex flex-col gap-2">
-                {% csrf_token %}
-                <label for="{{ switch_id }}-court" class="text-sm text-greyscale-700">{% trans "Court" %}</label>
-                <div class="flex gap-2">
-                  <c-atoms.select name="court" id="{{ switch_id }}-court" aria_describedby="{{ switch_id }}-note" class="min-w-0">
-                    {% for choice in tester_court_choices %}
-                      <option value="{{ choice.value }}" {% if choice.selected %}selected{% endif %}>{{ choice.label }}</option>
-                    {% endfor %}
-                  </c-atoms.select>
-                  <c-atoms.button type="submit" variant="outline" size="sm">{% trans "Switch" %}</c-atoms.button>
-                </div>
-                <p id="{{ switch_id }}-note" class="text-xs text-greyscale-500">{% trans "Changes the court for everyone on this site. It stays through restarts and deploys until the database is reset." %}</p>
-              </form>
             </li>
           {% endif %}
           {# The instance's own flows (#1037): one court's on a court instance, every court's otherwise. #}
