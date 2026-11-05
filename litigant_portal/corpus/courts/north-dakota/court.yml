@@ -40,7 +40,7 @@ contacts:
     name: 'Dakota Plains Legal Services'
     kind: legal_aid
     url: 'https://www.dpls.org'
-    note: 'Free legal assistance for low-income individuals, older Americans, veterans, and nine tribal nations across North and South Dakota.'
+    note: 'Free legal assistance for low-income individuals, older Americans, veterans, and nine tribal nations across North and South Dakota. They offer advice on civil legal issues, including restraining and protection orders. Contact a local office to check eligibility, service area, and whether they can help with your case.'
   - id: state_bar_referral
     name: 'State Bar Association of North Dakota (Lawyer Referral)'
     kind: referral
