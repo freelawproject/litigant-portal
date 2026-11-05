@@ -11,6 +11,7 @@ import pytest
 from django.test import override_settings
 from django.urls import reverse
 
+from litigant_portal.app.selectors import corpus
 from litigant_portal.app.selectors.corpus import COURTS_DIR
 from litigant_portal.app.views import pages
 
@@ -101,3 +102,13 @@ def test_branding_is_off_outside_dev_and_qa(client):
 )
 def test_branding_404s_for_what_the_corpus_lacks(client, court, field):
     assert client.get(_branding(court, field)).status_code == 404
+
+
+@override_settings(DEPLOYMENT_ENV="qa")
+def test_rejects_a_court_with_no_topics(client, court_switch):
+    """Nothing could remember a switch to it (#886)."""
+    topics = {("north-dakota", "adult-name-change"): object()}
+    with mock.patch.object(corpus, "corpus_load_topics", return_value=topics):
+        response = client.post(COURT_SWITCH, {"court": "arizona"})
+    assert response.status_code == 400
+    court_switch.assert_not_called()

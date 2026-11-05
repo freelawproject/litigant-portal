@@ -1,9 +1,14 @@
+import logging
+
 from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from litigant_portal.app.features import features
+from litigant_portal.app.selectors.corpus import corpus_load_courts
 from litigant_portal.app.selectors.topic_flow import topic_court_find
 from litigant_portal.app.services.corpus import corpus_sync
+
+logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
@@ -34,6 +39,16 @@ class Command(BaseCommand):
             # Keep a court switched to on dev or QA through a restart or a
             # deploy that keeps the database (#886).
             court = topic_court_find()
+            if court is not None and court not in corpus_load_courts():
+                # A deploy renamed or removed the switched court's folder.
+                # Syncing every court keeps the pod starting; an explicit
+                # --court or CORPUS_COURT still fails on an unknown court.
+                logger.warning(
+                    "switched court %r is no longer in the corpus; "
+                    "syncing every court",
+                    court,
+                )
+                court = None
         try:
             summary = corpus_sync(
                 court=court or None, strict=options["strict"]

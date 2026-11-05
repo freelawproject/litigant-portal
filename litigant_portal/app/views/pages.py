@@ -128,7 +128,7 @@ def court_switch(request):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
     slug = request.POST.get("court", "")
-    courts = corpus_load_courts()
+    courts = corpus_load_courts(with_topics=True)
     if slug != ALL_COURTS and slug not in courts:
         return HttpResponseBadRequest()
     if slug == ALL_COURTS:

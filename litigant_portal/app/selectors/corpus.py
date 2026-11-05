@@ -957,9 +957,12 @@ def corpus_load_form_acro_fields() -> dict[str, dict[str, str]]:
     return pdfs
 
 
-def corpus_load_courts() -> dict[str, CourtSchema]:
+def corpus_load_courts(*, with_topics: bool = False) -> dict[str, CourtSchema]:
     """Every court document, by court slug. Each branding path must name a
-    file in that court's folder, since the sync copies it to storage."""
+    file in that court's folder, since the sync copies it to storage.
+    ``with_topics`` keeps only courts that have at least one topic: the QA
+    court switcher's choices (#886), since a strict sync to a court with no
+    topics deletes every Topic row and nothing would remember the switch."""
     courts = {}
     for path in sorted(COURTS_DIR.glob("*/court.yml")):
         court = corpus_parse_yaml(path, CourtSchema)
@@ -969,6 +972,9 @@ def corpus_load_courts() -> dict[str, CourtSchema]:
         if missing:
             raise ValueError(f"{path}: branding files not found: {missing}")
         courts[path.parts[-2]] = court
+    if with_topics:
+        on = {court for court, _topic in corpus_load_topics()}
+        courts = {slug: court for slug, court in courts.items() if slug in on}
     return courts
 
 

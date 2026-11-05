@@ -45,7 +45,7 @@ OMNI_COURT_LOGO = "images/logo.svg"
 def _tester_court_choices() -> list[dict]:
     """The court switcher's choices (#886): all courts, then each corpus
     court, with the court the site is on now selected."""
-    courts = corpus_load_courts()
+    courts = corpus_load_courts(with_topics=True)
     current = topic_court_find() or ALL_COURTS
     choices = [
         {

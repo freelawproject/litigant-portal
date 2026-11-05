@@ -1,3 +1,5 @@
+from unittest import mock
+
 import pytest
 from django.conf import settings
 from django.core.cache import cache
@@ -9,6 +11,7 @@ from django.urls import reverse
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.context_processors import app_meta, court_branding
 from litigant_portal.app.models import Site, Topic, TopicFlow
+from litigant_portal.app.selectors import corpus
 from litigant_portal.app.selectors.corpus import corpus_load_courts
 
 
@@ -133,10 +136,20 @@ class TesterCourtChoiceTests(TestCase):
     def test_no_choices_where_the_switcher_is_off(self):
         self.assertEqual(self._choices(env="prod"), [])
 
-    def test_choices_are_all_courts_then_every_corpus_court(self):
+    def test_choices_are_all_courts_then_every_court_with_topics(self):
         values = [c["value"] for c in self._choices()]
         self.assertEqual(values[0], "all")
-        self.assertEqual(set(values[1:]), set(corpus_load_courts()))
+        self.assertEqual(
+            set(values[1:]), set(corpus_load_courts(with_topics=True))
+        )
+
+    def test_a_court_with_no_topics_is_not_offered(self):
+        topics = {("north-dakota", "adult-name-change"): object()}
+        with mock.patch.object(
+            corpus, "corpus_load_topics", return_value=topics
+        ):
+            values = [c["value"] for c in self._choices()]
+        self.assertEqual(values, ["all", "north-dakota"])
 
     def test_a_court_choice_carries_its_branding(self):
         choices = {c["value"]: c for c in self._choices()}

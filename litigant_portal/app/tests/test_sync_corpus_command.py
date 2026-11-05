@@ -28,6 +28,11 @@ class SyncCorpusCourtTests(SimpleTestCase):
             mock.patch.object(
                 sync_corpus, "topic_court_find", return_value=rows_on
             ),
+            mock.patch.object(
+                sync_corpus,
+                "corpus_load_courts",
+                return_value=dict.fromkeys(("alpha", "beta")),
+            ),
         ):
             call_command("sync_corpus", *args, stdout=mock.Mock())
         return corpus_sync.call_args.kwargs["court"]
@@ -55,3 +60,10 @@ class SyncCorpusCourtTests(SimpleTestCase):
     @override_settings(CORPUS_COURT=None, DEPLOYMENT_ENV="prod", PILOT=True)
     def test_without_the_switcher_the_rows_are_not_read(self):
         self.assertIsNone(self._court(rows_on="beta"))
+
+    @override_settings(CORPUS_COURT=None, DEPLOYMENT_ENV="qa")
+    def test_a_switched_court_the_corpus_dropped_syncs_every_court(self):
+        """A deploy that renames or removes the switched court's folder
+        must not crash the pod at startup."""
+        with self.assertLogs(sync_corpus.logger, level="WARNING"):
+            self.assertIsNone(self._court(rows_on="gone"))
