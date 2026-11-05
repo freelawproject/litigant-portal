@@ -3,6 +3,7 @@ Persist a reproducible matrix and execute each attempt in a bounded process.
 """
 
 import asyncio
+import hashlib
 import importlib.metadata
 import itertools
 import json
@@ -101,13 +102,15 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
         references / "judge-schema.json", CitedGrade.model_json_schema()
     )
     reference_hashes = {
-        str(path.relative_to(references)): fingerprint(path.read_text())
+        str(path.relative_to(references)): hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
         for path in sorted(references.rglob("*"))
         if path.is_file()
     }
     write_json(run / "source.json", source_state())
     manifest = {
-        "schema_version": 1,
+        "schema_version": 2,
         "scoring_version": SCORING_VERSION,
         "created_at": datetime.now(UTC).isoformat(),
         "status": "running",
@@ -317,6 +320,7 @@ def run_suite(config: Config, output: Path) -> Path:
     print(f"Results: {run}", flush=True)
     manifest_path = run / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
+    verify_references(run, manifest)
     needs_db = any(system != "raw" for system in config.systems)
     try:
         rng = random.Random(config.seed)

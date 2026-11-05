@@ -4,6 +4,7 @@ Offline regression tests for eval capture and runtime judge diagnostics.
 
 import asyncio
 import json
+import shutil
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
@@ -18,12 +19,44 @@ from scripts.agent_eval.schema import (  # noqa: E402
     Config,
     fingerprint,
     read_cases,
+    verify_references,
     write_json,
 )
 
 MODEL_ID = "openai.gpt-99-luna"
 BILLING_MODEL = f"bedrock_mantle/{MODEL_ID}"
 INVOCATION_MODEL = f"bedrock/converse/us-east-1/us.{MODEL_ID}"
+
+
+def test_run_freezes_binary_references_and_rejects_changes(
+    tmp_path, monkeypatch
+):
+    inputs = tmp_path / "inputs"
+    for folder in ("references", "fixtures"):
+        shutil.copytree(runner.HERE / folder, inputs / folder)
+    shutil.copyfile(runner.HERE / "rubric.md", inputs / "rubric.md")
+    asset = inputs / "references" / "asset.pdf"
+    asset.write_bytes(b"%PDF-1.7\n%\xff\n")
+    monkeypatch.setattr(runner, "HERE", inputs)
+    monkeypatch.setattr(
+        runner.importlib.metadata, "version", lambda name: "test"
+    )
+
+    run, _ = runner.make_run(Config(cases=["nd-fee"]), tmp_path / "runs")
+    manifest = json.loads((run / "manifest.json").read_text())
+    saved = run / "references" / "references" / asset.name
+    assert saved.read_bytes() == asset.read_bytes()
+    asset.write_bytes(b"Changed source")
+    verify_references(run, manifest)
+
+    extra = run / "references" / "extra.yml"
+    extra.write_text("unexpected: content\n")
+    with pytest.raises(ValueError, match="Saved reference files changed"):
+        verify_references(run, manifest)
+    extra.unlink()
+    saved.write_bytes(b"Changed snapshot")
+    with pytest.raises(ValueError, match="Saved reference changed"):
+        verify_references(run, manifest)
 
 
 def test_fixture_journal_resolves_overrides_and_restores_raw_values(tmp_path):

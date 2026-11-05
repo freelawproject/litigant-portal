@@ -12,7 +12,8 @@ repos:
     hooks:
       - id: check-added-large-files
         # Partner source documents are kept exactly as delivered.
-        exclude: (?i)^corpus-sources/.*\.(pdf|xlsx?|docx?|jpe?g|png|gif)$
+        # Frozen eval PDFs are exact copies required by the corpus loader.
+        exclude: (?i)^(corpus-sources/.*\.(pdf|xlsx?|docx?|jpe?g|png|gif)|scripts/agent_eval/references/corpus/forms/[^/]+\.pdf)$
       - id: check-ast
       - id: check-json
       - id: check-merge-conflict

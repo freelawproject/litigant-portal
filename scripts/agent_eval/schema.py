@@ -247,8 +247,24 @@ def verify_references(run: Path, manifest: dict) -> None:
     """
     Refuse to grade or compare a silently edited saved benchmark definition.
     """
+    references = run / "references"
+    binary_hashes = manifest.get("schema_version", 1) >= 2
+    if binary_hashes:
+        files = {
+            str(path.relative_to(references))
+            for path in references.rglob("*")
+            if path.is_file()
+        }
+        if files != set(manifest["reference_hashes"]):
+            raise ValueError("Saved reference files changed.")
     for name, expected in manifest["reference_hashes"].items():
-        if fingerprint((run / "references" / name).read_text()) != expected:
+        path = references / name
+        actual = (
+            hashlib.sha256(path.read_bytes()).hexdigest()
+            if binary_hashes
+            else fingerprint(path.read_text())
+        )
+        if actual != expected:
             raise ValueError(f"Saved reference changed: {name}")
     expected = fingerprint(
         {
