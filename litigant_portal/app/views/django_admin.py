@@ -1,3 +1,5 @@
+import unicodedata
+
 from django.contrib import admin
 from django.shortcuts import render
 from django.utils.translation import gettext as _
@@ -6,7 +8,8 @@ from django_ratelimit.core import get_usage
 
 
 def _login_account(group, request):
-    return request.POST.get("username", "").strip().lower()
+    username = request.POST.get("username", "").strip()
+    return unicodedata.normalize("NFKC", username).lower()
 
 
 _LIMITS = (

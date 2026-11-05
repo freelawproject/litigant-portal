@@ -37,6 +37,13 @@ def test_admin_login_account_limit_ignores_case(ratelimited, client):
     assert _login(client, " ADMIN@example.com").status_code == 429
 
 
+def test_admin_login_account_limit_ignores_unicode_form(ratelimited, client):
+    for _ in range(5):
+        _login(client, "admin@example.com")
+
+    assert _login(client, "ａdmin@example.com").status_code == 429
+
+
 def test_admin_login_counts_only_failures(ratelimited, client):
     User.objects.create_superuser(
         username="admin@example.com",
