@@ -39,7 +39,7 @@ Secrets are set in the `.env` file and exported to the environment. See `.env.ex
 | Django admin           | 10 failures/min per IP, 5 failures per 5 min per account                  | 429, "try again" page  |
 | Site password gate     | 10/min per IP                                                             | 429, gate page message |
 
-The admin and site gate limits use fixed windows, so a blocked visitor waits until the current window ends: up to 1 minute for an IP limit, up to 5 minutes for an account limit.
+The allauth and admin limits run on allauth's limiter, which uses sliding windows: a blocked visitor waits until their oldest counted failure is older than the window (1 minute for the IP limit, 5 minutes for the account limit). The site gate runs on django-ratelimit, which uses fixed windows: a blocked visitor waits until the current minute's window ends.
 
 ---
 
