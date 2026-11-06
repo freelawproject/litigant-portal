@@ -43,11 +43,11 @@ Orchestration, raw calls, judging, and charts run locally. Export
 `AWS_BEARER_TOKEN_BEDROCK` locally for raw calls and judging. Raw-only runs,
 judging saved answers, and offline reports do not require Docker.
 
-Current chat calls require the usual **already-running** Django development container and its database/Redis services. The runner uses `docker compose exec -T django` to upload a temporary Python worker. That worker imports the container's app, uses its credentials and services, and streams artifacts back to the local run directory. No image rebuild, new container, volume mount, or application endpoint is needed. It creates normal database conversation records under an evaluation identity; those records remain after the run. It does not migrate or reset the database.
+Current chat calls require the usual **already-running** Django and PostgreSQL development containers. The runner uses `docker compose exec -T django` to upload a temporary Python worker and the run's frozen references, including binary assets. The worker imports the container's app and uses its credentials, but creates and migrates its own database. The PostgreSQL role must be able to create and drop databases. Conversation records are exported to the run artifacts before the temporary database is deleted. Setup and migrations are excluded from answer latency.
 
 ## Chat engine configuration and fixtures
 
-The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model: luna` temporarily selects Luna through the existing site setting; `null` preserves the current setting. The original and effective models are recorded, and the setting is restored afterward.
+The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model: luna` selects Luna on the evaluation site; `null` uses the application's default model selection. Per-call records capture the actual routes. The evaluation site starts with runtime judging disabled.
 
 [cases.yml](cases.yml) contains fifteen real-reference cases, six fictional cases, and four multi-turn conversation cases. Cases with `history` are reported in the `conversation` group, separately from single-turn cases. Both systems run all selected cases.
 [references/corpus/](references/corpus/) freezes the North Dakota corpus, including its variables, forms, PDFs, and branding, with the source revision and file hashes in [provenance.json](references/provenance.json). Answer keys refer to these same files. This is a repository snapshot, not independently verified law.
@@ -70,9 +70,16 @@ echo of the user's words does not count; a `[source:ID]` citation, quote, or
 bracket after the question is ignored). Both zero `overall` like any other
 deal breaker; cases without the flag are not affected.
 
-The fictional chicken-law variants change the fee and procedural order while retaining identical questions. Both include the 200-square-feet-per-chicken boundary. Fixtures enter the current chat engine through normal corpus files and an evaluation database flow. Raw receives no corpus.
+The fictional chicken-law variants change the fee and procedural order while retaining identical questions. Both include the 200-square-feet-per-chicken boundary. They use the frozen variable glossary and the same corpus loader and synchronization service as the ND snapshot. Each variant exposes only its own court contacts, resources, and flows. Raw receives no corpus.
 
-Evaluations of the chat engine temporarily change site settings and may enable the fictional flow; other development requests can see those changes while the run is active. The worker holds the fixture lock, enforces child-process timeouts, and restores settings on normal exit, Ctrl-C, or controller disconnect. The journal records `original_fast_model` and `effective_fast_model` as concrete routes resolved during setup, including explicit overrides. These are snapshots; per-call records show actual invocations if discovery later changes. The original raw site values remain separate for restoration. After a hard kill or failed cleanup, use the locally saved recovery journal:
+Each new run uses a uniquely named `agent_eval_...` database, a private file-based cache shared by its workers, and temporary file storage. Development data, Redis keys, and stored files are not changed. The worker stops its attempt process before deleting the database on normal exit, Ctrl-C, or controller disconnect. `database.json` records the database name and whether creation and removal completed. A hard kill can leave that database behind; remove only the name recorded for that run:
+
+```bash
+# Replace agent_eval_NAME with the exact name in the run's database.json.
+docker compose exec -T postgres dropdb -U postgres --force --if-exists agent_eval_NAME
+```
+
+Older runs with `fixture-state.json` used the development database. Their restoration command remains supported:
 
 ```bash
 make agent-eval ARGS='restore /path/to/run'

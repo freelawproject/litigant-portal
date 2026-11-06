@@ -28,6 +28,31 @@ BILLING_MODEL = f"bedrock_mantle/{MODEL_ID}"
 INVOCATION_MODEL = f"bedrock/converse/us-east-1/us.{MODEL_ID}"
 
 
+@pytest.mark.parametrize("variant", ["current", "chickens-a", "chickens-b"])
+def test_frozen_corpus_load_ignores_application_files(
+    tmp_path, monkeypatch, variant
+):
+    from litigant_portal.app.selectors import corpus
+    from scripts.agent_eval.corpus import fixture_root
+
+    for name in ("VARIABLES_PATH", "FORMS_DIR", "COURTS_DIR"):
+        monkeypatch.setattr(corpus, name, tmp_path / "missing")
+    root = runner.HERE / "references" / "corpus"
+    if variant != "current":
+        for folder in ("references", "fixtures"):
+            shutil.copytree(
+                runner.HERE / folder, tmp_path / "references" / folder
+            )
+        root = fixture_root(tmp_path, variant)
+    loaded = corpus.corpus_load(root=root)
+    assert set(loaded.courts) == {
+        "north-dakota" if variant == "current" else "eval-ohio"
+    }
+    assert len(loaded.flows) == (2 if variant == "current" else 1)
+    assert len(loaded.forms) == (8 if variant == "current" else 0)
+    assert len(loaded.variables) == 34
+
+
 def test_run_freezes_binary_references_and_rejects_changes(
     tmp_path, monkeypatch
 ):
@@ -59,44 +84,55 @@ def test_run_freezes_binary_references_and_rejects_changes(
         verify_references(run, manifest)
 
 
-def test_fixture_journal_resolves_overrides_and_restores_raw_values(tmp_path):
+@pytest.mark.parametrize("during_migration", [True, False])
+def test_eval_database_removed_after_failure(tmp_path, during_migration):
+    from scripts.agent_eval import corpus
+
+    name = "agent_eval_" + "a" * 32
+    write_json(tmp_path / "manifest.json", {"evaluation_database": name})
+    connection = MagicMock(settings_dict={"NAME": name})
+    cursor = connection._nodb_cursor.return_value.__enter__.return_value
+    with (
+        patch("django.db.connection", connection),
+        patch("django.db.connections.close_all") as close,
+        patch(
+            "django.core.management.call_command",
+            side_effect=RuntimeError("interrupted")
+            if during_migration
+            else None,
+        ),
+        patch("litigant_portal.app.models.Site.objects.update"),
+        pytest.raises(RuntimeError, match="interrupted"),
+        corpus.corpus_session(tmp_path),
+    ):
+        raise RuntimeError("interrupted")
+    assert [
+        call.args[0].as_string() for call in cursor.execute.call_args_list
+    ] == [
+        f'CREATE DATABASE "{name}"',
+        f'DROP DATABASE "{name}" WITH (FORCE)',
+    ]
+    close.assert_called_once()
+    assert json.loads((tmp_path / "database.json").read_text())["removed"]
+
+
+def test_legacy_fixture_restore_keeps_raw_site_values(tmp_path):
     from contextlib import nullcontext
 
     from scripts.agent_eval import corpus
 
     original = {field: f"original-{field}" for field in corpus.SITE_FIELDS}
     original["fast_model"] = "auto/openai.luna"
+    write_json(
+        tmp_path / "fixture-state.json", {"site": original, "restored": False}
+    )
     with (
         patch.object(corpus, "fixture_lock", return_value=nullcontext()),
-        patch(
-            "litigant_portal.app.models.Site.objects.get",
-            return_value=SimpleNamespace(**original),
-        ),
         patch("litigant_portal.app.models.Site.objects.update") as update,
         patch("litigant_portal.app.models.TopicFlow.objects.filter"),
-        patch(
-            "litigant_portal.app.selectors.site.site_get_model_target",
-            return_value=SimpleNamespace(model="resolved-original"),
-        ),
-        patch(
-            "litigant_portal.app.selectors.bedrock.bedrock_model_target",
-            return_value=SimpleNamespace(model="resolved-override"),
-        ) as resolve,
     ):
-        with (
-            pytest.raises(InterruptedError),
-            corpus.corpus_session(
-                tmp_path, True, fast_model="auto/anthropic.haiku"
-            ),
-        ):
-            journal = json.loads((tmp_path / "fixture-state.json").read_text())
-            assert journal["original_fast_model"] == "resolved-original"
-            assert journal["effective_fast_model"] == "resolved-override"
-            assert journal["site"] == original
-            update.assert_called_once_with(fast_model="auto/anthropic.haiku")
-            raise InterruptedError
-        resolve.assert_called_once_with(model="auto/anthropic.haiku")
-        assert update.call_args.kwargs == original
+        corpus.restore(tmp_path)
+        update.assert_called_once_with(**original)
         assert json.loads((tmp_path / "fixture-state.json").read_text())[
             "restored"
         ]

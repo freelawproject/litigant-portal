@@ -2,6 +2,7 @@
 Run application calls in an existing container without image or mount changes.
 """
 
+import base64
 import importlib.metadata
 import json
 import queue
@@ -15,7 +16,7 @@ from contextlib import ExitStack, suppress
 from pathlib import Path
 
 from .provider import safe
-from .schema import HERE, ROOT, Config, write_json
+from .schema import HERE, ROOT, Config, verify_references, write_json
 
 # Only the standard library is needed until the uploaded worker is imported.
 # Requests travel over stdin, never through interpolated shell commands.
@@ -82,11 +83,11 @@ class ContainerWorker:
                         for path in HERE.glob("*.py")
                     },
                     "manifest": manifest,
-                    "fixtures": {
-                        path.name: path.read_text()
-                        for path in (
-                            self.run / "references" / "fixtures"
-                        ).glob("*.yml")
+                    "references": {
+                        name: base64.b64encode(
+                            (self.run / "references" / name).read_bytes()
+                        ).decode("ascii")
+                        for name in manifest["reference_hashes"]
                     },
                     "recovery": json.loads(state.read_text())
                     if state.exists()
@@ -141,7 +142,7 @@ class ContainerWorker:
                 continue
             if message["kind"] == "eof":
                 raise RuntimeError(
-                    "Container worker disconnected; see container.log and use restore if needed."
+                    "Container worker disconnected; see container.log and the README cleanup instructions."
                 )
             if message["kind"] == "error":
                 raise RuntimeError(message["message"])
@@ -150,7 +151,7 @@ class ContainerWorker:
     def request(self, command, **values):
         self._send({"command": command, **values})
         deadline = time.monotonic() + (
-            self.timeout + 30 if command == "attempt" else 30
+            self.timeout + 30 if command in {"start", "attempt"} else 30
         )
         message = self._receive(deadline)
         if message["kind"] != "result":
@@ -163,7 +164,7 @@ class ContainerWorker:
         if self.process is None or self.closed:
             return
         try:
-            # This also interrupts any active child before the session restores.
+            # Interrupt any active child before deleting the database.
             with suppress(BrokenPipeError):
                 self._send({"command": "close"})
                 self.process.stdin.close()
@@ -181,8 +182,8 @@ class ContainerWorker:
             try:
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                # EOF tells the remote supervisor to stop/reap its child and
-                # restore. Killing the local Docker client alone cannot do so.
+                # EOF tells the remote supervisor to reap its child and clean
+                # up. Killing the local Docker client alone cannot do so.
                 self.process.kill()
                 self.process.wait()
             self.process.stdout.close()
@@ -199,7 +200,7 @@ class ContainerWorker:
                 self.log.close()
 
 
-def application_state(manifest: dict) -> tuple[dict, dict]:
+def application_state() -> dict:
     from django.conf import settings
 
     from .runner import source_state
@@ -213,23 +214,12 @@ def application_state(manifest: dict) -> tuple[dict, dict]:
             for name in ("Django", "litellm", "pydantic", "PyYAML")
         },
     )
-    files = {}
-    for case in manifest["cases"]:
-        if case["fixture"] != "current":
-            continue
-        court = Path(settings.BASE_DIR) / "corpus" / "courts" / case["court"]
-        for path in [
-            court / "court.yml",
-            *(court / "topics" / case["topic"]).rglob("*.yml"),
-        ]:
-            if path.is_file():
-                files[str(path.relative_to(root))] = path.read_text()
-    return source, files
+    return source
 
 
 def serve(run: Path, payload: dict, wire):
     """
-    Hold fixture ownership while servicing commands; reap children on disconnect.
+    Own the evaluation database and reap children on disconnect.
     """
     from . import corpus
     from .runner import execute_worker
@@ -270,29 +260,38 @@ def serve(run: Path, payload: dict, wire):
 
     manifest = payload["manifest"]
     write_json(run / "manifest.json", manifest)
-    for name, text in payload["fixtures"].items():
-        path = run / "references" / "fixtures" / name
+    for name, content in payload["references"].items():
+        path = (run / "references" / name).resolve()
+        if not path.is_relative_to((run / "references").resolve()):
+            raise ValueError("Invalid reference path.")
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(text)
+        path.write_bytes(base64.b64decode(content, validate=True))
+    verify_references(run, manifest)
     if payload["recovery"] is not None:
         write_json(run / "fixture-state.json", payload["recovery"])
     config = Config.model_validate(manifest["config"])
-    stack, failure = ExitStack(), None
+    stack, failure, started = ExitStack(), None, False
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
     threading.Thread(target=read_commands, daemon=True).start()
     try:
-        corpus.setup_django()
+        corpus.setup_django(
+            run if manifest.get("evaluation_database") else None
+        )
         send({"kind": "ready"})
         while not stopped.is_set():
             message = commands.get()
             command = message["command"]
             if command == "close":
                 break
+            if command in {"fixture", "attempt"} and not started:
+                raise ValueError("Start the evaluation database first.")
             value = {}
             if command == "start":
                 from litigant_portal.app.models import UserIdentity
 
+                if started or not manifest.get("evaluation_database"):
+                    raise ValueError("A new evaluation database is required.")
                 fast = (
                     config.model_ids[config.legacy_fast_model]
                     if config.legacy_fast_model
@@ -301,9 +300,8 @@ def serve(run: Path, payload: dict, wire):
                 stack.enter_context(
                     corpus.corpus_session(
                         run,
-                        "current" in config.systems,
                         fast_model=fast,
-                        notify=lambda: publish(run / "fixture-state.json"),
+                        notify=lambda: publish(run / "database.json"),
                     )
                 )
                 identity = UserIdentity.objects.create(
@@ -311,29 +309,26 @@ def serve(run: Path, payload: dict, wire):
                 )
                 manifest["identity_id"] = str(identity.pk)
                 write_json(run / "manifest.json", manifest)
-                source, files = application_state(manifest)
-                for name, content in (
-                    ("application.json", source),
-                    ("current-file-corpus.json", files),
-                ):
-                    write_json(run / name, content)
-                    publish(run / name)
+                write_json(run / "application.json", application_state())
+                publish(run / "application.json")
+                started = True
                 value = {
                     "identity_id": str(identity.pk),
                     "application": "application.json",
                 }
             elif command == "fixture":
                 variant = message["variant"]
-                if variant != "current":
+                if variant == "current":
+                    root = run / "references" / "references" / "corpus"
+                    corpus.install_fixture(root, "north-dakota")
+                else:
                     root = corpus.fixture_root(run, variant)
-                    if "current" in config.systems:
-                        corpus.install_fixture(root)
+                    corpus.install_fixture(root, "eval-ohio")
                     for path in sorted(root.rglob("*.yml")):
                         publish(path)
-                if "current" in config.systems:
-                    path = run / "corpora" / f"{variant}-database.json"
-                    write_json(path, corpus.snapshot_current())
-                    publish(path)
+                path = run / "corpora" / f"{variant}-database.json"
+                write_json(path, corpus.snapshot_current())
+                publish(path)
             elif command == "attempt":
                 path = run / message["path"]
                 write_json(path, message["record"])
@@ -345,6 +340,10 @@ def serve(run: Path, payload: dict, wire):
                     cancelled=stopped.is_set,
                 )
             elif command == "restore":
+                if manifest.get("evaluation_database"):
+                    raise ValueError(
+                        "Use the README disposable database cleanup instructions."
+                    )
                 corpus.restore(run)
                 publish(run / "fixture-state.json")
             else:
@@ -357,5 +356,5 @@ def serve(run: Path, payload: dict, wire):
         try:
             stack.close()
         except Exception as exc:
-            failure = safe(f"Fixture restoration failed: {exc}")[:2000]
+            failure = safe(f"Evaluation cleanup failed: {exc}")[:2000]
         send({"kind": "closed", "error": failure})

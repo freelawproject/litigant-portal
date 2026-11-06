@@ -115,6 +115,11 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
         "created_at": datetime.now(UTC).isoformat(),
         "status": "running",
         "config": config.model_dump(),
+        "evaluation_database": (
+            f"agent_eval_{uuid.uuid4().hex}"
+            if any(system != "raw" for system in config.systems)
+            else None
+        ),
         "cases": [case.model_dump() for case in cases],
         "reference_hashes": reference_hashes,
         "benchmark_id": fingerprint(
@@ -242,7 +247,7 @@ def worker(run: Path, path: Path, grading: bool):
     try:
         identity = None
         if not grading and record["system"] != "raw":
-            corpus.setup_django()
+            corpus.setup_django(run)
             from litigant_portal.app.models import UserIdentity
 
             identity = UserIdentity.objects.get(pk=manifest["identity_id"])

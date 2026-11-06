@@ -928,24 +928,34 @@ def corpus_parse_yaml(path: Path, model: type[BaseSchema]):
         raise ValueError(f"{path}: {exc}") from exc
 
 
-def corpus_load_variables() -> dict[str, VariableSchema]:
-    """Every variable, app-wide, by name."""
-    doc = corpus_parse_yaml(VARIABLES_PATH, VariablesSchema)
+def corpus_load_variables(
+    path: Path | None = None,
+) -> dict[str, VariableSchema]:
+    """
+    Every variable, app-wide, by name.
+    """
+    doc = corpus_parse_yaml(path or VARIABLES_PATH, VariablesSchema)
     return {v.name: v for v in doc.variables}
 
 
-def corpus_load_forms() -> dict[str, FormSchema]:
-    """Every form document, by form slug."""
+def corpus_load_forms(directory: Path | None = None) -> dict[str, FormSchema]:
+    """
+    Every form document, by form slug.
+    """
     return {
         path.stem: corpus_parse_yaml(path, FormSchema)
-        for path in sorted(FORMS_DIR.glob("*.yml"))
+        for path in sorted((directory or FORMS_DIR).glob("*.yml"))
     }
 
 
-def corpus_load_form_acro_fields() -> dict[str, dict[str, str]]:
-    """Every fillable PDF's AcroForm field types by name, by form slug."""
+def corpus_load_form_acro_fields(
+    directory: Path | None = None,
+) -> dict[str, dict[str, str]]:
+    """
+    Every fillable PDF's AcroForm field types by name, by form slug.
+    """
     pdfs = {}
-    for path in sorted(FORMS_DIR.glob("*.pdf")):
+    for path in sorted((directory or FORMS_DIR).glob("*.pdf")):
         try:
             reader = PdfReader(path)
         except Exception as exc:
@@ -957,11 +967,15 @@ def corpus_load_form_acro_fields() -> dict[str, dict[str, str]]:
     return pdfs
 
 
-def corpus_load_courts() -> dict[str, CourtSchema]:
-    """Every court document, by court slug. Each branding path must name a
-    file in that court's folder, since the sync copies it to storage."""
+def corpus_load_courts(
+    directory: Path | None = None,
+) -> dict[str, CourtSchema]:
+    """
+    Every court document, by court slug. Each branding path must name a
+    file in that court's folder, since the sync copies it to storage.
+    """
     courts = {}
-    for path in sorted(COURTS_DIR.glob("*/court.yml")):
+    for path in sorted((directory or COURTS_DIR).glob("*/court.yml")):
         court = corpus_parse_yaml(path, CourtSchema)
         missing = [
             p for p in court.branding.paths if not (path.parent / p).is_file()
@@ -972,31 +986,49 @@ def corpus_load_courts() -> dict[str, CourtSchema]:
     return courts
 
 
-def corpus_load_topics() -> dict[tuple[str, str], TopicSchema]:
-    """Every topic document, by (court, topic) slug."""
+def corpus_load_topics(
+    directory: Path | None = None,
+) -> dict[tuple[str, str], TopicSchema]:
+    """
+    Every topic document, by (court, topic) slug.
+    """
     return {
         (path.parts[-4], path.parts[-2]): corpus_parse_yaml(path, TopicSchema)
-        for path in sorted(COURTS_DIR.glob("*/topics/*/topic.yml"))
+        for path in sorted(
+            (directory or COURTS_DIR).glob("*/topics/*/topic.yml")
+        )
     }
 
 
-def corpus_load_flows() -> dict[tuple[str, str, str], FlowSchema]:
-    """Every flow document, by (court, topic, flow) slug."""
+def corpus_load_flows(
+    directory: Path | None = None,
+) -> dict[tuple[str, str, str], FlowSchema]:
+    """
+    Every flow document, by (court, topic, flow) slug.
+    """
     return {
         (path.parts[-5], path.parts[-3], path.stem): corpus_parse_yaml(
             path, FlowSchema
         )
-        for path in sorted(COURTS_DIR.glob("*/topics/*/flows/*.yml"))
+        for path in sorted(
+            (directory or COURTS_DIR).glob("*/topics/*/flows/*.yml")
+        )
     }
 
 
-def corpus_load() -> CorpusSchema:
-    """Load and validate the whole content corpus."""
+def corpus_load(*, root: Path | None = None) -> CorpusSchema:
+    """
+    Load and validate the whole content corpus from the given root.
+    """
+    forms = root / "forms" if root is not None else FORMS_DIR
+    courts = root / "courts" if root is not None else COURTS_DIR
     return CorpusSchema(
-        variables=corpus_load_variables(),
-        forms=corpus_load_forms(),
-        form_acro_fields=corpus_load_form_acro_fields(),
-        courts=corpus_load_courts(),
-        topics=corpus_load_topics(),
-        flows=corpus_load_flows(),
+        variables=corpus_load_variables(
+            root / "variables.yml" if root is not None else VARIABLES_PATH
+        ),
+        forms=corpus_load_forms(forms),
+        form_acro_fields=corpus_load_form_acro_fields(forms),
+        courts=corpus_load_courts(courts),
+        topics=corpus_load_topics(courts),
+        flows=corpus_load_flows(courts),
     )
