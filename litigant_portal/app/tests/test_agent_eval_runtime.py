@@ -615,6 +615,11 @@ def test_failed_attempt_sets_and_retains_judge_configuration(tmp_path, system):
     target = write_run(tmp_path, [{}], system=system)
     judge_model = "synthetic-judge" if system == "current" else None
 
+    def commit(callback):
+        update.assert_called_once_with(judge_model=judge_model)
+        invalidate.assert_not_called()
+        callback()
+
     def fail(*args, **kwargs):
         assert kwargs["invocation_options"] == {"model": "synthetic"}
         assert (
@@ -634,9 +639,16 @@ def test_failed_attempt_sets_and_retains_judge_configuration(tmp_path, system):
         patch("litigant_portal.app.models.UserIdentity.objects.get"),
         patch("litigant_portal.app.models.Site.objects.update") as update,
         patch("django.core.cache.cache.delete") as invalidate,
+        patch(
+            "django.db.transaction.on_commit", side_effect=commit
+        ) as on_commit,
         patch.object(runner.systems, "invoke", side_effect=fail),
     ):
         runner.worker(tmp_path, target, grading=False)
+    if system == "raw":
+        on_commit.assert_not_called()
+    else:
+        on_commit.assert_called_once()
     row = json.loads(target.read_text())
     assert row["status"] == "error"
     assert row.get("runtime_judge_model") == judge_model

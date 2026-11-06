@@ -254,6 +254,7 @@ def worker(run: Path, path: Path, grading: bool):
         if not grading and record["system"] != "raw":
             corpus.setup_django(run)
             from django.core.cache import cache
+            from django.db import transaction
 
             from litigant_portal.app.cache import SITE_CACHE_KEY
             from litigant_portal.app.models import Site, UserIdentity
@@ -265,7 +266,7 @@ def worker(run: Path, path: Path, grading: bool):
                 else None
             )
             Site.objects.update(judge_model=judge_model)
-            cache.delete(SITE_CACHE_KEY)
+            transaction.on_commit(lambda: cache.delete(SITE_CACHE_KEY))
             record["runtime_judge_model"] = judge_model
         # Django startup and identity lookup are outside response latency.
         started = time.monotonic()
