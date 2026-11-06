@@ -53,6 +53,7 @@
           <li><c-atoms.link href="#auto-dismiss" variant="unstyled">Auto Dismiss</c-atoms.link></li>
           <li><c-atoms.link href="#section-heading" variant="unstyled">Section Heading</c-atoms.link></li>
           <li><c-atoms.link href="#a11y-demo" variant="unstyled">A11y Demo</c-atoms.link></li>
+          <li><c-atoms.link href="#live-region" variant="unstyled">Live Region</c-atoms.link></li>
         </c-molecules.side-nav-group>
         <c-molecules.side-nav-group label="Molecules" href="#molecules">
           <li><c-atoms.link href="#logo" variant="unstyled">Logo</c-atoms.link></li>
@@ -751,6 +752,27 @@
                 <p class="text-sm text-greyscale-700">The example goes here.</p>
               </c-molecules.verdict-card>
             </c-atoms.a11y-demo>
+          </div>
+        </section>
+        <section id="live-region" class="mb-12" aria-labelledby="live-region-heading">
+          <h3 id="live-region-heading" class="mb-4">Live Region</h3>
+          <p class="text-greyscale-600 mb-6">
+            A <code>role="status"</code> element that screen readers announce when its text changes, for progress that nothing else reports, such as an upload. It is hidden from sighted users by default and holds no text of its own: the caller fills it with a slot or <code>x-text</code>.
+          </p>
+          <div class="mb-6">
+            <c-atoms.live-region>Hidden by default: screen readers hear this, nobody sees it.</c-atoms.live-region>
+            <c-atoms.live-region class="not-sr-only text-sm text-greyscale-500">Made visible through <code>class</code> for this demo.</c-atoms.live-region>
+          </div>
+          <h4 class="mt-8">Props</h4>
+          <div class="bg-greyscale-100 rounded-xl p-4 my-3">
+            <div class="flex flex-col md:flex-row border-b border-greyscale-200">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>role</code></span>
+              <span class="p-2.5">"status" (default) | "alert"</span>
+            </div>
+            <div class="flex flex-col md:flex-row">
+              <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>class</code></span>
+              <span class="p-2.5">Extra classes. Pass <code>not-sr-only</code> to show the text on screen.</span>
+            </div>
           </div>
         </section>
       </section>
