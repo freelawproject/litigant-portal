@@ -37,6 +37,20 @@ def test_cache(settings):
     cache.clear()
 
 
+@pytest.fixture
+def ratelimited(settings, monkeypatch):
+    """Turn the rate limits on, with a window that cannot end mid-test.
+
+    django-ratelimit counts in fixed windows whose end is jittered per
+    key, so on the real clock a counter can reset between two requests
+    of the same test.
+    """
+    settings.RATELIMIT_ENABLE = True
+    monkeypatch.setattr(
+        "django_ratelimit.core._get_window", lambda value, period: 2**31
+    )
+
+
 def _uses_database(request) -> bool:
     if request.node.get_closest_marker("django_db"):
         return True

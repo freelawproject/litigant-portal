@@ -27,6 +27,20 @@ When `DEBUG=False`, Django enables these security settings:
 
 Secrets are set in the `.env` file and exported to the environment. See `.env.example` for examples.
 
+`SECRET_KEY` is required when `DEBUG` is off: settings raise `ImproperlyConfigured` at startup instead of falling back to a random key per worker.
+
+---
+
+## Login Rate Limits
+
+| Login                  | Limit                                                                     | Over the limit         |
+| ---------------------- | ------------------------------------------------------------------------- | ---------------------- |
+| allauth (`/accounts/`) | allauth default: 10 failures/min per IP, 5 failures per 5 min per account | allauth's own response |
+| Django admin           | 10 failures/min per IP, 5 failures per 5 min per account                  | 429, "try again" page  |
+| Site password gate     | 10/min per IP                                                             | 429, gate page message |
+
+The allauth and admin limits run on allauth's limiter, which uses sliding windows: a blocked visitor waits until their oldest counted failure is older than the window (1 minute for the IP limit, 5 minutes for the account limit). The site gate runs on django-ratelimit, which uses fixed windows: a blocked visitor waits until the current minute's window ends.
+
 ---
 
 ## Content Security Policy (CSP)

@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'admin/css/login.css' %}" {% csp_nonce_attr %}>{% endblock %}
+
+{% block bodyclass %}{{ block.super }} login{% endblock %}
+
+{% block usertools %}{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
+
+{% block nav-breadcrumbs %}{% endblock %}
+
+{% block content %}
+    <p class="errornote">{% translate "Wait a few minutes and try again." %}</p>
+    <p>
+        <a href="{{ request.get_full_path }}">{% translate "Back to the login page" %}</a>
+    </p>
+{% endblock %}

@@ -1,4 +1,9 @@
-"""Tests for app middleware."""
+"""Tests for app middleware.
+
+The site gate tests are DB-free except the one that opens the site,
+which saves a session; the session key and identity test classes are
+postgres-marked.
+"""
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -79,3 +84,48 @@ class IdentityMiddlewareTests(TestCase):
         first_pk = request.identity.pk
         self.assertEqual(request.identity.pk, first_pk)
         self.assertEqual(UserIdentity.objects.count(), 1)
+
+
+SITE_PASSWORD = "letmein-test"
+
+
+@pytest.fixture
+def site_gate(settings):
+    settings.SITE_PASSWORD = SITE_PASSWORD
+
+
+def test_site_gate_shows_password_page(site_gate, client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"This site is under development" in response.content
+
+
+def test_site_gate_rejects_wrong_password(site_gate, client):
+    response = client.post("/", {"site_password": "wrong"})
+    assert response.status_code == 200
+    assert b"Incorrect password." in response.content
+
+
+def test_site_gate_lets_api_through(site_gate, client):
+    response = client.get("/api/health/")
+    assert b"This site is under development" not in response.content
+
+
+def test_site_gate_refuses_even_the_right_password_after_ten_attempts(
+    site_gate, ratelimited, client
+):
+    for _ in range(10):
+        client.post("/", {"site_password": "wrong"})
+
+    response = client.post("/", {"site_password": SITE_PASSWORD})
+    assert response.status_code == 429
+    assert b"Too many attempts." in response.content
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_site_gate_correct_password_opens_the_site(site_gate, client):
+    response = client.post("/chat/", {"site_password": SITE_PASSWORD})
+    assert response.status_code == 302
+    assert response["Location"] == "/chat/"
+    assert client.session["site_password_ok"] is True
