@@ -1,8 +1,11 @@
 """
-Load fictional content through normal database/file surfaces, not prompts.
+Load frozen content through normal corpus services in a disposable database.
 """
 
 import json
+import re
+import shutil
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -21,23 +24,49 @@ SITE_FIELDS = (
 )
 
 
-def setup_django():
+def setup_django(run: Path | None = None) -> None:
     import os
 
     import django
+    from django.conf import settings
 
     os.environ.setdefault("DJANGO_SETTINGS_MODULE", "litigant_portal.settings")
+    if run is not None:
+        name = json.loads((run / "manifest.json").read_text())[
+            "evaluation_database"
+        ]
+        if not re.fullmatch(r"agent_eval_[0-9a-f]{32}", name):
+            raise ValueError("Invalid evaluation database name.")
+        if name == settings.DATABASES["default"]["NAME"]:
+            raise ValueError(
+                "Evaluation database must differ from the application database."
+            )
+        settings.DATABASES["default"]["NAME"] = name
+        settings.CACHES = {
+            "default": {
+                "BACKEND": "django.core.cache.backends.filebased.FileBasedCache",
+                "LOCATION": str(run / "cache"),
+            }
+        }
+        settings.STORAGES = {
+            **settings.STORAGES,
+            **{
+                alias: {
+                    "BACKEND": "django.core.files.storage.FileSystemStorage",
+                    "OPTIONS": {"location": str(run / "media" / alias)},
+                }
+                for alias in ("default", "public")
+            },
+        }
     django.setup()
 
 
 def snapshot_current() -> dict:
+    from litigant_portal.agents.assistant import generate_court_prompt
     from litigant_portal.agents.tools.load_topic_flow import (
         topic_flow_markdown,
     )
-    from litigant_portal.app.selectors.site import (
-        site_get,
-        site_get_model_target,
-    )
+    from litigant_portal.app.selectors.site import site_get
     from litigant_portal.app.selectors.topic_flow import (
         topic_flow_find,
         topic_flow_list,
@@ -55,7 +84,8 @@ def snapshot_current() -> dict:
         )
     return {
         "site": {field: getattr(site, field) for field in SITE_FIELDS},
-        "fast_model": site_get_model_target(role="fast").model,
+        "fast_model": site.fast_model,
+        "court_context": generate_court_prompt(),
         "enabled_flows": flows,
     }
 
@@ -65,9 +95,13 @@ def fixture_root(run: Path, variant: str) -> Path:
         (run / "references" / "fixtures" / f"{variant}.yml").read_text()
     )
     root = run / "corpora" / variant
-    court = root / "corpus" / "courts" / "eval-ohio"
+    court = root / "courts" / "eval-ohio"
     topic = court / "topics" / TOPIC
     (topic / "flows").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(
+        run / "references" / "references" / "corpus" / "variables.yml",
+        root / "variables.yml",
+    )
     values = {
         court / "court.yml": {
             "name": "Fictional Ohio",
@@ -89,58 +123,10 @@ def fixture_root(run: Path, variant: str) -> Path:
     return root
 
 
-def install_fixture(root: Path):
-    from django.core.cache import cache
-    from django.db import transaction
+def install_fixture(root: Path, court: str) -> None:
+    from litigant_portal.app.services.corpus import corpus_sync
 
-    from litigant_portal.app.cache import SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY
-    from litigant_portal.app.models import (
-        Site,
-        Topic,
-        TopicFlow,
-        TopicFlowSection,
-    )
-
-    court = root / "corpus" / "courts" / "eval-ohio"
-    metadata = yaml.safe_load((court / "court.yml").read_text())
-    topic_path = court / "topics" / TOPIC
-    content = yaml.safe_load(
-        (topic_path / "flows" / "protection.yml").read_text()
-    )
-    with transaction.atomic():
-        topic, _ = Topic.objects.get_or_create(
-            slug=TOPIC, defaults={"description": MARKER}
-        )
-        if topic.description != MARKER:
-            raise ValueError(f"Topic {TOPIC} is not owned by the benchmark.")
-        topic.title = yaml.safe_load((topic_path / "topic.yml").read_text())[
-            "title"
-        ]
-        topic.save()
-        flow, _ = TopicFlow.objects.get_or_create(
-            topic=topic, slug="protection"
-        )
-        flow.name, flow.enabled = content["name"], True
-        flow.save()
-        flow.sections.all().delete()
-        # Fixture ids become citation keys where the model has them.
-        has_key = any(f.name == "key" for f in TopicFlowSection._meta.fields)
-        TopicFlowSection.objects.bulk_create(
-            [
-                TopicFlowSection(
-                    flow=flow,
-                    order=i,
-                    heading=section["heading"],
-                    content=section["content"],
-                    **({"key": section["id"]} if has_key else {}),
-                )
-                for i, section in enumerate(content["sections"])
-            ]
-        )
-        Site.objects.update(
-            **{field: metadata.get(field, "") for field in SITE_FIELDS}
-        )
-    cache.delete_many([SITE_CACHE_KEY, TOPIC_LIST_CACHE_KEY])
+    corpus_sync(root=root, court=court, strict=True)
 
 
 @contextmanager
@@ -192,49 +178,50 @@ def _restore(run: Path):
 
 @contextmanager
 def corpus_session(
-    run: Path, needed: bool, fast_model: str | None = None, notify=lambda: None
-):
+    run: Path,
+    fast_model: str | None = None,
+    notify: Callable[[], None] = lambda: None,
+) -> Generator[None]:
     """
-    Serialize fixture changes and restore site settings on normal interruption.
+    Create and migrate a private database, then drop it when the worker exits.
     """
-    if not needed:
-        yield
-        return
+    from django.core.management import call_command
+    from django.db import connection, connections
+    from psycopg import sql
+
     from litigant_portal.app.models import Site
-    from litigant_portal.app.selectors.bedrock import bedrock_model_target
-    from litigant_portal.app.selectors.site import site_get_model_target
 
-    with fixture_lock():
-        site = Site.objects.get()
-        original_fast_model = site_get_model_target(role="fast").model
-        effective_fast_model = (
-            bedrock_model_target(model=fast_model).model
-            if fast_model
-            else original_fast_model
+    name = json.loads((run / "manifest.json").read_text())[
+        "evaluation_database"
+    ]
+    if (
+        not re.fullmatch(r"agent_eval_[0-9a-f]{32}", name)
+        or connection.settings_dict["NAME"] != name
+    ):
+        raise ValueError("Worker is not connected to its evaluation database.")
+    state = {"name": name, "created": False, "removed": False}
+    path = run / "database.json"
+    write_json(path, state)
+    notify()
+    with connection._nodb_cursor() as cursor:
+        cursor.execute(
+            sql.SQL("CREATE DATABASE {}").format(sql.Identifier(name))
         )
-        write_json(
-            run / "fixture-state.json",
-            {
-                "site": {
-                    field: getattr(site, field)
-                    for field in (*SITE_FIELDS, "fast_model")
-                },
-                "original_fast_model": original_fast_model,
-                "effective_fast_model": effective_fast_model,
-                "restored": False,
-            },
-        )
-        try:
-            # Publish the recovery journal before mutating the database.
-            notify()
-            if fast_model is not None:
-                from django.core.cache import cache
-
-                from litigant_portal.app.cache import SITE_CACHE_KEY
-
-                Site.objects.update(fast_model=fast_model)
-                cache.delete(SITE_CACHE_KEY)
-            yield
-        finally:
-            _restore(run)
-            notify()
+    try:
+        state["created"] = True
+        write_json(path, state)
+        notify()
+        call_command("migrate", interactive=False, verbosity=0)
+        Site.objects.update(fast_model=fast_model)
+        yield
+    finally:
+        connections.close_all()
+        with connection._nodb_cursor() as cursor:
+            cursor.execute(
+                sql.SQL("DROP DATABASE {} WITH (FORCE)").format(
+                    sql.Identifier(name)
+                )
+            )
+        state["removed"] = True
+        write_json(path, state)
+        notify()

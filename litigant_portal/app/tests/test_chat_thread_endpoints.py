@@ -72,7 +72,7 @@ def test_thread_list_excludes_other_identities_threads():
 
 def test_thread_list_excludes_other_thread_types():
     client, identity = _client_identity()
-    _thread(identity, thread_type="weather_chat")
+    _thread(identity, thread_type="other_chat")
 
     assert client.get(ASSISTANT_BASE + "threads/").json()["threads"] == []
 
@@ -154,7 +154,7 @@ def test_message_list_of_another_identitys_thread_is_404():
 
 def test_message_list_of_other_thread_type_is_404():
     client, identity = _client_identity()
-    thread = _thread(identity, thread_type="weather_chat")
+    thread = _thread(identity, thread_type="other_chat")
 
     assert (
         client.get(ASSISTANT_BASE + f"threads/{thread.id}/").status_code == 404
@@ -249,7 +249,7 @@ def test_thread_delete_of_another_identitys_thread_is_404_and_kept():
 
 def test_thread_delete_of_other_thread_type_is_404_and_kept():
     client, identity = _client_identity()
-    thread = _thread(identity, thread_type="weather_chat")
+    thread = _thread(identity, thread_type="other_chat")
 
     res = client.post(ASSISTANT_BASE + f"threads/{thread.id}/delete/")
 

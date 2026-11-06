@@ -78,13 +78,47 @@ def test_every_case_in_cases_yml_loads():
 
 
 def test_system_tags() -> None:
-    expected = ["raw", "current"]
+    expected = ["raw", "no_judge", "current"]
     assert Config().systems == expected
-    for tags in (expected, ["raw", "old"]):
+    for tags in (expected, ["raw", "no_judge", "old"]):
         assert Config.model_validate({"systems": tags}).systems == expected
+    assert Config(systems=["raw", "old"]).systems == ["raw", "current"]
     for system in ("standalone", "new"):
         with pytest.raises(ValueError, match="Unsupported evaluation system"):
             Config.model_validate({"systems": [system]})
+
+
+def test_model_matrix_and_selection_validation():
+    from collections import Counter
+
+    from scripts.agent_eval.schema import configurations
+
+    config = Config(judges=["auto/openai.luna", "auto/openai.sol"])
+    matrix = configurations(config.model_dump())
+    assert Counter(system for system, _, _ in matrix) == {
+        "raw": 2,
+        "no_judge": 2,
+        "current": 4,
+    }
+    assert len(set(matrix)) == 8
+    assert all(
+        judge is None for system, _, judge in matrix if system != "current"
+    )
+    for invalid in (
+        {"models": ["missing"]},
+        {"judges": []},
+        {"judges": ["auto/openai.luna", "auto/openai.luna"]},
+        {"evaluator_model": "auto/openai.sol"},
+        {"evaluator_model": "bedrock_mantle/us-east-1/us.openai.gpt-6.1-sol"},
+        {"evaluator_model": "bedrock_mantle/eu-west-1/openai.gpt-6.1-sol"},
+        {"evaluator_model": "bedrock_mantle/us-east-1/unknown-model"},
+        {
+            "evaluator_model": "bedrock_mantle/us-east-1/anthropic.claude-haiku-4-5"
+        },
+    ):
+        with pytest.raises(ValueError):
+            Config(**invalid)
+    Config(systems=["raw", "no_judge"], judges=[])
 
 
 @pytest.mark.parametrize(

@@ -6,9 +6,9 @@
     I am an adult changing my last name in North Dakota. How does the name-change
     process work?
   references: &id001
-    - references/court.yml
-    - references/standard.yml
-    - references/waiver.yml
+    - references/corpus/courts/north-dakota/court.yml
+    - references/corpus/courts/north-dakota/topics/adult-name-change/flows/standard.yml
+    - references/corpus/courts/north-dakota/topics/adult-name-change/flows/waiver.yml
   facts:
     - id: filing-fee
       statement: The filing fee is $160; a fee waiver can be requested.

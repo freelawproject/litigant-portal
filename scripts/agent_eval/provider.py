@@ -10,7 +10,7 @@ from contextvars import ContextVar
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
-from .schema import Config
+from .schema import GradingConfig
 
 if TYPE_CHECKING:
     from litigant_portal.agents.bedrock import ResolvedBedrockModel
@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 _OBSERVING = ContextVar("agent_eval_observing", default=False)
 REQUEST_FIELDS = {
     "model",
+    "api_base",
+    "aws_region_name",
     "messages",
     "input",
     "instructions",
@@ -84,7 +86,7 @@ def _bedrock_pricing_target(model: str) -> "ResolvedBedrockModel | None":
     return ResolvedBedrockModel(model, region, billing_model=billing_model)
 
 
-def usage_cost(response, model: str, config: Config) -> dict:
+def usage_cost(response, model: str, config: GradingConfig) -> dict:
     """
     Keep unknown usage/pricing distinct from measured zero expenditure.
     """
@@ -251,7 +253,7 @@ class Observer:
     A process-local observer for the system or evaluator, never both at once.
     """
 
-    def __init__(self, calls: list, config: Config, flush=lambda: None):
+    def __init__(self, calls: list, config: GradingConfig, flush=lambda: None):
         self.calls = calls
         self.config = config
         self.flush = flush
