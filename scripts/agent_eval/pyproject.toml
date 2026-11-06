@@ -3,7 +3,7 @@ name = "litigant-portal-agent-eval"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
-    "litellm==1.106.6",
+    "litellm[mcp]==1.106.6",
     "matplotlib>=3.11.2",
     "pydantic>=2.14.2",
     "PyYAML>=6.0",
