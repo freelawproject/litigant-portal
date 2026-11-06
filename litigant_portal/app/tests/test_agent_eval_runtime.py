@@ -27,6 +27,52 @@ BILLING_MODEL = f"bedrock_mantle/{MODEL_ID}"
 INVOCATION_MODEL = f"bedrock/converse/us-east-1/us.{MODEL_ID}"
 
 
+def test_model_discovery_freezes_versions_and_keeps_evaluator_pinned(
+    monkeypatch,
+):
+    from litigant_portal.agents import bedrock
+    from scripts.agent_eval import models
+
+    native = tuple(
+        bedrock.FoundationModel.model_validate(
+            {
+                "modelId": f"openai.gpt-{version}-luna",
+                "inputModalities": ["TEXT"],
+                "outputModalities": ["TEXT"],
+                "inferenceTypesSupported": ["ON_DEMAND"],
+                "responseStreamingSupported": True,
+                "modelLifecycle": {
+                    "status": "ACTIVE",
+                    "startOfLifeTime": f"2026-01-0{day}T00:00:00Z",
+                },
+            }
+        )
+        for day, version in enumerate((98, 99), 1)
+    )
+    catalog = bedrock.BedrockCatalog(
+        native,
+        (),
+        (),
+        authorized_model_ids=frozenset(m.model_id for m in native),
+    )
+    discovery = Mock(return_value=catalog)
+    monkeypatch.setattr(bedrock, "discover_catalog", discovery)
+    monkeypatch.setenv("AWS_REGION", "us-east-1")
+    config = Config(models=["auto/openai.luna"])
+    resolved = models.resolve_models(config)
+    assert resolved["models"][config.models[0]]["model"].endswith(MODEL_ID)
+    assert resolved["judges"][config.judges[0]]["model"].endswith(MODEL_ID)
+    discovery.assert_called_once()
+    pinned = models.evaluator_options(config.evaluator_model)
+    assert pinned["model"] == config.evaluator_model
+    assert (
+        pinned["api_base"]
+        == "https://bedrock-mantle.us-east-1.api.aws/openai/v1"
+    )
+    with pytest.raises(bedrock.BedrockModelUnavailable):
+        models.resolve_models(Config(models=["auto/openai.terra"]))
+
+
 @pytest.mark.parametrize("variant", ["current", "chickens-a", "chickens-b"])
 def test_frozen_corpus_load_ignores_application_files(
     tmp_path, monkeypatch, variant
@@ -330,8 +376,14 @@ def write_run(path, rows, system="current"):
     case = read_cases(Config())[0].model_dump()
     manifest = {
         "config": Config(
-            systems=[system], models=["luna"], repetitions=len(rows)
+            systems=[system],
+            models=["auto/openai.luna"],
+            repetitions=len(rows),
         ).model_dump(),
+        "resolved_models": {
+            "models": {"auto/openai.luna": {"model": "synthetic"}},
+            "judges": {"auto/openai.luna": {"model": "synthetic-judge"}},
+        },
         "cases": [case],
         "reference_hashes": {},
         "scoring_version": runner.SCORING_VERSION,
@@ -347,8 +399,11 @@ def write_run(path, rows, system="current"):
         name = f"attempt-{index}.json"
         record = {
             "system": system,
-            "model": "luna",
+            "model": "auto/openai.luna",
             "model_id": "synthetic",
+            "judge": "auto/openai.luna"
+            if system in {"current", "old"}
+            else None,
             "case": case,
             "repeat": index + 1,
             "status": "completed",
@@ -361,6 +416,113 @@ def write_run(path, rows, system="current"):
         manifest["attempts"].append(name)
     write_json(path / "manifest.json", manifest)
     return path / manifest["attempts"][0]
+
+
+def test_run_and_report_keep_model_judge_pairs_separate(tmp_path):
+    from scripts.agent_eval.remote import ContainerWorker
+
+    config = Config(
+        judges=["auto/openai.luna", "auto/openai.sol"],
+        cases=["nd-fee"],
+        repetitions=1,
+    )
+    resolved = {
+        field: {model: {"model": f"resolved-{model}"} for model in values}
+        for field, values in (
+            ("models", config.models),
+            ("judges", config.judges),
+        )
+    }
+
+    def finish(run, path, timeout):
+        row = json.loads(path.read_text())
+        cost = 2 if row["judge"] == "auto/openai.sol" else 1
+        row.update(status="error", calls=[{"cost_usd": cost}])
+        write_json(path, row)
+
+    def request(command, **kwargs):
+        if command == "attempt":
+            run = next(tmp_path.iterdir())
+            finish(run, run / kwargs["path"], config.timeout_seconds)
+        return {}
+
+    remote = MagicMock(spec=ContainerWorker)
+    remote.__enter__.return_value = remote
+    remote.request.side_effect = request
+    with (
+        patch(
+            "scripts.agent_eval.remote.ContainerWorker", return_value=remote
+        ),
+        patch.object(runner.models, "resolve_models", return_value=resolved),
+        patch.object(runner, "execute_worker", side_effect=finish),
+        patch.object(
+            runner.importlib.metadata, "version", return_value="test"
+        ),
+    ):
+        run = runner.run_suite(config, tmp_path)
+    manifest = json.loads((run / "manifest.json").read_text())
+    assert manifest["planned_attempts"] == len(set(manifest["attempts"])) == 8
+    assert manifest["resolved_models"] == resolved
+    result = report.summarize(run)
+    assert len(result["systems"]) == 8
+    for row in result["systems"]:
+        assert row["planned"] == row["recorded"] == 1
+        assert row["mean_cost_usd"] == (
+            2 if row["judge"] == "auto/openai.sol" else 1
+        )
+        assert row["model_ids"] == [f"resolved-{row['model']}"]
+
+
+def test_legacy_grading_keeps_evaluator_and_original_artifacts(tmp_path):
+    from scripts.agent_eval.schema import GradingConfig
+
+    target = write_run(tmp_path, [{}], system="old")
+    manifest_path = tmp_path / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    config = manifest["config"]
+    del config["evaluator_model"], config["judges"]
+    config.update(
+        systems=["old"],
+        models=["luna"],
+        judge_model="sol",
+        model_ids={
+            "luna": BILLING_MODEL,
+            "sol": "bedrock_mantle/openai.gpt-5.6-sol",
+        },
+    )
+    write_json(manifest_path, manifest)
+    candidate = json.loads(target.read_text())
+    candidate.pop("judge")
+    candidate["model"] = "luna"
+    write_json(target, candidate)
+    batch = tmp_path / "judgments" / "batch"
+    write_json(
+        batch / "batch.json",
+        {
+            "config": config,
+            "status": "incomplete",
+            "judgments": {target.name: "grade.json"},
+        },
+    )
+    write_json(batch / "grade.json", {"status": "error", "calls": []})
+    before = {path: path.read_bytes() for path in tmp_path.rglob("*.json")}
+    assert (
+        GradingConfig.from_saved(config).evaluator_model
+        == config["model_ids"]["sol"]
+    )
+    runner.recover_run(tmp_path, dry_run=True)
+    runner.judge_run(tmp_path, retry_failed=True, dry_run=True)
+    with pytest.raises(ValueError, match="same evaluator"):
+        runner.judge_run(
+            tmp_path, Config().evaluator_model, retry_failed=True, dry_run=True
+        )
+    result = report.summarize(tmp_path)
+    assert result["evaluator_model"] == config["model_ids"]["sol"]
+    assert result["systems"][0]["judge"] is None
+    assert result["systems"][0]["runtime_judge_models"] == ["unknown"]
+    assert all(
+        path.read_bytes() == content for path, content in before.items()
+    )
 
 
 @pytest.mark.parametrize("system", ["standalone", "new"])
@@ -379,9 +541,10 @@ def test_failed_attempt_sets_and_retains_judge_configuration(tmp_path, system):
     from litigant_portal.app.cache import SITE_CACHE_KEY
 
     target = write_run(tmp_path, [{}], system=system)
-    judge_model = Config().model_ids["luna"] if system == "current" else None
+    judge_model = "synthetic-judge" if system == "current" else None
 
-    def fail(*args):
+    def fail(*args, **kwargs):
+        assert kwargs["invocation_options"] == {"model": "synthetic"}
         assert (
             json.loads(target.read_text()).get("runtime_judge_model")
             == judge_model

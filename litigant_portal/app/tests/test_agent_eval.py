@@ -88,10 +88,32 @@ def test_system_tags() -> None:
             Config.model_validate({"systems": [system]})
 
 
-def test_runtime_judge_alias_must_resolve_for_current():
-    with pytest.raises(ValueError, match="model_ids entry"):
-        Config(runtime_judge_model="missing")
-    Config(systems=["raw", "no_judge"], runtime_judge_model="missing")
+def test_model_matrix_and_selection_validation():
+    from collections import Counter
+
+    from scripts.agent_eval.schema import configurations
+
+    config = Config(judges=["auto/openai.luna", "auto/openai.sol"])
+    matrix = configurations(config.model_dump())
+    assert Counter(system for system, _, _ in matrix) == {
+        "raw": 2,
+        "no_judge": 2,
+        "current": 4,
+    }
+    assert len(set(matrix)) == 8
+    assert all(
+        judge is None for system, _, judge in matrix if system != "current"
+    )
+    for invalid in (
+        {"models": ["missing"]},
+        {"judges": []},
+        {"judges": ["auto/openai.luna", "auto/openai.luna"]},
+        {"evaluator_model": "auto/openai.sol"},
+        {"evaluator_model": "bedrock_mantle/us-east-1/us.openai.gpt-6.1-sol"},
+    ):
+        with pytest.raises(ValueError):
+            Config(**invalid)
+    Config(systems=["raw", "no_judge"], judges=[])
 
 
 @pytest.mark.parametrize(

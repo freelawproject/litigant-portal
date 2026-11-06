@@ -20,7 +20,7 @@ from contextlib import nullcontext, suppress
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import corpus, judge, systems
+from . import corpus, judge, models, systems
 from .provider import Observer, safe
 from .schema import (
     HERE,
@@ -28,6 +28,8 @@ from .schema import (
     Case,
     CitedGrade,
     Config,
+    GradingConfig,
+    configurations,
     fingerprint,
     normalize_system,
     read_cases,
@@ -110,7 +112,7 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
     }
     write_json(run / "source.json", source_state())
     manifest = {
-        "schema_version": 2,
+        "schema_version": 3,
         "scoring_version": SCORING_VERSION,
         "created_at": datetime.now(UTC).isoformat(),
         "status": "running",
@@ -135,8 +137,7 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
         },
         "python": sys.version,
         "planned_attempts": len(cases)
-        * len(config.systems)
-        * len(config.models)
+        * len(configurations(config.model_dump()))
         * config.repetitions,
         "attempts": [],
     }
@@ -219,7 +220,11 @@ def execute_worker(
 def worker(run: Path, path: Path, grading: bool):
     manifest = json.loads((run / "manifest.json").read_text())
     record = json.loads(path.read_text())
-    config = Config.model_validate(record.get("config", manifest["config"]))
+    config = (
+        GradingConfig.from_saved(record["config"])
+        if grading
+        else Config.model_validate(manifest["config"])
+    )
     started = time.monotonic()
     last_flush = 0.0
 
@@ -255,7 +260,7 @@ def worker(run: Path, path: Path, grading: bool):
 
             identity = UserIdentity.objects.get(pk=manifest["identity_id"])
             judge_model = (
-                config.model_ids[config.runtime_judge_model]
+                manifest["resolved_models"]["judges"][record["judge"]]["model"]
                 if normalize_system(record["system"]) == "current"
                 else None
             )
@@ -292,6 +297,9 @@ def worker(run: Path, path: Path, grading: bool):
                     record["model_id"],
                     identity,
                     emit,
+                    invocation_options=manifest["resolved_models"]["models"][
+                        record["model"]
+                    ],
                 )
                 record["detail"] = safe(detail)
                 if not record["answer"].strip():
@@ -328,10 +336,13 @@ def worker(run: Path, path: Path, grading: bool):
 def run_suite(config: Config, output: Path) -> Path:
     from .remote import ContainerWorker
 
+    resolved = models.resolve_models(config)
     run, cases = make_run(config, output)
     print(f"Results: {run}", flush=True)
     manifest_path = run / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
+    manifest["resolved_models"] = resolved
+    write_json(manifest_path, manifest)
     verify_references(run, manifest)
     needs_db = any(system != "raw" for system in config.systems)
     try:
@@ -346,21 +357,30 @@ def run_suite(config: Config, output: Path) -> Path:
                 jobs = list(
                     itertools.product(
                         [case for case in cases if case.fixture == variant],
-                        config.systems,
-                        config.models,
+                        configurations(config.model_dump()),
                         range(1, config.repetitions + 1),
                     )
                 )
                 rng.shuffle(jobs)
-                for case, system, model, repeat in jobs:
+                for case, (system, model, runtime_judge), repeat in jobs:
+                    selection = f"{system}-{model}"
+                    if runtime_judge:
+                        selection += f"-judge-{runtime_judge}"
                     relative = (
-                        Path(f"{system}-{model}") / f"{case.id}-r{repeat}.json"
+                        Path(selection.replace("/", "_"))
+                        / f"{case.id}-r{repeat}.json"
                     )
                     row = {
                         "schema_version": 1,
                         "system": system,
                         "model": model,
-                        "model_id": config.model_ids[model],
+                        "model_id": resolved["models"][model]["model"],
+                        "judge": runtime_judge,
+                        "runtime_judge_model": (
+                            resolved["judges"][runtime_judge]["model"]
+                            if runtime_judge
+                            else None
+                        ),
                         "case": case.model_dump(),
                         "repeat": repeat,
                         "status": "running",
@@ -417,7 +437,9 @@ def latest_judgments(run: Path) -> tuple[Path | None, dict, dict[str, Path]]:
     )
 
 
-def new_batch(run: Path, config: Config, mode: str, source: Path | None):
+def new_batch(
+    run: Path, config: GradingConfig, mode: str, source: Path | None
+):
     folder = run / "judgments" / f"{stamp()}-{uuid.uuid4().hex[:6]}"
     folder.mkdir(parents=True)
     write_json(folder / "source.json", source_state())
@@ -470,7 +492,7 @@ def recover_run(run: Path, *, dry_run=False) -> Path | None:
     source, previous, paths = latest_judgments(run)
     if source is None:
         raise ValueError("There are no saved judgments to recover.")
-    config = Config.model_validate(previous["config"])
+    config = GradingConfig.from_saved(previous["config"])
     prepared = {}
     counts = Counter()
     for candidate_path in manifest["attempts"]:
@@ -568,19 +590,18 @@ def judge_run(
     manifest = json.loads((run / "manifest.json").read_text())
     verify_references(run, manifest)
     source, previous, paths = latest_judgments(run)
-    config = Config.model_validate(
+    config = GradingConfig.from_saved(
         previous["config"] if retry_failed and previous else manifest["config"]
     )
     if retry_failed and source is None:
         raise ValueError("There is no judgment batch to retry.")
-    original_model = config.model_ids[config.judge_model]
+    original_model = config.evaluator_model
     if model:
-        config = Config.model_validate(
-            {**config.model_dump(), "judge_model": model}
-        )
-    if retry_failed and config.model_ids[config.judge_model] != original_model:
+        models.pinned_evaluator_options(model)
+        config.evaluator_model = model
+    if retry_failed and config.evaluator_model != original_model:
         raise ValueError(
-            "Retry must use the same judge model; use full judging to change models."
+            "Retry must use the same evaluator model; use full judging to change models."
         )
     jobs, retained = [], {}
     for candidate_path in manifest["attempts"]:

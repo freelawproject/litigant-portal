@@ -10,7 +10,7 @@ import json
 import pytest
 from django.test import Client, TestCase
 
-from litigant_portal.agents import WeatherAgent
+from litigant_portal.agents.base import Agent
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
 from litigant_portal.app.selectors.chat_engine import chat_message_list
 from litigant_portal.app.services.chat_engine import (
@@ -162,9 +162,7 @@ class HiddenMessageProjectionTests(TestCase):
         self.assertIn("HIDDEN CONTEXT", contents)
 
     def test_hidden_excluded_from_render_items(self):
-        items = chat_thread_render_items(
-            thread=self.thread, agent_class=WeatherAgent
-        )
+        items = chat_thread_render_items(thread=self.thread, agent_class=Agent)
         contents = [item.get("content") for item in items]
         self.assertIn("visible question", contents)
         self.assertNotIn("HIDDEN CONTEXT", contents)

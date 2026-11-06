@@ -8,7 +8,7 @@ Compare raw Bedrock calls with the `LitigantAssistant` chat engine using the sam
 | `no_judge` | Normal chat engine    | Disabled        |
 | `current`  | Normal chat engine    | Luna by default |
 
-Both application modes use the same adapter. Sol grades all three modes afterward. This is an API baseline, not a measurement of chatgpt.com.
+Both application modes use the same adapter. A pinned GPT-6.1-Sol evaluator grades all three modes afterward. This is an API baseline, not a measurement of chatgpt.com.
 
 ## Run
 
@@ -22,12 +22,12 @@ Docker image.
 make agent-eval
 
 # Small live run: 3 answers, including the separate Sol grader.
-make agent-eval ARGS='run --models luna --cases nd-fee --repetitions 1 --slug smoke'
+make agent-eval ARGS='run --models auto/openai.luna --cases nd-fee --repetitions 1 --slug smoke'
 
 # Generate answers now; grade them separately later.
-make agent-eval ARGS='run --systems raw --models luna --cases nd-fee --repetitions 1 --no-judge'
+make agent-eval ARGS='run --systems raw --models auto/openai.luna --cases nd-fee --repetitions 1 --no-judge'
 make agent-eval ARGS='judge /path/to/run'
-make agent-eval ARGS='judge /path/to/run --model sol'
+make agent-eval ARGS='judge /path/to/run --model bedrock_mantle/us-east-1/openai.gpt-6.1-sol'
 
 # Recover saved judge responses without API calls, then retry only failures.
 make agent-eval ARGS='recover /path/to/run --dry-run'
@@ -44,18 +44,22 @@ Replace `/path/to/run` and the comparison paths with the output directories prin
 
 The CLI is `python -m scripts.agent_eval` in the evaluation environment, run
 from the repository root. Edit [config.yml](config.yml) for the systems, model
-aliases, judge, repetitions, cases, timeout, seed, weights, and pricing overrides.
-`runtime_judge_model` selects the in-chat reviewer for `current`; `judge_model` selects the external grader for every mode. Judge and candidate models may overlap. The `--no-judge` CLI flag skips external grading only; choose `--systems no_judge` to disable in-chat review. Credentials never belong in this file.
+selections, judges, repetitions, cases, timeout, seed, weights, and pricing overrides.
+`models` and `judges` use the application's enabled `auto/` identifiers and common names from `MODEL_MAPPING`. The runner discovers the Bedrock catalog once, resolves the selected families, and saves concrete versions and invocation options in `manifest.json` before attempts begin. All selected systems use the same candidate version; application modes require a tool-capable route. Unavailable selections fail before inference. Config loading and reports remain offline.
+
+`current` runs every candidate/judge pair. `raw` and `no_judge` each run once per candidate, without a judge axis. Two candidates and two judges produce eight configurations, or 600 attempts for 25 cases repeated three times. The default single judge produces six configurations and 450 attempts. `--judges` overrides the list for one run; `current` requires at least one judge. Candidate and judge selections may overlap.
+
+`evaluator_model` is the external grader for every configuration. It must specify a version and region explicitly; the default is `bedrock_mantle/us-east-1/openai.gpt-6.1-sol`. It uses that exact Mantle route rather than automatic model selection. `judge --model` accepts the same explicit format. The `--no-judge` CLI flag skips external grading only; choose `--systems no_judge` to disable in-chat review. Credentials never belong in this file.
 
 Orchestration, raw calls, judging, and charts run locally. Export
-`AWS_BEARER_TOKEN_BEDROCK` locally for raw calls and judging. Raw-only runs,
+`AWS_BEARER_TOKEN_BEDROCK` locally for catalog discovery, raw calls, and judging. Raw-only runs,
 judging saved answers, and offline reports do not require Docker.
 
 Both application modes require the usual **already-running** Django and PostgreSQL development containers. The runner uses `docker compose exec -T django` to upload a temporary Python worker and the run's frozen references, including binary assets. The worker imports the container's app and uses its credentials, but creates and migrates its own database. The PostgreSQL role must be able to create and drop databases. Conversation records are exported to the run artifacts before the temporary database is deleted. Setup and migrations are excluded from answer latency.
 
 ## Chat engine configuration and fixtures
 
-The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model: luna` selects Luna on the evaluation site; `null` uses the application's default model selection. Before every application attempt, the worker explicitly sets the evaluation site's runtime judge and invalidates its cached settings. `current` uses `runtime_judge_model`; `no_judge` clears it. Per-call records capture the actual routes. Each mode retains the application's generation timeout, retry, and streaming behavior for that judge setting.
+The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model: auto/openai.luna` selects Luna on the evaluation site; `null` resolves the application's default fast model at run start. Before every application attempt, the worker explicitly sets the evaluation site's runtime judge and invalidates its cached settings. `current` uses that attempt's selected judge; `no_judge` clears it. Per-call records capture the actual routes. Each mode retains the application's generation timeout, retry, and streaming behavior for that judge setting.
 
 [cases.yml](cases.yml) contains fifteen real-reference cases, six fictional cases, and four multi-turn conversation cases. Cases with `history` are reported in the `conversation` group, separately from single-turn cases. All selected systems run all selected cases.
 [references/corpus/](references/corpus/) freezes the North Dakota corpus, including its variables, forms, PDFs, and branding, with the source revision and file hashes in [provenance.json](references/provenance.json). Answer keys refer to these same files. This is a repository snapshot, not independently verified law.
@@ -128,6 +132,8 @@ Qualified Bedrock routes use the application's region-aware pricing rules, while
 
 Each observed call records `request.timeout` and `request.num_retries`, including null when the application leaves the value to provider defaults. This records the request without changing it. Calls also record `error_category` (`timeout`, `provider_error`, or null for no observed failure), including errors raised while consuming a stream. Each application attempt saves `runtime_judge_model` before invoking the chat engine; null means disabled. The worker's whole-attempt deadline is recorded separately as `attempt_timeout`.
 
+Reports group scores, costs, paired-case results, and charts by system, candidate, runtime judge, and case group. Common names label the charts; JSON retains concrete model versions. Attempt paths include the judge selection for `current`, so pairs cannot overwrite one another.
+
 Reports include generation-timeout attempt counts, attempt-deadline counts, runtime judge review outcomes from exported audit rows, and the existing external grading diagnostics. Runtime review counts include every correction review and are not counts of failed answers. Unknown legacy diagnostics remain unknown; missing metadata is not evidence of zero failures. Report settings use `provider_default` for recorded null values and `unknown` for absent legacy fields. Scores, costs, and execution-failure treatment are unchanged.
 
 By default, results are written beneath Git-ignored `evals/`, in directories named `YYYYMMDD_HHMMSS-slug` (UTC). These files are generated locally and are not included in the repository. JSON and logs capture visible answers, tool/model traces, usage, timing, judgments, corpus snapshots, and recovery state. Local evaluator and container application provenance are recorded separately. Timing excludes setup and external grading, but includes runtime judge calls; timeouts bound the actual candidate child process. Temporary worker files are removed when its session ends.
@@ -137,7 +143,7 @@ use the latest batch, including incomplete grading. Reweighting/comparison write
 a separate report; incompatible cases/references/rubrics cannot be pooled.
 Reports and Matplotlib PNGs can be rebuilt without API calls or running services.
 
-The supported systems are `raw`, `no_judge`, and `current`. The legacy `old` tag is accepted as `current`; other system names are rejected. Historical `current` results retain their recorded judge configuration, including disabled or unknown values; reports do not infer it from the new defaults. Rebuilt summaries and charts use the canonical names; saved manifests, attempts, judgments, and their paths remain unchanged.
+The supported systems are `raw`, `no_judge`, and `current`. The legacy `old` tag is accepted as `current`; other system names are rejected. Historical `current` results retain their recorded judge configuration, including disabled or unknown values; reports do not infer it from the new defaults. Historical `model_ids` and `judge_model` settings remain readable for grading and reporting. Rebuilt summaries and charts use the canonical names; saved manifests, attempts, judgments, and their paths remain unchanged.
 
 `recover` revalidates saved raw judge responses offline, including legacy quoted
 evidence with Markdown, punctuation, and capitalization differences. It preserves
@@ -145,7 +151,7 @@ the original records and records recovered judgments in a new batch. Unrecoverab
 grades remain explicit; recovery itself exits successfully after reporting them.
 
 `judge --retry-failed` carries forward valid judgments and makes one call per
-unresolved saved answer. It uses the same judge model and never regenerates
+unresolved saved answer. It uses the same evaluator model and never regenerates
 candidate answers. There are no automatic retry loops. Both commands support
 `--dry-run` without credentials, API calls, or output changes. A retry with nothing
 left to grade also makes no calls. The ordinary `judge` command still rejudges all
@@ -179,7 +185,7 @@ judge evidence before treating any run as a baseline.
 
 For Jessica's pilot review, include:
 
-- The actual runtime judge model and generation timeout/retry settings for both runs. The eval config's `judge_model` selects the external grader; it does not enable runtime judging.
+- The actual runtime judge model and generation timeout/retry settings for both runs. The eval config's `evaluator_model` selects the external grader; it does not enable runtime judging.
 - Existing quality, critical-failure, latency, and cost results, alongside generation-timeout attempts, whole-attempt deadlines, and runtime judge verdicts/call failures. This comparison measures complete configurations, including the timeout difference, rather than isolating judge quality.
 - The coverage limit: prose accompanying tool calls, including fact-recording calls, is released without judge approval and can contain substantive answers. Discuss this separately from fail-open on judge errors; do not claim that all visible answers were reviewed.
 - The release behavior when corrections are exhausted or the judge fails: the answer is flagged and shown with a separate notice, "Warning: This answer could not be fully verified and may contain errors." Display and copying use the current translated template wording; Markdown exports mark the heading `[unverified]`, and JSON exports preserve the stored metadata. Both waiting and warning copy are provisional pending team agreement; Jessica's fail-open sign-off remains required before pilot enablement. Per-operation timeouts and heartbeats do not establish a maximum total turn duration.

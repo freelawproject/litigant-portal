@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+from litigant_portal.agents.bedrock import BedrockModelUnavailable
+
 from .schema import HERE, ROOT, Config, Weights, read_config
 
 
@@ -22,6 +24,7 @@ def main():
     run.add_argument("--output", type=Path, default=ROOT / "evals")
     run.add_argument("--systems", nargs="+")
     run.add_argument("--models", nargs="+")
+    run.add_argument("--judges", nargs="+")
     run.add_argument("--cases", nargs="+")
     run.add_argument("--repetitions", type=int)
     run.add_argument("--slug")
@@ -34,7 +37,9 @@ def main():
         "judge", help="Grade saved answers with a new judgment batch."
     )
     grading.add_argument("run", type=Path)
-    grading.add_argument("--model")
+    grading.add_argument(
+        "--model", help="Pinned bedrock_mantle/REGION/MODEL_ID"
+    )
     grading.add_argument("--retry-failed", action="store_true")
     grading.add_argument("--dry-run", action="store_true")
     recover = commands.add_parser(
@@ -85,12 +90,18 @@ def main():
         return 0
     if args.command == "run":
         config = read_config(args.config).model_dump()
-        for field in ("systems", "models", "cases", "repetitions", "slug"):
+        for field in (
+            "systems",
+            "models",
+            "judges",
+            "cases",
+            "repetitions",
+            "slug",
+        ):
             if getattr(args, field) is not None:
                 config[field] = getattr(args, field)
         config = Config.model_validate(config)
-        if "raw" in config.systems or not args.no_judge:
-            require_key()
+        require_key()
         run = runner.run_suite(config, args.output.resolve())
         if not args.no_judge:
             runner.judge_run(run)
@@ -126,7 +137,7 @@ def main():
 def require_key():
     if not os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "").strip():
         raise ValueError(
-            "Set AWS_BEARER_TOKEN_BEDROCK locally for raw calls and judging."
+            "Set AWS_BEARER_TOKEN_BEDROCK locally for discovery and inference."
         )
 
 
@@ -139,6 +150,6 @@ if __name__ == "__main__":
             file=sys.stderr,
         )
         sys.exit(130)
-    except (ValueError, OSError, RuntimeError) as exc:
+    except (ValueError, OSError, RuntimeError, BedrockModelUnavailable) as exc:
         print(f"agent-eval: {exc}", file=sys.stderr)
         sys.exit(1)

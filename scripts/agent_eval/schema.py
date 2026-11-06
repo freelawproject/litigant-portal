@@ -16,6 +16,10 @@ from pydantic import (
     model_validator,
 )
 
+from litigant_portal.agents.bedrock import model_tiers
+
+from .models import pinned_evaluator_options
+
 ROOT = Path(__file__).resolve().parents[2]
 HERE = Path(__file__).resolve().parent
 FACT_DIMENSIONS = ("correctness", "completeness", "grounding", "uncertainty")
@@ -77,43 +81,84 @@ class Price(Schema):
     source: str = Field(min_length=1)
 
 
-class Config(Schema):
+def saved_evaluator_model(config: dict) -> str | None:
+    return config.get("evaluator_model") or config.get("model_ids", {}).get(
+        config.get("judge_model")
+    )
+
+
+class GradingConfig(Schema):
+    evaluator_model: str = "bedrock_mantle/us-east-1/openai.gpt-6.1-sol"
+    weights: Weights = Field(default_factory=Weights)
+    timeout_seconds: float = Field(default=300, gt=0)
+    prices: dict[str, Price] = Field(default_factory=dict)
+
+    @classmethod
+    def from_saved(cls, config: dict) -> Self:
+        """
+        Read historical grading settings without changing their model choice.
+        """
+        return cls.model_validate(
+            {
+                **{
+                    key: config[key]
+                    for key in cls.model_fields
+                    if key in config
+                },
+                "evaluator_model": saved_evaluator_model(config),
+            }
+        )
+
+
+class Config(GradingConfig):
     slug: Slug = "initial-baseline"
     systems: list[Annotated[System, BeforeValidator(normalize_system)]] = (
         Field(default=["raw", "no_judge", "current"], min_length=1)
     )
-    models: list[Slug] = Field(default=["luna", "terra"], min_length=1)
-    model_ids: dict[Slug, str] = Field(
-        default_factory=lambda: {
-            name: f"bedrock_mantle/openai.gpt-5.6-{name}"
-            for name in ("luna", "terra", "sol")
-        }
+    models: list[str] = Field(
+        default=["auto/openai.luna", "auto/openai.terra"], min_length=1
     )
+    judges: list[str] = Field(default=["auto/openai.luna"])
     repetitions: int = Field(default=3, ge=1, strict=True)
-    judge_model: Slug = "sol"
-    runtime_judge_model: Slug = "luna"
-    legacy_fast_model: Slug | None = "luna"
-    weights: Weights = Field(default_factory=Weights)
+    legacy_fast_model: str | None = "auto/openai.luna"
     cases: list[Slug] | None = None
-    timeout_seconds: float = Field(default=300, gt=0)
     seed: int = 179
-    prices: dict[str, Price] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def unique_and_resolved(self) -> Self:
-        for values in (self.systems, self.models, self.cases or []):
+        for values in (
+            self.systems,
+            self.models,
+            self.judges,
+            self.cases or [],
+        ):
             if len(values) != len(set(values)):
                 raise ValueError("Selections must not contain duplicates.")
-        aliases = self.models + [self.judge_model]
-        if "current" in self.systems:
-            aliases.append(self.runtime_judge_model)
+        aliases = self.models + self.judges
+        if "current" in self.systems and not self.judges:
+            raise ValueError("The current system requires at least one judge.")
         if self.legacy_fast_model is not None:
             aliases.append(self.legacy_fast_model)
-        if not set(aliases) <= self.model_ids.keys():
-            raise ValueError("Every selected model needs a model_ids entry.")
-        if any(not value.strip() for value in self.model_ids.values()):
-            raise ValueError("Model identifiers must not be empty.")
+        if not set(aliases) <= model_tiers().keys():
+            raise ValueError("Select enabled auto/ model identifiers.")
+        pinned_evaluator_options(self.evaluator_model)
         return self
+
+
+def configurations(config: dict) -> list[tuple[str, str, str | None]]:
+    """
+    Cross judges only with current; historical runs have no judge axis.
+    """
+    return [
+        (normalize_system(system), model, judge)
+        for system in config["systems"]
+        for model in config["models"]
+        for judge in (
+            config.get("judges", [None])
+            if normalize_system(system) == "current"
+            else [None]
+        )
+    ]
 
 
 class Fact(Schema):

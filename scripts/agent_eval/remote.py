@@ -269,7 +269,6 @@ def serve(run: Path, payload: dict, wire):
     verify_references(run, manifest)
     if payload["recovery"] is not None:
         write_json(run / "fixture-state.json", payload["recovery"])
-    config = Config.model_validate(manifest["config"])
     stack, failure, started = ExitStack(), None, False
     signal.signal(signal.SIGTERM, stop)
     signal.signal(signal.SIGINT, stop)
@@ -292,11 +291,8 @@ def serve(run: Path, payload: dict, wire):
 
                 if started or not manifest.get("evaluation_database"):
                     raise ValueError("A new evaluation database is required.")
-                fast = (
-                    config.model_ids[config.legacy_fast_model]
-                    if config.legacy_fast_model
-                    else None
-                )
+                config = Config.model_validate(manifest["config"])
+                fast = manifest["resolved_models"]["fast"]["model"]
                 stack.enter_context(
                     corpus.corpus_session(
                         run,

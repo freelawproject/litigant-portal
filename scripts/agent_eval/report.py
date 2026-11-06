@@ -7,14 +7,18 @@ from collections import Counter
 from pathlib import Path
 from statistics import mean, median, pstdev
 
+from litigant_portal.agents.bedrock import MODEL_MAPPING
+
 from .judge import judgment_path, normalize_v3_grade, paid_calls, score
 from .schema import (
     DIMENSIONS,
     FAILURE_CATEGORIES,
     Grade,
     Weights,
+    configurations,
     fingerprint,
     normalize_system,
+    saved_evaluator_model,
     verify_references,
     write_json,
 )
@@ -159,6 +163,8 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 "group": row["case"]["group"],
                 "system": system,
                 "model": row["model"],
+                "model_id": row.get("model_id", "unknown"),
+                "judge": row.get("judge"),
                 "status": row["status"],
                 "runtime_judge_model": row.get(
                     "runtime_judge_model", "unknown"
@@ -235,15 +241,24 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
     summaries = []
     for stored_system in manifest["config"]["systems"]:
         system = normalize_system(stored_system)
-        for model in manifest["config"]["models"]:
+        for _, model, runtime_judge in (
+            item
+            for item in configurations(manifest["config"])
+            if item[0] == system
+        ):
             for group in dict.fromkeys(
                 case["group"] for case in manifest["cases"]
             ):
                 rows = [
                     row
                     for row in records
-                    if (row["system"], row["model"], row["group"])
-                    == (system, model, group)
+                    if (
+                        row["system"],
+                        row["model"],
+                        row["judge"],
+                        row["group"],
+                    )
+                    == (system, model, runtime_judge, group)
                 ]
                 planned = (
                     sum(case["group"] == group for case in manifest["cases"])
@@ -288,6 +303,14 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                     {
                         "system": system,
                         "model": model,
+                        "model_label": MODEL_MAPPING.get(model, model),
+                        "model_ids": list(
+                            dict.fromkeys(row["model_id"] for row in rows)
+                        ),
+                        "judge": runtime_judge,
+                        "judge_label": MODEL_MAPPING.get(
+                            runtime_judge, runtime_judge
+                        ),
                         "group": group,
                         "planned": planned,
                         "recorded": len(rows),
@@ -431,7 +454,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
     ):
         grading_status = "incomplete"
     return {
-        "report_version": 3,
+        "report_version": 4,
         "run": run.name,
         "benchmark_id": manifest["benchmark_id"],
         "scoring_version": manifest["scoring_version"],
@@ -456,9 +479,8 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
             "source_batch": batch.get("source_batch"),
             "judge_contract_hash": batch.get("judge_contract_hash"),
         },
-        "judge_model": batch.get("config", {})
-        .get("model_ids", {})
-        .get(batch.get("config", {}).get("judge_model")),
+        "evaluator_model": saved_evaluator_model(batch.get("config", {})),
+        "resolved_models": manifest.get("resolved_models"),
         "system_totals": {
             "known_cost_usd": sum(row["known_cost_usd"] for row in records),
             "unknown_cost_attempts": sum(
@@ -523,7 +545,9 @@ def charts(reports: list[dict], output: Path):
             for row in report["systems"]:
                 if row["group"] == group:
                     rows.append(row)
-                    label = f"{row['system']} / {row['model']}"
+                    label = f"{row['system']} / {row['model_label']}"
+                    if row["judge"]:
+                        label += f"\nJudge: {row['judge_label']}"
                     if len(reports) > 1:
                         label += f"\n{report['run']}"
                     labels.append(label)
@@ -549,7 +573,7 @@ def charts(reports: list[dict], output: Path):
             plt.close(fig)
 
         fig, ax = plt.subplots(
-            figsize=(max(8, len(rows) * 1.3), 4.8), layout="constrained"
+            figsize=(max(8, len(rows) * 1.8), 4.8), layout="constrained"
         )
         for i, row in enumerate(rows):
             if row["quality"] is None:
@@ -592,7 +616,7 @@ def charts(reports: list[dict], output: Path):
         save(fig, "quality")
 
         fig, ax = plt.subplots(
-            figsize=(max(8, len(rows) * 1.3), 4.8), layout="constrained"
+            figsize=(max(8, len(rows) * 1.8), 4.8), layout="constrained"
         )
         bottom = np.zeros(len(rows))
         for outcome, color in (
@@ -747,7 +771,9 @@ def charts(reports: list[dict], output: Path):
         ax.grid(alpha=0.15)
         save(fig, "cost-quality")
 
-        fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), layout="constrained")
+        fig, axes = plt.subplots(
+            1, 2, figsize=(max(12, len(rows) * 2.4), 4.5), layout="constrained"
+        )
         for ax, field, title, unit in (
             (axes[0], "median_seconds", "Response latency", "Median seconds"),
             (axes[1], "mean_cost_usd", "System cost", "Mean estimated USD"),
@@ -819,9 +845,9 @@ def report_runs(
         raise ValueError(
             "Runs have different weights; supply a common --facts-weight."
         )
-    if len({report["judge_model"] for report in reports}) != 1:
+    if len({report["evaluator_model"] for report in reports}) != 1:
         raise ValueError(
-            "Runs use different judge models; rejudge with the same model before comparing."
+            "Runs use different evaluator models; rejudge with the same model before comparing."
         )
     if output is None:
         if len(runs) == 1 and weights is None:
