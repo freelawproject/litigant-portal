@@ -3,6 +3,7 @@ Offline regression tests for eval capture and runtime judge diagnostics.
 """
 
 import asyncio
+import hashlib
 import json
 import shutil
 from copy import deepcopy
@@ -16,6 +17,7 @@ from scripts.agent_eval import report, runner, systems  # noqa: E402
 from scripts.agent_eval.provider import Observer, usage_cost  # noqa: E402
 from scripts.agent_eval.schema import (  # noqa: E402
     Config,
+    GradingConfig,
     fingerprint,
     read_cases,
     verify_references,
@@ -73,6 +75,36 @@ def test_model_discovery_freezes_versions_and_keeps_evaluator_pinned(
         models.resolve_models(Config(models=["auto/openai.terra"]))
 
 
+def test_pinned_evaluator_is_independent_of_application_curation(monkeypatch):
+    from litigant_portal.agents import bedrock
+    from scripts.agent_eval import models
+
+    saved = Config().model_dump()
+    monkeypatch.delitem(bedrock.MODEL_MAPPING, "auto/openai.sol")
+    monkeypatch.setitem(bedrock.MODEL_CHOICES, "best", [])
+
+    config = Config()
+    grading = GradingConfig.from_saved(saved)
+    assert models.evaluator_options(grading.evaluator_model) == {
+        "model": config.evaluator_model,
+        "api_base": "https://bedrock-mantle.us-east-1.api.aws/openai/v1",
+        "aws_region_name": "us-east-1",
+    }
+
+
+def test_frozen_corpus_matches_provenance():
+    references = runner.HERE / "references"
+    provenance = json.loads((references / "provenance.json").read_text())
+    corpus = references / "corpus"
+    assert {
+        str(path.relative_to(corpus)): hashlib.sha256(
+            path.read_bytes()
+        ).hexdigest()
+        for path in corpus.rglob("*")
+        if path.is_file() and path.name != ".DS_Store"
+    } == provenance["sha256"]
+
+
 @pytest.mark.parametrize("variant", ["current", "chickens-a", "chickens-b"])
 def test_frozen_corpus_load_ignores_application_files(
     tmp_path, monkeypatch, variant
@@ -107,6 +139,7 @@ def test_run_freezes_binary_references_and_rejects_changes(
     shutil.copyfile(runner.HERE / "rubric.md", inputs / "rubric.md")
     asset = inputs / "references" / "asset.pdf"
     asset.write_bytes(b"%PDF-1.7\n%\xff\n")
+    (asset.parent / ".DS_Store").write_bytes(b"Finder metadata")
     monkeypatch.setattr(runner, "HERE", inputs)
     monkeypatch.setattr(
         runner.importlib.metadata, "version", lambda name: "test"
@@ -114,19 +147,58 @@ def test_run_freezes_binary_references_and_rejects_changes(
 
     run, _ = runner.make_run(Config(cases=["nd-fee"]), tmp_path / "runs")
     manifest = json.loads((run / "manifest.json").read_text())
+    assert "references/.DS_Store" not in manifest["reference_hashes"]
     saved = run / "references" / "references" / asset.name
     assert saved.read_bytes() == asset.read_bytes()
     asset.write_bytes(b"Changed source")
     verify_references(run, manifest)
 
-    extra = run / "references" / "extra.yml"
-    extra.write_text("unexpected: content\n")
-    with pytest.raises(ValueError, match="Saved reference files changed"):
-        verify_references(run, manifest)
-    extra.unlink()
+    (saved.parent / ".DS_Store").write_bytes(b"Updated Finder metadata")
+    (run / "references" / ".DS_Store").write_bytes(b"New Finder metadata")
+    verify_references(run, manifest)
+
+    for name in ("extra.yml", ".unexpected"):
+        extra = run / "references" / name
+        extra.write_text("unexpected: content\n")
+        with pytest.raises(
+            ValueError, match="Saved reference files changed: "
+        ) as error:
+            verify_references(run, manifest)
+        assert name in str(error.value)
+        extra.unlink()
     saved.write_bytes(b"Changed snapshot")
     with pytest.raises(ValueError, match="Saved reference changed"):
         verify_references(run, manifest)
+
+    saved.unlink()
+    with pytest.raises(
+        ValueError, match="Saved reference files changed: "
+    ) as error:
+        verify_references(run, manifest)
+    assert "references/asset.pdf" in str(error.value)
+
+
+def test_previously_hashed_finder_metadata_remains_verified(tmp_path):
+    references = tmp_path / "references"
+    references.mkdir()
+    metadata = references / ".DS_Store"
+    metadata.write_bytes(b"Recorded Finder metadata")
+    hashes = {metadata.name: hashlib.sha256(metadata.read_bytes()).hexdigest()}
+    definition = {"cases": [], "references": hashes, "scoring_version": "2"}
+    manifest = {
+        "schema_version": 3,
+        "cases": [],
+        "scoring_version": "2",
+        "reference_hashes": hashes,
+        "benchmark_id": fingerprint(definition),
+    }
+    verify_references(tmp_path, manifest)
+    metadata.write_bytes(b"Changed Finder metadata")
+    with pytest.raises(ValueError, match="Saved reference changed"):
+        verify_references(tmp_path, manifest)
+    metadata.unlink()
+    with pytest.raises(ValueError, match="Saved reference files changed"):
+        verify_references(tmp_path, manifest)
 
 
 @pytest.mark.parametrize("during_migration", [True, False])

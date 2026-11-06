@@ -24,9 +24,10 @@ repos:
       - id: debug-statements
       - id: detect-private-key
       - id: fix-byte-order-marker
+        exclude: ^scripts/agent_eval/references/
       - id: trailing-whitespace
         args: [--markdown-linebreak-ext=md]
-        exclude: ^corpus-sources/
+        exclude: ^(corpus-sources/|scripts/agent_eval/references/)
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.17.3
@@ -42,7 +43,7 @@ repos:
         entry: prettier --write --ignore-unknown --log-level warn
         language: node
         types_or: [javascript, json, markdown, yaml, css]
-        exclude: ^(node_modules/|\.venv/|staticfiles/|static/css/main\.built\.css|package-lock\.json|uv\.lock|corpus-sources/)
+        exclude: ^(node_modules/|\.venv/|staticfiles/|static/css/main\.built\.css|package-lock\.json|uv\.lock|corpus-sources/|scripts/agent_eval/references/)
         additional_dependencies: ['prettier@3.8.1']
 
   - repo: https://github.com/djlint/djLint

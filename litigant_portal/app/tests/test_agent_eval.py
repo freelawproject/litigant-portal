@@ -110,6 +110,11 @@ def test_model_matrix_and_selection_validation():
         {"judges": ["auto/openai.luna", "auto/openai.luna"]},
         {"evaluator_model": "auto/openai.sol"},
         {"evaluator_model": "bedrock_mantle/us-east-1/us.openai.gpt-6.1-sol"},
+        {"evaluator_model": "bedrock_mantle/eu-west-1/openai.gpt-6.1-sol"},
+        {"evaluator_model": "bedrock_mantle/us-east-1/unknown-model"},
+        {
+            "evaluator_model": "bedrock_mantle/us-east-1/anthropic.claude-haiku-4-5"
+        },
     ):
         with pytest.raises(ValueError):
             Config(**invalid)

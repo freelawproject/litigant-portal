@@ -299,13 +299,21 @@ def verify_references(run: Path, manifest: dict) -> None:
     references = run / "references"
     binary_hashes = manifest.get("schema_version", 1) >= 2
     if binary_hashes:
+        expected_files = set(manifest["reference_hashes"])
         files = {
             str(path.relative_to(references))
             for path in references.rglob("*")
             if path.is_file()
         }
-        if files != set(manifest["reference_hashes"]):
-            raise ValueError("Saved reference files changed.")
+        added = {
+            name
+            for name in files - expected_files
+            if Path(name).name != ".DS_Store"
+        }
+        if changed := added | (expected_files - files):
+            raise ValueError(
+                f"Saved reference files changed: {sorted(changed)}"
+            )
     for name, expected in manifest["reference_hashes"].items():
         path = references / name
         actual = (

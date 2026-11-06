@@ -223,8 +223,7 @@ ordinary Django + cotton.
 
 ## Registering an agent: thread types and view surfaces
 
-Export the agent from `agents/__init__.py`, then give it a **surface**: a
-thin view module that binds the generic chat views to this agent.
+Import the agent directly from its module, then give it a **surface**: a thin view module that binds the generic chat views to this agent. Keep concrete agents out of `agents/__init__.py` so standalone tools can import the shared Bedrock catalog without Django.
 
 Two pieces make this work:
 
@@ -244,6 +243,7 @@ example — it binds `LitigantAssistant` and adds the upload endpoints:
 
 ```python
 # litigant_portal/app/views/assistant.py
+from litigant_portal.agents.assistant import LitigantAssistant
 from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 
 

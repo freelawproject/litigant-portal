@@ -108,7 +108,7 @@ def make_run(config: Config, output: Path) -> tuple[Path, list[Case]]:
             path.read_bytes()
         ).hexdigest()
         for path in sorted(references.rglob("*"))
-        if path.is_file()
+        if path.is_file() and path.name != ".DS_Store"
     }
     write_json(run / "source.json", source_state())
     manifest = {

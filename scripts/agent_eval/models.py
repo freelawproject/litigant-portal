@@ -80,18 +80,14 @@ def pinned_evaluator_options(model: str) -> dict[str, str]:
             "evaluator_model must be bedrock_mantle/REGION/MODEL_ID."
         )
     _, region, model_id = parts
-    try:
-        policy = bedrock.BedrockPolicy(region)
-        class_id, version = policy.preference(model)
-        definition = bedrock.model_series(class_id)
-        if (
-            version is None
-            or bedrock.model_class(model_id) is None
-            or not definition.mantle_capabilities
-        ):
-            raise ValueError("Select a versioned Mantle evaluator model.")
-    except bedrock.BedrockModelUnavailable as exc:
-        raise ValueError(str(exc)) from exc
+    identity = bedrock.model_class(model_id)
+    if region not in bedrock.US_REGIONS or identity is None:
+        raise ValueError(
+            "Select a versioned Mantle evaluator in a reviewed US region."
+        )
+    definition = bedrock.model_series(identity[0])
+    if not definition.mantle_capabilities:
+        raise ValueError("Select a versioned Mantle evaluator model.")
     return bedrock.ResolvedBedrockModel(
         model=model,
         region=region,

@@ -2,13 +2,13 @@
 
 Compare raw Bedrock calls with the `LitigantAssistant` chat engine using the same frozen corpus:
 
-| System     | Corpus and tools      | Runtime judge   |
-| ---------- | --------------------- | --------------- |
-| `raw`      | None; user turns only | Disabled        |
-| `no_judge` | Normal chat engine    | Disabled        |
-| `current`  | Normal chat engine    | Luna by default |
+| System     | Corpus and tools      | Runtime judge         |
+| ---------- | --------------------- | --------------------- |
+| `raw`      | None; user turns only | Disabled              |
+| `no_judge` | Normal chat engine    | Disabled              |
+| `current`  | Normal chat engine    | Each configured judge |
 
-Both application modes use the same adapter. A pinned GPT-6.1-Sol evaluator grades all three modes afterward. This is an API baseline, not a measurement of chatgpt.com.
+Both application modes use the same adapter. A pinned external evaluator grades all three modes afterward. This is an API baseline, not a measurement of chatgpt.com.
 
 ## Run
 
@@ -18,11 +18,11 @@ It does not install evaluation dependencies into the application environment or
 Docker image.
 
 ```bash
-# Default run: 3 systems × 2 models × 25 cases × 3 attempts = 450 attempts.
+# Run the matrix selected in config.yml.
 make agent-eval
 
-# Small live run: 3 answers, including the separate Sol grader.
-make agent-eval ARGS='run --models auto/openai.luna --cases nd-fee --repetitions 1 --slug smoke'
+# Small live run: 3 answer attempts, then separate external grading.
+make agent-eval ARGS='run --systems raw no_judge current --models auto/openai.luna --judges auto/openai.luna --cases nd-fee --repetitions 1 --slug smoke'
 
 # Generate answers now; grade them separately later.
 make agent-eval ARGS='run --systems raw --models auto/openai.luna --cases nd-fee --repetitions 1 --no-judge'
@@ -47,9 +47,11 @@ from the repository root. Edit [config.yml](config.yml) for the systems, model
 selections, judges, repetitions, cases, timeout, seed, weights, and pricing overrides.
 `models` and `judges` use the application's enabled `auto/` identifiers and common names from `MODEL_MAPPING`. The runner discovers the Bedrock catalog once, resolves the selected families, and saves concrete versions and invocation options in `manifest.json` before attempts begin. All selected systems use the same candidate version; application modes require a tool-capable route. Unavailable selections fail before inference. Config loading and reports remain offline.
 
-`current` runs every candidate/judge pair. `raw` and `no_judge` each run once per candidate, without a judge axis. Two candidates and two judges produce eight configurations, or 600 attempts for 25 cases repeated three times. The default single judge produces six configurations and 450 attempts. `--judges` overrides the list for one run; `current` requires at least one judge. Candidate and judge selections may overlap.
+`current` runs every candidate/judge pair. `raw` and `no_judge` each run once per candidate, without a judge axis. Multiply the selected configurations by the number of selected cases and repetitions to get the planned answer attempts. External grading makes a separate call for each completed answer. `--judges` overrides the list for one run; `current` requires at least one judge. Candidate and judge selections may overlap.
 
-`evaluator_model` is the external grader for every configuration. It must specify a version and region explicitly; the default is `bedrock_mantle/us-east-1/openai.gpt-6.1-sol`. It uses that exact Mantle route rather than automatic model selection. `judge --model` accepts the same explicit format. The `--no-judge` CLI flag skips external grading only; choose `--systems no_judge` to disable in-chat review. Credentials never belong in this file.
+`evaluator_model` is the external grader for every configuration. It must specify a version and region explicitly as `bedrock_mantle/REGION/MODEL_ID`. It uses that exact Mantle route rather than automatic model selection. `judge --model` accepts the same explicit format. The `--no-judge` CLI flag skips external grading only; choose `--systems no_judge` to disable in-chat review. Credentials never belong in this file.
+
+Raw-only runs can select a different route from mixed runs because application modes require tool support. Compare the concrete versions and invocation routes recorded in the manifests and call records before comparing latency or cost across runs; matching `auto/` aliases alone is insufficient.
 
 Orchestration, raw calls, judging, and charts run locally. Export
 `AWS_BEARER_TOKEN_BEDROCK` locally for catalog discovery, raw calls, and judging. Raw-only runs,
@@ -59,12 +61,12 @@ Both application modes require the usual **already-running** Django and PostgreS
 
 ## Chat engine configuration and fixtures
 
-The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model: auto/openai.luna` selects Luna on the evaluation site; `null` resolves the application's default fast model at run start. Before every application attempt, the worker explicitly sets the evaluation site's runtime judge and invalidates its cached settings. `current` uses that attempt's selected judge; `no_judge` clears it. Per-call records capture the actual routes. Each mode retains the application's generation timeout, retry, and streaming behavior for that judge setting.
+The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model` selects that model on the evaluation site; `null` resolves the application's default fast model at run start. Before every application attempt, the worker explicitly sets the evaluation site's runtime judge and invalidates its cached settings. `current` uses that attempt's selected judge; `no_judge` clears it. Per-call records capture the actual routes. Each mode retains the application's generation timeout, retry, and streaming behavior for that judge setting.
 
 [cases.yml](cases.yml) contains fifteen real-reference cases, six fictional cases, and four multi-turn conversation cases. Cases with `history` are reported in the `conversation` group, separately from single-turn cases. All selected systems run all selected cases.
 [references/corpus/](references/corpus/) freezes the North Dakota corpus, including its variables, forms, PDFs, and branding, with the source revision and file hashes in [provenance.json](references/provenance.json). Answer keys refer to these same files. This is a repository snapshot, not independently verified law.
 
-Keep cases, references, and the rubric unchanged across comparable runs. Production corpus updates do not require updating this snapshot or rerunning the baseline. A deliberate benchmark change requires updated provenance and a new benchmark version; preserve earlier run directories and report incompatible versions separately. New runs hash every reference file as bytes, including PDFs and images. Historical manifests retain their original text-hash verification.
+Keep cases, references, and the rubric unchanged across comparable runs. Production corpus updates do not require updating this snapshot or rerunning the baseline. A deliberate benchmark change requires updated provenance and a new benchmark version; preserve earlier run directories and report incompatible versions separately. New runs hash every reference file as bytes, including PDFs and images, except Finder's `.DS_Store` metadata. Verification ignores unlisted `.DS_Store` files but still checks any recorded in older manifests. Historical manifests retain their original text-hash verification.
 
 A case may carry `history`: user turns sent on the same thread before `question`. Their replies are recorded in the attempt's `detail.transcript` and shown to the judge as context; only the final answer is graded. Both application modes continue one chat thread across turns and clear the evaluation identity's stored facts before each case, recording what the agent stored as `detail.stored_facts`. Raw replays the turns as a message list. Timing covers all turns of the case. The conversation cases (`nd-convo-*`) follow the personas in `docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
 
