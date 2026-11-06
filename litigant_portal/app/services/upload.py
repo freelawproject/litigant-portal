@@ -83,7 +83,11 @@ def user_upload_create(
     content_type = ALLOWED_UPLOAD_TYPES.get(extension)
     if content_type is None:
         raise UploadValidationError(
-            _("Unsupported file type: %(ext)s") % {"ext": extension or "?"}
+            _(
+                "This file type isn't supported (%(ext)s). "
+                "Use PDF, Word, Excel, images or text."
+            )
+            % {"ext": extension or "?"}
         )
     if file.size > MAX_UPLOAD_SIZE:
         raise UploadValidationError(_("File is too large (max 20 MB)."))
