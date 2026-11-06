@@ -8,10 +8,10 @@ on:
         required: true
         default: 'main'
       reset_db:
-        description: 'Drop every table and rebuild the database from the deployed branch'
+        description: 'Drop every table and rebuild the database from the deployed branch. Tick it after deploying a branch with its own migrations, and to return QA to all courts'
         type: boolean
         required: false
-        default: true
+        default: false
 
 env:
   AWS_REGION: us-west-2

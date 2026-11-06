@@ -21,6 +21,19 @@ def topic_list() -> list[Topic]:
     return topics
 
 
+def topic_court_find() -> str | None:
+    """The one court every topic belongs to, or None when the topics span
+    several courts or there are none (#886). Read from the rows, not the
+    cache: ``sync_corpus`` calls it at startup, before anything is cached.
+    A topic that predates its first sync has a blank court and is skipped."""
+    courts = set(
+        Topic.objects.exclude(court="")
+        .values_list("court", flat=True)
+        .distinct()
+    )
+    return courts.pop() if len(courts) == 1 else None
+
+
 def topic_get(*, topic_id) -> Topic:
     """A single topic (raises Topic.DoesNotExist)."""
     return Topic.objects.get(id=topic_id)

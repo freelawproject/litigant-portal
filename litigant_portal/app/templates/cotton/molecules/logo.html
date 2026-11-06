@@ -14,7 +14,7 @@
 {# grows into free space (flex-1) and never shrinks below one court logo. #}
 {# The FLP variant has nothing to collapse and keeps its natural size. #}
 {# class goes on the frame, attrs on the link. Built from the link atom, #}
-{# plain images, and text. The stacked layout lives on .logo inside the #}
+{# the court lockup, and the FLP image. The stacked layout lives on .logo inside the #}
 {# link, because the link atom's own inline-flex items-center would #}
 {# override it as a utility. #}
 {# class is declared so it can't leak in from a parent: this repo runs #}
@@ -22,22 +22,13 @@
 {# to whatever class the enclosing component was given (the header's, #}
 {# for one), and the frame would wear that parent's styles. #}
 <c-vars size="default" court_logo="" court_name="" court_name_image="" class="" />
-<div class="logo-frame {% if court_name and court_logo %}logo-frame-responsive{% endif %} {{ class }}">
+<div class="logo-frame {% if court_name and court_logo %}logo-frame-responsive{% endif %} {% if slot.strip %}flex items-center gap-1{% endif %} {{ class }}">
   {# hover:no-underline! cancels the unstyled variant's hover underline, #}
   {# which would otherwise run under the court name and the "Powered by" line. #}
   <c-atoms.link href="{% url 'pages:home' %}" variant="unstyled" class="hover:no-underline!" :attrs="attrs">
     <span class="logo {% if size == 'sm' %}logo-sm{% elif size == 'lg' %}logo-lg{% endif %}">
       {% if court_name %}
-        <span class="logo-court">
-          {% if court_logo %}
-            <img src="{{ court_logo }}" alt="" class="logo-court-mark" />
-          {% endif %}
-          {% if court_name_image %}
-            <img src="{{ court_name_image }}" alt="{{ court_name }}" class="logo-court-name-image" />
-          {% else %}
-            <span class="logo-court-name">{{ court_name }}</span>
-          {% endif %}
-        </span>
+        <c-molecules.court-lockup court_logo="{{ court_logo }}" court_name="{{ court_name }}" court_name_image="{{ court_name_image }}" />
         <span class="logo-powered">{% trans "Powered by Free Law Project" %}</span>
       {% else %}
         <img src="{% static 'images/logo_powered.svg' %}"
@@ -46,4 +37,8 @@
       {% endif %}
     </span>
   </c-atoms.link>
+  {# The slot sits beside the link: the header puts the QA court switcher #}
+  {# here (#886). The frame only turns into a flex row when the slot has #}
+  {# something in it, so a logo without one renders as it always has. #}
+  {{ slot }}
 </div>

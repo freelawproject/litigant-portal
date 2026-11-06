@@ -1,0 +1,34 @@
+{% load i18n %}
+
+{# The QA court switcher (#886): FLP-only testing tooling, dev and QA, desktop #}
+{# only. A chevron beside the court branding opens a native popover listing #}
+{# every court as its own seal and name, all courts as Omni Court. #}
+{# Each is a submit button in one POST form, so it works without JS. #}
+{# Renders nothing where features.court_switcher is off. Give each copy on a #}
+{# page its own switch_id. #}
+<c-vars switch_id="court-switch" />
+{% if features.court_switcher %}
+  {% trans "Switch court" as switch_label %}
+  {# .court-switcher-toggle (main.css) centres the chevron on the seal and #}
+  {# name row, not on the whole lockup with its "Powered by" line. #}
+  <div class="court-switcher-toggle hidden sm:flex ml-2.5">
+    <c-atoms.button type="button" variant="outline" size="icon-sm" aria_label="{{ switch_label }}" popovertarget="{{ switch_id }}">
+      <c-atoms.icon name="chevron-down" style="solid" class="h-5 w-5 text-greyscale-900" />
+    </c-atoms.button>
+    {# Pinned under the header at the left, below the branding it opened from. #}
+    <div id="{{ switch_id }}" popover aria-label="{{ switch_label }}" class="fixed inset-auto top-[calc(var(--header-height)+0.5rem)] left-4 m-0 w-[min(26rem,calc(100%-2rem))] rounded-lg border border-greyscale-200 bg-white p-2 text-left shadow-xl">
+      <form method="post" action="{% url 'pages:court_switch' %}">
+        {% csrf_token %}
+        <ul class="list-none pl-0">
+          {% for choice in tester_court_choices %}
+            <li>
+              <c-atoms.button type="submit" variant="ghost" full_width="true" name="court" value="{{ choice.value }}" aria-current="{{ choice.selected|yesno:'true,false' }}" class="justify-start py-3 aria-[current=true]:bg-greyscale-100">
+                <c-molecules.court-lockup court_logo="{{ choice.logo_url }}" court_name="{{ choice.label }}" court_name_image="{{ choice.name_image_url }}" />
+              </c-atoms.button>
+            </li>
+          {% endfor %}
+        </ul>
+      </form>
+    </div>
+  </div>
+{% endif %}

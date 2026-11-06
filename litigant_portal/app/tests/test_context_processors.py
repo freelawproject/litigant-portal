@@ -1,12 +1,18 @@
+from unittest import mock
+
 import pytest
 from django.conf import settings
 from django.core.cache import cache
 from django.core.files.base import ContentFile
+from django.templatetags.static import static
 from django.test import RequestFactory, SimpleTestCase, TestCase
+from django.urls import reverse
 
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.context_processors import app_meta, court_branding
 from litigant_portal.app.models import Site, Topic, TopicFlow
+from litigant_portal.app.selectors import corpus
+from litigant_portal.app.selectors.corpus import corpus_load_courts
 
 
 class AppMetaTests(SimpleTestCase):
@@ -113,6 +119,74 @@ class TesterFlowLinkTests(TestCase):
 
 
 @pytest.mark.postgres
+class TesterCourtChoiceTests(TestCase):
+    """The court switcher's choices (#886): every corpus court plus all
+    courts, with the court the site is on now selected."""
+
+    def setUp(self):
+        self.request = RequestFactory().get("/")
+
+    def _choices(self, env="dev"):
+        with self.settings(DEPLOYMENT_ENV=env, PILOT=env == "prod"):
+            return app_meta(self.request)["tester_court_choices"]
+
+    def _selected(self):
+        return [c["value"] for c in self._choices() if c["selected"]]
+
+    def test_no_choices_where_the_switcher_is_off(self):
+        self.assertEqual(self._choices(env="prod"), [])
+
+    def test_choices_are_all_courts_then_every_court_with_topics(self):
+        values = [c["value"] for c in self._choices()]
+        self.assertEqual(values[0], "all")
+        self.assertEqual(
+            set(values[1:]), set(corpus_load_courts(with_topics=True))
+        )
+
+    def test_a_court_with_no_topics_is_not_offered(self):
+        topics = {("north-dakota", "adult-name-change"): object()}
+        with mock.patch.object(
+            corpus, "corpus_load_topics", return_value=topics
+        ):
+            values = [c["value"] for c in self._choices()]
+        self.assertEqual(values, ["all", "north-dakota"])
+
+    def test_a_court_choice_carries_its_branding(self):
+        choices = {c["value"]: c for c in self._choices()}
+        north_dakota = choices["north-dakota"]
+        self.assertEqual(north_dakota["label"], "State of North Dakota Courts")
+        self.assertEqual(
+            north_dakota["logo_url"],
+            reverse(
+                "pages:court_branding",
+                kwargs={"court": "north-dakota", "field": "logo"},
+            ),
+        )
+        self.assertEqual(
+            north_dakota["name_image_url"],
+            reverse(
+                "pages:court_branding",
+                kwargs={"court": "north-dakota", "field": "name_image"},
+            ),
+        )
+        # Arizona brands under its AOC's name and has no name image.
+        self.assertEqual(choices["arizona"]["label"], "Arizona Supreme Court")
+        self.assertEqual(choices["arizona"]["name_image_url"], "")
+        # All courts is Omni Court, with the FLP logo as its seal.
+        self.assertEqual(choices["all"]["label"], "Omni Court")
+        self.assertEqual(choices["all"]["logo_url"], static("images/logo.svg"))
+
+    def test_a_site_on_one_court_selects_that_court(self):
+        Topic.objects.create(slug="adult-name-change", court="north-dakota")
+        self.assertEqual(self._selected(), ["north-dakota"])
+
+    def test_a_site_on_several_courts_selects_all_courts(self):
+        Topic.objects.create(slug="adult-name-change", court="north-dakota")
+        Topic.objects.create(slug="civil-traffic", court="arizona")
+        self.assertEqual(self._selected(), ["all"])
+
+
+@pytest.mark.postgres
 class CourtBrandingTests(TestCase):
     """The header's court name and art come from the Site row (#979)."""
 
@@ -144,9 +218,25 @@ class CourtBrandingTests(TestCase):
         self.assertEqual(result["court_name"], "Alpha State Courts")
 
     def test_a_site_with_no_court_leaves_the_header_to_free_law_project(self):
-        result = court_branding(self.request)
+        with self.settings(DEPLOYMENT_ENV="prod", PILOT=True):
+            result = court_branding(self.request)
 
         self.assertEqual(
             result,
             {"court_name": "", "court_logo": "", "court_name_image": ""},
+        )
+
+    def test_with_the_court_switcher_no_court_reads_as_omni_court(self):
+        """On dev and QA, all-courts mode is branded as a court of its own
+        (#886): the FLP logo as its seal, named Omni Court."""
+        with self.settings(DEPLOYMENT_ENV="qa"):
+            result = court_branding(self.request)
+
+        self.assertEqual(
+            result,
+            {
+                "court_name": "Omni Court",
+                "court_logo": static("images/logo.svg"),
+                "court_name_image": "",
+            },
         )

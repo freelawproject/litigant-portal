@@ -69,6 +69,8 @@
           <li><c-atoms.link href="#empty-state" variant="unstyled">Empty State</c-atoms.link></li>
           <li><c-atoms.link href="#dialog" variant="unstyled">Dialog</c-atoms.link></li>
           <li><c-atoms.link href="#site-menu" variant="unstyled">Site Menu</c-atoms.link></li>
+          <li><c-atoms.link href="#court-switcher" variant="unstyled">Court Switcher</c-atoms.link></li>
+          <li><c-atoms.link href="#court-lockup" variant="unstyled">Court Lockup</c-atoms.link></li>
           <li><c-atoms.link href="#selector-card" variant="unstyled">Selector Card</c-atoms.link></li>
           <li><c-atoms.link href="#side-nav-group" variant="unstyled">Side Nav Group</c-atoms.link></li>
           <li><c-atoms.link href="#verdict-card" variant="unstyled">Verdict Card</c-atoms.link></li>
@@ -337,7 +339,7 @@
             </div>
             <div class="flex flex-col md:flex-row border-b border-greyscale-200">
               <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>size</code></span>
-              <span class="p-2.5">"sm" | "" | "xl" | "icon" | "icon-xl"</span>
+              <span class="p-2.5">"sm" | "" | "xl" | "icon-sm" | "icon" | "icon-xl"</span>
             </div>
             <div class="flex flex-col md:flex-row border-b border-greyscale-200">
               <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>href</code></span>
@@ -1044,6 +1046,21 @@
           <p class="text-greyscale-600 mb-6">The header's menu: About, Privacy and Accessibility in every environment, account links on phones (where the user menu is hidden), and a dev-tools group outside production. A native <code>&lt;details&gt;</code> over a plain link list, so it works without JS. One prop, <code>confirm_id</code>, gives the Start over confirmation its own id when two menus share a page, as here.</p>
           <div class="flex justify-end border border-greyscale-200 rounded-lg p-4 mb-6 min-h-80">
             <c-molecules.site-menu confirm_id="start-over-confirm-sample" />
+          </div>
+        </section>
+        <section id="court-switcher" class="mb-12" aria-labelledby="court-switcher-heading">
+          <h3 id="court-switcher-heading" class="mb-4">Court Switcher</h3>
+          <p class="text-greyscale-600 mb-6">The QA court switcher: FLP-only testing tooling that resyncs the whole site to one court or to all courts. Dev and QA only, so it renders nothing where <code>court_switcher</code> is off. The header puts it in the logo's slot, so the chevron sits beside the branding, from <code>sm</code> up only. The chevron opens a native popover listing each court as its own lockup, and all courts as Omni Court (the FLP logo as its seal); each is a submit button in one POST form, so it works without JS, and the court the site is on carries <code>aria-current</code>. Each copy on a page takes its own <code>switch_id</code>.</p>
+          <div class="flex border border-greyscale-200 rounded-lg p-4 mb-6">
+            <c-molecules.court-switcher switch_id="court-switch-guide" />
+          </div>
+        </section>
+        <section id="court-lockup" class="mb-12" aria-labelledby="court-lockup-heading">
+          <h3 id="court-lockup-heading" class="mb-4">Court Lockup</h3>
+          <p class="text-greyscale-600 mb-6">A court's seal and name side by side: the court half of the site logo, and each court in the court switcher's list. Plain images and text, so it can sit inside a link or a button. <code>court_name_image</code> is optional art for the name, with <code>court_name</code> as its alt text; without it the name shows as text.</p>
+          <div class="flex flex-col gap-6 border border-greyscale-200 rounded-lg p-4 mb-6">
+            <c-molecules.court-lockup court_logo="{{ sample_court_logo }}" court_name="State of North Dakota Courts" court_name_image="{{ sample_court_name_image }}" />
+            <c-molecules.court-lockup court_logo="{{ sample_court_logo }}" court_name="Arizona Supreme Court" />
           </div>
         </section>
         <section id="selector-card" class="mb-12" aria-labelledby="selector-card-heading">

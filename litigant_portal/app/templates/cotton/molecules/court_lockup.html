@@ -1,0 +1,17 @@
+{# A court's seal and name, side by side: the court half of the site logo, #}
+{# and each court in the QA court switcher's list (#886). Plain images and #}
+{# text, so it can sit inside a link or a button. court_name_image is #}
+{# optional art for the name; court_name is its alt text, or the name as #}
+{# text when there's no image. The logo's sm and lg sizes reach in through #}
+{# .logo-sm and .logo-lg on its wrapper. #}
+<c-vars court_logo="" court_name="" court_name_image="" class="" />
+<span class="logo-court {{ class }}">
+  {% if court_logo %}
+    <img src="{{ court_logo }}" alt="" class="logo-court-mark" />
+  {% endif %}
+  {% if court_name_image %}
+    <img src="{{ court_name_image }}" alt="{{ court_name }}" class="logo-court-name-image" />
+  {% else %}
+    <span class="logo-court-name">{{ court_name }}</span>
+  {% endif %}
+</span>
