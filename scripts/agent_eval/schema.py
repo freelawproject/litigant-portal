@@ -23,7 +23,7 @@ QUALITY_DIMENSIONS = ("clarity", "actionability", "relevance")
 DIMENSIONS = FACT_DIMENSIONS + QUALITY_DIMENSIONS
 SLUG = r"^[a-z0-9]+(?:[-_][a-z0-9]+)*$"
 type Slug = Annotated[str, Field(pattern=SLUG)]
-type System = Literal["raw", "current"]
+type System = Literal["raw", "no_judge", "current"]
 type FactStatus = Literal["supported", "contradicted", "omitted", "uncertain"]
 type FailureCategory = Literal[
     "citation",
@@ -45,7 +45,8 @@ def normalize_system(system: str) -> str:
         return "current"
     if system not in get_args(System.__value__):
         raise ValueError(
-            f"Unsupported evaluation system: {system}. Use raw or current."
+            f"Unsupported evaluation system: {system}. "
+            "Use raw, no_judge, or current."
         )
     return system
 
@@ -79,7 +80,7 @@ class Price(Schema):
 class Config(Schema):
     slug: Slug = "initial-baseline"
     systems: list[Annotated[System, BeforeValidator(normalize_system)]] = (
-        Field(default=["raw", "current"], min_length=1)
+        Field(default=["raw", "no_judge", "current"], min_length=1)
     )
     models: list[Slug] = Field(default=["luna", "terra"], min_length=1)
     model_ids: dict[Slug, str] = Field(
@@ -90,6 +91,7 @@ class Config(Schema):
     )
     repetitions: int = Field(default=3, ge=1, strict=True)
     judge_model: Slug = "sol"
+    runtime_judge_model: Slug = "luna"
     legacy_fast_model: Slug | None = "luna"
     weights: Weights = Field(default_factory=Weights)
     cases: list[Slug] | None = None
@@ -103,6 +105,8 @@ class Config(Schema):
             if len(values) != len(set(values)):
                 raise ValueError("Selections must not contain duplicates.")
         aliases = self.models + [self.judge_model]
+        if "current" in self.systems:
+            aliases.append(self.runtime_judge_model)
         if self.legacy_fast_model is not None:
             aliases.append(self.legacy_fast_model)
         if not set(aliases) <= self.model_ids.keys():

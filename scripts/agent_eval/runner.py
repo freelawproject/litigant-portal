@@ -248,13 +248,20 @@ def worker(run: Path, path: Path, grading: bool):
         identity = None
         if not grading and record["system"] != "raw":
             corpus.setup_django(run)
-            from litigant_portal.app.models import UserIdentity
+            from django.core.cache import cache
+
+            from litigant_portal.app.cache import SITE_CACHE_KEY
+            from litigant_portal.app.models import Site, UserIdentity
 
             identity = UserIdentity.objects.get(pk=manifest["identity_id"])
-            if normalize_system(record["system"]) == "current":
-                from litigant_portal.app.selectors.site import site_get
-
-                record["runtime_judge_model"] = site_get().judge_model or None
+            judge_model = (
+                config.model_ids[config.runtime_judge_model]
+                if normalize_system(record["system"]) == "current"
+                else None
+            )
+            Site.objects.update(judge_model=judge_model)
+            cache.delete(SITE_CACHE_KEY)
+            record["runtime_judge_model"] = judge_model
         # Django startup and identity lookup are outside response latency.
         started = time.monotonic()
         flush()
@@ -289,17 +296,17 @@ def worker(run: Path, path: Path, grading: bool):
                 record["detail"] = safe(detail)
                 if not record["answer"].strip():
                     raise RuntimeError("System produced no visible answer.")
-                if normalize_system(record["system"]) == "current" and any(
+                if record["system"] != "raw" and any(
                     call.get("finish_reason")
                     not in {"stop", "tool_calls", "function_call"}
                     for call in record["calls"]
                     if call["request"].get("stream")
                 ):
                     raise RuntimeError(
-                        "Current model stream did not finish normally."
+                        "Application model stream did not finish normally."
                     )
         record["status"] = "completed"
-        if not grading and normalize_system(record["system"]) == "current":
+        if not grading and record["system"] != "raw":
             record["auxiliary_failures"] = [
                 {
                     key: call.get(key)

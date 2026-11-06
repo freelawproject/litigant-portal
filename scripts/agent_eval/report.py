@@ -163,7 +163,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 "runtime_judge_model": row.get(
                     "runtime_judge_model", "unknown"
                 )
-                if system == "current"
+                if system != "raw"
                 else None,
                 "generation_settings": generation_settings,
                 "generation_timeout": generation_timeout,
@@ -172,7 +172,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 if "error_category" in row or row["status"] == "completed"
                 else None,
                 "runtime_judge_outcomes": dict(runtime_outcomes)
-                if export is not None or system != "current"
+                if export is not None or system == "raw"
                 else None,
                 "overall": overall,
                 "quality": quality,
@@ -217,7 +217,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                         for key in ("model", "error", "error_message")
                     }
                     for call in row["calls"]
-                    if system == "current"
+                    if system != "raw"
                     and call.get("error")
                     and not call.get("request", {}).get("stream")
                 ],
@@ -507,8 +507,8 @@ def charts(reports: list[dict], output: Path):
     plt.rcParams.update(
         {"font.size": 10, "axes.spines.top": False, "axes.spines.right": False}
     )
-    colors = {"raw": "#64748b", "current": "#e09f3e"}
-    markers = {"raw": "o", "current": "s"}
+    colors = {"raw": "#64748b", "no_judge": "#247ba0", "current": "#e09f3e"}
+    markers = {"raw": "o", "no_judge": "^", "current": "s"}
     failure_legend = Line2D(
         [],
         [],

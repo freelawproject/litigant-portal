@@ -78,13 +78,20 @@ def test_every_case_in_cases_yml_loads():
 
 
 def test_system_tags() -> None:
-    expected = ["raw", "current"]
+    expected = ["raw", "no_judge", "current"]
     assert Config().systems == expected
-    for tags in (expected, ["raw", "old"]):
+    for tags in (expected, ["raw", "no_judge", "old"]):
         assert Config.model_validate({"systems": tags}).systems == expected
+    assert Config(systems=["raw", "old"]).systems == ["raw", "current"]
     for system in ("standalone", "new"):
         with pytest.raises(ValueError, match="Unsupported evaluation system"):
             Config.model_validate({"systems": [system]})
+
+
+def test_runtime_judge_alias_must_resolve_for_current():
+    with pytest.raises(ValueError, match="model_ids entry"):
+        Config(runtime_judge_model="missing")
+    Config(systems=["raw", "no_judge"], runtime_judge_model="missing")
 
 
 @pytest.mark.parametrize(

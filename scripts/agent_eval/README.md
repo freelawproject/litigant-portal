@@ -1,6 +1,14 @@
 # Agent evaluation baseline
 
-Compare raw Bedrock calls (`raw`) with the `LitigantAssistant` chat engine (`current`). Raw receives the user turns without a system prompt, tools, or corpus. This is an API baseline, not a measurement of chatgpt.com.
+Compare raw Bedrock calls with the `LitigantAssistant` chat engine using the same frozen corpus:
+
+| System     | Corpus and tools      | Runtime judge   |
+| ---------- | --------------------- | --------------- |
+| `raw`      | None; user turns only | Disabled        |
+| `no_judge` | Normal chat engine    | Disabled        |
+| `current`  | Normal chat engine    | Luna by default |
+
+Both application modes use the same adapter. Sol grades all three modes afterward. This is an API baseline, not a measurement of chatgpt.com.
 
 ## Run
 
@@ -10,10 +18,10 @@ It does not install evaluation dependencies into the application environment or
 Docker image.
 
 ```bash
-# Default run: 2 systems × 2 models × 25 cases × 3 attempts = 300 attempts.
+# Default run: 3 systems × 2 models × 25 cases × 3 attempts = 450 attempts.
 make agent-eval
 
-# Small live run, including the separate Sol judge.
+# Small live run: 3 answers, including the separate Sol grader.
 make agent-eval ARGS='run --models luna --cases nd-fee --repetitions 1 --slug smoke'
 
 # Generate answers now; grade them separately later.
@@ -37,24 +45,24 @@ Replace `/path/to/run` and the comparison paths with the output directories prin
 The CLI is `python -m scripts.agent_eval` in the evaluation environment, run
 from the repository root. Edit [config.yml](config.yml) for the systems, model
 aliases, judge, repetitions, cases, timeout, seed, weights, and pricing overrides.
-Judge and candidate models may overlap. Credentials never belong in this file.
+`runtime_judge_model` selects the in-chat reviewer for `current`; `judge_model` selects the external grader for every mode. Judge and candidate models may overlap. The `--no-judge` CLI flag skips external grading only; choose `--systems no_judge` to disable in-chat review. Credentials never belong in this file.
 
 Orchestration, raw calls, judging, and charts run locally. Export
 `AWS_BEARER_TOKEN_BEDROCK` locally for raw calls and judging. Raw-only runs,
 judging saved answers, and offline reports do not require Docker.
 
-Current chat calls require the usual **already-running** Django and PostgreSQL development containers. The runner uses `docker compose exec -T django` to upload a temporary Python worker and the run's frozen references, including binary assets. The worker imports the container's app and uses its credentials, but creates and migrates its own database. The PostgreSQL role must be able to create and drop databases. Conversation records are exported to the run artifacts before the temporary database is deleted. Setup and migrations are excluded from answer latency.
+Both application modes require the usual **already-running** Django and PostgreSQL development containers. The runner uses `docker compose exec -T django` to upload a temporary Python worker and the run's frozen references, including binary assets. The worker imports the container's app and uses its credentials, but creates and migrates its own database. The PostgreSQL role must be able to create and drop databases. Conversation records are exported to the run artifacts before the temporary database is deleted. Setup and migrations are excluded from answer latency.
 
 ## Chat engine configuration and fixtures
 
-The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model: luna` selects Luna on the evaluation site; `null` uses the application's default model selection. Per-call records capture the actual routes. The evaluation site starts with runtime judging disabled.
+The chat engine calls the site's fast model to generate a chat title. `legacy_fast_model: luna` selects Luna on the evaluation site; `null` uses the application's default model selection. Before every application attempt, the worker explicitly sets the evaluation site's runtime judge and invalidates its cached settings. `current` uses `runtime_judge_model`; `no_judge` clears it. Per-call records capture the actual routes. Each mode retains the application's generation timeout, retry, and streaming behavior for that judge setting.
 
-[cases.yml](cases.yml) contains fifteen real-reference cases, six fictional cases, and four multi-turn conversation cases. Cases with `history` are reported in the `conversation` group, separately from single-turn cases. Both systems run all selected cases.
+[cases.yml](cases.yml) contains fifteen real-reference cases, six fictional cases, and four multi-turn conversation cases. Cases with `history` are reported in the `conversation` group, separately from single-turn cases. All selected systems run all selected cases.
 [references/corpus/](references/corpus/) freezes the North Dakota corpus, including its variables, forms, PDFs, and branding, with the source revision and file hashes in [provenance.json](references/provenance.json). Answer keys refer to these same files. This is a repository snapshot, not independently verified law.
 
 Keep cases, references, and the rubric unchanged across comparable runs. Production corpus updates do not require updating this snapshot or rerunning the baseline. A deliberate benchmark change requires updated provenance and a new benchmark version; preserve earlier run directories and report incompatible versions separately. New runs hash every reference file as bytes, including PDFs and images. Historical manifests retain their original text-hash verification.
 
-A case may carry `history`: user turns sent on the same thread before `question`. Their replies are recorded in the attempt's `detail.transcript` and shown to the judge as context; only the final answer is graded. The current system continues one chat thread across turns and clears the evaluation identity's stored facts before each case, recording what the agent stored as `detail.stored_facts`. Raw replays the turns as a message list. Timing covers all turns of the case. The conversation cases (`nd-convo-*`) follow the personas in `docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
+A case may carry `history`: user turns sent on the same thread before `question`. Their replies are recorded in the attempt's `detail.transcript` and shown to the judge as context; only the final answer is graded. Both application modes continue one chat thread across turns and clear the evaluation identity's stored facts before each case, recording what the agent stored as `detail.stored_facts`. Raw replays the turns as a message list. Timing covers all turns of the case. The conversation cases (`nd-convo-*`) follow the personas in `docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
 
 A case may set `expects_one_question: true` when its final turn lands
 mid-interview, so the graded reply must give information first and end with
@@ -109,8 +117,8 @@ execution failures contribute zero and appear separately in the outcome chart.
 Cost-versus-quality plots show unknown-cost results in a separate **Cost
 unavailable** area, without assigning them an invented price. Auxiliary title
 failures are execution diagnostics, separate from rubric critical failures.
-System cost includes all observed calls, including titles; judge costs are
-separate. Missing usage/pricing keeps total cost unknown. Known subtotals include
+System cost includes all observed calls, including titles and runtime reviews;
+external grading costs are separate. Missing usage/pricing keeps total cost unknown. Known subtotals include
 priced calls even when another call's cost is missing. These are estimates;
 SDK-internal retries without usage cannot be reconstructed as billed costs.
 
@@ -118,7 +126,7 @@ Qualified Bedrock routes use the application's region-aware pricing rules, while
 
 ## Artifacts and manual checks
 
-Each observed call records `request.timeout` and `request.num_retries`, including null when the application leaves the value to provider defaults. This records the request without changing it. Calls also record `error_category` (`timeout`, `provider_error`, or null for no observed failure), including errors raised while consuming a stream. Each `current` attempt saves `runtime_judge_model` before invoking the chat engine; null means disabled. The worker's whole-attempt deadline is recorded separately as `attempt_timeout`.
+Each observed call records `request.timeout` and `request.num_retries`, including null when the application leaves the value to provider defaults. This records the request without changing it. Calls also record `error_category` (`timeout`, `provider_error`, or null for no observed failure), including errors raised while consuming a stream. Each application attempt saves `runtime_judge_model` before invoking the chat engine; null means disabled. The worker's whole-attempt deadline is recorded separately as `attempt_timeout`.
 
 Reports include generation-timeout attempt counts, attempt-deadline counts, runtime judge review outcomes from exported audit rows, and the existing external grading diagnostics. Runtime review counts include every correction review and are not counts of failed answers. Unknown legacy diagnostics remain unknown; missing metadata is not evidence of zero failures. Report settings use `provider_default` for recorded null values and `unknown` for absent legacy fields. Scores, costs, and execution-failure treatment are unchanged.
 
@@ -129,7 +137,7 @@ use the latest batch, including incomplete grading. Reweighting/comparison write
 a separate report; incompatible cases/references/rubrics cannot be pooled.
 Reports and Matplotlib PNGs can be rebuilt without API calls or running services.
 
-Only `raw` and `current` systems are supported for execution and reporting. The legacy `old` tag is accepted as `current`; other system names are rejected. Rebuilt summaries and charts use the canonical names; saved manifests, attempts, judgments, and their paths remain unchanged.
+The supported systems are `raw`, `no_judge`, and `current`. The legacy `old` tag is accepted as `current`; other system names are rejected. Historical `current` results retain their recorded judge configuration, including disabled or unknown values; reports do not infer it from the new defaults. Rebuilt summaries and charts use the canonical names; saved manifests, attempts, judgments, and their paths remain unchanged.
 
 `recover` revalidates saved raw judge responses offline, including legacy quoted
 evidence with Markdown, punctuation, and capitalization differences. It preserves

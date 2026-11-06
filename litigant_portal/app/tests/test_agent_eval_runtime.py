@@ -6,7 +6,6 @@ import asyncio
 import json
 import shutil
 from copy import deepcopy
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
@@ -294,7 +293,8 @@ def test_bedrock_price_overrides(prices, expected):
 
 
 @pytest.mark.parametrize("field", ["message", "error"])
-def test_current_adapter_preserves_stream_error_and_export(field):
+@pytest.mark.parametrize("system", ["no_judge", "current"])
+def test_current_adapter_preserves_stream_error_and_export(field, system):
     case = read_cases(Config())[0].model_copy(update={"history": []})
     export = {"messages": []}
     error = {"type": "error", field: "Continue with the guided flow."}
@@ -320,17 +320,17 @@ def test_current_adapter_preserves_stream_error_and_export(field):
         ),
         pytest.raises(RuntimeError, match="Continue with the guided flow"),
     ):
-        systems.current(case, "synthetic", Mock(), events.append)
+        systems.invoke(system, case, "synthetic", Mock(), events.append)
     response.close.assert_called_once()
     assert error in events
     assert events[-1] == {"type": "thread_export", "data": export}
 
 
-def write_run(path, rows):
+def write_run(path, rows, system="current"):
     case = read_cases(Config())[0].model_dump()
     manifest = {
         "config": Config(
-            systems=["current"], models=["luna"], repetitions=len(rows)
+            systems=[system], models=["luna"], repetitions=len(rows)
         ).model_dump(),
         "cases": [case],
         "reference_hashes": {},
@@ -346,7 +346,7 @@ def write_run(path, rows):
     for index, row in enumerate(rows):
         name = f"attempt-{index}.json"
         record = {
-            "system": "current",
+            "system": system,
             "model": "luna",
             "model_id": "synthetic",
             "case": case,
@@ -374,30 +374,37 @@ def test_report_rejects_retired_systems(tmp_path, system):
         report.summarize(tmp_path)
 
 
-@pytest.mark.parametrize("judge_model", [None, "synthetic-judge"])
-def test_failed_attempt_retains_judge_configuration(tmp_path, judge_model):
-    target = write_run(tmp_path, [{}])
+@pytest.mark.parametrize("system", ["raw", "no_judge", "current"])
+def test_failed_attempt_sets_and_retains_judge_configuration(tmp_path, system):
+    from litigant_portal.app.cache import SITE_CACHE_KEY
+
+    target = write_run(tmp_path, [{}], system=system)
+    judge_model = Config().model_ids["luna"] if system == "current" else None
 
     def fail(*args):
         assert (
-            json.loads(target.read_text())["runtime_judge_model"]
+            json.loads(target.read_text()).get("runtime_judge_model")
             == judge_model
         )
+        if system == "raw":
+            update.assert_not_called()
+            invalidate.assert_not_called()
+        else:
+            update.assert_called_once_with(judge_model=judge_model)
+            invalidate.assert_called_once_with(SITE_CACHE_KEY)
         raise RuntimeError("synthetic generation failure")
 
     with (
         patch.object(runner.corpus, "setup_django"),
         patch("litigant_portal.app.models.UserIdentity.objects.get"),
-        patch(
-            "litigant_portal.app.selectors.site.site_get",
-            return_value=SimpleNamespace(judge_model=judge_model),
-        ),
+        patch("litigant_portal.app.models.Site.objects.update") as update,
+        patch("django.core.cache.cache.delete") as invalidate,
         patch.object(runner.systems, "invoke", side_effect=fail),
     ):
         runner.worker(tmp_path, target, grading=False)
     row = json.loads(target.read_text())
     assert row["status"] == "error"
-    assert row["runtime_judge_model"] == judge_model
+    assert row.get("runtime_judge_model") == judge_model
     assert "synthetic generation failure" in row["error"]
 
 
@@ -421,7 +428,8 @@ def test_attempt_deadline_is_distinct_from_provider_timeout(tmp_path):
     kill.assert_called_once_with(123, runner.signal.SIGKILL)
 
 
-def test_report_separates_generation_deadlines_and_judging(tmp_path):
+@pytest.mark.parametrize("system", ["current", "no_judge", "old"])
+def test_report_separates_generation_deadlines_and_judging(tmp_path, system):
     generation = {
         "request": {"stream": True, "timeout": 45, "num_retries": 0},
         "error_category": "timeout",
@@ -479,6 +487,7 @@ def test_report_separates_generation_deadlines_and_judging(tmp_path):
             },
             {"calls": [{"request": {"stream": True}, "cost_usd": None}]},
         ],
+        system=system,
     )
     folder = tmp_path / "judgments" / "batch"
     write_json(

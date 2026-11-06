@@ -12,7 +12,7 @@ from .schema import HERE, ROOT, Config, Weights, read_config
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare raw model and current chat engine outputs."
+        description="Compare raw models and chat with or without runtime judging."
     )
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser(
@@ -25,7 +25,11 @@ def main():
     run.add_argument("--cases", nargs="+")
     run.add_argument("--repetitions", type=int)
     run.add_argument("--slug")
-    run.add_argument("--no-judge", action="store_true")
+    run.add_argument(
+        "--no-judge",
+        action="store_true",
+        help="Skip external grading; the selected systems control runtime judging.",
+    )
     grading = commands.add_parser(
         "judge", help="Grade saved answers with a new judgment batch."
     )

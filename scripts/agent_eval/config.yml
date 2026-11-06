@@ -1,5 +1,5 @@
-slug: post-949-baseline
-systems: [raw, current]
+slug: frozen-corpus-baseline
+systems: [raw, no_judge, current]
 models: [luna, terra]
 model_ids:
   luna: bedrock_mantle/openai.gpt-5.6-luna
@@ -7,8 +7,8 @@ model_ids:
   sol: bedrock_mantle/openai.gpt-5.6-sol
 repetitions: 3
 judge_model: sol
-# Temporarily use this alias for the current agent's title calls; null preserves
-# the site's current setting. The original setting is restored after the run.
+runtime_judge_model: luna
+# Use this alias for chat titles; null uses the application's default selection.
 legacy_fast_model: luna
 weights:
   facts: 0.70
