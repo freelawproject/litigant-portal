@@ -1,0 +1,18 @@
+<c-vars href="" class="" live="" dot_class="bg-greyscale-300" title="" time="" time_iso="" snippet="" />
+<a href="{{ href }}" class="block rounded-lg px-3 py-2 select-none transition-colors border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 {{ class }}" {{ attrs }}>
+  <div class="flex items-center gap-2">
+    {# live: the chat sidebar fills these from its thread object via Alpine. #}
+    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 {% if not live %}{{ dot_class }}{% endif %}"
+          {% if live %}x-bind:class="thread.dotClass"{% endif %}></span>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center justify-between gap-2">
+        <p class="text-sm font-medium text-greyscale-800 truncate"
+           {% if live %}x-text="thread.title"{% endif %}>{{ title }}</p>
+        <time class="text-xs text-greyscale-400 flex-shrink-0"
+              {% if live %}x-bind:datetime="thread.last_at" x-text="thread.relativeTime"{% elif time_iso %}datetime="{{ time_iso }}"{% endif %}>{{ time }}</time>
+      </div>
+      <p class="text-xs text-greyscale-500 truncate mt-0.5"
+         {% if live %}x-text="thread.snippet"{% endif %}>{{ snippet }}</p>
+    </div>
+  </div>
+</a>

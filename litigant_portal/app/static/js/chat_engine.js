@@ -637,6 +637,7 @@ document.addEventListener('alpine:init', () => {
         const data = await res.json()
         this.threads = (data.threads || []).map((thread) => ({
           ...thread,
+          href: '/chat/?thread=' + encodeURIComponent(thread.id),
           title: thread.description || NEW_CHAT_TITLE,
           relativeTime: timeSince(thread.last_at),
           rowClass: threadRowClass(thread.id, this.threadId),
@@ -754,7 +755,12 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Click handler for a history row — the thread id rides on the element.
+    // The row is a link for keyboard users and no-JS fallback; a plain click
+    // switches thread in place, while modified clicks keep native behaviour.
     selectThread(e) {
+      if (e.defaultPrevented || e.button !== 0) return
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      e.preventDefault()
       this.closeDrawers()
       this.openThread(e.currentTarget.dataset.threadId)
     },
