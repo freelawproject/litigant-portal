@@ -93,7 +93,12 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
+    "django_ratelimit.middleware.RatelimitMiddleware",
 ]
+
+# Turns a tripped @ratelimit into a JSON 429 (see views/utils.py). The admin
+# login and the site gate render their own 429 pages.
+RATELIMIT_VIEW = "litigant_portal.app.views.utils.ratelimited"
 
 ROOT_URLCONF = "litigant_portal.app.urls"
 
