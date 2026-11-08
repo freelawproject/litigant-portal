@@ -21,6 +21,7 @@ def _storage_backends(env: dict[str, str]) -> dict:
     """
     import litigant_portal.settings as settings_module
 
+    env = {"SECRET_KEY": "test-secret-key", **env}
     with mock.patch.dict(os.environ, env, clear=True):
         importlib.reload(settings_module)
         result = {

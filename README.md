@@ -46,7 +46,7 @@ Visit: http://localhost (Caddy serves on port 80).
 
 | Variable                                                                                  | Description                                     |
 | ----------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| `SECRET_KEY`                                                                              | Django secret key                               |
+| `SECRET_KEY`                                                                              | Django secret key; required when `DEBUG=false`  |
 | `DEBUG=false`, `DEPLOYMENT_ENV`                                                           | Prod mode + environment label (`qa` / `prod`)   |
 | `ALLOWED_HOSTS`                                                                           | Comma-separated hostnames the app serves        |
 | `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | Postgres connection                             |
