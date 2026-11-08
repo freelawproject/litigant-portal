@@ -271,3 +271,79 @@ test('a new pick keeps only the rows still uploading', async () => {
   await slow
   assert.equal(app.uploadJobs.find((j) => j.name === 'slow.pdf').isDone, true)
 })
+
+// A $nextTick that runs after the current tick, like Alpine's, and records
+// what the live region holds each time.
+function deferredTick(app, heard) {
+  return (callback) =>
+    Promise.resolve().then(() => {
+      callback()
+      heard.push(app.uploadAnnouncement)
+    })
+}
+
+test('each status change is announced to the live region', async () => {
+  const { app } = makeApp(async () => response(200, { upload: UPLOAD }))
+  const heard = []
+  app.$nextTick = deferredTick(app, heard)
+
+  await app.uploadFiles([
+    { name: 'contract.pdf', size: 10 },
+    { name: 'report.exe', size: 10 },
+  ])
+  await Promise.resolve()
+
+  assert.deepEqual(heard, [
+    'Uploading contract.pdf. Uploading report.exe. ' +
+      "report.exe failed: This file type isn't supported (.exe). Use PDF, Word, Excel, images or text.",
+    'Uploaded contract.pdf',
+  ])
+})
+
+test('same-tick status changes are joined, none is dropped', async () => {
+  const { app } = makeApp(async () => response(200, {}))
+  const heard = []
+  app.$nextTick = deferredTick(app, heard)
+
+  app.announce('Uploading a.pdf')
+  app.announce('Uploading b.pdf')
+  app.announce('b.pdf failed: too big')
+  assert.equal(app.uploadAnnouncement, '')
+  await Promise.resolve()
+
+  assert.deepEqual(heard, [
+    'Uploading a.pdf. Uploading b.pdf. b.pdf failed: too big',
+  ])
+  assert.equal(app.pendingAnnouncements.length, 0)
+
+  app.announce('Uploaded a.pdf')
+  await Promise.resolve()
+  assert.equal(heard[1], 'Uploaded a.pdf')
+})
+
+test('the same text is announced again by clearing it first', () => {
+  const { app } = makeApp(async () => response(200, {}))
+  const seen = []
+  app.$nextTick = (callback) => {
+    seen.push(app.uploadAnnouncement)
+    callback()
+  }
+
+  app.announce('Uploaded contract.pdf')
+  app.announce('Uploaded contract.pdf')
+
+  assert.deepEqual(seen, ['', ''])
+  assert.equal(app.uploadAnnouncement, 'Uploaded contract.pdf')
+})
+
+test('closing the dialog clears the announcement', () => {
+  const { app } = makeApp(async () => response(200, {}))
+
+  app.$nextTick = () => {}
+
+  app.announce('Uploaded contract.pdf')
+  app.closeAttach()
+
+  assert.equal(app.uploadAnnouncement, '')
+  assert.equal(app.pendingAnnouncements.length, 0)
+})

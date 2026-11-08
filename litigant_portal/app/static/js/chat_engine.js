@@ -480,6 +480,12 @@ function makeUploadJob(seq, name) {
   return job
 }
 
+function uploadAnnouncementText(job) {
+  if (job.isUploading) return 'Uploading ' + job.name
+  if (job.isDone) return 'Uploaded ' + job.name
+  return job.name + ' failed: ' + job.error
+}
+
 // Recompute the flags the template binds to.
 function applyUploadStatus(job, status, error) {
   job.status = status
@@ -621,6 +627,9 @@ document.addEventListener('alpine:init', () => {
     uploadJobs: [],
     hasUploadJobs: false,
     uploadSeq: 0,
+    // Live region text, and the lines waiting for the next tick.
+    uploadAnnouncement: '',
+    pendingAnnouncements: [],
     dragDepth: 0,
     dropzoneClass: DROPZONE_IDLE,
     attachments: [],
@@ -1267,6 +1276,8 @@ document.addEventListener('alpine:init', () => {
       this.dropzoneClass = DROPZONE_IDLE
       this.disarmUploadDelete()
       this.uploadJobs = []
+      this.uploadAnnouncement = ''
+      this.pendingAnnouncements = []
       this.refreshAttachState()
       if (this.attachTrigger) {
         this.attachTrigger.focus()
@@ -1312,9 +1323,21 @@ document.addEventListener('alpine:init', () => {
       this.attachDisabled = count === 0 && this.attachments.length === 0
     },
 
-    // Every status change goes through here.
     setUploadStatus(job, status, error) {
       applyUploadStatus(job, status, error)
+      this.announce(uploadAnnouncementText(job))
+    },
+
+    // Same-tick lines are joined into one announcement so none is lost.
+    // Clear first so a repeat is announced again.
+    announce(text) {
+      this.pendingAnnouncements.push(text)
+      if (this.pendingAnnouncements.length > 1) return
+      this.uploadAnnouncement = ''
+      this.$nextTick(() => {
+        this.uploadAnnouncement = this.pendingAnnouncements.join('. ')
+        this.pendingAnnouncements = []
+      })
     },
 
     browseFiles() {
@@ -1358,6 +1381,7 @@ document.addEventListener('alpine:init', () => {
           // Read back through Alpine's proxy so changes are tracked.
           this.uploadJobs.push(makeUploadJob(++this.uploadSeq, file.name))
           const job = this.uploadJobs[this.uploadJobs.length - 1]
+          this.announce(uploadAnnouncementText(job))
           this.refreshAttachState()
 
           const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
