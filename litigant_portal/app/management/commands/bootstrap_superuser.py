@@ -2,7 +2,9 @@ import os
 
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
-from django.core.management.base import BaseCommand
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 
 
@@ -26,6 +28,15 @@ class Command(BaseCommand):
             user = User.objects.filter(email__iexact=email).first()
 
             if user is None:
+                try:
+                    validate_password(
+                        password, user=User(username=email, email=email)
+                    )
+                except ValidationError as e:
+                    raise CommandError(
+                        "SUPERUSER_PASSWORD is too weak: "
+                        + " ".join(e.messages)
+                    ) from e
                 user = User.objects.create_superuser(
                     username=email,
                     email=email,

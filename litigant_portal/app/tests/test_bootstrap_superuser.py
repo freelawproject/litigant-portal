@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
-from django.core.management import call_command
+from django.core.management import CommandError, call_command
 from django.test import TestCase
 
 User = get_user_model()
@@ -67,6 +67,26 @@ class BootstrapSuperuserTests(TestCase):
         self.assertIn("nothing to do", output)
         self.assertEqual(User.objects.filter(email=EMAIL).count(), 1)
         self.assertEqual(EmailAddress.objects.filter(email=EMAIL).count(), 1)
+
+    def test_rejects_weak_password(self):
+        with self.assertRaisesMessage(CommandError, "too short"):
+            _run(SUPERUSER_EMAIL=EMAIL, SUPERUSER_PASSWORD="admin")
+        self.assertEqual(User.objects.count(), 0)
+        self.assertEqual(EmailAddress.objects.count(), 0)
+
+    def test_rejects_password_similar_to_email(self):
+        with self.assertRaisesMessage(CommandError, "too similar"):
+            _run(SUPERUSER_EMAIL=EMAIL, SUPERUSER_PASSWORD=EMAIL)
+        self.assertEqual(User.objects.count(), 0)
+
+    def test_ignores_weak_password_when_superuser_exists(self):
+        _run(SUPERUSER_EMAIL=EMAIL, SUPERUSER_PASSWORD=PASSWORD)
+        output = _run(SUPERUSER_EMAIL=EMAIL, SUPERUSER_PASSWORD="admin")
+        self.assertIn("nothing to do", output)
+
+        user = User.objects.get(email=EMAIL)
+        self.assertTrue(user.is_superuser)
+        self.assertTrue(user.check_password(PASSWORD))
 
     def test_email_lookup_is_case_insensitive(self):
         User.objects.create_user(

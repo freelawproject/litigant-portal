@@ -1,6 +1,9 @@
+import secrets
+
 from django.conf import settings
 from django.shortcuts import redirect, render
 from django.utils.functional import SimpleLazyObject
+from django_ratelimit.core import is_ratelimited
 
 from litigant_portal.app.models import UserIdentity
 from litigant_portal.app.services.user import user_identity_ensure
@@ -29,7 +32,23 @@ class SitePasswordMiddleware:
         ):
             return self.get_response(request)
         if request.method == "POST" and "site_password" in request.POST:
-            if request.POST["site_password"] == password:
+            if is_ratelimited(
+                request,
+                group="site_password",
+                key="ip",
+                rate="10/m",
+                method="POST",
+                increment=True,
+            ):
+                return render(
+                    request,
+                    "site_password.html",
+                    {"limited": True},
+                    status=429,
+                )
+            if secrets.compare_digest(
+                request.POST["site_password"].encode(), password.encode()
+            ):
                 request.session[self.SESSION_KEY] = True
                 return redirect(request.get_full_path())
             return render(request, "site_password.html", {"error": True})

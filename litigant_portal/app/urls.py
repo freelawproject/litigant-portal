@@ -13,6 +13,7 @@ from litigant_portal.app.views import (
 from litigant_portal.app.views import (
     assistant,
     design_system,
+    django_admin,
     health,
     pages,
 )
@@ -185,6 +186,7 @@ urlpatterns = [
     # Allauth Routes
     path("accounts/", include("allauth.urls")),
     # Django Admin
+    path("django-admin/login/", django_admin.login),
     path("django-admin/", admin.site.urls),
     # i18n Routes
     path("i18n/", include("django.conf.urls.i18n")),
