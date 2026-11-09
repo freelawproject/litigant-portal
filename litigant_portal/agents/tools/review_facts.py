@@ -85,8 +85,7 @@ class ReviewFacts(Tool):
                     {
                         "name": variable.name,
                         "label": variable.label or variable.name,
-                        # str(): lazy translation proxies break JSON encoding.
-                        "value": str(answer.display_value),
+                        "display_value": answer.display_value,
                         "reviewed": answer.reviewed,
                         "evidence": answer.evidence,
                     }

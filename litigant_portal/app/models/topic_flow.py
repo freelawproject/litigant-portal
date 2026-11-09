@@ -186,7 +186,7 @@ class VariableAnswer(BaseModel):
         `2026-09-09`, so the shaping lives here rather than in the template.
         """
         if isinstance(self.value, bool):
-            return _("Yes") if self.value else _("No")
+            return str(_("Yes")) if self.value else str(_("No"))
         if isinstance(self.value, list):
             return ", ".join(str(item) for item in self.value)
         if self.value is None:

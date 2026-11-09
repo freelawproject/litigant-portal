@@ -1,4 +1,4 @@
-{# ReviewFacts result card. Context: `data` (facts: [{name, label, value, reviewed, evidence}], #}
+{# ReviewFacts result card. Context: `data` (facts: [{name, label, display_value, reviewed, evidence}], #}
 {# missing: [{name, label}], confirm_names, as_of, all_reviewed, court/topic/role, interview_available). #}
 {# Errors carry no render_data, so an empty `data` renders the error state. #}
 {# No request context, so no {% csrf_token %}: factReviewCard supplies the token. #}
@@ -17,7 +17,7 @@
           <div class="flex items-start justify-between gap-2">
             <div class="min-w-0">
               <p class="text-2xs font-semibold uppercase tracking-wide text-greyscale-500">{{ fact.label }}</p>
-              <p class="text-xs text-greyscale-700 leading-relaxed">{{ fact.value }}</p>
+              <p class="text-xs text-greyscale-700 leading-relaxed">{{ fact.display_value }}</p>
               {% if not fact.reviewed and fact.evidence.quote %}
                 <p class="text-xs text-greyscale-500 leading-relaxed" data-role="evidence">
                   {% if fact.evidence.upload_id %}{% trans "From your document:" %}{% else %}{% trans "Because you said:" %}{% endif %}

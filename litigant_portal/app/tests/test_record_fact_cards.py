@@ -29,13 +29,18 @@ CRASHED = "Something went wrong"
 REVIEW_NOTE = "You will review and confirm these"
 
 SAVED = [
-    {"name": "county", "label": "County", "value": "Cass", "cleared": False}
+    {
+        "name": "county",
+        "label": "County",
+        "display_value": "Cass",
+        "cleared": False,
+    }
 ]
 UNCHANGED = [
     {
         "name": "date_of_birth",
         "label": "Date of birth",
-        "value": "Thursday, January 31, 1991",
+        "display_value": "Thursday, January 31, 1991",
     }
 ]
 ERRORS = [{"name": "zip", "label": "ZIP code", "message": "must be a string"}]

@@ -1,4 +1,4 @@
-{# RecordFact result card. Context: `data` (saved: [{name, label, value, cleared}], unchanged: [{name, label, value}], errors: [{name, label, message}]). #}
+{# RecordFact result card. Context: `data` (saved: [{name, label, display_value, cleared}], unchanged: [{name, label, display_value}], errors: [{name, label, message}]). #}
 {# Errors carry no render_data, so an empty `data` renders the error state. #}
 {% load i18n %}
 {% if data.saved or data.unchanged or data.errors %}
@@ -30,14 +30,14 @@
               {% if fact.cleared %}
                 <p class="text-xs text-greyscale-500 italic leading-relaxed">{% trans "Cleared" %}</p>
               {% else %}
-                <p class="text-xs text-greyscale-700 leading-relaxed">{{ fact.value }}</p>
+                <p class="text-xs text-greyscale-700 leading-relaxed">{{ fact.display_value }}</p>
               {% endif %}
             </div>
           {% endfor %}
           {% for fact in data.unchanged %}
             <div>
               <p class="text-2xs font-semibold uppercase tracking-wide text-greyscale-500">{{ fact.label }}</p>
-              <p class="text-xs text-greyscale-700 leading-relaxed">{{ fact.value }}</p>
+              <p class="text-xs text-greyscale-700 leading-relaxed">{{ fact.display_value }}</p>
             </div>
           {% endfor %}
           {% if data.errors %}

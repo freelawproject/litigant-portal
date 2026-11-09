@@ -246,15 +246,13 @@ def test_unchanged_facts_carry_label_and_display_value(thread, date_of_birth):
     )(thread_id=thread.id)
 
     unchanged = output.render_data["unchanged"]
-    # Same lazy-proxy trap as saved rows: pin the type, not just the value.
-    assert all(type(fact["value"]) is str for fact in unchanged)
     assert unchanged == [
         {
             "name": "date_of_birth",
             "label": "Date of birth",
-            "value": "Thursday, January 31, 1991",
+            "display_value": "Thursday, January 31, 1991",
         },
-        {"name": "is_adult", "label": "18 or older", "value": "Yes"},
+        {"name": "is_adult", "label": "18 or older", "display_value": "Yes"},
     ]
 
 
@@ -374,14 +372,10 @@ def test_render_data_carries_plain_strings_and_labels(thread):
     )
 
     fact = output.render_data["saved"][0]
-    # display_value for booleans is a lazy translation proxy that compares
-    # equal to its str; the engine's JSON serialization needs a real str,
-    # so pin the type, not just the value.
-    assert type(fact["value"]) is str
     assert fact == {
         "name": "is_adult",
         "label": "18 or older",
-        "value": "Yes",
+        "display_value": "Yes",
         "cleared": False,
     }
     assert output.render_data["errors"] == [
