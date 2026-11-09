@@ -25,7 +25,12 @@ CODEOWNERS and review requests say who _may_ review a PR. The **assignee** says 
 Two things that are easy to get wrong:
 
 - **Approving is not the end of your turn.** Hand the PR back by reassigning it. An approved PR still sitting with the reviewer reads as unfinished work.
-- **Don't merge someone else's PR.** Reviewing is the reviewer's job; merging is the filer's. A PR you approved is not yours to land.
+- **Don't merge someone else's PR.** Reviewing is the reviewer's job; merging is the filer's. A PR you approved is not yours to land. The one exception is a PR from a fork, below.
+
+**PRs from forks: the approving reviewer merges.** Volunteers and other open-source contributors open PRs from their own fork, and their access to this repo doesn't include merging. Steps 1–5 work the same, but at step 6 the reviewer who approved the PR merges it once CI passes, instead of handing it back. Two more things differ for fork PRs:
+
+- **CI may wait for a maintainer.** GitHub holds workflow runs on fork PRs from newer contributors until a maintainer clicks **Approve and run** on the PR. Check that CI actually ran before approving: a PR with only the CLA check has not been tested.
+- **The automated Claude review doesn't run on forks.** A maintainer can comment `@claude review` to trigger it once.
 
 A PR with no assignee is waiting for a reviewer to claim it — a normal state right after opening, not drift.
 
