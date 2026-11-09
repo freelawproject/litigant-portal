@@ -289,9 +289,6 @@ class DisplayValueTests(SimpleTestCase):
         )
 
     def test_datetime_renders_long_form_not_iso(self):
-        # The corpus stores an ISO string in jsonb; "2026-09-09" in front of a
-        # litigant is a machine's date. Shape matches the flow page's
-        # deadlines (format_long_date) so one date reads the same on both.
         self.assertEqual(
             self._value("2026-09-09T14:30:00", VariableDataType.DATETIME),
             "Sept. 9, 2026, 2:30 p.m.",
@@ -318,7 +315,7 @@ class DisplayValueTests(SimpleTestCase):
     def test_a_cleared_answer_renders_empty_not_none(self):
         self.assertEqual(VariableAnswer(value=None).display_value, "")
 
-    def test_display_value_for_multiple_choice_answer(self):
+    def test_choice_renders_its_label(self):
         citizen_label = "US citizen"
         variable = Variable(
             name="citizen",
@@ -335,9 +332,7 @@ class DisplayValueTests(SimpleTestCase):
             citizen_label,
         )
 
-    def test_display_value_for_multiple_choice_answer_still_renders_with_invalid_choice(
-        self,
-    ):
+    def test_a_choice_no_longer_offered_renders_the_stored_value(self):
         variable = Variable(
             name="citizen",
             data_type=VariableDataType.CHOICE,

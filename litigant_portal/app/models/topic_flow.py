@@ -201,9 +201,9 @@ class VariableAnswer(BaseModel):
         except ObjectDoesNotExist:
             return raw
 
-        if self.variable.data_type == VariableDataType.CHOICE:
+        if data_type == VariableDataType.CHOICE:
             return self._formatted_choice()
-        elif self.variable.data_type in VariableDataType.DATE:
+        elif data_type == VariableDataType.DATE:
             parsed = parse_date(raw)
             # Same shape the flow page's deadlines use, so a litigant sees one
             # date format across both surfaces.
@@ -216,20 +216,15 @@ class VariableAnswer(BaseModel):
         return raw
 
     def _formatted_choice(self) -> str:
-        selected_choice = [
-            choice
-            for choice in self.variable.choices
-            if choice["value"] == self.value
-        ]
-        if len(selected_choice) == 0:
-            return str(
-                self.value
-            )  # Unusual, selected something that is no longer a valid choice. Return the original identifier
-        return selected_choice[
-            0
-        ][
-            "label"
-        ]  # More than one answer is not expected, but don't throw from display logic
+        # A stored answer can outlive its choice when the corpus changes.
+        return next(
+            (
+                choice["label"]
+                for choice in self.variable.choices
+                if choice["value"] == self.value
+            ),
+            str(self.value),
+        )
 
     class Meta:
         constraints = [
