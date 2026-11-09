@@ -191,32 +191,45 @@ class VariableAnswer(BaseModel):
             return ", ".join(str(item) for item in self.value)
         if self.value is None:
             return ""
-        return self._formatted_date() or str(self.value)
+        return self._formatted_value_from_data_type()
 
-    def _formatted_date(self) -> str | None:
-        """Long-form date for a date or datetime variable.
+    def _formatted_value_from_data_type(self) -> str:
+        raw = str(self.value)
 
-        None when the variable isn't temporal, isn't reachable, or the stored
-        value doesn't parse — an unparseable date still has to render as
-        whatever is stored rather than disappear.
-        """
         try:
             data_type = self.variable.data_type
         except ObjectDoesNotExist:
-            return None
+            return raw
 
-        raw = str(self.value)
-        if data_type == VariableDataType.DATE:
+        if self.variable.data_type == VariableDataType.CHOICE:
+            return self._formatted_choice()
+        elif self.variable.data_type in VariableDataType.DATE:
             parsed = parse_date(raw)
             # Same shape the flow page's deadlines use, so a litigant sees one
             # date format across both surfaces.
-            return format_long_date(parsed) if parsed else None
-        if data_type == VariableDataType.DATETIME:
+            return format_long_date(parsed) if parsed else raw
+        elif data_type == VariableDataType.DATETIME:
             parsed = parse_datetime(raw)
             if parsed is None:
-                return None
+                return raw
             return formats.date_format(parsed, "DATETIME_FORMAT")
-        return None
+        return raw
+
+    def _formatted_choice(self) -> str:
+        selected_choice = [
+            choice
+            for choice in self.variable.choices
+            if choice["value"] == self.value
+        ]
+        if len(selected_choice) == 0:
+            return str(
+                self.value
+            )  # Unusual, selected something that is no longer a valid choice. Return the original identifier
+        return selected_choice[
+            0
+        ][
+            "label"
+        ]  # More than one answer is not expected, but don't throw from display logic
 
     class Meta:
         constraints = [
