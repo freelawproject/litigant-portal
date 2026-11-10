@@ -49,6 +49,12 @@ if not SECRET_KEY.strip():
 # SitePasswordMiddleware.
 SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
 
+# Set only where CloudFront is the one way in (see client_ip.py).
+TRUST_CLOUDFRONT_VIEWER_ADDRESS = (
+    os.environ.get("TRUST_CLOUDFRONT_VIEWER_ADDRESS", "false").lower()
+    == "true"
+)
+
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
