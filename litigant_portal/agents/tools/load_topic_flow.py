@@ -34,6 +34,8 @@ def _variable_line(variable) -> str:
             f" (asked when {variable.asked_when.name} = "
             f"{json.dumps(variable.asked_when_value)})"
         )
+    if help_text := variable.help_text.strip():
+        line += f"\n  Help: {help_text}"
     return line
 
 

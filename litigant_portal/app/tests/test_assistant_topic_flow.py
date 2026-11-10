@@ -115,6 +115,7 @@ class TopicFlowMarkdownTests(TestCase):
             name="date_served",
             label="Date you were served",
             data_type=VariableDataType.DATE,
+            help_text="  The date the papers were delivered, not the hearing date.  ",
         )
         TopicFlowDeadline.objects.create(
             flow=flow,
@@ -182,7 +183,11 @@ class TopicFlowMarkdownTests(TestCase):
             markdown,
         )
         self.assertIn("### About your case", markdown)
-        self.assertIn("- date_served (date): Date you were served", markdown)
+        self.assertIn(
+            "- date_served (date): Date you were served\n"
+            "  Help: The date the papers were delivered, not the hearing date.",
+            markdown,
+        )
         self.assertIn(
             "- county (choice): What county do you live in? [choices: cass]",
             markdown,
@@ -201,6 +206,7 @@ class TopicFlowMarkdownTests(TestCase):
         interview = markdown.split("## Facts the guided interview collects")[1]
         interview = interview.split("## Links")[0]
         self.assertNotIn("[source:", interview)
+        self.assertEqual(interview.count("  Help:"), 1)
 
     def test_markdown_skips_the_marker_for_a_section_without_a_key(self):
         flow = _eviction_flow()
