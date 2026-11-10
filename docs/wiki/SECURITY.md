@@ -41,6 +41,20 @@ Secrets are set in the `.env` file and exported to the environment. See `.env.ex
 
 The allauth and admin limits run on allauth's limiter, which uses sliding windows: a blocked visitor waits until their oldest counted failure is older than the window (1 minute for the IP limit, 5 minutes for the account limit). The site gate runs on django-ratelimit, which uses fixed windows: a blocked visitor waits until the current minute's window ends.
 
+### Which address a per-IP limit counts
+
+Every per-IP limit, on both limiters, counts the address that `get_client_ip` in `litigant_portal/app/client_ip.py` returns. Behind CloudFront and the load balancer `REMOTE_ADDR` is a proxy address, so the helper reads the `CloudFront-Viewer-Address` header, which CloudFront sets to the visitor's `IP:port`. `X-Forwarded-For` is never read. django-ratelimit reaches the helper through `RATELIMIT_IP_META_KEY`, and allauth through `ACCOUNT_ADAPTER`.
+
+The header is read only when `TRUST_CLOUDFRONT_VIEWER_ADDRESS=true`. It is off by default, so local dev and any instance without CloudFront ignore the header and count `REMOTE_ADDR`, and a client cannot pick its own bucket by sending one.
+
+When the setting is on and the header is missing or is not a valid address, the helper logs a warning and returns `REMOTE_ADDR`. That warning in the logs means the limits are counting the proxy again.
+
+Infra must keep three things true on every environment behind CloudFront:
+
+- **`TRUST_CLOUDFRONT_VIEWER_ADDRESS=true` is set.** Without it every visitor shares the proxy's bucket.
+- **CloudFront forwards `CloudFront-Viewer-Address` to the origin.** It is only sent when the origin request policy includes it. Without it every visitor shares the proxy's bucket, and one busy visitor can lock everyone out.
+- **The load balancer accepts traffic only from CloudFront.** CloudFront overwrites the header on every request. A visitor who can reach the app without CloudFront can send their own value and get a fresh bucket each time.
+
 ---
 
 ## Content Security Policy (CSP)
