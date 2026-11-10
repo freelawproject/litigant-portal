@@ -1050,7 +1050,7 @@
         </section>
         <section id="court-switcher" class="mb-12" aria-labelledby="court-switcher-heading">
           <h3 id="court-switcher-heading" class="mb-4">Court Switcher</h3>
-          <p class="text-greyscale-600 mb-6">The QA court switcher: FLP-only testing tooling that resyncs the whole site to one court or to all courts. Dev and QA only, so it renders nothing where <code>court_switcher</code> is off. The header puts it in the logo's slot, so the chevron sits beside the branding, from <code>sm</code> up only. The chevron opens a native popover listing each court as its own lockup, and all courts as Omni Court (the FLP logo as its seal); each is a submit button in one POST form, so it works without JS, and the court the site is on carries <code>aria-current</code>. Each copy on a page takes its own <code>switch_id</code>.</p>
+          <p class="text-greyscale-600 mb-6">The QA court switcher: FLP-only testing tooling that resyncs the whole site to one court or to all courts. Dev and QA only, and FLP Staff only, so it renders nothing where <code>court_switcher</code> is off or the viewer can't manage the site. The header puts it in the logo's slot, so the chevron sits beside the branding, from <code>sm</code> up only. The chevron opens a native popover listing each court as its own lockup, and all courts as Omni Court (the FLP logo as its seal); each is a submit button in one POST form, so it works without JS, and the court the site is on carries <code>aria-current</code>. Each copy on a page takes its own <code>switch_id</code>.</p>
           <div class="flex border border-greyscale-200 rounded-lg p-4 mb-6">
             <c-molecules.court-switcher switch_id="court-switch-guide" />
           </div>

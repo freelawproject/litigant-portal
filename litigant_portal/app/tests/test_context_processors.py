@@ -13,6 +13,7 @@ from litigant_portal.app.context_processors import app_meta, court_branding
 from litigant_portal.app.models import Site, Topic, TopicFlow
 from litigant_portal.app.selectors import corpus
 from litigant_portal.app.selectors.corpus import corpus_load_courts
+from litigant_portal.app.services.topic_flow import topic_create
 
 
 class AppMetaTests(SimpleTestCase):
@@ -125,6 +126,10 @@ class TesterCourtChoiceTests(TestCase):
 
     def setUp(self):
         self.request = RequestFactory().get("/")
+        # Only a viewer who can manage the site may switch it.
+        self.request.user = mock.Mock(
+            has_perm=lambda perm: perm == "app.manage_site"
+        )
 
     def _choices(self, env="dev"):
         with self.settings(DEPLOYMENT_ENV=env, PILOT=env == "prod"):
@@ -135,6 +140,29 @@ class TesterCourtChoiceTests(TestCase):
 
     def test_no_choices_where_the_switcher_is_off(self):
         self.assertEqual(self._choices(env="prod"), [])
+
+    def test_no_choices_for_a_viewer_who_cannot_switch(self):
+        self.request.user = mock.Mock(has_perm=lambda perm: False)
+        self.assertEqual(self._choices(), [])
+
+    def test_no_choices_for_a_request_without_a_user(self):
+        del self.request.user
+        self.assertEqual(self._choices(), [])
+
+    def test_choices_are_built_once_not_on_every_page(self):
+        with mock.patch.object(
+            corpus, "corpus_load_topics", wraps=corpus.corpus_load_topics
+        ) as load_topics:
+            first = self._choices()
+            second = self._choices()
+        self.assertEqual(first, second)
+        load_topics.assert_called_once()
+
+    def test_a_topic_write_refreshes_the_selected_court(self):
+        self.assertEqual(self._selected(), ["all"])
+        with self.captureOnCommitCallbacks(execute=True):
+            topic_create(slug="adult-name-change", court="north-dakota")
+        self.assertEqual(self._selected(), ["north-dakota"])
 
     def test_choices_are_all_courts_then_every_court_with_topics(self):
         values = [c["value"] for c in self._choices()]

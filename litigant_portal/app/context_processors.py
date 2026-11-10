@@ -1,9 +1,11 @@
 from django.conf import settings
 from django.contrib.messages import get_messages
+from django.core.cache import cache
 from django.templatetags.static import static
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 
+from litigant_portal.app.cache import COURT_SWITCHER_CHOICES_CACHE_KEY
 from litigant_portal.app.features import features
 from litigant_portal.app.selectors.corpus import corpus_load_courts
 from litigant_portal.app.selectors.site import site_get
@@ -42,9 +44,24 @@ OMNI_COURT_NAME = _("Omni Court")
 OMNI_COURT_LOGO = "images/logo.svg"
 
 
-def _tester_court_choices() -> list[dict]:
-    """The court switcher's choices (#886): all courts, then each corpus
-    court, with the court the site is on now selected."""
+def _tester_court_choices(request) -> list[dict]:
+    """The court switcher's choices (#886) for a viewer who may switch:
+    FLP Staff, since a switch resyncs the site for everyone. Built once
+    and cached until a sync or topic write, not on every page."""
+    # Requests built outside the middleware stack carry no user.
+    user = getattr(request, "user", None)
+    if user is None or not user.has_perm("app.manage_site"):
+        return []
+    choices = cache.get(COURT_SWITCHER_CHOICES_CACHE_KEY)
+    if choices is None:
+        choices = _court_choices_build()
+        cache.set(COURT_SWITCHER_CHOICES_CACHE_KEY, choices, timeout=None)
+    return choices
+
+
+def _court_choices_build() -> list[dict]:
+    """All courts, then each corpus court with topics, with the court the
+    site is on now selected."""
     courts = corpus_load_courts(with_topics=True)
     current = topic_court_find() or ALL_COURTS
     choices = [
@@ -92,7 +109,7 @@ def app_meta(request):
             else []
         ),
         "tester_court_choices": (
-            _tester_court_choices() if tools.court_switcher else []
+            _tester_court_choices(request) if tools.court_switcher else []
         ),
         # Every new-password field states the same rules (#1135).
         "password_rules": password_rule(),

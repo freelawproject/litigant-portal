@@ -8,9 +8,12 @@ court check, and handing the right scope to ``corpus_court_switch``.
 from unittest import mock
 
 import pytest
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import override_settings
 from django.urls import reverse
 
+from litigant_portal.app.permissions import FLP_STAFF_GROUP
 from litigant_portal.app.selectors import corpus
 from litigant_portal.app.selectors.corpus import COURTS_DIR
 from litigant_portal.app.views import pages
@@ -31,6 +34,17 @@ def court_switch():
         yield service
 
 
+@pytest.fixture
+def staff_client(client):
+    """A client logged in as FLP Staff, who alone may switch the court."""
+    staff = get_user_model().objects.create_user(
+        username="staff", email="staff@example.com", password="pw"
+    )
+    staff.groups.add(Group.objects.get(name=FLP_STAFF_GROUP))
+    client.force_login(staff)
+    return client
+
+
 @override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
 @pytest.mark.parametrize("method", ["get", "post"])
 def test_off_outside_dev_and_qa(client, court_switch, method):
@@ -40,8 +54,25 @@ def test_off_outside_dev_and_qa(client, court_switch, method):
 
 
 @override_settings(DEPLOYMENT_ENV="qa")
-def test_only_accepts_a_post(client, court_switch):
-    assert client.get(COURT_SWITCH).status_code == 405
+def test_only_accepts_a_post(staff_client, court_switch):
+    assert staff_client.get(COURT_SWITCH).status_code == 405
+    court_switch.assert_not_called()
+
+
+@override_settings(DEPLOYMENT_ENV="qa")
+@pytest.mark.parametrize(
+    "logged_in", [False, True], ids=["anonymous", "app-user"]
+)
+def test_only_flp_staff_can_switch(client, court_switch, logged_in):
+    """A switch resyncs the whole site for everyone, so the QA site
+    password alone isn't enough."""
+    if logged_in:
+        user = get_user_model().objects.create_user(
+            username="user", email="user@example.com", password="pw"
+        )
+        client.force_login(user)
+    response = client.post(COURT_SWITCH, {"court": "all"})
+    assert response.status_code == 403
     court_switch.assert_not_called()
 
 
@@ -51,8 +82,10 @@ def test_only_accepts_a_post(client, court_switch):
     [("north-dakota", "north-dakota"), ("all", None)],
     ids=["one-court", "all-courts"],
 )
-def test_switches_to_the_posted_court(client, court_switch, posted, scope):
-    response = client.post(COURT_SWITCH, {"court": posted})
+def test_switches_to_the_posted_court(
+    staff_client, court_switch, posted, scope
+):
+    response = staff_client.post(COURT_SWITCH, {"court": posted})
     court_switch.assert_called_once_with(court=scope)
     assert response.status_code == 302
     assert response.url == reverse("pages:home")
@@ -60,8 +93,8 @@ def test_switches_to_the_posted_court(client, court_switch, posted, scope):
 
 @override_settings(DEPLOYMENT_ENV="qa")
 @pytest.mark.parametrize("posted", ["gamma", ""], ids=["unknown", "blank"])
-def test_rejects_a_court_the_corpus_lacks(client, court_switch, posted):
-    response = client.post(COURT_SWITCH, {"court": posted})
+def test_rejects_a_court_the_corpus_lacks(staff_client, court_switch, posted):
+    response = staff_client.post(COURT_SWITCH, {"court": posted})
     assert response.status_code == 400
     court_switch.assert_not_called()
 
@@ -105,10 +138,10 @@ def test_branding_404s_for_what_the_corpus_lacks(client, court, field):
 
 
 @override_settings(DEPLOYMENT_ENV="qa")
-def test_rejects_a_court_with_no_topics(client, court_switch):
+def test_rejects_a_court_with_no_topics(staff_client, court_switch):
     """Nothing could remember a switch to it (#886)."""
     topics = {("north-dakota", "adult-name-change"): object()}
     with mock.patch.object(corpus, "corpus_load_topics", return_value=topics):
-        response = client.post(COURT_SWITCH, {"court": "arizona"})
+        response = staff_client.post(COURT_SWITCH, {"court": "arizona"})
     assert response.status_code == 400
     court_switch.assert_not_called()

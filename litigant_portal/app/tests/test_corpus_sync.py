@@ -16,6 +16,7 @@ from django.test import TestCase, override_settings
 
 from litigant_portal.app.cache import (
     CONTACT_LIST_CACHE_KEY,
+    COURT_SWITCHER_CHOICES_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
     TOPIC_FLOW_LIST_CACHE_KEY,
 )
@@ -634,10 +635,13 @@ class SourceKeyTests(CorpusSyncTests):
         # The test corpus enables no flow, so the warmed list is empty.
         topic_flow_list()
         self.assertIsNotNone(cache.get(TOPIC_FLOW_LIST_CACHE_KEY))
+        # A sync can change which court the site is on (#886).
+        cache.set(COURT_SWITCHER_CHOICES_CACHE_KEY, ["stale"], None)
         with self.captureOnCommitCallbacks(execute=True):
             self._sync(_make_corpus(include_beta=False), court=None)
         for key in (
             CONTACT_LIST_CACHE_KEY,
+            COURT_SWITCHER_CHOICES_CACHE_KEY,
             RESOURCE_LIST_CACHE_KEY,
             TOPIC_FLOW_LIST_CACHE_KEY,
         ):

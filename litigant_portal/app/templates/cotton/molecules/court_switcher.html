@@ -4,10 +4,11 @@
 {# only. A chevron beside the court branding opens a native popover listing #}
 {# every court as its own seal and name, all courts as Omni Court. #}
 {# Each is a submit button in one POST form, so it works without JS. #}
-{# Renders nothing where features.court_switcher is off. Give each copy on a #}
+{# Renders nothing where features.court_switcher is off or the viewer isn't #}
+{# FLP Staff: tester_court_choices is empty for both. Give each copy on a #}
 {# page its own switch_id. #}
 <c-vars switch_id="court-switch" />
-{% if features.court_switcher %}
+{% if tester_court_choices %}
   {% trans "Switch court" as switch_label %}
   {# .court-switcher-toggle (main.css) centres the chevron on the seal and #}
   {# name row, not on the whole lockup with its "Powered by" line. #}

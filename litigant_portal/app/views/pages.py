@@ -116,15 +116,18 @@ def court_switch(request):
     (#886). On wherever ``features().court_switcher`` is (dev and QA).
 
     The switch is site-wide, so it changes the court for everyone on the
-    site until the next switch, deploy or restart. It never touches
-    sessions or answers. No login check: the site password already guards
-    QA, as it does for ``start_over``. Returns home, since the old court's
-    flow pages no longer exist.
+    site until the next switch, deploy or restart, and only FLP Staff
+    (``app.manage_site``) may make it. It never touches sessions or
+    answers. Returns home, since the old court's flow pages no longer
+    exist.
     """
-    # Before the method check, as in start_over: where it's off, every
-    # method 404s.
+    # Before the permission and method checks, as in start_over: where
+    # it's off, every request 404s, so nothing gives away that the
+    # endpoint exists. That order is why this isn't @permission_required.
     if not features().court_switcher:
         raise Http404
+    if not request.user.has_perm("app.manage_site"):
+        raise PermissionDenied
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
     slug = request.POST.get("court", "")

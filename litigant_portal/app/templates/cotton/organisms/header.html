@@ -15,13 +15,14 @@
   <div class="mobile-header-inner">
     <div class="flex min-w-0 flex-1 items-center">
       {# The QA court switcher (#886) rides in the logo's slot, beside the #}
-      {# branding it changes; it renders nothing where the flag is off. #}
+      {# branding it changes; it renders nothing where the flag is off or #}
+      {# the viewer isn't FLP Staff. #}
       <c-molecules.logo
         court_logo="{{ court_logo }}"
         court_name="{{ court_name }}"
         court_name_image="{{ court_name_image }}"
       >
-        {% if features.court_switcher %}<c-molecules.court-switcher switch_id="court-switch-header" />{% endif %}
+        {% if tester_court_choices %}<c-molecules.court-switcher switch_id="court-switch-header" />{% endif %}
       </c-molecules.logo>
     </div>
     <div class="flex shrink-0 items-center gap-1 sm:gap-2">

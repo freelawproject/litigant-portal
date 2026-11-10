@@ -7,6 +7,7 @@ from django.db import transaction
 
 from litigant_portal.app.cache import (
     CONTACT_LIST_CACHE_KEY,
+    COURT_SWITCHER_CHOICES_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
     SITE_CACHE_KEY,
     TOPIC_FLOW_LIST_CACHE_KEY,
@@ -362,6 +363,7 @@ def _sync_flow(
     TOPIC_FLOW_LIST_CACHE_KEY,
     CONTACT_LIST_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
+    COURT_SWITCHER_CHOICES_CACHE_KEY,
 )
 def corpus_sync(
     *, court: str | None = None, strict: bool = False
