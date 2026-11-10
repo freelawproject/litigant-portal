@@ -18,9 +18,17 @@ SUMMARY = dict.fromkeys(
 
 
 class SyncCorpusCourtTests(SimpleTestCase):
-    def _court(self, *args, rows_on=None):
+    def _court(self, *args, rows_on=None, with_topics=("alpha", "beta")):
         """The court the command syncs, with the Topic rows on
-        ``rows_on`` (None: no one court)."""
+        ``rows_on`` (None: no one court) and the corpus giving topics to
+        the courts in ``with_topics``."""
+
+        def load_courts(*, with_topics_only=False):
+            courts = ("alpha", "beta")
+            if with_topics_only:
+                courts = [c for c in courts if c in with_topics]
+            return dict.fromkeys(courts)
+
         with (
             mock.patch.object(
                 sync_corpus, "corpus_sync", return_value=SUMMARY
@@ -31,7 +39,9 @@ class SyncCorpusCourtTests(SimpleTestCase):
             mock.patch.object(
                 sync_corpus,
                 "corpus_load_courts",
-                return_value=dict.fromkeys(("alpha", "beta")),
+                side_effect=lambda with_topics=False: load_courts(
+                    with_topics_only=with_topics
+                ),
             ),
         ):
             call_command("sync_corpus", *args, stdout=mock.Mock())
@@ -67,3 +77,14 @@ class SyncCorpusCourtTests(SimpleTestCase):
         must not crash the pod at startup."""
         with self.assertLogs(sync_corpus.logger, level="WARNING"):
             self.assertIsNone(self._court(rows_on="gone"))
+
+    @override_settings(CORPUS_COURT=None, DEPLOYMENT_ENV="qa")
+    def test_a_switched_court_whose_topics_were_dropped_syncs_every_court(
+        self,
+    ):
+        """A strict sync to a court with no topics deletes every Topic row,
+        so startup must fall back the way the switcher refuses (#886)."""
+        with self.assertLogs(sync_corpus.logger, level="WARNING"):
+            self.assertIsNone(
+                self._court(rows_on="beta", with_topics=("alpha",))
+            )

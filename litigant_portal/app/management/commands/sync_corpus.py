@@ -39,13 +39,17 @@ class Command(BaseCommand):
             # Keep a court switched to on dev or QA through a restart or a
             # deploy that keeps the database (#886).
             court = topic_court_find()
-            if court is not None and court not in corpus_load_courts():
-                # A deploy renamed or removed the switched court's folder.
-                # Syncing every court keeps the pod starting; an explicit
-                # --court or CORPUS_COURT still fails on an unknown court.
+            switchable = corpus_load_courts(with_topics=True)
+            if court is not None and court not in switchable:
+                # A deploy renamed or removed the switched court's folder,
+                # or every one of its topics. A strict sync to it would
+                # delete every Topic row, so this falls back the way the
+                # switcher refuses. Syncing every court keeps the pod
+                # starting; an explicit --court or CORPUS_COURT still fails
+                # on an unknown court.
                 logger.warning(
-                    "switched court %r is no longer in the corpus; "
-                    "syncing every court",
+                    "switched court %r is no longer in the corpus with "
+                    "topics; syncing every court",
                     court,
                 )
                 court = None
