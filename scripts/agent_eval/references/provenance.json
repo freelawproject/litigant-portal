@@ -1,17 +1,31 @@
 {
-  "court.yml": {
-    "source": "litigant_portal/corpus/courts/north-dakota/court.yml",
-    "sha256": "5c0a025e1afefe8a795be72152a83768f70c9b514aa690b80e16c142750361b7",
-    "review_status": "repository snapshot; not court reviewed"
-  },
-  "standard.yml": {
-    "source": "litigant_portal/corpus/courts/north-dakota/topics/adult-name-change/flows/standard.yml",
-    "sha256": "1ff32f868b981a88d376773a28a2bb93feaac50b0738db0b20f99b2dd27bfbc8",
-    "review_status": "repository snapshot; not court reviewed"
-  },
-  "waiver.yml": {
-    "source": "litigant_portal/corpus/courts/north-dakota/topics/adult-name-change/flows/waiver.yml",
-    "sha256": "ec9b386505c30582d03674549b5e95a7f5d44351b5879783ac9c39b3c0608fd7",
-    "review_status": "repository snapshot; not court reviewed"
+  "benchmark_version": "nd-name-change-v1",
+  "source_revision": "b9f9b2429dbd7824031a6c2a5b9c6a422bd0d930",
+  "source_root": "litigant_portal/corpus",
+  "review_status": "repository snapshot; not court reviewed",
+  "sha256": {
+    "courts/north-dakota/branding/logo.png": "c1fbf65d0ad7cbde3bb7e133de8b09debf1652f3199b937ebcb763d565f17f2f",
+    "courts/north-dakota/branding/name.png": "b9249432e89130e6919b7354fd9d01de6e3855ea7ae7556a7206b8b157bd6aee",
+    "courts/north-dakota/court.yml": "1fdabfab37aa92aece8b3891ba3ed3c226bfd68e532cd8f84ee29c66e9ce3a5f",
+    "courts/north-dakota/topics/adult-name-change/flows/standard.yml": "189ff2adcad972f4c09dd296b44d47446b9307e0a1b0405b5e5ab0408c5c1cb5",
+    "courts/north-dakota/topics/adult-name-change/flows/waiver.yml": "8e7340e276b54d6eb58e419398d510bffde6c3256f93290d668f9e5e45263496",
+    "courts/north-dakota/topics/adult-name-change/topic.yml": "67bc4bf45da81d28232d001d0cdd72129ea97d651dc99fc5fcb21b17ffb6d42f",
+    "forms/nd-fee-waiver-petition.pdf": "c82b42ae98069baeb59d9a317186a90606298ea18a87c3ed677f3bee3e0e9fb0",
+    "forms/nd-fee-waiver-petition.yml": "de410b6837bf8c9df26f4887909d343a1f3901a5bc23281c1fbc66c7c5ac3e31",
+    "forms/nd-name-change-confidential-info.pdf": "ed8111fce97dd4c02e33293d111e2e9bde21107c76f9f565c86af62091e79c07",
+    "forms/nd-name-change-confidential-info.yml": "0d7773ae0f2a8405d8ae7ab322d52002effdab2976ba98baa74ec6d81708983c",
+    "forms/nd-name-change-declaration-waiver.pdf": "0d0b846a540d633ee9499685972c2a4146f54b982a8c4c1eff8fc7bda1a30e48",
+    "forms/nd-name-change-declaration-waiver.yml": "fc912837ed94faa23fb7ca4313f5a59c9db734351fb4b68863768a1f8701dd79",
+    "forms/nd-name-change-declaration.pdf": "0d0b846a540d633ee9499685972c2a4146f54b982a8c4c1eff8fc7bda1a30e48",
+    "forms/nd-name-change-declaration.yml": "beb1617d6373e4d976c4166761c3e3b8d139570e461e84d991db2c73443d7d04",
+    "forms/nd-name-change-notice.pdf": "0505e2372fa5c34139f6c82bda2bc47e7fa5b954ebe03bf8ff3ef5989025bed0",
+    "forms/nd-name-change-notice.yml": "76948c286be6489929747bfb429863ab10971d1337e48dc4854eab328cfc475b",
+    "forms/nd-name-change-order.pdf": "874575b829b7991f1eae28b81a09f373557181c2783e20ed9021d3d94613db7a",
+    "forms/nd-name-change-order.yml": "78159a48167f94516e629b006cac42e6293c2db97f94c706d7e28d5ff8d6ee79",
+    "forms/nd-name-change-petition-waiver.pdf": "db27f40b2545d97e57560f322cbfc0902dbdfe9c06ad3c917bfbf69c92354979",
+    "forms/nd-name-change-petition-waiver.yml": "20ff982735b818116cd659eec232da06f29e3dde2975dcf522627216cbc13b9c",
+    "forms/nd-name-change-petition.pdf": "db27f40b2545d97e57560f322cbfc0902dbdfe9c06ad3c917bfbf69c92354979",
+    "forms/nd-name-change-petition.yml": "32a784384fff29936570d478f53d05e933b0abcde0d74db02df3dedb4a28d241",
+    "variables.yml": "55c8228acf835b67cb5994796918dd5a43896adf57a7c88148d29a477f22baa7"
   }
 }

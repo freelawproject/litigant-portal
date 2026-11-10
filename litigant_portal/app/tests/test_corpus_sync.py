@@ -356,6 +356,30 @@ BRANDING = {
 
 @pytest.mark.postgres
 class BrandingSyncTests(CorpusSyncTests):
+    def test_explicit_root_supplies_forms_and_branding(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            assets = {
+                "forms/license.pdf": b"frozen PDF",
+                "courts/alpha/branding/logo.svg": b"frozen logo",
+                "courts/alpha/branding/name.png": b"frozen name",
+            }
+            for name, content in assets.items():
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(content)
+            self._sync(
+                _make_corpus(include_beta=False, alpha_branding=BRANDING),
+                court="alpha",
+                root=root,
+            )
+            site = Site.objects.get()
+            self.assertEqual(
+                Form.objects.get(slug="license").file.read(), b"frozen PDF"
+            )
+            self.assertEqual(site.logo.read(), b"frozen logo")
+            self.assertEqual(site.name_image.read(), b"frozen name")
+
     def test_court_branding_is_stored_on_the_site(self):
         self._sync(_make_corpus(alpha_branding=BRANDING), court="alpha")
         site = Site.objects.get()

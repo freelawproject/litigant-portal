@@ -7,12 +7,14 @@ import os
 import sys
 from pathlib import Path
 
+from litigant_portal.agents.bedrock import BedrockModelUnavailable
+
 from .schema import HERE, ROOT, Config, Weights, read_config
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Compare raw model and current chat engine outputs."
+        description="Compare raw models and chat with or without runtime judging."
     )
     commands = parser.add_subparsers(dest="command", required=True)
     run = commands.add_parser(
@@ -22,15 +24,22 @@ def main():
     run.add_argument("--output", type=Path, default=ROOT / "evals")
     run.add_argument("--systems", nargs="+")
     run.add_argument("--models", nargs="+")
+    run.add_argument("--judges", nargs="+")
     run.add_argument("--cases", nargs="+")
     run.add_argument("--repetitions", type=int)
     run.add_argument("--slug")
-    run.add_argument("--no-judge", action="store_true")
+    run.add_argument(
+        "--no-judge",
+        action="store_true",
+        help="Skip external grading; the selected systems control runtime judging.",
+    )
     grading = commands.add_parser(
         "judge", help="Grade saved answers with a new judgment batch."
     )
     grading.add_argument("run", type=Path)
-    grading.add_argument("--model")
+    grading.add_argument(
+        "--model", help="Pinned bedrock_mantle/REGION/MODEL_ID"
+    )
     grading.add_argument("--retry-failed", action="store_true")
     grading.add_argument("--dry-run", action="store_true")
     recover = commands.add_parser(
@@ -81,12 +90,18 @@ def main():
         return 0
     if args.command == "run":
         config = read_config(args.config).model_dump()
-        for field in ("systems", "models", "cases", "repetitions", "slug"):
+        for field in (
+            "systems",
+            "models",
+            "judges",
+            "cases",
+            "repetitions",
+            "slug",
+        ):
             if getattr(args, field) is not None:
                 config[field] = getattr(args, field)
         config = Config.model_validate(config)
-        if "raw" in config.systems or not args.no_judge:
-            require_key()
+        require_key()
         run = runner.run_suite(config, args.output.resolve())
         if not args.no_judge:
             runner.judge_run(run)
@@ -100,29 +115,59 @@ def main():
         )
         if args.dry_run:
             return 0
-    reports = report_runs([run])
-    incomplete = int(
-        any(
-            row["execution_failures"]
-            or row["missing"]
-            or (row["ungraded"] and not getattr(args, "no_judge", False))
-            for row in reports[0]["systems"]
-        )
+    report = report_runs([run])[0]
+    failures = sum(row["execution_failures"] for row in report["systems"])
+    missing = sum(row["missing"] for row in report["systems"])
+    unfinished = any(
+        row["status"] not in {"completed", "error", "interrupted"}
+        for row in report["attempts"]
     )
-    if incomplete:
+    needs_grading = not getattr(args, "no_judge", False) and any(
+        row["status"] == "completed" and row["judge_status"] != "completed"
+        for row in report["attempts"]
+    )
+    incomplete = bool(
+        missing
+        or unfinished
+        or needs_grading
+        or (args.command == "run" and failures)
+    )
+    if missing or unfinished:
         print(
-            "Evaluation incomplete; see grading counts above. "
+            "Evaluation incomplete: candidate attempts are missing or "
+            "unfinished; grading cannot repair them.",
+            file=sys.stderr,
+        )
+    if needs_grading:
+        print(
+            "Grading incomplete. "
             "Use 'recover RUN' for offline recovery, then "
             "'judge RUN --retry-failed' for unresolved judgments.",
             file=sys.stderr,
         )
-    return incomplete
+    if args.command == "run" and failures:
+        print(
+            f"Candidate executions failed: {failures}. "
+            "These attempts remain zero-score results.",
+            file=sys.stderr,
+        )
+    if args.command == "judge" and not incomplete:
+        print(
+            "Grading complete."
+            + (
+                f" Candidate failures remain zero-score results: {failures}."
+                if failures
+                else ""
+            ),
+            flush=True,
+        )
+    return int(incomplete)
 
 
 def require_key():
     if not os.environ.get("AWS_BEARER_TOKEN_BEDROCK", "").strip():
         raise ValueError(
-            "Set AWS_BEARER_TOKEN_BEDROCK locally for raw calls and judging."
+            "Set AWS_BEARER_TOKEN_BEDROCK locally for discovery and inference."
         )
 
 
@@ -135,6 +180,6 @@ if __name__ == "__main__":
             file=sys.stderr,
         )
         sys.exit(130)
-    except (ValueError, OSError, RuntimeError) as exc:
+    except (ValueError, OSError, RuntimeError, BedrockModelUnavailable) as exc:
         print(f"agent-eval: {exc}", file=sys.stderr)
         sys.exit(1)

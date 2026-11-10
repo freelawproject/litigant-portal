@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from django.core.files.base import ContentFile
 from django.db import transaction
@@ -122,7 +123,7 @@ def _file_replace(field_file, name: str, content: bytes) -> None:
 
 
 def _sync_forms(
-    corpus: CorpusSchema, variables: dict[str, Variable]
+    corpus: CorpusSchema, variables: dict[str, Variable], forms_dir: Path
 ) -> dict[str, Form]:
     """Upsert every form by slug, rewriting its stored PDF and replacing
     its field mappings wholesale."""
@@ -133,7 +134,7 @@ def _sync_forms(
         _file_replace(
             form.file,
             f"{slug}.pdf",
-            (FORMS_DIR / f"{slug}.pdf").read_bytes(),
+            (forms_dir / f"{slug}.pdf").read_bytes(),
         )
         form.save()
         form.fields.all().delete()
@@ -159,9 +160,11 @@ _SITE_COURT_FIELDS = (
 )
 
 
-def _sync_site(slug: str, schema: CourtSchema) -> None:
-    """Write the court's fields and branding onto the Site singleton. A
-    branding file the court no longer names is deleted from storage."""
+def _sync_site(slug: str, schema: CourtSchema, courts_dir: Path) -> None:
+    """
+    Write the court's fields and branding onto the Site singleton. A
+    branding file the court no longer names is deleted from storage.
+    """
     site = site_get()
     _apply(site, schema, exclude={"name", "contacts", "resources", "branding"})
     site.branding_name = schema.branding.name
@@ -174,7 +177,7 @@ def _sync_site(slug: str, schema: CourtSchema) -> None:
             if field_file:
                 field_file.delete(save=False)
             continue
-        source = COURTS_DIR / slug / path
+        source = courts_dir / slug / path
         _file_replace(
             field_file, f"{slug}-{field}{source.suffix}", source.read_bytes()
         )
@@ -366,15 +369,17 @@ def _sync_flow(
     COURT_SWITCHER_CHOICES_CACHE_KEY,
 )
 def corpus_sync(
-    *, court: str | None = None, strict: bool = False
+    *, court: str | None = None, strict: bool = False, root: Path | None = None
 ) -> dict[str, int]:
-    """Upsert the corpus into the database by natural keys.
+    """
+    Upsert the corpus into the database by natural keys.
 
     ``court`` scopes the sync to one court and writes its fields onto the
     Site. ``None`` syncs every court and leaves the Site alone, because the
     admin settings page can hand-edit those fields. The ``CORPUS_COURT``
-    fallback lives in the ``sync_corpus`` command, not here."""
-    corpus = corpus_load()
+    fallback lives in the ``sync_corpus`` command, not here.
+    """
+    corpus = corpus_load(root=root)
     if court is not None and court not in corpus.courts:
         raise ValueError(
             f"unknown court {court!r}; corpus has {sorted(corpus.courts)}"
@@ -382,7 +387,11 @@ def corpus_sync(
     deleted = 0
     with transaction.atomic():
         variables = _sync_variables(corpus)
-        forms = _sync_forms(corpus, variables)
+        forms = _sync_forms(
+            corpus,
+            variables,
+            root / "forms" if root is not None else FORMS_DIR,
+        )
         topics: dict[str, Topic] = {}
         for (court_slug, topic_slug), schema in sorted(corpus.topics.items()):
             if court is not None and court_slug != court:
@@ -405,7 +414,11 @@ def corpus_sync(
             flow_slugs.setdefault(topic_slug, []).append(flow_slug)
             flow_count += 1
         if court is not None:
-            _sync_site(court, corpus.courts[court])
+            _sync_site(
+                court,
+                corpus.courts[court],
+                root / "courts" if root is not None else COURTS_DIR,
+            )
         in_scope = [court] if court is not None else sorted(corpus.courts)
         _sync_contacts(
             {slug: corpus.courts[slug] for slug in in_scope}, strict=strict

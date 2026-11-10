@@ -4,7 +4,7 @@ from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
-from litigant_portal.agents import LitigantAssistant
+from litigant_portal.agents.assistant import LitigantAssistant
 from litigant_portal.app.models import UserUpload
 from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 from litigant_portal.app.selectors.upload import user_upload_list

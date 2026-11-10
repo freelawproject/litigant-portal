@@ -10,6 +10,7 @@ import unicodedata
 from pathlib import Path
 from statistics import mean
 
+from .models import evaluator_options
 from .provider import data
 from .schema import (
     FACT_DIMENSIONS,
@@ -441,7 +442,7 @@ async def evaluate(
     client = AsyncHTTPHandler()
     try:
         response = await litellm.aresponses(
-            model=config.model_ids[config.judge_model],
+            **evaluator_options(config.evaluator_model),
             api_key=os.environ["AWS_BEARER_TOKEN_BEDROCK"],
             client=client,
             instructions=instructions,

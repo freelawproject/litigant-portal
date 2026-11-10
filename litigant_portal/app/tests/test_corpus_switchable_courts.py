@@ -20,3 +20,20 @@ def test_without_the_flag_every_court_loads():
     with mock.patch.object(corpus, "corpus_load_topics", return_value={}):
         courts = corpus_load_courts()
     assert "north-dakota" in courts
+
+
+def test_with_topics_uses_the_supplied_directory(tmp_path):
+    for slug in ("alpha", "beta"):
+        court = tmp_path / slug
+        court.mkdir()
+        (court / "court.yml").write_text(
+            f"name: {slug}\ncourt_name: {slug} Court\n"
+        )
+    topic = tmp_path / "alpha" / "topics" / "pets"
+    topic.mkdir(parents=True)
+    (topic / "topic.yml").write_text("title: Pets\n")
+
+    with mock.patch.object(corpus, "COURTS_DIR", tmp_path / "missing"):
+        courts = corpus_load_courts(tmp_path, with_topics=True)
+
+    assert set(courts) == {"alpha"}

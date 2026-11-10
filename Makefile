@@ -56,7 +56,7 @@ pre-commit: ## Lint then test — stops if lint fails/fixes anything
 
 .PHONY: agent-eval
 agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'report ...')
-	uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
+	env -u VIRTUAL_ENV uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
 
 # Only sources newer than their render are re-exported: draw.io stamps a random
 # id into every SVG, so regenerating an unchanged diagram is pure diff noise.

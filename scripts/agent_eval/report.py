@@ -7,14 +7,18 @@ from collections import Counter
 from pathlib import Path
 from statistics import mean, median, pstdev
 
+from litigant_portal.agents.bedrock import MODEL_MAPPING
+
 from .judge import judgment_path, normalize_v3_grade, paid_calls, score
 from .schema import (
     DIMENSIONS,
     FAILURE_CATEGORIES,
     Grade,
     Weights,
+    configurations,
     fingerprint,
     normalize_system,
+    saved_evaluator_model,
     verify_references,
     write_json,
 )
@@ -159,11 +163,13 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 "group": row["case"]["group"],
                 "system": system,
                 "model": row["model"],
+                "model_id": row.get("model_id", "unknown"),
+                "judge": row.get("judge"),
                 "status": row["status"],
                 "runtime_judge_model": row.get(
                     "runtime_judge_model", "unknown"
                 )
-                if system == "current"
+                if system != "raw"
                 else None,
                 "generation_settings": generation_settings,
                 "generation_timeout": generation_timeout,
@@ -172,7 +178,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                 if "error_category" in row or row["status"] == "completed"
                 else None,
                 "runtime_judge_outcomes": dict(runtime_outcomes)
-                if export is not None or system != "current"
+                if export is not None or system == "raw"
                 else None,
                 "overall": overall,
                 "quality": quality,
@@ -217,7 +223,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                         for key in ("model", "error", "error_message")
                     }
                     for call in row["calls"]
-                    if system == "current"
+                    if system != "raw"
                     and call.get("error")
                     and not call.get("request", {}).get("stream")
                 ],
@@ -235,15 +241,24 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
     summaries = []
     for stored_system in manifest["config"]["systems"]:
         system = normalize_system(stored_system)
-        for model in manifest["config"]["models"]:
+        for _, model, runtime_judge in (
+            item
+            for item in configurations(manifest["config"])
+            if item[0] == system
+        ):
             for group in dict.fromkeys(
                 case["group"] for case in manifest["cases"]
             ):
                 rows = [
                     row
                     for row in records
-                    if (row["system"], row["model"], row["group"])
-                    == (system, model, group)
+                    if (
+                        row["system"],
+                        row["model"],
+                        row["judge"],
+                        row["group"],
+                    )
+                    == (system, model, runtime_judge, group)
                 ]
                 planned = (
                     sum(case["group"] == group for case in manifest["cases"])
@@ -288,6 +303,14 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
                     {
                         "system": system,
                         "model": model,
+                        "model_label": MODEL_MAPPING.get(model, model),
+                        "model_ids": list(
+                            dict.fromkeys(row["model_id"] for row in rows)
+                        ),
+                        "judge": runtime_judge,
+                        "judge_label": MODEL_MAPPING.get(
+                            runtime_judge, runtime_judge
+                        ),
                         "group": group,
                         "planned": planned,
                         "recorded": len(rows),
@@ -431,7 +454,7 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
     ):
         grading_status = "incomplete"
     return {
-        "report_version": 3,
+        "report_version": 4,
         "run": run.name,
         "benchmark_id": manifest["benchmark_id"],
         "scoring_version": manifest["scoring_version"],
@@ -456,9 +479,8 @@ def summarize(run: Path, weights: Weights | None = None) -> dict:
             "source_batch": batch.get("source_batch"),
             "judge_contract_hash": batch.get("judge_contract_hash"),
         },
-        "judge_model": batch.get("config", {})
-        .get("model_ids", {})
-        .get(batch.get("config", {}).get("judge_model")),
+        "evaluator_model": saved_evaluator_model(batch.get("config", {})),
+        "resolved_models": manifest.get("resolved_models"),
         "system_totals": {
             "known_cost_usd": sum(row["known_cost_usd"] for row in records),
             "unknown_cost_attempts": sum(
@@ -507,8 +529,8 @@ def charts(reports: list[dict], output: Path):
     plt.rcParams.update(
         {"font.size": 10, "axes.spines.top": False, "axes.spines.right": False}
     )
-    colors = {"raw": "#64748b", "current": "#e09f3e"}
-    markers = {"raw": "o", "current": "s"}
+    colors = {"raw": "#64748b", "no_judge": "#247ba0", "current": "#e09f3e"}
+    markers = {"raw": "o", "no_judge": "^", "current": "s"}
     failure_legend = Line2D(
         [],
         [],
@@ -523,7 +545,9 @@ def charts(reports: list[dict], output: Path):
             for row in report["systems"]:
                 if row["group"] == group:
                     rows.append(row)
-                    label = f"{row['system']} / {row['model']}"
+                    label = f"{row['system']} / {row['model_label']}"
+                    if row["judge"]:
+                        label += f"\nJudge: {row['judge_label']}"
                     if len(reports) > 1:
                         label += f"\n{report['run']}"
                     labels.append(label)
@@ -549,7 +573,7 @@ def charts(reports: list[dict], output: Path):
             plt.close(fig)
 
         fig, ax = plt.subplots(
-            figsize=(max(8, len(rows) * 1.3), 4.8), layout="constrained"
+            figsize=(max(8, len(rows) * 1.8), 4.8), layout="constrained"
         )
         for i, row in enumerate(rows):
             if row["quality"] is None:
@@ -592,7 +616,7 @@ def charts(reports: list[dict], output: Path):
         save(fig, "quality")
 
         fig, ax = plt.subplots(
-            figsize=(max(8, len(rows) * 1.3), 4.8), layout="constrained"
+            figsize=(max(8, len(rows) * 1.8), 4.8), layout="constrained"
         )
         bottom = np.zeros(len(rows))
         for outcome, color in (
@@ -747,7 +771,9 @@ def charts(reports: list[dict], output: Path):
         ax.grid(alpha=0.15)
         save(fig, "cost-quality")
 
-        fig, axes = plt.subplots(1, 2, figsize=(12, 4.5), layout="constrained")
+        fig, axes = plt.subplots(
+            1, 2, figsize=(max(12, len(rows) * 2.4), 4.5), layout="constrained"
+        )
         for ax, field, title, unit in (
             (axes[0], "median_seconds", "Response latency", "Median seconds"),
             (axes[1], "mean_cost_usd", "System cost", "Mean estimated USD"),
@@ -819,9 +845,9 @@ def report_runs(
         raise ValueError(
             "Runs have different weights; supply a common --facts-weight."
         )
-    if len({report["judge_model"] for report in reports}) != 1:
+    if len({report["evaluator_model"] for report in reports}) != 1:
         raise ValueError(
-            "Runs use different judge models; rejudge with the same model before comparing."
+            "Runs use different evaluator models; rejudge with the same model before comparing."
         )
     if output is None:
         if len(runs) == 1 and weights is None:
@@ -839,18 +865,32 @@ def report_runs(
         reports[0] if len(reports) == 1 else {"runs": reports},
     )
     charts(reports, output / "charts")
-    for report in reports:
+    for run, report in zip(runs, reports, strict=True):
         totals = report["systems"]
+        grading_errors = Counter(
+            row["judge_error_category"] or row["judge_status"]
+            for row in report["attempts"]
+            if row["status"] == "completed"
+            and row["judge_status"] != "completed"
+        )
         print(
-            f"Results: {sum(row['recorded'] for row in totals)}/{sum(row['planned'] for row in totals)} answers recorded; "
+            f"Results: {sum(row['recorded'] for row in totals)}/{sum(row['planned'] for row in totals)} attempts recorded; "
             f"{sum(row['graded'] for row in totals)} graded; "
-            f"{sum(row['ungraded'] + row['missing'] for row in totals)} ungraded/missing; "
+            f"{sum(grading_errors.values())} awaiting grading; "
+            f"{sum(row['missing'] for row in totals)} missing attempts; "
             f"{sum(row['execution_failures'] for row in totals)} candidate failures; "
             f"{report['grading']['recovered']} recovered offline.",
             flush=True,
         )
-        for reason, count in report["grading"]["errors"].items():
+        for reason, count in grading_errors.items():
             print(f"  {count}: {reason}", flush=True)
+        for row in report["attempts"]:
+            if row["status"] in {"error", "interrupted"}:
+                path = run.resolve() / row["attempt"]
+                print(f"  Failed candidate: {path}", flush=True)
+                log = path.with_suffix(".log")
+                if log.is_file():
+                    print(f"    Log: {log}", flush=True)
         print(
             f"Timeout diagnostics: {sum(row['generation_timeout_attempts'] for row in totals)} generation-timeout attempts; "
             f"{sum(row['attempt_timeouts'] for row in totals)} attempt deadlines; "

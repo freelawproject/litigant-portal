@@ -34,7 +34,7 @@ def turns(case, emit):
     return transcript, run()
 
 
-async def raw(case, model: str, emit) -> dict:
+async def raw(case, model: str, emit, invocation_options=None) -> dict:
     """
     Send exactly the user turns, without an instruction or system message.
     """
@@ -42,12 +42,14 @@ async def raw(case, model: str, emit) -> dict:
     messages = []
     for message, on_text in sequence:
         messages.append({"role": "user", "content": message})
-        reply = await _raw_turn(messages, model, on_text)
+        reply = await _raw_turn(
+            messages, invocation_options or {"model": model}, on_text
+        )
         messages.append({"role": "assistant", "content": reply})
     return {"provider_status": "completed", "transcript": transcript}
 
 
-async def _raw_turn(messages: list[dict], model: str, on_text) -> str:
+async def _raw_turn(messages: list[dict], options: dict, on_text) -> str:
     import litellm
     from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 
@@ -55,7 +57,7 @@ async def _raw_turn(messages: list[dict], model: str, on_text) -> str:
     reply = []
     try:
         stream = await litellm.aresponses(
-            model=model,
+            **options,
             input=messages,
             api_key=os.environ["AWS_BEARER_TOKEN_BEDROCK"],
             client=client,
@@ -193,8 +195,8 @@ def current(case, model: str, identity, emit) -> dict:
     }
 
 
-def invoke(system, case, model, identity, emit):
+def invoke(system, case, model, identity, emit, *, invocation_options=None):
     system = normalize_system(system)
     if system == "raw":
-        return asyncio.run(raw(case, model, emit))
+        return asyncio.run(raw(case, model, emit, invocation_options))
     return current(case, model, identity, emit)

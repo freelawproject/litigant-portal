@@ -2,7 +2,7 @@
 
 This portal runs on a **general-purpose chat engine**. The engine knows how to
 stream a conversation, call tools in a loop, persist history, and push render
-data to the browser — and it knows _nothing_ about weather, legal triage, or
+data to the browser. It knows _nothing_ about legal triage or
 any specific behavior.
 
 Everything domain-specific lives in an **agent**: a small bundle of config,
@@ -25,7 +25,7 @@ frontend templates those tools render with). You build new behavior by
 
 Engine code: [`services/chat_engine.py`](../../litigant_portal/app/services/chat_engine.py) ·
 Abstraction: [`agents/base.py`](../../litigant_portal/agents/base.py) ·
-Demo agent: [`agents/weather.py`](../../litigant_portal/agents/weather.py) ·
+Active agent: [`agents/assistant.py`](../../litigant_portal/agents/assistant.py) ·
 Tools: [`agents/tools/`](../../litigant_portal/agents/tools/) ·
 Generic views: [`views/chat_engine.py`](../../litigant_portal/app/views/chat_engine.py) ·
 Example surface: [`views/assistant.py`](../../litigant_portal/app/views/assistant.py)
@@ -108,17 +108,17 @@ Attachment hydration respects the resolved chat target's capabilities. Unsupport
 ### 2. The state — `state_schema`
 
 State is an **arbitrary object you define** with a Pydantic model. It is stored
-as JSON on `ChatThread.state` and is the agent's memory across turns: recently
-checked locations, a partially-filled intake form, a draft document, flags —
+as JSON on `ChatThread.state` and is the agent's memory across turns: an active
+topic flow, a partially-filled intake form, a draft document, or flags,
 whatever your agent needs.
 
 ```python
-class WeatherState(AgentState):
-    recent_locations: list[str] = []
+class LitigantAssistantState(AgentState):
+    active_topic_flow: str | None = None
 ```
 
 `AgentState` is just a `BaseModel` with `extra="allow"`. Validate the thread's
-raw JSON into it with `WeatherState.model_validate(thread.state or {})`, mutate,
+raw JSON into it with `LitigantAssistantState.model_validate(thread.state or {})`, mutate,
 then `thread.state = state.model_dump()` and save.
 
 ### 3. The system prompt — `generate_system_prompt(thread_id)`
@@ -130,13 +130,10 @@ the `thread_id`, loads the thread, and from there it can reach:
 - **the user** — `thread.identity` (and anything attached to it),
 - **the conversation** — `thread.messages`.
 
-```python
-def generate_system_prompt(self, *, thread_id) -> str:
-    thread = ChatThread.objects.get(id=thread_id)
-    state = WeatherState.model_validate(thread.state or {})
-    ...
-    return "You are a friendly weather assistant.\n..."
-```
+See `LitigantAssistant.generate_system_prompt` in
+[`agents/assistant.py`](../../litigant_portal/agents/assistant.py) for the
+shared court instructions. Per-person context belongs in the identity prompt
+described below.
 
 > The system prompt is **never stored** in message history. It is regenerated
 > for every request (and again mid-turn whenever a tool sets
@@ -175,16 +172,9 @@ whose fields _are_ the input schema; it implements `__call__(thread_id)` and
 returns a `ToolOutput`. Like the prompt generator, a tool gets the thread, so it
 can **read and manipulate state**.
 
-```python
-class CheckWeather(Tool):
-    """Check the current weather for a location."""
-
-    location: str = Field(description="City or place to check the weather for")
-
-    def __call__(self, *, thread_id) -> ToolOutput:
-        # load thread, mutate state, return ToolOutput
-        ...
-```
+For example, [`LoadTopicFlow`](../../litigant_portal/agents/tools/load_topic_flow.py)
+accepts a `topic_flow` path, validates that the flow exists, updates the
+thread's `active_topic_flow`, and returns the flow's content to the model.
 
 The engine auto-generates the function schema from the model (`get_schema()`),
 dispatches calls by class name, and runs the loop. You never write loop code.
@@ -201,9 +191,8 @@ Every tool returns a `ToolOutput` with three ingredients:
 
 ```python
 return ToolOutput(
-    result=f"It is 72 degrees in {self.location}.",
-    render_data={"location": self.location, "temp_f": 72},
-    refresh_system_prompt=True,
+    result=f"Loaded {self.topic_flow}.",
+    render_data={"topic_flow": self.topic_flow},
 )
 ```
 
@@ -232,136 +221,9 @@ ordinary Django + cotton.
 
 ---
 
-## Build an agent end to end: the Weather demo
+## Registering an agent: thread types and view surfaces
 
-The weather agent is the canonical hello-world. Here is every file, with each
-ingredient called out. To "expand" it into a real agent you grow these same
-files — the only _new_ file you ever add is one more tool under `tools/`.
-
-### `litigant_portal/agents/tools/check_weather.py`
-
-One tool per file. INGREDIENT 4 (the tool) and INGREDIENT 5 (how it renders).
-
-```python
-import time
-
-from litigant_portal.agents.base import Field, Tool, ToolOutput
-
-
-class CheckWeather(Tool):
-    """Check the current weather for a location."""
-
-    location: str = Field(description="City or place to check the weather for")
-
-    # INGREDIENT 5: custom templates (None or False → nothing)
-    tool_call_template = "tools/check_weather_call.html"
-    tool_result_template = "tools/check_weather_result.html"
-
-    def __call__(self, *, thread_id) -> ToolOutput:
-        from litigant_portal.agents.weather import WeatherState
-        from litigant_portal.app.models import ChatThread
-
-        time.sleep(2)  # demo-only: keeps the "checking weather" card visible
-
-        # Tools manipulate state by loading the thread and saving it back.
-        thread = ChatThread.objects.get(id=thread_id)
-        state = WeatherState.model_validate(thread.state or {})
-        if self.location not in state.recent_locations:
-            state.recent_locations.append(self.location)
-            thread.state = state.model_dump()
-            thread.save(update_fields=["state", "updated_at"])
-
-        temp_f = 72
-        return ToolOutput(
-            result=f"It is {temp_f} degrees in {self.location}.",
-            render_data={"location": self.location, "temp_f": temp_f},
-            refresh_system_prompt=True,  # new location shows up next prompt
-        )
-```
-
-### `litigant_portal/agents/weather.py`
-
-The agent binds the ingredients together, importing each tool by its module
-path (`tools/__init__.py` stays empty).
-
-```python
-from django.utils import timezone
-
-from .base import Agent, AgentState
-from .tools.check_weather import CheckWeather
-
-
-# ── INGREDIENT 2: state ──────────────────────────────────────────────
-class WeatherState(AgentState):
-    """What the weather agent remembers across a thread."""
-
-    recent_locations: list[str] = []
-
-
-# ── The agent: bind the ingredients together ─────────────────────────
-class WeatherAgent(Agent):
-    """A demo agent that can check the weather."""
-
-    completion_args = {"max_tokens": 1000}  # INGREDIENT 1: LLM config
-    state_schema = WeatherState  # INGREDIENT 2
-    tools = [CheckWeather]  # INGREDIENT 4
-
-    # INGREDIENT 3: the system prompt, built from the thread (state + user +
-    # conversation are all reachable here).
-    def generate_system_prompt(self, *, thread_id) -> str:
-        from litigant_portal.app.models import ChatThread
-
-        thread = ChatThread.objects.get(id=thread_id)
-        state = WeatherState.model_validate(thread.state or {})
-        now = timezone.localtime().strftime("%A, %B %-d, %Y at %-I:%M %p")
-        recent = ", ".join(state.recent_locations) or "none yet"
-        return (
-            "You are a friendly weather assistant.\n"
-            f"The current date and time is {now}.\n"
-            f"Recently checked locations: {recent}.\n"
-            "If the user asks about the weather for a location, use the "
-            "CheckWeather tool. If they ask about a location you've already "
-            "checked recently, you may report it from memory instead."
-        )
-```
-
-### `litigant_portal/app/templates/tools/check_weather_call.html`
-
-The **call** card — a spinner while the tool is in flight. Context: `args`.
-
-```html
-{# CheckWeather call card. Context: `args` (the tool's input fields). #}
-<div
-  class="inline-flex items-center gap-2 rounded-lg border border-greyscale-200 bg-greyscale-50 px-3 py-2 text-sm text-greyscale-600"
->
-  <span class="flex gap-1" aria-hidden="true">
-    <span class="typing-dot"></span>
-    <span class="typing-dot"></span>
-    <span class="typing-dot"></span>
-  </span>
-  <span>Checking weather in {{ args.location }}…</span>
-</div>
-```
-
-### `litigant_portal/app/templates/tools/check_weather_result.html`
-
-The **result** card. Context: `data` (the tool's `render_data`).
-
-```html
-{# CheckWeather result card. Context: `data` (the tool's render_data). #}
-<div
-  class="inline-flex items-center gap-2 rounded-lg border border-greyscale-200 bg-white px-3 py-2 text-sm"
->
-  <c-atoms.icon name="cloud" class="w-4 h-4 text-greyscale-400" />
-  <span class="font-medium text-greyscale-800">{{ data.location }}</span>
-  <span class="text-greyscale-500">{{ data.temp_f }}°F</span>
-</div>
-```
-
-### Registering & wiring it up: thread types and view surfaces
-
-Export the agent from `agents/__init__.py`, then give it a **surface**: a
-thin view module that binds the generic chat views to this agent.
+Import the agent directly from its module, then give it a **surface**: a thin view module that binds the generic chat views to this agent. Keep concrete agents out of `agents/__init__.py` so standalone tools can import the shared Bedrock catalog without Django.
 
 Two pieces make this work:
 
@@ -381,6 +243,7 @@ example — it binds `LitigantAssistant` and adds the upload endpoints:
 
 ```python
 # litigant_portal/app/views/assistant.py
+from litigant_portal.agents.assistant import LitigantAssistant
 from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 
 
