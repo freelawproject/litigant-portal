@@ -452,6 +452,61 @@ const UPLOAD_EXTENSIONS = [
 ]
 const MAX_UPLOAD_SIZE = 20 * 1024 * 1024 // 20 MB
 
+// Failure reasons; the wrong-type line matches the server's.
+const UPLOAD_WRONG_TYPE =
+  "This file type isn't supported (%ext). Use PDF, Word, Excel, images or text."
+const UPLOAD_TOO_MANY = 'Too many uploads at once. Wait a minute and try again.'
+const UPLOAD_SESSION_EXPIRED =
+  'Your session expired. Reload the page and try again.'
+const UPLOAD_FAILED = 'Upload failed. Check your connection and try again.'
+// Only a proxy sends a 413; the file passed our own check.
+const UPLOAD_REFUSED_SIZE =
+  '%name was refused as too large. Try a smaller file.'
+
+const UPLOAD_ROW_CLASSES = {
+  uploading: 'border-greyscale-200 bg-greyscale-50',
+  done: 'border-green-200 bg-green-50',
+  failed: 'border-red-200 bg-red-50',
+}
+
+function uploadTooLargeMessage(file) {
+  return file.name + ' is ' + formatSize(file.size) + '. The limit is 20 MB.'
+}
+
+// One row in the attach dialog.
+function makeUploadJob(seq, name) {
+  const job = { id: 'job-' + seq, name }
+  applyUploadStatus(job, 'uploading', '')
+  return job
+}
+
+function uploadAnnouncementText(job) {
+  if (job.isUploading) return 'Uploading ' + job.name
+  if (job.isDone) return 'Uploaded ' + job.name
+  return job.name + ' failed: ' + job.error
+}
+
+// Recompute the flags the template binds to.
+function applyUploadStatus(job, status, error) {
+  job.status = status
+  job.error = error || ''
+  job.isUploading = status === 'uploading'
+  job.isDone = status === 'done'
+  job.isFailed = status === 'failed'
+  job.rowClass = UPLOAD_ROW_CLASSES[status]
+}
+
+// A JSON error from our own view is shown as is.
+function uploadFailureMessage(file, response, body) {
+  if (body && body.error) return body.error
+  if (response.status === 413) {
+    return UPLOAD_REFUSED_SIZE.replace('%name', file.name)
+  }
+  if (response.status === 429) return UPLOAD_TOO_MANY
+  if (response.status === 403) return UPLOAD_SESSION_EXPIRED
+  return UPLOAD_FAILED
+}
+
 const DROPZONE_IDLE =
   'border-greyscale-300 bg-greyscale-25 hover:border-primary-400 hover:bg-primary-25'
 const DROPZONE_ACTIVE = 'border-primary-500 bg-primary-50'
@@ -568,11 +623,13 @@ document.addEventListener('alpine:init', () => {
     uploads: [],
     hasUploads: false,
     uploadsEmpty: false,
-    pendingUploads: [],
-    hasPending: false,
-    pendingSeq: 0,
-    uploadError: '',
-    hasUploadError: false,
+    // One per file picked; cleared on close.
+    uploadJobs: [],
+    hasUploadJobs: false,
+    uploadSeq: 0,
+    // Live region text, and the lines waiting for the next tick.
+    uploadAnnouncement: '',
+    pendingAnnouncements: [],
     dragDepth: 0,
     dropzoneClass: DROPZONE_IDLE,
     attachments: [],
@@ -1206,7 +1263,6 @@ document.addEventListener('alpine:init', () => {
 
     async openAttach() {
       this.attachOpen = true
-      this.setUploadError('')
       // Dialog focus management: move focus into the modal on open and
       // return it to the trigger on close.
       this.attachTrigger = document.activeElement
@@ -1219,6 +1275,10 @@ document.addEventListener('alpine:init', () => {
       this.dragDepth = 0
       this.dropzoneClass = DROPZONE_IDLE
       this.disarmUploadDelete()
+      this.uploadJobs = []
+      this.uploadAnnouncement = ''
+      this.pendingAnnouncements = []
+      this.refreshAttachState()
       if (this.attachTrigger) {
         this.attachTrigger.focus()
         this.attachTrigger = null
@@ -1246,8 +1306,8 @@ document.addEventListener('alpine:init', () => {
     // Recompute the CSP-safe labels/flags the modal binds to.
     refreshAttachState() {
       this.hasUploads = this.uploads.length > 0
-      this.hasPending = this.pendingUploads.length > 0
-      this.uploadsEmpty = !this.hasUploads && !this.hasPending
+      this.hasUploadJobs = this.uploadJobs.length > 0
+      this.uploadsEmpty = !this.hasUploads && !this.hasUploadJobs
       this.uploadCountLabel =
         this.uploads.length === 1 ? '1 file' : this.uploads.length + ' files'
       const count = this.uploads.filter((u) => u.selected).length
@@ -1263,9 +1323,21 @@ document.addEventListener('alpine:init', () => {
       this.attachDisabled = count === 0 && this.attachments.length === 0
     },
 
-    setUploadError(message) {
-      this.uploadError = message
-      this.hasUploadError = !!message
+    setUploadStatus(job, status, error) {
+      applyUploadStatus(job, status, error)
+      this.announce(uploadAnnouncementText(job))
+    },
+
+    // Same-tick lines are joined into one announcement so none is lost.
+    // Clear first so a repeat is announced again.
+    announce(text) {
+      this.pendingAnnouncements.push(text)
+      if (this.pendingAnnouncements.length > 1) return
+      this.uploadAnnouncement = ''
+      this.$nextTick(() => {
+        this.uploadAnnouncement = this.pendingAnnouncements.join('. ')
+        this.pendingAnnouncements = []
+      })
     },
 
     browseFiles() {
@@ -1300,27 +1372,28 @@ document.addEventListener('alpine:init', () => {
     async uploadFiles(fileList) {
       const files = Array.from(fileList || [])
       if (!files.length) return
-      this.setUploadError('')
-      const errors = []
+
+      // A new pick drops the finished rows.
+      this.uploadJobs = this.uploadJobs.filter((j) => j.isUploading)
 
       await Promise.all(
         files.map(async (file) => {
+          // Read back through Alpine's proxy so changes are tracked.
+          this.uploadJobs.push(makeUploadJob(++this.uploadSeq, file.name))
+          const job = this.uploadJobs[this.uploadJobs.length - 1]
+          this.announce(uploadAnnouncementText(job))
+          this.refreshAttachState()
+
           const ext = '.' + (file.name.split('.').pop() || '').toLowerCase()
           if (!UPLOAD_EXTENSIONS.includes(ext)) {
-            errors.push(file.name + ': unsupported file type')
+            const reason = UPLOAD_WRONG_TYPE.replace('%ext', ext)
+            this.setUploadStatus(job, 'failed', reason)
             return
           }
           if (file.size > MAX_UPLOAD_SIZE) {
-            errors.push(file.name + ': too large (max 20 MB)')
+            this.setUploadStatus(job, 'failed', uploadTooLargeMessage(file))
             return
           }
-
-          const pending = {
-            id: 'pending-' + ++this.pendingSeq,
-            name: file.name,
-          }
-          this.pendingUploads.push(pending)
-          this.refreshAttachState()
 
           try {
             const body = new FormData()
@@ -1330,21 +1403,22 @@ document.addEventListener('alpine:init', () => {
               method: 'POST',
               body,
             })
-            const data = await res.json()
-            if (!res.ok) throw new Error(data.error || 'upload failed')
+            const data = await res.json().catch(() => null)
+            if (!res.ok) {
+              const reason = uploadFailureMessage(file, res, data)
+              this.setUploadStatus(job, 'failed', reason)
+              return
+            }
             this.uploads.unshift(decorateUpload(data.upload, true))
+            job.uploadId = data.upload.id
+            this.setUploadStatus(job, 'done')
           } catch (err) {
-            errors.push(file.name + ': ' + err.message)
+            this.setUploadStatus(job, 'failed', UPLOAD_FAILED)
           } finally {
-            this.pendingUploads = this.pendingUploads.filter(
-              (p) => p.id !== pending.id
-            )
             this.refreshAttachState()
           }
         })
       )
-
-      this.setUploadError(errors.join(' · '))
     },
 
     // Toggle a card's selection — the upload id rides on the element.
@@ -1395,6 +1469,9 @@ document.addEventListener('alpine:init', () => {
         )
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         this.uploads = this.uploads.filter((u) => u.id !== upload.id)
+        this.uploadJobs = this.uploadJobs.filter(
+          (j) => j.uploadId !== upload.id
+        )
         this.attachments = this.attachments.filter((a) => a.id !== upload.id)
         this.hasAttachments = this.attachments.length > 0
         this.refreshAttachState()

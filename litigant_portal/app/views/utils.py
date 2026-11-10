@@ -169,6 +169,15 @@ def _perm_required(codename: str):
     return decorator
 
 
+def ratelimited(request, exception):
+    """RATELIMIT_VIEW: every ``@ratelimit`` view here answers JSON, so a
+    limit is a JSON 429 rather than Django's HTML 403."""
+    return JsonResponse(
+        {"error": _("Too many requests. Wait a minute and try again.")},
+        status=429,
+    )
+
+
 manage_site_required = _perm_required("app.manage_site")
 """JSON guard: requires ``app.manage_site`` (held by FLP Staff and,
 implicitly, superusers)."""
