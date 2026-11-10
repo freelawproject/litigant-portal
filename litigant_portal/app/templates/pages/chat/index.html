@@ -129,13 +129,13 @@
                          x-cloak
                          x-text="reviewWarningText"
                          class="mb-2 max-w-[80%]" />
-          <div x-show="message.notTool"
+          <div x-show="message.hasText"
                class="max-w-[80%] rounded-lg px-3 py-2 text-sm break-words"
                x-bind:class="message.bubbleClass">
             <div x-show="message.isAssistant" x-html="message.html"></div>
             <div x-show="message.isUser" x-text="message.content" class="whitespace-pre-wrap"></div>
           </div>
-          <div x-show="message.notTool"
+          <div x-show="message.hasText"
                class="mt-1 flex items-center gap-2 text-xs leading-none text-greyscale-400 select-none">
             <button type="button"
                     x-bind:data-message-id="message.id"

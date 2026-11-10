@@ -241,6 +241,7 @@ function blankMessage() {
     isAssistant: false,
     isTool: false,
     notTool: true,
+    hasText: false,
     copied: false,
     notCopied: true,
     attachments: [],
@@ -281,6 +282,7 @@ function makeMessage(role, content, attachments, reviewWarning = false) {
     notCopied: true,
     isTool: false,
     notTool: true,
+    hasText: !isUser || !!content,
     attachments: atts,
     hasAtts: atts.length > 0,
     rowClass: isUser ? 'items-end' : 'items-start',
@@ -1481,13 +1483,22 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    // Commit the selection to the composer as chips on the next message.
+    // Commit the selection to the composer as chips. With nothing typed and
+    // no turn in flight, the files go out on their own right away.
     confirmAttach() {
       this.attachments = this.uploads
         .filter((u) => u.selected)
         .map((u) => ({ ...u }))
       this.hasAttachments = this.attachments.length > 0
       this.closeAttach()
+      if (
+        this.hasAttachments &&
+        !this.input.trim() &&
+        !this.streaming &&
+        !this.loadingThread
+      ) {
+        this.sendMessage('', this.threadId)
+      }
     },
 
     // Remove a composer chip — the upload id rides on the button.
