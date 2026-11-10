@@ -26,6 +26,13 @@ TOPIC_FLOW_LIST_CACHE_KEY = "topic_flow_list"
 CONTACT_LIST_CACHE_KEY = "contact_list"
 RESOURCE_LIST_CACHE_KEY = "resource_list"
 
+# The QA court switcher's choices (#886), built from the corpus files and
+# the court the Topic rows are on. Read through the app_meta context
+# processor on every page for FLP Staff on dev and QA, dropped on commit by
+# the busts_cache on corpus_sync and the topic services, the only writers of
+# either input outside a deploy (whose startup sync busts it too).
+COURT_SWITCHER_CHOICES_CACHE_KEY = "court_switcher_choices"
+
 # Keys holding cached model rows.
 DATA_MODEL_CACHE_KEYS = [
     SITE_CACHE_KEY,

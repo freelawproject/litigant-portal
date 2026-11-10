@@ -43,7 +43,8 @@ class Features:
     citation_chips: bool
     # Blank when there's no feedback link.
     feedback_url: str
-    # FLP tools, dev and qa only.
+    # FLP tools, dev and qa only. The court switcher also needs an instance
+    # with no CORPUS_COURT.
     court_switcher: bool
 
     @property
@@ -106,7 +107,13 @@ def _feedback_url(flp: bool, pilot: bool, feedback_email: str) -> str:
     return ""
 
 
-def features_for(env: str, pilot: bool, *, feedback_email: str) -> Features:
+def features_for(
+    env: str,
+    pilot: bool,
+    *,
+    feedback_email: str,
+    corpus_court: str | None = None,
+) -> Features:
     flp = env in FLP_ENVS
     pilot_tools = flp or pilot
     return Features(
@@ -118,7 +125,9 @@ def features_for(env: str, pilot: bool, *, feedback_email: str) -> Features:
         style_guide=pilot_tools,
         citation_chips=pilot_tools,
         feedback_url=_feedback_url(flp, pilot, feedback_email),
-        court_switcher=flp,
+        # Only on an instance that serves every court: flow pages 404 for
+        # any court but CORPUS_COURT, so switching away from it breaks them.
+        court_switcher=flp and corpus_court is None,
     )
 
 
@@ -129,4 +138,5 @@ def features() -> Features:
         settings.DEPLOYMENT_ENV,
         settings.PILOT,
         feedback_email=settings.FEEDBACK_EMAIL,
+        corpus_court=settings.CORPUS_COURT,
     )

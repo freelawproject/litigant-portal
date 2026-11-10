@@ -269,15 +269,18 @@
   }
 
   .logo-image {
-    @apply h-12 w-auto; /* 48px - default (header) */
+    /* 68px - default (header): the height of the court lockup (a 48px seal,
+       then the "Powered by" line), so the header is the same height with or
+       without a court. */
+    @apply h-17 w-auto;
   }
 
   .logo-sm .logo-image {
-    @apply h-8; /* 32px - compact */
+    @apply h-15; /* 60px - compact: a 40px seal plus the "Powered by" line */
   }
 
   .logo-lg .logo-image {
-    @apply h-15; /* 60px - prominent (auth pages) */
+    @apply h-20; /* 80px - prominent (auth pages): a 60px seal plus the line */
   }
 
   .logo-court {
@@ -332,6 +335,18 @@
   .logo-frame-responsive .logo-lg .logo-court-name,
   .logo-frame-responsive .logo-lg .logo-court-name-image {
     @apply @max-[13rem]:sr-only;
+  }
+
+  /* The QA court switcher's chevron (#886) sits beside the logo link, so the
+     frame would centre it on the whole lockup. Top-align it at the height of
+     the seal and name row instead: the seal's when the court has one, the
+     name's line when it doesn't (Franklin County). */
+  .court-switcher-toggle {
+    @apply self-start h-12 items-center;
+  }
+
+  .logo-frame:not(:has(.logo-court-mark)) .court-switcher-toggle {
+    height: calc(var(--text-lg) * var(--leading-tight));
   }
 
   .logo-powered {
