@@ -142,7 +142,7 @@ class TesterCourtChoiceTests(TestCase):
         self.assertEqual(self._choices(env="prod"), [])
 
     def test_no_choices_for_a_viewer_who_cannot_switch(self):
-        self.request.user = mock.Mock(has_perm=lambda perm: False)
+        self.request.user = mock.Mock(has_perm=mock.Mock(return_value=False))
         self.assertEqual(self._choices(), [])
 
     def test_no_choices_for_a_request_without_a_user(self):
@@ -161,7 +161,7 @@ class TesterCourtChoiceTests(TestCase):
     def test_a_topic_write_refreshes_the_selected_court(self):
         self.assertEqual(self._selected(), ["all"])
         with self.captureOnCommitCallbacks(execute=True):
-            topic_create(slug="adult-name-change", court="north-dakota")
+            topic_create(title="Adult name change", court="north-dakota")
         self.assertEqual(self._selected(), ["north-dakota"])
 
     def test_choices_are_all_courts_then_every_court_with_topics(self):
