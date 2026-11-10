@@ -165,14 +165,4 @@ document.addEventListener('alpine:init', () => {
         itemBox.left - rowBox.left - (row.clientWidth - itemBox.width) / 2
     },
   }))
-
-  // ===========================================================================
-  // Action plan page (print button)
-  // ===========================================================================
-
-  Alpine.data('actionPlanPage', () => ({
-    printPage() {
-      window.print()
-    },
-  }))
 })
