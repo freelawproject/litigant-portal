@@ -48,6 +48,7 @@ It sleeps for an hour and is reaped at the start of the next deploy, so there is
 
 - **docassemble.** It is a standing workload in the namespace, not part of this workflow — see below. Its state persisting across `litigant-web` deploys is a feature, not an accident.
 - **Ingress and the access gate.** Routing (`/` → LP, `/interview/` → docassemble) and the pre-launch access gate (#885) are cluster config.
+- **The `CloudFront-Viewer-Address` header.** Per-IP rate limits count the address in it when `TRUST_CLOUDFRONT_VIEWER_ADDRESS=true`. Setting that variable, forwarding the header to the origin, and limiting the load balancer to CloudFront traffic are cluster config. See [Login Rate Limits](./wiki/SECURITY.md#login-rate-limits).
 - **Secrets values.** The workflow re-syncs `litigant-env`; changing what's _in_ it (e.g. a new `DOCASSEMBLE_*` variable) means updating AWS Secrets Manager first — infra ask.
 
 ## The QA database is disposable

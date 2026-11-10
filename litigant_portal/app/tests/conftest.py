@@ -51,6 +51,11 @@ def ratelimited(settings, monkeypatch):
     )
 
 
+@pytest.fixture
+def behind_cloudfront(settings):
+    settings.TRUST_CLOUDFRONT_VIEWER_ADDRESS = True
+
+
 def _uses_database(request) -> bool:
     if request.node.get_closest_marker("django_db"):
         return True

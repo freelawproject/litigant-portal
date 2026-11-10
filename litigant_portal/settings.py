@@ -49,6 +49,12 @@ if not SECRET_KEY.strip():
 # SitePasswordMiddleware.
 SITE_PASSWORD = os.environ.get("SITE_PASSWORD", "")
 
+# Set only where CloudFront is the one way in (see client_ip.py).
+TRUST_CLOUDFRONT_VIEWER_ADDRESS = (
+    os.environ.get("TRUST_CLOUDFRONT_VIEWER_ADDRESS", "false").lower()
+    == "true"
+)
+
 ALLOWED_HOSTS = [
     h.strip()
     for h in os.environ.get("ALLOWED_HOSTS", "").split(",")
@@ -99,6 +105,9 @@ MIDDLEWARE = [
 # Turns a tripped @ratelimit into a JSON 429 (see views/utils.py). The admin
 # login and the site gate render their own 429 pages.
 RATELIMIT_VIEW = "litigant_portal.app.views.utils.ratelimited"
+
+# key="ip" counts the visitor's address, not the proxy's (see client_ip.py).
+RATELIMIT_IP_META_KEY = "litigant_portal.app.client_ip.get_client_ip"
 
 ROOT_URLCONF = "litigant_portal.app.urls"
 
@@ -274,6 +283,7 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = 1
 
 # Allauth account settings
+ACCOUNT_ADAPTER = "litigant_portal.app.adapters.AccountAdapter"
 ACCOUNT_LOGIN_METHODS = {"email"}  # Email-based login (not username)
 ACCOUNT_SIGNUP_FIELDS = [
     "email*",
