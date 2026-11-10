@@ -339,6 +339,95 @@ test('attaching while a reply streams keeps the chips', async () => {
   assert.equal(app.attachments.length, 1)
 })
 
+test('chips kept by a stream send on their own once it ends', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.threadId = 'thread-id'
+  app.streaming = true
+  app.confirmAttach()
+  await settle()
+  assert.equal(streamCalls(calls).length, 0)
+
+  app.streaming = false
+  app.refreshSendState()
+  assert.equal(app.sendDisabled, false)
+  app.send()
+  await settle()
+
+  const [sent] = streamCalls(calls)
+  assert.ok(sent)
+  assert.equal(sent.options.body.get('message'), '')
+  assert.deepEqual(sent.options.body.getAll('attachment_ids'), ['u1'])
+  assert.equal(app.attachments.length, 0)
+})
+
+test('chips kept by typed text send on their own once it is cleared', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.threadId = 'thread-id'
+  app.input = 'I got this ticket'
+  app.confirmAttach()
+  await settle()
+  assert.equal(streamCalls(calls).length, 0)
+
+  app.updateInput({ target: { value: '', style: {}, scrollHeight: 0 } })
+  assert.equal(app.sendDisabled, false)
+  app.send()
+  await settle()
+
+  const [sent] = streamCalls(calls)
+  assert.ok(sent)
+  assert.equal(sent.options.body.get('message'), '')
+  assert.deepEqual(sent.options.body.getAll('attachment_ids'), ['u1'])
+  assert.equal(app.attachments.length, 0)
+})
+
+test('an empty composer with no chips cannot send', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.refreshSendState()
+  assert.equal(app.sendDisabled, true)
+  app.send()
+  await settle()
+  assert.equal(streamCalls(calls).length, 0)
+})
+
+test('removing the last chip disables the send button again', async () => {
+  const { app } = await makeAttachApp()
+  app.streaming = true
+  app.confirmAttach()
+  app.streaming = false
+  app.refreshSendState()
+  assert.equal(app.sendDisabled, false)
+
+  app.removeAttachment({ currentTarget: { dataset: { uploadId: 'u1' } } })
+
+  assert.equal(app.hasAttachments, false)
+  assert.equal(app.sendDisabled, true)
+})
+
+test('an auto-send leaves focus free for the reply to return it', async () => {
+  const { app } = await makeAttachApp()
+  let focused = 0
+  app.attachTrigger = { focus: () => focused++ }
+
+  app.confirmAttach()
+  await settle()
+
+  assert.equal(focused, 0)
+  assert.equal(app.attachTrigger, null)
+})
+
+test('chips kept by typed text return focus to the Attach button', async () => {
+  const { app } = await makeAttachApp()
+  app.input = 'I got this ticket'
+  let focused = 0
+  app.attachTrigger = { focus: () => focused++ }
+
+  app.confirmAttach()
+  await settle()
+
+  assert.equal(focused, 1)
+  assert.equal(app.attachTrigger, null)
+})
+
 test('attaching with nothing selected makes no request', async () => {
   const { app, calls } = await makeAttachApp()
   app.uploads[0].selected = false
