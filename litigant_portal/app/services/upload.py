@@ -67,6 +67,12 @@ REQUEST_DOC_BUDGET = 4
 REQUEST_IMAGE_BUDGET = 8
 REQUEST_BYTE_BUDGET = 16 * 1024 * 1024
 
+# Stands in for the text of a user message sent with files only. The stored
+# message keeps its empty content; the model needs a non-blank text block.
+FILES_ONLY_NOTE = (
+    "[The user attached the files below without writing a message.]"
+)
+
 
 class UploadValidationError(Exception):
     """A user upload failed validation (bad type or too large)."""
@@ -436,7 +442,8 @@ def user_upload_llm_parts(
         msg = history[i]
         if msg.get("role") != "user" or not msg.get("attachments"):
             continue
-        parts = [{"type": "text", "text": msg.get("content", "")}]
+        text = msg.get("content", "") or FILES_ONLY_NOTE
+        parts = [{"type": "text", "text": text}]
         for upload_id in msg["attachments"]:
             parts.append(
                 _hydrate_attachment(

@@ -15,6 +15,7 @@ from django.test import Client, TestCase, override_settings
 
 from litigant_portal.app.models import ChatThread, UserIdentity, UserUpload
 from litigant_portal.app.services.upload import (
+    FILES_ONLY_NOTE,
     INLINE_MAX_BYTES,
     INLINE_MAX_PAGES,
     MAX_UPLOAD_SIZE,
@@ -113,6 +114,28 @@ class AttachmentHydrationTests(TestCase):
         self.assertIn('Attached file "notes.txt"', parts[1]["text"])
         self.assertIn(str(upload.id), parts[1]["text"])
         self.assertIn("secret: BANANA-42", parts[1]["text"])
+
+    def test_empty_message_hydrates_to_the_files_only_note(self):
+        upload = self._upload("notes.txt", "text/plain", b"hello")
+        history = self._history([upload])
+        history[0]["content"] = ""
+        parts = user_upload_llm_parts(
+            history=history,
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
+        )[0]
+        self.assertEqual(parts[0], {"type": "text", "text": FILES_ONLY_NOTE})
+        self.assertIn('Attached file "notes.txt"', parts[1]["text"])
+
+    def test_message_with_text_keeps_its_text_as_the_first_part(self):
+        upload = self._upload("notes.txt", "text/plain", b"hello")
+        parts = user_upload_llm_parts(
+            history=self._history([upload]),
+            cache={},
+            capabilities=frozenset({"text", "image", "document"}),
+        )[0]
+        self.assertEqual(parts[0], {"type": "text", "text": "message 0"})
+        self.assertNotIn(FILES_ONLY_NOTE, [p["text"] for p in parts])
 
     def test_image_inlines_as_image_part(self):
         upload = self._upload("photo.png", "image/png", b"\x89PNGfake")

@@ -60,6 +60,9 @@ litellm content parts (`user_upload_content_part`):
   user's own typing and deny an attachment exists — both inline and through
   `query_document`.
 - File bytes are read once per stream request via a request-lifetime cache.
+- A user message sent with files and no text keeps its empty `content` in
+  the database; hydration puts `FILES_ONLY_NOTE` in its place as the first
+  text part, since the model needs a non-blank text block.
 
 Inlining is subject to **per-request budgets**: 4 documents, 8 images, 16 MB
 total bytes.
