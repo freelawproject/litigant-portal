@@ -122,6 +122,22 @@ def test_site_gate_refuses_even_the_right_password_after_ten_attempts(
     assert b"Too many attempts." in response.content
 
 
+def test_site_gate_counts_each_viewer_address_apart(
+    site_gate, ratelimited, behind_cloudfront, client
+):
+    viewer_a = {"CloudFront-Viewer-Address": "203.0.113.10:5000"}
+    viewer_b = {"CloudFront-Viewer-Address": "203.0.113.20:5000"}
+    for _ in range(10):
+        client.post("/", {"site_password": "wrong"}, headers=viewer_a)
+
+    response = client.post("/", {"site_password": "wrong"}, headers=viewer_a)
+    assert response.status_code == 429
+
+    response = client.post("/", {"site_password": "wrong"}, headers=viewer_b)
+    assert response.status_code == 200
+    assert b"Incorrect password." in response.content
+
+
 @pytest.mark.postgres
 @pytest.mark.django_db
 def test_site_gate_correct_password_opens_the_site(site_gate, client):

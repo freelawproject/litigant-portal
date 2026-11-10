@@ -106,6 +106,9 @@ MIDDLEWARE = [
 # login and the site gate render their own 429 pages.
 RATELIMIT_VIEW = "litigant_portal.app.views.utils.ratelimited"
 
+# key="ip" counts the visitor's address, not the proxy's (see client_ip.py).
+RATELIMIT_IP_META_KEY = "litigant_portal.app.client_ip.get_client_ip"
+
 ROOT_URLCONF = "litigant_portal.app.urls"
 
 TEMPLATES = [
