@@ -30,6 +30,13 @@ from litigant_portal.app.selectors.topic_flow import (
 )
 from litigant_portal.app.selectors.user import user_assignable_roles
 
+# The court switcher's value for "every court" (#886); the service takes it
+# as ``court=None``.
+ALL_COURTS = "all"
+# The court branding files the switcher's list can show, by CourtSchema
+# branding field.
+BRANDING_FIELDS = ("logo", "name_image")
+
 
 def has_identity(request) -> bool:
     """Whether this visitor already has an identity worth reading.

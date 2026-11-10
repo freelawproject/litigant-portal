@@ -86,13 +86,10 @@ def _download(client, block):
 
 
 @pytest.mark.postgres
-def test_nd_calendar_and_contacts_download_from_the_real_rows(
-    client, db, settings
-):
+def test_nd_calendar_and_contacts_download_from_the_real_rows(client, db):
     # A single-court sync, as on the ND instance: a multi-court sync pools
     # every court's contacts into the one table the page lists.
-    settings.CORPUS_COURT = "north-dakota"
-    corpus_sync(strict=True)
+    corpus_sync(court="north-dakota", strict=True)
     client.get(ND_URL)
     identity, _ = UserIdentity.objects.get_or_create(
         user=None, session_key=client.session.session_key

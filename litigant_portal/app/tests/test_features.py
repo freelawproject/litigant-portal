@@ -87,6 +87,17 @@ def test_each_layer_adds_its_tools(env, pilot, expected):
     assert enabled == expected
 
 
+@pytest.mark.parametrize("env", ["dev", "qa"])
+def test_an_instance_pinned_to_one_court_has_no_court_switcher(env):
+    """Flow pages 404 for any court but CORPUS_COURT, so a switch away
+    from it would break every flow page (#886)."""
+    pinned = features_for(
+        env, False, feedback_email="", corpus_court="arizona"
+    )
+    assert pinned.court_switcher is False
+    assert features_for(env, False, feedback_email="").court_switcher
+
+
 @pytest.mark.parametrize(
     ("env", "pilot", "label"),
     [

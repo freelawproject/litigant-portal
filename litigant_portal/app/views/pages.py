@@ -5,9 +5,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.http import (
+    FileResponse,
     Http404,
     HttpRequest,
     HttpResponse,
+    HttpResponseBadRequest,
     HttpResponseNotAllowed,
 )
 from django.shortcuts import redirect, render
@@ -32,9 +34,13 @@ from litigant_portal.app.selectors.bedrock import (
     bedrock_catalog_get,
     bedrock_model_choices,
 )
+from litigant_portal.app.selectors.corpus import COURTS_DIR, corpus_load_courts
 from litigant_portal.app.selectors.site import contact_help_list, site_get
+from litigant_portal.app.services.corpus import corpus_court_switch
 from litigant_portal.app.services.user import user_identity_reset
 from litigant_portal.app.views.utils import (
+    ALL_COURTS,
+    BRANDING_FIELDS,
     activity_threads,
     admin_tabs,
     briefcase_answers,
@@ -103,6 +109,62 @@ def start_over(request):
     ):
         next_url = reverse("pages:home")
     return redirect(urlsplit(next_url).path)
+
+
+def court_switch(request):
+    """Tester tool: resync this site to one court, or to every court
+    (#886). On wherever ``features().court_switcher`` is (dev and QA).
+
+    The switch is site-wide, so it changes the court for everyone on the
+    site until the next switch, deploy or restart, and only FLP Staff
+    (``app.manage_site``) may make it. It never touches sessions or
+    answers. Returns home, since the old court's flow pages no longer
+    exist.
+    """
+    # Before the permission and method checks, as in start_over: where
+    # it's off, every request 404s, so nothing gives away that the
+    # endpoint exists. That order is why this isn't @permission_required.
+    if not features().court_switcher:
+        raise Http404
+    if not request.user.has_perm("app.manage_site"):
+        raise PermissionDenied
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+    slug = request.POST.get("court", "")
+    courts = corpus_load_courts(with_topics=True)
+    if slug != ALL_COURTS and slug not in courts:
+        return HttpResponseBadRequest()
+    if slug == ALL_COURTS:
+        summary = corpus_court_switch(court=None)
+        court_label = _("all courts")
+    else:
+        summary = corpus_court_switch(court=slug)
+        court_label = courts[slug].name
+    messages.success(
+        request,
+        _("Switched to %(court)s: %(topics)d topics, %(flows)d flows.")
+        % {"court": court_label, **summary},
+    )
+    return redirect("pages:home")
+
+
+def court_branding(request, court, field):
+    """Tester tool: one court's logo or name image, straight from the corpus
+    (#886). The court switcher's list shows every court's seal and name, but
+    only the current court's branding is copied into storage by a sync.
+    404 wherever ``features().court_switcher`` is off, and for a court,
+    field or file the corpus doesn't have."""
+    if not features().court_switcher:
+        raise Http404
+    schema = corpus_load_courts().get(court)
+    path = (
+        getattr(schema.branding, field)
+        if schema and field in BRANDING_FIELDS
+        else None
+    )
+    if path is None:
+        raise Http404
+    return FileResponse((COURTS_DIR / court / path).open("rb"))
 
 
 def about(request):

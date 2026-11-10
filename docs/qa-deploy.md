@@ -9,13 +9,16 @@ This doc covers the app side — what a deploy does, what it deliberately does n
 GitHub → Actions → **Deploy to QA (EKS)** → Run workflow, or:
 
 ```bash
-gh workflow run qa-deploy.yml -f deploy_ref=<branch> -f reset_db=true
+gh workflow run qa-deploy.yml -f deploy_ref=<branch>
+gh workflow run qa-deploy.yml -f deploy_ref=main -f reset_db=true  # rebuild the database
 ```
 
 Two inputs:
 
 - **`deploy_ref`** — any branch or tag (default `main`). QA is how a feature branch gets seen before merge.
-- **`reset_db`** — default **true**: the deploy drops every table and rebuilds the database from the deployed ref (#881). Untick it to keep user-entered QA data (threads, uploads, accounts) across the deploy — corpus rows are still re-synced from the ref either way (see below).
+- **`reset_db`** — default **false** (#886): the deploy keeps the database, so FLP Staff accounts, user-entered QA data (threads, uploads) and the court the switcher is on survive it. Corpus rows are still re-synced from the ref either way (see below). Tick it to drop every table and rebuild the database from the deployed ref (#881):
+  - **after deploying a branch with its own migrations**, on the next deploy (usually `main`). Nothing else rolls those migrations back, so QA keeps tables and columns the next ref doesn't know about until #1154 lands.
+  - to return QA to all courts with a clean slate.
 
 **One QA, last deploy wins.** There is a single shared environment, so a deploy replaces whatever ref was there before. A quick note in Slack before deploying a non-`main` ref is enough coordination. Per-PR preview environments are a later tier (#587).
 
@@ -49,9 +52,9 @@ It sleeps for an hour and is reaped at the start of the next deploy, so there is
 
 ## The QA database is disposable
 
-With `reset_db` on (the default) the database is rebuilt from scratch on every deploy: fresh migrations, corpus synced from the ref's YAML, a bootstrapped superuser, nothing else. Consequences worth knowing:
+With `reset_db` ticked the database is rebuilt from scratch on every deploy: fresh migrations, corpus synced from the ref's YAML, a bootstrapped superuser, nothing else. Consequences worth knowing:
 
-- Anything entered by hand on QA (threads, uploads, admin settings such as the chat model choice) is gone on the next default deploy. Demo data that must survive belongs in fixtures/corpus, not in the QA database.
+- Anything entered by hand on QA (threads, uploads, admin settings such as the chat model choice) is gone on the next deploy with `reset_db` ticked. Demo data that must survive belongs in fixtures/corpus, not in the QA database.
 - Runtime-stored settings reset on the same schedule — the reason #885 rejected a database-backed site password.
 - `sync_corpus --strict` and `bootstrap_superuser` run on every deploy even with `reset_db` unticked. Unticking preserves user-entered rows, but corpus rows are always overwritten from the deployed ref's YAML — a corpus edit made directly in the QA database never survives a deploy.
 - docassemble is unaffected: its state lives inside its own container and volumes, not in the LP database.

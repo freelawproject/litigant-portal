@@ -3,12 +3,12 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import transaction
 
 from litigant_portal.app.cache import (
     CONTACT_LIST_CACHE_KEY,
+    COURT_SWITCHER_CHOICES_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
     SITE_CACHE_KEY,
     TOPIC_FLOW_LIST_CACHE_KEY,
@@ -19,6 +19,7 @@ from litigant_portal.app.models import (
     Form,
     FormField,
     Resource,
+    Site,
     Topic,
     TopicFlow,
     TopicFlowDeadline,
@@ -145,9 +146,25 @@ def _sync_forms(
     return rows
 
 
+# The Site fields a court sync writes. Everything else on the row (the
+# model choices) is admin-owned and no sync touches it.
+_SITE_BRANDING_FILES = ("logo", "name_image")
+_SITE_COURT_FIELDS = (
+    "court_name",
+    "jurisdiction_level",
+    "state",
+    "official_url",
+    "official_resources_url",
+    "branding_name",
+    *_SITE_BRANDING_FILES,
+)
+
+
 def _sync_site(slug: str, schema: CourtSchema, courts_dir: Path) -> None:
-    """Write the court's fields and branding onto the Site singleton. A
-    branding file the court no longer names is deleted from storage."""
+    """
+    Write the court's fields and branding onto the Site singleton. A
+    branding file the court no longer names is deleted from storage.
+    """
     site = site_get()
     _apply(site, schema, exclude={"name", "contacts", "resources", "branding"})
     site.branding_name = schema.branding.name
@@ -164,19 +181,22 @@ def _sync_site(slug: str, schema: CourtSchema, courts_dir: Path) -> None:
         _file_replace(
             field_file, f"{slug}-{field}{source.suffix}", source.read_bytes()
         )
-    site.save(
-        update_fields=[
-            "court_name",
-            "jurisdiction_level",
-            "state",
-            "official_url",
-            "official_resources_url",
-            "branding_name",
-            "logo",
-            "name_image",
-            "updated_at",
-        ]
-    )
+    site.save(update_fields=[*_SITE_COURT_FIELDS, "updated_at"])
+
+
+def _clear_site() -> None:
+    """Blank the Site's court fields and delete its branding files, so an
+    all-courts QA site shows no one court's name. The model choices stay.
+    Reads the row, not the cache, so a stale copy can't skip a file."""
+    site = Site.objects.get()
+    for field in _SITE_COURT_FIELDS:
+        field_file = getattr(site, field)
+        if field in _SITE_BRANDING_FILES:
+            if field_file:
+                field_file.delete(save=False)
+        else:
+            setattr(site, field, "")
+    site.save(update_fields=[*_SITE_COURT_FIELDS, "updated_at"])
 
 
 def _reject_shared_names(courts: list[CourtSchema]) -> None:
@@ -346,16 +366,20 @@ def _sync_flow(
     TOPIC_FLOW_LIST_CACHE_KEY,
     CONTACT_LIST_CACHE_KEY,
     RESOURCE_LIST_CACHE_KEY,
+    COURT_SWITCHER_CHOICES_CACHE_KEY,
 )
 def corpus_sync(
     *, court: str | None = None, strict: bool = False, root: Path | None = None
 ) -> dict[str, int]:
     """
     Upsert the corpus into the database by natural keys.
+
+    ``court`` scopes the sync to one court and writes its fields onto the
+    Site. ``None`` syncs every court and leaves the Site alone, because the
+    admin settings page can hand-edit those fields. The ``CORPUS_COURT``
+    fallback lives in the ``sync_corpus`` command, not here.
     """
     corpus = corpus_load(root=root)
-    if court is None:
-        court = settings.CORPUS_COURT
     if court is not None and court not in corpus.courts:
         raise ValueError(
             f"unknown court {court!r}; corpus has {sorted(corpus.courts)}"
@@ -420,3 +444,16 @@ def corpus_sync(
         "deleted": deleted,
         "orphaned": orphaned,
     }
+
+
+def corpus_court_switch(*, court: str | None) -> dict[str, int]:
+    """The QA court switcher (#886): resync strictly to one court, or to
+    every court with the Site's court fields and branding cleared. Users'
+    sessions and answers are untouched, since nothing they own points at
+    topics or flows. ``corpus_sync`` busts the Site cache at commit, which
+    covers the clear too, since both run in one transaction."""
+    with transaction.atomic():
+        summary = corpus_sync(court=court, strict=True)
+        if court is None:
+            _clear_site()
+    return summary
