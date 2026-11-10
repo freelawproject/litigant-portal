@@ -13,9 +13,11 @@ pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 LOGIN_URL = "/django-admin/login/"
 
 
-def _login(client, username, url=LOGIN_URL):
+def _login(client, username, url=LOGIN_URL, headers=None):
     return client.post(
-        url, {"username": username, "password": "wrong-password"}
+        url,
+        {"username": username, "password": "wrong-password"},
+        headers=headers,
     )
 
 
@@ -24,6 +26,21 @@ def test_admin_login_allows_ten_failures_a_minute_per_ip(ratelimited, client):
         assert _login(client, f"user{i}@example.com").status_code == 200
 
     assert _login(client, "user10@example.com").status_code == 429
+
+
+def test_admin_login_ip_limit_counts_each_viewer_address_apart(
+    ratelimited, behind_cloudfront, client
+):
+    viewer_a = {"CloudFront-Viewer-Address": "203.0.113.10:5000"}
+    viewer_b = {"CloudFront-Viewer-Address": "203.0.113.20:5000"}
+    for i in range(10):
+        _login(client, f"user{i}@example.com", headers=viewer_a)
+
+    response = _login(client, "user10@example.com", headers=viewer_a)
+    assert response.status_code == 429
+
+    response = _login(client, "other@example.com", headers=viewer_b)
+    assert response.status_code == 200
 
 
 def test_admin_login_allows_five_failures_per_account(ratelimited, client):

@@ -283,6 +283,7 @@ AUTHENTICATION_BACKENDS = [
 SITE_ID = 1
 
 # Allauth account settings
+ACCOUNT_ADAPTER = "litigant_portal.app.adapters.AccountAdapter"
 ACCOUNT_LOGIN_METHODS = {"email"}  # Email-based login (not username)
 ACCOUNT_SIGNUP_FIELDS = [
     "email*",
