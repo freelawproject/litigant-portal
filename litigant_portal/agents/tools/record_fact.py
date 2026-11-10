@@ -29,7 +29,8 @@ class RecordFact(Tool):
         description=(
             "Optional supporting evidence keyed by variable name, e.g. "
             '{"county": {"quote": "I live in Burleigh County."}}. '
-            "Quote a short excerpt of the user's statement or document. "
+            "Use a short excerpt copied verbatim from the user's message, "
+            "the document, or its QueryDocument response; never reconstruct it. "
             "For document excerpts, also include the document's upload_id. "
             "For unchanged answers, evidence is added only when none is "
             "stored; existing evidence is kept."
