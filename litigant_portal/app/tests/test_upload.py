@@ -1,13 +1,16 @@
 """Tests for the upload services (services/upload.py) and the attachment
-ownership boundary the stream endpoint enforces on top of them. The
-validation message tests are DB-free."""
+rules the stream endpoint enforces on top of them: ownership, and a
+message that carries only files. The validation message tests are
+DB-free."""
 
 import io
 import tempfile
+from unittest.mock import patch
 
 import pytest
 from django.core.files.base import ContentFile
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.http import JsonResponse
 from django.test import Client, TestCase, override_settings
 
 from litigant_portal.app.models import ChatThread, UserIdentity, UserUpload
@@ -428,6 +431,68 @@ class AttachmentOwnershipTests(TestCase):
         self.assertEqual(res.status_code, 400)
         self.assertEqual(res.json()["error"], "Invalid attachment")
         self.assertFalse(ChatThread.objects.exists())
+
+
+@pytest.mark.postgres
+@override_settings(MEDIA_ROOT=tempfile.mkdtemp())
+class FilesOnlyMessageTests(TestCase):
+    """The stream endpoint takes a message with no text when it carries an
+    owned attachment; with neither, it still refuses the request."""
+
+    def setUp(self):
+        self.client = Client()
+        self.client.get(ASSISTANT_BASE + "uploads/")
+        self.identity = UserIdentity.objects.get(
+            session_key=self.client.session.session_key
+        )
+        self.upload = UserUpload.objects.create(
+            identity=self.identity,
+            file=ContentFile(b"mine", name="mine.txt"),
+            name="mine.txt",
+            content_type="text/plain",
+            size=4,
+        )
+
+    def _stream(self, data):
+        with patch(
+            "litigant_portal.app.views.chat_engine.chat_stream",
+            return_value=JsonResponse({"streamed": True}),
+        ) as chat_stream:
+            res = self.client.post(ASSISTANT_BASE + "stream/", data)
+        return res, chat_stream
+
+    def test_files_without_text_reach_the_engine_as_an_empty_message(self):
+        res, chat_stream = self._stream(
+            {"attachment_ids": [str(self.upload.id)]}
+        )
+        self.assertEqual(res.status_code, 200)
+        chat_stream.assert_called_once()
+        self.assertEqual(chat_stream.call_args.kwargs["message"], "")
+        self.assertEqual(
+            chat_stream.call_args.kwargs["attachment_ids"],
+            [str(self.upload.id)],
+        )
+
+    def test_no_text_and_no_files_is_still_refused(self):
+        res, chat_stream = self._stream({})
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["error"], "Message is required")
+        chat_stream.assert_not_called()
+        self.assertFalse(ChatThread.objects.exists())
+
+    def test_no_text_with_a_strangers_file_is_refused(self):
+        stranger = UserIdentity.objects.create(session_key="stranger")
+        theirs = UserUpload.objects.create(
+            identity=stranger,
+            file=ContentFile(b"private", name="theirs.txt"),
+            name="theirs.txt",
+            content_type="text/plain",
+            size=7,
+        )
+        res, chat_stream = self._stream({"attachment_ids": [str(theirs.id)]})
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.json()["error"], "Invalid attachment")
+        chat_stream.assert_not_called()
 
 
 @pytest.mark.postgres
