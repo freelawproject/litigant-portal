@@ -1,5 +1,6 @@
 """Tests for the upload services (services/upload.py) and the attachment
-ownership boundary the stream endpoint enforces on top of them."""
+ownership boundary the stream endpoint enforces on top of them. The
+validation message tests are DB-free."""
 
 import io
 import tempfile
@@ -13,8 +14,10 @@ from litigant_portal.app.models import ChatThread, UserIdentity, UserUpload
 from litigant_portal.app.services.upload import (
     INLINE_MAX_BYTES,
     INLINE_MAX_PAGES,
+    MAX_UPLOAD_SIZE,
     READER_MAX_PAGES,
     READER_MAX_TEXT_TOKENS,
+    UploadValidationError,
     user_upload_create,
     user_upload_llm_parts,
     user_upload_reader_limit_error,
@@ -38,6 +41,23 @@ def make_pdf(pages: int = 1) -> bytes:
     buffer = io.BytesIO()
     writer.write(buffer)
     return buffer.getvalue()
+
+
+def test_wrong_file_type_message_names_the_extension_and_allowed_kinds():
+    file = SimpleUploadedFile("report.exe", b"x")
+    with pytest.raises(UploadValidationError) as excinfo:
+        user_upload_create(identity=None, file=file)
+    message = str(excinfo.value)
+    assert "isn't supported (.exe)" in message
+    assert "PDF, Word, Excel, images or text" in message
+
+
+def test_too_large_message_states_the_limit():
+    file = SimpleUploadedFile("big.pdf", b"x")
+    file.size = MAX_UPLOAD_SIZE + 1
+    with pytest.raises(UploadValidationError) as excinfo:
+        user_upload_create(identity=None, file=file)
+    assert str(excinfo.value) == "File is too large (max 20 MB)."
 
 
 @pytest.mark.postgres

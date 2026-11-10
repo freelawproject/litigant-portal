@@ -213,6 +213,9 @@
               </button>
             </div>
           </template>
+          <p class="basis-full text-xs text-greyscale-500">
+            {% trans "Send a message to share these files with the assistant." %}
+          </p>
         </div>
         <div class="relative">
           <textarea x-ref="input"
@@ -333,24 +336,41 @@
             {% trans "or" %} <span class="font-medium text-primary-600">{% trans "browse from your computer" %}</span>
           </span>
           <span class="block mt-2 text-2xs text-greyscale-500 pointer-events-none">
-            {% trans "PDF, Word, Excel, images & text — up to 20 MB each" %}
+            {% trans "PDF, Word, Excel, images and text, up to 20 MB each" %}
           </span>
         </button>
-        <p x-show="hasUploadError"
-           x-cloak
-           class="mt-2 text-xs text-red-600"
-           x-text="uploadError"></p>
       </div>
-      {# In-flight uploads #}
-      <div x-show="hasPending" x-cloak class="px-6 mt-3 space-y-1.5">
-        <template x-for="p in pendingUploads" :key="p.id">
-          <div class="flex items-center gap-2.5 rounded-lg border border-greyscale-200 bg-greyscale-50 px-3 py-2">
-            <c-atoms.icon name="arrow-path" class="w-4 h-4 text-primary-600 animate-spin flex-shrink-0" />
-            <span class="text-xs font-medium text-greyscale-700 truncate" x-text="p.name"></span>
-            <span class="ml-auto text-2xs font-medium uppercase tracking-wide text-greyscale-500 flex-shrink-0">{% trans "Uploading…" %}</span>
+      {# Upload jobs, kept until the dialog closes #}
+      <div x-show="hasUploadJobs" x-cloak class="px-6 mt-3 space-y-1.5">
+        <template x-for="job in uploadJobs" :key="job.id">
+          <div class="flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border px-3 py-2"
+               x-bind:class="job.rowClass">
+            <c-atoms.icon name="arrow-path"
+                          x-show="job.isUploading"
+                          class="w-4 h-4 text-primary-600 animate-spin flex-shrink-0" />
+            <c-atoms.icon name="check"
+                          x-show="job.isDone"
+                          x-cloak
+                          class="w-4 h-4 text-green-600 flex-shrink-0" />
+            <c-atoms.icon name="exclamation-circle"
+                          x-show="job.isFailed"
+                          x-cloak
+                          class="w-4 h-4 text-red-600 flex-shrink-0" />
+            <span class="flex-1 min-w-0 text-xs font-medium text-greyscale-700 truncate" x-text="job.name"></span>
+            <span x-show="job.isUploading"
+                  class="ml-auto text-2xs font-medium uppercase tracking-wide text-greyscale-500 flex-shrink-0">{% trans "Uploading…" %}</span>
+            <span x-show="job.isDone"
+                  x-cloak
+                  class="ml-auto text-2xs font-medium uppercase tracking-wide text-green-700 flex-shrink-0">{% trans "Uploaded" %}</span>
+            <span x-show="job.isFailed"
+                  x-cloak
+                  class="basis-full text-xs text-red-700"
+                  x-text="job.error"></span>
           </div>
         </template>
       </div>
+      {# Announces upload status changes #}
+      <c-atoms.live-region x-text="uploadAnnouncement" />
       {# Library #}
       <div class="px-6 pt-4 pb-1">
         <div class="flex items-center justify-between mb-2">

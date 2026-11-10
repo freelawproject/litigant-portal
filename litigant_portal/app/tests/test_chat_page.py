@@ -50,6 +50,12 @@ LIVE_REGION_RE = re.compile(
 # wrappers): headings and paragraphs.
 TEXT_TAG_OPEN_RE = re.compile(r"<(p|h[1-6])\b")
 
+# The attachment chips wrapper, up to the textarea.
+ATTACHMENTS_BLOCK_RE = re.compile(
+    r'<div\b[^<>]*x-show="hasAttachments"[^<>]*>(.*?)<textarea\b', re.DOTALL
+)
+SEND_HINT = "Send a message to share these files with the assistant."
+
 
 @pytest.mark.postgres
 class ChatPageRouteTests(TestCase):
@@ -193,6 +199,17 @@ class MessagesLiveRegionTests(TestCase):
             'aria-live="polite" (found the strings only separately, if '
             "at all).",
         )
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_attachment_chips_carry_a_hint_to_send_a_message(client):
+    content = client.get(reverse("pages:chat")).content.decode()
+    block = ATTACHMENTS_BLOCK_RE.search(content)
+    assert block, "attachment chips wrapper not found before the textarea"
+    assert re.search(
+        rf"<p\b[^<>]*>\s*{re.escape(SEND_HINT)}\s*</p>", block.group(1)
+    )
 
 
 class ChatTemplateHygieneTests(TestCase):
