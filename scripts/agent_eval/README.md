@@ -14,6 +14,7 @@ Both application modes use the same adapter. A pinned external evaluator grades 
 
 Run commands from the repository root. `make agent-eval` uses this directory's
 independent uv project, lockfile, and `.venv`; it reads the root `.env` if present.
+The launcher ignores an inherited `VIRTUAL_ENV` to keep using that project environment.
 It does not install evaluation dependencies into the application environment or
 Docker image.
 
@@ -161,9 +162,21 @@ completed answers. Copied/recovered judgments never duplicate paid-call costs.
 
 Live grading prints each result and ends with failure counts and reasons. Invalid
 judgments leave the batch incomplete and make `run`/`judge` exit nonzero; an
-answer's rubric critical failures do not. Reports show coverage and recovery
-provenance, retaining original and replacement judge costs separately from
-candidate costs.
+answer's rubric critical failures do not. `judge` exits successfully once all
+completed answers are graded, even if candidate executions failed. Those failures
+remain zero-score results in the original denominators. `run` still exits nonzero
+for candidate failures. Missing or unfinished candidate attempts make either
+command exit nonzero; `run --no-judge` permits intentionally skipped grading.
+Recovery advice appears only when completed answers need grading.
+
+The console separates candidate failures from outstanding grading and lists
+failed attempts' JSON files and any adjacent logs. The JSON records the attempt's
+`error` and `error_category`, with more specific provider errors in `calls`;
+the log contains any captured traceback. Existing summary JSON fields remain
+unchanged, including `grading.counts` and `grading.errors`, which can count failed
+candidates as `ungraded`. This does not mean those candidates need grading.
+Reports show coverage and recovery provenance, retaining original and replacement
+judge costs separately from candidate costs.
 
 Judge format v4 allows `contradicted` with `value: null` for a denial without an
 asserted amount. It still requires evidence and applies the critical-failure

@@ -865,18 +865,32 @@ def report_runs(
         reports[0] if len(reports) == 1 else {"runs": reports},
     )
     charts(reports, output / "charts")
-    for report in reports:
+    for run, report in zip(runs, reports, strict=True):
         totals = report["systems"]
+        grading_errors = Counter(
+            row["judge_error_category"] or row["judge_status"]
+            for row in report["attempts"]
+            if row["status"] == "completed"
+            and row["judge_status"] != "completed"
+        )
         print(
-            f"Results: {sum(row['recorded'] for row in totals)}/{sum(row['planned'] for row in totals)} answers recorded; "
+            f"Results: {sum(row['recorded'] for row in totals)}/{sum(row['planned'] for row in totals)} attempts recorded; "
             f"{sum(row['graded'] for row in totals)} graded; "
-            f"{sum(row['ungraded'] + row['missing'] for row in totals)} ungraded/missing; "
+            f"{sum(grading_errors.values())} awaiting grading; "
+            f"{sum(row['missing'] for row in totals)} missing attempts; "
             f"{sum(row['execution_failures'] for row in totals)} candidate failures; "
             f"{report['grading']['recovered']} recovered offline.",
             flush=True,
         )
-        for reason, count in report["grading"]["errors"].items():
+        for reason, count in grading_errors.items():
             print(f"  {count}: {reason}", flush=True)
+        for row in report["attempts"]:
+            if row["status"] in {"error", "interrupted"}:
+                path = run.resolve() / row["attempt"]
+                print(f"  Failed candidate: {path}", flush=True)
+                log = path.with_suffix(".log")
+                if log.is_file():
+                    print(f"    Log: {log}", flush=True)
         print(
             f"Timeout diagnostics: {sum(row['generation_timeout_attempts'] for row in totals)} generation-timeout attempts; "
             f"{sum(row['attempt_timeouts'] for row in totals)} attempt deadlines; "

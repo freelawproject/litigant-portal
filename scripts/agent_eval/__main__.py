@@ -115,23 +115,53 @@ def main():
         )
         if args.dry_run:
             return 0
-    reports = report_runs([run])
-    incomplete = int(
-        any(
-            row["execution_failures"]
-            or row["missing"]
-            or (row["ungraded"] and not getattr(args, "no_judge", False))
-            for row in reports[0]["systems"]
-        )
+    report = report_runs([run])[0]
+    failures = sum(row["execution_failures"] for row in report["systems"])
+    missing = sum(row["missing"] for row in report["systems"])
+    unfinished = any(
+        row["status"] not in {"completed", "error", "interrupted"}
+        for row in report["attempts"]
     )
-    if incomplete:
+    needs_grading = not getattr(args, "no_judge", False) and any(
+        row["status"] == "completed" and row["judge_status"] != "completed"
+        for row in report["attempts"]
+    )
+    incomplete = bool(
+        missing
+        or unfinished
+        or needs_grading
+        or (args.command == "run" and failures)
+    )
+    if missing or unfinished:
         print(
-            "Evaluation incomplete; see grading counts above. "
+            "Evaluation incomplete: candidate attempts are missing or "
+            "unfinished; grading cannot repair them.",
+            file=sys.stderr,
+        )
+    if needs_grading:
+        print(
+            "Grading incomplete. "
             "Use 'recover RUN' for offline recovery, then "
             "'judge RUN --retry-failed' for unresolved judgments.",
             file=sys.stderr,
         )
-    return incomplete
+    if args.command == "run" and failures:
+        print(
+            f"Candidate executions failed: {failures}. "
+            "These attempts remain zero-score results.",
+            file=sys.stderr,
+        )
+    if args.command == "judge" and not incomplete:
+        print(
+            "Grading complete."
+            + (
+                f" Candidate failures remain zero-score results: {failures}."
+                if failures
+                else ""
+            ),
+            flush=True,
+        )
+    return int(incomplete)
 
 
 def require_key():

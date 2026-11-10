@@ -676,7 +676,9 @@ def test_attempt_deadline_is_distinct_from_provider_timeout(tmp_path):
 
 
 @pytest.mark.parametrize("system", ["current", "no_judge", "old"])
-def test_report_separates_generation_deadlines_and_judging(tmp_path, system):
+def test_report_separates_generation_deadlines_and_judging(
+    tmp_path, system, capsys
+):
     generation = {
         "request": {"stream": True, "timeout": 45, "num_retries": 0},
         "error_category": "timeout",
@@ -748,7 +750,13 @@ def test_report_separates_generation_deadlines_and_judging(tmp_path, system):
         folder / "grade.json",
         {"status": "error", "error_category": "invalid_json", "calls": []},
     )
-    before = {path: path.read_bytes() for path in tmp_path.rglob("*.json")}
+    log = tmp_path / "attempt-0.log"
+    log.write_text("generation timeout\n")
+    before = {
+        path: path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
     result = report.summarize(tmp_path)
     first, deadline, disabled, legacy = result["attempts"]
     assert first["generation_timeout"] is True
@@ -778,6 +786,80 @@ def test_report_separates_generation_deadlines_and_judging(tmp_path, system):
     assert summary["known_cost_usd"] == pytest.approx(0.3)
     assert first["overall"] == 0
     assert result["grading"]["errors"] == {"ungraded": 3, "invalid_json": 1}
+    with patch.object(report, "charts"):
+        report.report_runs([tmp_path], output=tmp_path / "report")
+    output = capsys.readouterr().out
+    assert "4/4 attempts recorded; 0 graded; 2 awaiting grading; " in output
+    assert "0 missing attempts; 2 candidate failures;" in output
+    assert "  1: ungraded" in output
+    assert "  1: invalid_json" in output
+    assert "  3: ungraded" not in output
+    assert f"Failed candidate: {tmp_path / 'attempt-0.json'}" in output
+    assert f"Log: {log}" in output
+    assert f"Failed candidate: {tmp_path / 'attempt-1.json'}" in output
+    assert "attempt-1.log" not in output
+    assert (
+        json.loads((tmp_path / "report" / "summary.json").read_text())
+        == result
+    )
     assert all(
         path.read_bytes() == content for path, content in before.items()
     )
+
+
+@pytest.mark.parametrize(
+    "command,status,judge_status,missing,expected_exit,retry_advice",
+    [
+        ("judge", "error", "ungraded", 0, 0, False),
+        ("run", "error", "ungraded", 0, 1, False),
+        ("judge", "completed", "error", 0, 1, True),
+        ("run", "completed", "error", 0, 1, True),
+        ("judge", "completed", "completed", 1, 1, False),
+        ("judge", "running", "ungraded", 0, 1, False),
+        ("run --no-judge", "completed", "ungraded", 0, 0, False),
+        ("run --no-judge", "running", "ungraded", 0, 1, False),
+    ],
+)
+def test_cli_completion_status(
+    tmp_path,
+    monkeypatch,
+    capsys,
+    command,
+    status,
+    judge_status,
+    missing,
+    expected_exit,
+    retry_advice,
+):
+    from scripts.agent_eval import __main__ as cli
+
+    args = command.split()
+    if command == "judge":
+        args += [str(tmp_path), "--retry-failed"]
+    monkeypatch.setattr(cli.sys, "argv", ["agent-eval", *args])
+    result = {
+        "systems": [
+            {
+                "execution_failures": int(status == "error"),
+                "missing": missing,
+                "ungraded": int(
+                    status != "error" and judge_status != "completed"
+                ),
+            }
+        ],
+        "attempts": [{"status": status, "judge_status": judge_status}],
+    }
+    with (
+        patch.object(cli, "require_key"),
+        patch.object(cli, "read_config", return_value=Config()),
+        patch.object(runner, "run_suite", return_value=tmp_path),
+        patch.object(runner, "judge_run"),
+        patch.object(report, "report_runs", return_value=[result]),
+    ):
+        assert cli.main() == expected_exit
+    output = capsys.readouterr()
+    assert ("Use 'recover RUN'" in output.err) == retry_advice
+    if command == "judge" and expected_exit == 0:
+        assert "Grading complete" in output.out
+        assert "zero-score results" in output.out
+        assert not output.err
