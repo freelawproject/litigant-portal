@@ -9,8 +9,9 @@ name: Build and Push to Docker Hub
 # The test suite is invoked as a reusable workflow so each stage depends on
 # the previous one, preventing failed tests from reaching production.
 #
-# Smoke loads key pages of the image just published in a browser, so a page
-# that breaks only at render or asset-load time stops the deploy.
+# Smoke loads key pages of the image just published in a browser and sends one
+# chat message, so a page that breaks only at render or asset-load time, or a
+# chat that stops answering, stops the deploy.
 #
 # Migrations are applied in a temporary pod before the web deployment is
 # updated. This catches migration failures before any production pods are
@@ -125,6 +126,8 @@ jobs:
     uses: ./.github/workflows/smoke.yml
     with:
       image: freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod
+    secrets:
+      AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
 
   setup-deploy:
     needs: [get-pr-labels, build, smoke]

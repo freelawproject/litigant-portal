@@ -61,7 +61,7 @@ agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'r
 BASE_URL ?= http://localhost
 
 .PHONY: smoke
-smoke: ## Load key pages and /api/health/ in Chromium against BASE_URL (default http://localhost)
+smoke: ## Load key pages and /api/health/ and send one chat message in Chromium against BASE_URL (default http://localhost)
 	env -u VIRTUAL_ENV uv run --project scripts/smoke --locked playwright install chromium
 	env -u VIRTUAL_ENV uv run --project scripts/smoke --locked pytest scripts/smoke --base-url $(BASE_URL)
 
