@@ -198,7 +198,9 @@ jobs:
   deploy-web:
     needs: [get-pr-labels, build, setup-deploy]
     runs-on: ubuntu-latest
-    if: ${{ !contains(needs.get-pr-labels.outputs.labels, 'skip-web-deploy') }}
+    # By default a skipped job anywhere upstream skips this one, so a skipped
+    # smoke would block the override without the explicit setup-deploy check.
+    if: ${{ !cancelled() && needs.setup-deploy.result == 'success' && !contains(needs.get-pr-labels.outputs.labels, 'skip-web-deploy') }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
