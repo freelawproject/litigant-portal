@@ -89,7 +89,32 @@ jobs:
         run: uv run --project scripts/smoke --locked playwright install --with-deps chromium
 
       - name: Run smoke suite
+        id: suite
         run: make smoke BASE_URL=http://localhost:8000
+
+      # Artifact names cannot contain the image reference's ':' or '/'.
+      - name: Name trace artifact
+        id: artifact
+        if: ${{ !cancelled() && steps.suite.outcome != 'skipped' }}
+        run: echo "name=smoke-traces-${IMAGE##*:}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Playwright traces
+        id: traces
+        if: ${{ !cancelled() && steps.suite.outcome != 'skipped' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: test-results/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Link traces in summary
+        if: ${{ !cancelled() && steps.traces.outcome == 'success' }}
+        env:
+          NAME: ${{ steps.artifact.outputs.name }}
+          URL: ${{ steps.traces.outputs.artifact-url }}
+        run: |
+          echo "Playwright traces: download [$NAME]($URL), unzip it, and open a trace.zip with \`env -u VIRTUAL_ENV uv run --project scripts/smoke --locked playwright show-trace <trace.zip>\` or at https://trace.playwright.dev" >> "$GITHUB_STEP_SUMMARY"
 
       - name: App logs
         if: ${{ failure() && steps.start.outcome == 'success' }}
