@@ -24,6 +24,8 @@ from litigant_portal.app.models import (
 from litigant_portal.app.services.user import (
     _identities_lock,
     user_identities_delete,
+    user_identity_anonymous_settle,
+    user_identity_delete_anonymous,
     user_identity_ensure,
     user_identity_merge,
     user_identity_merge_anonymous,
@@ -270,3 +272,84 @@ class IdentityAbsorbAnonymousTests(TestCase):
         self.assertEqual(
             UserIdentity.objects.filter(user=self.user).count(), 1
         )
+
+
+@pytest.mark.postgres
+class IdentityDeleteAnonymousTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="u", password="p")
+        self.anon = UserIdentity.objects.create(session_key="abc123")
+        VariableAnswer.objects.create(
+            identity=self.anon,
+            variable=Variable.objects.create(name="city"),
+            value="Fargo",
+        )
+        ChatThread.objects.create(identity=self.anon)
+        UserUpload.objects.create(
+            identity=self.anon,
+            file="uploads/x/notes.txt",
+            name="notes.txt",
+            content_type="text/plain",
+            size=5,
+        )
+        storage = UserUpload._meta.get_field("file").storage
+        patcher = mock.patch.object(storage, "delete")
+        self.addCleanup(patcher.stop)
+        self.storage_delete = patcher.start()
+
+    def test_deletes_the_identity_and_returns_what_it_held(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            counts = user_identity_delete_anonymous(
+                user=self.user, session_key="abc123"
+            )
+        self.assertEqual(counts, {"answers": 1, "threads": 1, "uploads": 1})
+        self.assertFalse(UserIdentity.objects.filter(pk=self.anon.pk).exists())
+        self.assertFalse(VariableAnswer.objects.exists())
+        self.storage_delete.assert_called_once_with("uploads/x/notes.txt")
+
+    def test_noop_when_no_anonymous_identity(self):
+        counts = user_identity_delete_anonymous(
+            user=self.user, session_key="missing"
+        )
+        self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+        self.assertTrue(UserIdentity.objects.filter(pk=self.anon.pk).exists())
+        self.storage_delete.assert_not_called()
+
+    def test_ignores_logged_in_identity_sharing_the_session_key(self):
+        mine = UserIdentity.objects.create(
+            user=self.user, session_key="abc123"
+        )
+        user_identity_delete_anonymous(user=self.user, session_key="abc123")
+        self.assertTrue(UserIdentity.objects.filter(pk=mine.pk).exists())
+
+    def test_log_names_the_user_and_the_counts(self):
+        with self.assertLogs(
+            "litigant_portal.app.services.user", level="INFO"
+        ) as logs:
+            user_identity_delete_anonymous(
+                user=self.user, session_key="abc123"
+            )
+        self.assertIn(
+            f"for user {self.user.pk}: 1 answer(s), 1 thread(s), 1 upload(s)",
+            logs.output[0],
+        )
+
+
+@pytest.mark.postgres
+class IdentityAnonymousSettleTests(TestCase):
+    def test_returns_what_a_pending_identity_holds_and_keeps_it(self):
+        anon = UserIdentity.objects.create(session_key="abc123")
+        ChatThread.objects.create(identity=anon)
+        counts = user_identity_anonymous_settle(session_key="abc123")
+        self.assertEqual(counts, {"answers": 0, "threads": 1, "uploads": 0})
+        self.assertTrue(UserIdentity.objects.filter(pk=anon.pk).exists())
+
+    def test_deletes_an_identity_that_holds_nothing(self):
+        empty = UserIdentity.objects.create(session_key="abc123")
+        counts = user_identity_anonymous_settle(session_key="abc123")
+        self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+        self.assertFalse(UserIdentity.objects.filter(pk=empty.pk).exists())
+
+    def test_all_zero_on_a_miss(self):
+        counts = user_identity_anonymous_settle(session_key="missing")
+        self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})

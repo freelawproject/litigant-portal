@@ -1,0 +1,58 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Keep what you started?" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block auth_content %}
+  {% trans "Keep what you started?" as heading %}
+  {% trans "Before you signed in, this device saved some work that is not in your account yet." as description %}
+  <c-molecules.auth-status icon="document-text" icon_class="text-primary-600" heading="{{ heading }}" description="{{ description }}">
+    <ul role="list" class="list-none text-greyscale-900 font-medium mb-6 space-y-1">
+      {% if counts.answers %}
+        <li>
+          {% blocktrans count counter=counts.answers trimmed %}
+            {{ counter }} answer
+          {% plural %}
+            {{ counter }} answers
+          {% endblocktrans %}
+        </li>
+      {% endif %}
+      {% if counts.threads %}
+        <li>
+          {% blocktrans count counter=counts.threads trimmed %}
+            {{ counter }} chat
+          {% plural %}
+            {{ counter }} chats
+          {% endblocktrans %}
+        </li>
+      {% endif %}
+      {% if counts.uploads %}
+        <li>
+          {% blocktrans count counter=counts.uploads trimmed %}
+            {{ counter }} upload
+          {% plural %}
+            {{ counter }} uploads
+          {% endblocktrans %}
+        </li>
+      {% endif %}
+    </ul>
+    <p class="text-sm text-greyscale-600 mb-6">
+      {% trans "If you share this device, this work may be someone else's. Keep it only if it is yours." %}
+    </p>
+    <form method="post" action="{% url 'pages:anonymous_answers' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}" />
+      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+        <c-atoms.button type="submit" name="choice" value="keep" variant="primary" full_width class="sm:w-auto justify-center">
+        {% trans "Keep this work" %}
+        </c-atoms.button>
+        <c-atoms.button type="submit" name="choice" value="discard" variant="outline" full_width class="sm:w-auto justify-center">
+        {% trans "Delete this work" %}
+        </c-atoms.button>
+      </div>
+    </form>
+  </c-molecules.auth-status>
+{% endblock auth_content %}

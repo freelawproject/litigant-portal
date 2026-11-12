@@ -11,6 +11,10 @@ from litigant_portal.app.permissions import (
     FLP_STAFF_GROUP,
     Tier,
 )
+from litigant_portal.app.selectors.user import (
+    user_identity_anonymous_find,
+    user_identity_counts,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -132,16 +136,57 @@ def user_identity_merge(
 
 
 def user_identity_merge_anonymous(*, user, session_key: str) -> None:
-    """On login, fold the anonymous identity for ``session_key`` into ``user``."""
-    anon_identity = UserIdentity.objects.filter(
-        session_key=session_key, user__isnull=True
-    ).first()
+    """Fold the anonymous identity for ``session_key`` into ``user``."""
+    anon_identity = user_identity_anonymous_find(session_key=session_key)
     if anon_identity is None:
         return
     target_identity = user_identity_ensure(user=user)
     user_identity_merge(
         source_identity=anon_identity, target_identity=target_identity
     )
+
+
+_NO_COUNTS = {"answers": 0, "threads": 0, "uploads": 0}
+
+
+def user_identity_anonymous_settle(*, session_key: str) -> dict[str, int]:
+    """What the anonymous identity for ``session_key`` still holds: the
+    answers, threads and uploads the visitor may bring into their account,
+    all zero on a miss. An identity that holds nothing is deleted on the
+    way, since no choice is needed for it."""
+    anon_identity = user_identity_anonymous_find(session_key=session_key)
+    if anon_identity is None:
+        return dict(_NO_COUNTS)
+    counts = user_identity_counts(identity=anon_identity)
+    if not any(counts.values()):
+        user_identities_delete(
+            identities=UserIdentity.objects.filter(pk=anon_identity.pk)
+        )
+    return counts
+
+
+def user_identity_delete_anonymous(
+    *, user, session_key: str
+) -> dict[str, int]:
+    """Delete the anonymous identity for ``session_key`` and everything it
+    owns: ``user`` chose not to bring it into their account.
+    Returns the answers, threads and uploads it held, all zero on a miss."""
+    anon_identity = user_identity_anonymous_find(session_key=session_key)
+    if anon_identity is None:
+        return dict(_NO_COUNTS)
+    counts = user_identity_counts(identity=anon_identity)
+    user_identities_delete(
+        identities=UserIdentity.objects.filter(pk=anon_identity.pk)
+    )
+    logger.info(
+        "Discarded anonymous identity for user %s: "
+        "%d answer(s), %d thread(s), %d upload(s)",
+        user.pk,
+        counts["answers"],
+        counts["threads"],
+        counts["uploads"],
+    )
+    return counts
 
 
 @transaction.atomic
