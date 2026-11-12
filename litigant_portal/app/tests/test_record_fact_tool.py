@@ -246,6 +246,9 @@ def test_unchanged_facts_carry_label_and_display_value(thread, date_of_birth):
     )(thread_id=thread.id)
 
     unchanged = output.render_data["unchanged"]
+    # A lazy translation proxy equals its str but fails JSON encoding, so
+    # pin the type, not just the value.
+    assert all(type(fact["display_value"]) is str for fact in unchanged)
     assert unchanged == [
         {
             "name": "date_of_birth",
@@ -372,6 +375,9 @@ def test_render_data_carries_plain_strings_and_labels(thread):
     )
 
     fact = output.render_data["saved"][0]
+    # A lazy translation proxy equals its str but fails JSON encoding, so
+    # pin the type, not just the value.
+    assert type(fact["display_value"]) is str
     assert fact == {
         "name": "is_adult",
         "label": "18 or older",
