@@ -284,16 +284,25 @@ def test_the_choice_keeps_the_query_of_the_page_it_interrupted(
 
 
 @pytest.mark.parametrize(
-    ("method", "path"),
+    ("method", "path", "headers"),
     [
-        ("get", reverse("assistant:thread_list")),
-        ("get", reverse("account_logout")),
-        ("get", reverse("pages:briefcase")),
-        ("post", ABOUT),
+        ("get", reverse("assistant:thread_list"), {}),
+        ("get", reverse("account_logout"), {}),
+        ("get", reverse("pages:briefcase"), {"Sec-Fetch-Dest": "empty"}),
+        ("get", reverse("javascript-catalog"), {"Sec-Fetch-Dest": "script"}),
+        ("post", ABOUT, {}),
     ],
-    ids=["api-get", "logout", "briefcase", "post"],
+    ids=["api-get", "logout", "fetch", "script", "post"],
 )
-def test_the_api_logout_briefcase_and_posts_are_not_interrupted(
-    signed_in, pending, method, path
+def test_the_api_logout_subresources_and_posts_are_not_interrupted(
+    signed_in, pending, method, path, headers
 ):
-    assert getattr(signed_in, method)(path).status_code == 200
+    response = getattr(signed_in, method)(path, headers=headers)
+    assert response.status_code == 200
+
+
+def test_a_request_that_says_it_is_a_page_load_is_interrupted(
+    signed_in, pending
+):
+    response = signed_in.get(ABOUT, headers={"Sec-Fetch-Dest": "document"})
+    assert response["Location"] == _choice_page(ABOUT)

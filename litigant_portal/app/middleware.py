@@ -72,12 +72,13 @@ class AnonymousSessionKeyMiddleware:
 
     While the visitor is anonymous, their session key is copied into the
     session data. Django's ``login()`` rotates the key but keeps the data,
-    so the copy survives. Signed in with the copy still there, a GET
-    anywhere but the exempt paths redirects to the answers page with the
-    current path as ``next``, and keeps doing so until a choice there
-    removes the copy. GET only, so a POST from a tab opened before login
-    still goes through. With nothing to bring, the copy and the empty
-    identity row go at once and the page is never shown.
+    so the copy survives. Signed in with the copy still there, a page
+    load anywhere but the exempt paths redirects to the answers page with
+    the current path as ``next``, and keeps doing so until a choice there
+    removes the copy. Page loads only: a POST from a tab opened before
+    login still goes through, and so do the scripts, fetches and images a
+    page pulls in. With nothing to bring, the copy and the empty identity
+    row go at once and the page is never shown.
     """
 
     def __init__(self, get_response):
@@ -96,6 +97,7 @@ class AnonymousSessionKeyMiddleware:
         if (
             session_key
             and request.method == "GET"
+            and _is_page_load(request)
             and not _answers_exempt(request)
         ):
             counts = user_identity_anonymous_settle(session_key=session_key)
@@ -108,14 +110,19 @@ class AnonymousSessionKeyMiddleware:
         return self.get_response(request)
 
 
+def _is_page_load(request) -> bool:
+    """Whether the request loads a page, rather than a script, fetch or
+    image a page pulled in. Browsers say which in ``Sec-Fetch-Dest``; a
+    client that sends none is taken for a page load."""
+    return request.headers.get("Sec-Fetch-Dest", "document") == "document"
+
+
 def _answers_exempt(request) -> bool:
     """Whether the answers check leaves this request alone: the page
-    itself, logout, the briefcase partial the chat page fetches, and what
-    the site gate exempts."""
+    itself, logout, and what the site gate exempts."""
     return request.path in (
         reverse("pages:anonymous_answers"),
         reverse("account_logout"),
-        reverse("pages:briefcase"),
     ) or request.path.startswith(_gate_exempt_paths())
 
 
