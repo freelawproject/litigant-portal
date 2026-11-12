@@ -4,10 +4,13 @@ name: Build and Push to Docker Hub
 # namespace on the EKS cluster.
 #
 # The action enforces the following order:
-#   tests -> build & publish -> deploy
+#   tests -> build & publish -> smoke -> deploy
 #
 # The test suite is invoked as a reusable workflow so each stage depends on
 # the previous one, preventing failed tests from reaching production.
+#
+# Smoke loads key pages of the image just published in a browser, so a page
+# that breaks only at render or asset-load time stops the deploy.
 #
 # Migrations are applied in a temporary pod before the web deployment is
 # updated. This catches migration failures before any production pods are
@@ -18,14 +21,21 @@ name: Build and Push to Docker Hub
 # a failed one: a failure leaves the pod up so it can be inspected, and a bare
 # pod has no TTL of its own to clean it up later.
 #
-# Escape hatches (PR labels):
-# - `skip-deploy`: run tests only; skip publishing and deployment.
-# - `skip-web-deploy`: publish the image and run migrations, but leave the web
-#   deployment on its current image.
+# Escape hatches:
+# - `skip-deploy` PR label: run tests only; skip publishing and deployment.
+# - `skip-web-deploy` PR label: publish the image and run migrations, but leave
+#   the web deployment on its current image.
+# - A manual run with `skip_playwright_tests`: deploy without the smoke stage.
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      skip_playwright_tests:
+        description: Deploy without running the smoke suite
+        type: boolean
+        default: false
 
 env:
   AWS_REGION: us-west-2
@@ -100,9 +110,20 @@ jobs:
       - name: Build and Push
         run: make push-image -e VERSION=${{ steps.vars.outputs.sha_short }} -e GIT_BRANCH="${{ github.ref_name }}" -e BUILD_TIME="$(date -u +'%Y/%m/%d %H:%M')"
 
+  # On push events `inputs` is empty, so smoke runs.
+  smoke:
+    needs: build
+    if: ${{ !inputs.skip_playwright_tests }}
+    uses: ./.github/workflows/smoke.yml
+    with:
+      image: freelawproject/litigant-portal:${{ needs.build.outputs.sha_short }}-prod
+
   setup-deploy:
-    needs: [get-pr-labels, build]
+    needs: [get-pr-labels, build, smoke]
     runs-on: ubuntu-latest
+    # By default a skipped dependency skips this job, and a skipped smoke is
+    # the manual override.
+    if: ${{ !cancelled() && needs.build.result == 'success' && (needs.smoke.result == 'success' || needs.smoke.result == 'skipped') }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
