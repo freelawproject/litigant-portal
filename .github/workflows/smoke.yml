@@ -12,6 +12,8 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    # Deploys are serialized, so a hung job would hold every later deploy.
+    timeout-minutes: 15
     env:
       IMAGE: ${{ inputs.image }}
     services:

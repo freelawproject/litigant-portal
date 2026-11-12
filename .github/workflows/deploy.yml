@@ -98,6 +98,14 @@ jobs:
     outputs:
       sha_short: ${{ steps.vars.outputs.sha_short }}
     steps:
+      # A manual run builds and deploys whatever ref it was started on.
+      - name: Require main
+        if: ${{ github.ref != 'refs/heads/main' }}
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          echo "::error::Manual deploys run only from main; this run is on $REF."
+          exit 1
       - uses: actions/checkout@v7.0.1
       - name: Set shortcode
         id: vars
