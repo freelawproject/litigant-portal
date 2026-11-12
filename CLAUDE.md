@@ -104,6 +104,13 @@ CODEOWNERS puts **every** owner on **every** PR, but the ruleset requires only *
 - Mitch is in the PR's **`assignees`** field — check `assignees`, _not_ `reviewRequests`. CODEOWNERS fills `reviewRequests` on every PR, so it carries no signal; `assignees` means the PR is his to move. Or
 - it has been **waiting on Mitch for more than a day** — his review is the one outstanding and nothing else is blocking it
 
+**Never flag these, even when they match the rules above:**
+
+- **A review another code owner started is theirs to finish.** Once a teammate has reviewed the PR or assigned it to themselves, the other code owners leave it, unless that teammate asks one of them for input directly or the PR has had no activity for 2 work days.
+- **A draft PR is draft on purpose.** No code owner needs to review it until it's marked ready for review, or until the author asks one of them directly.
+
+These are the team's conventions for code owners. Guest devs and volunteers aren't bound by them; they adapt during a short stint.
+
 Everything else is noise. This applies to the morning briefing, board audits, and any PR sweep.
 
 The review hand-off itself — who holds the PR at each step, and who merges — is contributor-facing and lives in [CONTRIBUTING.md](CONTRIBUTING.md#review-the-assignee-is-the-baton). Don't restate it here.
