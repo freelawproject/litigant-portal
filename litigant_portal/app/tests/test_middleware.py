@@ -52,6 +52,19 @@ class AnonymousSessionKeyMiddlewareTests(TestCase):
 
         self.assertNotIn("_anonymous_session_key", self.client.session)
 
+    def test_logged_in_with_an_empty_anonymous_identity_forgets_it(self):
+        empty = UserIdentity.objects.create(session_key="before-login")
+        user = User.objects.create_user(username="testuser", password="p")
+        self.client.force_login(user)
+        session = self.client.session
+        session["_anonymous_session_key"] = "before-login"
+        session.save()
+
+        self.assertEqual(self.client.get("/about/").status_code, 200)
+
+        self.assertNotIn("_anonymous_session_key", self.client.session)
+        self.assertFalse(UserIdentity.objects.filter(pk=empty.pk).exists())
+
 
 @pytest.mark.postgres
 class IdentityMiddlewareTests(TestCase):

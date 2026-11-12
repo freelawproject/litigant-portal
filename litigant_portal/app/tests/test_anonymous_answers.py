@@ -2,8 +2,9 @@
 
 A signed-in visitor whose session still carries the key of the session they
 used before signing in is asked whether to keep that session's answers,
-chats and uploads or delete them. Nothing routes to the page yet, so the
-tests place the key in the session themselves.
+chats and uploads or delete them. The page tests place the key in the
+session themselves; the login and signup tests go through allauth and let
+the middleware carry it.
 """
 
 import re
@@ -14,6 +15,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.shortcuts import resolve_url
 from django.urls import reverse
+from django.utils.http import urlencode
 
 from litigant_portal.app.models import (
     ChatThread,
@@ -29,6 +31,8 @@ pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
 URL = reverse("pages:anonymous_answers")
 SESSION_KEY = "before-signing-in"
+EMAIL = "u@example.com"
+PASSWORD = "a-long-enough-password"
 
 
 @pytest.fixture
@@ -40,18 +44,37 @@ def variable():
 
 @pytest.fixture
 def user():
-    return get_user_model().objects.create_user(username="u", password="p")
+    return get_user_model().objects.create_user(
+        username=EMAIL, email=EMAIL, password=PASSWORD
+    )
 
 
 @pytest.fixture
 def signed_in(client, user):
-    # The key goes in after the login: the login signal still merges on
-    # whatever key it finds in the session.
     client.force_login(user)
     session = client.session
     session[ANONYMOUS_SESSION_KEY] = SESSION_KEY
     session.save()
     return client
+
+
+def _choice_page(next_url):
+    return f"{URL}?{urlencode({'next': next_url})}"
+
+
+def _anonymous_visit(client, variable=None):
+    """A visit before signing in: a session, its identity row, and an
+    answer when ``variable`` is given. The GET lets the middleware record
+    the key, as it does on every anonymous page load."""
+    session = client.session
+    session.save()
+    identity = UserIdentity.objects.create(session_key=session.session_key)
+    if variable:
+        VariableAnswer.objects.create(
+            identity=identity, variable=variable, value="Cass"
+        )
+    client.get(reverse("account_login"))
+    return identity
 
 
 def _upload(identity, name):
@@ -188,3 +211,74 @@ def test_a_visitor_who_is_not_signed_in_is_sent_to_login(client):
     response = client.get(URL)
     assert response.status_code == 302
     assert response["Location"].startswith(reverse("account_login"))
+
+
+ABOUT = reverse("pages:about")
+
+
+def test_login_with_pending_answers_sends_the_next_page_to_the_choice(
+    client, user, variable
+):
+    _anonymous_visit(client, variable)
+    response = client.post(
+        reverse("account_login"), {"login": EMAIL, "password": PASSWORD}
+    )
+    assert response.status_code == 302
+    response = client.get(ABOUT)
+    assert response["Location"] == _choice_page(ABOUT)
+
+
+def test_login_with_nothing_pending_leaves_no_trace(client, user):
+    identity = _anonymous_visit(client)
+    client.post(
+        reverse("account_login"), {"login": EMAIL, "password": PASSWORD}
+    )
+    assert client.get(ABOUT).status_code == 200
+    assert not UserIdentity.objects.filter(pk=identity.pk).exists()
+    assert ANONYMOUS_SESSION_KEY not in client.session
+
+
+def test_signup_with_pending_answers_sends_the_next_page_to_the_choice(
+    client, variable
+):
+    _anonymous_visit(client, variable)
+    response = client.post(
+        reverse("account_signup"),
+        {"email": EMAIL, "password1": PASSWORD, "password2": PASSWORD},
+    )
+    assert response.status_code == 302
+    response = client.get(ABOUT)
+    assert response["Location"] == _choice_page(ABOUT)
+
+
+def test_every_page_load_is_sent_to_the_choice_until_it_is_made(
+    signed_in, pending
+):
+    assert signed_in.get(ABOUT)["Location"] == _choice_page(ABOUT)
+    assert signed_in.get(reverse("pages:home"))["Location"] == _choice_page(
+        reverse("pages:home")
+    )
+    signed_in.post(URL, {"choice": "keep"})
+    assert signed_in.get(ABOUT).status_code == 200
+
+
+def test_the_choice_keeps_the_query_of_the_page_it_interrupted(
+    signed_in, pending
+):
+    response = signed_in.get(f"{ABOUT}?tab=help")
+    assert response["Location"] == _choice_page(f"{ABOUT}?tab=help")
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("get", reverse("assistant:thread_list")),
+        ("get", reverse("account_logout")),
+        ("post", ABOUT),
+    ],
+    ids=["api-get", "logout", "post"],
+)
+def test_the_api_logout_and_posts_are_not_interrupted(
+    signed_in, pending, method, path
+):
+    assert getattr(signed_in, method)(path).status_code == 200

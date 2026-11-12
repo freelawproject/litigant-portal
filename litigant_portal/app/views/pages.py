@@ -136,7 +136,8 @@ def anonymous_answers(request):
     GET shows the counts with a keep and a discard button; POST acts on
     the choice, forgets the key, and returns to ``next`` when it is on
     this site, else to ``LOGIN_REDIRECT_URL``. With nothing to bring, GET
-    returns there at once.
+    returns there at once. ``AnonymousSessionKeyMiddleware`` sends every
+    page load here until the choice is made.
     """
     next_url = _next_url(
         request, default=resolve_url(settings.LOGIN_REDIRECT_URL)

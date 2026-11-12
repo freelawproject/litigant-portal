@@ -1,8 +1,8 @@
 """Unit tests for the user identity services (services/user.py).
 
-These exercise the core logic directly — no HTTP client, no login flow —
-which is the payoff of moving the merge out of the signal handler. The
-end-to-end signal path stays covered by test_signals.py.
+These exercise the core logic directly — no HTTP client, no login flow.
+The login path through the answers page is covered by
+test_anonymous_answers.py.
 """
 
 from unittest import mock
