@@ -20,9 +20,9 @@ updates:
     commit-message:
       prefix: build(deps)
 
-  # Python dependencies. Two uv projects: the app at the root, and the agent
-  # evaluation harness under scripts/, which pins its own deps (litellm,
-  # matplotlib, pydantic, PyYAML) and would otherwise go stale unwatched.
+  # Python dependencies. Three uv projects: the app at the root, and two
+  # harnesses under scripts/ (agent_eval, smoke), which pin their own deps and
+  # would otherwise go stale unwatched.
   #
   # Deliberately no `ignore` block. Filtering out semver-patch would have cut
   # the noise, but `ignore` applies to security updates as well as version
@@ -34,6 +34,7 @@ updates:
     directories:
       - /
       - /scripts/agent_eval
+      - /scripts/smoke
     schedule:
       interval: monthly
     open-pull-requests-limit: 5
