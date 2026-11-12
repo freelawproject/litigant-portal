@@ -1265,13 +1265,16 @@ document.addEventListener('alpine:init', () => {
         this.checkingVisible = true
         return
       }
+      // A running tool's spinner stands in for the thinking row. Tools and
+      // reply text stream in above any after-reply card, so check the part
+      // just above those cards as well as the very last one.
+      const isCallingTool = (m) => m && m.isTool && m.status === 'calling'
       const last = this.messages[this.messages.length - 1]
-      if (last && last.isTool && last.status === 'calling') {
+      const reply = this.messages[replyInsertIndex(this.messages) - 1]
+      if (isCallingTool(last) || isCallingTool(reply)) {
         this.thinkingVisible = false
         return
       }
-      // Reply text streams in above any after-reply card, so look past those.
-      const reply = this.messages[replyInsertIndex(this.messages) - 1]
       if (reply && reply.isAssistant && reply.content) {
         this.thinkingVisible = false
         return

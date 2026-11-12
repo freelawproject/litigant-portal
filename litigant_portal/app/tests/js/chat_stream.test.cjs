@@ -899,3 +899,28 @@ test('streaming text above an after-reply card hides the thinking row', (t) => {
   app.handleEvent(stream, { type: 'content_delta', content: 'Your court' })
   assert.equal(app.thinkingVisible, false, 'the reply is streaming')
 })
+
+// A tool that starts after the review card goes in above that card, so the
+// card is no longer last. Its spinner still stands in for the thinking row.
+test('a tool running above an after-reply card hides the thinking row', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { app, updateThinking } = makeApp()
+  app.updateThinking = updateThinking
+  const stream = newStream(app)
+  app.messages = stream.messages
+  stream.messages.push({ isUser: true, content: 'here is my ticket' })
+
+  app.handleEvent(stream, {
+    type: 'tool_call',
+    id: 'review',
+    name: 'ReviewFacts',
+    after_reply: true,
+  })
+  app.handleEvent(stream, { type: 'tool_response', id: 'review' })
+  app.handleEvent(stream, {
+    type: 'tool_call',
+    id: 'query',
+    name: 'QueryDocument',
+  })
+  assert.equal(app.thinkingVisible, false, 'the query spinner is showing')
+})
