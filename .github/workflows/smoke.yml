@@ -1,0 +1,94 @@
+name: Smoke
+
+# Loads key pages of a published image in Chromium; the suite is scripts/smoke/.
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: Image to test, e.g. freelawproject/litigant-portal:<sha>-prod
+        required: true
+        type: string
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ${{ inputs.image }}
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_DB: litigant_portal
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      # DEBUG=true: with it off, static files come from S3 and plain HTTP
+      # redirects to HTTPS. CORPUS_COURT stays unset so every court syncs.
+      - name: Write app environment
+        run: |
+          cat > "$RUNNER_TEMP/app.env" <<'EOF'
+          DEBUG=true
+          SECRET_KEY=smoke-ci-not-a-secret
+          POSTGRES_HOST=localhost
+          POSTGRES_PASSWORD=postgres
+          REDIS_URL=redis://localhost:6379/0
+          ALLOWED_HOSTS=localhost,127.0.0.1
+          EOF
+
+      - name: Migrate and sync corpus
+        run: |
+          docker run --rm --network host --env-file "$RUNNER_TEMP/app.env" "$IMAGE" manage migrate --noinput
+          docker run --rm --network host --env-file "$RUNNER_TEMP/app.env" "$IMAGE" manage sync_corpus --strict
+
+      # compilemessages runs in the serving container because the .mo files it
+      # writes live there. Prod's entrypoint runs it on every start, and nothing
+      # else in CI does, so a .po that fails to compile is caught here.
+      - name: Start app
+        id: start
+        run: |
+          docker run --detach --name app --network host --env-file "$RUNNER_TEMP/app.env" "$IMAGE" \
+            bash -c 'manage compilemessages && exec manage runserver 0.0.0.0:8000 --noreload'
+
+      - name: Wait for /api/health/
+        run: |
+          deadline=$((SECONDS + 90))
+          until curl --silent --fail --max-time 5 --output /dev/null http://localhost:8000/api/health/; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::/api/health/ did not return 200 within 90 seconds. Last response:"
+              curl --silent --show-error --include --max-time 5 http://localhost:8000/api/health/
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Install Chromium
+        run: uv run --project scripts/smoke --locked playwright install --with-deps chromium
+
+      - name: Run smoke suite
+        run: make smoke BASE_URL=http://localhost:8000
+
+      - name: App logs
+        if: ${{ failure() && steps.start.outcome == 'success' }}
+        run: docker logs app
