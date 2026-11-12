@@ -12,4 +12,4 @@ dependencies = [
 package = false
 
 [tool.pytest.ini_options]
-addopts = "--reruns 1 --browser chromium"
+addopts = "--reruns 1 --browser chromium --tracing on"
