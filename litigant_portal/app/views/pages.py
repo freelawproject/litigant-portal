@@ -142,8 +142,12 @@ def anonymous_answers(request):
     next_url = _next_url(
         request, default=resolve_url(settings.LOGIN_REDIRECT_URL)
     )
-    session_key = request.session.get(ANONYMOUS_SESSION_KEY, "")
-    counts = user_identity_anonymous_settle(session_key=session_key)
+    session_key = request.session.get(ANONYMOUS_SESSION_KEY)
+    counts = (
+        user_identity_anonymous_settle(session_key=session_key)
+        if session_key
+        else {}
+    )
     if not any(counts.values()):
         request.session.pop(ANONYMOUS_SESSION_KEY, None)
         return redirect(next_url)

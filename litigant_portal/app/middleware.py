@@ -110,10 +110,12 @@ class AnonymousSessionKeyMiddleware:
 
 def _answers_exempt(request) -> bool:
     """Whether the answers check leaves this request alone: the page
-    itself, logout, and what the site gate exempts."""
+    itself, logout, the briefcase partial the chat page fetches, and what
+    the site gate exempts."""
     return request.path in (
         reverse("pages:anonymous_answers"),
         reverse("account_logout"),
+        reverse("pages:briefcase"),
     ) or request.path.startswith(_gate_exempt_paths())
 
 

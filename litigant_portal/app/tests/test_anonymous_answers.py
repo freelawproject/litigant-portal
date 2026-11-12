@@ -126,6 +126,20 @@ def test_nothing_pending_returns_to_next(signed_in):
     assert response["Location"] == "/t/a/b/c/"
 
 
+def test_no_pending_key_leaves_identities_without_one_alone(
+    client, user, variable
+):
+    # A blank key must not match identities that never got one.
+    stray = UserIdentity.objects.create(session_key="")
+    VariableAnswer.objects.create(
+        identity=stray, variable=variable, value="Cass"
+    )
+    client.force_login(user)
+    response = client.get(URL, {"next": "/t/a/b/c/"})
+    assert response["Location"] == "/t/a/b/c/"
+    assert stray.variable_answers.count() == 1
+
+
 def test_an_offsite_next_returns_to_the_login_redirect(signed_in):
     response = signed_in.get(URL, {"next": "https://example.com/"})
     assert response["Location"] == resolve_url(settings.LOGIN_REDIRECT_URL)
@@ -274,11 +288,12 @@ def test_the_choice_keeps_the_query_of_the_page_it_interrupted(
     [
         ("get", reverse("assistant:thread_list")),
         ("get", reverse("account_logout")),
+        ("get", reverse("pages:briefcase")),
         ("post", ABOUT),
     ],
-    ids=["api-get", "logout", "post"],
+    ids=["api-get", "logout", "briefcase", "post"],
 )
-def test_the_api_logout_and_posts_are_not_interrupted(
+def test_the_api_logout_briefcase_and_posts_are_not_interrupted(
     signed_in, pending, method, path
 ):
     assert getattr(signed_in, method)(path).status_code == 200
