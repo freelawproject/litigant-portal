@@ -246,6 +246,30 @@ test('a link and a chip on the same line both render', () => {
   assert.ok(out.includes(CHIP))
 })
 
+test('a citation inside a link label preserves the link with chips on and off', () => {
+  const input =
+    '[See the fee table [source:court/fee_table]](https://court.gov/fees)'
+  const linkStart = `<a href="https://court.gov/fees" ${LINK}>`
+
+  for (const chips of [true, false]) {
+    setCitationChips(chips)
+    const out = renderInline(input)
+    assert.equal((out.match(/<a /g) || []).length, 1)
+    assert.equal((out.match(/<\/a>/g) || []).length, 1)
+    assert.ok(!out.includes('[source:'))
+    assert.ok(!out.includes('](https://court.gov/fees)'))
+
+    if (chips) {
+      assert.ok(out.startsWith(linkStart + 'See the fee table <span ' + CHIP))
+      assert.ok(
+        out.endsWith('title="court/fee_table">court/fee_table</span></a>')
+      )
+    } else {
+      assert.equal(out, linkStart + 'See the fee table</a>')
+    }
+  }
+})
+
 test('with chips off, a marker and the space before it are dropped', () => {
   setCitationChips(false)
   assert.equal(
