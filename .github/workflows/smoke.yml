@@ -1,6 +1,7 @@
 name: Smoke
 
-# Loads key pages of a published image in Chromium; the suite is scripts/smoke/.
+# Loads key pages of a published image in Chromium and sends one chat message;
+# the suite is scripts/smoke/.
 on:
   workflow_call:
     inputs:
@@ -8,6 +9,10 @@ on:
         description: Image to test, e.g. freelawproject/litigant-portal:<sha>-prod
         required: true
         type: string
+    secrets:
+      AWS_BEARER_TOKEN_BEDROCK:
+        description: Bedrock API key the app answers the chat check with
+        required: true
 
 jobs:
   smoke:
@@ -41,6 +46,16 @@ jobs:
           --health-retries 5
 
     steps:
+      # A caller that passes an unset repo secret passes an empty string.
+      - name: Require Bedrock token
+        env:
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+        run: |
+          if [ -z "$AWS_BEARER_TOKEN_BEDROCK" ]; then
+            echo "::error::The AWS_BEARER_TOKEN_BEDROCK secret is empty. The chat check needs it to get a reply from Bedrock."
+            exit 1
+          fi
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Install uv
@@ -67,10 +82,14 @@ jobs:
       # compilemessages runs in the serving container because the .mo files it
       # writes live there. Prod's entrypoint runs it on every start, and nothing
       # else in CI does, so a .po that fails to compile is caught here.
+      # -e with no value passes the token from the step env without writing it
+      # to disk.
       - name: Start app
         id: start
+        env:
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
         run: |
-          docker run --detach --name app --network host --env-file "$RUNNER_TEMP/app.env" "$IMAGE" \
+          docker run --detach --name app --network host --env-file "$RUNNER_TEMP/app.env" -e AWS_BEARER_TOKEN_BEDROCK "$IMAGE" \
             bash -c 'manage compilemessages && exec manage runserver 0.0.0.0:8000 --noreload'
 
       - name: Wait for /api/health/
