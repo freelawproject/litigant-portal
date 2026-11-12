@@ -170,6 +170,22 @@ def test_the_outcome_notes_render_hidden_for_the_component_to_reveal(
     assert region.count("-note") == 3
 
 
+def test_a_fact_stored_under_the_value_key_still_shows_its_text(
+    client_thread,
+):
+    # Older chats store each fact's text under `value`.
+    facts = [
+        {
+            "name": "county",
+            "label": "County",
+            "value": "Cass",
+            "reviewed": False,
+        }
+    ]
+    html = _card_html(*client_thread, render_data=_data(facts=facts))
+    assert "Cass" in html
+
+
 def test_missing_facts_are_listed_as_still_needed(client_thread):
     html = _card_html(
         *client_thread,
