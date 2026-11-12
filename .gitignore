@@ -194,3 +194,6 @@ dmypy.json
 
 # Before/after captures from scripts/screenshots.mjs
 /.screenshots/
+
+# Playwright traces from the smoke suite (scripts/smoke/)
+test-results/
