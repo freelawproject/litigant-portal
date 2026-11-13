@@ -241,6 +241,7 @@ function blankMessage() {
     isAssistant: false,
     isTool: false,
     notTool: true,
+    hasText: false,
     copied: false,
     notCopied: true,
     attachments: [],
@@ -282,6 +283,7 @@ function makeMessage(role, content, attachments, reviewWarning = false) {
     notCopied: true,
     isTool: false,
     notTool: true,
+    hasText: !isUser || !!content,
     attachments: atts,
     hasAtts: atts.length > 0,
     rowClass: isUser ? 'items-end' : 'items-start',
@@ -906,10 +908,12 @@ document.addEventListener('alpine:init', () => {
     },
 
     // The send button is disabled while streaming, while a thread is
-    // loading, or when the input is empty.
+    // loading, or when there is nothing to send: no text and no chips.
     refreshSendState() {
       this.sendDisabled =
-        this.streaming || this.loadingThread || !this.input.trim()
+        this.streaming ||
+        this.loadingThread ||
+        (!this.input.trim() && !this.hasAttachments)
     },
 
     handleKeydown(e) {
@@ -932,11 +936,14 @@ document.addEventListener('alpine:init', () => {
       this.$nextTick(() => this.autoResize(this.$refs.input))
     },
 
+    // Send the composer's text and chips; true when a message went out.
     send() {
       const message = this.input.trim()
-      if (!message || this.streaming || this.loadingThread) return
+      if (!message && !this.hasAttachments) return false
+      if (this.streaming || this.loadingThread) return false
       this.clearInput()
       this.sendMessage(message, this.threadId)
+      return true
     },
 
     // Send a message (optionally continuing a thread) and stream the reply
@@ -1516,8 +1523,7 @@ document.addEventListener('alpine:init', () => {
         this.uploadJobs = this.uploadJobs.filter(
           (j) => j.uploadId !== upload.id
         )
-        this.attachments = this.attachments.filter((a) => a.id !== upload.id)
-        this.hasAttachments = this.attachments.length > 0
+        this.setAttachments(this.attachments.filter((a) => a.id !== upload.id))
         this.refreshAttachState()
       } catch (e) {
         console.error('Failed to delete upload:', e)
@@ -1525,25 +1531,35 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    // Commit the selection to the composer as chips on the next message.
+    // Commit the selection to the composer as chips. With nothing typed and
+    // no turn in flight, the files go out on their own right away.
     confirmAttach() {
-      this.attachments = this.uploads
-        .filter((u) => u.selected)
-        .map((u) => ({ ...u }))
-      this.hasAttachments = this.attachments.length > 0
+      this.setAttachments(
+        this.uploads.filter((u) => u.selected).map((u) => ({ ...u }))
+      )
+      if (this.hasAttachments && !this.input.trim() && this.send()) {
+        // The reply returns focus to the composer, as after a typed send,
+        // so the closing dialog must not pin it to the Attach button.
+        this.attachTrigger = null
+      }
       this.closeAttach()
     },
 
     // Remove a composer chip — the upload id rides on the button.
     removeAttachment(e) {
       const id = e.currentTarget.dataset.uploadId
-      this.attachments = this.attachments.filter((a) => a.id !== id)
-      this.hasAttachments = this.attachments.length > 0
+      this.setAttachments(this.attachments.filter((a) => a.id !== id))
     },
 
     clearAttachments() {
-      this.attachments = []
-      this.hasAttachments = false
+      this.setAttachments([])
+    },
+
+    // Replace the composer chips; the send button follows them.
+    setAttachments(attachments) {
+      this.attachments = attachments
+      this.hasAttachments = attachments.length > 0
+      this.refreshSendState()
     },
 
     csrfToken() {

@@ -33,7 +33,7 @@ def stream(
     thread_id = request.POST.get("thread_id") or None
     attachment_ids = request.POST.getlist("attachment_ids")
 
-    if not message:
+    if not message and not attachment_ids:
         return JsonResponse({"error": _("Message is required")}, status=400)
 
     if attachment_ids:

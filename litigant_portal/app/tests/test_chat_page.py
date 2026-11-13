@@ -212,6 +212,25 @@ def test_attachment_chips_carry_a_hint_to_send_a_message(client):
     )
 
 
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_message_bubble_and_copy_row_show_only_with_text(client):
+    content = client.get(reverse("pages:chat")).content.decode()
+    bubble = re.search(
+        r'<div\b[^<>]*x-show="message\.hasText"[^<>]*'
+        r'x-bind:class="message\.bubbleClass"[^<>]*>',
+        content,
+    )
+    assert bubble, "message bubble is not gated on message.hasText"
+    copy_row = re.search(
+        r'<div\b[^<>]*x-show="message\.hasText"[^<>]*>\s*<button\b[^<>]*'
+        r'x-on:click="copyMessage"',
+        content,
+    )
+    assert copy_row, "copy row is not gated on message.hasText"
+    assert 'x-show="message.notTool"' not in content
+
+
 class ChatTemplateHygieneTests(TestCase):
     """Source-level checks for Tailwind hygiene: contrast, min-h tokens, and arbitrary text-size values."""
 

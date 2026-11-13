@@ -272,6 +272,190 @@ test('a new pick keeps only the rows still uploading', async () => {
   assert.equal(app.uploadJobs.find((j) => j.name === 'slow.pdf').isDone, true)
 })
 
+// An app with one uploaded, selected file and a stream endpoint that fails
+// fast, so a send leaves no timers behind.
+async function makeAttachApp() {
+  const made = makeApp(async (url) =>
+    url.endsWith('stream/') ? response(500) : response(200, { upload: UPLOAD })
+  )
+  const { app } = made
+  app.threads = []
+  app.setThreadStatus = () => {}
+  app.updateThinking = () => {}
+  await app.uploadFiles([{ name: 'contract.pdf', size: 10 }])
+  return made
+}
+
+function streamCalls(calls) {
+  return calls.filter((c) => c.url.endsWith('stream/'))
+}
+
+async function settle() {
+  await new Promise((resolve) => setImmediate(resolve))
+}
+
+test('attaching with an empty composer sends the files right away', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.threadId = 'thread-id'
+
+  app.confirmAttach()
+  await settle()
+
+  const [sent] = streamCalls(calls)
+  assert.ok(sent)
+  assert.equal(sent.options.body.get('message'), '')
+  assert.equal(sent.options.body.get('thread_id'), 'thread-id')
+  assert.deepEqual(sent.options.body.getAll('attachment_ids'), ['u1'])
+  assert.equal(app.attachments.length, 0)
+  assert.equal(app.hasAttachments, false)
+  assert.equal(app.attachOpen, false)
+
+  const message = app.messages.find((m) => m.isUser)
+  assert.equal(message.hasText, false)
+  assert.equal(message.hasAtts, true)
+  assert.equal(message.attachments[0].id, 'u1')
+})
+
+test('attaching with text in the composer keeps the chips', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.input = 'I got this ticket'
+
+  app.confirmAttach()
+  await settle()
+
+  assert.equal(streamCalls(calls).length, 0)
+  assert.equal(app.attachments.length, 1)
+  assert.equal(app.hasAttachments, true)
+})
+
+test('attaching while a reply streams keeps the chips', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.streaming = true
+
+  app.confirmAttach()
+  await settle()
+
+  assert.equal(streamCalls(calls).length, 0)
+  assert.equal(app.attachments.length, 1)
+})
+
+test('chips kept by a stream send on their own once it ends', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.threadId = 'thread-id'
+  app.streaming = true
+  app.confirmAttach()
+  await settle()
+  assert.equal(streamCalls(calls).length, 0)
+
+  app.streaming = false
+  app.refreshSendState()
+  assert.equal(app.sendDisabled, false)
+  app.send()
+  await settle()
+
+  const [sent] = streamCalls(calls)
+  assert.ok(sent)
+  assert.equal(sent.options.body.get('message'), '')
+  assert.deepEqual(sent.options.body.getAll('attachment_ids'), ['u1'])
+  assert.equal(app.attachments.length, 0)
+})
+
+test('chips kept by typed text send on their own once it is cleared', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.threadId = 'thread-id'
+  app.input = 'I got this ticket'
+  app.confirmAttach()
+  await settle()
+  assert.equal(streamCalls(calls).length, 0)
+
+  app.updateInput({ target: { value: '', style: {}, scrollHeight: 0 } })
+  assert.equal(app.sendDisabled, false)
+  app.send()
+  await settle()
+
+  const [sent] = streamCalls(calls)
+  assert.ok(sent)
+  assert.equal(sent.options.body.get('message'), '')
+  assert.deepEqual(sent.options.body.getAll('attachment_ids'), ['u1'])
+  assert.equal(app.attachments.length, 0)
+})
+
+test('an empty composer with no chips cannot send', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.refreshSendState()
+  assert.equal(app.sendDisabled, true)
+  app.send()
+  await settle()
+  assert.equal(streamCalls(calls).length, 0)
+})
+
+test('removing the last chip disables the send button again', async () => {
+  const { app } = await makeAttachApp()
+  app.streaming = true
+  app.confirmAttach()
+  app.streaming = false
+  app.refreshSendState()
+  assert.equal(app.sendDisabled, false)
+
+  app.removeAttachment({ currentTarget: { dataset: { uploadId: 'u1' } } })
+
+  assert.equal(app.hasAttachments, false)
+  assert.equal(app.sendDisabled, true)
+})
+
+test('an auto-send leaves focus free for the reply to return it', async () => {
+  const { app } = await makeAttachApp()
+  let focused = 0
+  app.attachTrigger = { focus: () => focused++ }
+
+  app.confirmAttach()
+  await settle()
+
+  assert.equal(focused, 0)
+  assert.equal(app.attachTrigger, null)
+})
+
+test('chips kept by typed text return focus to the Attach button', async () => {
+  const { app } = await makeAttachApp()
+  app.input = 'I got this ticket'
+  let focused = 0
+  app.attachTrigger = { focus: () => focused++ }
+
+  app.confirmAttach()
+  await settle()
+
+  assert.equal(focused, 1)
+  assert.equal(app.attachTrigger, null)
+})
+
+test('attaching with nothing selected makes no request', async () => {
+  const { app, calls } = await makeAttachApp()
+  app.uploads[0].selected = false
+
+  app.confirmAttach()
+  await settle()
+
+  assert.equal(streamCalls(calls).length, 0)
+  assert.equal(app.attachments.length, 0)
+})
+
+test('hasText is false only for a user message with no text', async () => {
+  const { app } = await makeAttachApp()
+
+  app.input = 'hello'
+  app.send()
+  await settle()
+  app.appendContent({ messages: app.messages, openIndex: null }, '')
+
+  const typed = app.messages.find((m) => m.isUser)
+  const assistant = app.messages[app.messages.length - 1]
+  assert.equal(typed.content, 'hello')
+  assert.equal(typed.hasText, true)
+  assert.equal(assistant.isAssistant, true)
+  assert.equal(assistant.content, '')
+  assert.equal(assistant.hasText, true)
+})
+
 // A $nextTick that runs after the current tick, like Alpine's, and records
 // what the live region holds each time.
 function deferredTick(app, heard) {

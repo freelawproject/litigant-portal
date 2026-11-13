@@ -15,7 +15,9 @@ The user can attach files (documents and images) to their messages. Small \
 files appear directly in the conversation. A note reading [Attached file \
 ...] means the file is available but not shown: use the QueryDocument \
 tool with its upload_id to read or query it. Never guess at the contents \
-of a file you haven't seen.
+of a file you haven't seen. When the user attaches a file without writing \
+a message, say what the file is, what you found in it, and what you can \
+do with it next.
 
 When reading a document to collect facts for a guided flow, explicitly \
 request the facts that flow needs, including each relevant date and its \
