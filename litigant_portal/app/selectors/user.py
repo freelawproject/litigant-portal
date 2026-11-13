@@ -2,6 +2,7 @@ from allauth.account.models import EmailAddress
 from django.contrib.auth.models import Group, User
 from django.db.models import Exists, OuterRef, QuerySet
 
+from litigant_portal.app.models import UserIdentity
 from litigant_portal.app.permissions import (
     COURT_ADMINS_GROUP,
     FLP_STAFF_GROUP,
@@ -94,3 +95,20 @@ def user_assignable_roles(*, viewer: User) -> list[Tier]:
     below their own. Superuser is never one; that's infra's to grant."""
     tier = user_tier(user=viewer)
     return [t for t in reversed(Tier) if t < tier and t < Tier.SUPERUSER]
+
+
+def user_identity_anonymous_find(*, session_key: str) -> UserIdentity | None:
+    """The anonymous identity for ``session_key``, or None. An identity an
+    account owns is never anonymous, whatever key it carries."""
+    return UserIdentity.objects.filter(
+        session_key=session_key, user__isnull=True
+    ).first()
+
+
+def user_identity_counts(*, identity: UserIdentity) -> dict[str, int]:
+    """How many answers, chat threads and uploads ``identity`` owns."""
+    return {
+        "answers": identity.variable_answers.count(),
+        "threads": identity.chat_threads.count(),
+        "uploads": identity.uploads.count(),
+    }

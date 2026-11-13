@@ -1,5 +1,6 @@
 from urllib.parse import urlsplit
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -12,11 +13,12 @@ from django.http import (
     HttpResponseBadRequest,
     HttpResponseNotAllowed,
 )
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, resolve_url
 from django.urls import reverse, reverse_lazy
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.clickjacking import xframe_options_sameorigin
+from django.views.decorators.http import require_http_methods
 from django.views.generic import DetailView, UpdateView
 
 from litigant_portal.agents.bedrock import (
@@ -37,7 +39,13 @@ from litigant_portal.app.selectors.bedrock import (
 from litigant_portal.app.selectors.corpus import COURTS_DIR, corpus_load_courts
 from litigant_portal.app.selectors.site import contact_help_list, site_get
 from litigant_portal.app.services.corpus import corpus_court_switch
-from litigant_portal.app.services.user import user_identity_reset
+from litigant_portal.app.services.user import (
+    user_identity_anonymous_settle,
+    user_identity_delete_anonymous,
+    user_identity_merge_anonymous,
+    user_identity_reset,
+)
+from litigant_portal.app.session import ANONYMOUS_SESSION_KEY
 from litigant_portal.app.views.utils import (
     ALL_COURTS,
     BRANDING_FIELDS,
@@ -101,14 +109,67 @@ def start_over(request):
     messages.success(
         request, _("Started over. Your chats and answers are cleared.")
     )
-    next_url = request.POST.get("next", "")
-    if not url_has_allowed_host_and_scheme(
+    next_url = _next_url(request, default=reverse("pages:home"))
+    return redirect(urlsplit(next_url).path)
+
+
+def _next_url(request, *, default: str) -> str:
+    """The ``next`` of the request when it is on this site, else
+    ``default``."""
+    next_url = request.POST.get("next", request.GET.get("next", ""))
+    if url_has_allowed_host_and_scheme(
         next_url,
         allowed_hosts={request.get_host()},
         require_https=request.is_secure(),
     ):
-        next_url = reverse("pages:home")
-    return redirect(urlsplit(next_url).path)
+        return next_url
+    return default
+
+
+@login_required
+@require_http_methods(["GET", "POST"])
+def anonymous_answers(request):
+    """Ask a signed-in visitor whether to keep what they did on this
+    device before signing in: the answers, chats and uploads of the
+    anonymous session whose key the middleware left in the session.
+
+    GET shows the counts with a keep and a discard button; POST acts on
+    the choice, forgets the key, and returns to ``next`` when it is on
+    this site, else to ``LOGIN_REDIRECT_URL``. With nothing to bring, GET
+    returns there at once. ``AnonymousSessionKeyMiddleware`` sends every
+    page load here until the choice is made.
+    """
+    next_url = _next_url(
+        request, default=resolve_url(settings.LOGIN_REDIRECT_URL)
+    )
+    session_key = request.session.get(ANONYMOUS_SESSION_KEY)
+    counts = (
+        user_identity_anonymous_settle(session_key=session_key)
+        if session_key
+        else {}
+    )
+    if not any(counts.values()):
+        request.session.pop(ANONYMOUS_SESSION_KEY, None)
+        return redirect(next_url)
+    if request.method != "POST":
+        return render(
+            request,
+            "account/answers.html",
+            {"counts": counts, "next": next_url},
+        )
+    choice = request.POST.get("choice")
+    if choice == "keep":
+        user_identity_merge_anonymous(
+            user=request.user, session_key=session_key
+        )
+    elif choice == "discard":
+        user_identity_delete_anonymous(
+            user=request.user, session_key=session_key
+        )
+    else:
+        return HttpResponseBadRequest()
+    request.session.pop(ANONYMOUS_SESSION_KEY, None)
+    return redirect(next_url)
 
 
 def court_switch(request):

@@ -1,15 +1,12 @@
 import logging
 
 from django.contrib.auth.models import Group, Permission
-from django.contrib.auth.signals import user_logged_in
 from django.core.cache import cache
 from django.db import DEFAULT_DB_ALIAS
-from django.dispatch import receiver
 
 from .cache import DATA_MODEL_CACHE_KEYS
 from .models import Site
 from .permissions import GROUP_PERMISSIONS
-from .services.user import user_identity_merge_anonymous
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +62,3 @@ def clear_data_model_cache(sender, **kwargs):
             DATA_MODEL_CACHE_KEYS,
             exc_info=True,
         )
-
-
-@receiver(user_logged_in)
-def merge_anonymous_identity(request, user, **kwargs):
-    """On login, fold the anonymous UserIdentity into the user's identity."""
-    session_key = request.session.pop("_anonymous_session_key", None)
-    if session_key:
-        user_identity_merge_anonymous(user=user, session_key=session_key)
