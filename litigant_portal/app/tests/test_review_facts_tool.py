@@ -121,14 +121,14 @@ def test_answered_flow_variables_are_listed_with_their_review_state(
         {
             "name": "first_name",
             "label": "First name",
-            "value": "Sandra",
+            "display_value": "Sandra",
             "reviewed": True,
             "evidence": None,
         },
         {
             "name": "county",
             "label": "County",
-            "value": "Cass",
+            "display_value": "Cass",
             "reviewed": False,
             "evidence": evidence,
         },

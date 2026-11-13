@@ -186,37 +186,45 @@ class VariableAnswer(BaseModel):
         `2026-09-09`, so the shaping lives here rather than in the template.
         """
         if isinstance(self.value, bool):
-            return _("Yes") if self.value else _("No")
+            return str(_("Yes")) if self.value else str(_("No"))
         if isinstance(self.value, list):
             return ", ".join(str(item) for item in self.value)
         if self.value is None:
             return ""
-        return self._formatted_date() or str(self.value)
+        return self._formatted_value_from_data_type()
 
-    def _formatted_date(self) -> str | None:
-        """Long-form date for a date or datetime variable.
+    def _formatted_value_from_data_type(self) -> str:
+        raw = str(self.value)
 
-        None when the variable isn't temporal, isn't reachable, or the stored
-        value doesn't parse — an unparseable date still has to render as
-        whatever is stored rather than disappear.
-        """
         try:
             data_type = self.variable.data_type
         except ObjectDoesNotExist:
-            return None
+            return raw
 
-        raw = str(self.value)
-        if data_type == VariableDataType.DATE:
+        if data_type == VariableDataType.CHOICE:
+            return self._formatted_choice()
+        elif data_type == VariableDataType.DATE:
             parsed = parse_date(raw)
             # Same shape the flow page's deadlines use, so a litigant sees one
             # date format across both surfaces.
-            return format_long_date(parsed) if parsed else None
-        if data_type == VariableDataType.DATETIME:
+            return format_long_date(parsed) if parsed else raw
+        elif data_type == VariableDataType.DATETIME:
             parsed = parse_datetime(raw)
             if parsed is None:
-                return None
+                return raw
             return formats.date_format(parsed, "DATETIME_FORMAT")
-        return None
+        return raw
+
+    def _formatted_choice(self) -> str:
+        # A stored answer can outlive its choice when the corpus changes.
+        return next(
+            (
+                choice["label"]
+                for choice in self.variable.choices
+                if choice["value"] == self.value
+            ),
+            str(self.value),
+        )
 
     class Meta:
         constraints = [

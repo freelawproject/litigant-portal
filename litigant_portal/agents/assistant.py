@@ -249,12 +249,16 @@ def generate_topic_flows_prompt() -> str:
 
 
 def _fact_values(answers) -> dict[str, str]:
-    """Variable name -> the value exactly as the facts section renders it.
+    """Variable name -> its values exactly as the facts section renders them.
 
     json.dumps: a value with a newline must not add its own prompt lines.
     """
     return {
-        a.variable.name: json.dumps(str(a.display_value), ensure_ascii=False)
+        a.variable.name: (
+            f"value: {json.dumps(a.value, ensure_ascii=False)}, "
+            "display_value: "
+            f"{json.dumps(a.display_value, ensure_ascii=False)}"
+        )
         for a in answers
     }
 

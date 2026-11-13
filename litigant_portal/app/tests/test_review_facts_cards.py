@@ -30,10 +30,15 @@ FACTS = [
     {
         "name": "first_name",
         "label": "First name",
-        "value": "Sandra",
+        "display_value": "Sandra",
         "reviewed": True,
     },
-    {"name": "county", "label": "County", "value": "Cass", "reviewed": False},
+    {
+        "name": "county",
+        "label": "County",
+        "display_value": "Cass",
+        "reviewed": False,
+    },
 ]
 TRACK = {"court": "test-court", "topic": "name-change", "role": "standard"}
 AS_OF = "2026-09-29T12:00:00.000000+00:00"
@@ -163,6 +168,22 @@ def test_the_outcome_notes_render_hidden_for_the_component_to_reveal(
         r'<div aria-live="polite">(.*?)</div>', html, flags=re.DOTALL
     )
     assert region.count("-note") == 3
+
+
+def test_a_fact_stored_under_the_value_key_still_shows_its_text(
+    client_thread,
+):
+    # Older chats store each fact's text under `value`.
+    facts = [
+        {
+            "name": "county",
+            "label": "County",
+            "value": "Cass",
+            "reviewed": False,
+        }
+    ]
+    html = _card_html(*client_thread, render_data=_data(facts=facts))
+    assert "Cass" in html
 
 
 def test_missing_facts_are_listed_as_still_needed(client_thread):

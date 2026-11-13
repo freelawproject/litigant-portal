@@ -29,16 +29,32 @@ CRASHED = "Something went wrong"
 REVIEW_NOTE = "You will review and confirm these"
 
 SAVED = [
-    {"name": "county", "label": "County", "value": "Cass", "cleared": False}
+    {
+        "name": "county",
+        "label": "County",
+        "display_value": "Cass",
+        "cleared": False,
+    }
 ]
 UNCHANGED = [
+    {
+        "name": "date_of_birth",
+        "label": "Date of birth",
+        "display_value": "Thursday, January 31, 1991",
+    }
+]
+ERRORS = [{"name": "zip", "label": "ZIP code", "message": "must be a string"}]
+# Older chats store each fact's text under `value`.
+VALUE_KEY_SAVED = [
+    {"name": "county", "label": "County", "value": "Cass", "cleared": False}
+]
+VALUE_KEY_UNCHANGED = [
     {
         "name": "date_of_birth",
         "label": "Date of birth",
         "value": "Thursday, January 31, 1991",
     }
 ]
-ERRORS = [{"name": "zip", "label": "ZIP code", "message": "must be a string"}]
 
 
 @pytest.fixture
@@ -131,6 +147,16 @@ def _card_html(client, thread, *, facts, render_data):
             [SAVED_TITLE, UNCHANGED_TITLE, CRASHED, REVIEW_NOTE],
         ),
         (
+            {
+                "saved": VALUE_KEY_SAVED,
+                "unchanged": VALUE_KEY_UNCHANGED,
+                "errors": [],
+            },
+            SAVED_TITLE,
+            ["Cass", "Thursday, January 31, 1991", REVIEW_NOTE],
+            [UNCHANGED_TITLE, FAILED_TITLE],
+        ),
+        (
             None,
             FAILED_TITLE,
             [CRASHED],
@@ -144,6 +170,7 @@ def _card_html(client, thread, *, facts, render_data):
         "saved-unchanged-and-error",
         "saved-only-legacy-shape",
         "errors-only-legacy-shape",
+        "value-key-legacy-shape",
         "tool-crashed-no-data",
     ],
 )

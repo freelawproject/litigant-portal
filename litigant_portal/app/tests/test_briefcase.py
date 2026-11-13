@@ -288,6 +288,12 @@ class DisplayValueTests(SimpleTestCase):
             "Wednesday, September 9, 2026",
         )
 
+    def test_datetime_renders_long_form_not_iso(self):
+        self.assertEqual(
+            self._value("2026-09-09T14:30:00", VariableDataType.DATETIME),
+            "Sept. 9, 2026, 2:30 p.m.",
+        )
+
     def test_an_unparseable_date_falls_back_to_the_stored_value(self):
         # Never swallow a value we can't parse — the litigant still needs to
         # see whatever is actually stored against their case.
@@ -308,6 +314,41 @@ class DisplayValueTests(SimpleTestCase):
 
     def test_a_cleared_answer_renders_empty_not_none(self):
         self.assertEqual(VariableAnswer(value=None).display_value, "")
+
+    def test_choice_renders_its_label(self):
+        citizen_label = "US citizen"
+        variable = Variable(
+            name="citizen",
+            data_type=VariableDataType.CHOICE,
+            choices=[
+                {
+                    "value": "citizen",
+                    "label": citizen_label,
+                }
+            ],
+        )
+        self.assertEqual(
+            VariableAnswer(value="citizen", variable=variable).display_value,
+            citizen_label,
+        )
+
+    def test_a_choice_no_longer_offered_renders_the_stored_value(self):
+        variable = Variable(
+            name="citizen",
+            data_type=VariableDataType.CHOICE,
+            choices=[
+                {
+                    "value": "citizen",
+                    "label": "US citizen",
+                }
+            ],
+        )
+        self.assertEqual(
+            VariableAnswer(
+                value="invalid_value", variable=variable
+            ).display_value,
+            "invalid_value",
+        )
 
 
 class BriefcaseSampleTests(SimpleTestCase):
