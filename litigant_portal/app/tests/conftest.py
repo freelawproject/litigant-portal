@@ -1,6 +1,6 @@
 import pytest
 from django.core.cache import cache
-from django.test import TransactionTestCase
+from django.test import TransactionTestCase, override_settings
 
 from litigant_portal.app.cache import SITE_CACHE_KEY
 from litigant_portal.app.models import Site
@@ -21,6 +21,21 @@ def resolved_bedrock_model(monkeypatch):
             capabilities=frozenset({"text", "image", "document"}),
         ),
     )
+
+
+@pytest.fixture(autouse=True, scope="session")
+def fast_password_hasher():
+    """Hash test passwords with MD5 instead of PBKDF2 (#1186).
+
+    Every create_user, set_password and login attempt hashes for real,
+    and the rate-limit tests make up to ten failed logins each. No test
+    checks which hasher is in use. Session scope so users created in
+    setUpTestData, which runs before function fixtures, get it too.
+    """
+    with override_settings(
+        PASSWORD_HASHERS=["django.contrib.auth.hashers.MD5PasswordHasher"]
+    ):
+        yield
 
 
 @pytest.fixture(autouse=True)
