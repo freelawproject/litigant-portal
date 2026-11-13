@@ -353,3 +353,19 @@ class IdentityAnonymousSettleTests(TestCase):
     def test_all_zero_on_a_miss(self):
         counts = user_identity_anonymous_settle(session_key="missing")
         self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+
+    def test_counts_after_locking_so_a_late_write_keeps_the_identity(self):
+        empty = UserIdentity.objects.create(session_key="abc123")
+
+        def lock_then_chat(identities):
+            pks = _identities_lock(identities)
+            ChatThread.objects.create(identity=empty)
+            return pks
+
+        with mock.patch(
+            "litigant_portal.app.services.user._identities_lock",
+            side_effect=lock_then_chat,
+        ):
+            counts = user_identity_anonymous_settle(session_key="abc123")
+        self.assertEqual(counts, {"answers": 0, "threads": 1, "uploads": 0})
+        self.assertTrue(UserIdentity.objects.filter(pk=empty.pk).exists())

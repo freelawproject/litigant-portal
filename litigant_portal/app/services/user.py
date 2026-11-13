@@ -149,19 +149,21 @@ def user_identity_merge_anonymous(*, user, session_key: str) -> None:
 _NO_COUNTS = {"answers": 0, "threads": 0, "uploads": 0}
 
 
+@transaction.atomic
 def user_identity_anonymous_settle(*, session_key: str) -> dict[str, int]:
     """What the anonymous identity for ``session_key`` still holds: the
     answers, threads and uploads the visitor may bring into their account,
     all zero on a miss. An identity that holds nothing is deleted on the
-    way, since no choice is needed for it."""
+    way, since no choice is needed for it. The identity is locked before
+    the count, so a write still in flight for it is counted or waits."""
     anon_identity = user_identity_anonymous_find(session_key=session_key)
     if anon_identity is None:
         return dict(_NO_COUNTS)
+    identities = UserIdentity.objects.filter(pk=anon_identity.pk)
+    _identities_lock(identities)
     counts = user_identity_counts(identity=anon_identity)
     if not any(counts.values()):
-        user_identities_delete(
-            identities=UserIdentity.objects.filter(pk=anon_identity.pk)
-        )
+        user_identities_delete(identities=identities)
     return counts
 
 
