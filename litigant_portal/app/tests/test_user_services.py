@@ -173,6 +173,43 @@ class IdentityMergeTests(TestCase):
         # The stored path is identity-free, so the merge never touches it.
         self.assertEqual(upload.file.name, "uploads/x/notes.txt")
 
+    def test_locks_the_source_and_its_threads_before_moving_anything(self):
+        ChatThread.objects.create(identity=self.anon)
+        with CaptureQueriesContext(connection) as queries:
+            user_identity_merge(
+                source_identity=self.anon, target_identity=self.target
+            )
+        sql = [q["sql"] for q in queries.captured_queries]
+        locked = [s for s in sql if "FOR UPDATE" in s]
+        self.assertEqual(len(locked), 2)
+        self.assertIn(UserIdentity._meta.db_table, locked[0])
+        self.assertIn(ChatThread._meta.db_table, locked[1])
+        first_move = next(
+            i for i, s in enumerate(sql) if s.startswith("UPDATE")
+        )
+        self.assertLess(sql.index(locked[1]), first_move)
+
+    def test_a_source_deleted_under_lock_moves_nothing(self):
+        ChatThread.objects.create(identity=self.anon)
+
+        def lock_then_lose(identities):
+            _identities_lock(identities)
+            return []
+
+        with mock.patch(
+            "litigant_portal.app.services.user._identities_lock",
+            side_effect=lock_then_lose,
+        ):
+            user_identity_merge(
+                source_identity=self.anon, target_identity=self.target
+            )
+        self.assertEqual(
+            ChatThread.objects.filter(identity=self.anon).count(), 1
+        )
+        self.assertFalse(
+            ChatThread.objects.filter(identity=self.target).exists()
+        )
+
 
 @pytest.mark.postgres
 class IdentityMergeVariableAnswerTests(TestCase):

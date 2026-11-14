@@ -115,8 +115,13 @@ def user_identity_merge(
     """Fold ``source`` into ``target``, then delete ``source``.
 
     All chat threads and uploads migrate, as do variable answers the target
-    hasn't answered itself. Runs in a single transaction.
+    hasn't answered itself. Runs in a single transaction, with ``source``
+    locked so a delete in another request waits or has already won.
     """
+    if not _identities_lock(
+        UserIdentity.objects.filter(pk=source_identity.pk)
+    ):
+        return
     threads = source_identity.chat_threads.update(identity=target_identity)
     uploads = source_identity.uploads.update(identity=target_identity)
     answers = _variable_answers_migrate(
