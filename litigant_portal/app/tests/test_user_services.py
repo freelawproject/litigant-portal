@@ -374,22 +374,52 @@ class IdentityDeleteAnonymousTests(TestCase):
 
 @pytest.mark.postgres
 class IdentityAnonymousSettleTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="u", password="p")
+
+    def _settle(self, session_key="abc123"):
+        return user_identity_anonymous_settle(
+            user=self.user, session_key=session_key
+        )
+
     def test_returns_what_a_pending_identity_holds_and_keeps_it(self):
         anon = UserIdentity.objects.create(session_key="abc123")
         ChatThread.objects.create(identity=anon)
-        counts = user_identity_anonymous_settle(session_key="abc123")
+        counts = self._settle()
         self.assertEqual(counts, {"answers": 0, "threads": 1, "uploads": 0})
         self.assertTrue(UserIdentity.objects.filter(pk=anon.pk).exists())
 
     def test_deletes_an_identity_that_holds_nothing(self):
         empty = UserIdentity.objects.create(session_key="abc123")
-        counts = user_identity_anonymous_settle(session_key="abc123")
+        counts = self._settle()
         self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
         self.assertFalse(UserIdentity.objects.filter(pk=empty.pk).exists())
 
     def test_all_zero_on_a_miss(self):
-        counts = user_identity_anonymous_settle(session_key="missing")
+        counts = self._settle(session_key="missing")
         self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+
+    def test_leaves_out_answers_the_account_already_gave(self):
+        anon = UserIdentity.objects.create(session_key="abc123")
+        mine = UserIdentity.objects.create(user=self.user)
+        name = Variable.objects.create(name="first_name")
+        city = Variable.objects.create(name="city")
+        VariableAnswer.objects.create(identity=anon, variable=name, value="G")
+        VariableAnswer.objects.create(identity=anon, variable=city, value="F")
+        VariableAnswer.objects.create(identity=mine, variable=name, value="A")
+        counts = self._settle()
+        self.assertEqual(counts, {"answers": 1, "threads": 0, "uploads": 0})
+
+    def test_an_identity_with_only_overlapping_answers_holds_nothing(self):
+        anon = UserIdentity.objects.create(session_key="abc123")
+        mine = UserIdentity.objects.create(user=self.user)
+        name = Variable.objects.create(name="first_name")
+        VariableAnswer.objects.create(identity=anon, variable=name, value="G")
+        VariableAnswer.objects.create(identity=mine, variable=name, value="A")
+        counts = self._settle()
+        self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+        self.assertFalse(UserIdentity.objects.filter(pk=anon.pk).exists())
+        self.assertEqual(VariableAnswer.objects.get().value, "A")
 
     def test_counts_after_locking_so_a_late_write_keeps_the_identity(self):
         empty = UserIdentity.objects.create(session_key="abc123")
@@ -403,6 +433,6 @@ class IdentityAnonymousSettleTests(TestCase):
             "litigant_portal.app.services.user._identities_lock",
             side_effect=lock_then_chat,
         ):
-            counts = user_identity_anonymous_settle(session_key="abc123")
+            counts = self._settle()
         self.assertEqual(counts, {"answers": 0, "threads": 1, "uploads": 0})
         self.assertTrue(UserIdentity.objects.filter(pk=empty.pk).exists())

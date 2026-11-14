@@ -105,10 +105,26 @@ def user_identity_anonymous_find(*, session_key: str) -> UserIdentity | None:
     ).first()
 
 
-def user_identity_counts(*, identity: UserIdentity) -> dict[str, int]:
-    """How many answers, chat threads and uploads ``identity`` owns."""
+def user_identity_find(*, user: User) -> UserIdentity | None:
+    """The identity ``user`` owns, or None before their first write."""
+    return UserIdentity.objects.filter(user=user).first()
+
+
+def user_identity_counts(
+    *, identity: UserIdentity, target_identity: UserIdentity | None = None
+) -> dict[str, int]:
+    """How many answers, chat threads and uploads ``identity`` owns. With
+    ``target_identity``, answers to questions it already answered are left
+    out: a merge keeps the target's answer and drops these."""
+    answers = identity.variable_answers.all()
+    if target_identity is not None:
+        answers = answers.exclude(
+            variable_id__in=target_identity.variable_answers.values(
+                "variable_id"
+            )
+        )
     return {
-        "answers": identity.variable_answers.count(),
+        "answers": answers.count(),
         "threads": identity.chat_threads.count(),
         "uploads": identity.uploads.count(),
     }

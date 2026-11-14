@@ -144,7 +144,9 @@ def anonymous_answers(request):
     )
     session_key = request.session.get(ANONYMOUS_SESSION_KEY)
     counts = (
-        user_identity_anonymous_settle(session_key=session_key)
+        user_identity_anonymous_settle(
+            user=request.user, session_key=session_key
+        )
         if session_key
         else {}
     )

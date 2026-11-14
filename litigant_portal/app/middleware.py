@@ -100,7 +100,9 @@ class AnonymousSessionKeyMiddleware:
             and _is_page_load(request)
             and not _answers_exempt(request)
         ):
-            counts = user_identity_anonymous_settle(session_key=session_key)
+            counts = user_identity_anonymous_settle(
+                user=request.user, session_key=session_key
+            )
             if any(counts.values()):
                 query = urlencode({"next": request.get_full_path()})
                 return redirect(

@@ -140,6 +140,18 @@ def test_no_pending_key_leaves_identities_without_one_alone(
     assert stray.variable_answers.count() == 1
 
 
+def test_the_page_leaves_out_answers_the_account_already_gave(
+    signed_in, user, variable, pending
+):
+    mine = UserIdentity.objects.create(user=user)
+    VariableAnswer.objects.create(
+        identity=mine, variable=variable, value="Burleigh"
+    )
+    response = signed_in.get(URL)
+    assert response.status_code == 200
+    assert response.context["counts"]["answers"] == 0
+
+
 def test_an_offsite_next_returns_to_the_login_redirect(signed_in):
     response = signed_in.get(URL, {"next": "https://example.com/"})
     assert response["Location"] == resolve_url(settings.LOGIN_REDIRECT_URL)
