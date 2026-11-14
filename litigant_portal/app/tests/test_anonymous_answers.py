@@ -109,13 +109,12 @@ def test_the_page_lists_the_counts_and_both_choices(signed_in, pending):
     ChatThread.objects.create(identity=pending)
     response = signed_in.get(URL)
     assert response.status_code == 200
+    assert response.context["counts"] == {
+        "answers": 1,
+        "threads": 2,
+        "uploads": 1,
+    }
     html = response.content.decode()
-    counts = re.search(r'<ul role="list"[^>]*>(.*?)</ul>', html, re.S).group(1)
-    assert re.findall(r"<li>\s*(.*?)\s*</li>", counts, re.S) == [
-        "1 answer",
-        "2 chats",
-        "1 upload",
-    ]
     assert re.search(r'<button[^>]+name="choice"[^>]+value="keep"', html)
     assert re.search(r'<button[^>]+name="choice"[^>]+value="discard"', html)
 
