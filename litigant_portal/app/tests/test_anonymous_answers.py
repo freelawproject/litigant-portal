@@ -276,6 +276,25 @@ def test_every_page_load_is_sent_to_the_choice_until_it_is_made(
     assert signed_in.get(ABOUT).status_code == 200
 
 
+def test_logout_before_choosing_hands_the_work_to_the_new_session(
+    signed_in, user, pending
+):
+    signed_in.post(reverse("account_logout"))
+    pending.refresh_from_db()
+    assert pending.session_key == signed_in.session.session_key
+    assert signed_in.session[ANONYMOUS_SESSION_KEY] == pending.session_key
+    signed_in.post(
+        reverse("account_login"), {"login": EMAIL, "password": PASSWORD}
+    )
+    assert signed_in.get(ABOUT)["Location"] == _choice_page(ABOUT)
+
+
+def test_logout_with_nothing_pending_leaves_the_session_empty(client, user):
+    client.force_login(user)
+    client.post(reverse("account_logout"))
+    assert client.session.session_key is None
+
+
 def test_the_choice_keeps_the_query_of_the_page_it_interrupted(
     signed_in, pending
 ):

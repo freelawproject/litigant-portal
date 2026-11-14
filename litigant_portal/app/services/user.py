@@ -146,6 +146,16 @@ def user_identity_merge_anonymous(*, user, session_key: str) -> None:
     )
 
 
+def user_identity_anonymous_rekey(
+    *, session_key: str, new_session_key: str
+) -> int:
+    """Hand the anonymous identity for ``session_key`` to the session
+    ``new_session_key``. Returns the identities moved."""
+    return UserIdentity.objects.filter(
+        session_key=session_key, user__isnull=True
+    ).update(session_key=new_session_key)
+
+
 _NO_COUNTS = {"answers": 0, "threads": 0, "uploads": 0}
 
 
