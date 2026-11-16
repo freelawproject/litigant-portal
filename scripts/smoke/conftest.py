@@ -7,7 +7,14 @@ TRACE_PROPERTY = "playwright_trace"
 TRACE_VIEWER_URL = "https://trace.playwright.dev"
 
 
+# pytest finds this hook by its name, so the work lives in a named helper.
 def pytest_terminal_summary(
+    terminalreporter: pytest.TerminalReporter, config: pytest.Config
+) -> None:
+    write_helpful_trace_summary_to_terminal(terminalreporter, config)
+
+
+def write_helpful_trace_summary_to_terminal(
     terminalreporter: pytest.TerminalReporter, config: pytest.Config
 ) -> None:
     traces = find_traces(terminalreporter.stats)
