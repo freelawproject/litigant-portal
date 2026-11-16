@@ -34,6 +34,8 @@ def test_health_ok(page: Page) -> None:
     assert response.status == 200, (
         f"{HEALTH_PATH} returned {response.status}: {response.text()}"
     )
+    body = response.json()
+    assert body["status"] is True, f"{HEALTH_PATH} reported {body}"
 
 
 def record_asset_responses(page: Page) -> list[Response]:
