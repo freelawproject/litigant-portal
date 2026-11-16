@@ -4,7 +4,7 @@ A signed-in visitor whose session still carries the key of the session they
 used before signing in is asked whether to keep that session's answers,
 chats and uploads or delete them. The page tests place the key in the
 session themselves; the login and signup tests go through allauth and let
-the middleware carry it.
+the middleware carry it and the adapter act on it.
 """
 
 import re
@@ -239,31 +239,40 @@ def test_a_visitor_who_is_not_signed_in_is_sent_to_login(client):
 
 
 ABOUT = reverse("pages:about")
+HOME = resolve_url(settings.LOGIN_REDIRECT_URL)
 
 
-def test_login_with_pending_answers_sends_the_next_page_to_the_choice(
+def _login(client, **query):
+    return client.post(
+        f"{reverse('account_login')}?{urlencode(query)}",
+        {"login": EMAIL, "password": PASSWORD},
+    )
+
+
+def test_login_with_pending_answers_goes_to_the_choice_first(
     client, user, variable
 ):
     _anonymous_visit(client, variable)
-    response = client.post(
-        reverse("account_login"), {"login": EMAIL, "password": PASSWORD}
-    )
+    response = _login(client)
     assert response.status_code == 302
-    response = client.get(ABOUT)
-    assert response["Location"] == _choice_page(ABOUT)
+    assert response["Location"] == _choice_page(HOME)
+
+
+def test_the_choice_carries_where_the_login_was_going(client, user, variable):
+    _anonymous_visit(client, variable)
+    response = _login(client, next=f"{ABOUT}?tab=help")
+    assert response["Location"] == _choice_page(f"{ABOUT}?tab=help")
 
 
 def test_login_with_nothing_pending_leaves_no_trace(client, user):
     identity = _anonymous_visit(client)
-    client.post(
-        reverse("account_login"), {"login": EMAIL, "password": PASSWORD}
-    )
-    assert client.get(ABOUT).status_code == 200
+    response = _login(client)
+    assert response["Location"] == HOME
     assert not UserIdentity.objects.filter(pk=identity.pk).exists()
     assert ANONYMOUS_SESSION_KEY not in client.session
 
 
-def test_signup_with_pending_answers_sends_the_next_page_to_the_choice(
+def test_signup_with_pending_answers_goes_to_the_choice_first(
     client, variable
 ):
     _anonymous_visit(client, variable)
@@ -272,19 +281,13 @@ def test_signup_with_pending_answers_sends_the_next_page_to_the_choice(
         {"email": EMAIL, "password1": PASSWORD, "password2": PASSWORD},
     )
     assert response.status_code == 302
-    response = client.get(ABOUT)
-    assert response["Location"] == _choice_page(ABOUT)
+    assert response["Location"] == _choice_page(HOME)
 
 
-def test_every_page_load_is_sent_to_the_choice_until_it_is_made(
-    signed_in, pending
-):
-    assert signed_in.get(ABOUT)["Location"] == _choice_page(ABOUT)
-    assert signed_in.get(reverse("pages:home"))["Location"] == _choice_page(
-        reverse("pages:home")
-    )
-    signed_in.post(URL, {"choice": "keep"})
+def test_pages_are_not_interrupted_while_the_choice_waits(signed_in, pending):
     assert signed_in.get(ABOUT).status_code == 200
+    assert ANONYMOUS_SESSION_KEY in signed_in.session
+    assert UserIdentity.objects.filter(pk=pending.pk).exists()
 
 
 def test_logout_before_choosing_hands_the_work_to_the_new_session(
@@ -294,45 +297,10 @@ def test_logout_before_choosing_hands_the_work_to_the_new_session(
     pending.refresh_from_db()
     assert pending.session_key == signed_in.session.session_key
     assert signed_in.session[ANONYMOUS_SESSION_KEY] == pending.session_key
-    signed_in.post(
-        reverse("account_login"), {"login": EMAIL, "password": PASSWORD}
-    )
-    assert signed_in.get(ABOUT)["Location"] == _choice_page(ABOUT)
+    assert _login(signed_in)["Location"] == _choice_page(HOME)
 
 
 def test_logout_with_nothing_pending_leaves_the_session_empty(client, user):
     client.force_login(user)
     client.post(reverse("account_logout"))
     assert client.session.session_key is None
-
-
-def test_the_choice_keeps_the_query_of_the_page_it_interrupted(
-    signed_in, pending
-):
-    response = signed_in.get(f"{ABOUT}?tab=help")
-    assert response["Location"] == _choice_page(f"{ABOUT}?tab=help")
-
-
-@pytest.mark.parametrize(
-    ("method", "path", "headers"),
-    [
-        ("get", reverse("assistant:thread_list"), {}),
-        ("get", reverse("account_logout"), {}),
-        ("get", reverse("pages:briefcase"), {"Sec-Fetch-Dest": "empty"}),
-        ("get", reverse("javascript-catalog"), {"Sec-Fetch-Dest": "script"}),
-        ("post", ABOUT, {}),
-    ],
-    ids=["api-get", "logout", "fetch", "script", "post"],
-)
-def test_the_api_logout_subresources_and_posts_are_not_interrupted(
-    signed_in, pending, method, path, headers
-):
-    response = getattr(signed_in, method)(path, headers=headers)
-    assert response.status_code == 200
-
-
-def test_a_request_that_says_it_is_a_page_load_is_interrupted(
-    signed_in, pending
-):
-    response = signed_in.get(ABOUT, headers={"Sec-Fetch-Dest": "document"})
-    assert response["Location"] == _choice_page(ABOUT)
