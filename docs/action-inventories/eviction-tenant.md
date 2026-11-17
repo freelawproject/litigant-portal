@@ -1,4 +1,4 @@
-# Eviction product flow: tenant
+# Eviction action inventory: tenant
 
 Every action a tenant can take on the eviction path at Franklin County Municipal Court's instance, with its route and whether it's built. Mapped from the code on `main` as of 2026-11-16 (b20fec4a), following Jane Martin's eviction story ([#26](https://github.com/freelawproject/litigant-portal/issues/26)). Tracked in [#1196](https://github.com/freelawproject/litigant-portal/issues/1196).
 

@@ -30,11 +30,11 @@ The repo's reference shelf: material you reach for when you need it. Day-to-day 
 | ---------------------------------- | ------------------------------------------------------- |
 | [docassemble.md](./docassemble.md) | docassemble: authoring gotchas, local bench, QA hosting |
 
-## Product flows
+## Action inventories
 
-| Doc                                                      | Purpose                                                           |
-| -------------------------------------------------------- | ----------------------------------------------------------------- |
-| [eviction-tenant.md](./product-flows/eviction-tenant.md) | Every tenant action on the eviction path: route, built or MVP gap |
+| Doc                                                           | Purpose                                                           |
+| ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| [eviction-tenant.md](./action-inventories/eviction-tenant.md) | Every tenant action on the eviction path: route, built or MVP gap |
 
 ## Wiki
 
