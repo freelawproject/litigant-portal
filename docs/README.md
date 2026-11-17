@@ -32,9 +32,9 @@ The repo's reference shelf: material you reach for when you need it. Day-to-day 
 
 ## Action inventories
 
-| Doc                                                           | Purpose                                                           |
-| ------------------------------------------------------------- | ----------------------------------------------------------------- |
-| [eviction-tenant.md](./action-inventories/eviction-tenant.md) | Every tenant action on the eviction path: route, built or MVP gap |
+| Doc                                                         | Purpose                                                                         |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| [nd-name-change.md](./action-inventories/nd-name-change.md) | Every action on North Dakota's adult name change path: route, built or MVP gap |
 
 ## Wiki
 
