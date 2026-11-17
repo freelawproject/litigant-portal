@@ -4,6 +4,80 @@ Every action a tenant can take on the eviction path at Franklin County Municipal
 
 When the code and this doc disagree, trust the code and fix the doc. As MVP gaps get issues, link them from the action they cover.
 
+The doc has three parts, each backing the next:
+
+1. **Jane's story:** why she needs the actions at all.
+2. **User flow:** her path in order, with its decision points. Each step names the inventory action it uses.
+3. **Action inventory:** every action, screen by screen, with its route.
+
+A step in the flow with no inventory number is a gap that neither list caught on its own.
+
+## Jane's story
+
+Jane Martin's story ([#26](https://github.com/freelawproject/litigant-portal/issues/26)) is set in DuPage County, Illinois. Here she's moved to Franklin County, Ohio, where the tenant flow lives; the Franklin County stories ([#720](https://github.com/freelawproject/litigant-portal/issues/720), [#722](https://github.com/freelawproject/litigant-portal/issues/722)) replaced it for that court. What she needs, and what in the product answers it:
+
+| Jane's situation                                                   | What she needs                                             | Actions                                      |
+| ------------------------------------------------------------------ | ---------------------------------------------------------- | -------------------------------------------- |
+| Served eviction papers; doesn't know what they mean                | A plain-language explanation of what she got               | 2.4, 2.5, 3.3                                |
+| Behind on rent after a car repair wiped out her savings            | Her options and defenses                                   | 2.5, 3.3                                     |
+| Paid for repairs the landlord never reimbursed                     | A counterclaim, and to know it's an option                 | 3.3, 3.8                                     |
+| Earns too much for legal aid (she thinks), too little for a lawyer | Free help she can actually use                             | 3.6, S.1                                     |
+| Uses her phone after the kids are in bed                           | Everything on a phone, at night, with no clerk open        | All; mobile-first                            |
+| Hearing is Monday at 10 am, during her workday                     | Her dates, reminders, and whether she can move the hearing | 3.4, 3.5, **content gap** (moving a hearing) |
+| Can't afford court costs or back rent                              | Fee waiver, rental assistance                              | 3.8, **content gap** (rental assistance)     |
+| Embarrassed; "doesn't know what she doesn't know"                  | Private, no judgment, nothing she has to ask a person      | Anonymous use; P.6, A.5                      |
+
+## User flow
+
+Jane's main path, from the court's link to her hearing. Red steps are MVP gaps. A step with no inventory number has no action yet.
+
+```mermaid
+flowchart TD
+    A["0.1 Clicks the court's link"] --> B["1. Home"]
+    B --> C{"Has her papers in hand?"}
+    C -- "yes" --> D["1.1 Asks a question<br/>2.4 Uploads the summons"]
+    C -- "no, just a notice" --> G["1.2 Opens the eviction guide"]
+    D --> E["2.5 Reads what she was served<br/>and her defenses"]
+    E --> F["2.6 Reviews and confirms<br/>her answers"]
+    F --> G2["2.6.f Opens the guide"]
+    G --> H["3.3 Reads the sections<br/>that fit her"]
+    G2 --> H
+    H --> I["3.4 Enters her dates"]
+    I --> J["3.5 Sees her deadlines"]
+    J --> K["3.5.b Adds them to her calendar"]
+    J --> L["3.5.c Sends them to herself"]
+    J --> M["3.5.d Signs up for reminders"]
+    H --> N{"Wants to keep her work?"}
+    N -- "yes" --> O["A.2 Signs up<br/>A.5 Keeps what she did"]
+    N -- "no" --> P
+    O --> P{"Disputes the money claim<br/>or paid for repairs?"}
+    P -- "yes" --> Q["3.8.b Fills out the Answer<br/>and Counterclaim"]
+    Q --> R["3.8.c Downloads her packet"]
+    R --> S["3.8.d Emails the packet to herself"]
+    S --> T["Prints, signs, and files<br/>at the clerk"]
+    P -- "no" --> U
+    T --> U["3.6 Saves legal aid's number"]
+    U --> V["Can't make Monday at 10:<br/>asks to move the hearing"]
+    V --> W["3.5.d Gets a reminder<br/>the day before"]
+    W --> X(["Goes to her hearing with her forms,<br/>her dates, and legal aid's number"])
+
+    classDef gap fill:#f8d7da,stroke:#dc3545,color:#000
+    classDef none fill:#fff3cd,stroke:#ffc107,color:#000
+    class L,M,O,Q,R,S,W gap
+    class T,V none
+```
+
+Red = MVP gap in the inventory · yellow = no inventory action yet
+
+**Steps with no inventory action**
+
+- **Files at the clerk:** done in person until e-file ships after MVP. The packet section says to print, sign, and bring or mail the forms; nothing in the product tells her where the clerk is or when it's open beyond the contact card.
+- **Asks to move the hearing:** the corpus doesn't cover moving a hearing, and her story turns on it.
+
+**Endpoint:** Jane goes to her hearing with her forms filed, her dates in hand, and legal aid's number saved.
+
+## Action inventory
+
 **Markers**
 
 - no marker = built, in production
@@ -15,12 +89,12 @@ Every screen shares the frame: header on top, **Activity** region on the left, *
 
 ---
 
-## 0. Entry
+### 0. Entry
 
 - 0.1 Click the court's link → `/` (home)
 - 0.2 Court deep link → enters the flow further down (e.g. straight to 3, `/t/franklin-county-oh/eviction/tenant/`)
 
-## H. Header (every page)
+### H. Header (every page)
 
 - H.1 Seal, court name, or logo → `/`
 - H.2 Open Activity drawer (phones)
@@ -40,7 +114,7 @@ Every screen shares the frame: header on top, **Activity** region on the left, *
   - H.7.f Free Law Project → free.law (new tab)
   - H.7.g Tester tools **[tester]**: Start over, tester flow links, Style Guide, Feedback, build stamp
 
-## 1. Home `/`
+### 1. Home `/`
 
 - 1.1 Type a question in "What do you need help with?" and press Search → `/chat/?q=…`; the chat opens and sends it as the first message (2)
 - 1.2 Open the topic card "Responding to an Eviction (Tenant)" → `/t/franklin-county-oh/eviction/tenant/` (3)
@@ -55,7 +129,7 @@ Every screen shares the frame: header on top, **Activity** region on the left, *
   - 1.4.c Show or hide a private answer (eye toggle)
   - [note] The briefcase holds saved answers only. Uploaded files live in chat's Attach dialog (2.4), and forms aren't stored anywhere yet
 
-## 2. Chat `/chat/`
+### 2. Chat `/chat/`
 
 - 2.1 Type a message and send (Enter sends, Shift+Enter adds a line)
 - 2.2 New chat
@@ -81,7 +155,7 @@ Every screen shares the frame: header on top, **Activity** region on the left, *
 - 2.7 Activity (left): switch to another chat
 - 2.8 Briefcase (right): live saved answers (same actions as 1.4)
 
-## 3. Guided page `/t/franklin-county-oh/eviction/tenant/`
+### 3. Guided page `/t/franklin-county-oh/eviction/tenant/`
 
 - 3.1 Left region: jump to a section
   - Overview · Notice to Leave · Court papers · Your key dates · Defenses · At your hearing · If you already moved out · If the judge orders you to move · Deadlines · Contacts · Resources
@@ -110,7 +184,7 @@ Every screen shares the frame: header on top, **Activity** region on the left, *
 - 3.9 Briefcase (right): same actions as 1.4
 - [note] No link from the guided page into chat; the only way back to chat is H.1 → home, or the Activity region on other pages
 
-## A. Account `/accounts/`
+### A. Account `/accounts/`
 
 - A.1 Sign in `/accounts/login/`
   - A.1.a Email, password, Remember me → Sign in → `/` signed in
@@ -127,7 +201,7 @@ Every screen shares the frame: header on top, **Activity** region on the left, *
 - A.4 Sign out `/accounts/logout/` → confirm, or cancel back to `/`
 - A.5 Anonymous work at sign-in: keep it or start fresh **[MVP, not built]** (issue #1179)
 
-## P. Profile `/profile/` (signed in)
+### P. Profile `/profile/` (signed in)
 
 - P.1 Read contact info and address
 - P.2 Edit → `/profile/edit/`: name, phone, address, city, state, ZIP, county → Save Profile, or Cancel
@@ -136,13 +210,13 @@ Every screen shares the frame: header on top, **Activity** region on the left, *
 - P.5 Set how she wants messages: text, email, or both **[MVP, not built]**
 - P.6 Delete my account and data **[MVP, not built]** (issue #986)
 
-## S. Info pages
+### S. Info pages
 
 - S.1 Get help `/help/`: the court's website, the court's self-help resources, who to contact
 - S.2 About `/about/`
 - S.3 Privacy `/privacy/`
 - S.4 Accessibility `/accessibility/`
 
-## Post-MVP
+### Post-MVP
 
 - E-file the packet (issues #122, #1023)
