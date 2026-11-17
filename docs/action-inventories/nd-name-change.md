@@ -18,16 +18,16 @@ A step in the flow with no inventory number is a gap that neither list caught on
 
 Sandra ([#311](https://github.com/freelawproject/litigant-portal/issues/311)) is 54, lives in Bismarck, and wants her birth name back seven months after her divorce. Her passport application needs a court order, and her divorce decree doesn't include one. She works on a laptop, in the evening, and wants a map, not a lawyer. What she needs, and what in the product answers it:
 
-| Sandra's situation                                         | What she needs                                                | Actions                       |
-| ---------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------- |
-| Thought her divorce decree changed her name                | To learn it's a separate petition, without feeling she failed | 1.1, 2.5, 3.3                 |
-| Doesn't know about publication, the 30-day wait, or $160   | The whole process and its costs up front                      | 3.3                           |
-| Restoring a last name, so no publication waiver            | To know why she doesn't qualify, plainly                      | 1.2, 3.3                      |
-| Five forms, a blank case number, an Order she mustn't sign | The right forms, filled in correctly                          | 3.5, 3.7, 2.6                 |
-| Judge may order a background check                         | To call the clerk before she starts                           | 3.3, 3.8, O.1                 |
-| Publishes, then waits 30 days; someone could object        | Her date, and what to do if an objection comes                | O.3, 3.4, 3.6, 3.3            |
-| Passport waiting; SSA, DMV, bank, employer, title          | The order to update her records in                            | 3.3, O.7                      |
-| Comes back between steps over 6 to 8 weeks                 | Her work where she left it                                    | A.2, A.5, 1.4                 |
+| Sandra's situation                                         | What she needs                                                | Actions            |
+| ---------------------------------------------------------- | ------------------------------------------------------------- | ------------------ |
+| Thought her divorce decree changed her name                | To learn it's a separate petition, without feeling she failed | 1.1, 2.5, 3.3      |
+| Doesn't know about publication, the 30-day wait, or $160   | The whole process and its costs up front                      | 3.3                |
+| Restoring a last name, so no publication waiver            | To know why she doesn't qualify, plainly                      | 1.2, 3.3           |
+| Five forms, a blank case number, an Order she mustn't sign | The right forms, filled in correctly                          | 3.5, 3.7, 2.6      |
+| Judge may order a background check                         | To call the clerk before she starts                           | 3.3, 3.8, O.1      |
+| Publishes, then waits 30 days; someone could object        | Her date, and what to do if an objection comes                | O.3, 3.4, 3.6, 3.3 |
+| Passport waiting; SSA, DMV, bank, employer, title          | The order to update her records in                            | 3.3, O.7           |
+| Comes back between steps over 6 to 8 weeks                 | Her work where she left it                                    | A.2, A.5, 1.4      |
 
 **Alex's branch** ([#312](https://github.com/freelawproject/litigant-portal/issues/312)): Alex changes only a first and middle name, so they ask the judge to waive publication. If the judge says no, Alex comes back, switches to the standard track, and publishes. That's the clearest case of the user returning with news the app has to act on, so the flow includes it.
 
