@@ -14,7 +14,7 @@ can pick the work up. Everything else from a delivery (the original zip,
 project documents, duplicates, files the corpus doesn't draw on) goes in that
 court's `_local/` folder, which git ignores.
 
-- Arizona is tracked this way. North Dakota and Franklin County are still
+- Arizona and Franklin County are tracked this way. North Dakota is still
   local-only, because `.gitignore` re-includes one court at a time.
 - They are the partner's documents, kept exactly as delivered: git stores
   them as binary (`.gitattributes`), the prettier and trailing-whitespace
