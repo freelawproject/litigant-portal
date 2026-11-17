@@ -224,6 +224,118 @@ variables:
     data_type: date
     help_text: 'The day you handed the notice to your tenant, left it at the property, or sent it by certified mail.'
 
+  # The tenant's Answer (#610): the caption, the defenses, and who it is
+  # mailed to. The Answer's checkboxes are booleans, one per defense.
+
+  - name: eviction_case_number
+    label: 'Case number'
+    private: true
+    help_text: 'Printed at the top of the Summons and the Complaint. It starts with the year, then CVG.'
+
+  - name: eviction_landlord_name
+    label: "Your landlord's name"
+    private: true
+    help_text: 'Write it exactly as it appears after "Plaintiff" on the Complaint. It may be a company, not a person.'
+
+  - name: eviction_judge
+    label: 'Judge'
+    help_text: "The judge's name, if one is printed on your court papers. Leave it blank if you can't find one."
+
+  - name: eviction_defense_paid_in_full
+    label: 'I already paid the landlord the money they say I owe'
+    data_type: boolean
+
+  - name: eviction_defense_paid_in_part
+    label: 'I paid the landlord part of the money they say I owe'
+    data_type: boolean
+
+  - name: eviction_paid_in_part_amount
+    label: 'How much you paid'
+    data_type: number
+    asked_when:
+      variable: eviction_defense_paid_in_part
+      value: true
+
+  - name: eviction_defense_repairs
+    label: 'I paid for repairs the landlord would not make'
+    data_type: boolean
+
+  - name: eviction_repairs_amount
+    label: 'About how much the repairs cost'
+    data_type: number
+    asked_when:
+      variable: eviction_defense_repairs
+      value: true
+
+  - name: eviction_defense_work_for_rent
+    label: 'The landlord agreed I could do work instead of paying rent, and I did the work'
+    data_type: boolean
+
+  - name: eviction_defense_deposit_not_credited
+    label: 'I paid a security deposit the landlord has not counted toward what I owe'
+    data_type: boolean
+
+  - name: eviction_defense_deposit_withheld
+    label: 'The landlord wrongly kept my security deposit'
+    data_type: boolean
+
+  - name: eviction_security_deposit_amount
+    label: 'Your security deposit'
+    data_type: number
+
+  - name: eviction_defense_late_charges
+    label: 'The late fees are far more than the landlord lost from my paying late'
+    data_type: boolean
+
+  - name: eviction_defense_no_damage
+    label: 'I did not damage the property beyond normal wear and tear'
+    data_type: boolean
+
+  - name: eviction_defense_other
+    label: 'I have another reason'
+    data_type: boolean
+
+  - name: eviction_defense_other_reasons
+    label: 'Your other reasons'
+    asked_when:
+      variable: eviction_defense_other
+      value: true
+
+  - name: eviction_answer_mailed_date
+    label: 'Date you mailed a copy of your Answer'
+    data_type: date
+    help_text: 'You must mail a copy to your landlord, or to their attorney if they have one. Leave it blank until you mail it, then write the date on the form.'
+
+  - name: eviction_landlord_has_attorney
+    label: 'My landlord has an attorney'
+    data_type: boolean
+    help_text: 'The Complaint lists the attorney under the landlord''s name, if there is one.'
+
+  - name: eviction_landlord_attorney_name
+    label: "Your landlord's attorney"
+    asked_when:
+      variable: eviction_landlord_has_attorney
+      value: true
+
+  - name: eviction_landlord_attorney_street
+    label: "Attorney's street address"
+    asked_when:
+      variable: eviction_landlord_has_attorney
+      value: true
+
+  - name: eviction_landlord_attorney_city_state_zip
+    label: "Attorney's city, state, and ZIP"
+    asked_when:
+      variable: eviction_landlord_has_attorney
+      value: true
+
+  - name: eviction_landlord_street
+    label: "Landlord's street address"
+    help_text: 'Where the landlord gets mail. The Complaint lists it under their name.'
+
+  - name: eviction_landlord_city_state_zip
+    label: "Landlord's city, state, and ZIP"
+
   # Arizona civil traffic. Scoped to the topic: an arraignment date and a
   # citation date mean something only inside a traffic case.
 

@@ -1,0 +1,123 @@
+# Answer of Defendant(s): the Franklin County Municipal Court Self Help
+# Center's tenant Answer, "Rev. December 2021" (pages 10-11 of its answer
+# packet). Source: corpus-sources/franklin-county-oh/eviction/LL-T Answr.pdf,
+# delivered flat. The fillable copy beside this file is built by
+# scripts/fc_eviction_fillable.py, which names every field by its place on
+# the page (#610).
+#
+# Left blank on purpose:
+# - judge, when the papers name none.
+# - deposit_withheld_double_amount: twice the deposit, computed by the
+#   interview, which a template can't do.
+# - other_reasons_first_line: the reasons go in the box below it.
+# - both /S/ signature lines: the tenant signs.
+# - the third address line in each proof-of-service block.
+
+name: 'Answer of Defendant(s)'
+url: 'https://www.fcmcclerk.com/forms/civil'
+
+fields:
+  # Caption
+  - pdf_field: 'plaintiff_landlord'
+    template: '{eviction_landlord_name}'
+  - pdf_field: 'case_number'
+    template: '{eviction_case_number}'
+  - pdf_field: 'judge'
+    template: '{eviction_judge}'
+  - pdf_field: 'defendant_tenants'
+    template: '{first_name} {middle_name} {last_name}'
+
+  # 2. Reasons for denying the amount owed, in the order printed
+  - pdf_field: 'defense_paid_in_full'
+    checked_when:
+      variable: eviction_defense_paid_in_full
+      value: true
+  - pdf_field: 'defense_paid_in_part'
+    checked_when:
+      variable: eviction_defense_paid_in_part
+      value: true
+  - pdf_field: 'paid_in_part_amount'
+    template: '{eviction_paid_in_part_amount}'
+  - pdf_field: 'defense_repairs'
+    checked_when:
+      variable: eviction_defense_repairs
+      value: true
+  - pdf_field: 'repairs_amount'
+    template: '{eviction_repairs_amount}'
+  - pdf_field: 'defense_work_for_rent'
+    checked_when:
+      variable: eviction_defense_work_for_rent
+      value: true
+  - pdf_field: 'defense_deposit_not_credited'
+    checked_when:
+      variable: eviction_defense_deposit_not_credited
+      value: true
+  - pdf_field: 'deposit_not_credited_amount'
+    template: '{eviction_security_deposit_amount}'
+  - pdf_field: 'defense_deposit_withheld'
+    checked_when:
+      variable: eviction_defense_deposit_withheld
+      value: true
+  - pdf_field: 'deposit_withheld_amount'
+    template: '{eviction_security_deposit_amount}'
+  - pdf_field: 'deposit_withheld_double_amount'
+    template: ''
+  - pdf_field: 'defense_late_charges'
+    checked_when:
+      variable: eviction_defense_late_charges
+      value: true
+  - pdf_field: 'defense_no_damage'
+    checked_when:
+      variable: eviction_defense_no_damage
+      value: true
+  - pdf_field: 'defense_other'
+    checked_when:
+      variable: eviction_defense_other
+      value: true
+  - pdf_field: 'other_reasons_first_line'
+    template: ''
+  - pdf_field: 'other_reasons'
+    template: '{eviction_defense_other_reasons}'
+
+  # Signature block
+  - pdf_field: 'defendant_signature'
+    template: ''
+  - pdf_field: 'defendant_name'
+    template: '{first_name} {middle_name} {last_name}'
+  - pdf_field: 'defendant_address_line_1'
+    template: '{street_address}'
+  - pdf_field: 'defendant_address_line_2'
+    template: '{city}, OH {zip_code}'
+  - pdf_field: 'defendant_phone'
+    template: '{phone_number}'
+
+  # Proof of service: mailed to the attorney if the landlord has one, else
+  # to the landlord.
+  - pdf_field: 'service_date'
+    template: '{eviction_answer_mailed_date:%m/%d/%Y}'
+  - pdf_field: 'served_landlord_attorney'
+    checked_when:
+      variable: eviction_landlord_has_attorney
+      value: true
+  - pdf_field: 'served_landlord'
+    checked_when:
+      variable: eviction_landlord_has_attorney
+      value: false
+  - pdf_field: 'landlord_attorney_name'
+    template: '{eviction_landlord_attorney_name}'
+  - pdf_field: 'landlord_attorney_address_line_1'
+    template: '{eviction_landlord_attorney_street}'
+  - pdf_field: 'landlord_attorney_address_line_2'
+    template: '{eviction_landlord_attorney_city_state_zip}'
+  - pdf_field: 'landlord_attorney_address_line_3'
+    template: ''
+  - pdf_field: 'landlord_name'
+    template: '{eviction_landlord_name}'
+  - pdf_field: 'landlord_address_line_1'
+    template: '{eviction_landlord_street}'
+  - pdf_field: 'landlord_address_line_2'
+    template: '{eviction_landlord_city_state_zip}'
+  - pdf_field: 'landlord_address_line_3'
+    template: ''
+  - pdf_field: 'tenant_signature'
+    template: ''

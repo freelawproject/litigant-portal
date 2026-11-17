@@ -1,25 +1,62 @@
 # Eviction (Franklin County, OH), TENANT role. The directory locates the
-# court and topic; the file name is the flow slug. The tenant corpus has no
-# form packet yet (response forms are #610), so there is no packet and no
-# links. Ported from the wip library flow config.
+# court and topic; the file name is the flow slug. Ported from the wip
+# library flow config. The packet is the Self Help Center's Answer (#610),
+# made fillable by scripts/fc_eviction_fillable.py.
 
 name: 'Responding to an Eviction (Tenant)'
 enabled: true
 order: 0
 
-# The page, top to bottom. No `packet`: no forms yet (#610).
+# The page, top to bottom.
 layout:
   - overview
   - notice_to_leave
   - court_papers
   - interview
   - defenses
+  - packet
   - at_the_hearing
   - moved_out
   - set_out
   - calendar
   - contacts
   - resources
+
+# Warm handoff to the docassemble interview that fills the Answer (#610).
+# Which docassemble it is sent to comes from the environment (#879). Only
+# reviewed answers are sent.
+handoff:
+  interview_reference: 'docassemble.fceviction:data/questions/answer.yml'
+  interview_prefill:
+    first_name: tenant_first
+    middle_name: tenant_middle
+    last_name: tenant_last
+    street_address: tenant_street
+    city: tenant_city
+    zip_code: tenant_zip
+    phone_number: tenant_phone
+    eviction_case_number: case_number
+    eviction_landlord_name: landlord_name
+    eviction_judge: judge
+    eviction_defense_paid_in_full: defense_paid_in_full
+    eviction_defense_paid_in_part: defense_paid_in_part
+    eviction_paid_in_part_amount: paid_in_part_amount
+    eviction_defense_repairs: defense_repairs
+    eviction_repairs_amount: repairs_amount
+    eviction_defense_work_for_rent: defense_work_for_rent
+    eviction_defense_deposit_not_credited: defense_deposit_not_credited
+    eviction_defense_deposit_withheld: defense_deposit_withheld
+    eviction_security_deposit_amount: security_deposit_amount
+    eviction_defense_late_charges: defense_late_charges
+    eviction_defense_no_damage: defense_no_damage
+    eviction_defense_other: defense_other
+    eviction_defense_other_reasons: other_reasons
+    eviction_landlord_has_attorney: landlord_has_attorney
+    eviction_landlord_attorney_name: attorney_name
+    eviction_landlord_attorney_street: attorney_street
+    eviction_landlord_attorney_city_state_zip: attorney_city_state_zip
+    eviction_landlord_street: landlord_street
+    eviction_landlord_city_state_zip: landlord_city_state_zip
 
 # Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
@@ -111,6 +148,52 @@ interview:
     variables:
       - eviction_papers_received_date
       - eviction_hearing_date
+  - title: 'Your case'
+    description: 'These are on the Summons and the Complaint your landlord filed.'
+    variables:
+      - eviction_case_number
+      - eviction_landlord_name
+      - eviction_judge
+  - title: 'Your name and contact information'
+    description: 'This goes on your Answer so the court and your landlord can reach you.'
+    variables:
+      - first_name
+      - middle_name
+      - last_name
+      - street_address
+      - city
+      - zip_code
+      - phone_number
+  - title: 'Why you disagree with what the landlord says you owe'
+    description: 'Check every reason that is true for you. These become the defenses on your Answer.'
+    variables:
+      - eviction_defense_paid_in_full
+      - eviction_defense_paid_in_part
+      - eviction_paid_in_part_amount
+      - eviction_defense_repairs
+      - eviction_repairs_amount
+      - eviction_defense_work_for_rent
+      - eviction_defense_deposit_not_credited
+      - eviction_defense_deposit_withheld
+      - eviction_security_deposit_amount
+      - eviction_defense_late_charges
+      - eviction_defense_no_damage
+      - eviction_defense_other
+      - eviction_defense_other_reasons
+  - title: 'Who gets a copy'
+    description: 'You must mail a copy of your Answer to your landlord, or to their attorney if they have one.'
+    variables:
+      - eviction_landlord_has_attorney
+      - eviction_landlord_attorney_name
+      - eviction_landlord_attorney_street
+      - eviction_landlord_attorney_city_state_zip
+      - eviction_landlord_street
+      - eviction_landlord_city_state_zip
+      - eviction_answer_mailed_date
+
+# The filing packet.
+packet:
+  - form: fc-eviction-answer
 
 deadlines:
   - id: answer_due

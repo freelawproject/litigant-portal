@@ -1,0 +1,181 @@
+---
+# docassemble interview: Franklin County Municipal Court, tenant's Answer of
+# Defendant(s), "Rev. December 2021" (#610).
+#
+# answer.pdf is the Self Help Center's flat form made fillable by
+# scripts/fc_eviction_fillable.py, which named every field by its place on
+# the page. The attachment keys below are those names. The corpus spec of the
+# same mapping is litigant_portal/corpus/forms/fc-eviction-answer.yml.
+metadata:
+  title: Franklin County Answer to an Eviction
+  short title: FCMC Eviction Answer
+  authors:
+    - Litigant Portal
+---
+features:
+  css: lp-branding.css
+---
+# Required for the prefill handoff, and only works from an `initial` block.
+initial: True
+code: |
+  multi_user = True
+---
+mandatory: True
+question: |
+  Your case
+subquestion: |
+  These are on the Summons and the Complaint your landlord filed.
+fields:
+  - Case number: case_number
+  - Your landlord's name, as written after "Plaintiff": landlord_name
+  - Judge (leave blank if none is printed): judge
+    required: False
+---
+mandatory: True
+question: |
+  Your name and contact information
+fields:
+  - First name: tenant_first
+  - Middle name(s) (if any): tenant_middle
+    required: False
+  - Last name: tenant_last
+  - Street address: tenant_street
+  - City: tenant_city
+  - ZIP code: tenant_zip
+  - Phone number: tenant_phone
+    required: False
+---
+mandatory: True
+question: |
+  Why you disagree with what the landlord says you owe
+subquestion: |
+  Check every reason that is true for you. Each one becomes a defense on
+  your Answer.
+fields:
+  - I already paid the landlord the money they say I owe: defense_paid_in_full
+    datatype: yesno
+  - I paid the landlord part of the money they say I owe: defense_paid_in_part
+    datatype: yesno
+  - How much you paid: paid_in_part_amount
+    datatype: currency
+    show if: defense_paid_in_part
+  - I paid for repairs the landlord would not make: defense_repairs
+    datatype: yesno
+  - About how much the repairs cost: repairs_amount
+    datatype: currency
+    show if: defense_repairs
+  - The landlord agreed I could do work instead of paying rent, and I did the work: defense_work_for_rent
+    datatype: yesno
+  - I paid a security deposit the landlord has not counted toward what I owe: defense_deposit_not_credited
+    datatype: yesno
+  - The landlord wrongly kept my security deposit: defense_deposit_withheld
+    datatype: yesno
+  - Your security deposit: security_deposit_amount
+    datatype: currency
+    required: False
+  - The late fees are far more than the landlord lost from my paying late: defense_late_charges
+    datatype: yesno
+  - I did not damage the property beyond normal wear and tear: defense_no_damage
+    datatype: yesno
+  - I have another reason: defense_other
+    datatype: yesno
+  - Your other reasons: other_reasons
+    datatype: area
+    show if: defense_other
+---
+mandatory: True
+question: |
+  Who gets a copy
+subquestion: |
+  You must mail a copy of your Answer to your landlord, or to their attorney
+  if they have one. The Complaint lists the attorney under the landlord's
+  name, if there is one.
+fields:
+  - My landlord has an attorney: landlord_has_attorney
+    datatype: yesnoradio
+  - Attorney's name: attorney_name
+    show if: landlord_has_attorney
+  - Attorney's street address: attorney_street
+    show if: landlord_has_attorney
+  - Attorney's city, state, and ZIP: attorney_city_state_zip
+    show if: landlord_has_attorney
+  - Landlord's street address: landlord_street
+    show if:
+      variable: landlord_has_attorney
+      is: False
+  - Landlord's city, state, and ZIP: landlord_city_state_zip
+    show if:
+      variable: landlord_has_attorney
+      is: False
+  - Date you mailed it (leave blank if not yet): mailed_date
+    datatype: date
+    required: False
+---
+# Money as the form prints it: digits, no dollar sign (the form has one).
+code: |
+  def money(amount):
+      return "" if amount in (None, "") else f"{amount:,.2f}"
+---
+code: |
+  deposit_double = (
+      money(security_deposit_amount * 2)
+      if defense_deposit_withheld and security_deposit_amount
+      else ""
+  )
+---
+attachment:
+  name: Answer of Defendant(s)
+  filename: fcmc_eviction_answer
+  variable name: answer_doc
+  pdf template file: answer.pdf
+  fields:
+    # Caption
+    - 'plaintiff_landlord': ${ landlord_name }
+    - 'case_number': ${ case_number }
+    - 'judge': ${ judge }
+    - 'defendant_tenants': ${ " ".join(p for p in [tenant_first, tenant_middle, tenant_last] if p) }
+    # 2. Reasons for denying the amount owed
+    - 'defense_paid_in_full': ${ defense_paid_in_full }
+    - 'defense_paid_in_part': ${ defense_paid_in_part }
+    - 'paid_in_part_amount': ${ money(paid_in_part_amount) if defense_paid_in_part else "" }
+    - 'defense_repairs': ${ defense_repairs }
+    - 'repairs_amount': ${ money(repairs_amount) if defense_repairs else "" }
+    - 'defense_work_for_rent': ${ defense_work_for_rent }
+    - 'defense_deposit_not_credited': ${ defense_deposit_not_credited }
+    - 'deposit_not_credited_amount': ${ money(security_deposit_amount) if defense_deposit_not_credited else "" }
+    - 'defense_deposit_withheld': ${ defense_deposit_withheld }
+    - 'deposit_withheld_amount': ${ money(security_deposit_amount) if defense_deposit_withheld else "" }
+    - 'deposit_withheld_double_amount': ${ deposit_double }
+    - 'defense_late_charges': ${ defense_late_charges }
+    - 'defense_no_damage': ${ defense_no_damage }
+    - 'defense_other': ${ defense_other }
+    - 'other_reasons': ${ other_reasons if defense_other else "" }
+    # Signature block: the tenant signs the /S/ lines.
+    - 'defendant_name': ${ " ".join(p for p in [tenant_first, tenant_middle, tenant_last] if p) }
+    - 'defendant_address_line_1': ${ tenant_street }
+    - 'defendant_address_line_2': ${ tenant_city }, OH ${ tenant_zip }
+    - 'defendant_phone': ${ tenant_phone }
+    # Proof of service
+    - 'service_date': ${ format_date(mailed_date, format="MM/dd/yyyy") if mailed_date else "" }
+    - 'served_landlord_attorney': ${ landlord_has_attorney }
+    - 'served_landlord': ${ not landlord_has_attorney }
+    - 'landlord_attorney_name': ${ attorney_name if landlord_has_attorney else "" }
+    - 'landlord_attorney_address_line_1': ${ attorney_street if landlord_has_attorney else "" }
+    - 'landlord_attorney_address_line_2': ${ attorney_city_state_zip if landlord_has_attorney else "" }
+    - 'landlord_name': ${ "" if landlord_has_attorney else landlord_name }
+    - 'landlord_address_line_1': ${ "" if landlord_has_attorney else landlord_street }
+    - 'landlord_address_line_2': ${ "" if landlord_has_attorney else landlord_city_state_zip }
+---
+mandatory: True
+event: download_answer
+question: Your Answer is ready
+subquestion: |
+  **[Download your Answer](${ answer_doc.pdf.url_for(attachment=True) })**
+
+  Before you file it:
+
+  - Sign both lines that start with /S/.
+  - File it with the Clerk of the Franklin County Municipal Court, and keep a copy.
+  - Mail a copy to your landlord, or to their attorney if they have one, and write that date under Proof of Service.
+
+  You can still type into the form after you download it, to fix anything before you print.
