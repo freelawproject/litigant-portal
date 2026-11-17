@@ -47,7 +47,9 @@ flowchart TD
     J --> K["3.5.b Adds them to her calendar"]
     J --> L["3.5.c Sends them to herself"]
     J --> M["3.5.d Signs up for reminders"]
-    H --> N{"Wants to keep her work?"}
+    K --> N{"Wants to keep her work?"}
+    L --> N
+    M --> N
     N -- "yes" --> O["A.2 Signs up<br/>A.5 Keeps what she did"]
     N -- "no" --> P
     O --> P{"Disputes the money claim<br/>or paid for repairs?"}
