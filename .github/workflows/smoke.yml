@@ -59,19 +59,12 @@ jobs:
           ALLOWED_HOSTS=localhost,127.0.0.1
           EOF
 
-      - name: Migrate and sync corpus
-        run: |
-          docker run --rm --network host --env-file "$RUNNER_TEMP/app.env" "$IMAGE" manage migrate --noinput
-          docker run --rm --network host --env-file "$RUNNER_TEMP/app.env" "$IMAGE" manage sync_corpus --strict
-
-      # compilemessages runs in the serving container because the .mo files it
-      # writes live there. Prod's entrypoint runs it on every start, and nothing
-      # else in CI does, so a .po that fails to compile is caught here.
+      # web-dev runs the entrypoint's setup steps, then runserver, which serves
+      # static files under DEBUG. Under web-prod, gunicorn serves none: prod's
+      # come from S3.
       - name: Start app
         id: start
-        run: |
-          docker run --detach --name app --network host --env-file "$RUNNER_TEMP/app.env" "$IMAGE" \
-            bash -c 'manage compilemessages && exec manage runserver 0.0.0.0:8000 --noreload'
+        run: docker run --detach --name app --network host --env-file "$RUNNER_TEMP/app.env" "$IMAGE" web-dev
 
       - name: Wait for /api/health/
         run: |
