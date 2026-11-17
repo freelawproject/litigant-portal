@@ -1,5 +1,3 @@
-from urllib.parse import urlsplit
-
 import pytest
 from playwright.sync_api import Page, Response
 
@@ -25,7 +23,7 @@ def test_page_loads(page: Page, path: str) -> None:
     response = page.goto(path)
     check_document_response(response, path)
     check_main_present(page, path)
-    check_same_origin_assets(asset_responses, page.url, path)
+    check_assets_loaded(asset_responses, path)
 
 
 def test_health_ok(page: Page) -> None:
@@ -63,25 +61,12 @@ def check_main_present(page: Page, path: str) -> None:
     assert page.locator("main").count() > 0, f"{path} has no <main> element"
 
 
-def check_same_origin_assets(
-    asset_responses: list[Response], page_url: str, path: str
-) -> None:
-    page_origin = parse_origin(page_url)
-    same_origin_assets = [
-        response
-        for response in asset_responses
-        if parse_origin(response.url) == page_origin
-    ]
+def check_assets_loaded(asset_responses: list[Response], path: str) -> None:
     # An empty list would pass the status check below without testing it.
-    assert same_origin_assets, f"{path} loaded no same-origin CSS or JS"
+    assert asset_responses, f"{path} loaded no CSS or JS"
     failed_assets = [
         f"{response.status} {response.url}"
-        for response in same_origin_assets
+        for response in asset_responses
         if response.status >= 400
     ]
     assert not failed_assets, f"{path} has failed assets: {failed_assets}"
-
-
-def parse_origin(url: str) -> str:
-    parts = urlsplit(url)
-    return f"{parts.scheme}://{parts.netloc}"
