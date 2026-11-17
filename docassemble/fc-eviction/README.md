@@ -5,11 +5,11 @@ reproduce the Topic Flow → docassemble handoff fill locally (#610).
 
 ## Contents
 
-| File                  | What it is                                                                       |
-| --------------------- | -------------------------------------------------------------------------------- |
-| `answer.pdf`          | Answer of Defendant(s), "Rev. December 2021", made fillable (37 fields)          |
-| `answer.yml`          | Interview that fills it, prefilled from the tenant's confirmed answers          |
-| `lp-branding.css`     | Litigant Portal look on docassemble (copy of `../nd-name-change/lp-branding.css`) |
+| File              | What it is                                                                        |
+| ----------------- | --------------------------------------------------------------------------------- |
+| `answer.pdf`      | Answer of Defendant(s), "Rev. December 2021", made fillable (37 fields)           |
+| `answer.yml`      | Interview that fills it, prefilled from the tenant's confirmed answers            |
+| `lp-branding.css` | Litigant Portal look on docassemble (copy of `../nd-name-change/lp-branding.css`) |
 
 ## Where the fillable PDF comes from
 

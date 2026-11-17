@@ -309,7 +309,7 @@ variables:
   - name: eviction_landlord_has_attorney
     label: 'My landlord has an attorney'
     data_type: boolean
-    help_text: 'The Complaint lists the attorney under the landlord''s name, if there is one.'
+    help_text: "The Complaint lists the attorney under the landlord's name, if there is one."
 
   - name: eviction_landlord_attorney_name
     label: "Your landlord's attorney"
