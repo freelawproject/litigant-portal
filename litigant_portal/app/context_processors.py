@@ -148,16 +148,24 @@ def toast_messages(request):
     Provide messages with variant and role mapped for alert component.
 
     Django's 'error' tag maps to 'danger' variant. Only a problem gets
-    ``role="alert"``; a confirmation is a polite ``role="status"``.
+    ``role="alert"``; a confirmation is a polite ``role="status"``. A
+    message with the ``status`` extra tag skips the toast for the header's
+    save status (#1006).
     """
     tag_to_variant = {
         "error": "danger",
     }
 
-    messages = []
+    toasts = []
+    statuses = []
     for message in get_messages(request):
-        variant = tag_to_variant.get(message.tags, message.tags) or "info"
-        messages.append(
+        if "status" in (message.extra_tags or "").split():
+            statuses.append(str(message))
+            continue
+        variant = (
+            tag_to_variant.get(message.level_tag, message.level_tag) or "info"
+        )
+        toasts.append(
             {
                 "text": str(message),
                 "variant": variant,
@@ -167,4 +175,4 @@ def toast_messages(request):
             }
         )
 
-    return {"toast_messages": messages}
+    return {"toast_messages": toasts, "status_messages": statuses}
