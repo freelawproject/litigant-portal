@@ -1,7 +1,7 @@
 # Eviction (Franklin County, OH), TENANT role, once a case is filed and
 # before the hearing. The directory locates the court and topic; the file
 # name is the flow slug. Rebuilt (#1210) from the decision tree and the Self
-# Help Center's training guides in corpus-sources/franklin-county-oh/eviction/.
+# Help Center's training guides (kept in corpus-sources/franklin-county-oh/_local/).
 # Before filing and after judgment are their own flows. The packet is the
 # Self Help Center's Answer (#610), made fillable by
 # scripts/fc_eviction_fillable.py.
@@ -103,7 +103,9 @@ sections:
 
       Most eviction complaints have two parts. The first cause of action asks for possession of your home; that is the eviction itself. The second cause of action, if the landlord included one, asks for money such as back rent, unpaid utilities, or damage. Read the complaint to see exactly what your landlord is asking for.
 
-      The money claim runs on its own clock. If you dispute what the landlord says you owe, you must file a written Answer within 28 days of receiving the court papers, even though the eviction hearing usually happens first. If you do not answer in time, the landlord can ask for a default judgment and the court can order the full amount without hearing your side.
+      The money claim runs on its own clock. If you dispute what the landlord says you owe, you must file a written Answer within 28 days of being served, even though the eviction hearing usually happens first. If you do not answer in time, the landlord can ask for a default judgment and the court can order the full amount without hearing your side.
+
+      The 28 days start when service is complete, and that can be the day the court mailed the papers, before they reached you. Count from the earliest date you have, such as the mailing date or the day papers were posted on your door. If you are not sure, ask the clerk for your service date.
 
       Enter your dates below and the deadlines on this page update, with a calendar download further down.
 
@@ -256,7 +258,7 @@ packet:
 deadlines:
   - id: answer_due
     label: 'Answer to a money claim is due'
-    description: 'If the complaint includes a claim for money (a second cause of action), your written Answer must be filed within 28 days of the day you received the court papers. If the last day falls on a weekend or holiday, you have until the next business day.'
+    description: 'If the complaint includes a claim for money (a second cause of action), your written Answer must be filed within 28 days of the day service was complete, which can be the day the court mailed the papers. Count from the earliest date you have. If the last day falls on a weekend or holiday, you have until the next business day.'
     offset_days: 28
     offset_from: eviction_papers_received_date
   - id: hearing_day

@@ -2,7 +2,7 @@
 # Built from the decision tree's post-judgment path (Jamie, #720) and its
 # post-judgment cascade, plus the Self Help Center's training guides on
 # magistrate objections, motions, writs and set outs, and eviction record
-# removal, all in corpus-sources/franklin-county-oh/eviction/. The motion
+# removal (the tree and guides kept in corpus-sources/franklin-county-oh/_local/). The motion
 # forms are #1213 and #1214, record removal #1215.
 
 name: 'After an Eviction Judgment (Tenant)'
@@ -53,7 +53,7 @@ sections:
     content: |
       Magistrates hear eviction cases in Franklin County. If you believe the magistrate made a legal mistake in deciding your case, you can file an Objection to Magistrate's Decision, and a judge will review it.
 
-      You have 14 days from the magistrate's decision to file an objection. Enter the date of the decision below to see that deadline on your calendar. The court has its own form for this.
+      You have 14 days from the magistrate's decision to file an objection. Enter the date of the magistrate's decision below to see that deadline on your calendar. The court has its own form for this.
 
       Filing an objection does not stop a set out by itself. If the judge agrees with your objection, the usual result is another hearing where both sides explain their arguments.
 
@@ -87,7 +87,7 @@ sections:
   - id: appeal
     heading: 'Appealing the judgment'
     content: |
-      An appeal asks a higher court to review the judgment. The deadline is generally 30 days from the final judgment. Filing an objection to a magistrate's decision can change when that clock starts.
+      An appeal asks a higher court to review the judgment. The deadline is generally 30 days from the final judgment. Enter the judgment date below to see it on your calendar. Filing an objection to a magistrate's decision can change when that clock starts.
 
       If you move out, an appeal usually ends, because there is no longer a home to return to. Some exceptions exist, such as for housing choice vouchers and project-based subsidized housing.
 
@@ -155,9 +155,10 @@ sections:
 
 # The guided page asks only the pages marked `on_page` (#1046).
 interview:
-  - title: 'Your key dates'
+  - title: 'Your decision, judgment, and red tag dates'
     on_page: true
     variables:
+      - eviction_magistrate_decision_date
       - eviction_judgment_date
       - eviction_writ_posted_date
 
@@ -166,7 +167,7 @@ deadlines:
     label: "Last day to object to the magistrate's decision"
     description: "An Objection to Magistrate's Decision must be filed within 14 days of the decision. If the decision was made by a judge, or this date has passed, a Motion for Relief from Judgment may still be possible."
     offset_days: 14
-    offset_from: eviction_judgment_date
+    offset_from: eviction_magistrate_decision_date
   - id: appeal_due
     label: 'Appeal deadline'
     description: "An appeal is generally due 30 days after the final judgment. An objection to a magistrate's decision can change when this clock starts."
@@ -175,5 +176,5 @@ deadlines:
   - id: earliest_set_out
     label: 'Earliest your set out can be scheduled'
     description: 'You have 5 days from the day the red tag was posted. If you are still there after midnight on the last day listed on the tag, your landlord can schedule the set out, and a yellow tag will give the date. Call the Service Bailiff at 614-645-7780 to ask about yours.'
-    offset_days: 5
+    offset_days: 6
     offset_from: eviction_writ_posted_date

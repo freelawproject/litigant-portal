@@ -1,7 +1,7 @@
 # Eviction (Franklin County, OH), TENANT role, before a case is filed
 # (#1210). Built from the decision tree's pre-filing path (Taylor and
 # Jordan, #722) and the Self Help Center's rent escrow guide (April 2026),
-# both in corpus-sources/franklin-county-oh/eviction/. The escrow
+# both in corpus-sources/franklin-county-oh/ (the tree in _local/). The escrow
 # application form is #1211.
 
 name: 'Before an Eviction Case Is Filed (Tenant)'
@@ -109,7 +109,7 @@ sections:
   - id: ending_the_lease
     heading: 'Ending your lease because of repairs'
     content: |
-      Instead of escrow, you can end your lease and move out if you asked for repairs in writing, waited a reasonable time, and the problems were not fixed. If the landlord has started repairs in good faith, you may not have this right. If you have a housing voucher or subsidized housing, talk to your housing authority first, because that housing is hard to replace.
+      Instead of escrow, you can end your lease and move out if you asked for repairs in writing, waited a reasonable time, the problems were not fixed, and you are current on rent. Like escrow, this option does not apply if your landlord rents out three or fewer homes and told you so in writing, or if you are a student in college housing. If the landlord has started repairs in good faith, you may not have this right. If you have a housing voucher or subsidized housing, talk to your housing authority first, because that housing is hard to replace.
 
       Send a second letter saying the date you will move out and how you will return the keys, and keep a copy with a certificate of mailing. You owe rent only for the days you are still there. Get a receipt when you return the keys.
 
@@ -131,7 +131,7 @@ sections:
 
 # The guided page asks only the pages marked `on_page` (#1046).
 interview:
-  - title: 'Your key dates'
+  - title: 'Your notice and repair dates'
     on_page: true
     variables:
       - eviction_notice_received_date
@@ -141,7 +141,7 @@ deadlines:
   - id: earliest_filing
     label: 'Earliest day your landlord can file'
     description: 'A landlord must wait at least three full days after the Notice to Leave before filing. The day it was posted does not count, and the last day cannot be a Sunday or legal holiday. This is a good window to pay what you owe or reach a written agreement.'
-    offset_days: 3
+    offset_days: 4
     offset_from: eviction_notice_received_date
   - id: repair_time_limit
     label: 'Longest your landlord has to make repairs'

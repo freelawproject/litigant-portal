@@ -218,9 +218,9 @@ variables:
   # before-filing and after-judgment tenant flows ask the dates below.
 
   - name: eviction_papers_received_date
-    label: 'Date you received the court papers'
+    label: 'Date you were served the court papers'
     data_type: date
-    help_text: 'The day the summons and complaint were handed to you, mailed to you, or posted on your door. This starts the 28-day window to answer a money claim. Not sure? Call the clerk with your case number and ask for the date you were served.'
+    help_text: 'The 28 days to answer a money claim start when service is complete, which can be the day the court mailed the papers, before they reached you. Use the earliest date you have: the mailing date, or the day the papers were handed to you or posted on your door. Not sure? Ask the clerk for your service date.'
 
   - name: eviction_hearing_date
     label: 'Your hearing date'
@@ -244,10 +244,15 @@ variables:
     data_type: date
     help_text: 'The day you mailed, emailed, or texted your landlord a written list of the repairs you need. A phone call or a conversation does not count.'
 
-  - name: eviction_judgment_date
-    label: 'Date of the decision in your case'
+  - name: eviction_magistrate_decision_date
+    label: "Date of the magistrate's decision"
     data_type: date
-    help_text: "The date the magistrate's decision or the judgment was filed. You can find it by looking up your case number at fcmcclerk.com."
+    help_text: "The date the magistrate's decision in your case was filed. It starts the 14 days to object. Look up your case number at fcmcclerk.com to find it."
+
+  - name: eviction_judgment_date
+    label: 'Date of the judgment'
+    data_type: date
+    help_text: 'The date the judgment in your case was filed. It starts the 30 days to appeal. Look up your case number at fcmcclerk.com to find it.'
 
   - name: eviction_writ_posted_date
     label: 'Date the red tag was posted on your door'
