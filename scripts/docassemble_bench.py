@@ -189,7 +189,9 @@ def _project(folder: Path):
 def _folder(name):
     folder = INTERVIEWS / name
     if not folder.is_dir():
-        known = ", ".join(sorted(p.name for p in INTERVIEWS.iterdir() if p.is_dir()))
+        known = ", ".join(
+            sorted(p.name for p in INTERVIEWS.iterdir() if p.is_dir())
+        )
         sys.exit(f"No interview folder {name!r}. Known: {known}")
     return folder
 
@@ -252,14 +254,17 @@ def sync(args):
                 continue
             reason = "all" if args.all else "new" if missing else "changed"
             if args.dry_run:
-                print(f"   would upload  {da_folder:<9}  {file.name}  ({reason})")
+                print(
+                    f"   would upload  {da_folder:<9}  {file.name}  ({reason})"
+                )
                 continue
             status, body = bench.post_form(
                 "/api/playground",
                 {"project": project, "folder": da_folder},
                 files=[("files", file)],
             )
-            if not 200 <= status < 300:  # any non-success; redirects already exit
+            # Any non-success; a redirect has already exited in _request.
+            if not 200 <= status < 300:
                 sys.exit(
                     f"   FAILED  {da_folder}  {file.name}  (HTTP {status}): "
                     f"{body.decode()[:300]}"
@@ -309,7 +314,11 @@ def _walk(bench, interview, name, answers):
     naming the question, the way docassemble's demo API client does.
     """
     session = bench.get_json("/api/session/new", i=interview)
-    ids = {"i": interview, "session": session["session"], "secret": session.get("secret")}
+    ids = {
+        "i": interview,
+        "session": session["session"],
+        "secret": session.get("secret"),
+    }
     question = bench.get_json("/api/session/question", **ids)
     for _ in range(MAX_SCREENS):
         file_number = _document_link(question)
@@ -320,9 +329,15 @@ def _walk(bench, interview, name, answers):
             for field in question.get("fields", [])
             if field.get("variable_name")
         ]
-        missing = [v for v in wanted if v not in answers and not _optional(question, v)]
+        missing = [
+            v
+            for v in wanted
+            if v not in answers and not _optional(question, v)
+        ]
         if missing:
-            sys.exit(f"{name}: no answer for {', '.join(missing)}. Stopped at {_stopped_at(question)}")
+            sys.exit(
+                f"{name}: no answer for {', '.join(missing)}. Stopped at {_stopped_at(question)}"
+            )
         variables = {v: answers[v] for v in wanted if v in answers}
         if question.get("question_variable_name"):
             # A Continue-only screen: its own variable set to true moves on.
@@ -342,9 +357,13 @@ def _walk(bench, interview, name, answers):
             },
         )
         if status != 200:
-            sys.exit(f"{name}: answering failed (HTTP {status}): {body.decode()[:800]}")
+            sys.exit(
+                f"{name}: answering failed (HTTP {status}): {body.decode()[:800]}"
+            )
         question = json.loads(body)
-    sys.exit(f"{name}: no document after {MAX_SCREENS} screens. Stopped at {_stopped_at(question)}")
+    sys.exit(
+        f"{name}: no document after {MAX_SCREENS} screens. Stopped at {_stopped_at(question)}"
+    )
 
 
 # docassemble's routes for a session's files (webapp/files/views.py), each
@@ -402,7 +421,9 @@ def _outline(pdf: Path) -> Path:
             if widget.get("/Subtype") != "/Widget" or "/Rect" not in widget:
                 continue
             x0, y0, x1, y1 = (float(v) for v in widget["/Rect"])
-            name = str(widget.get("/T") or widget.get("/Parent", {}).get("/T", ""))
+            name = str(
+                widget.get("/T") or widget.get("/Parent", {}).get("/T", "")
+            )
             color = "0 0 1" if widget.get("/FT") == "/Btn" else "1 0 0"
             ops += [
                 f"q {color} RG {color} rg 0.6 w",
@@ -427,7 +448,9 @@ def _outline(pdf: Path) -> Path:
                             {
                                 NameObject("/Type"): NameObject("/Font"),
                                 NameObject("/Subtype"): NameObject("/Type1"),
-                                NameObject("/BaseFont"): NameObject("/Helvetica"),
+                                NameObject("/BaseFont"): NameObject(
+                                    "/Helvetica"
+                                ),
                             }
                         )
                     }
@@ -458,11 +481,15 @@ def _render(pdf: Path):
     other = [
         line
         for line in result.stderr.splitlines()
-        if line.strip() and "ZaDb" not in line and "ontconfig" not in line
+        if line.strip()
+        and "ZaDb" not in line
+        and "ontconfig" not in line
         and "cache" not in line
     ]
     if "ZaDb" in result.stderr:
-        print("   (pdftoppm lacks the checkbox font; check marks render small)")
+        print(
+            "   (pdftoppm lacks the checkbox font; check marks render small)"
+        )
     for line in other:
         print(f"   pdftoppm: {line}")
     return sorted(pdf.parent.glob(f"{pdf.stem}-*.png"))
@@ -487,15 +514,29 @@ def main():
     )
     commands = parser.add_subparsers(dest="command", required=True)
 
-    sync_parser = commands.add_parser("sync", help="Upload interviews to the Playground.")
-    sync_parser.add_argument("paths", nargs="*", help="interview folders or files (default: all)")
-    sync_parser.add_argument("-a", "--all", action="store_true", help="upload even if unchanged")
-    sync_parser.add_argument("-n", "--dry-run", action="store_true", help="show what would upload")
+    sync_parser = commands.add_parser(
+        "sync", help="Upload interviews to the Playground."
+    )
+    sync_parser.add_argument(
+        "paths", nargs="*", help="interview folders or files (default: all)"
+    )
+    sync_parser.add_argument(
+        "-a", "--all", action="store_true", help="upload even if unchanged"
+    )
+    sync_parser.add_argument(
+        "-n", "--dry-run", action="store_true", help="show what would upload"
+    )
     sync_parser.set_defaults(run=sync)
 
-    fill_parser = commands.add_parser("fill", help="Fill an interview with test personas.")
-    fill_parser.add_argument("folder", help="interview folder under docassemble/, like fc-eviction")
-    fill_parser.add_argument("personas", nargs="*", help="persona names (default: all)")
+    fill_parser = commands.add_parser(
+        "fill", help="Fill an interview with test personas."
+    )
+    fill_parser.add_argument(
+        "folder", help="interview folder under docassemble/, like fc-eviction"
+    )
+    fill_parser.add_argument(
+        "personas", nargs="*", help="persona names (default: all)"
+    )
     fill_parser.set_defaults(run=fill)
 
     args = parser.parse_args()
