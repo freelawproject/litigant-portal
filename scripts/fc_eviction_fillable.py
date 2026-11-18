@@ -24,7 +24,7 @@ committed. Nothing in the app runs this script.
 
 # FormFyxer lives in its own environment (above), so the project's type
 # checker can't resolve it.
-# pyright: reportMissingImports=false
+# pyright: reportMissingImports=false, reportMissingModuleSource=false
 
 import shutil
 from pathlib import Path
@@ -45,7 +45,7 @@ TEXT_HEIGHT = 12
 PLAIN = {"borderWidth": 0, "fillColor": None}
 
 
-def _text(name, x, y, width, font_size=10):
+def _text(name, x, y, width, font_size=10, height=TEXT_HEIGHT):
     return FormField(
         name,
         FieldType.TEXT,
@@ -55,7 +55,7 @@ def _text(name, x, y, width, font_size=10):
         configs={
             **PLAIN,
             "width": width,
-            "height": TEXT_HEIGHT,
+            "height": height,
             "fieldFlags": "doNotScroll",
         },
     )
@@ -136,13 +136,16 @@ ANSWER = [
         _check("served_landlord_attorney", 73, 292, size=7),
         _check("served_landlord", 325, 292, size=7),
         _text("landlord_attorney_name", 75, 264, 228),
-        _text("landlord_attorney_address_line_1", 75, 236, 228),
-        _text("landlord_attorney_address_line_2", 75, 223, 228),
-        _text("landlord_attorney_address_line_3", 75, 209, 228),
+        # The three address lines sit 13 points apart, so FormFyxer's
+        # boxes put the underline through the text. Raised 2 points, a point
+        # shorter and a point smaller so stacked lines don't touch.
+        _text("landlord_attorney_address_line_1", 75, 238, 228, 9, 11),
+        _text("landlord_attorney_address_line_2", 75, 225, 228, 9, 11),
+        _text("landlord_attorney_address_line_3", 75, 211, 228, 9, 11),
         _text("landlord_name", 327, 264, 210),
-        _text("landlord_address_line_1", 327, 236, 210),
-        _text("landlord_address_line_2", 327, 223, 210),
-        _text("landlord_address_line_3", 327, 209, 210),
+        _text("landlord_address_line_1", 327, 238, 210, 9, 11),
+        _text("landlord_address_line_2", 327, 225, 210, 9, 11),
+        _text("landlord_address_line_3", 327, 211, 210, 9, 11),
         _text("tenant_signature", 342, 154, 126),
     ],
 ]
