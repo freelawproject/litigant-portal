@@ -35,7 +35,8 @@ OH 43206, 614-221-7201.
   into court; net-judgment offset can defeat the eviction if no rent remains
   due.
 - **No-show = case tried anyway** (1923.07).
-- **Continuances capped at 8 days** unless tenant posts bond (1923.08).
+- **Continuances capped at 8 days** unless the landlord asks and the tenant
+  consents, or the tenant asks and posts bond (1923.08).
 - **Set-out within 10 days of the writ of restitution** (1923.13/1923.14(A)).
   Appeal + stay + bond halts execution.
 - 1923.02 covers who's subject; 1923.051 drug-offense restitution; 1923.062
@@ -61,8 +62,11 @@ OH 43206, 614-221-7201.
 - First cause = possession; second cause = money (back rent, utilities,
   damage). Separate hearings unless Answer+Counterclaim filed (1923.061(B)).
 - **Answer / Answer+Counterclaim due within 28 days** of receiving the
-  summons and complaint; weekend/holiday rolls to next business day. No
-  Answer = default judgment for whatever the landlord claimed.
+  summons and complaint (LASCO's wording); weekend/holiday rolls to next
+  business day. No Answer = default judgment for whatever the landlord
+  claimed. **Statute governs:** 1923.06(H)(2) counts 28 days from the date
+  service is deemed complete, which under 1923.06(G)(3) can be the mailing
+  date, before the tenant receives the papers. Count from the earlier date.
 - Counterclaim grounds: overpaid rent, unreturned security deposit,
   repairs/improvements, injury from landlord's fault.
 - Defense-helpful facts at the eviction hearing: no 3-day notice given; rent
@@ -78,11 +82,12 @@ OH 43206, 614-221-7201.
 
 ## Deadline candidates for fact_gather (the #621 rule: collect only what a page uses)
 
-1. **Hearing date** (from the summons) — anchor; "your Answer to a second
-   cause is due 28 days from the day you received court papers" is the
-   stronger computed deadline:
-2. **Date court papers received** → +28 days = Answer/Counterclaim deadline
-   (1923.061(B) / Civ.R. timing per LASCO packet). Best ICS candidate.
+1. **Hearing date** (from the summons) — anchor; the 28-day Answer
+   deadline for a second cause is the stronger computed deadline:
+2. **Date service was complete** → +28 days = Answer/Counterclaim deadline
+   (1923.06(H)(2)). Service can be complete on the mailing date
+   (1923.06(G)(3)), so a receipt date can run late; ask the tenant for the
+   earliest date on or about their papers. Best ICS candidate.
 3. Notice-date math (3 days) is landlord-side timing; probably info-only for
    tenants, not a gathered fact.
 

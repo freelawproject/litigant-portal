@@ -62,6 +62,7 @@ handoff:
     eviction_landlord_city: landlord_city
     eviction_landlord_state: landlord_state
     eviction_landlord_zip: landlord_zip
+    eviction_answer_mailed_date: mailed_date
 
 # Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
