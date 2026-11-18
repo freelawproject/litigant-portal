@@ -24,7 +24,42 @@ contacts:
     kind: self_help
     phone: '(614) 645-7381'
     address: '375 South High Street, 16th Floor, Columbus, OH 43215'
-    note: 'Help with court forms and the process for people who do not have a lawyer.'
+    hours: 'Monday to Friday, 9 a.m. to 3 p.m. (last visitor at 2:30 p.m.)'
+    note: 'Help with court forms and the process for people who do not have a lawyer, in person or by webchat. They can notarize the eviction record removal application.'
+  - id: rent_escrow_clerks
+    name: 'FCMC Rent Escrow Clerks'
+    kind: clerk
+    phone: '(614) 645-7430'
+    address: '375 South High Street, 3rd Floor, Columbus, OH 43215'
+    hours: 'Monday to Friday, 8 a.m. to 4 p.m.'
+    note: 'Start a rent escrow account here. Bring your rent in cash or money order and a copy of your written repair request. The clerks can notarize the application.'
+  - id: duty_room
+    name: 'FCMC Duty Room'
+    phone: '(614) 645-3889'
+    note: 'Call for updates on a motion or objection filed after an eviction judgment. The duty judge rules on these, usually within a few days.'
+  - id: columbus_311
+    name: 'City of Columbus Code Enforcement (311)'
+    phone: '(614) 645-3111'
+    url: 'https://311.columbus.gov'
+    hours: 'Monday to Friday, 8 a.m. to 5 p.m.'
+    note: 'Request a free inspection of unsafe or unrepaired conditions in a Columbus rental. Dial 3-1-1 from inside the city.'
+  - id: columbus_tenant_hotline
+    name: 'Columbus Code Enforcement tenant protection hotline'
+    phone: '(614) 724-1532'
+    note: 'For Columbus tenants: report retaliation after a repair complaint, a landlord refusing rent you offered, or a landlord who will not give receipts.'
+  - id: homeless_hotline
+    name: 'Franklin County Homeless Hotline'
+    phone: '(614) 274-7000'
+    note: 'Emergency shelter access in Franklin County.'
+  - id: handson_211
+    name: 'HandsOn Central Ohio'
+    phone: '2-1-1'
+    note: 'Around-the-clock referrals for food, shelter, and other help in Central Ohio.'
+  - id: fabco
+    name: 'FABCO'
+    phone: '(614) 538-5600'
+    address: 'PO Box 20850, Columbus, OH 43220'
+    note: 'Local rental history and credit reporting company most Columbus landlords check. Request your free yearly report or dispute an error. Toll free: (800) 669-5010.'
   - id: service_bailiff
     name: "FCMC Service Bailiff's Office"
     phone: '(614) 645-7780'
@@ -58,6 +93,34 @@ resources:
     label: 'Franklin County Municipal Court civil forms'
     url: 'https://www.fcmcclerk.com/forms/civil'
     note: 'Court forms, including the fee waiver affidavit, a blank response form, and the application to ask that an eviction record be removed from online access.'
+  - id: fcmc_case_search
+    label: 'Franklin County Municipal Court Clerk case search'
+    url: 'https://www.fcmcclerk.com/case/search'
+    note: 'Look up your case by case number or name to see whether a judgment was entered or a writ was requested.'
+  - id: fcmc_emergency_continuance
+    label: 'Franklin County Municipal Court emergency continuance request'
+    url: 'https://municipalcourt.franklincountyohio.gov/Departments-Services/Court-Attendance'
+    note: "The court's online request to move an eviction hearing. It goes directly to the magistrates."
+  - id: fc_auditor_search
+    label: 'Franklin County Auditor property search'
+    url: 'https://property.franklincountyauditor.com/_web/search/commonsearch.aspx?mode=owner'
+    note: "Search your rental's address to find the owner's name and mailing address for a written repair request."
+  - id: jfs_prc
+    label: 'Franklin County JFS emergency assistance (PRC)'
+    url: 'https://www.franklincountyohio.gov/Resident-Services/Support-Assistance/PRC-Emergency-Assistance/PRC-and-How-to-Apply'
+    note: "Franklin County Job and Family Services' Prevention, Retention and Contingency program, which can help with rent in an emergency."
+  - id: rentful_614
+    label: 'Rentful 614'
+    url: 'https://www.rentful614.com/rights'
+    note: "Central Ohio renters' rights information, emergency vacate and relocation help, and housing search resources."
+  - id: ohio_legal_help_record_removal
+    label: 'Ohio Legal Help: Franklin County eviction record removal'
+    url: 'https://www.ohiolegalhelp.org/letters-forms/franklin-county-application-remove-online-eviction-record'
+    note: 'An online form builder for the application to remove an eviction record from online access in Franklin County.'
+  - id: annual_credit_report
+    label: 'AnnualCreditReport.com'
+    url: 'https://www.annualcreditreport.com'
+    note: 'Your free yearly credit reports from Equifax, Experian, and TransUnion.'
   - id: lasco_guides
     label: 'LASCO tenant guides on eviction'
     url: 'https://www.lasco.org/housing'

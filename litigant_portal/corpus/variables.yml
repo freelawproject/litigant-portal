@@ -214,12 +214,13 @@ variables:
 
   # ── Eviction ────────────────────────────────────────────────────────────
   # eviction_papers_received_date and eviction_hearing_date are asked on the
-  # tenant flow, eviction_notice_served_date on the landlord flow.
+  # tenant flow, eviction_notice_served_date on the landlord flow. The
+  # before-filing and after-judgment tenant flows ask the dates below.
 
   - name: eviction_papers_received_date
-    label: 'Date you received the court papers'
+    label: 'Date you were served the court papers'
     data_type: date
-    help_text: 'The day the summons and complaint were handed to you, mailed to you, or posted on your door. This starts the 28-day window to answer a money claim. Not sure? Call the clerk with your case number and ask for the date you were served.'
+    help_text: 'The 28 days to answer a money claim start when service is complete, which can be the day the court mailed the papers, before they reached you. Use the earliest date you have: the mailing date, or the day the papers were handed to you or posted on your door. Not sure? Ask the clerk for your service date.'
 
   - name: eviction_hearing_date
     label: 'Your hearing date'
@@ -230,6 +231,33 @@ variables:
     label: 'Date you served the Notice to Leave'
     data_type: date
     help_text: 'The day you handed the notice to your tenant, left it at the property, or sent it by certified mail.'
+
+  # The tenant's dates before a case is filed and after a judgment (#1210).
+
+  - name: eviction_notice_received_date
+    label: 'Date you received the Notice to Leave'
+    data_type: date
+    help_text: 'The day the notice was handed to you, posted on your door, or delivered by certified mail. The three days do not count the day it was posted.'
+
+  - name: eviction_repair_request_date
+    label: 'Date you asked for repairs in writing'
+    data_type: date
+    help_text: 'The day you mailed, emailed, or texted your landlord a written list of the repairs you need. A phone call or a conversation does not count.'
+
+  - name: eviction_magistrate_decision_date
+    label: "Date of the magistrate's decision"
+    data_type: date
+    help_text: "The date the magistrate's decision in your case was filed. It starts the 14 days to object. Look up your case number at fcmcclerk.com to find it."
+
+  - name: eviction_judgment_date
+    label: 'Date of the judgment'
+    data_type: date
+    help_text: 'The date the judgment in your case was filed. It starts the 30 days to appeal. Look up your case number at fcmcclerk.com to find it.'
+
+  - name: eviction_writ_posted_date
+    label: 'Date the red tag was posted on your door'
+    data_type: date
+    help_text: 'The red tag is the Writ of Restitution. The bailiff posts it on your door after the landlord asks the court to enforce the judgment.'
 
   # The tenant's Answer (#610): the caption, the defenses, and who it is
   # mailed to. The Answer's checkboxes are booleans, one per defense.
