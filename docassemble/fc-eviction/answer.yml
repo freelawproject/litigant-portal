@@ -41,16 +41,18 @@ fields:
   - Last name: tenant_last
   - Street address: tenant_street
   - City: tenant_city
+  - State: tenant_state
+    default: OH
   - ZIP code: tenant_zip
   - Phone number: tenant_phone
     required: False
 ---
 mandatory: True
 question: |
-  Why you disagree with what the landlord says you owe
+  Money you already paid
 subquestion: |
-  Check every reason that is true for you. Each one becomes a defense on
-  your Answer.
+  Check every one that is true for you. Each becomes a reason on your Answer
+  for why you don't owe what the landlord says. You can check none.
 fields:
   - I already paid the landlord the money they say I owe: defense_paid_in_full
     datatype: yesno
@@ -59,20 +61,35 @@ fields:
   - How much you paid: paid_in_part_amount
     datatype: currency
     show if: defense_paid_in_part
+  - The landlord agreed I could do work instead of paying rent, and I did the work: defense_work_for_rent
+    datatype: yesno
+---
+mandatory: True
+question: |
+  Repairs and your security deposit
+subquestion: |
+  Check every one that is true for you. You can check none.
+fields:
   - I paid for repairs the landlord would not make: defense_repairs
     datatype: yesno
   - About how much the repairs cost: repairs_amount
     datatype: currency
     show if: defense_repairs
-  - The landlord agreed I could do work instead of paying rent, and I did the work: defense_work_for_rent
-    datatype: yesno
   - I paid a security deposit the landlord has not counted toward what I owe: defense_deposit_not_credited
     datatype: yesno
   - The landlord wrongly kept my security deposit: defense_deposit_withheld
     datatype: yesno
   - Your security deposit: security_deposit_amount
     datatype: currency
-    required: False
+    js show if: |
+      val("defense_deposit_not_credited") || val("defense_deposit_withheld")
+---
+mandatory: True
+question: |
+  Late fees, damage, and other reasons
+subquestion: |
+  Check every one that is true for you. You can check none.
+fields:
   - The late fees are far more than the landlord lost from my paying late: defense_late_charges
     datatype: yesno
   - I did not damage the property beyond normal wear and tear: defense_no_damage
@@ -97,13 +114,27 @@ fields:
     show if: landlord_has_attorney
   - Attorney's street address: attorney_street
     show if: landlord_has_attorney
-  - Attorney's city, state, and ZIP: attorney_city_state_zip
+  - Attorney's city: attorney_city
+    show if: landlord_has_attorney
+  - Attorney's state: attorney_state
+    default: OH
+    show if: landlord_has_attorney
+  - Attorney's ZIP code: attorney_zip
     show if: landlord_has_attorney
   - Landlord's street address: landlord_street
     show if:
       variable: landlord_has_attorney
       is: False
-  - Landlord's city, state, and ZIP: landlord_city_state_zip
+  - Landlord's city: landlord_city
+    show if:
+      variable: landlord_has_attorney
+      is: False
+  - Landlord's state: landlord_state
+    default: OH
+    show if:
+      variable: landlord_has_attorney
+      is: False
+  - Landlord's ZIP code: landlord_zip
     show if:
       variable: landlord_has_attorney
       is: False
@@ -137,7 +168,8 @@ attachment:
     # 2. Reasons for denying the amount owed
     - 'defense_paid_in_full': ${ defense_paid_in_full }
     - 'defense_paid_in_part': ${ defense_paid_in_part }
-    - 'paid_in_part_amount': ${ money(paid_in_part_amount) if defense_paid_in_part else "" }
+    # The form prints no $ on this line, unlike the other amounts.
+    - 'paid_in_part_amount': ${ "$" + money(paid_in_part_amount) if defense_paid_in_part else "" }
     - 'defense_repairs': ${ defense_repairs }
     - 'repairs_amount': ${ money(repairs_amount) if defense_repairs else "" }
     - 'defense_work_for_rent': ${ defense_work_for_rent }
@@ -153,7 +185,7 @@ attachment:
     # Signature block: the tenant signs the /S/ lines.
     - 'defendant_name': ${ " ".join(p for p in [tenant_first, tenant_middle, tenant_last] if p) }
     - 'defendant_address_line_1': ${ tenant_street }
-    - 'defendant_address_line_2': ${ tenant_city }, OH ${ tenant_zip }
+    - 'defendant_address_line_2': ${ tenant_city }, ${ tenant_state } ${ tenant_zip }
     - 'defendant_phone': ${ tenant_phone }
     # Proof of service
     - 'service_date': ${ format_date(mailed_date, format="MM/dd/yyyy") if mailed_date else "" }
@@ -161,10 +193,10 @@ attachment:
     - 'served_landlord': ${ not landlord_has_attorney }
     - 'landlord_attorney_name': ${ attorney_name if landlord_has_attorney else "" }
     - 'landlord_attorney_address_line_1': ${ attorney_street if landlord_has_attorney else "" }
-    - 'landlord_attorney_address_line_2': ${ attorney_city_state_zip if landlord_has_attorney else "" }
+    - 'landlord_attorney_address_line_2': ${ attorney_city + ", " + attorney_state + " " + attorney_zip if landlord_has_attorney else "" }
     - 'landlord_name': ${ "" if landlord_has_attorney else landlord_name }
     - 'landlord_address_line_1': ${ "" if landlord_has_attorney else landlord_street }
-    - 'landlord_address_line_2': ${ "" if landlord_has_attorney else landlord_city_state_zip }
+    - 'landlord_address_line_2': ${ "" if landlord_has_attorney else landlord_city + ", " + landlord_state + " " + landlord_zip }
 ---
 mandatory: True
 event: download_answer

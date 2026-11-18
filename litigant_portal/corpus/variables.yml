@@ -55,6 +55,13 @@ variables:
     global: true
     required: true
 
+  - name: state
+    label: 'State'
+    private: true
+    global: true
+    required: true
+    help_text: 'Two letters, like OH.'
+
   - name: county
     label: 'County'
     private: true
@@ -323,8 +330,20 @@ variables:
       variable: eviction_landlord_has_attorney
       value: true
 
-  - name: eviction_landlord_attorney_city_state_zip
-    label: "Attorney's city, state, and ZIP"
+  - name: eviction_landlord_attorney_city
+    label: "Attorney's city"
+    asked_when:
+      variable: eviction_landlord_has_attorney
+      value: true
+
+  - name: eviction_landlord_attorney_state
+    label: "Attorney's state"
+    asked_when:
+      variable: eviction_landlord_has_attorney
+      value: true
+
+  - name: eviction_landlord_attorney_zip
+    label: "Attorney's ZIP code"
     asked_when:
       variable: eviction_landlord_has_attorney
       value: true
@@ -333,8 +352,14 @@ variables:
     label: "Landlord's street address"
     help_text: 'Where the landlord gets mail. The Complaint lists it under their name.'
 
-  - name: eviction_landlord_city_state_zip
-    label: "Landlord's city, state, and ZIP"
+  - name: eviction_landlord_city
+    label: "Landlord's city"
+
+  - name: eviction_landlord_state
+    label: "Landlord's state"
+
+  - name: eviction_landlord_zip
+    label: "Landlord's ZIP code"
 
   # Arizona civil traffic. Scoped to the topic: an arraignment date and a
   # citation date mean something only inside a traffic case.

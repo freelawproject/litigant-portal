@@ -36,8 +36,9 @@ fields:
     checked_when:
       variable: eviction_defense_paid_in_part
       value: true
+  # The form prints no $ on this line, unlike the other amounts.
   - pdf_field: 'paid_in_part_amount'
-    template: '{eviction_paid_in_part_amount}'
+    template: '${eviction_paid_in_part_amount}'
   - pdf_field: 'defense_repairs'
     checked_when:
       variable: eviction_defense_repairs
@@ -87,7 +88,7 @@ fields:
   - pdf_field: 'defendant_address_line_1'
     template: '{street_address}'
   - pdf_field: 'defendant_address_line_2'
-    template: '{city}, OH {zip_code}'
+    template: '{city}, {state} {zip_code}'
   - pdf_field: 'defendant_phone'
     template: '{phone_number}'
 
@@ -108,7 +109,7 @@ fields:
   - pdf_field: 'landlord_attorney_address_line_1'
     template: '{eviction_landlord_attorney_street}'
   - pdf_field: 'landlord_attorney_address_line_2'
-    template: '{eviction_landlord_attorney_city_state_zip}'
+    template: '{eviction_landlord_attorney_city}, {eviction_landlord_attorney_state} {eviction_landlord_attorney_zip}'
   - pdf_field: 'landlord_attorney_address_line_3'
     template: ''
   - pdf_field: 'landlord_name'
@@ -116,7 +117,7 @@ fields:
   - pdf_field: 'landlord_address_line_1'
     template: '{eviction_landlord_street}'
   - pdf_field: 'landlord_address_line_2'
-    template: '{eviction_landlord_city_state_zip}'
+    template: '{eviction_landlord_city}, {eviction_landlord_state} {eviction_landlord_zip}'
   - pdf_field: 'landlord_address_line_3'
     template: ''
   - pdf_field: 'tenant_signature'

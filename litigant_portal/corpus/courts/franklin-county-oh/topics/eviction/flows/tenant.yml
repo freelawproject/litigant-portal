@@ -33,6 +33,7 @@ handoff:
     last_name: tenant_last
     street_address: tenant_street
     city: tenant_city
+    state: tenant_state
     zip_code: tenant_zip
     phone_number: tenant_phone
     eviction_case_number: case_number
@@ -54,9 +55,13 @@ handoff:
     eviction_landlord_has_attorney: landlord_has_attorney
     eviction_landlord_attorney_name: attorney_name
     eviction_landlord_attorney_street: attorney_street
-    eviction_landlord_attorney_city_state_zip: attorney_city_state_zip
+    eviction_landlord_attorney_city: attorney_city
+    eviction_landlord_attorney_state: attorney_state
+    eviction_landlord_attorney_zip: attorney_zip
     eviction_landlord_street: landlord_street
-    eviction_landlord_city_state_zip: landlord_city_state_zip
+    eviction_landlord_city: landlord_city
+    eviction_landlord_state: landlord_state
+    eviction_landlord_zip: landlord_zip
 
 # Each id is a citation target stored in user threads. Add ids, never rename them.
 sections:
@@ -162,20 +167,29 @@ interview:
       - last_name
       - street_address
       - city
+      - state
       - zip_code
       - phone_number
-  - title: 'Why you disagree with what the landlord says you owe'
-    description: 'Check every reason that is true for you. These become the defenses on your Answer.'
+  # The defenses, in the order the Answer prints them, three or four to a
+  # page: a long page of checkboxes is too much to take in at once.
+  - title: 'Money you already paid'
+    description: 'Check every one that is true for you. Each becomes a reason on your Answer for why you do not owe what the landlord says. You can check none.'
     variables:
       - eviction_defense_paid_in_full
       - eviction_defense_paid_in_part
       - eviction_paid_in_part_amount
+      - eviction_defense_work_for_rent
+  - title: 'Repairs and your security deposit'
+    description: 'Check every one that is true for you. You can check none.'
+    variables:
       - eviction_defense_repairs
       - eviction_repairs_amount
-      - eviction_defense_work_for_rent
       - eviction_defense_deposit_not_credited
       - eviction_defense_deposit_withheld
       - eviction_security_deposit_amount
+  - title: 'Late fees, damage, and other reasons'
+    description: 'Check every one that is true for you. You can check none.'
+    variables:
       - eviction_defense_late_charges
       - eviction_defense_no_damage
       - eviction_defense_other
@@ -186,9 +200,13 @@ interview:
       - eviction_landlord_has_attorney
       - eviction_landlord_attorney_name
       - eviction_landlord_attorney_street
-      - eviction_landlord_attorney_city_state_zip
+      - eviction_landlord_attorney_city
+      - eviction_landlord_attorney_state
+      - eviction_landlord_attorney_zip
       - eviction_landlord_street
-      - eviction_landlord_city_state_zip
+      - eviction_landlord_city
+      - eviction_landlord_state
+      - eviction_landlord_zip
       - eviction_answer_mailed_date
 
 # The filing packet.
