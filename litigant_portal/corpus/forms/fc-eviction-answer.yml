@@ -1,7 +1,7 @@
 # Answer of Defendant(s): the Franklin County Municipal Court Self Help
 # Center's tenant Answer, "Rev. December 2021" (pages 10-11 of its answer
-# packet). Source: corpus-sources/franklin-county-oh/eviction/LL-T Answr.pdf,
-# delivered flat. The fillable copy beside this file is built by
+# packet). Source, delivered flat and kept out of git:
+# corpus-sources/franklin-county-oh/_local/eviction-delivery/LL-T Answr.pdf. The fillable copy beside this file is built by
 # scripts/fc_eviction_fillable.py, which names every field by its place on
 # the page (#610).
 #

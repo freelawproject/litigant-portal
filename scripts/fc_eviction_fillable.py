@@ -33,7 +33,10 @@ from formfyxer.pdf_wrangling import FieldType, FormField, set_fields
 from reportlab.lib.colors import black
 
 REPO = Path(__file__).resolve().parents[1]
-SOURCES = REPO / "corpus-sources/franklin-county-oh/eviction"
+# The court's blank forms come from the partner delivery, kept out of git
+# until the court confirms they are public. See
+# corpus-sources/franklin-county-oh/SOURCE.md.
+SOURCES = REPO / "corpus-sources/franklin-county-oh/_local/eviction-delivery"
 INTERVIEW_DIR = REPO / "docassemble/fc-eviction"
 CORPUS_FORMS = REPO / "litigant_portal/corpus/forms"
 
