@@ -1,0 +1,150 @@
+# Eviction (Franklin County, OH), TENANT role, before a case is filed
+# (#1210). Built from the decision tree's pre-filing path (Taylor and
+# Jordan, #722) and the Self Help Center's rent escrow guide (April 2026),
+# both in corpus-sources/franklin-county-oh/eviction/. The escrow
+# application form is #1211.
+
+name: 'Before an Eviction Case Is Filed (Tenant)'
+enabled: true
+order: 0
+
+# The page, top to bottom.
+layout:
+  - overview
+  - unsafe_conditions
+  - notice_to_leave
+  - rent_due_date
+  - behind_on_rent
+  - repairs
+  - rent_escrow
+  - ending_the_lease
+  - retaliation
+  - keep_records
+  - interview
+  - calendar
+  - contacts
+  - resources
+
+# Each id is a citation target stored in user threads. Add ids, never rename them.
+sections:
+  - id: overview
+    heading: 'Before an eviction case is filed'
+    content: |
+      This page is for tenants in Franklin County whose landlord has warned them about eviction, or who have problems with their home, but who have not received any papers from the court. If you already received a summons or complaint from Franklin County Municipal Court, use the page for responding to an eviction case instead.
+
+      Only a court can order you to leave your home. It is illegal for a landlord to change your locks, shut off your utilities, or put your belongings outside to force you out. If any of that is happening, call local law enforcement and a legal aid attorney right away, and keep receipts for anything it costs you. You may be able to recover that money.
+
+      This page cannot look up your case. It relies on what you tell it. If papers from the court arrive later, switch to the page for responding to an eviction case.
+
+      Nothing on this page is legal advice. It explains the process and the options people in this situation have.
+
+  - id: unsafe_conditions
+    heading: 'If your home is not safe'
+    content: |
+      Your safety comes first. Raw sewage, mold, no heat in winter, exposed wiring, and similar problems can be dangerous for adults and children. If conditions are serious, report them now. You do not need to wait for anything else on this page.
+
+      In Columbus, call 3-1-1 (614-645-3111) to ask Code Enforcement for an inspection. Inspections are free. Outside Columbus, call your city's code enforcement office or the Franklin County health department. An inspector can order your landlord to fix violations, and you will get a copy of that notice. It is the best proof that repairs are needed.
+
+      If a property is so unsafe that the city issues an emergency vacate order, a City of Columbus law may require your landlord to pay your reasonable relocation costs. If the move is temporary while repairs are made, the owner pays reasonable and necessary housing costs, such as a hotel. If you cannot return, the owner owes a cash payment of about three months of rent at a new home. Work with the Columbus code officer assigned to your property to get this help.
+
+      Columbus tenants can also call the Code Enforcement tenant protection hotline at 614-724-1532 to report retaliation after a repair complaint, a landlord refusing rent you offered, or a landlord who will not give receipts.
+
+  - id: notice_to_leave
+    heading: 'If you received a Notice to Leave'
+    content: |
+      A Notice to Leave (sometimes called a Notice to Vacate or a Three-Day Notice) is the written notice your landlord must give before filing an eviction case. A verbal warning is not a Notice to Leave.
+
+      Ohio law requires the notice to include specific words, usually in larger or bolder print: "You are being asked to leave the premises. If you do not leave, an eviction action may be initiated against you. If you are in doubt regarding your legal rights and obligations as a tenant, it is recommended that you seek legal assistance." A notice that changes these words may not be valid.
+
+      The notice must be posted on your door, handed to you, or sent by certified mail at least three full days before the landlord files. The day it was posted does not count, and the last day cannot be a Sunday or legal holiday.
+
+      Receiving a notice does not mean you must move by the date on it. It is not a court order. It means your landlord can file an eviction case if you stay past the deadline. If you want to stay, the days before the deadline are the best time to act: offer the rent owed or work out an agreement, and put any agreement in writing.
+
+  - id: rent_due_date
+    heading: 'When your rent is legally due'
+    content: |
+      Your rent is due on the day your lease says it is due. A grace period does not change that. If your lease says rent is due on the 1st and late fees start after the 5th, your rent is still due on the 1st, and paying on the 2nd is paying late.
+
+      This date matters for two things on this page. Rent escrow only works if you start it on or before the day rent is due. And some protections, like the retaliation defense, do not apply to a tenant who is behind on rent.
+
+  - id: behind_on_rent
+    heading: 'If you are behind on rent'
+    content: |
+      If you live in the city of Columbus and your landlord is trying to evict you only for unpaid rent, a city law called "pay to stay" can help. If you offer your landlord all the rent you owe, plus reasonable late fees, and your landlord refuses it, you can raise that refusal as a defense to the eviction. This works before a case is filed. After a case is filed, it works until the judgment, but the amount you offer must also include the landlord's court costs.
+
+      Pay to stay applies only to evictions for nonpayment. It does not help if the landlord is evicting you for another reason.
+
+      If you cannot pay what you owe, apply for rental assistance as early as you can. Franklin County Job and Family Services runs the Prevention, Retention and Contingency (PRC) emergency assistance program, and Rentful 614 lists other housing help in Central Ohio. Both are in the resources at the end of this page.
+
+      If you are behind on rent, catch up before starting rent escrow. The court will likely give escrowed rent to the landlord if you were behind when you started.
+
+  - id: repairs
+    heading: 'Getting repairs made'
+    content: |
+      Ohio law requires landlords to keep a rental home fit and livable. That includes following building, housing, health, and safety codes; keeping plumbing, electrical, heating, and air conditioning they supplied in working order; supplying running water, hot water, and heat; and getting rid of pests like bedbugs, roaches, and rats. A lease cannot make you responsible for these repairs. You pay only for damage you or your guests caused.
+
+      Step 1: ask for the repairs in writing. Even if you already called or talked to your landlord, and even if the city already sent the landlord a code violation notice, you still need to send your own written request listing each repair. A letter, email, or text all count. If you mail a letter, keep a copy and ask the post office for a certificate of mailing, which costs less than $2. If you email or text, keep screenshots that show the landlord received it.
+
+      Send the request to the person or place where you normally pay rent. If you do not know your landlord's name or address, look up your rental's address on the Franklin County Auditor's website, which lists the owner.
+
+      Step 2: wait a reasonable time. The law gives the landlord a reasonable time to fix the problem, never more than 30 days. For a serious problem that can be fixed quickly, like a broken furnace in winter, a reasonable time can be just a few days. Enter the date you sent your request below to see the 30-day limit on your calendar.
+
+      Step 3: if the repairs are still not made, you can choose to end your lease and move, or start rent escrow with the court.
+
+  - id: rent_escrow
+    heading: 'Rent escrow: paying rent to the court until repairs are made'
+    content: |
+      Rent escrow lets you pay your rent to the court instead of your landlord. The court holds the money, and the landlord should not get it until the repairs are made. Before you start, you must have asked for repairs in writing, waited a reasonable time, and be current on rent.
+
+      Start on or before the day your rent is due. If rent is due on the 1st, go on the 1st or a few days before. Starting during a grace period can mean the court finds you were behind and gives the money to the landlord.
+
+      Bring your rent (cash or money order only) and a copy of your written repair request to the Rent Escrow window on the 3rd floor of the Municipal Court, 375 South High Street, Monday through Friday, 8 a.m. to 4 p.m. The clerk gives you an Application to Deposit Rent with the Clerk. It must be notarized, and the escrow clerks can notarize it for you.
+
+      There is no filing fee. The court keeps 1% of the rent you deposit. The clerk tells your landlord that you are escrowing rent. Every month until the repairs are made, pay your full rent to the court on time.
+
+      When you start escrow, you can also ask the court in a motion to order the repairs, lower your rent until repairs are made, or release escrowed money to you to pay for repairs yourself. Without a motion, the court probably will not schedule a hearing, and you may pay into escrow without getting repairs.
+
+      Escrow does not apply if your landlord rents out three or fewer homes and told you so in writing, or if you are a student living in college housing.
+
+  - id: ending_the_lease
+    heading: 'Ending your lease because of repairs'
+    content: |
+      Instead of escrow, you can end your lease and move out if you asked for repairs in writing, waited a reasonable time, and the problems were not fixed. If the landlord has started repairs in good faith, you may not have this right. If you have a housing voucher or subsidized housing, talk to your housing authority first, because that housing is hard to replace.
+
+      Send a second letter saying the date you will move out and how you will return the keys, and keep a copy with a certificate of mailing. You owe rent only for the days you are still there. Get a receipt when you return the keys.
+
+      Give your landlord a forwarding address in writing. After you return the keys, your landlord has 30 days to return your security deposit or explain in writing why they kept any of it.
+
+  - id: retaliation
+    heading: 'If your landlord retaliates'
+    content: |
+      Ohio law does not allow a landlord to evict you, raise your rent, or cut services because you complained about conditions to the landlord or to code enforcement. If that happens, retaliation can be raised as a defense.
+
+      It is a defense you have to prove. You would need to show the landlord acted because of your complaint, for example by how soon the eviction followed it or by how the landlord treated other tenants. It does not apply if you are behind on rent, if you or your guests caused the problem, if fixing the problem would require you to move out, or if you stayed past the end of your lease. Retaliation defenses are often rejected in Franklin County, so do not rely on it alone.
+
+  - id: keep_records
+    heading: 'Keep a record'
+    content: |
+      Keep everything in one place: photos of the conditions with dates, copies of every letter, email, and text to and from your landlord, receipts for rent and for costs like a hotel, and any notice from your landlord or code enforcement.
+
+      Saving these here helps you organize them. It does not file them with the court. If a case is filed, you will still need to bring your own copies to the court.
+
+# The guided page asks only the pages marked `on_page` (#1046).
+interview:
+  - title: 'Your key dates'
+    on_page: true
+    variables:
+      - eviction_notice_received_date
+      - eviction_repair_request_date
+
+deadlines:
+  - id: earliest_filing
+    label: 'Earliest day your landlord can file'
+    description: 'A landlord must wait at least three full days after the Notice to Leave before filing. The day it was posted does not count, and the last day cannot be a Sunday or legal holiday. This is a good window to pay what you owe or reach a written agreement.'
+    offset_days: 3
+    offset_from: eviction_notice_received_date
+  - id: repair_time_limit
+    label: 'Longest your landlord has to make repairs'
+    description: 'The law gives a landlord a reasonable time to make repairs, never more than 30 days, and less for serious problems that can be fixed quickly. After that, you can choose rent escrow or ending your lease, as long as you are current on rent.'
+    offset_days: 30
+    offset_from: eviction_repair_request_date

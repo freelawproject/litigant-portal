@@ -1,0 +1,179 @@
+# Eviction (Franklin County, OH), TENANT role, after a judgment (#1210).
+# Built from the decision tree's post-judgment path (Jamie, #720) and its
+# post-judgment cascade, plus the Self Help Center's training guides on
+# magistrate objections, motions, writs and set outs, and eviction record
+# removal, all in corpus-sources/franklin-county-oh/eviction/. The motion
+# forms are #1213 and #1214, record removal #1215.
+
+name: 'After an Eviction Judgment (Tenant)'
+enabled: true
+order: 2
+
+# The page, top to bottom.
+layout:
+  - overview
+  - check_your_case
+  - objection
+  - relief_from_judgment
+  - stay
+  - filing_a_motion
+  - appeal
+  - agreed_entry
+  - set_out_timeline
+  - set_out_day
+  - record_removal
+  - credit_reports
+  - interview
+  - calendar
+  - contacts
+  - resources
+
+# Each id is a citation target stored in user threads. Add ids, never rename them.
+sections:
+  - id: overview
+    heading: 'After an eviction judgment'
+    content: |
+      This page is for tenants in Franklin County whose eviction hearing has already happened, including anyone who missed their hearing or is not sure what happened at it.
+
+      Things move fast after a judgment. A set out can come within days. This page explains what you can still ask the court for, how the set out works, and what you can do about the eviction record afterward.
+
+      Nothing on this page is legal advice. It explains the process and the options people in this situation have, but it cannot predict what a judge will decide.
+
+  - id: check_your_case
+    heading: 'First, find out what happened in your case'
+    content: |
+      Your court papers show when your hearing was scheduled. They do not show what happened at it. This page cannot look up your case, so check it yourself first.
+
+      Look up your case at fcmcclerk.com by case number or by your name. Your case number is on the summons and complaint. The case record shows whether a judgment was entered, and whether your landlord asked for a Writ of Restitution, the court order that allows a set out.
+
+      The Self Help Center can also help you read your case record. Contact them by phone, by webchat, or in person on the 16th floor of 375 South High Street.
+
+  - id: objection
+    heading: "Objecting to the magistrate's decision"
+    content: |
+      Magistrates hear eviction cases in Franklin County. If you believe the magistrate made a legal mistake in deciding your case, you can file an Objection to Magistrate's Decision, and a judge will review it.
+
+      You have 14 days from the magistrate's decision to file an objection. Enter the date of the decision below to see that deadline on your calendar. The court has its own form for this.
+
+      Filing an objection does not stop a set out by itself. If the judge agrees with your objection, the usual result is another hearing where both sides explain their arguments.
+
+  - id: relief_from_judgment
+    heading: 'Asking the court to undo the judgment'
+    content: |
+      If the 14 days for an objection have passed, if you lost because you missed the hearing, or if you signed an agreement and your landlord says you broke it, you can file a Motion for Relief from Judgment. The court has two forms for the most common situations.
+
+      If you missed your hearing, the motion must explain two things. First, why you missed it. Judges usually accept a reasonable explanation. Second, what your defense would have been. This is harder. A defense is a legal reason the eviction should not happen, backed by facts, for example that you paid the rent and have proof the landlord accepted it, or that the landlord regularly accepted late rent and then refused it without warning. Hardship, wanting time to negotiate, or wanting to apply for rental assistance are not legal defenses, and a motion based only on them will be denied.
+
+      If you signed an Agreed Judgment Entry and your landlord filed an affidavit saying you broke it, the motion must say what the landlord claims you did and why that is wrong. You must follow the terms of an agreement exactly. Paying even a few days late counts as breaking it. Asking for more time to move out is not a reason the court will grant.
+
+  - id: stay
+    heading: 'Asking the court to pause the set out'
+    content: |
+      Filing a motion does not stop a set out on its own. You have to ask the court to pause it, which is called a stay. Both of the court's motion forms include a box to request a stay.
+
+      A stay is never automatic. The judge decides whether to grant one. You may be required to post a bond, often your monthly rent, to keep the stay in place.
+
+  - id: filing_a_motion
+    heading: 'Filing your motion and what happens next'
+    content: |
+      File your motion with the Civil Clerk on the 3rd floor of the Municipal Court, 375 South High Street. Filing a motion after judgment costs $20. If you cannot afford it, ask the Self Help Center about the fee waiver affidavit.
+
+      You must send a copy of your motion to your landlord, or to your landlord's attorney if they have one. The certificate of service on the form is your promise to the court that you did.
+
+      Your motion goes straight to the duty judge, who usually rules within a few days. You do not need to wait at the courthouse. Someone from the Duty Room will call you when there is a decision, and you can call the Duty Room at 614-645-3889 for updates. For questions about when your set out is scheduled, call the Service Bailiff's Office at 614-645-7780.
+
+      Plan for a set out even while your motion is pending. The judge must rule based on the law, and the motion may be denied.
+
+  - id: appeal
+    heading: 'Appealing the judgment'
+    content: |
+      An appeal asks a higher court to review the judgment. The deadline is generally 30 days from the final judgment. Filing an objection to a magistrate's decision can change when that clock starts.
+
+      If you move out, an appeal usually ends, because there is no longer a home to return to. Some exceptions exist, such as for housing choice vouchers and project-based subsidized housing.
+
+      An appeal does not stop a set out unless the court grants a stay, and a stay on appeal requires a bond. Often that is a monthly bond equal to your rent, paid while the appeal is pending.
+
+  - id: agreed_entry
+    heading: 'If you made an agreement with your landlord'
+    content: |
+      Many eviction cases end in an agreement instead of a decision. In an Agreed Judgment Entry, you can stay as long as you follow the agreed terms. In an agreed Judgment Entry, a judgment is entered against you, but your landlord's attorney agrees to ask the court to vacate it if you follow the terms, usually by paying or moving out by a certain date.
+
+      If you followed the agreement, it is usually up to you to contact your landlord's attorney and ask them to file the dismissal or the motion to vacate. They rarely do it on their own. Do this before asking to remove your eviction record, because a dismissed case makes a stronger request.
+
+      If you asked and the attorney still has not filed it, you can ask the court to enforce the agreement using the court's blank motion form.
+
+  - id: set_out_timeline
+    heading: 'How the set out is scheduled'
+    content: |
+      After a judgment, your landlord can ask the court for a Writ of Restitution. The bailiff posts it on your door as a red tag. It can take up to 7 business days for the paperwork to reach the Bailiff's Office.
+
+      You have 5 days from the day the red tag was posted. If you have not moved out by midnight on the last day listed on the red tag, your landlord can call the next morning to schedule the set out. The bailiff then posts a second, yellow tag called the Final Order Notice to Vacate Premises, which gives the set out date.
+
+      By law, the set out must happen within 10 days of the writ. Enter the date of your red tag below to see the earliest your set out can be scheduled. This is general timing, not a confirmed date for your case. Call the Service Bailiff's Office at 614-645-7780 to ask about yours.
+
+      You may be able to agree with your landlord on a move-out date instead. Put any agreement in writing.
+
+  - id: set_out_day
+    heading: 'What happens at a set out'
+    content: |
+      A bailiff supervises the set out. Your belongings are placed outside the home, and the locks are changed. You do not have to be there.
+
+      Your belongings stay outside for 48 hours after the set out is done. After that, the landlord can throw away anything left. The landlord is not responsible for your belongings once they are legally set out and does not have to guard them.
+
+      Food is treated as trash and thrown away. Prescription medications and medical equipment, like wheelchairs, walkers, and breathing machines, are not put outside. They are left together in one place inside the home.
+
+      If you need somewhere to stay, call the Franklin County Homeless Hotline at 614-274-7000, or dial 2-1-1 for other help in Central Ohio.
+
+  - id: record_removal
+    heading: 'Removing the eviction from online records'
+    content: |
+      Franklin County Municipal Court removes eviction cases from online public access automatically three years after the case closes. Before then, you can apply to have your name removed from the online record.
+
+      You can apply whether you lost the case or it ended another way. The judge must find that your interest in removing it outweighs the public's interest in seeing it. Common reasons include:
+      - you did not live there
+      - you moved out before your court date
+      - you were under 18 when the case was filed
+      - you are not the person named in the complaint
+      - having the record online is a significant hardship for you, which is the reason most people give
+
+      Applying reopens the case, which restarts the three-year clock, and the judge can deny it. If your case will drop off on its own in the next few months, it may be better to wait.
+
+      The application includes an affidavit that must be notarized, and the Self Help Center can notarize it. Filing costs $20, with a fee waiver if you cannot afford it. Mail a copy to your landlord or their attorney. A judge reviews it and may hold a hearing, and the court will write to you at the address you give.
+
+      Removal is not sealing. Anyone can still ask the clerk for the file, and credit reporting companies may still report it.
+
+  - id: credit_reports
+    heading: 'Evictions on credit and rental history reports'
+    content: |
+      Removing your name from the court's online records does not remove it from private reports. That is a separate process.
+
+      In Columbus, most landlords check FABCO, a local company that reports rental history. You can get one free FABCO report a year by calling 614-538-5600 or 800-669-5010, or by writing to FABCO, PO Box 20850, Columbus, OH 43220. AmRent is another rental history company.
+
+      To dispute something wrong on a report, send a letter saying which parts are wrong, why, and what proof you have, such as a dismissal from the court or receipts. Keep a copy and send it with tracking. FABCO has 30 days to respond.
+
+      You can also get one free report a year from each of the three main credit bureaus (Equifax, Experian, and TransUnion) at annualcreditreport.com. A court order removing your name does not make a credit company remove the eviction, but it can support your dispute.
+
+# The guided page asks only the pages marked `on_page` (#1046).
+interview:
+  - title: 'Your key dates'
+    on_page: true
+    variables:
+      - eviction_judgment_date
+      - eviction_writ_posted_date
+
+deadlines:
+  - id: objection_due
+    label: "Last day to object to the magistrate's decision"
+    description: "An Objection to Magistrate's Decision must be filed within 14 days of the decision. If the decision was made by a judge, or this date has passed, a Motion for Relief from Judgment may still be possible."
+    offset_days: 14
+    offset_from: eviction_judgment_date
+  - id: appeal_due
+    label: 'Appeal deadline'
+    description: "An appeal is generally due 30 days after the final judgment. An objection to a magistrate's decision can change when this clock starts."
+    offset_days: 30
+    offset_from: eviction_judgment_date
+  - id: earliest_set_out
+    label: 'Earliest your set out can be scheduled'
+    description: 'You have 5 days from the day the red tag was posted. If you are still there after midnight on the last day listed on the tag, your landlord can schedule the set out, and a yellow tag will give the date. Call the Service Bailiff at 614-645-7780 to ask about yours.'
+    offset_days: 5
+    offset_from: eviction_writ_posted_date

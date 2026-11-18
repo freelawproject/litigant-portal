@@ -1,21 +1,27 @@
-# Eviction (Franklin County, OH), TENANT role. The directory locates the
-# court and topic; the file name is the flow slug. Ported from the wip
-# library flow config. The packet is the Self Help Center's Answer (#610),
-# made fillable by scripts/fc_eviction_fillable.py.
+# Eviction (Franklin County, OH), TENANT role, once a case is filed and
+# before the hearing. The directory locates the court and topic; the file
+# name is the flow slug. Rebuilt (#1210) from the decision tree and the Self
+# Help Center's training guides in corpus-sources/franklin-county-oh/eviction/.
+# Before filing and after judgment are their own flows. The packet is the
+# Self Help Center's Answer (#610), made fillable by
+# scripts/fc_eviction_fillable.py.
 
-name: 'Responding to an Eviction (Tenant)'
+name: 'Responding to an Eviction Case (Tenant)'
 enabled: true
-order: 0
+order: 1
 
 # The page, top to bottom.
 layout:
   - overview
-  - notice_to_leave
   - court_papers
   - interview
+  - notice_to_leave
   - defenses
   - packet
+  - help_before_the_hearing
+  - continuances
   - at_the_hearing
+  - agreements
   - moved_out
   - set_out
   - calendar
@@ -69,20 +75,24 @@ sections:
   - id: overview
     heading: 'Responding to an eviction in Franklin County'
     content: |
-      This tool explains how an eviction case works in Franklin County Municipal Court and what you can do at each step, whether you just received a notice from your landlord or already have a court date.
+      This page is for tenants in Franklin County who received court papers for an eviction case and whose hearing has not happened yet. It explains how the case works in Franklin County Municipal Court and what you can do before and at your hearing.
+
+      If you have only a notice or a warning from your landlord and nothing from the court, use the page for before an eviction case is filed. If your hearing date has passed, or you are not sure what happened at it, use the page for after an eviction judgment.
 
       Only a court can order you to leave your home. It is illegal for a landlord to change your locks, shut off your utilities, or put your belongings outside to force you out. If any of that is happening, call local law enforcement and a legal aid attorney right away, and keep receipts for anything it costs you. You may be able to recover that money.
 
       Nothing on this page is legal advice. It explains the process and the options people in this situation have, and free legal help is listed in the contacts at the end of this page.
 
   - id: notice_to_leave
-    heading: 'If you received a Notice to Leave'
+    heading: 'Check the Notice to Leave your landlord gave you'
     content: |
-      A Notice to Leave (sometimes called a Notice to Vacate or a Three-Day Notice) is the written notice your landlord must normally give before filing an eviction case. Ohio law requires it to be in writing and signed, and delivered in person, left at your home (usually on the front door), or sent by certified mail.
+      Before filing, your landlord must give you a written Notice to Leave (sometimes called a Notice to Vacate or a Three-Day Notice). Whether it was done correctly can matter at your hearing.
 
-      Receiving a notice does not mean you must move by the date on it. It is not a court order, and only a court can make you leave. It means your landlord can file an eviction case if you stay past the notice deadline, which must be at least three days after the notice.
+      The notice must include specific words required by Ohio law, usually in larger or bolder print: "You are being asked to leave the premises. If you do not leave, an eviction action may be initiated against you. If you are in doubt regarding your legal rights and obligations as a tenant, it is recommended that you seek legal assistance." A notice that changes these words may not be valid.
 
-      If you want to stay, the days before the notice deadline are the best time to act. You can offer the rent owed or try to work out an agreement with your landlord, and any agreement should be put in writing. After a landlord has paid to file in court, they may want their filing costs covered too.
+      It must be posted on your door, handed to you, or sent by certified mail at least three full days before the case was filed. The day it was posted does not count, and the last day cannot be a Sunday or legal holiday. A verbal warning is not a Notice to Leave.
+
+      If you never received a notice, or it was missing the required words, tell the judge at your hearing and bring the notice if you have it.
 
       If a law enforcement officer tells you to move out without a court order, call a legal aid attorney immediately.
 
@@ -100,32 +110,61 @@ sections:
   - id: defenses
     heading: 'Defenses you may have'
     content: |
-      At the hearing, the judge decides whether the eviction is legally justified, and Ohio law lets you raise any defense at trial. Facts like these can matter:
+      At the hearing, the judge decides whether the eviction is legally justified, and Ohio law lets you raise any defense at trial. A defense is a legal reason the eviction should not happen, backed by facts. Facts like these can matter:
 
-      - Your landlord never gave you the Notice to Leave, or it was missing the required content.
+      - Your landlord never gave you the Notice to Leave, or it was missing the required words.
       - You have rent receipts showing you paid.
-      - Your landlord accepted rent after serving the notice.
+      - Your landlord accepted rent after giving you the notice.
       - Your landlord regularly accepted late rent, then refused it without warning this time.
-      - You offered the rent on time and it was refused.
-      - You deposited your rent with the court clerk because of bad conditions.
+      - You offered the rent and it was refused.
+      - You deposited your rent with the court clerk in a rent escrow case.
       - Your rent was late because of someone else's mistake, like a paycheck mailed to the wrong address.
 
-      Ohio law also says no one may be evicted in retaliation for exercising their lawful rights.
+      If you live in the city of Columbus and the case is only for unpaid rent, a city law called "pay to stay" may help. If you offer all the rent you owe before the judgment, plus reasonable late fees and the landlord's court costs, and your landlord refuses it, you can raise that refusal as a defense.
 
-      Two cautions. Bad housing conditions alone are usually not a defense for unpaid rent. And it is hard to stop an eviction for nonpayment even with a good reason for not paying. Talking to a legal aid attorney before your hearing is the reliable way to find out whether your facts amount to a defense.
+      Ohio law also does not allow a landlord to evict you because you complained about conditions. That is a defense you have to prove, and it does not apply if you are behind on rent. Franklin County often rejects it, so do not rely on it alone.
 
-      If the case includes a money claim and you believe your landlord owes you money too, for example an unreturned security deposit or repairs you paid for, you can file an Answer and Counterclaim together within the same 28 days, and the court can hear all of it at once.
+      Bad housing conditions alone are usually not a defense to unpaid rent. Hardship, like losing hours at work, is not a legal defense either, even though it is real.
+
+      If the case includes a money claim and your landlord owes you money too, you can file an Answer and Counterclaim within the same 28 days, and the court can hear all of it at once. Common counterclaims are a security deposit the landlord kept without a reason (you may be owed double the amount wrongly kept), repairs you paid for, rent you overpaid, unfair late charges, and injuries caused by the landlord.
 
       Filing an Answer costs nothing. A counterclaim can carry a filing fee, and if you cannot afford it, the court has a fee waiver affidavit you can file instead. After you file, the court usually schedules a pretrial hearing for the money claim, and it may set mediation before a final hearing.
+
+  - id: help_before_the_hearing
+    heading: 'Free help before and at your hearing'
+    content: |
+      Legal Aid's Tenant Advocacy Project gives free representation to tenants in eviction cases and has a table at eviction court every morning. They can take only some cases. In Columbus, Legal Aid can represent tenants who meet its income limits and have children under 18 in the household. They may also help seniors, veterans, tenants with a disability that makes it hard to speak for themselves, groups of tenants in the same building, and anyone facing housing discrimination. Contact them before your hearing if you can.
+
+      Community Mediation Services offers free mediation at a table at eviction court every day. Most eviction cases are about unpaid rent, and many landlords will agree to a payment plan or a later move-out date. Mediation can happen the same day as your hearing.
+
+      The Self Help Center on the 16th floor can help you with forms and explain the process. They cannot give legal advice.
+
+  - id: continuances
+    heading: 'If you need to move your hearing'
+    content: |
+      Eviction cases move fast, and a case can go to trial at the first hearing. A continuance moves the hearing to a later date. Usually each side gets one, for about a week.
+
+      There is almost never time to file a written request and get a ruling before the hearing. Instead, use the court's online emergency continuance request, which goes straight to the magistrates. It is listed in the resources at the end of this page.
+
+      If you ask to delay the hearing by more than 8 days, Ohio law requires you to post a bond, usually the rent that will come due during the delay.
 
   - id: at_the_hearing
     heading: 'At your hearing'
     content: |
       Always go to your hearing, even if you plan to move out. If you do not appear and you were properly served, the case is decided without you. Arrive early and check in with the bailiff.
 
-      Your landlord speaks first and will try to show that the lease ended or was broken, that you were given the notice, that no rent was accepted afterward, and that you still live in the home. Then it is your turn. You can testify, bring witnesses, and show evidence such as your lease, rent receipts, and messages between you and your landlord.
+      A magistrate usually hears eviction cases. Your landlord speaks first and must show they own the property, that you had a rental agreement and broke it, that the problem is still going on if it is unpaid rent, that they gave you the Notice to Leave at least three full days before filing, and that you still live there. Then it is your turn. You can testify, bring witnesses, and show evidence such as your lease, rent receipts, the notice, and messages between you and your landlord. Bring printed copies.
 
-      The judge usually decides at the hearing. If you win, the eviction is dismissed and you stay. If you lose, you can ask the judge how much time you have to move, and the landlord receives a written decision called a Judgment Entry.
+      The magistrate usually decides at the hearing. If you win, the eviction is dismissed and you stay. If you lose, ask how much time you have to move. You have 14 days to object to a magistrate's decision. The page for after an eviction judgment explains that and your other options.
+
+  - id: agreements
+    heading: 'If you reach an agreement with your landlord'
+    content: |
+      Many eviction cases end with an agreement instead of a decision. In an Agreed Judgment Entry, you can stay in your home as long as you follow the terms, usually a payment plan. Some agreements instead enter a judgment against you that your landlord's attorney agrees to vacate if you pay or move out by a certain date.
+
+      Read the terms carefully before you sign. You must follow them exactly. Paying even a few days late counts as breaking the agreement, and then your landlord can ask for a set out without another hearing.
+
+      If you follow the agreement, it is usually up to you to contact your landlord's attorney and ask them to file the dismissal or the motion to vacate. They rarely do it on their own.
 
   - id: moved_out
     heading: 'If you already moved out'
@@ -141,9 +180,9 @@ sections:
   - id: set_out
     heading: 'If the judge orders you to move'
     content: |
-      If the judge rules for your landlord, the landlord can ask the court for a Writ of Restitution. That is the order allowing a bailiff to remove you and your belongings, often called a set out.
+      If the judge rules for your landlord, the landlord can ask the court for a Writ of Restitution. The bailiff posts it on your door as a red tag. You then have 5 days, and after that your landlord can schedule the set out, when a bailiff removes you and your belongings. The set out must happen within 10 days of the writ.
 
-      Once the writ issues, the set out must happen within 10 days, and it can be as soon as the day after the landlord requests it. Do not count on another warning.
+      The page for after an eviction judgment explains how to ask the court to undo or pause the judgment, how the set out works, and how to remove the eviction from online records.
 
       You may be able to agree with your landlord on a move-out date instead. That saves the landlord the cost of the writ and gives you certainty about your timing. Put any agreement in writing.
 
