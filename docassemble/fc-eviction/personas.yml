@@ -1,0 +1,78 @@
+# Test personas for the bench fill (scripts/docassemble_bench.py fill
+# fc-eviction). Each persona answers every screen of its interview; the
+# names under `answers` are the interview's own variables. Between them the
+# two personas fill every field on the Answer at least once.
+#
+# A yes/no checkbox needs an explicit false: an unset one is a question
+# docassemble still has to ask.
+
+personas:
+  # A hearing tomorrow. Paid part of the rent, deposit never credited; the
+  # landlord has an attorney, so the Answer is mailed there.
+  emily:
+    interview: answer.yml
+    answers:
+      case_number: '2026 CVG 012345'
+      landlord_name: 'Riverside Commons LLC'
+      judge: ''
+      tenant_first: 'Emily'
+      tenant_middle: 'Ann'
+      tenant_last: 'Carter'
+      tenant_street: '123 Main St Apt 4'
+      tenant_city: 'Columbus'
+      tenant_state: 'OH'
+      tenant_zip: '43215'
+      tenant_phone: '614-555-0100'
+      defense_paid_in_full: false
+      defense_paid_in_part: true
+      paid_in_part_amount: 450
+      defense_work_for_rent: false
+      defense_repairs: false
+      defense_deposit_not_credited: true
+      defense_deposit_withheld: false
+      security_deposit_amount: 800
+      defense_late_charges: false
+      defense_no_damage: false
+      defense_other: false
+      landlord_has_attorney: true
+      attorney_name: 'Jane Roe'
+      attorney_street: '456 Broad St'
+      attorney_city: 'Columbus'
+      attorney_state: 'OH'
+      attorney_zip: '43215'
+      mailed_date: ''
+
+  # Every other defense, no middle name or phone, a judge on the papers, and
+  # no attorney: the Answer is mailed to the landlord, with a mailed date.
+  marcus:
+    interview: answer.yml
+    answers:
+      case_number: '2026 CVG 054321'
+      landlord_name: 'Maple Court Apartments'
+      judge: 'Smith'
+      tenant_first: 'Marcus'
+      tenant_middle: ''
+      tenant_last: 'Lee'
+      tenant_street: '88 Elm Ave'
+      tenant_city: 'Columbus'
+      tenant_state: 'OH'
+      tenant_zip: '43206'
+      tenant_phone: ''
+      defense_paid_in_full: true
+      defense_paid_in_part: false
+      defense_work_for_rent: true
+      defense_repairs: true
+      repairs_amount: 300
+      defense_deposit_not_credited: false
+      defense_deposit_withheld: true
+      security_deposit_amount: 600
+      defense_late_charges: true
+      defense_no_damage: true
+      defense_other: true
+      other_reasons: 'Landlord refused my rent on the 3rd.'
+      landlord_has_attorney: false
+      landlord_street: '10 Oak St'
+      landlord_city: 'Columbus'
+      landlord_state: 'OH'
+      landlord_zip: '43215'
+      mailed_date: '2026-11-17'
