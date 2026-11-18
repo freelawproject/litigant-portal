@@ -191,12 +191,12 @@ def _accepted_answers(post, names, validate, coerce, protected):
 
 
 def _flash_saved(request, valid, protected, revealed=()):
-    """The toast after a save. A ``protected`` field re-renders blank even
-    after a successful save, so without the longer message the save looks
-    like it failed (#803). ``revealed`` names the questions the save
-    uncovered, so a screen reader hears that the page is not done (WCAG
-    4.1.3); a gate can reveal a question on an earlier page, so the toast
-    does not say where."""
+    """The header's save status, or a toast when there is more to read. A
+    ``protected`` field re-renders blank even after a successful save, so
+    without the longer message the save looks like it failed (#803).
+    ``revealed`` names the questions the save uncovered, so a screen reader
+    hears that the page is not done (WCAG 4.1.3); a gate can reveal a
+    question on an earlier page, so the toast does not say where."""
     private = any(valid.get(name) for name in protected)
     if revealed and private:
         text = _(
@@ -210,7 +210,8 @@ def _flash_saved(request, valid, protected, revealed=()):
             "Saved. For your privacy, your answers are not shown on this page."
         )
     else:
-        text = _("Saved.")
+        messages.success(request, _("Saved"), extra_tags="status")
+        return
     messages.success(request, text)
 
 

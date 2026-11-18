@@ -1336,7 +1336,7 @@ def test_an_error_on_a_field_the_same_save_hides_is_dropped_not_lost(
         URL, {"licensed": "false", "vaccinated": "maybe"}, follow=True
     )
     assert response.redirect_chain == [(f"{URL}#interview-2", 302)]
-    assert "Saved." in response.content.decode()
+    assert 'x-data="saveStatus" data-text="Saved"' in response.content.decode()
     assert _values() == {"licensed": False}
 
 
@@ -1489,40 +1489,45 @@ def test_a_cleared_field_stays_blank_instead_of_showing_its_default(
     assert not re.search(r'<option value="cat"[^>]*selected', flat)
 
 
-# --- toasts -----------------------------------------------------------------
+# --- save confirmation ------------------------------------------------------
+
+SAVE_STATUS_RE = re.compile(
+    r'<header\b.*?x-data="saveStatus" data-text="Saved"'
+)
 
 
 @pytest.mark.postgres
-def test_post_save_flashes_a_saved_toast(client, synced):
-    html = client.post(URL, PET_PAGE, follow=True).content.decode()
-    assert "Saved." in html
-    assert "For your privacy" not in html
-
-
-@pytest.mark.postgres
-def test_the_saved_toast_is_a_polite_status_not_an_alert(client, synced):
-    flat = _flat(client.post(URL, PET_PAGE, follow=True))
-    assert re.search(r'<div role="status"[^>]*>\s*Saved\.', flat)
-    assert 'role="alert"' not in flat
+def test_a_plain_save_shows_the_header_status_and_no_toast(client, synced):
+    flat = _flat(client.post(URL, {"pet_kind": "dog"}, follow=True))
+    assert SAVE_STATUS_RE.search(flat)
+    assert "Saved." not in flat
+    assert "For your privacy" not in flat
 
 
 @pytest.mark.postgres
 def test_post_of_a_protected_answer_explains_the_privacy_blank(client, synced):
-    response = client.post(
-        URL, {"first_name": "Sandra", "full_name": "Sandra Doe"}, follow=True
+    flat = _flat(
+        client.post(
+            URL,
+            {"first_name": "Sandra", "full_name": "Sandra Doe"},
+            follow=True,
+        )
     )
-    assert "For your privacy" in response.content.decode()
+    assert re.search(
+        r'<div role="status"[^>]*>\s*Saved\. For your privacy', flat
+    )
+    assert 'role="alert"' not in flat
+    assert not SAVE_STATUS_RE.search(flat)
 
 
 @pytest.mark.postgres
-def test_a_save_that_reveals_a_question_says_so_in_the_toast(client, synced):
-    html = client.post(URL, {"licensed": "true"}, follow=True).content.decode()
-    assert "More questions appeared" in html
-    html = client.post(
-        URL, {"licensed": "false"}, follow=True
-    ).content.decode()
-    assert "Saved." in html
-    assert "More questions appeared" not in html
+def test_a_save_that_reveals_a_question_says_so_in_a_toast(client, synced):
+    flat = _flat(client.post(URL, {"licensed": "true"}, follow=True))
+    assert "More questions appeared" in flat
+    assert not SAVE_STATUS_RE.search(flat)
+    flat = _flat(client.post(URL, {"licensed": "false"}, follow=True))
+    assert SAVE_STATUS_RE.search(flat)
+    assert "More questions appeared" not in flat
 
 
 @pytest.mark.postgres
@@ -1535,6 +1540,7 @@ def test_the_gate_question_carries_the_more_questions_hint(client, synced):
 
 
 @pytest.mark.postgres
-def test_post_with_errors_flashes_no_toast(client, synced):
-    response = client.post(URL, {"license_date": "not-a-date"})
-    assert "Saved." not in response.content.decode()
+def test_post_with_errors_shows_no_confirmation(client, synced):
+    flat = _flat(client.post(URL, {"license_date": "not-a-date"}))
+    assert "Saved" not in flat
+    assert not SAVE_STATUS_RE.search(flat)
