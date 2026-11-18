@@ -14,7 +14,7 @@ changed since its last upload. Those hashes live in
 ``~/.cache/lp-docassemble-bench.json``, per bench URL.
 
 ``fill`` runs each test persona in the folder's ``personas.yml`` through its
-interview without a browser: it starts a session, sets every answer at once,
+interview without a browser: it starts a session, answers each screen in turn,
 and downloads the document from the final screen's link. It writes to
 ``build/bench/<project>/``:
 

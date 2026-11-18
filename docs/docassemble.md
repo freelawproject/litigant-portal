@@ -21,6 +21,23 @@ One page for the document-assembly side: authoring gotchas, the local bench, QA 
 - Playground → **Utilities → "Get list of fields from a PDF or DOCX file"** reads an AcroForm PDF and scaffolds the `fields:` block — no manual field hunting.
 - Playground work persists on named volumes across `down`/`up`.
 
+### Test fills from the command line (#1197)
+
+`scripts/docassemble_bench.py` uploads interviews to the bench and fills them with test personas, no browser needed. It reads `DA_ADMIN_API_KEY` and `DOCASSEMBLE_PUBLIC_URL` from `.env`.
+
+```sh
+make bench-sync                                  # upload new or changed files under docassemble/
+make bench-sync ARGS="-n"                        # show what would upload
+make bench-fill FOLDER=fc-eviction               # fill every persona in docassemble/fc-eviction/personas.yml
+make bench-fill FOLDER=nd-name-change PERSONA=alex
+```
+
+- **Sync:** each folder under `docassemble/` becomes its own Playground project (`nd-name-change` → `ndnamechange`): `*.yml` to the interview editor, `*.pdf` to Templates, `*.css`/`*.svg` to Static. It uploads only what the bench lacks or what changed since the last upload (hashes in `~/.cache/lp-docassemble-bench.json`), so a `down -v` reset re-uploads everything.
+- **Fill:** answers each screen from the persona's `answers` (the interview's own variable names) and writes to `build/bench/<project>/`: the filled `<persona>.pdf`, an `-outlined.pdf` with every field boxed and named (red text, blue checkboxes), and PNGs of the outlined pages when poppler's `pdftoppm` is installed.
+- **A persona missing an answer** stops the fill at that screen and names the variables it still wants. A yes/no checkbox needs an explicit `false`; a checkboxes field takes a map of choice to true/false.
+- **Personas:** `fc-eviction` has Emily (landlord's attorney) and Marcus (no attorney, the other defenses); `nd-name-change` has Sandra (standard track, #311) and Alex (waiver track, #312). The two eviction personas fill every field on the Answer at least once.
+- Sync puts interviews in the Playground only. The LP handoff still needs the package installed (below).
+
 ## QA hosting (EKS, path-routed under the LP hostname)
 
 docassemble serves at `https://qa.litigantportal.com/interview/` — path, not subdomain, so a partner needs one CNAME (see Deployment principles under [Production](../README.md#production)). Since 2026-09-17 (#550) it's a standing workload in the `qa-litigant` EKS namespace: the all-in-one `jhpyle/docassemble` image (its own Postgres, Redis, RabbitMQ under supervisor), single replica because the database is inside the container, in **live mode** — devs log in and author interviews directly on it. The manifests and secrets live with the infra team, outside this repo (`qa-litigant/5_docassemble.yml` and friends; AWS Secrets Manager `k8s/qa-litigant/docassemble-env`). LP deploys never touch it — see [qa-deploy.md](./qa-deploy.md) — so interviews and accounts persist across `litigant-web` rollouts by design.
