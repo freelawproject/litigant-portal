@@ -290,14 +290,17 @@ def test_pages_are_not_interrupted_while_the_choice_waits(signed_in, pending):
     assert UserIdentity.objects.filter(pk=pending.pk).exists()
 
 
-def test_logout_before_choosing_hands_the_work_to_the_new_session(
+def test_logout_before_choosing_keeps_the_work_in_the_account(
     signed_in, user, pending
 ):
     signed_in.post(reverse("account_logout"))
-    pending.refresh_from_db()
-    assert pending.session_key == signed_in.session.session_key
-    assert signed_in.session[ANONYMOUS_SESSION_KEY] == pending.session_key
-    assert _login(signed_in)["Location"] == _choice_page(HOME)
+    identity = UserIdentity.objects.get(user=user)
+    assert VariableAnswer.objects.filter(identity=identity).count() == 1
+    assert ChatThread.objects.filter(identity=identity).count() == 1
+    assert UserUpload.objects.filter(identity=identity).count() == 1
+    assert not UserIdentity.objects.filter(pk=pending.pk).exists()
+    assert signed_in.session.session_key is None
+    assert _login(signed_in)["Location"] == HOME
 
 
 def test_logout_with_nothing_pending_leaves_the_session_empty(client, user):

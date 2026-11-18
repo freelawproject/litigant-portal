@@ -5,8 +5,8 @@ from django.utils.http import urlencode
 
 from litigant_portal.app.client_ip import get_client_ip
 from litigant_portal.app.services.user import (
-    user_identity_anonymous_rekey,
     user_identity_anonymous_settle,
+    user_identity_merge_anonymous,
 )
 from litigant_portal.app.session import ANONYMOUS_SESSION_KEY
 
@@ -35,14 +35,11 @@ class AccountAdapter(DefaultAccountAdapter):
         return redirect(f"{reverse('pages:anonymous_answers')}?{query}")
 
     def logout(self, request):
-        # The flush drops the session; unchosen work follows into the new one.
+        # Unchosen work is kept, as on the page: the flush would leave it
+        # to whoever uses this browser next.
         session_key = request.session.get(ANONYMOUS_SESSION_KEY)
+        if session_key:
+            user_identity_merge_anonymous(
+                user=request.user, session_key=session_key
+            )
         super().logout(request)
-        if not session_key:
-            return
-        request.session.create()
-        request.session[ANONYMOUS_SESSION_KEY] = request.session.session_key
-        user_identity_anonymous_rekey(
-            session_key=session_key,
-            new_session_key=request.session.session_key,
-        )
