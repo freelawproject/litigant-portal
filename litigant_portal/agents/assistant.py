@@ -1,6 +1,6 @@
 import json
 
-from .base import Agent, AgentState, IdentityPrompt
+from .base import Agent, AgentState, IdentityPrompt, IdentityPromptSnapshot
 from .tools.load_topic_flow import LoadTopicFlow, cited, topic_flow_path
 from .tools.query_document import QueryDocument
 from .tools.record_fact import RecordFact
@@ -265,11 +265,11 @@ def _fact_values(answers) -> dict[str, str]:
     }
 
 
-def _facts_prompt(answers) -> str:
-    values = _fact_values(answers)
+def _facts_prompt(answers, values: dict[str, str]) -> str:
+    """Render each fact, masking the values omitted from the provided map."""
     facts = "\n".join(
         f"- {a.variable.name} ({a.variable.label or a.variable.name}): "
-        f"{values[a.variable.name]} "
+        f"{values.get(a.variable.name, '[private]')} "
         f"[{'confirmed' if a.reviewed else 'unconfirmed'}]"
         for a in answers
     )
@@ -345,12 +345,33 @@ class LitigantAssistant(Agent):
         )
         from litigant_portal.app.selectors.topic_flow import (
             variable_answer_list,
+            variable_public_ids,
         )
 
         identity = chat_thread_identity_get(thread_id=thread_id)
         answers = variable_answer_list(identity=identity, answered_only=True)
         if not answers:
             return None
+        values = _fact_values(answers)
+
+        def render_snapshot() -> IdentityPromptSnapshot:
+            # Keep the fact values the model saw and read their current
+            # privacy flags by variable ID just before writing the message.
+            public_ids = variable_public_ids(
+                variable_ids=[answer.variable_id for answer in answers]
+            )
+            public_values = {
+                answer.variable.name: values[answer.variable.name]
+                for answer in answers
+                if answer.variable_id in public_ids
+            }
+            return {
+                "text": _facts_prompt(answers, public_values),
+                "values": public_values,
+            }
+
         return IdentityPrompt(
-            text=_facts_prompt(answers), values=_fact_values(answers)
+            text=_facts_prompt(answers, values),
+            values=values,
+            render_snapshot=render_snapshot,
         )
