@@ -5,7 +5,7 @@
     {% for message in messages %}
       {# 5s, not the atom's 1.5s default: flash messages are full sentences #}
       <c-atoms.auto-dismiss timeout="5000">
-      <c-atoms.alert variant="{{ message.variant }}" class="mb-2 shadow-lg">{{ message.text }}</c-atoms.alert>
+      <c-atoms.alert variant="{{ message.variant }}" role="{{ message.role }}" class="mb-2 shadow-lg">{{ message.text }}</c-atoms.alert>
       </c-atoms.auto-dismiss>
     {% endfor %}
   </div>

@@ -1500,6 +1500,13 @@ def test_post_save_flashes_a_saved_toast(client, synced):
 
 
 @pytest.mark.postgres
+def test_the_saved_toast_is_a_polite_status_not_an_alert(client, synced):
+    flat = _flat(client.post(URL, PET_PAGE, follow=True))
+    assert re.search(r'<div role="status"[^>]*>\s*Saved\.', flat)
+    assert 'role="alert"' not in flat
+
+
+@pytest.mark.postgres
 def test_post_of_a_protected_answer_explains_the_privacy_blank(client, synced):
     response = client.post(
         URL, {"first_name": "Sandra", "full_name": "Sandra Doe"}, follow=True

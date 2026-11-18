@@ -145,9 +145,10 @@ def court_branding(request):
 
 def toast_messages(request):
     """
-    Provide messages with variant mapped for alert component.
+    Provide messages with variant and role mapped for alert component.
 
-    Django's 'error' tag maps to 'danger' variant.
+    Django's 'error' tag maps to 'danger' variant. Only a problem gets
+    ``role="alert"``; a confirmation is a polite ``role="status"``.
     """
     tag_to_variant = {
         "error": "danger",
@@ -155,11 +156,14 @@ def toast_messages(request):
 
     messages = []
     for message in get_messages(request):
+        variant = tag_to_variant.get(message.tags, message.tags) or "info"
         messages.append(
             {
                 "text": str(message),
-                "variant": tag_to_variant.get(message.tags, message.tags)
-                or "info",
+                "variant": variant,
+                "role": "alert"
+                if variant in ("danger", "warning")
+                else "status",
             }
         )
 
