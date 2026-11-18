@@ -30,6 +30,7 @@ import shutil
 from pathlib import Path
 
 from formfyxer.pdf_wrangling import FieldType, FormField, set_fields
+from reportlab.lib.colors import black
 
 REPO = Path(__file__).resolve().parents[1]
 SOURCES = REPO / "corpus-sources/franklin-county-oh/eviction"
@@ -78,12 +79,22 @@ def _area(name, x, y, width, height, font_size=10):
 
 def _check(name, x, y, size=6):
     # ReportLab sizes a checkbox with ``size``, not width and height.
+    # FormFyxer defaults a checkbox to a magenta forced border, a pink fill
+    # and a blue check, so every one of those is overridden: only a black
+    # check mark draws, over the box the form already prints.
     return FormField(
         name,
         FieldType.CHECK_BOX,
         x,
         y,
-        configs={**PLAIN, "size": size, "buttonStyle": "check"},
+        configs={
+            **PLAIN,
+            "size": size,
+            "buttonStyle": "check",
+            "borderColor": black,
+            "textColor": black,
+            "forceBorder": False,
+        },
     )
 
 
