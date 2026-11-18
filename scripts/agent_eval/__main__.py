@@ -41,12 +41,12 @@ def main():
         "--model", help="Pinned bedrock_mantle/REGION/MODEL_ID"
     )
     grading.add_argument("--retry-failed", action="store_true")
-    grading.add_argument("--dry-run", action="store_true")
+    grading.add_argument("-n", "--dry-run", action="store_true")
     recover = commands.add_parser(
         "recover", help="Revalidate saved judge responses without API calls."
     )
     recover.add_argument("run", type=Path)
-    recover.add_argument("--dry-run", action="store_true")
+    recover.add_argument("-n", "--dry-run", action="store_true")
     report = commands.add_parser(
         "report", help="Rebuild or compare reports without API calls."
     )
