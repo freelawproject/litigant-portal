@@ -763,10 +763,11 @@ def test_answers_still_reach_the_payload_after_login(
     # The GET is load-bearing: AnonymousSessionKeyMiddleware only records
     # the key on a request that already carries a session cookie, and the
     # POST above created the session mid-request. client.login() skips
-    # middleware, so without it the merge has no key to work from.
+    # middleware, so without it the answers page has no key to work from.
     client.get(URL)
     user = get_user_model().objects.create_user(username="u", password="p")
     assert client.login(username="u", password="p")
+    client.post(reverse("pages:anonymous_answers"), {"choice": "keep"})
     client.post(INTERVIEW_URL)
     assert docassemble.calls[0]["variables"] == {"petitioner_name": "Jane Doe"}
     assert UserIdentity.objects.filter(user=user).exists()
@@ -1110,12 +1111,13 @@ def test_post_owns_answers_by_the_visitor_identity(client, synced):
 
 @pytest.mark.postgres
 def test_answers_survive_login(client, synced):
-    # What a guest saved is still theirs, and still confirmed, after the
-    # identity merge runs on login.
+    # What a guest saved is still theirs, and still confirmed, once they
+    # choose to keep it after login.
     client.post(URL, {"pet_kind": "dog"})
     client.get(URL)
     user = get_user_model().objects.create_user(username="u", password="p")
     assert client.login(username="u", password="p")
+    client.post(reverse("pages:anonymous_answers"), {"choice": "keep"})
     flat = _flat(client.get(URL))
     assert re.search(r'<option value="dog"[^>]*selected', flat)
     answer = VariableAnswer.objects.get()

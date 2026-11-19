@@ -7,6 +7,15 @@ from django_ratelimit.core import is_ratelimited
 
 from litigant_portal.app.models import UserIdentity
 from litigant_portal.app.services.user import user_identity_ensure
+from litigant_portal.app.session import ANONYMOUS_SESSION_KEY
+
+
+def _gate_exempt_paths() -> tuple[str, ...]:
+    """Path prefixes the site gate leaves alone: static files, media and
+    the API."""
+    return tuple(
+        p for p in (settings.STATIC_URL, settings.MEDIA_URL, "/api/") if p
+    )
 
 
 class SitePasswordMiddleware:
@@ -22,13 +31,10 @@ class SitePasswordMiddleware:
 
     def __call__(self, request):
         password = settings.SITE_PASSWORD
-        exempt = tuple(
-            p for p in (settings.STATIC_URL, settings.MEDIA_URL, "/api/") if p
-        )
         if (
             not password
             or request.session.get(self.SESSION_KEY)
-            or request.path.startswith(exempt)
+            or request.path.startswith(_gate_exempt_paths())
         ):
             return self.get_response(request)
         if request.method == "POST" and "site_password" in request.POST:
@@ -56,7 +62,12 @@ class SitePasswordMiddleware:
 
 
 class AnonymousSessionKeyMiddleware:
-    """Save the anonymous session key so the login signal can migrate data."""
+    """Carry the anonymous session's key across login.
+
+    While the visitor is anonymous, their session key is copied into the
+    session data. Django's ``login()`` rotates the key but keeps the data,
+    so the copy survives for ``AccountAdapter.post_login`` to act on.
+    """
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -66,9 +77,9 @@ class AnonymousSessionKeyMiddleware:
         if (
             not request.user.is_authenticated
             and session.session_key
-            and session.get("_anonymous_session_key") != session.session_key
+            and session.get(ANONYMOUS_SESSION_KEY) != session.session_key
         ):
-            session["_anonymous_session_key"] = session.session_key
+            session[ANONYMOUS_SESSION_KEY] = session.session_key
         return self.get_response(request)
 
 

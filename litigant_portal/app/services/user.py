@@ -11,6 +11,11 @@ from litigant_portal.app.permissions import (
     FLP_STAFF_GROUP,
     Tier,
 )
+from litigant_portal.app.selectors.user import (
+    user_identity_anonymous_find,
+    user_identity_counts,
+    user_identity_find,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +116,13 @@ def user_identity_merge(
     """Fold ``source`` into ``target``, then delete ``source``.
 
     All chat threads and uploads migrate, as do variable answers the target
-    hasn't answered itself. Runs in a single transaction.
+    hasn't answered itself. Runs in a single transaction, with ``source``
+    locked so a delete in another request waits or has already won.
     """
+    if not _identities_lock(
+        UserIdentity.objects.filter(pk=source_identity.pk)
+    ):
+        return
     threads = source_identity.chat_threads.update(identity=target_identity)
     uploads = source_identity.uploads.update(identity=target_identity)
     answers = _variable_answers_migrate(
@@ -132,16 +142,65 @@ def user_identity_merge(
 
 
 def user_identity_merge_anonymous(*, user, session_key: str) -> None:
-    """On login, fold the anonymous identity for ``session_key`` into ``user``."""
-    anon_identity = UserIdentity.objects.filter(
-        session_key=session_key, user__isnull=True
-    ).first()
+    """Fold the anonymous identity for ``session_key`` into ``user``."""
+    anon_identity = user_identity_anonymous_find(session_key=session_key)
     if anon_identity is None:
         return
     target_identity = user_identity_ensure(user=user)
     user_identity_merge(
         source_identity=anon_identity, target_identity=target_identity
     )
+
+
+_NO_COUNTS = {"answers": 0, "threads": 0, "uploads": 0}
+
+
+@transaction.atomic
+def user_identity_anonymous_settle(
+    *, user, session_key: str
+) -> dict[str, int]:
+    """What the anonymous identity for ``session_key`` still holds: the
+    answers, threads and uploads ``user`` may bring into their account,
+    all zero on a miss. Answers the account already gave are not counted,
+    since a merge would drop them. An identity that holds nothing is
+    deleted on the way, since no choice is needed for it. The identity is
+    locked before the count, so a write still in flight for it is counted
+    or waits."""
+    anon_identity = user_identity_anonymous_find(session_key=session_key)
+    if anon_identity is None:
+        return dict(_NO_COUNTS)
+    identities = UserIdentity.objects.filter(pk=anon_identity.pk)
+    _identities_lock(identities)
+    counts = user_identity_counts(
+        identity=anon_identity, target_identity=user_identity_find(user=user)
+    )
+    if not any(counts.values()):
+        user_identities_delete(identities=identities)
+    return counts
+
+
+def user_identity_delete_anonymous(
+    *, user, session_key: str
+) -> dict[str, int]:
+    """Delete the anonymous identity for ``session_key`` and everything it
+    owns: ``user`` chose not to bring it into their account.
+    Returns the answers, threads and uploads it held, all zero on a miss."""
+    anon_identity = user_identity_anonymous_find(session_key=session_key)
+    if anon_identity is None:
+        return dict(_NO_COUNTS)
+    counts = user_identity_counts(identity=anon_identity)
+    user_identities_delete(
+        identities=UserIdentity.objects.filter(pk=anon_identity.pk)
+    )
+    logger.info(
+        "Discarded anonymous identity for user %s: "
+        "%d answer(s), %d thread(s), %d upload(s)",
+        user.pk,
+        counts["answers"],
+        counts["threads"],
+        counts["uploads"],
+    )
+    return counts
 
 
 @transaction.atomic

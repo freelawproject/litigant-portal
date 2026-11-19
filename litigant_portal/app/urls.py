@@ -51,6 +51,11 @@ app_patterns = [
         "profile/edit/", pages.ProfileEditView.as_view(), name="profile_edit"
     ),
     path("about/", pages.about, name="about"),
+    path(
+        "accounts/answers/",
+        pages.anonymous_answers,
+        name="anonymous_answers",
+    ),
     path("start-over/", pages.start_over, name="start_over"),
     path("court-switch/", pages.court_switch, name="court_switch"),
     path(

@@ -1,8 +1,8 @@
 """Unit tests for the user identity services (services/user.py).
 
-These exercise the core logic directly — no HTTP client, no login flow —
-which is the payoff of moving the merge out of the signal handler. The
-end-to-end signal path stays covered by test_signals.py.
+These exercise the core logic directly — no HTTP client, no login flow.
+The login path through the answers page is covered by
+test_anonymous_answers.py.
 """
 
 from unittest import mock
@@ -24,6 +24,8 @@ from litigant_portal.app.models import (
 from litigant_portal.app.services.user import (
     _identities_lock,
     user_identities_delete,
+    user_identity_anonymous_settle,
+    user_identity_delete_anonymous,
     user_identity_ensure,
     user_identity_merge,
     user_identity_merge_anonymous,
@@ -171,6 +173,43 @@ class IdentityMergeTests(TestCase):
         # The stored path is identity-free, so the merge never touches it.
         self.assertEqual(upload.file.name, "uploads/x/notes.txt")
 
+    def test_locks_the_source_and_its_threads_before_moving_anything(self):
+        ChatThread.objects.create(identity=self.anon)
+        with CaptureQueriesContext(connection) as queries:
+            user_identity_merge(
+                source_identity=self.anon, target_identity=self.target
+            )
+        sql = [q["sql"] for q in queries.captured_queries]
+        locked = [s for s in sql if "FOR UPDATE" in s]
+        self.assertEqual(len(locked), 2)
+        self.assertIn(UserIdentity._meta.db_table, locked[0])
+        self.assertIn(ChatThread._meta.db_table, locked[1])
+        first_move = next(
+            i for i, s in enumerate(sql) if s.startswith("UPDATE")
+        )
+        self.assertLess(sql.index(locked[1]), first_move)
+
+    def test_a_source_deleted_under_lock_moves_nothing(self):
+        ChatThread.objects.create(identity=self.anon)
+
+        def lock_then_lose(identities):
+            _identities_lock(identities)
+            return []
+
+        with mock.patch(
+            "litigant_portal.app.services.user._identities_lock",
+            side_effect=lock_then_lose,
+        ):
+            user_identity_merge(
+                source_identity=self.anon, target_identity=self.target
+            )
+        self.assertEqual(
+            ChatThread.objects.filter(identity=self.anon).count(), 1
+        )
+        self.assertFalse(
+            ChatThread.objects.filter(identity=self.target).exists()
+        )
+
 
 @pytest.mark.postgres
 class IdentityMergeVariableAnswerTests(TestCase):
@@ -270,3 +309,130 @@ class IdentityAbsorbAnonymousTests(TestCase):
         self.assertEqual(
             UserIdentity.objects.filter(user=self.user).count(), 1
         )
+
+
+@pytest.mark.postgres
+class IdentityDeleteAnonymousTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="u", password="p")
+        self.anon = UserIdentity.objects.create(session_key="abc123")
+        VariableAnswer.objects.create(
+            identity=self.anon,
+            variable=Variable.objects.create(name="city"),
+            value="Fargo",
+        )
+        ChatThread.objects.create(identity=self.anon)
+        UserUpload.objects.create(
+            identity=self.anon,
+            file="uploads/x/notes.txt",
+            name="notes.txt",
+            content_type="text/plain",
+            size=5,
+        )
+        storage = UserUpload._meta.get_field("file").storage
+        patcher = mock.patch.object(storage, "delete")
+        self.addCleanup(patcher.stop)
+        self.storage_delete = patcher.start()
+
+    def test_deletes_the_identity_and_returns_what_it_held(self):
+        with self.captureOnCommitCallbacks(execute=True):
+            counts = user_identity_delete_anonymous(
+                user=self.user, session_key="abc123"
+            )
+        self.assertEqual(counts, {"answers": 1, "threads": 1, "uploads": 1})
+        self.assertFalse(UserIdentity.objects.filter(pk=self.anon.pk).exists())
+        self.assertFalse(VariableAnswer.objects.exists())
+        self.storage_delete.assert_called_once_with("uploads/x/notes.txt")
+
+    def test_noop_when_no_anonymous_identity(self):
+        counts = user_identity_delete_anonymous(
+            user=self.user, session_key="missing"
+        )
+        self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+        self.assertTrue(UserIdentity.objects.filter(pk=self.anon.pk).exists())
+        self.storage_delete.assert_not_called()
+
+    def test_ignores_logged_in_identity_sharing_the_session_key(self):
+        mine = UserIdentity.objects.create(
+            user=self.user, session_key="abc123"
+        )
+        user_identity_delete_anonymous(user=self.user, session_key="abc123")
+        self.assertTrue(UserIdentity.objects.filter(pk=mine.pk).exists())
+
+    def test_log_names_the_user_and_the_counts(self):
+        with self.assertLogs(
+            "litigant_portal.app.services.user", level="INFO"
+        ) as logs:
+            user_identity_delete_anonymous(
+                user=self.user, session_key="abc123"
+            )
+        self.assertIn(
+            f"for user {self.user.pk}: 1 answer(s), 1 thread(s), 1 upload(s)",
+            logs.output[0],
+        )
+
+
+@pytest.mark.postgres
+class IdentityAnonymousSettleTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="u", password="p")
+
+    def _settle(self, session_key="abc123"):
+        return user_identity_anonymous_settle(
+            user=self.user, session_key=session_key
+        )
+
+    def test_returns_what_a_pending_identity_holds_and_keeps_it(self):
+        anon = UserIdentity.objects.create(session_key="abc123")
+        ChatThread.objects.create(identity=anon)
+        counts = self._settle()
+        self.assertEqual(counts, {"answers": 0, "threads": 1, "uploads": 0})
+        self.assertTrue(UserIdentity.objects.filter(pk=anon.pk).exists())
+
+    def test_deletes_an_identity_that_holds_nothing(self):
+        empty = UserIdentity.objects.create(session_key="abc123")
+        counts = self._settle()
+        self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+        self.assertFalse(UserIdentity.objects.filter(pk=empty.pk).exists())
+
+    def test_all_zero_on_a_miss(self):
+        counts = self._settle(session_key="missing")
+        self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+
+    def test_leaves_out_answers_the_account_already_gave(self):
+        anon = UserIdentity.objects.create(session_key="abc123")
+        mine = UserIdentity.objects.create(user=self.user)
+        name = Variable.objects.create(name="first_name")
+        city = Variable.objects.create(name="city")
+        VariableAnswer.objects.create(identity=anon, variable=name, value="G")
+        VariableAnswer.objects.create(identity=anon, variable=city, value="F")
+        VariableAnswer.objects.create(identity=mine, variable=name, value="A")
+        counts = self._settle()
+        self.assertEqual(counts, {"answers": 1, "threads": 0, "uploads": 0})
+
+    def test_an_identity_with_only_overlapping_answers_holds_nothing(self):
+        anon = UserIdentity.objects.create(session_key="abc123")
+        mine = UserIdentity.objects.create(user=self.user)
+        name = Variable.objects.create(name="first_name")
+        VariableAnswer.objects.create(identity=anon, variable=name, value="G")
+        VariableAnswer.objects.create(identity=mine, variable=name, value="A")
+        counts = self._settle()
+        self.assertEqual(counts, {"answers": 0, "threads": 0, "uploads": 0})
+        self.assertFalse(UserIdentity.objects.filter(pk=anon.pk).exists())
+        self.assertEqual(VariableAnswer.objects.get().value, "A")
+
+    def test_counts_after_locking_so_a_late_write_keeps_the_identity(self):
+        empty = UserIdentity.objects.create(session_key="abc123")
+
+        def lock_then_chat(identities):
+            pks = _identities_lock(identities)
+            ChatThread.objects.create(identity=empty)
+            return pks
+
+        with mock.patch(
+            "litigant_portal.app.services.user._identities_lock",
+            side_effect=lock_then_chat,
+        ):
+            counts = self._settle()
+        self.assertEqual(counts, {"answers": 0, "threads": 1, "uploads": 0})
+        self.assertTrue(UserIdentity.objects.filter(pk=empty.pk).exists())

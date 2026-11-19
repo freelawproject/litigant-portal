@@ -2,6 +2,7 @@ from allauth.account.models import EmailAddress
 from django.contrib.auth.models import Group, User
 from django.db.models import Exists, OuterRef, QuerySet
 
+from litigant_portal.app.models import UserIdentity
 from litigant_portal.app.permissions import (
     COURT_ADMINS_GROUP,
     FLP_STAFF_GROUP,
@@ -94,3 +95,36 @@ def user_assignable_roles(*, viewer: User) -> list[Tier]:
     below their own. Superuser is never one; that's infra's to grant."""
     tier = user_tier(user=viewer)
     return [t for t in reversed(Tier) if t < tier and t < Tier.SUPERUSER]
+
+
+def user_identity_anonymous_find(*, session_key: str) -> UserIdentity | None:
+    """The anonymous identity for ``session_key``, or None. An identity an
+    account owns is never anonymous, whatever key it carries."""
+    return UserIdentity.objects.filter(
+        session_key=session_key, user__isnull=True
+    ).first()
+
+
+def user_identity_find(*, user: User) -> UserIdentity | None:
+    """The identity ``user`` owns, or None before their first write."""
+    return UserIdentity.objects.filter(user=user).first()
+
+
+def user_identity_counts(
+    *, identity: UserIdentity, target_identity: UserIdentity | None = None
+) -> dict[str, int]:
+    """How many answers, chat threads and uploads ``identity`` owns. With
+    ``target_identity``, answers to questions it already answered are left
+    out: a merge keeps the target's answer and drops these."""
+    answers = identity.variable_answers.all()
+    if target_identity is not None:
+        answers = answers.exclude(
+            variable_id__in=target_identity.variable_answers.values(
+                "variable_id"
+            )
+        )
+    return {
+        "answers": answers.count(),
+        "threads": identity.chat_threads.count(),
+        "uploads": identity.uploads.count(),
+    }
