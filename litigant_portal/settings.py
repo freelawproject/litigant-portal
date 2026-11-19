@@ -47,6 +47,10 @@ LOGGING = {
             "()": "litigant_portal.lp_logger.TargetFilter",
             "target": "observe",
         },
+        "lp_analytics": {
+            "()": "litigant_portal.lp_logger.TargetFilter",
+            "target": "analytics",
+        },
     },
     "formatters": {
         "lp_json": {"()": "litigant_portal.lp_logger.JSONFormatter"},
@@ -56,12 +60,21 @@ LOGGING = {
             "class": "litigant_portal.lp_logger.SafeStreamHandler",
             "stream": "ext://sys.stdout",
             "formatter": "lp_json",
+        },
+        "lp_observe": {
+            "class": "litigant_portal.lp_logger.ExampleTargetHandler",
+            "formatter": "lp_json",
             "filters": ["lp_observe"],
+        },
+        "lp_analytics": {
+            "class": "litigant_portal.lp_logger.ExampleTargetHandler",
+            "formatter": "lp_json",
+            "filters": ["lp_analytics"],
         },
     },
     "loggers": {
         "litigant_portal.lp_logger": {
-            "handlers": ["lp_stdout"],
+            "handlers": ["lp_stdout", "lp_observe", "lp_analytics"],
             "level": "DEBUG" if DEBUG else "INFO",
             "propagate": False,
         },

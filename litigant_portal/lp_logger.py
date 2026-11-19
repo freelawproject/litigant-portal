@@ -158,3 +158,21 @@ class SafeStreamHandler(logging.StreamHandler):
         # The default handler can print the active exception and its context.
         # Let lp_logger contain the failure without exposing that traceback.
         raise
+
+
+class ExampleTargetHandler(logging.Handler):
+    """
+    No-op service adapter; each configured instance handles one target.
+    """
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            self.send(self.format(record))
+        except Exception:
+            # One service failure must not interrupt the remaining handlers.
+            return
+
+    def send(self, message: str) -> None:
+        """
+        Override this no-op to send the formatted JSON event to a service.
+        """

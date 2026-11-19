@@ -25,9 +25,13 @@ Trusted Python callers may explicitly pass `sanitize=False` to include raw conte
 
 Timestamps and caller information come from Python's log records. Environment and release use `DEPLOYMENT_ENV` and `GIT_SHA`. Python's `source` defaults to `server`; `source="worker"`, `"command"`, or `"browser"` can override it.
 
-The default target is `TARGETS.observe`, which writes structured logs to stdout. Target lists are deduplicated. `TARGETS.analytics` has no configured handler and produces no output. Handlers are configured through Django's `LOGGING` settings and use `TargetFilter` to select records by target.
+Every enabled log call writes structured JSON to stdout, including calls with an empty target list. Targets select additional handlers. The default is `TARGETS.observe`; pass `target=[TARGETS.observe, TARGETS.analytics]` to select both. Target lists are deduplicated.
 
-The named logger does not propagate to parent handlers. Calls are best effort and return no delivery acknowledgement. A failing handler can drop that log attempt; it cannot raise into the application's flow or recursively call the logger. The stdout handler avoids Python's default error diagnostic, which can expose the active exception chain. Distinct occurrences are logged separately.
+Django's `LOGGING` settings run `lp_stdout` first, followed by the `lp_observe` and `lp_analytics` handlers. Each target handler uses `TargetFilter` and a separate instance of `ExampleTargetHandler`. Both instances are no-ops and make no external requests. They receive the same formatted JSON event as stdout, with the caller's sanitization policy already applied.
+
+To connect a service, subclass `ExampleTargetHandler`, implement `send(message)`, and set the corresponding handler's `class` in `LOGGING`. `send()` is the service boundary for an observability or analytics client. Its failures are contained within that handler so other selected targets still run and the server log remains available.
+
+The named logger does not propagate to parent handlers. Calls are best effort and return no delivery acknowledgement. A failing stdout handler can drop that log attempt; it cannot raise into the application's flow or recursively call the logger. The stdout handler avoids Python's default error diagnostic, which can expose the active exception chain. Distinct occurrences are logged separately.
 
 The assistant model-unavailable handler uses `lp_logger`. Other application components use Python module loggers and browser console output. Stored chat transcripts and user-facing Django messages have separate responsibilities.
 

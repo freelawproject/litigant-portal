@@ -53,10 +53,58 @@ def test_private_data_never_reaches_handler(output, settings):
     assert "private chat text" not in repr(vars(records[0]))
 
 
-def test_routing_and_explicit_unsanitized_exception(output):
+@pytest.mark.parametrize(
+    "target",
+    [
+        [],
+        [TARGETS.observe],
+        [TARGETS.analytics],
+        [TARGETS.observe, TARGETS.analytics, TARGETS.observe],
+    ],
+)
+def test_server_logging_and_target_routing(output, monkeypatch, target):
+    senders = {destination: Mock() for destination in TARGETS}
+    for destination, sender in senders.items():
+        handler = logging.getHandlerByName(f"lp_{destination}")
+        monkeypatch.setattr(handler, "send", sender)
     stream, records = output
-    lp_logger(type=EVENTS.info, target=[TARGETS.analytics])
-    assert records == []
+    lp_logger(
+        type=EVENTS.info,
+        target=target,
+        context={"status_code": 503, "chat": "private chat text"},
+    )
+    assert len(records) == 1
+    message = stream.getvalue().strip()
+    assert json.loads(message)["context"] == {"status_code": 503}
+    for destination, sender in senders.items():
+        if destination in target:
+            sender.assert_called_once_with(message)
+        else:
+            sender.assert_not_called()
+
+
+def test_failed_adapter_preserves_server_log_and_other_targets(
+    output, monkeypatch, capsys
+):
+    observe = Mock(side_effect=OSError("private adapter failure"))
+    analytics = Mock()
+    monkeypatch.setattr(
+        logging.getHandlerByName("lp_observe"), "send", observe
+    )
+    monkeypatch.setattr(
+        logging.getHandlerByName("lp_analytics"), "send", analytics
+    )
+    stream, records = output
+    lp_logger(type=EVENTS.error, target=[TARGETS.observe, TARGETS.analytics])
+    assert len(records) == 1
+    message = stream.getvalue().strip()
+    observe.assert_called_once_with(message)
+    analytics.assert_called_once_with(message)
+    assert capsys.readouterr().err == ""
+
+
+def test_explicit_unsanitized_exception(output):
+    stream, records = output
     try:
         raise UserWarning("debug detail")
     except UserWarning as error:
