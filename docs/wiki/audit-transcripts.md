@@ -58,7 +58,7 @@ Until #958, the facts section was rendered into the one system prompt and so int
 
 The split kept an exact copy of the identity prompt on the assistant message, where it is deleted with the thread, with the identity, and by the retention job. The shared part stays in the artifact and holds nothing personal. Artifacts written before the split that contained the facts section were deleted by a data migration. Their messages now show as legacy rows with no artifact reference.
 
-The assistant still sends saved facts to the model. When saving an assistant message, it reads the current variable privacy flags to decide which values to mask in the snapshot. Older snapshots can still contain private values. The transcript can also contain private values in conversation messages and `RecordFact` calls.
+The assistant still sends saved facts to the model. When saving an assistant message, it reads the current variable privacy flags to decide which values to mask in the snapshot. If `sync_corpus` retires a variable during a response, its value is also masked in the stored snapshot, even if the variable was previously public. Older snapshots can still contain private values. The transcript can also contain private values in conversation messages and `RecordFact` calls.
 
 ## Retention
 
