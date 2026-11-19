@@ -1,5 +1,5 @@
 <c-vars href="" class="" live="" dot_class="bg-greyscale-300" title="" time="" time_iso="" snippet="" />
-<a href="{{ href }}" class="block rounded-lg px-3 py-2 select-none transition-colors border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 {{ class }}" {{ attrs }}>
+<c-atoms.link href="{{ href }}" variant="unstyled" class="block rounded-lg px-3 py-2 select-none transition-colors border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary-600 {{ class }}" {{ attrs }}>
   <div class="flex items-center gap-2">
     {# live: the chat sidebar fills these from its thread object via Alpine. #}
     <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 {% if not live %}{{ dot_class }}{% endif %}"
@@ -15,4 +15,4 @@
          {% if live %}x-text="thread.snippet"{% endif %}>{{ snippet }}</p>
     </div>
   </div>
-</a>
+</c-atoms.link>

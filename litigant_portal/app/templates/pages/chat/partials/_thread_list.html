@@ -8,6 +8,7 @@
                             x-bind:href="thread.href"
                             x-bind:class="thread.rowClass"
                             x-bind:data-thread-id="thread.id"
+                            x-bind:aria-current="thread.ariaCurrent"
                             x-on:click="selectThread" />
   </template>
   {% trans "Your chats will show here once you send a message." as empty_threads_text %}

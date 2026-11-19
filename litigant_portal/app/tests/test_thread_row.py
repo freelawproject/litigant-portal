@@ -1,57 +1,57 @@
-"""The chat sidebar's thread rows are real links (#1122).
+"""Rendered accessibility contracts for chat thread rows."""
 
-A row that is only a click-handling <div> can't be tabbed to or opened from
-the keyboard, and screen readers don't announce it as actionable. The sidebar
-row must render as an anchor whose href is bound per thread, so Tab reaches it
-and Enter opens it. selectThread then intercepts plain clicks to switch threads
-in place, and leaves modified clicks to the browser.
-"""
+from html.parser import HTMLParser
 
-import re
-from pathlib import Path
-
+import pytest
 from django.template.loader import render_to_string
-from django.test import SimpleTestCase
-
-SIDEBAR_ROW_LINK_RE = re.compile(r'<a\b[^>]*\bx-bind:href="thread\.href"')
-SIDEBAR_ROW_CLICK_RE = re.compile(
-    r'<a\b(?=[^>]*\bx-on:click="selectThread")(?=[^>]*\bx-bind:data-thread-id="thread\.id")'
-)
-HOME_ROW_LINK_RE = re.compile(r'<a\b[^>]*\bhref="[^"]*\?thread=abc"')
-FOCUS_RING_RE = re.compile(r"focus-visible:outline-2\b")
-SELECT_THREAD_RE = re.compile(r"selectThread\(e\)\s*\{(.*?)\n {4}\}", re.DOTALL)
-
-CHAT_ENGINE_JS = (
-    Path(__file__).resolve().parents[1] / "static" / "js" / "chat_engine.js"
-)
+from django.test import TestCase
+from django.urls import reverse
 
 
-class ChatSidebarThreadRowTests(SimpleTestCase):
-    def test_sidebar_thread_row_is_a_link(self):
-        content = render_to_string("pages/chat/partials/_thread_list.html")
+class AnchorParser(HTMLParser):
+    """Collect anchor attributes from rendered template output."""
 
-        self.assertRegex(content, SIDEBAR_ROW_LINK_RE)
-        self.assertRegex(content, SIDEBAR_ROW_CLICK_RE)
+    def __init__(self):
+        super().__init__()
+        self.anchors = []
 
-    def test_select_thread_intercepts_plain_clicks_only(self):
-        source = CHAT_ENGINE_JS.read_text(encoding="utf-8")
-        match = SELECT_THREAD_RE.search(source)
-        self.assertIsNotNone(match, "selectThread(e) not found in chat_engine.js")
-        body = match.group(1)
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            self.anchors.append(dict(attrs))
 
-        self.assertIn("e.preventDefault()", body)
-        self.assertIn("e.button !== 0", body)
-        for modifier in ("metaKey", "ctrlKey", "shiftKey", "altKey"):
-            self.assertIn(modifier, body)
 
-    def test_home_activity_row_is_a_link(self):
+@pytest.mark.postgres
+class ChatSidebarThreadRowTests(TestCase):
+    def test_chat_page_renders_a_keyboard_accessible_sidebar_link(self):
+        response = self.client.get(reverse("pages:chat"))
+        self.assertEqual(response.status_code, 200)
+        chat_url = reverse("pages:chat")
+        self.assertContains(response, f'data-chat-url="{chat_url}"')
+
+        parser = AnchorParser()
+        parser.feed(response.content.decode())
+        rows = [
+            anchor
+            for anchor in parser.anchors
+            if anchor.get("x-bind:href") == "thread.href"
+        ]
+
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["x-on:click"], "selectThread")
+        self.assertEqual(row["x-bind:data-thread-id"], "thread.id")
+        self.assertEqual(row["x-bind:aria-current"], "thread.ariaCurrent")
+        self.assertIn("focus-visible:outline-2", row["class"])
+        self.assertIn("block", row["class"])
+
+    def test_home_activity_link_renders_from_the_shared_molecule(self):
         content = render_to_string(
             "pages/chat/partials/_thread_list_static.html",
             {
                 "activity_threads": [
                     {
                         "id": "abc",
-                        "description": "",
+                        "description": "A past chat",
                         "last_at": None,
                         "when": "2d ago",
                         "snippet": "hi",
@@ -60,15 +60,25 @@ class ChatSidebarThreadRowTests(SimpleTestCase):
             },
         )
 
-        self.assertRegex(content, HOME_ROW_LINK_RE)
+        parser = AnchorParser()
+        parser.feed(content)
+        row = next(
+            anchor
+            for anchor in parser.anchors
+            if anchor.get("href", "").endswith("?thread=abc")
+        )
+        self.assertIn("A past chat", content)
+        self.assertIn("focus-visible:outline-2", row["class"])
 
-    def test_thread_row_has_visible_focus_ring(self):
-        molecule = (
-            Path(__file__).resolve().parents[1]
-            / "templates"
-            / "cotton"
-            / "molecules"
-            / "thread_row.html"
-        ).read_text(encoding="utf-8")
+    def test_style_guide_renders_the_shared_thread_row_with_focus_ring(self):
+        content = render_to_string("pages/style_guide.html")
+        parser = AnchorParser()
+        parser.feed(content)
 
-        self.assertRegex(molecule, FOCUS_RING_RE)
+        row = next(
+            anchor
+            for anchor in parser.anchors
+            if anchor.get("href") == "#thread-row"
+            and "rounded-lg" in anchor.get("class", "")
+        )
+        self.assertIn("focus-visible:outline-2", row["class"])
