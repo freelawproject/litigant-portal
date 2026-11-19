@@ -44,6 +44,7 @@
     {# Alpine.data() components - must load before Alpine #}
     <script src="{% static 'js/components.js' %}"></script>
     {# Chat engine helpers #}
+    <script src="{% static 'js/lp_logger.js' %}" data-url="{% url 'browser_log' %}" data-csrf-token="{{ csrf_token }}"></script>
     <script src="{% static 'js/chat_engine.js' %}"></script>
     {# Alpine.js CSP build - required for Content Security Policy compliance #}
     {# https://alpinejs.dev/advanced/csp #}

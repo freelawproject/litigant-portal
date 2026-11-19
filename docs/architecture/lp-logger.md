@@ -17,7 +17,7 @@ lp_logger(type=error, msg="Assistant model discovery failed")
 
 `EVENTS` exposes Python's debug, info, warning, error, and critical levels. An exception instance maps to error, or warning for a `Warning` instance. The event type is the severity name or the qualified exception class. No event registration is required.
 
-`msg` is optional and must be a literal string. The wrapper never substitutes placeholders. Put dynamic data in `context`. The pre-commit source check rejects interpolation, variable messages, and unpacked logger arguments, including when sanitization is disabled. Import `lp_logger` directly (optionally using an import alias) or call it through its module. Do not rebind it or invoke it indirectly. This source check is a development guard, not validation for untrusted callers.
+`msg` is optional. Python call sites must use a literal string. The wrapper never substitutes placeholders. Put dynamic data in `context`. The pre-commit source check rejects interpolation, variable messages, and unpacked logger arguments, including when sanitization is disabled. Import `lp_logger` directly (optionally using an import alias) or call it through its module. Do not rebind it or invoke it indirectly. The HTTP adapter is excluded from this source check because it forwards validated runtime arguments. Source checks cannot establish whether browser-supplied text was originally a literal.
 
 Sanitization runs before a log record is created. Context allows only an integer `status_code` from 100 through 599. Unknown fields and unsupported values are dropped. Default exception output contains code filenames, functions, and line numbers. It excludes exception messages, arguments, source lines, local values, and raw exception objects. Private facts, chat, prompts, uploads, secrets, URLs, and user/session identifiers have no allowed context fields.
 
@@ -30,3 +30,17 @@ The default target is `TARGETS.observe`, which writes structured logs to stdout.
 The named logger does not propagate to parent handlers. Calls are best effort and return no delivery acknowledgement. A failing handler can drop that log attempt; it cannot raise into the application's flow or recursively call the logger. The stdout handler avoids Python's default error diagnostic, which can expose the active exception chain. Distinct occurrences are logged separately.
 
 The assistant model-unavailable handler uses `lp_logger`. Other application components use Python module loggers and browser console output. Stored chat transcripts and user-facing Django messages have separate responsibilities.
+
+## Browser calls
+
+```javascript
+window.lpLogger({
+  type: 'warning',
+  msg: 'Request failed',
+  context: { status_code: 503 },
+})
+```
+
+`lpLogger` starts a POST to `/api/logs/` and immediately calls native `console.log(options)` with the original options, without waiting for the request. Native `Error` instances become severity `error` for transport and remain intact in the console. Serialization or request failures do not prevent console output.
+
+The endpoint validates argument shapes, converts severity and target names, and forwards the options to Python's `lp_logger` with `source="browser"` and sanitization enabled. Python owns metadata, routing, and context filtering. Messages pass through unchanged; neither runtime detects arbitrary PII in message text, and local console output is unfiltered. Requests include Django's CSRF token and omit the page referrer. The endpoint applies the existing 20-per-minute IP rate-limit pattern and returns 202 for best-effort logging.

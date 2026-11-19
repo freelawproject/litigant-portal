@@ -58,6 +58,8 @@ repos:
         entry: python scripts/check_lp_logger.py
         language: python
         types: [python]
+        # This HTTP adapter forwards validated runtime arguments.
+        exclude: ^litigant_portal/app/views/logging\.py$
 
       - id: uv-lock-check
         name: uv lock sync
