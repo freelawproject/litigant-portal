@@ -147,6 +147,12 @@ docassemble-up: ## Start the local-dev docassemble bench (http://localhost:8100)
 docassemble-down: ## Stop the local-dev docassemble bench
 	docker compose -f docker-compose.docassemble.yml down
 
+bench-sync: ## Upload docassemble/ interviews to the bench Playground (ARGS="-n" dry run, "-a" all, or paths)
+	uv run python scripts/docassemble_bench.py sync $(ARGS)
+
+bench-fill: ## Fill a bench interview with its test personas (FOLDER=fc-eviction [PERSONA=emily])
+	uv run python scripts/docassemble_bench.py fill $(FOLDER) $(PERSONA)
+
 
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
 	uv run python scripts/file_issue.py $(FILE)

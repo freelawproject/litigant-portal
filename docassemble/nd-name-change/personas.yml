@@ -1,0 +1,59 @@
+# Test personas for the bench fill (scripts/docassemble_bench.py fill
+# nd-name-change). Each persona answers every screen of its interview; the
+# names under `answers` are the interview's own variables. Sandra is the
+# standard track (#311, test-personas.md); Alex is the waiver track (#312).
+# Values the stories don't give are made up.
+
+personas:
+  # Restoring her birth surname after a divorce, so publication is required.
+  sandra:
+    interview: petition-standard.yml
+    answers:
+      current_first: 'Sandra'
+      current_middle: 'Marie'
+      current_last: 'Larson'
+      requested_first: 'Sandra'
+      requested_middle: 'Marie'
+      requested_last: 'Eriksen'
+      residence_street: '1420 Cottonwood Lane'
+      residence_city: 'Bismarck'
+      residence_county: 'Burleigh'
+      residence_zip: '58503'
+      residence_since: 'June 2008'
+      citizenship: 'citizen'
+      criminal_history: 'none'
+      publication_date: '2026-06-01'
+      publication_newspaper: 'The Bismarck Tribune'
+      publication_county: 'Burleigh'
+      date_of_birth: '1979-04-22'
+      place_of_birth: 'Minot, North Dakota'
+      residency_years: 18
+      residency_months: 0
+      phone_number: '701-555-0142'
+
+  # First and middle name only, so publication can be waived. No middle name
+  # today, one requested, and no phone, to cover the blanks.
+  alex:
+    interview: petition-waiver.yml
+    answers:
+      current_first: 'Jacob'
+      current_middle: ''
+      current_last: 'Lund'
+      requested_first: 'Alex'
+      requested_middle: 'Rowan'
+      requested_last: 'Lund'
+      residence_street: '2201 University Ave Apt 12'
+      residence_city: 'Grand Forks'
+      residence_county: 'Grand Forks'
+      residence_zip: '58203'
+      residence_since: 'August 2024'
+      citizenship: 'citizen'
+      criminal_history: 'none'
+      waiver_reasons:
+        first_or_middle: true
+        domestic_violence: false
+      date_of_birth: '2000-03-14'
+      place_of_birth: 'Hillsboro, North Dakota'
+      residency_years: 26
+      residency_months: 0
+      phone_number: ''
