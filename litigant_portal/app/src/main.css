@@ -452,7 +452,14 @@
   }
 
   .mobile-header-inner {
-    @apply flex items-center justify-between px-4 py-2;
+    @apply relative flex items-center justify-between px-4 py-2;
+  }
+
+  /* Below sm the brand can reach the centre, so the check takes a slot of
+     its own before the actions and keeps its width once it fades. */
+  .save-status {
+    @apply pointer-events-none flex w-7 shrink-0 items-center justify-center;
+    @apply sm:absolute sm:inset-0 sm:w-auto;
   }
 
   /* Hero Section */

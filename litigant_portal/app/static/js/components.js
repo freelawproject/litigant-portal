@@ -17,6 +17,22 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
+  // Save status (#1006): the quiet "Saved" in the header. A live region
+  // announces what changes after load, not what it loaded with, so the
+  // server-rendered text is cleared and put back once the page has settled.
+  // ===========================================================================
+
+  Alpine.data('saveStatus', () => ({
+    text: '',
+    init() {
+      const text = this.$el.dataset.text
+      setTimeout(() => {
+        this.text = text
+      }, 100)
+    },
+  }))
+
+  // ===========================================================================
   // Site menu (#988): a native <details>, so it opens and shuts without JS.
   // This adds the closes people expect from a menu, wired in the template:
   // a click outside it, and Escape.

@@ -25,6 +25,14 @@
         {% if tester_court_choices %}<c-molecules.court-switcher switch_id="court-switch-header" />{% endif %}
       </c-molecules.logo>
     </div>
+    {# A save confirmation (#1006) sits over the centre and takes no clicks. #}
+    {% if status_messages %}
+      <div class="save-status">
+        <c-atoms.auto-dismiss timeout="3000">
+          <c-molecules.save-status :messages="status_messages" />
+        </c-atoms.auto-dismiss>
+      </div>
+    {% endif %}
     <div class="flex shrink-0 items-center gap-1 sm:gap-2">
       {% if left_label %}
         <c-atoms.button type="button" variant="ghost" aria_label="{{ left_label }}" popovertarget="frame-left" class="site-frame-toggle">
