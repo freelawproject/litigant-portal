@@ -43,6 +43,23 @@ def test_browser_log_forwards_options(client, monkeypatch):
 
 
 @pytest.mark.parametrize(
+    "message, status",
+    [(None, 202), ("", 202), ("x" * 1024, 202), ("x" * 1025, 400)],
+)
+def test_browser_log_message_length(client, monkeypatch, message, status):
+    reporter = Mock()
+    monkeypatch.setattr(
+        "litigant_portal.app.views.logging.lp_logger", reporter
+    )
+    assert post(client, {"type": "info", "msg": message}).status_code == status
+    if status == 202:
+        reporter.assert_called_once()
+        assert reporter.call_args.kwargs["msg"] == message
+    else:
+        reporter.assert_not_called()
+
+
+@pytest.mark.parametrize(
     "options",
     [
         [],

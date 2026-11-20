@@ -6,6 +6,8 @@ from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.lp_logger import EVENTS, TARGETS, lp_logger
 
+MAX_MESSAGE_LENGTH = 1024
+
 
 @require_POST
 @ratelimit(key="ip", rate="20/m", method="POST", block=True)
@@ -24,6 +26,9 @@ def browser_log(request: HttpRequest) -> HttpResponse:
                 options[name], kind
             ):
                 return HttpResponse(status=400)
+        message = options.get("msg")
+        if message is not None and len(message) > MAX_MESSAGE_LENGTH:
+            return HttpResponse(status=400)
         event_type = options["type"]
         options["type"] = (
             EVENTS.__members__[event_type.lower()]
