@@ -2,7 +2,6 @@ import hashlib
 import json
 import logging
 from collections.abc import Callable, Iterator
-from dataclasses import asdict
 from time import monotonic
 from typing import Any
 
@@ -113,7 +112,9 @@ def chat_message_create(
         cost=cost,
         git_sha=settings.GIT_SHA,
         prompt_artifact=prompt_artifact,
-        identity_prompt=asdict(identity_prompt) if identity_prompt else {},
+        identity_prompt=identity_prompt.for_storage()
+        if identity_prompt
+        else {},
     )
 
 

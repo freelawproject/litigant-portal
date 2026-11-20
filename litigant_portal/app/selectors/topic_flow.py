@@ -1,3 +1,5 @@
+from uuid import UUID
+
 from django.core.cache import cache
 
 from litigant_portal.app.cache import (
@@ -8,6 +10,7 @@ from litigant_portal.app.models import (
     Topic,
     TopicFlow,
     TopicFlowInterviewVariable,
+    Variable,
     VariableAnswer,
 )
 
@@ -115,6 +118,17 @@ def variable_answer_list(
     if answered_only:
         answers = answers.filter(value__isnull=False)
     return list(answers.select_related("variable").order_by("variable__name"))
+
+
+def variable_public_ids(*, variable_ids: list[UUID]) -> set[UUID]:
+    """Return IDs that are still in the corpus and marked public."""
+    return set(
+        Variable.objects.filter(
+            pk__in=variable_ids, in_schema=True, is_private=False
+        )
+        .order_by()
+        .values_list("pk", flat=True)
+    )
 
 
 def variable_answer_map(
