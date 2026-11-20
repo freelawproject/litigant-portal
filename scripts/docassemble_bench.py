@@ -27,8 +27,9 @@ and downloads the document from the final screen's link. It writes to
 If a persona leaves a question unanswered, the interview stops there and
 ``fill`` names the screen and the variables it still wants.
 
-The bench and its API key come from the repo's ``.env``: ``DA_ADMIN_API_KEY``,
-and ``DOCASSEMBLE_PUBLIC_URL`` (default ``http://localhost:8100``). Setup:
+The bench and its API key come from the repo's ``.env``: ``DA_ADMIN_API_KEY``
+(or ``DOCASSEMBLE_API_KEY``, the same key under LP's name), and
+``DOCASSEMBLE_PUBLIC_URL`` (default ``http://localhost:8100``). Setup:
 ``docs/docassemble.md``.
 """
 
@@ -81,6 +82,15 @@ def _env():
     return values
 
 
+def _api_key(env) -> str:
+    """The bench admin's key, or the one LP's prefill uses: on a local bench
+    they're the same key under two names."""
+    key = env.get("DA_ADMIN_API_KEY") or env.get("DOCASSEMBLE_API_KEY")
+    if not key:
+        sys.exit("Neither DA_ADMIN_API_KEY nor DOCASSEMBLE_API_KEY is in .env")
+    return key
+
+
 class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
     """Surface a redirect as an error instead of following it: urllib follows
     a POST's redirect as a GET without the body."""
@@ -100,10 +110,7 @@ class Bench:
         self.base = (
             env.get("DOCASSEMBLE_PUBLIC_URL") or "http://localhost:8100"
         ).rstrip("/")
-        key = env.get("DA_ADMIN_API_KEY")
-        if not key:
-            sys.exit("DA_ADMIN_API_KEY is missing from .env")
-        self.key: str = key
+        self.key = _api_key(env)
         user = self.get_json("/api/user")
         self.user_id = user["id"]
 
@@ -208,6 +215,8 @@ def _selected(paths):
     for target in targets:
         if not target.is_relative_to(INTERVIEWS):
             sys.exit(f"{target} is not under {INTERVIEWS}")
+        if not target.exists():
+            sys.exit(f"No interview folder or file {str(target)!r}")
         folder = target if target.is_dir() else target.parent
         files = sorted(folder.iterdir()) if target.is_dir() else [target]
         selected.setdefault(folder, []).extend(
@@ -299,8 +308,11 @@ def _stopped_at(question):
         for field in question.get("fields", [])
         if field.get("variable_name")
     ]
-    text = re.sub(r"<[^>]+>", "", question.get("questionText", "")).strip()
-    return f"{text!r} still wants: {', '.join(wanted) or '(no named fields)'}"
+    return f"{_question_text(question)!r} still wants: {', '.join(wanted) or '(no named fields)'}"
+
+
+def _question_text(question):
+    return re.sub(r"<[^>]+>", "", question.get("questionText", "")).strip()
 
 
 MAX_SCREENS = 50
@@ -320,6 +332,7 @@ def _walk(bench, interview, name, answers):
         "secret": session.get("secret"),
     }
     question = bench.get_json("/api/session/question", **ids)
+    answered = None
     for _ in range(MAX_SCREENS):
         file_number = _document_link(question)
         if file_number:
@@ -329,6 +342,17 @@ def _walk(bench, interview, name, answers):
             for field in question.get("fields", [])
             if field.get("variable_name")
         ]
+        # The screen just answered, asking for the same variables again: a
+        # field the persona left out (a show-if answer, an unset checkbox) is
+        # still required. A list gather repeats a question with new variables.
+        screen = (question.get("questionName"), wanted)
+        if screen == answered:
+            unanswered = [v for v in wanted if v not in answers]
+            sys.exit(
+                f"{name}: no answer for {', '.join(unanswered) or '(every field answered)'}. "
+                f"docassemble asked {_question_text(question)!r} again"
+            )
+        answered = screen
         missing = [
             v
             for v in wanted
@@ -465,10 +489,10 @@ def _outline(pdf: Path) -> Path:
 
 def _render(pdf: Path):
     """PNGs of ``pdf``'s pages, if poppler's pdftoppm is installed."""
-    if not shutil.which("pdftoppm"):
-        return []
     for old in pdf.parent.glob(f"{pdf.stem}-*.png"):
         old.unlink()
+    if not shutil.which("pdftoppm"):
+        return []
     result = subprocess.run(
         ["pdftoppm", "-png", "-r", "110", str(pdf), str(pdf.with_suffix(""))],
         capture_output=True,

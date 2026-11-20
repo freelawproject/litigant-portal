@@ -23,7 +23,7 @@ One page for the document-assembly side: authoring gotchas, the local bench, QA 
 
 ### Test fills from the command line (#1197)
 
-`scripts/docassemble_bench.py` uploads interviews to the bench and fills them with test personas, no browser needed. It reads `DA_ADMIN_API_KEY` and `DOCASSEMBLE_PUBLIC_URL` from `.env`.
+`scripts/docassemble_bench.py` uploads interviews to the bench and fills them with test personas, no browser needed. It reads `DA_ADMIN_API_KEY` (or `DOCASSEMBLE_API_KEY`, the same key under LP's name) and `DOCASSEMBLE_PUBLIC_URL` from `.env`.
 
 ```sh
 make bench-sync                                  # upload new or changed files under docassemble/
