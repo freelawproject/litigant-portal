@@ -1,3 +1,4 @@
+import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -785,17 +786,36 @@ def test_gpt_title_budget_and_empty_or_truncated_diagnostics(
     assert bool(thread.save.call_count) == bool(content)
 
 
+@pytest.mark.parametrize("handler_fails", [False, True])
 def test_invalid_configuration_fails_before_discovery_without_creating_a_thread(
-    loaded_catalog, settings
+    loaded_catalog, settings, caplog, handler_fails
 ):
+    def capture(record):
+        caplog.handler.handle(record)
+        if handler_fails:
+            raise OSError("Synthetic sink failure")
+
     settings.AWS_REGION = ""
     request = RequestFactory().post("/", {"message": "Help"})
     request.identity = Mock()
     with (
         patch.object(ChatThread.objects, "create") as create_thread,
         patch.object(engine, "chat_message_create") as create_message,
+        patch("litigant_portal.lp_logger._logger.handle", side_effect=capture),
     ):
-        assert stream(request).status_code == 503
+        response = stream(request)
+    assert response.status_code == 503
+    assert json.loads(response.content) == {
+        "error": "The assistant is temporarily unavailable."
+    }
+    records = [
+        record
+        for record in caplog.records
+        if record.name == "litigant_portal.lp_logger"
+    ]
+    assert len(records) == 1
+    assert records[0].context == {"status_code": 503}
+    assert records[0].exc_info is None
     create_thread.assert_not_called()
     create_message.assert_not_called()
     loaded_catalog.assert_not_called()
