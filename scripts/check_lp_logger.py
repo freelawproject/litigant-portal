@@ -4,9 +4,11 @@ Require literal messages at lp_logger call sites, including imported aliases.
 
 import ast
 import sys
+from importlib.util import resolve_name
 from pathlib import Path
 
 LOGGER = "litigant_portal.lp_logger.lp_logger"
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def _name(node: ast.expr, imports: dict[str, str]) -> str:
@@ -17,21 +19,31 @@ def _name(node: ast.expr, imports: dict[str, str]) -> str:
     return ""
 
 
-def violations(source: str) -> list[tuple[int, str]]:
+def violations(source: str, *, package: str = "") -> list[tuple[int, str]]:
     tree = ast.parse(source)
     imports = {}
+    errors = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 name = alias.asname or alias.name.split(".")[0]
                 imports[name] = alias.name if alias.asname else name
-        elif isinstance(node, ast.ImportFrom) and node.module:
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if node.level:
+                try:
+                    module = resolve_name("." * node.level + module, package)
+                except ImportError:
+                    errors.append(
+                        (
+                            node.lineno,
+                            "unable to resolve relative import; use an absolute import",
+                        )
+                    )
+                    continue
             for alias in node.names:
-                imports[alias.asname or alias.name] = (
-                    f"{node.module}.{alias.name}"
-                )
+                imports[alias.asname or alias.name] = f"{module}.{alias.name}"
 
-    errors = []
     for node in ast.walk(tree):
         if (
             not isinstance(node, ast.Call)
@@ -63,8 +75,12 @@ def main() -> int:
     failed = False
     for filename in sys.argv[1:]:
         try:
-            errors = violations(Path(filename).read_text(encoding="utf-8"))
-        except (SyntaxError, UnicodeError, OSError) as error:
+            path = Path(filename).resolve()
+            package = ".".join(path.relative_to(REPO_ROOT).parent.parts)
+            errors = violations(
+                path.read_text(encoding="utf-8"), package=package
+            )
+        except (SyntaxError, UnicodeError, OSError, ValueError) as error:
             print(
                 f"{filename}: unable to check Python source ({error.__class__.__name__})"
             )
