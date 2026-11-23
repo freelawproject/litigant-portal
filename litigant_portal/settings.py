@@ -403,6 +403,7 @@ _csp_policy = {
     ],
     "font-src": [CSP.SELF, "data:", *ASSET_ORIGINS],
     "connect-src": [CSP.SELF, *ASSET_ORIGINS, *PRIVATE_MEDIA_ORIGINS],
+    "report-uri": ["/api/csp-report/"],
 }
 if CSP_ENFORCED:
     SECURE_CSP = _csp_policy
