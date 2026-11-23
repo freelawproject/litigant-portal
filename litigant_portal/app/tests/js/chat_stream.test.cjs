@@ -303,9 +303,11 @@ test('a failed thread load still releases the send guard', async () => {
 })
 
 test('network drop uses the fallback card renderer', async () => {
-  const { app } = makeApp(async () => {
+  const { app, context } = makeApp(async () => {
     throw new Error('connection dropped')
   })
+  const reports = []
+  context.window.lpLogger = (options) => reports.push(options)
 
   await app.sendMessage('Help', null)
 
@@ -318,6 +320,8 @@ test('network drop uses the fallback card renderer', async () => {
     1
   )
   assert.equal(app.streaming, false)
+  assert.equal(reports.length, 1)
+  assert.equal(reports[0].msg, 'Chat stream failed')
 })
 
 test('external and protocol-relative fallback URLs become home links', () => {

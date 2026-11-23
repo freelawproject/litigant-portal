@@ -18,6 +18,9 @@ from litigant_portal.app.views import (
     pages,
 )
 from litigant_portal.app.views import (
+    logging as logging_views,
+)
+from litigant_portal.app.views import (
     topic_flow as topic_flow_views,
 )
 
@@ -168,6 +171,7 @@ admin_api_patterns = [
 ]
 
 urlpatterns = [
+    path("api/logs/", logging_views.browser_log, name="browser_log"),
     # App Routes
     *i18n_patterns(
         path(

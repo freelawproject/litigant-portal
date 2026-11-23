@@ -39,6 +39,48 @@ GIT_SHA = os.environ.get("GIT_SHA", "unknown")
 GIT_BRANCH = os.environ.get("GIT_BRANCH", "")
 APP_BUILD_TIME = os.environ.get("BUILD_TIME", "")
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "filters": {
+        "lp_observe": {
+            "()": "litigant_portal.lp_logger.TargetFilter",
+            "target": "observe",
+        },
+        "lp_analytics": {
+            "()": "litigant_portal.lp_logger.TargetFilter",
+            "target": "analytics",
+        },
+    },
+    "formatters": {
+        "lp_json": {"()": "litigant_portal.lp_logger.JSONFormatter"},
+    },
+    "handlers": {
+        "lp_stdout": {
+            "class": "litigant_portal.lp_logger.SafeStreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "lp_json",
+        },
+        "lp_observe": {
+            "class": "litigant_portal.lp_logger.ExampleTargetHandler",
+            "formatter": "lp_json",
+            "filters": ["lp_observe"],
+        },
+        "lp_analytics": {
+            "class": "litigant_portal.lp_logger.ExampleTargetHandler",
+            "formatter": "lp_json",
+            "filters": ["lp_analytics"],
+        },
+    },
+    "loggers": {
+        "litigant_portal.lp_logger": {
+            "handlers": ["lp_stdout", "lp_observe", "lp_analytics"],
+            "level": "DEBUG" if DEBUG else "INFO",
+            "propagate": False,
+        },
+    },
+}
+
 SECRET_KEY = os.environ.get("SECRET_KEY", "")
 if not SECRET_KEY.strip():
     if not DEBUG:
