@@ -327,3 +327,118 @@ Full detail lives in the AI evaluation framework. Summary for use alongside this
 - **Stage 1, critical failure gate:** a fabricated citation, confident wrong fact, advice-framing, or missed mandatory escalation zeroes out the turn regardless of qualitative quality.
 - **Stage 2, weighted scoring** (only if Stage 1 is clean): 70% factual and procedural accuracy, 30% qualitative (tone, plain language, one question at a time, trauma-informed framing where relevant).
 - Honest uncertainty ("I don't have a confirmed answer on that, check with the clerk") scores well. Confident wrongness does not, even if fluent.
+
+## Appendix C: Residency duration and local date (manual QA)
+
+This focused check covers #1007 and #1127 independently of the personas above. It is manual QA, outside the automated tests and frozen benchmark. The command makes live calls to the configured assistant and, if enabled, its runtime judge. Record those model settings with the results. Run it from the repository root against the local development containers with the North Dakota corpus already loaded and model access configured.
+
+The reproduction fixes the first turn at **November 23, 2026, 02:30 UTC**, supplies `America/New_York`, and advances 30 seconds per turn. The local date is **November 22**. It uses the real chat engine and tools, prints their replies and fact writes, isolates its cache, and rolls back the temporary identity, thread, answers, and prompt snapshots. It does not change site settings or the machine's clock. Read the output against the checkpoints below; successful completion alone is not a behavioral pass.
+
+```bash
+docker compose exec -T django manage shell <<'PY'
+import json
+from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
+from uuid import uuid4
+from zoneinfo import ZoneInfo
+
+from django.db import transaction
+from django.test import override_settings
+
+from litigant_portal.agents.assistant import LitigantAssistant
+from litigant_portal.app.models import ChatThread, UserIdentity
+from litigant_portal.app.selectors.site import site_get
+from litigant_portal.app.services.chat_engine import chat_stream
+
+session_key = uuid4().hex
+start = datetime(2026, 11, 23, 2, 30, tzinfo=UTC)
+fact_names = [
+    "name_change_residence_since",
+    "name_change_residency_years",
+    "name_change_residency_months",
+]
+turns = [
+    "I'm completing the North Dakota adult name change declaration. "
+    "I have lived in Cass County since January 2017. "
+    "Can you help fill in how long I have lived in North Dakota?",
+    "I actually lived elsewhere in North Dakota starting in January 2015, "
+    "before moving to Cass County. "
+    "I've lived continuously in the state since then.",
+    "Yes, 11 years and 10 months is right.",
+    "For my name change paperwork, what is today's date?",
+]
+
+with override_settings(
+    CACHES={
+        "default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}
+    }
+):
+    site = site_get()
+    print("Assistant setting:", site.assistant_model or "site default")
+    print("Runtime judge:", site.judge_model or "disabled")
+    responses = []
+    try:
+        with transaction.atomic():
+            identity = UserIdentity.objects.create(session_key=session_key)
+            thread = ChatThread.objects.create(
+                identity=identity, description="Residency duration manual QA"
+            )
+            for index, message in enumerate(turns):
+                turn_time = start + timedelta(seconds=30 * index)
+                print(f"\nTurn {index + 1}, user: {message}", flush=True)
+                with patch("django.utils.timezone.now", return_value=turn_time):
+                    response = chat_stream(
+                        identity=identity,
+                        message=message,
+                        agent_class=LitigantAssistant,
+                        thread_type="user_chat",
+                        thread_id=str(thread.id),
+                        client_timezone=ZoneInfo("America/New_York"),
+                    )
+                    responses.append(response)
+                    done = False
+                    for frame in response.streaming_content:
+                        event = json.loads(
+                            frame.decode().removeprefix("data: ")
+                        )
+                        if event["type"] == "content_delta":
+                            print(event["content"], end="", flush=True)
+                        elif event["type"] == "error":
+                            raise RuntimeError("Chat returned an error.")
+                        elif event["type"] == "done":
+                            done = True
+                    if not done:
+                        raise RuntimeError("Chat ended without completion.")
+
+                print("\nRecordFact calls this turn:")
+                for saved in thread.messages.filter(
+                    created_at=turn_time, data__role="assistant", meta=False
+                ):
+                    for call in saved.data.get("tool_calls") or []:
+                        function = call["function"]
+                        if function["name"] == "RecordFact":
+                            print(function["arguments"])
+                print("Saved answers:", list(
+                    identity.variable_answers.filter(
+                        variable__name__in=fact_names
+                    ).values("variable__name", "value", "reviewed")
+                ))
+            transaction.set_rollback(True)
+    finally:
+        # Response cleanup signals must run after leaving the transaction.
+        for response in responses:
+            response.close()
+        if UserIdentity.objects.filter(session_key=session_key).exists():
+            raise RuntimeError("Temporary identity was not removed.")
+        print("Temporary identity removed; database writes rolled back.")
+PY
+```
+
+### Checkpoints
+
+1. **Month/year start:** The first reply proposes **about 9 years and 10 months** and asks whether that covers the user's continuous North Dakota residency. It must not ask the user to do the arithmetic, invent a day in January, or treat county residency as proof of total state residency. Saving the supplied county and month/year is appropriate; neither duration variable may be passed to `RecordFact` or saved yet.
+2. **County/state correction:** The second reply proposes **about 11 years and 10 months** from January 2015 and asks for confirmation. The county start remains January 2017. The duration variables must still be absent from `RecordFact` calls and saved answers.
+3. **Confirmation:** Only after the third user message does `RecordFact` save `name_change_residency_years=11` and `name_change_residency_months=10`. Both answers remain `reviewed=False` pending the normal review step.
+4. **Local date:** The final reply gives **November 22, 2026**, without numeric UTC offsets or timezone-conversion annotations. This checks agent output through the service; it does not verify browser rendering.
+
+Record deviations in Appendix A using the actual replies and tool arguments. An error or incomplete stream makes the run incomplete, not a pass. This procedure supplies repeatable manual evidence; it is not automated coverage of model behavior.
