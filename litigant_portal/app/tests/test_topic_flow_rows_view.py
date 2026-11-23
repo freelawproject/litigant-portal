@@ -1492,7 +1492,8 @@ def test_a_cleared_field_stays_blank_instead_of_showing_its_default(
 # --- save confirmation ------------------------------------------------------
 
 SAVE_STATUS_RE = re.compile(
-    r'<header\b.*?x-data="saveStatus" data-text="Saved"'
+    r'<header\b.*?x-data="dismissOnInteraction"'
+    r'.*?x-data="saveStatus" data-text="Saved"'
 )
 
 

@@ -1052,7 +1052,7 @@
         </section>
         <section id="save-status" class="mb-12" aria-labelledby="save-status-heading">
           <h3 id="save-status-heading" class="mb-4">Save Status</h3>
-          <p class="text-greyscale-600 mb-6">The quiet confirmation a save shows instead of a toast: a check and a word in a polite live region, so it never covers content, never takes a click, and a screen reader hears it without an interruption. Below <code>sm</code> only the check shows. The site header renders it over its centre for any flash message carrying the <code>status</code> extra tag, inside <code>c-atoms.auto-dismiss</code>; here it stays.</p>
+          <p class="text-greyscale-600 mb-6">The quiet confirmation a save shows instead of a toast: a check and a word in a polite live region, so it never covers content, never takes a click, and a screen reader hears it without an interruption. Below <code>sm</code> only the check shows. The site header renders it over its centre for any flash message carrying the <code>status</code> extra tag, inside <code>c-atoms.dismiss-on-interaction</code>, so it stays until the first click or keypress; here it stays put.</p>
           <p class="text-sm text-greyscale-500 mb-4">Props: <code>messages</code>, a list of short texts. Requires the <code>saveStatus</code> Alpine.js component.</p>
           <div class="border border-greyscale-200 rounded-lg p-4 mb-6">
             <c-molecules.save-status :messages="['Saved']" />

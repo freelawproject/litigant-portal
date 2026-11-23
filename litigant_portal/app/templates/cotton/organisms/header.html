@@ -28,9 +28,9 @@
     {# A save confirmation (#1006) sits over the centre and takes no clicks. #}
     {% if status_messages %}
       <div class="save-status">
-        <c-atoms.auto-dismiss timeout="3000">
+        <c-atoms.dismiss-on-interaction>
           <c-molecules.save-status :messages="status_messages" />
-        </c-atoms.auto-dismiss>
+        </c-atoms.dismiss-on-interaction>
       </div>
     {% endif %}
     <div class="flex shrink-0 items-center gap-1 sm:gap-2">
