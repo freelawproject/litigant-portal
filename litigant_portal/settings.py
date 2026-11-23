@@ -5,6 +5,7 @@ from urllib.parse import urlsplit
 
 from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
+from django.utils.csp import CSP
 
 from litigant_portal.app.features import parse_deployment_env, parse_pilot
 
@@ -129,7 +130,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
-    "csp.middleware.CSPMiddleware",
+    "django.middleware.csp.ContentSecurityPolicyMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "litigant_portal.app.middleware.SitePasswordMiddleware",
     "django.middleware.locale.LocaleMiddleware",
@@ -348,8 +349,8 @@ MAILERS = {
     ),
 }
 
-# Content Security Policy (django-csp)
-# https://django-csp.readthedocs.io/
+# Content Security Policy
+# https://docs.djangoproject.com/en/6.0/ref/csp/
 
 
 def s3_origins(bucket_name: str) -> tuple[str, ...]:
@@ -385,19 +386,28 @@ if DEBUG:
 else:
     PRIVATE_MEDIA_ORIGINS = s3_origins(AWS_STORAGE_PRIVATE_BUCKET_NAME)
 
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", *ASSET_ORIGINS)
-CSP_STYLE_SRC = ("'self'", *ASSET_ORIGINS)
-CSP_IMG_SRC = (
-    "'self'",
-    "data:",
-    "blob:",
-    *ASSET_ORIGINS,
-    *PRIVATE_MEDIA_ORIGINS,
-)  # data: for inline, blob: for camera
-CSP_FONT_SRC = ("'self'", "data:", *ASSET_ORIGINS)
-CSP_CONNECT_SRC = ("'self'", *ASSET_ORIGINS, *PRIVATE_MEDIA_ORIGINS)
+# Report-only until CSP_ENFORCED=true.
+CSP_ENFORCED = os.environ.get("CSP_ENFORCED", "false").lower() == "true"
 # Alpine.js CSP build — no unsafe-eval needed
+_csp_policy = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, *ASSET_ORIGINS],
+    "style-src": [CSP.SELF, *ASSET_ORIGINS],
+    # data: for inline, blob: for camera
+    "img-src": [
+        CSP.SELF,
+        "data:",
+        "blob:",
+        *ASSET_ORIGINS,
+        *PRIVATE_MEDIA_ORIGINS,
+    ],
+    "font-src": [CSP.SELF, "data:", *ASSET_ORIGINS],
+    "connect-src": [CSP.SELF, *ASSET_ORIGINS, *PRIVATE_MEDIA_ORIGINS],
+}
+if CSP_ENFORCED:
+    SECURE_CSP = _csp_policy
+else:
+    SECURE_CSP_REPORT_ONLY = _csp_policy
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
