@@ -2,8 +2,10 @@ import hashlib
 import json
 import logging
 from collections.abc import Callable, Iterator
+from datetime import UTC
 from time import monotonic
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import litellm
 from django.conf import settings
@@ -13,7 +15,13 @@ from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.translation import gettext as _
 
-from litigant_portal.agents.base import Agent, IdentityPrompt, Tool, ToolOutput
+from litigant_portal.agents.base import (
+    Agent,
+    IdentityPrompt,
+    Tool,
+    ToolOutput,
+    TurnTimeContext,
+)
 from litigant_portal.agents.citations import citation_ids, citation_ids_unknown
 from litigant_portal.agents.judge import AgentJudge, JudgeVerdict
 from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
@@ -521,6 +529,7 @@ def chat_stream(
     model: str | None = None,
     thread_id: str | None = None,
     attachment_ids: list[str] | None = None,
+    client_timezone: ZoneInfo | None = None,
 ) -> StreamingHttpResponse:
     """Stream an agent's reply for ``message``, running the tool loop."""
     thread = (
@@ -554,16 +563,35 @@ def chat_stream(
     user_data: dict[str, Any] = {"role": "user", "content": message}
     if attachment_ids:
         user_data["attachments"] = [str(i) for i in attachment_ids]
-    chat_message_create(
+    user_message = chat_message_create(
         thread_id=thread.id,
         data=user_data,
         model=model,
     )
 
-    history: list[dict[str, Any]] = [
-        dict(m.data)
-        for m in chat_message_list(thread=thread, exclude_meta=True)
-    ]
+    messages = list(chat_message_list(thread=thread, exclude_meta=True))
+    current_time = user_message.created_at.astimezone(UTC)
+    previous_user_message = next(
+        (
+            m
+            for m in reversed(messages)
+            if m.id != user_message.id
+            and not m.hidden
+            and m.data.get("role") == "user"
+            and m.created_at <= current_time
+        ),
+        None,
+    )
+    time_context = TurnTimeContext(
+        current_time=current_time,
+        elapsed_since_previous_user_message=(
+            current_time - previous_user_message.created_at.astimezone(UTC)
+            if previous_user_message is not None
+            else None
+        ),
+        client_timezone=client_timezone,
+    )
+    history: list[dict[str, Any]] = [dict(m.data) for m in messages]
 
     def event_stream() -> Iterator[str]:
         yield _sse({"type": "thread", "thread_id": str(thread.id)})
@@ -577,7 +605,7 @@ def chat_stream(
             corrections = 0
             system_prompt = agent.generate_system_prompt(thread_id=thread.id)
             identity_prompt = agent.generate_identity_prompt(
-                thread_id=thread.id
+                thread_id=thread.id, time_context=time_context
             )
 
             for step in range(MAX_STEPS):
@@ -833,7 +861,7 @@ def chat_stream(
                         thread_id=thread.id
                     )
                     identity_prompt = agent.generate_identity_prompt(
-                        thread_id=thread.id
+                        thread_id=thread.id, time_context=time_context
                     )
 
             if not thread.description:

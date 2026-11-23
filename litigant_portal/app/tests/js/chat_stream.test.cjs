@@ -89,6 +89,24 @@ function sse(type, fields = {}) {
   )
 }
 
+test('each message sends the current browser timezone', async () => {
+  const sent = []
+  const { app, context } = makeApp(async (_url, options) => {
+    sent.push(options.body.get('client_timezone'))
+    throw new Error('offline')
+  })
+  let timeZone = 'America/New_York'
+  context.Intl = {
+    DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone }) }),
+  }
+
+  await app.sendMessage('First message', null)
+  timeZone = 'Europe/Paris'
+  await app.sendMessage('Next message', 'thread-id')
+
+  assert.deepEqual(sent, ['America/New_York', 'Europe/Paris'])
+})
+
 test('judging shows checking only on the attached stream and clears on progress or termination', () => {
   for (const type of [
     'heartbeat',

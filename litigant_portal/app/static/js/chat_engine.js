@@ -985,6 +985,8 @@ document.addEventListener('alpine:init', () => {
         const body = new FormData()
         body.append('message', message)
         body.append('csrfmiddlewaretoken', this.csrfToken())
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        if (timeZone) body.append('client_timezone', timeZone)
         if (threadId) body.append('thread_id', threadId)
         attachments.forEach((a) => body.append('attachment_ids', a.id))
 

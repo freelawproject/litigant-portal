@@ -1,6 +1,13 @@
 import json
+from datetime import UTC, timedelta
 
-from .base import Agent, AgentState, IdentityPrompt, IdentityPromptSnapshot
+from .base import (
+    Agent,
+    AgentState,
+    IdentityPrompt,
+    IdentityPromptSnapshot,
+    TurnTimeContext,
+)
 from .tools.load_topic_flow import LoadTopicFlow, cited, topic_flow_path
 from .tools.query_document import QueryDocument
 from .tools.record_fact import RecordFact
@@ -74,12 +81,21 @@ When listing a form packet, cite each form's supplied marker and explain \
 any inclusion conditions in plain language.
 
 Never assume or invent a date, including a missing day, month, or year. \
-Every date you state or save must be supported by the user's statements \
-or supplied source material. For document-derived dates, use only what \
-you actually read in the document or its QueryDocument response, and copy \
-supporting quotes exactly. If the date remains missing or ambiguous, \
+Every date you state or save must be supported by the user's statements, \
+the supplied current date, or supplied source material. For document-derived \
+dates, use only what you actually read in the document or its QueryDocument \
+response, and copy supporting quotes exactly. If the date remains missing or ambiguous, \
 leave it unknown and ask the user. You may calculate years, months, or \
 days between supported dates.
+
+When a guided flow needs a duration and a start date is already known, \
+propose the calculated years and additional months for confirmation \
+instead of asking the user to calculate them. For a month and year without \
+a day, say "about" and do not invent a day. If the start date's place or \
+continuous period may differ from the requested duration, such as county \
+versus state residency, make that assumption explicit in the same \
+confirmation question. Save the calculated values with RecordFact only \
+after the user confirms them.
 
 Do not calculate deadline dates. State the supplied timing rule with its \
 source, and point to the clerk contact for the date that applies. If two \
@@ -131,6 +147,16 @@ This portal is running in multi-court mode: the guided topic flows may \
 belong to different courts. Confirm which court and state the user's case \
 is in before relying on court-specific details."""
 
+TIME_PROMPT = """\
+## Current time and conversation timing (internal)
+
+Current date and time: {current_time}
+{conversion}
+Elapsed since previous user message: {elapsed}
+
+Use client-local dates and times in replies. Keep numeric UTC offsets and \
+timezone-conversion annotations internal; never repeat them to the user."""
+
 FACTS_PROMPT = """\
 ## Facts the user has already provided
 
@@ -155,6 +181,32 @@ flow's full content; treat that content as your primary source while the \
 flow is active. Available flows:
 
 {flows}"""
+
+
+def generate_time_prompt(context: TurnTimeContext) -> str:
+    """
+    Present the turn's UTC timing in the browser's timezone for the model.
+    """
+    current_time = context.current_time.astimezone(UTC)
+    if context.client_timezone is None:
+        conversion = "Client timezone unavailable; using UTC."
+    else:
+        conversion = (
+            f"Converted from UTC {current_time.isoformat(timespec='seconds')} "
+            f"using browser-reported {context.client_timezone.key}."
+        )
+        current_time = current_time.astimezone(context.client_timezone)
+    duration = context.elapsed_since_previous_user_message
+    elapsed = (
+        str(timedelta(seconds=int(duration.total_seconds())))
+        if duration is not None
+        else "No previous user message in this conversation."
+    )
+    return TIME_PROMPT.format(
+        current_time=current_time.isoformat(timespec="seconds"),
+        conversion=conversion,
+        elapsed=elapsed,
+    )
 
 
 def _court_source_marker(key: str) -> str:
@@ -334,8 +386,11 @@ class LitigantAssistant(Agent):
             if section
         )
 
-    def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt | None:
-        """The stored-facts section for the thread's identity, or None.
+    def generate_identity_prompt(
+        self, *, thread_id, time_context: TurnTimeContext | None = None
+    ) -> IdentityPrompt | None:
+        """
+        Conversation timing and the stored facts for the thread's identity.
 
         RecordFact sets refresh_system_prompt when it saves, so a fact stored
         mid-turn appears here before the model's next step.
@@ -350,8 +405,12 @@ class LitigantAssistant(Agent):
 
         identity = chat_thread_identity_get(thread_id=thread_id)
         answers = variable_answer_list(identity=identity, answered_only=True)
+        time_prompt = (
+            generate_time_prompt(time_context) if time_context else ""
+        )
         if not answers:
-            return None
+            return IdentityPrompt(text=time_prompt) if time_prompt else None
+        time_prefix = f"{time_prompt}\n\n" if time_prompt else ""
         values = _fact_values(answers)
 
         def render_snapshot() -> IdentityPromptSnapshot:
@@ -366,12 +425,12 @@ class LitigantAssistant(Agent):
                 if answer.variable_id in public_ids
             }
             return {
-                "text": _facts_prompt(answers, public_values),
+                "text": time_prefix + _facts_prompt(answers, public_values),
                 "values": public_values,
             }
 
         return IdentityPrompt(
-            text=_facts_prompt(answers, values),
+            text=time_prefix + _facts_prompt(answers, values),
             values=values,
             render_snapshot=render_snapshot,
         )

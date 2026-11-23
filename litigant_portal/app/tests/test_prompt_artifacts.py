@@ -1,8 +1,10 @@
 """Tests for capturing the instruction state behind assistant messages."""
 
 import json
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from django.test import SimpleTestCase, TestCase
@@ -13,6 +15,7 @@ from litigant_portal.agents.base import (
     IdentityPrompt,
     Tool,
     ToolOutput,
+    TurnTimeContext,
 )
 from litigant_portal.app.models import (
     ChatMessage,
@@ -224,7 +227,9 @@ class IdentityAgent(Agent):
     def generate_system_prompt(self, *, thread_id) -> str:
         return "Shared prompt"
 
-    def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt:
+    def generate_identity_prompt(
+        self, *, thread_id, time_context: TurnTimeContext | None = None
+    ) -> IdentityPrompt:
         self.identity_reads += 1
         name = ChatThread.objects.get(id=thread_id).identity.session_key
         return IdentityPrompt(
@@ -418,7 +423,13 @@ class PromptArtifactCaptureTests(TestCase):
         self.assertEqual(PromptArtifact.objects.count(), 2)
 
     def _stream(
-        self, *, identity, thread, completions, agent_class=IdentityAgent
+        self,
+        *,
+        identity,
+        thread,
+        completions,
+        agent_class=IdentityAgent,
+        client_timezone=None,
     ):
         with (
             patch(
@@ -437,9 +448,100 @@ class PromptArtifactCaptureTests(TestCase):
                 thread_type="test_agent",
                 model=MODEL,
                 thread_id=str(thread.id),
+                client_timezone=client_timezone,
             )
             list(response.streaming_content)
         return completion
+
+    def test_time_context_tracks_user_turns_in_utc_and_renders_client_time(
+        self,
+    ):
+        other = ChatThread.objects.create(identity=self.identity)
+        with patch(
+            "django.utils.timezone.now",
+            return_value=datetime(2026, 10, 31, tzinfo=UTC),
+        ):
+            other.messages.create(
+                data={"role": "user", "content": "Elsewhere"}
+            )
+        cases = (
+            (
+                datetime(2026, 11, 1, 5, 30, tzinfo=UTC),
+                "2026-11-01T01:30:00-04:00",
+                "No previous user message in this conversation",
+            ),
+            (
+                datetime(2026, 11, 1, 5, 30, 30, tzinfo=UTC),
+                "2026-11-01T01:30:30-04:00",
+                "0:00:30",
+            ),
+            (
+                datetime(2026, 11, 1, 6, 30, 30, tzinfo=UTC),
+                "2026-11-01T01:30:30-05:00",
+                "1:00:00",
+            ),
+            (
+                datetime(2026, 11, 4, 2, 30, 30, tzinfo=UTC),
+                "2026-11-03T21:30:30-05:00",
+                "2 days, 20:00:00",
+            ),
+        )
+        for now, local_time, elapsed in cases:
+            with self.subTest(now=now):
+                with patch(
+                    "django.utils.timezone.now",
+                    return_value=now - timedelta(seconds=1),
+                ):
+                    for data, flags in (
+                        (
+                            {"role": "user", "content": "Injected"},
+                            {"hidden": True},
+                        ),
+                        (
+                            {"role": "user", "content": "Accounting"},
+                            {"meta": True},
+                        ),
+                        ({"role": "assistant", "content": "Reply"}, {}),
+                        (
+                            {
+                                "role": "tool",
+                                "content": "Result",
+                                "name": "tool",
+                                "tool_call_id": "call",
+                            },
+                            {},
+                        ),
+                    ):
+                        self.thread.messages.create(data=data, **flags)
+                with patch("django.utils.timezone.now", return_value=now):
+                    completion = self._stream(
+                        identity=self.identity,
+                        thread=self.thread,
+                        completions=[iter([_chunk(content="Answer.")])],
+                        agent_class=LitigantAssistant,
+                        client_timezone=ZoneInfo("America/New_York"),
+                    )
+                model_text = completion.call_args.kwargs["messages"][0][
+                    "content"
+                ]
+                assistant = self.thread.messages.filter(
+                    data__role="assistant", data__content="Answer."
+                ).latest("created_at")
+                stored = assistant.identity_prompt
+                self.assertIn(local_time, stored["text"])
+                self.assertIn(
+                    now.isoformat(timespec="seconds"), stored["text"]
+                )
+                self.assertIn(
+                    "browser-reported America/New_York", stored["text"]
+                )
+                self.assertIn(elapsed, stored["text"])
+                self.assertIn(stored["text"], model_text)
+                self.assertEqual(stored["values"], {})
+                self.assertNotIn(
+                    "## Current time", assistant.prompt_artifact.system_prompt
+                )
+        self.assertEqual(PromptArtifact.objects.count(), 1)
 
     def test_private_facts_are_sent_but_redacted_from_storage_and_exports(
         self,
@@ -575,15 +677,20 @@ class PromptArtifactCaptureTests(TestCase):
             Variable.objects.filter(pk=variable.pk).update(is_private=True)
             yield _chunk(content="Answer.")
 
-        completion = self._stream(
-            identity=self.identity,
-            thread=self.thread,
-            completions=[
-                iter([_chunk(tool_calls=[tool_call])]),
-                finish_response(),
-            ],
-            agent_class=LitigantAssistant,
-        )
+        def record_response():
+            yield _chunk(tool_calls=[tool_call])
+            clock.return_value += timedelta(days=1)
+
+        with patch(
+            "django.utils.timezone.now",
+            return_value=datetime(2026, 11, 23, 23, 59, tzinfo=UTC),
+        ) as clock:
+            completion = self._stream(
+                identity=self.identity,
+                thread=self.thread,
+                completions=[record_response(), finish_response()],
+                agent_class=LitigantAssistant,
+            )
 
         first, second = completion.call_args_list
         self.assertNotIn(
@@ -596,7 +703,14 @@ class PromptArtifactCaptureTests(TestCase):
         before, after = self.thread.messages.filter(
             data__role="assistant"
         ).order_by("created_at")
-        self.assertEqual(before.identity_prompt, {})
+        time_text = before.identity_prompt["text"]
+        self.assertIn("2026-11-23T23:59:00+00:00", time_text)
+        self.assertIn("Client timezone unavailable; using UTC", time_text)
+        self.assertIn(time_text, after.identity_prompt["text"])
+        self.assertIn(time_text, first.kwargs["messages"][0]["content"])
+        self.assertIn(time_text, second.kwargs["messages"][0]["content"])
+        self.assertEqual(before.prompt_artifact_id, after.prompt_artifact_id)
+        self.assertEqual(before.identity_prompt["values"], {})
         self.assertEqual(after.identity_prompt["values"], {})
         self.assertIn(
             "- private_location (private_location): [private] [unconfirmed]",
