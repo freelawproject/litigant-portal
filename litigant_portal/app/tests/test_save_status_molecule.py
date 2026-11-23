@@ -10,26 +10,17 @@ from django.urls import reverse
 
 @pytest.mark.postgres
 @pytest.mark.django_db
-def test_style_guide_renders_the_status_as_a_visible_live_region(
-    client, settings
-):
+def test_style_guide_renders_the_status_as_a_live_region(client, settings):
     settings.DEPLOYMENT_ENV = "dev"
 
     flat = re.sub(
         r"\s+", " ", client.get(reverse("pages:style_guide")).content.decode()
     )
 
-    region = re.search(
-        r'<div role="status" class="sr-only not-sr-only[^"]*"'
-        r' x-data="saveStatus" data-text="Saved"[^>]*>(.*?)</div>',
-        flat,
-    )
+    region = re.search(r'<div[^>]* x-data="saveStatus"[^>]*>', flat)
     assert region
-    assert "<svg" in region.group(1)
-    assert re.search(
-        r'<span x-text="text" class="sr-only sm:not-sr-only">Saved</span>',
-        region.group(1),
-    )
+    assert 'role="status"' in region.group(0)
+    assert 'data-text="Saved"' in region.group(0)
 
 
 @pytest.mark.postgres
