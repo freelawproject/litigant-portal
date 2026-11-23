@@ -1,10 +1,16 @@
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, ClassVar
+from typing import Any, ClassVar, TypedDict
 
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 Field = PydanticField
+
+
+class IdentityPromptSnapshot(TypedDict):
+    text: str
+    values: dict[str, str]
 
 
 @dataclass(frozen=True)
@@ -13,12 +19,25 @@ class IdentityPrompt:
 
     ``text`` is the rendered section exactly as sent to the model.
     ``values`` maps each variable name to the personal value as it appears
-    in ``text``; every value must be a literal substring of ``text`` so a
-    later redaction pass can replace it by name.
+    in ``text``. For facts subject to privacy rules, supply
+    ``render_snapshot`` to apply those rules when the message is saved.
     """
 
     text: str
     values: dict[str, str] = field(default_factory=dict)
+    render_snapshot: Callable[[], IdentityPromptSnapshot] | None = field(
+        default=None, kw_only=True
+    )
+
+    def for_storage(self) -> IdentityPromptSnapshot:
+        """Return an independent payload for a message's JSON field."""
+        if self.render_snapshot is None:
+            return {"text": self.text, "values": self.values.copy()}
+        snapshot = self.render_snapshot()
+        return {
+            "text": snapshot["text"],
+            "values": snapshot["values"].copy(),
+        }
 
 
 class AgentState(BaseModel):
@@ -99,9 +118,9 @@ class Agent:
         """Build the per-identity part of the system prompt, or None.
 
         The engine appends ``text`` to the shared prompt for the model and
-        stores it on the assistant message, never in a PromptArtifact, so
-        it is deleted with the thread. This is where the person's stored
-        facts belong.
+        saves the storage snapshot on the assistant message, where it is
+        deleted with the thread. This is where the person's stored facts
+        belong.
         """
         return None
 

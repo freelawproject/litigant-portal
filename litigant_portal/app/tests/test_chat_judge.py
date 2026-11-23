@@ -6,9 +6,10 @@ import pytest
 from django.core.cache import cache
 from litellm import Timeout
 
+from litigant_portal.agents.assistant import LitigantAssistant
 from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
 from litigant_portal.agents.bedrock import ResolvedBedrockModel
-from litigant_portal.app.models import ChatThread, Site, UserIdentity
+from litigant_portal.app.models import ChatThread, Site, UserIdentity, Variable
 from litigant_portal.app.selectors.chat_engine import (
     chat_message_list,
     chat_thread_export_data,
@@ -19,6 +20,8 @@ from litigant_portal.app.services.chat_engine import (
     chat_stream,
     chat_thread_render_items,
 )
+from litigant_portal.app.services.corpus import corpus_sync
+from litigant_portal.app.services.topic_flow import variable_answer_set
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 MODEL = "bedrock_mantle/openai.gpt-5.6-luna"
@@ -34,7 +37,14 @@ class JudgeTestAgent(Agent):
         return "Supplied court information."
 
     def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt:
-        return IdentityPrompt(text="Saved name: Alex", values={"name": "Alex"})
+        return IdentityPrompt(
+            text="Saved name: Alex",
+            values={"name": "Alex"},
+            render_snapshot=lambda: {
+                "text": "Saved name: [private]",
+                "values": {},
+            },
+        )
 
 
 def generation(text, tool_calls=None):
@@ -80,7 +90,7 @@ def stream():
     identity = UserIdentity.objects.create(session_key="judge-test")
     thread = ChatThread.objects.create(identity=identity, description="Test")
 
-    def run(responses, judge_model=JUDGE):
+    def run(responses, judge_model=JUDGE, *, agent_class=JudgeTestAgent):
         Site.objects.update(judge_model=judge_model)
         cache.clear()
         with (
@@ -106,7 +116,7 @@ def stream():
             response = chat_stream(
                 identity=identity,
                 message="What do I file?",
-                agent_class=JudgeTestAgent,
+                agent_class=agent_class,
                 thread_type="user_chat",
                 model=MODEL,
                 thread_id=str(thread.id),
@@ -122,7 +132,7 @@ def stream():
                         "review_warning"
                     ), "Display must follow persistence"
                     items = chat_thread_render_items(
-                        thread=thread, agent_class=JudgeTestAgent
+                        thread=thread, agent_class=agent_class
                     )
                     assert items[-1].get("review_warning") == event.get(
                         "review_warning"
@@ -131,6 +141,131 @@ def stream():
             return events, completion.call_args_list
 
     return thread, run
+
+
+@pytest.mark.parametrize("judge_model", [None, JUDGE])
+def test_fact_becomes_private_during_stream(stream, judge_model):
+    thread, run = stream
+    changing = Variable.objects.create(name="changing_fact")
+    public = Variable.objects.create(name="public_fact")
+    variable_answer_set(
+        identity=thread.identity, variable=changing, value="privacy-sentinel"
+    )
+    variable_answer_set(
+        identity=thread.identity, variable=public, value="public-sentinel"
+    )
+
+    def response():
+        chunks = generation("Draft reply.")
+        yield next(chunks)
+        assert not thread.messages.filter(data__role="assistant").exists()
+        Variable.objects.filter(pk=changing.pk).update(is_private=True)
+        yield from chunks
+
+    responses = [response()]
+    if judge_model:
+        responses.extend(
+            [review(False), generation("Final reply."), review(True)]
+        )
+    _, calls = run(responses, judge_model, agent_class=LitigantAssistant)
+    model_calls = calls[::2] if judge_model else calls
+    public_value = 'value: "public-sentinel", display_value: "public-sentinel"'
+    public_line = f"- public_fact (public_fact): {public_value} [unconfirmed]"
+    private_line = "- changing_fact (changing_fact): [private] [unconfirmed]"
+    for call in model_calls:
+        prompt = call.kwargs["messages"][0]["content"]
+        assert (
+            '- changing_fact (changing_fact): value: "privacy-sentinel", '
+            'display_value: "privacy-sentinel" [unconfirmed]' in prompt
+        )
+        assert public_line in prompt
+
+    messages = thread.messages.filter(data__role="assistant").order_by(
+        "created_at"
+    )
+    assert [message.meta for message in messages] == (
+        [True, False] if judge_model else [False]
+    )
+    for message in messages:
+        assert private_line in message.identity_prompt["text"]
+        assert public_line in message.identity_prompt["text"]
+        assert message.identity_prompt["values"] == {
+            "public_fact": public_value
+        }
+
+    markdown = chat_thread_export_markdown(thread=thread)
+    assert private_line in markdown
+    assert public_line in markdown
+    assert "privacy-sentinel" not in markdown
+    assert "privacy-sentinel" not in json.dumps(
+        chat_thread_export_data(thread=thread)
+    )
+
+
+def test_fact_retired_during_stream_is_masked_in_message(stream, tmp_path):
+    thread, run = stream
+    glossary = tmp_path / "variables.yml"
+    active_variables = (
+        "variables:\n"
+        "  - name: public_fact\n"
+        "    label: Public fact\n"
+        "  - name: private_fact\n"
+        "    label: Private fact\n"
+        "    private: true\n"
+    )
+    glossary.write_text(
+        active_variables + "  - name: retired_fact\n    label: Retired fact\n",
+        encoding="utf-8",
+    )
+    corpus_sync(root=tmp_path)
+    for name, value in (
+        ("retired_fact", "retired-answer"),
+        ("private_fact", "private-answer"),
+        ("public_fact", "public-answer"),
+    ):
+        variable_answer_set(
+            identity=thread.identity,
+            variable=Variable.objects.get(name=name),
+            value=value,
+        )
+
+    def response():
+        chunks = generation("Reply.")
+        yield next(chunks)
+        glossary.write_text(active_variables, encoding="utf-8")
+        corpus_sync(root=tmp_path)
+        yield from chunks
+
+    _, calls = run([response()], None, agent_class=LitigantAssistant)
+    retired = Variable.objects.get(name="retired_fact")
+    assert not retired.in_schema
+    assert not retired.is_private
+    model_text = calls[0].kwargs["messages"][0]["content"]
+    assert (
+        '- retired_fact (Retired fact): value: "retired-answer", '
+        'display_value: "retired-answer" [unconfirmed]' in model_text
+    )
+    assert (
+        '- private_fact (Private fact): value: "private-answer", '
+        'display_value: "private-answer" [unconfirmed]' in model_text
+    )
+
+    stored = thread.messages.get(data__role="assistant").identity_prompt
+    public_value = 'value: "public-answer", display_value: "public-answer"'
+    public_line = f"- public_fact (Public fact): {public_value} [unconfirmed]"
+    retired_line = "- retired_fact (Retired fact): [private] [unconfirmed]"
+    private_line = "- private_fact (Private fact): [private] [unconfirmed]"
+    assert public_line in model_text
+    assert stored["values"] == {"public_fact": public_value}
+    for line in (retired_line, private_line, public_line):
+        assert line in stored["text"]
+
+    markdown = chat_thread_export_markdown(thread=thread)
+    assert retired_line in markdown
+    assert "retired-answer" not in markdown
+    assert "retired-answer" not in json.dumps(
+        chat_thread_export_data(thread=thread)
+    )
 
 
 @pytest.mark.parametrize("judge_model", [None, ""])
@@ -184,14 +319,22 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
     assert rejected.count() == min(rejections, 3)
     assert not rejected.filter(hidden=True).exists()
     assert not rejected.filter(data__has_key="review_warning").exists()
+    expected_snapshot = {"text": "Saved name: [private]", "values": {}}
+    snapshots = [
+        message["identity_prompt"]
+        for message in export["messages"]
+        if message["data"]["role"] == "assistant"
+    ]
+    assert snapshots == [expected_snapshot] * (min(rejections, 3) + 1)
     expected_warning = True if rejections == 3 else None
     released = next(e for e in events if e["type"] == "content_delta")
     assert released.get("review_warning") == expected_warning
     visible = [m["data"] for m in export["messages"] if not m["meta"]]
     assert visible[-1].get("review_warning") == expected_warning
-    assert ("[unverified]" in chat_thread_export_markdown(thread=thread)) is (
-        rejections == 3
-    )
+    markdown = chat_thread_export_markdown(thread=thread)
+    assert ("[unverified]" in markdown) is (rejections == 3)
+    assert "Saved name: [private]" in markdown
+    assert "Saved name: Alex" not in markdown
     assert chat_thread_usage(thread=thread)["total_cost"] == pytest.approx(
         attempts * 0.2
     )
@@ -202,8 +345,15 @@ def test_review_loop_audit_and_cost(stream, rejections, caplog):
         m.data for m in chat_message_list(thread=thread, exclude_meta=True)
     ]
     assert len(replay) == 2
-    judge_request = json.loads(calls[1].kwargs["messages"][1]["content"])
-    assert "Saved name: Alex" in json.dumps(judge_request)
+    for generation_call, judge_call in zip(
+        calls[::2], calls[1::2], strict=True
+    ):
+        model_prompt = generation_call.kwargs["messages"][0]["content"]
+        judge_request = json.loads(judge_call.kwargs["messages"][1]["content"])
+        assert (
+            model_prompt == "Supplied court information.\n\nSaved name: Alex"
+        )
+        assert judge_request["messages"][0]["content"] == model_prompt
     if rejections:
         assert audits[0]["verdict"]["findings"][0] == FINDING
         assert "invented fee" in json.dumps(calls[2].kwargs["messages"])

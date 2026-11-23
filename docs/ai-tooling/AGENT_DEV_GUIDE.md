@@ -148,9 +148,12 @@ so nothing about the person may go in it. Anything per-person (the litigant
 assistant puts its stored-facts section here) comes from
 `generate_identity_prompt`, which returns an `IdentityPrompt(text, values)` or
 `None` (the default). The engine appends `text` to the shared prompt for the
-model and keeps it with the assistant message, so it is deleted with the
-thread. `values` maps each variable name to the value as it appears in
-`text`, so a later pass can redact by name. Both methods are regenerated
+model. It saves a snapshot with the assistant message, which is deleted
+with the thread. If the prompt includes facts subject to privacy rules,
+supply a `render_snapshot` callable. The engine calls it at each message
+save. It uses the current variable privacy flags to mask private values in
+`text` and omit them from `values`. Without a callable, the engine saves
+the supplied `text` and `values`. Both prompt methods are regenerated
 together on a refresh.
 
 ### Optional: the per-message hook — `prepare_thread(thread_id)`
