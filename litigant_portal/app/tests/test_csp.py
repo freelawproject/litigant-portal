@@ -163,6 +163,19 @@ def test_malformed_report_is_rejected_without_logging(client, reporter, body):
     reporter.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "field", ["blocked-uri", "document-uri", "source-file"]
+)
+def test_report_with_an_unparsable_url_is_rejected_without_logging(
+    client, reporter, field
+):
+    report = {**REPORT, field: "http://[bad"}
+    response = _report(client, json.dumps({"csp-report": report}))
+
+    assert response.status_code == 400
+    reporter.assert_not_called()
+
+
 def test_oversized_report_is_rejected_without_logging(client, reporter):
     report = {**REPORT, "script-sample": "x" * 20_000}
     response = _report(client, json.dumps({"csp-report": report}))

@@ -49,15 +49,18 @@ def csp_report(request: HttpRequest) -> HttpResponse:
         return HttpResponse(status=400)
 
     line = report.get("line-number")
-    context = {
-        "directive": _text(report, "effective-directive")
-        or _text(report, "violated-directive"),
-        "disposition": _text(report, "disposition"),
-        "blocked": _blocked(_text(report, "blocked-uri")),
-        "document_path": urlsplit(_text(report, "document-uri")).path,
-        "source_file": _without_query(_text(report, "source-file")),
-        "line": line if isinstance(line, int) else None,
-    }
+    try:
+        context = {
+            "directive": _text(report, "effective-directive")
+            or _text(report, "violated-directive"),
+            "disposition": _text(report, "disposition"),
+            "blocked": _blocked(_text(report, "blocked-uri")),
+            "document_path": urlsplit(_text(report, "document-uri")).path,
+            "source_file": _without_query(_text(report, "source-file")),
+            "line": line if isinstance(line, int) else None,
+        }
+    except ValueError:
+        return HttpResponse(status=400)
     lp_logger(
         type=EVENTS.warning,
         msg="CSP violation",
