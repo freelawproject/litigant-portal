@@ -51,6 +51,7 @@
           <li><c-atoms.link href="#checkbox" variant="unstyled">Checkbox</c-atoms.link></li>
           <li><c-atoms.link href="#nav-link" variant="unstyled">Nav Link</c-atoms.link></li>
           <li><c-atoms.link href="#auto-dismiss" variant="unstyled">Auto Dismiss</c-atoms.link></li>
+          <li><c-atoms.link href="#dismiss-on-interaction" variant="unstyled">Dismiss on Interaction</c-atoms.link></li>
           <li><c-atoms.link href="#section-heading" variant="unstyled">Section Heading</c-atoms.link></li>
           <li><c-atoms.link href="#a11y-demo" variant="unstyled">A11y Demo</c-atoms.link></li>
           <li><c-atoms.link href="#live-region" variant="unstyled">Live Region</c-atoms.link></li>
@@ -733,6 +734,16 @@
               <span class="p-2.5 md:w-48 md:min-w-48 font-medium"><code>timeout</code></span>
               <span class="p-2.5">Duration in ms before dismissing (default: 1500)</span>
             </div>
+          </div>
+        </section>
+        <section id="dismiss-on-interaction" class="mb-12" aria-labelledby="dismiss-on-interaction-heading">
+          <h3 id="dismiss-on-interaction-heading" class="mb-4">Dismiss on Interaction</h3>
+          <p class="text-greyscale-600 mb-6">Wrapper that shows its content until the first click or keypress anywhere on the page, then fades. Scrolling does not dismiss it, so someone panning with screen magnification can still find it. The site header uses it around the save status. No props.</p>
+          <p class="text-sm text-greyscale-500 mb-4">Note: requires the <code>dismissOnInteraction</code> Alpine.js component. The sample below fades on this page's first click or keypress; reload to see it again.</p>
+          <div class="mb-6">
+            <c-atoms.dismiss-on-interaction>
+              <c-atoms.badge variant="completed">Still here until you click or type</c-atoms.badge>
+            </c-atoms.dismiss-on-interaction>
           </div>
         </section>
         <section id="section-heading" class="mb-12" aria-labelledby="section-heading-heading">

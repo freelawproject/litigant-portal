@@ -678,6 +678,21 @@
     animation-delay: -0.16s;
   }
 
+  /* Fade played by the dismissOnInteraction Alpine component once the
+     first click or keypress lands; its end hides the element. */
+  .dismiss-fade-out {
+    animation: dismiss-fade-out 300ms ease-out forwards;
+  }
+
+  @keyframes dismiss-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
   /* Auto-dismiss animation - used by autoDismiss Alpine component */
   @keyframes auto-dismiss {
     0%,

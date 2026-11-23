@@ -1,0 +1,7 @@
+{# Shows its slot until the first click or keypress anywhere, then fades. #}
+<div x-data="dismissOnInteraction"
+     x-show="show"
+     x-bind:class="fadeClass"
+     x-on:animationend="dismiss"
+     {{ attrs }}>{{ slot }}
+</div>

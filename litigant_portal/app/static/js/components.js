@@ -17,6 +17,38 @@ document.addEventListener('alpine:init', () => {
   }))
 
   // ===========================================================================
+  // Dismiss on interaction: shows until the first click or keypress
+  // anywhere, then fades. Scroll doesn't count: someone panning with screen
+  // magnification must be able to find the content first.
+  // ===========================================================================
+
+  Alpine.data('dismissOnInteraction', () => ({
+    show: true,
+    leaving: false,
+    init() {
+      this.interacted = () => {
+        this.leaving = true
+        this.removeListeners()
+      }
+      window.addEventListener('pointerdown', this.interacted)
+      window.addEventListener('keydown', this.interacted)
+    },
+    destroy() {
+      this.removeListeners()
+    },
+    removeListeners() {
+      window.removeEventListener('pointerdown', this.interacted)
+      window.removeEventListener('keydown', this.interacted)
+    },
+    get fadeClass() {
+      return this.leaving ? 'dismiss-fade-out' : ''
+    },
+    dismiss() {
+      this.show = false
+    },
+  }))
+
+  // ===========================================================================
   // Save status (#1006): the quiet "Saved" in the header. A live region
   // announces what changes after load, not what it loaded with, so the
   // server-rendered text is cleared and put back once the page has settled.
