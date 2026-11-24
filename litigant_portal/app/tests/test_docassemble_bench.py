@@ -238,7 +238,9 @@ def test_package_carries_the_file_contents(eviction, tmp_path):
     files = _built(eviction, tmp_path)
 
     assert (
-        files["docassemble-fceviction/docassemble/fceviction/data/questions/answer.yml"]
+        files[
+            "docassemble-fceviction/docassemble/fceviction/data/questions/answer.yml"
+        ]
         == "answer.yml"
     )
 
@@ -276,7 +278,10 @@ def test_target_names_an_instance_by_its_own_url_and_key():
         "DA_ADMIN_API_KEY": "bench-key",
     }
 
-    assert bench._target(env, "qa") == ("https://qa.example/interview", "qa-key")
+    assert bench._target(env, "qa") == (
+        "https://qa.example/interview",
+        "qa-key",
+    )
 
 
 def test_target_missing_settings_names_both_variables():
@@ -299,7 +304,9 @@ class _FakeServer:
 
     def _request(self, method, path, *, query=None, data=None, headers=None):
         self.requests.append((method, path, query))
-        answer = self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
+        answer = (
+            self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
+        )
         if isinstance(answer, BaseException):
             raise answer
         status, payload = answer
@@ -357,7 +364,10 @@ def test_await_install_waits_through_the_server_restart():
 
 def test_await_install_fails_with_docassembles_error():
     server = _FakeServer(
-        (200, {"status": "completed", "ok": False, "error_message": "bad yaml"})
+        (
+            200,
+            {"status": "completed", "ok": False, "error_message": "bad yaml"},
+        )
     )
 
     with pytest.raises(SystemExit, match="bad yaml"):

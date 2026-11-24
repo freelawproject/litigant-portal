@@ -362,7 +362,9 @@ def _target(env, name):
     prefix = "DA_" + name.upper().replace("-", "_")
     base, key = env.get(f"{prefix}_URL"), env.get(f"{prefix}_API_KEY")
     if not (base and key):
-        sys.exit(f"Set {prefix}_URL and {prefix}_API_KEY in .env to reach {name}")
+        sys.exit(
+            f"Set {prefix}_URL and {prefix}_API_KEY in .env to reach {name}"
+        )
     return base.rstrip("/"), key
 
 
