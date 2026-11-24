@@ -58,6 +58,13 @@ pre-commit: ## Lint then test — stops if lint fails/fixes anything
 agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'report ...')
 	env -u VIRTUAL_ENV uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
 
+BASE_URL ?= http://localhost
+
+.PHONY: smoke
+smoke: ## Load key pages and /api/health/ and send one chat message in Chromium against BASE_URL (default http://localhost)
+	env -u VIRTUAL_ENV uv run --project scripts/smoke --locked playwright install chromium
+	env -u VIRTUAL_ENV uv run --project scripts/smoke --locked pytest scripts/smoke --base-url $(BASE_URL)
+
 # Only sources newer than their render are re-exported: draw.io stamps a random
 # id into every SVG, so regenerating an unchanged diagram is pure diff noise.
 DIAGRAMS := $(wildcard docs/architecture/*.drawio)

@@ -66,6 +66,7 @@
           <li><c-atoms.link href="#form-field-select" variant="unstyled">Form Field Select</c-atoms.link></li>
           <li><c-atoms.link href="#auth-status" variant="unstyled">Auth Status</c-atoms.link></li>
           <li><c-atoms.link href="#toast-container" variant="unstyled">Toast Container</c-atoms.link></li>
+          <li><c-atoms.link href="#save-status" variant="unstyled">Save Status</c-atoms.link></li>
           <li><c-atoms.link href="#user-menu" variant="unstyled">User Menu</c-atoms.link></li>
           <li><c-atoms.link href="#empty-state" variant="unstyled">Empty State</c-atoms.link></li>
           <li><c-atoms.link href="#dialog" variant="unstyled">Dialog</c-atoms.link></li>
@@ -1037,6 +1038,14 @@
           <h3 id="toast-container-heading" class="mb-4">Toast Container</h3>
           <p class="text-greyscale-600 mb-6">Renders Django flash messages as auto-dismissing toast overlays. Included in <code>base.html</code>.</p>
           <p class="text-sm text-greyscale-500 mb-4">Composes <code>c-atoms.auto-dismiss</code> (at a 5s timeout, so sentence-length messages stay readable) and <code>c-atoms.alert</code>. No props — reads <code>messages</code> from template context.</p>
+        </section>
+        <section id="save-status" class="mb-12" aria-labelledby="save-status-heading">
+          <h3 id="save-status-heading" class="mb-4">Save Status</h3>
+          <p class="text-greyscale-600 mb-6">The quiet confirmation a save shows instead of a toast: a check and a word in a polite live region, so it never covers content, never takes a click, and a screen reader hears it without an interruption. Below <code>sm</code> only the check shows. The site header renders it over its centre for any flash message carrying the <code>status</code> extra tag, inside <code>c-atoms.auto-dismiss</code>; here it stays.</p>
+          <p class="text-sm text-greyscale-500 mb-4">Props: <code>messages</code>, a list of short texts. Requires the <code>saveStatus</code> Alpine.js component.</p>
+          <div class="border border-greyscale-200 rounded-lg p-4 mb-6">
+            <c-molecules.save-status :messages="['Saved']" />
+          </div>
         </section>
         <section id="user-menu" class="mb-12" aria-labelledby="user-menu-heading">
           <h3 id="user-menu-heading" class="mb-4">User Menu</h3>

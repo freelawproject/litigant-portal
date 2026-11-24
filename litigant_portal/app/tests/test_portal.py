@@ -419,6 +419,31 @@ class ToastMessagesTests(TestCase):
 
         self.assertEqual(result["toast_messages"][0]["variant"], "success")
 
+    def test_only_a_problem_gets_the_alert_role(self):
+        request = self._request_with_messages(
+            ("success", "Saved"),
+            ("info", "Note"),
+            ("warning", "Check this"),
+            ("error", "Something broke"),
+        )
+
+        roles = [m["role"] for m in toast_messages(request)["toast_messages"]]
+
+        self.assertEqual(roles, ["status", "status", "alert", "alert"])
+
+    def test_a_status_tagged_message_leaves_the_toasts_for_the_header(self):
+        request = self._request_with_messages(("success", "Started over."))
+        from django.contrib.messages import constants
+
+        request._messages.add(constants.SUCCESS, "Saved", extra_tags="status")
+
+        result = toast_messages(request)
+
+        self.assertEqual(
+            [m["text"] for m in result["toast_messages"]], ["Started over."]
+        )
+        self.assertEqual(result["status_messages"], ["Saved"])
+
     def test_warning_tag_passes_through(self):
         request = self._request_with_messages(("warning", "Check this"))
 

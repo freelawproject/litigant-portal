@@ -1,4 +1,3 @@
-import logging
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -19,8 +18,7 @@ from litigant_portal.app.services.chat_engine import (
     chat_thread_delete,
     chat_thread_render_items,
 )
-
-logger = logging.getLogger(__name__)
+from litigant_portal.lp_logger import lp_logger
 
 
 def stream(
@@ -71,8 +69,12 @@ def stream(
         )
     except ChatThread.DoesNotExist:
         return JsonResponse({"error": _("Thread not found")}, status=404)
-    except BedrockModelUnavailable:
-        logger.exception("Assistant model discovery failed")
+    except BedrockModelUnavailable as error:
+        lp_logger(
+            type=error,
+            msg="Assistant model discovery failed",
+            context={"status_code": 503},
+        )
         return JsonResponse(
             {"error": _("The assistant is temporarily unavailable.")},
             status=503,

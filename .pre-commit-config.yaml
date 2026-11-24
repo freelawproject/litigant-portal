@@ -53,6 +53,14 @@ repos:
 
   - repo: local
     hooks:
+      - id: lp-logger-literal-messages
+        name: Literal lp_logger messages
+        entry: python scripts/check_lp_logger.py
+        language: python
+        types: [python]
+        # This HTTP adapter forwards validated runtime arguments.
+        exclude: ^litigant_portal/app/views/logging\.py$
+
       - id: uv-lock-check
         name: uv lock sync
         entry: uv lock --check
@@ -62,7 +70,7 @@ repos:
 
       - id: csp-inline-check
         name: CSP inline handler check
-        entry: bash -c 'grep -rE "on(click|load|error|submit|change|input|focus|blur|keyup|keydown|mouseover)=" templates/ && echo "ERROR - Inline event handlers violate CSP. Use Alpine x-on directives." && exit 1 || exit 0'
+        entry: bash -c 'grep -rE "on(click|load|error|submit|change|input|focus|blur|keyup|keydown|mouseover)=" litigant_portal/app/templates/ && echo "ERROR - Inline event handlers violate CSP. Use Alpine x-on directives." && exit 1 || exit 0'
         language: system
-        files: ^templates/.*\.html$
+        files: ^litigant_portal/app/templates/.*\.html$
         pass_filenames: false

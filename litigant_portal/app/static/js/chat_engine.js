@@ -1029,7 +1029,7 @@ document.addEventListener('alpine:init', () => {
         }
       } catch (e) {
         if (!stream.failureRendered && !stream.terminal) {
-          console.error('Chat stream failed:', e)
+          window.lpLogger?.({ type: e, msg: 'Chat stream failed' })
           this.failStream(stream)
         }
       } finally {

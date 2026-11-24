@@ -1,0 +1,12 @@
+{# The quiet confirmation a save shows instead of a toast (#1006). Below sm #}
+{# only the check shows; the word stays for screen readers. saveStatus fills #}
+{# the text after load, because a live region announces only changes. #}
+<c-vars messages="" />
+<div class="flex flex-col items-center gap-1 text-sm font-medium text-green-700 {{ class }}" {{ attrs }}>
+  {% for text in messages %}
+    <c-atoms.live-region x-data="saveStatus" data-text="{{ text }}" class="not-sr-only flex items-center gap-1">
+      <c-atoms.icon name="check-circle" class="h-5 w-5" />
+      <span x-text="text" class="sr-only sm:not-sr-only">{{ text }}</span>
+    </c-atoms.live-region>
+  {% endfor %}
+</div>
