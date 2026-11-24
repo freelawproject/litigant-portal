@@ -16,10 +16,11 @@ Getting each court partner's own instance ready for its subject-matter experts t
 
 `docker-compose.yml` is **local development only** — Postgres (pgvector), Redis, Django, and Caddy on one machine. Production is deployed outside this repo and consumes nothing from this file (see [Production](README.md#production)).
 
-| Environment | Chat Provider | Config Source                        |
-| ----------- | ------------- | ------------------------------------ |
-| Local dev   | AWS Bedrock   | `docker-compose.yml` + `.env`        |
-| CI          | None (mocked) | `tox.ini` — tests mock all providers |
+| Environment       | Chat Provider | Config Source                                        |
+| ----------------- | ------------- | ---------------------------------------------------- |
+| Local dev         | AWS Bedrock   | `docker-compose.yml` + `.env`                        |
+| CI tests          | None (mocked) | `tox.ini` — tests mock all providers                 |
+| Deploy smoke gate | AWS Bedrock   | `smoke.yml` — `AWS_BEARER_TOKEN_BEDROCK` repo secret |
 
 Model families are curated through `MODEL_MAPPING` and `MODEL_CHOICES` in `litigant_portal/agents/bedrock.py` and selected in admin settings. Unset assistant/fast roles use the first available Balanced/Economy model, currently GPT Terra/GPT Luna; the previous defaults were GPT Luna/Claude Haiku. An unset assistant can fall back from Balanced to Economy; the fast role stays in Economy. Judging is disabled until selected. `site_get_model_target` resolves role preferences to concrete routes. `AWS_REGION` is optional and defaults to `us-east-1`; `BEDROCK_ALLOWED_GEOGRAPHY` is optional and defaults to `US`. Setup commands live under Commands below.
 
