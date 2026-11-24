@@ -26,6 +26,7 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.permissions import COURT_ADMINS_GROUP, FLP_STAFF_GROUP
+from litigant_portal.app.services.user import user_create
 from litigant_portal.app.tests.test_permissions import client_for, join, reload
 
 User = get_user_model()
@@ -228,7 +229,7 @@ class RolesOnProdTests(TierSetup):
 
 
 @pytest.mark.postgres
-@override_settings(DEPLOYMENT_ENV="qa", PILOT=False)
+@override_settings(DEPLOYMENT_ENV="qa", PILOT=False, EMAIL_ENABLED=False)
 class AccountsOnQaTests(TierSetup):
     def test_court_admin_works_on_qa(self):
         response = self.client.post(
@@ -410,7 +411,7 @@ class UserCreateTests(TierSetup):
 
 
 @pytest.mark.postgres
-@override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=True, EMAIL_ENABLED=False)
 class UserActionTests(TierSetup):
     def post(self, action: str, data=None):
         return self.client.post(
@@ -543,7 +544,7 @@ class RoleSetTests(TierSetup):
 
 
 @pytest.mark.postgres
-@override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=True, EMAIL_ENABLED=False)
 class TierRefusalTests(TierSetup):
     def assert_refused(self, viewer, target, paths):
         client = client_for(viewer)
@@ -721,7 +722,7 @@ class InviteTests(TierSetup):
 
 @pytest.mark.postgres
 @override_settings(DEPLOYMENT_ENV="prod", PILOT=True, EMAIL_ENABLED=False)
-class NoEmailCreateTests(TierSetup):
+class NoEmailTests(TierSetup):
     def test_add_dialog_asks_for_a_password(self):
         html = self.client.get("/admin/").content.decode()
 
@@ -735,3 +736,117 @@ class NoEmailCreateTests(TierSetup):
         )
 
         self.assertEqual(mail.outbox, [])
+
+    def test_rows_offer_set_password(self):
+        html = self.client.get("/admin/").content.decode()
+
+        self.assertIn('id="user-password-dialog"', html)
+        self.assertNotIn("Send password link", html)
+
+    def test_password_link_is_not_found(self):
+        response = self.client.post(
+            f"/api/admin/users/{self.app_user.pk}/password-link/"
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(mail.outbox, [])
+
+
+@pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=True, EMAIL_ENABLED=True)
+class PasswordLinkTests(TierSetup):
+    def send(self, target, viewer=None):
+        client = client_for(viewer) if viewer else self.client
+        return client.post(f"/api/admin/users/{target.pk}/password-link/")
+
+    def test_invited_account_gets_the_invite_again(self):
+        invited = user_create(email="new@example.com")
+
+        response = self.send(invited)
+
+        self.assertEqual(response.status_code, 200)
+        [message] = mail.outbox
+        self.assertEqual(message.to, ["new@example.com"])
+        self.assertTrue(message.subject.startswith("Set up your account"))
+
+    def test_account_with_a_password_gets_a_reset_link(self):
+        response = self.send(self.app_user)
+
+        self.assertEqual(response.status_code, 200)
+        [message] = mail.outbox
+        self.assertEqual(message.to, ["jane@example.com"])
+        self.assertTrue(message.subject.startswith("Reset your password"))
+        self.assertTrue(reload(self.app_user).check_password(PASSWORD))
+
+    def test_disabled_account_is_refused_and_gets_no_email(self):
+        self.app_user.is_active = False
+        self.app_user.save(update_fields=["is_active"])
+
+        response = self.send(self.app_user)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(mail.outbox, [])
+
+    def test_failed_send_says_so(self):
+        with mock.patch(
+            "django.core.mail.backends.locmem.EmailBackend.send_messages",
+            side_effect=smtplib.SMTPException("down"),
+        ):
+            response = self.send(self.app_user)
+
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("not sent", response.json()["error"])
+
+    def test_court_admin_cannot_send_above_its_tier_or_to_itself(self):
+        other = join(account("ca2", "ca2@court.gov"), COURT_ADMINS_GROUP)
+        for target in (other, self.staff, self.superuser, self.court_admin):
+            with self.subTest(target=target.email):
+                self.assertEqual(self.send(target).status_code, 403)
+        self.assertEqual(mail.outbox, [])
+
+    def test_flp_staff_send_for_a_court_admin(self):
+        response = self.send(self.court_admin, viewer=self.staff)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_unknown_account_is_not_found(self):
+        response = self.client.post("/api/admin/users/999999/password-link/")
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_app_users_are_refused(self):
+        response = self.send(self.app_user, viewer=self.app_user)
+
+        self.assertEqual(response.status_code, 403)
+
+    def test_old_password_endpoint_is_not_found(self):
+        response = self.client.post(
+            f"/api/admin/users/{self.app_user.pk}/password/", new_password()
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(reload(self.app_user).check_password(PASSWORD))
+
+    def test_rows_offer_send_password_link_not_set_password(self):
+        html = self.client.get("/admin/").content.decode()
+
+        self.assertIn("Send password link", html)
+        self.assertNotIn('id="user-password-dialog"', html)
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_password_link_allows_thirty_a_minute_per_ip(ratelimited, settings):
+    settings.DEPLOYMENT_ENV = "prod"
+    settings.PILOT = True
+    settings.EMAIL_ENABLED = True
+    client = client_for(
+        join(account("ca", "ca@court.gov"), COURT_ADMINS_GROUP)
+    )
+    path = f"/api/admin/users/{account('jane', 'jane@example.com').pk}/"
+    path += "password-link/"
+    for _ in range(30):
+        assert client.post(path).status_code == 200
+
+    assert client.post(path).status_code == 429

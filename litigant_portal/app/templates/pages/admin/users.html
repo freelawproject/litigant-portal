@@ -6,6 +6,7 @@
 {% trans "Confirm password" as confirm_password_label %}
 {% trans "Add an account" as add_title %}
 {% trans "Set a new password" as password_title %}
+{% trans "Send a password link?" as password_link_title %}
 {% trans "Delete this account?" as delete_title %}
 {% trans "Role" as role_label %}
 
@@ -80,7 +81,11 @@
             {% if features.user_admin and perms.app.manage_app_users %}
               <td class="px-4 py-2.5">
                 <div x-show="user.can_manage" class="flex justify-end gap-1">
-                  <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserPassword">{% trans "Password" %}</c-atoms.button>
+                  {% if email_enabled %}
+                    <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserPasswordLink">{% trans "Send password link" %}</c-atoms.button>
+                  {% else %}
+                    <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserPassword">{% trans "Password" %}</c-atoms.button>
+                  {% endif %}
                   <c-atoms.button variant="ghost" size="sm" x-show="user.canDisable" x-bind:data-user-id="user.id" x-on:click="disableUser">{% trans "Disable" %}</c-atoms.button>
                   <c-atoms.button variant="ghost" size="sm" x-show="user.canEnable" x-bind:data-user-id="user.id" x-on:click="enableUser">{% trans "Enable" %}</c-atoms.button>
                   <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserDelete">{% trans "Delete" %}</c-atoms.button>
@@ -115,6 +120,7 @@
     </div>
   </div>
   <p x-show="usersActionError" x-cloak x-text="usersActionError" class="mt-3 text-sm text-red-600" role="alert"></p>
+  <p x-show="usersActionNotice" x-cloak x-text="usersActionNotice" class="mt-3 text-sm text-green-700" role="status"></p>
 
   {% if features.user_admin and perms.app.manage_app_users %}
     {# Without email the admin sets the password; with it, the tester does. #}
@@ -141,19 +147,33 @@
       </form>
     </c-molecules.dialog>
 
-    <c-molecules.dialog id="user-password-dialog" title="{{ password_title }}" x-ref="userPasswordDialog">
-      <form x-on:submit.prevent="setUserPassword" class="space-y-4">
-        {% csrf_token %}
-        <p class="text-sm text-greyscale-600" x-text="userDialogEmail"></p>
-        <c-molecules.form-field label="{{ new_password_label }}" type="password" name="password" id="user-password" autocomplete="new-password" help_text="{{ password_rules }}" required />
-        <c-molecules.form-field label="{{ confirm_password_label }}" type="password" name="password_confirm" id="user-password-confirm" autocomplete="new-password" required />
-        <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
-        <div class="flex justify-end gap-2">
-          <c-atoms.button variant="outline" x-on:click="closeUserDialogs">{% trans "Cancel" %}</c-atoms.button>
-          <c-atoms.button type="submit">{% trans "Set password" %}</c-atoms.button>
+    {% if email_enabled %}
+      <c-molecules.dialog id="user-password-link-dialog" title="{{ password_link_title }}" x-ref="userPasswordLinkDialog">
+        <div class="space-y-4">
+          <p class="text-sm font-medium text-greyscale-900" x-text="userDialogEmail"></p>
+          <p class="text-sm text-greyscale-600">{% trans "We will email them a link to set their password. Nothing changes until they use it." %}</p>
+          <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
+          <div class="flex justify-end gap-2">
+            <c-atoms.button variant="outline" x-on:click="closeUserDialogs" autofocus>{% trans "Cancel" %}</c-atoms.button>
+            <c-atoms.button x-on:click="sendPasswordLink">{% trans "Send link" %}</c-atoms.button>
+          </div>
         </div>
-      </form>
-    </c-molecules.dialog>
+      </c-molecules.dialog>
+    {% else %}
+      <c-molecules.dialog id="user-password-dialog" title="{{ password_title }}" x-ref="userPasswordDialog">
+        <form x-on:submit.prevent="setUserPassword" class="space-y-4">
+          {% csrf_token %}
+          <p class="text-sm text-greyscale-600" x-text="userDialogEmail"></p>
+          <c-molecules.form-field label="{{ new_password_label }}" type="password" name="password" id="user-password" autocomplete="new-password" help_text="{{ password_rules }}" required />
+          <c-molecules.form-field label="{{ confirm_password_label }}" type="password" name="password_confirm" id="user-password-confirm" autocomplete="new-password" required />
+          <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
+          <div class="flex justify-end gap-2">
+            <c-atoms.button variant="outline" x-on:click="closeUserDialogs">{% trans "Cancel" %}</c-atoms.button>
+            <c-atoms.button type="submit">{% trans "Set password" %}</c-atoms.button>
+          </div>
+        </form>
+      </c-molecules.dialog>
+    {% endif %}
 
     <c-molecules.dialog id="user-delete-dialog" title="{{ delete_title }}" x-ref="userDeleteDialog">
       <div class="space-y-4">

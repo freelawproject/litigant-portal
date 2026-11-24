@@ -406,7 +406,10 @@ def user_create_view(request: HttpRequest) -> JsonResponse:
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 @app_user_admin_required
 def user_password_view(request: HttpRequest, user_id: int) -> JsonResponse:
-    """Set a new password for an account; the pilots send no reset email."""
+    """Set a new password for an account, on instances that can't email a
+    link instead."""
+    if settings.EMAIL_ENABLED:
+        return JsonResponse({"error": _("Not found")}, status=404)
     target, error_response = _managed_user(request, user_id)
     if error_response:
         return error_response
@@ -414,6 +417,37 @@ def user_password_view(request: HttpRequest, user_id: int) -> JsonResponse:
     if error:
         return JsonResponse({"error": error}, status=400)
     user_password_set(user=target, password=password)
+    return JsonResponse({"id": target.id})
+
+
+@require_POST
+@ratelimit(key="ip", rate="30/m", method="POST", block=True)
+@app_user_admin_required
+def user_password_link_view(
+    request: HttpRequest, user_id: int
+) -> JsonResponse:
+    """Email an account a link to set its password: the invite again, or
+    a reset once it has one."""
+    if not settings.EMAIL_ENABLED:
+        return JsonResponse({"error": _("Not found")}, status=404)
+    target, error_response = _managed_user(request, user_id)
+    if error_response:
+        return error_response
+    if not target.is_active:
+        return JsonResponse(
+            {"error": _("Enable the account before sending it a link")},
+            status=400,
+        )
+    try:
+        user_password_link_send(user=target, request=request)
+    except (smtplib.SMTPException, OSError):
+        logger.exception(
+            "Could not send a password link to user %s", target.pk
+        )
+        return JsonResponse(
+            {"error": _("The email was not sent. Try again later.")},
+            status=502,
+        )
     return JsonResponse({"id": target.id})
 
 

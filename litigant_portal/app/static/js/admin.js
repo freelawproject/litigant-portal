@@ -87,6 +87,7 @@ document.addEventListener('alpine:init', () => {
     usersCountLabel: '',
     usersFetchSeq: 0,
     usersActionError: '',
+    usersActionNotice: '',
     // App user accounts (#1043): one dialog open at a time.
     userDialogId: null,
     userDialogEmail: '',
@@ -446,6 +447,7 @@ document.addEventListener('alpine:init', () => {
 
     // Open one of the account dialogs with a clean form and no old error.
     openUserDialog(ref, user) {
+      this.usersActionNotice = ''
       this.userDialogId = user ? user.id : null
       this.userDialogEmail = user ? user.email : ''
       this.userDialogError = ''
@@ -459,6 +461,7 @@ document.addEventListener('alpine:init', () => {
       for (const ref of [
         'userCreateDialog',
         'userPasswordDialog',
+        'userPasswordLinkDialog',
         'userDeleteDialog',
       ]) {
         if (this.$refs[ref]) this.$refs[ref].close()
@@ -472,6 +475,13 @@ document.addEventListener('alpine:init', () => {
     openUserPassword(e) {
       this.openUserDialog(
         'userPasswordDialog',
+        this.findUser(e.currentTarget.dataset.userId)
+      )
+    },
+
+    openUserPasswordLink(e) {
+      this.openUserDialog(
+        'userPasswordLinkDialog',
         this.findUser(e.currentTarget.dataset.userId)
       )
     },
@@ -508,6 +518,21 @@ document.addEventListener('alpine:init', () => {
         return
       }
       this.closeUserDialogs()
+    },
+
+    async sendPasswordLink() {
+      const body = new FormData()
+      body.append('csrfmiddlewaretoken', this.csrfToken())
+      const { ok, data } = await this.postUserForm(
+        '/api/admin/users/' + this.userDialogId + '/password-link/',
+        body
+      )
+      if (!ok) {
+        this.userDialogError = data.error
+        return
+      }
+      this.closeUserDialogs()
+      this.usersActionNotice = 'Password link sent to ' + this.userDialogEmail
     },
 
     async disableUser(e) {
