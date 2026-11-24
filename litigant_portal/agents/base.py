@@ -1,11 +1,24 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta
 from typing import Any, ClassVar, TypedDict
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, ConfigDict
 from pydantic import Field as PydanticField
 
 Field = PydanticField
+
+
+@dataclass(frozen=True)
+class TurnTimeContext:
+    """
+    UTC timing for one user turn, with an optional presentation timezone.
+    """
+
+    current_time: datetime
+    elapsed_since_previous_user_message: timedelta | None
+    client_timezone: ZoneInfo | None = None
 
 
 class IdentityPromptSnapshot(TypedDict):
@@ -114,13 +127,17 @@ class Agent:
         """
         raise NotImplementedError
 
-    def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt | None:
-        """Build the per-identity part of the system prompt, or None.
+    def generate_identity_prompt(
+        self, *, thread_id, time_context: TurnTimeContext | None = None
+    ) -> IdentityPrompt | None:
+        """
+        Build the per-identity part of the system prompt, or None.
 
         The engine appends ``text`` to the shared prompt for the model and
         saves the storage snapshot on the assistant message, where it is
         deleted with the thread. This is where the person's stored facts
-        belong.
+        and conversation timing belong. Time context stays fixed through
+        tool-driven prompt refreshes within the same user turn.
         """
         return None
 

@@ -985,6 +985,8 @@ document.addEventListener('alpine:init', () => {
         const body = new FormData()
         body.append('message', message)
         body.append('csrfmiddlewaretoken', this.csrfToken())
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+        if (timeZone) body.append('client_timezone', timeZone)
         if (threadId) body.append('thread_id', threadId)
         attachments.forEach((a) => body.append('attachment_ids', a.id))
 
@@ -1114,6 +1116,12 @@ document.addEventListener('alpine:init', () => {
         return
       }
       if (event.type === 'thread') {
+        if (event.client_timezone_invalid === true) {
+          window.lpLogger?.({
+            type: 'warning',
+            msg: 'Client timezone unavailable; using UTC',
+          })
+        }
         stream.threadId = event.thread_id
         this.setThreadStatus(stream.threadId, 'streaming')
         if (this.attached(stream)) {

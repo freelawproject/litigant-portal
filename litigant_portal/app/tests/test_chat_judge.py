@@ -1,13 +1,18 @@
 import json
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import DEFAULT, patch
 
 import pytest
 from django.core.cache import cache
 from litellm import Timeout
 
 from litigant_portal.agents.assistant import LitigantAssistant
-from litigant_portal.agents.base import Agent, IdentityPrompt, ToolOutput
+from litigant_portal.agents.base import (
+    Agent,
+    IdentityPrompt,
+    ToolOutput,
+    TurnTimeContext,
+)
 from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import ChatThread, Site, UserIdentity, Variable
 from litigant_portal.app.selectors.chat_engine import (
@@ -17,6 +22,7 @@ from litigant_portal.app.selectors.chat_engine import (
     chat_thread_usage,
 )
 from litigant_portal.app.services.chat_engine import (
+    chat_message_create,
     chat_stream,
     chat_thread_render_items,
 )
@@ -36,7 +42,9 @@ class JudgeTestAgent(Agent):
     def generate_system_prompt(self, *, thread_id) -> str:
         return "Supplied court information."
 
-    def generate_identity_prompt(self, *, thread_id) -> IdentityPrompt:
+    def generate_identity_prompt(
+        self, *, thread_id, time_context: TurnTimeContext | None = None
+    ) -> IdentityPrompt:
         return IdentityPrompt(
             text="Saved name: Alex",
             values={"name": "Alex"},
@@ -515,7 +523,8 @@ def test_failed_write_never_releases_candidate(
         responses.extend([generation("Answer"), review(not rejections)])
     with patch(
         "litigant_portal.app.services.chat_engine.chat_message_create",
-        side_effect=[None] * successful_writes
+        wraps=chat_message_create,
+        side_effect=[DEFAULT] * successful_writes
         + [RuntimeError("database unavailable")],
     ):
         events, _ = run(responses)

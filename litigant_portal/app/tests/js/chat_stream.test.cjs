@@ -89,6 +89,80 @@ function sse(type, fields = {}) {
   )
 }
 
+test('each message sends the current browser timezone', async () => {
+  const sent = []
+  const { app, context } = makeApp(async (_url, options) => {
+    sent.push(options.body.get('client_timezone'))
+    throw new Error('offline')
+  })
+  let timeZone = 'America/New_York'
+  context.Intl = {
+    DateTimeFormat: () => ({ resolvedOptions: () => ({ timeZone }) }),
+  }
+
+  await app.sendMessage('First message', null)
+  timeZone = 'Europe/Paris'
+  await app.sendMessage('Next message', 'thread-id')
+
+  assert.deepEqual(sent, ['America/New_York', 'Europe/Paris'])
+})
+
+test('invalid timezone logs once and keeps attached or detached streams running', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  for (const detached of [false, true]) {
+    const { app, context } = makeApp()
+    const reports = []
+    context.window.lpLogger = (options) => reports.push({ ...options })
+    const stream = newStream(app)
+    if (detached) app.messages = []
+
+    app.handleEvent(stream, {
+      type: 'thread',
+      thread_id: 'thread-id',
+      client_timezone_invalid: true,
+    })
+    assert.equal(stream.terminal, false)
+    assert.equal(stream.controller.signal.aborted, false)
+    assert.equal(stream.messages.length, 0)
+    app.handleEvent(stream, {
+      type: 'content_delta',
+      content: 'Healthy answer',
+    })
+    app.handleEvent(stream, { type: 'done' })
+
+    assert.deepEqual(reports, [
+      { type: 'warning', msg: 'Client timezone unavailable; using UTC' },
+    ])
+    assert.equal(stream.messages.length, 1)
+    assert.equal(stream.messages[0].content, 'Healthy answer')
+    assert.equal(stream.failureRendered, false)
+  }
+})
+
+test('timezone flag is silent unless true and the logger is optional', (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  for (const invalid of [undefined, false, true]) {
+    const { app, context } = makeApp()
+    if (invalid !== true) {
+      context.window.lpLogger = () => assert.fail('unexpected warning')
+    }
+    const stream = newStream(app)
+    app.handleEvent(stream, {
+      type: 'thread',
+      thread_id: 'thread-id',
+      client_timezone_invalid: invalid,
+    })
+    app.handleEvent(stream, {
+      type: 'content_delta',
+      content: 'Healthy answer',
+    })
+    app.handleEvent(stream, { type: 'done' })
+    assert.equal(stream.messages.length, 1)
+    assert.equal(stream.messages[0].content, 'Healthy answer')
+    assert.equal(stream.controller.signal.aborted, false)
+  }
+})
+
 test('judging shows checking only on the attached stream and clears on progress or termination', () => {
   for (const type of [
     'heartbeat',
