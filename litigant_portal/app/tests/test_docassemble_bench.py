@@ -274,56 +274,109 @@ def test_target_bench_reads_the_local_bench_settings():
 @pytest.fixture
 def targets(tmp_path):
     path = tmp_path / "targets.yml"
-    path.write_text("qa:\n  url: https://qa.example/interview/\n")
+    path.write_text(
+        "qa:\n"
+        "  url: https://qa.example/interview/\n"
+        "  secret: k8s/qa/docassemble-env\n"
+        "  region: us-west-2\n"
+        "keyless:\n"
+        "  url: https://keyless.example\n"
+    )
     return path
 
 
-def _named(targets, environ, typed=""):
-    prompts = []
+def _named(targets, name="qa", environ=None, secret=None):
+    reads = []
 
-    def prompt(text):
-        prompts.append(text)
-        return typed
+    def read_secret(secret_id, region):
+        reads.append((secret_id, region))
+        return secret or {}
 
     target = bench._target(
         {"DA_ADMIN_API_KEY": "bench-key"},
-        "qa",
+        name,
         targets_file=targets,
-        environ=environ,
-        prompt=prompt,
+        environ=environ or {},
+        read_secret=read_secret,
     )
-    return target, prompts
+    return target, reads
 
 
-def test_target_takes_an_instances_url_from_the_targets_file(targets):
-    target, prompts = _named(targets, {"DA_API_KEY": "qa-key"})
+def test_target_reads_the_key_from_the_instances_aws_secret(targets):
+    target, reads = _named(targets, secret={"DA_ADMIN_API_KEY": "qa-key"})
 
     assert target == ("https://qa.example/interview", "qa-key")
-    assert prompts == []
+    assert reads == [("k8s/qa/docassemble-env", "us-west-2")]
 
 
-def test_target_asks_for_the_key_when_the_environment_has_none(targets):
-    target, prompts = _named(targets, {}, typed="typed-key")
+def test_target_key_from_the_environment_skips_aws(targets):
+    target, reads = _named(targets, environ={"DA_API_KEY": "override"})
 
-    assert target == ("https://qa.example/interview", "typed-key")
-    assert len(prompts) == 1
-    assert "qa" in prompts[0]
+    assert target == ("https://qa.example/interview", "override")
+    assert reads == []
 
 
-def test_target_without_a_key_stops(targets):
-    with pytest.raises(SystemExit, match="No API key"):
-        _named(targets, {}, typed="")
+def test_target_secret_without_the_admin_key_names_what_it_holds(targets):
+    with pytest.raises(SystemExit) as stopped:
+        _named(targets, secret={"DAHOSTNAME": "qa.example", "OTHER": "x"})
+
+    message = str(stopped.value)
+    assert "DA_ADMIN_API_KEY" in message
+    assert "DAHOSTNAME" in message
+    assert "qa.example" not in message
+
+
+def test_target_with_no_secret_needs_the_key_in_the_environment(targets):
+    with pytest.raises(SystemExit, match="DA_API_KEY"):
+        _named(targets, name="keyless")
 
 
 def test_target_unknown_names_the_known_targets(targets):
-    with pytest.raises(SystemExit, match="qa"):
-        bench._target(
-            {},
-            "nope",
-            targets_file=targets,
-            environ={},
-            prompt=lambda _text: "k",
-        )
+    with pytest.raises(SystemExit, match="bench, keyless, qa"):
+        _named(targets, name="nope")
+
+
+# deploy: _aws_secret
+
+
+class _Ran:
+    def __init__(self, returncode=0, stdout="", stderr=""):
+        self.returncode, self.stdout, self.stderr = returncode, stdout, stderr
+
+
+def test_aws_secret_reads_the_secret_json_with_the_aws_cli():
+    calls = []
+
+    def run(command, **kwargs):
+        calls.append(command)
+        return _Ran(stdout='{"DA_ADMIN_API_KEY": "k"}\n')
+
+    assert bench._aws_secret("k8s/qa/env", "us-west-2", run=run) == {
+        "DA_ADMIN_API_KEY": "k"
+    }
+    assert calls == [
+        [
+            "aws",
+            "secretsmanager",
+            "get-secret-value",
+            "--secret-id",
+            "k8s/qa/env",
+            "--region",
+            "us-west-2",
+            "--query",
+            "SecretString",
+            "--output",
+            "text",
+        ]
+    ]
+
+
+def test_aws_secret_failure_shows_the_cli_error():
+    def run(command, **kwargs):
+        return _Ran(returncode=255, stderr="AccessDeniedException: nope")
+
+    with pytest.raises(SystemExit, match="AccessDeniedException"):
+        bench._aws_secret("k8s/qa/env", "us-west-2", run=run)
 
 
 # deploy: _install and _await_install

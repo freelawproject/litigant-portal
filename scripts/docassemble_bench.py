@@ -34,7 +34,6 @@ The bench and its API key come from the repo's ``.env``: ``DA_ADMIN_API_KEY``
 """
 
 import argparse
-import getpass
 import hashlib
 import json
 import os
@@ -355,20 +354,48 @@ INSTALL_TIMEOUT = 15 * 60
 INSTALL_POLL = 5
 
 
+ADMIN_KEY_NAME = "DA_ADMIN_API_KEY"
+
+
+def _aws_secret(secret_id, region, *, run=subprocess.run):
+    """One AWS Secrets Manager secret's JSON, read with the aws CLI and
+    whatever AWS identity the caller already has (a CI role, an SSO login)."""
+    result = run(
+        [
+            "aws",
+            "secretsmanager",
+            "get-secret-value",
+            "--secret-id",
+            secret_id,
+            "--region",
+            region,
+            "--query",
+            "SecretString",
+            "--output",
+            "text",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        sys.exit(f"Can't read {secret_id}: {result.stderr.strip()}")
+    return json.loads(result.stdout)
+
+
 def _target(
     env,
     name,
     *,
     targets_file=TARGETS,
     environ=os.environ,
-    prompt=getpass.getpass,
+    read_secret=_aws_secret,
 ):
     """(base URL, admin API key) for a docassemble instance.
 
     ``bench`` is the local bench, set up from the repo's .env. Any other name
-    is an instance in docassemble/targets.yml, which holds its URL. Its key is
-    never stored: it comes from DA_API_KEY (how CI would pass a secret) or a
-    hidden prompt, so deploying never touches the local dev settings."""
+    is an instance in docassemble/targets.yml, which holds its URL and the
+    AWS secret its admin key lives in. Nobody handles the key: it's read from
+    that secret at deploy time, or taken from DA_API_KEY when set."""
     if name == "bench":
         base = env.get("DOCASSEMBLE_PUBLIC_URL") or "http://localhost:8100"
         return base.rstrip("/"), _api_key(env)
@@ -376,10 +403,19 @@ def _target(
     if name not in targets:
         known = ", ".join(["bench", *sorted(targets)])
         sys.exit(f"No target {name!r} in {targets_file.name}. Known: {known}")
-    key = environ.get("DA_API_KEY") or prompt(f"{name} admin API key: ")
-    if not key:
-        sys.exit(f"No API key for {name}")
-    return targets[name]["url"].rstrip("/"), key
+    target = targets[name]
+    base = target["url"].rstrip("/")
+    if environ.get("DA_API_KEY"):
+        return base, environ["DA_API_KEY"]
+    if "secret" not in target:
+        sys.exit(f"{name} names no AWS secret; set DA_API_KEY to deploy to it")
+    secret = read_secret(target["secret"], target["region"])
+    if ADMIN_KEY_NAME not in secret:
+        held = ", ".join(sorted(secret)) or "nothing"
+        sys.exit(
+            f"{target['secret']} has no {ADMIN_KEY_NAME}; it holds {held}"
+        )
+    return base, secret[ADMIN_KEY_NAME]
 
 
 def _install(bench, zip_path):
