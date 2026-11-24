@@ -40,6 +40,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -103,15 +104,16 @@ class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
 _NO_REDIRECTS = urllib.request.build_opener(_RefuseRedirects)
 
 
+class BenchUnreachable(SystemExit):
+    """docassemble didn't answer at all. Exits like any other failure, unless
+    a caller expects the outage, as an install's restart does."""
+
+
 class Bench:
     """The docassemble API, authenticated with the admin key."""
 
-    def __init__(self):
-        env = _env()
-        self.base = (
-            env.get("DOCASSEMBLE_PUBLIC_URL") or "http://localhost:8100"
-        ).rstrip("/")
-        self.key = _api_key(env)
+    def __init__(self, target="bench"):
+        self.base, self.key = _target(_env(), target)
         user = self.get_json("/api/user")
         self.user_id = user["id"]
 
@@ -137,7 +139,9 @@ class Bench:
                 )
             return error.code, error.read()
         except urllib.error.URLError as error:
-            sys.exit(f"Can't reach the bench at {self.base}: {error.reason}")
+            raise BenchUnreachable(
+                f"Can't reach docassemble at {self.base}: {error.reason}"
+            ) from error
 
     def get_json(self, path, **query):
         status, body = self._request("GET", path, query=query)
@@ -339,6 +343,87 @@ def _package(folder: Path, version: str, out_dir: Path) -> Path:
                 data = PLAYGROUND_FOLDERS[file.suffix]
                 zf.write(file, f"{package}/data/{data}/{file.name}")
     return path
+
+
+# deploy
+
+
+INSTALL_TIMEOUT = 15 * 60
+INSTALL_POLL = 5
+
+
+def _target(env, name):
+    """(base URL, admin API key) for a docassemble instance. ``bench`` is the
+    local bench; any other name, like ``qa``, reads DA_QA_URL and
+    DA_QA_API_KEY from .env."""
+    if name == "bench":
+        base = env.get("DOCASSEMBLE_PUBLIC_URL") or "http://localhost:8100"
+        return base.rstrip("/"), _api_key(env)
+    prefix = "DA_" + name.upper().replace("-", "_")
+    base, key = env.get(f"{prefix}_URL"), env.get(f"{prefix}_API_KEY")
+    if not (base and key):
+        sys.exit(f"Set {prefix}_URL and {prefix}_API_KEY in .env to reach {name}")
+    return base.rstrip("/"), key
+
+
+def _install(bench, zip_path):
+    """Upload a package zip for docassemble to install; returns its task id."""
+    status, body = bench.post_form(
+        "/api/package", {}, files=[("zip", zip_path)]
+    )
+    if not 200 <= status < 300:
+        sys.exit(f"Install refused (HTTP {status}): {body.decode()[:500]}")
+    return json.loads(body)["task_id"]
+
+
+def _await_install(
+    bench,
+    task_id,
+    *,
+    timeout=INSTALL_TIMEOUT,
+    interval=INSTALL_POLL,
+    sleep=time.sleep,
+):
+    """Poll an install until docassemble reports it done, and return its log.
+
+    docassemble restarts itself after installing, so the server going away or
+    the ingress answering 5xx means keep waiting, not failure."""
+    for _ in range(max(1, timeout // interval)):
+        try:
+            status, body = bench._request(
+                "GET",
+                "/api/package_update_status",
+                query={"task_id": task_id},
+            )
+        except BenchUnreachable:
+            status, body = None, b""
+        if status == 200:
+            result = json.loads(body)
+            if result["status"] == "completed":
+                if result.get("ok"):
+                    return result.get("log", "")
+                sys.exit(f"Install failed: {result.get('error_message')}")
+            if result["status"] == "unknown":
+                sys.exit(
+                    "docassemble has no record of this install (status "
+                    "unknown); check its Package Management page"
+                )
+        elif status is not None and status < 500:
+            sys.exit(f"Install status: HTTP {status}: {body.decode()[:500]}")
+        sleep(interval)
+    sys.exit(f"Gave up after {timeout}s: docassemble is still installing")
+
+
+def deploy(args):
+    folder = _folder(args.folder)
+    bench = Bench(args.target)
+    version = time.strftime("1.0.%Y%m%d%H%M%S", time.gmtime())
+    zip_path = _package(folder, version, OUTPUT / "packages")
+    print(f"== docassemble.{_project(folder)} {version} -> {bench.base}")
+    task_id = _install(bench, zip_path)
+    print("   installing; docassemble restarts itself when it's done")
+    print(_await_install(bench, task_id))
+    print(f"   installed docassemble.{_project(folder)} {version}")
 
 
 # fill
@@ -612,6 +697,21 @@ def main():
         "personas", nargs="*", help="persona names (default: all)"
     )
     fill_parser.set_defaults(run=fill)
+
+    deploy_parser = commands.add_parser(
+        "deploy", help="Install an interview folder as a package."
+    )
+    deploy_parser.add_argument(
+        "folder", help="interview folder under docassemble/, like fc-eviction"
+    )
+    deploy_parser.add_argument(
+        "-t",
+        "--target",
+        default="bench",
+        help="instance to install on: bench (default), or a name like qa "
+        "with DA_QA_URL and DA_QA_API_KEY in .env",
+    )
+    deploy_parser.set_defaults(run=deploy)
 
     args = parser.parse_args()
     args.run(args)

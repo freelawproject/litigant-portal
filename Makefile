@@ -160,6 +160,9 @@ bench-sync: ## Upload docassemble/ interviews to the bench Playground (ARGS="-n"
 bench-fill: ## Fill a bench interview with its test personas (FOLDER=fc-eviction [PERSONA=emily])
 	uv run python scripts/docassemble_bench.py fill $(FOLDER) $(PERSONA)
 
+bench-deploy: ## Install an interview folder as a package (FOLDER=fc-eviction [TARGET=qa], default the bench)
+	uv run python scripts/docassemble_bench.py deploy $(FOLDER) --target $(or $(TARGET),bench)
+
 
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)
 	uv run python scripts/file_issue.py $(FILE)

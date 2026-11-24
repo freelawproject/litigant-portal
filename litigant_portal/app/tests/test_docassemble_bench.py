@@ -258,3 +258,129 @@ def test_package_ships_the_data_folder_as_package_data(eviction, tmp_path):
 
     manifest = files["docassemble-fceviction/MANIFEST.in"].splitlines()
     assert "graft docassemble/fceviction/data" in manifest
+
+
+# deploy: _target
+
+
+def test_target_bench_reads_the_local_bench_settings():
+    env = {"DOCASSEMBLE_PUBLIC_URL": "http://bench/", "DA_ADMIN_API_KEY": "k"}
+
+    assert bench._target(env, "bench") == ("http://bench", "k")
+
+
+def test_target_names_an_instance_by_its_own_url_and_key():
+    env = {
+        "DA_QA_URL": "https://qa.example/interview/",
+        "DA_QA_API_KEY": "qa-key",
+        "DA_ADMIN_API_KEY": "bench-key",
+    }
+
+    assert bench._target(env, "qa") == ("https://qa.example/interview", "qa-key")
+
+
+def test_target_missing_settings_names_both_variables():
+    with pytest.raises(SystemExit) as stopped:
+        bench._target({"DA_QA_URL": "https://qa.example"}, "qa")
+
+    assert "DA_QA_URL" in str(stopped.value)
+    assert "DA_QA_API_KEY" in str(stopped.value)
+
+
+# deploy: _install and _await_install
+
+
+class _FakeServer:
+    """Answers requests in order; the last answer repeats."""
+
+    def __init__(self, *answers):
+        self.answers = list(answers)
+        self.requests = []
+
+    def _request(self, method, path, *, query=None, data=None, headers=None):
+        self.requests.append((method, path, query))
+        answer = self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
+        if isinstance(answer, BaseException):
+            raise answer
+        status, payload = answer
+        return status, json.dumps(payload).encode()
+
+    def post_form(self, path, fields, files=()):
+        self.posted = (path, fields, list(files))
+        return self._request("POST", path)
+
+
+def test_install_uploads_the_zip_and_returns_the_task(tmp_path):
+    zip_path = tmp_path / "docassemble-fceviction.zip"
+    server = _FakeServer((200, {"task_id": "abc"}))
+
+    assert bench._install(server, zip_path) == "abc"
+    assert server.posted == ("/api/package", {}, [("zip", zip_path)])
+
+
+def test_install_refused_shows_the_servers_reason(tmp_path):
+    server = _FakeServer((403, "You do not have permission"))
+
+    with pytest.raises(SystemExit, match="403.*You do not have permission"):
+        bench._install(server, tmp_path / "p.zip")
+
+
+def _wait(server, timeout=60):
+    return bench._await_install(
+        server, "abc", timeout=timeout, interval=1, sleep=lambda _s: None
+    )
+
+
+def test_await_install_returns_the_log_once_the_install_succeeds():
+    server = _FakeServer(
+        (200, {"status": "working"}),
+        (200, {"status": "completed", "ok": True, "log": "installed"}),
+    )
+
+    assert _wait(server) == "installed"
+    assert server.requests[-1] == (
+        "GET",
+        "/api/package_update_status",
+        {"task_id": "abc"},
+    )
+
+
+def test_await_install_waits_through_the_server_restart():
+    server = _FakeServer(
+        bench.BenchUnreachable("down"),
+        (502, "Bad Gateway"),
+        (200, {"status": "completed", "ok": True, "log": "installed"}),
+    )
+
+    assert _wait(server) == "installed"
+
+
+def test_await_install_fails_with_docassembles_error():
+    server = _FakeServer(
+        (200, {"status": "completed", "ok": False, "error_message": "bad yaml"})
+    )
+
+    with pytest.raises(SystemExit, match="bad yaml"):
+        _wait(server)
+
+
+def test_await_install_fails_when_the_task_is_unknown():
+    server = _FakeServer((200, {"status": "unknown"}))
+
+    with pytest.raises(SystemExit, match="unknown"):
+        _wait(server)
+
+
+def test_await_install_gives_up_after_the_timeout():
+    server = _FakeServer((200, {"status": "working"}))
+
+    with pytest.raises(SystemExit, match="still installing"):
+        _wait(server, timeout=3)
+    assert len(server.requests) == 3
+
+
+def test_await_install_fails_on_a_refused_status_check():
+    server = _FakeServer((403, "Access denied."))
+
+    with pytest.raises(SystemExit, match="403.*Access denied"):
+        _wait(server)
