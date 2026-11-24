@@ -30,6 +30,13 @@ class AccountAdapter(DefaultAccountAdapter):
         }
         super().send_mail(template_prefix, email, context)
 
+    def send_password_reset_mail(self, user, email, context):
+        # An account an admin added has no password until the tester sets
+        # one, so its reset link is the invite.
+        if not user.has_usable_password():
+            return self.send_mail("account/email/invite", email, context)
+        return super().send_password_reset_mail(user, email, context)
+
     def post_login(self, request, user, **kwargs):
         """Send a login or signup that has anonymous work waiting to the
         answers page first, with where it was going as ``next``. Runs

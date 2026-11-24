@@ -493,6 +493,8 @@ document.addEventListener('alpine:init', () => {
         return
       }
       this.closeUserDialogs()
+      // The account exists even when its invite email failed.
+      this.usersActionError = data.invite_error || ''
       await this.loadUsers()
     },
 

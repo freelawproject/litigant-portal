@@ -1,5 +1,8 @@
 import json
+import logging
+import smtplib
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -44,6 +47,7 @@ from litigant_portal.app.services.user import (
     user_active_set,
     user_create,
     user_delete,
+    user_password_link_send,
     user_password_set,
     user_role_set,
 )
@@ -55,6 +59,8 @@ from litigant_portal.app.views.utils import (
     role_parse,
     role_value,
 )
+
+logger = logging.getLogger(__name__)
 
 USERS_PER_PAGE = 20
 
@@ -255,6 +261,7 @@ def _user_payload(user: User, *, viewer: User, viewer_tier: Tier) -> dict:
         "name": user.get_full_name(),
         "joined": user.date_joined.strftime("%Y-%m-%d"),
         "is_active": user.is_active,
+        "invited": not user.has_usable_password(),
         "role": role_value(tier),
         "role_label": str(ROLE_LABELS[tier]),
         "can_manage": can_manage,
@@ -352,8 +359,9 @@ def _managed_user_payload(user: User, *, viewer: User) -> dict:
 @ratelimit(key="ip", rate="30/m", method="POST", block=True)
 @app_user_admin_required
 def user_create_view(request: HttpRequest) -> JsonResponse:
-    """Add an account with the password an admin sets, in a role below the
-    viewer's (an app user when none is given)."""
+    """Add an account in a role below the viewer's (an app user when none
+    is given). With email on, the account gets an invite to set its own
+    password; without, the admin sets it."""
     # Lowercased the way allauth stores signup addresses.
     email = (request.POST.get("email") or "").strip().lower()
     try:
@@ -375,6 +383,18 @@ def user_create_view(request: HttpRequest) -> JsonResponse:
     )
     if error_response:
         return error_response
+    if settings.EMAIL_ENABLED:
+        user = user_create(email=email, role=role)
+        payload = _managed_user_payload(user, viewer=request.user)
+        try:
+            user_password_link_send(user=user, request=request)
+        except (smtplib.SMTPException, OSError):
+            logger.exception("Could not send the invite to user %s", user.pk)
+            payload["invite_error"] = _(
+                "Account added, but the invite was not sent. "
+                "Use Send password link."
+            )
+        return JsonResponse(payload)
     password, error = _new_password(request, user=User(email=email))
     if error:
         return JsonResponse({"error": error}, status=400)

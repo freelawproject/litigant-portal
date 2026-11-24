@@ -7,11 +7,14 @@ the Users tab alone. The guards are the security boundary, so the refusals
 matter more than the happy paths.
 """
 
+import re
+import smtplib
 from unittest import mock
 
 import pytest
 from allauth.account.models import EmailAddress
 from django.contrib.auth import authenticate, get_user_model
+from django.core import mail
 from django.test import TestCase, override_settings
 
 from litigant_portal.app.models import (
@@ -290,7 +293,7 @@ class UserListTests(TierSetup):
 
 
 @pytest.mark.postgres
-@override_settings(DEPLOYMENT_ENV="prod", PILOT=True)
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=True, EMAIL_ENABLED=False)
 class UserCreateTests(TierSetup):
     def create(self, email="new@example.com", **password):
         data = {"email": email, **new_password(PASSWORD)}
@@ -607,3 +610,128 @@ class TierRefusalTests(TierSetup):
         for path in paths:
             with self.subTest(path=path):
                 self.assertEqual(client.post(path).status_code, 403)
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_allauth_reset_sends_to_an_account_with_no_password(client):
+    # Invites are reset emails: this is the allauth behavior they rest on.
+    user = User.objects.create_user(
+        username="invited@example.com", email="invited@example.com"
+    )
+    assert not user.has_usable_password()
+
+    client.post("/accounts/password/reset/", {"email": "invited@example.com"})
+
+    [message] = mail.outbox
+    assert message.to == ["invited@example.com"]
+    assert "/accounts/password/reset/key/" in message.body
+
+
+def _link(message) -> str:
+    return re.search(r"https?://\S+", message.body).group()
+
+
+@pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=True, EMAIL_ENABLED=True)
+class InviteTests(TierSetup):
+    def create(self, email="new@example.com", **extra):
+        return self.client.post(
+            "/api/admin/users/create/", {"email": email, **extra}
+        )
+
+    def test_new_account_has_no_password_and_gets_an_invite(self):
+        response = self.create()
+
+        self.assertEqual(response.status_code, 200)
+        user = User.objects.get(email="new@example.com")
+        self.assertFalse(user.has_usable_password())
+        [message] = mail.outbox
+        self.assertEqual(message.to, ["new@example.com"])
+        self.assertTrue(message.subject.startswith("Set up your account"))
+        self.assertIn("7 days", message.body)
+        self.assertNotIn("\u2014", message.body)
+
+    def test_invite_link_sets_a_password_the_tester_signs_in_with(self):
+        self.create()
+        page = self.client_class().get(_link(mail.outbox[0]), follow=True)
+        self.assertFalse(page.context.get("token_fail", False))
+
+        tester = self.client_class()
+        page = tester.get(_link(mail.outbox[0]), follow=True)
+        tester.post(
+            page.redirect_chain[-1][0],
+            {"password1": NEW_PASSWORD, "password2": NEW_PASSWORD},
+        )
+
+        self.assertTrue(
+            authenticate(email="new@example.com", password=NEW_PASSWORD)
+        )
+
+    def test_a_password_sent_anyway_is_ignored(self):
+        self.create(**new_password())
+
+        user = User.objects.get(email="new@example.com")
+        self.assertFalse(user.has_usable_password())
+
+    def test_failed_send_keeps_the_account_and_says_so(self):
+        with mock.patch(
+            "django.core.mail.backends.locmem.EmailBackend.send_messages",
+            side_effect=smtplib.SMTPException("down"),
+        ):
+            response = self.create()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(User.objects.filter(email="new@example.com").exists())
+        self.assertIn("not sent", response.json()["invite_error"])
+
+    def test_forgot_password_on_an_invited_account_sends_the_invite(self):
+        self.create()
+        mail.outbox.clear()
+
+        self.client_class().post(
+            "/accounts/password/reset/", {"email": "new@example.com"}
+        )
+
+        [message] = mail.outbox
+        self.assertTrue(message.subject.startswith("Set up your account"))
+
+    def test_rows_mark_invited_accounts(self):
+        self.create()
+
+        rows = self.rows(self.court_admin)
+        self.assertTrue(rows["new@example.com"]["invited"])
+        self.assertFalse(rows["jane@example.com"]["invited"])
+
+    def test_rows_render_the_invited_badge(self):
+        html = self.client.get("/admin/").content.decode()
+
+        self.assertRegex(
+            html,
+            r'<span class="[^"]*rounded-full[^"]*bg-yellow-100[^"]*"\s+'
+            r'x-show="user.invited">\s*Invited\s*</span>',
+        )
+
+    def test_add_dialog_asks_for_no_password(self):
+        html = self.client.get("/admin/").content.decode()
+
+        self.assertNotIn('id="user-create-password"', html)
+        self.assertIn("We will email them a link to set their password", html)
+
+
+@pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=True, EMAIL_ENABLED=False)
+class NoEmailCreateTests(TierSetup):
+    def test_add_dialog_asks_for_a_password(self):
+        html = self.client.get("/admin/").content.decode()
+
+        self.assertIn('id="user-create-password"', html)
+        self.assertNotIn("We will email them", html)
+
+    def test_new_account_gets_no_email(self):
+        self.client.post(
+            "/api/admin/users/create/",
+            {"email": "new@example.com", **new_password()},
+        )
+
+        self.assertEqual(mail.outbox, [])
