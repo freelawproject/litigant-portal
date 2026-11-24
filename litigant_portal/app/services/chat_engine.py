@@ -595,13 +595,13 @@ def chat_stream(
     history: list[dict[str, Any]] = [dict(m.data) for m in messages]
 
     def event_stream() -> Iterator[str]:
-        yield _sse(
-            {
-                "type": "thread",
-                "thread_id": str(thread.id),
-                "client_timezone_invalid": client_timezone_invalid,
-            }
-        )
+        thread_event: dict[str, Any] = {
+            "type": "thread",
+            "thread_id": str(thread.id),
+        }
+        if client_timezone_invalid:
+            thread_event["client_timezone_invalid"] = True
+        yield _sse(thread_event)
         thread.refresh_from_db(fields=["state"])
         yield _sse({"type": "state", "state": thread.state})
 

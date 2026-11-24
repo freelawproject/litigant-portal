@@ -469,14 +469,12 @@ class ChatStreamFallbackTests(SimpleTestCase):
                     client_timezone_invalid=timezone_invalid,
                 )
 
-                self.assertEqual(
-                    events[0],
-                    {
-                        "type": "thread",
-                        "thread_id": str(self.thread.id),
-                        "client_timezone_invalid": timezone_invalid,
-                    },
-                )
+                self.assertEqual(events[0]["type"], "thread")
+                self.assertEqual(events[0]["thread_id"], str(self.thread.id))
+                if timezone_invalid:
+                    self.assertIs(events[0]["client_timezone_invalid"], True)
+                else:
+                    self.assertNotIn("client_timezone_invalid", events[0])
                 for event in events[1:]:
                     self.assertNotIn("client_timezone_invalid", event)
                 self.assertNotIn("error", [event["type"] for event in events])
