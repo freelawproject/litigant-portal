@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Audit the packages the image installs for known vulnerabilities.
+# Usage: audit_deps.sh [project-dir]
 set -euo pipefail
+
+project="${1:-.}"
 
 # Reviewed advisories. See docs/wiki/SECURITY.md before adding one.
 IGNORED=(
@@ -16,7 +19,7 @@ reqs="$(mktemp)"
 trap 'rm -f "$reqs"' EXIT
 
 # Same extras as docker/django/Dockerfile.
-uv export --frozen --no-dev --extra test --no-emit-project \
+uv export --project "$project" --frozen --no-dev --extra test --no-emit-project \
   --format requirements-txt -q -o "$reqs"
 uvx pip-audit==2.10.1 -r "$reqs" --require-hashes --disable-pip \
   "${args[@]+"${args[@]}"}"
