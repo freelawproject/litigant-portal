@@ -12,6 +12,7 @@ from litigant_portal.app.views import (
 )
 from litigant_portal.app.views import (
     assistant,
+    csp,
     design_system,
     django_admin,
     health,
@@ -172,6 +173,7 @@ admin_api_patterns = [
 
 urlpatterns = [
     path("api/logs/", logging_views.browser_log, name="browser_log"),
+    path("api/csp-report/", csp.csp_report, name="csp_report"),
     # App Routes
     *i18n_patterns(
         path(

@@ -63,24 +63,34 @@ CSP prevents XSS attacks by controlling which resources can load.
 
 ### Stack
 
-| Component           | Purpose                          |
-| ------------------- | -------------------------------- |
-| `django-csp`        | Sends CSP headers via middleware |
-| Alpine.js CSP build | No `unsafe-eval` required        |
-| Pre-commit check    | Blocks inline event handlers     |
+| Component                         | Purpose                                |
+| --------------------------------- | -------------------------------------- |
+| `ContentSecurityPolicyMiddleware` | Sends the CSP header (Django built-in) |
+| `/api/csp-report/`                | Logs violation reports from browsers   |
+| Alpine.js CSP build               | No `unsafe-eval` required              |
+| Pre-commit check                  | Blocks inline event handlers           |
 
 ### Configuration
 
 Settings in `litigant_portal/settings.py`:
 
 ```python
-CSP_DEFAULT_SRC = ("'self'",)
-CSP_SCRIPT_SRC = ("'self'", *ASSET_ORIGINS)
-CSP_STYLE_SRC = ("'self'", *ASSET_ORIGINS)
-# ... see settings.py for full config
+_csp_policy = {
+    "default-src": [CSP.SELF],
+    "script-src": [CSP.SELF, *ASSET_ORIGINS],
+    "style-src": [CSP.SELF, *ASSET_ORIGINS],
+    # ... see settings.py for full config
+    "report-uri": ["/api/csp-report/"],
+}
+if CSP_ENFORCED:
+    SECURE_CSP = _csp_policy
+else:
+    SECURE_CSP_REPORT_ONLY = _csp_policy
 ```
 
-`ASSET_ORIGINS` is the S3/CDN origin the public storage serves from in production (empty in local dev, where everything is same-origin). No third-party CDNs — all frontend assets are local files or served from our own storage.
+The policy is report-only by default: the browser sends `Content-Security-Policy-Report-Only`, logs violations, and blocks nothing. Set `CSP_ENFORCED=true` in an instance's environment to send the enforcing `Content-Security-Policy` header instead.
+
+`ASSET_ORIGINS` is the S3/CDN origin the public storage serves from when `USE_S3` is on (empty with local storage, where everything is same-origin). No third-party CDNs — all frontend assets are local files or served from our own storage.
 
 ### Testing
 
@@ -92,8 +102,12 @@ CSP_STYLE_SRC = ("'self'", *ASSET_ORIGINS)
 **Browser (manual):**
 
 1. Open DevTools → Console
-2. CSP violations appear as errors
-3. Check `Content-Security-Policy` header in Network tab
+2. CSP violations appear as errors (as warnings while report-only)
+3. Check the `Content-Security-Policy-Report-Only` header (or `Content-Security-Policy` when enforced) in the Network tab
+
+**Violation reports (server logs):**
+
+Browsers POST each violation to `/api/csp-report/`, which writes one `CSP violation` line through `lp_logger` to stdout. It keeps only what's needed to fix the policy: the directive, the blocked origin (or `inline`, `eval`, `data`, `blob`), the page path, and the source file and line. Query strings, referrers, and code samples are dropped. Read them with `docker compose logs django` locally, or the pod logs on an instance.
 
 ### What's Blocked
 
