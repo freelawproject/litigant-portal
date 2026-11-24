@@ -44,6 +44,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import zipfile
 from pathlib import Path
 
 import yaml
@@ -219,12 +220,14 @@ def _selected(paths):
             sys.exit(f"No interview folder or file {str(target)!r}")
         folder = target if target.is_dir() else target.parent
         files = sorted(folder.iterdir()) if target.is_dir() else [target]
-        selected.setdefault(folder, []).extend(
-            f
-            for f in files
-            if f.suffix in PLAYGROUND_FOLDERS and f.name != PERSONAS_FILE
-        )
+        selected.setdefault(folder, []).extend(f for f in files if _ships(f))
     return selected
+
+
+def _ships(file: Path) -> bool:
+    """Whether a file in an interview folder goes to docassemble: the
+    interviews, PDFs and branding, not the test personas or the README."""
+    return file.suffix in PLAYGROUND_FOLDERS and file.name != PERSONAS_FILE
 
 
 def _remote_names(bench, project, folder):
@@ -289,6 +292,53 @@ def sync(args):
     if not args.dry_run:
         STATE.parent.mkdir(parents=True, exist_ok=True)
         STATE.write_text(json.dumps(state, indent=2))
+
+
+# package
+
+
+def _pyproject(name: str, version: str) -> str:
+    # The build settings docassemble's own Package button writes
+    # (make_package_dir in docassemble/webapp/files/savedfile.py).
+    return (
+        "[build-system]\n"
+        'requires = ["setuptools>=80.9.0"]\n'
+        'build-backend = "setuptools.build_meta"\n'
+        "\n"
+        "[project]\n"
+        f'name = "{name}"\n'
+        f'version = "{version}"\n'
+        "\n"
+        "[tool.setuptools.packages.find]\n"
+        'where = ["."]\n'
+    )
+
+
+def _package(folder: Path, version: str, out_dir: Path) -> Path:
+    """An installable zip of one interview folder, in the layout docassemble's
+    Package button produces: interviews under data/questions, PDFs under
+    data/templates, CSS and SVG under data/static. ``docassemble`` is a
+    namespace package shared with the server, so it gets no __init__.py;
+    MANIFEST.in's graft is what carries the data files into the install."""
+    project = _project(folder)
+    root = f"docassemble-{project}"
+    package = f"{root}/docassemble/{project}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{root}.zip"
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            f"{root}/pyproject.toml",
+            _pyproject(f"docassemble.{project}", version),
+        )
+        zf.writestr(
+            f"{root}/MANIFEST.in", f"graft docassemble/{project}/data\n"
+        )
+        zf.writestr(f"{package}/__init__.py", f"__version__ = {version!r}\n")
+        for file in sorted(folder.iterdir()):
+            if _ships(file):
+                data = PLAYGROUND_FOLDERS[file.suffix]
+                zf.write(file, f"{package}/data/{data}/{file.name}")
+    return path
 
 
 # fill

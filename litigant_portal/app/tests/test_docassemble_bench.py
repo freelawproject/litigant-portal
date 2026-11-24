@@ -5,6 +5,8 @@ ships without scripts/, so the module is skipped there.
 """
 
 import json
+import tomllib
+import zipfile
 
 import pytest
 
@@ -186,3 +188,73 @@ def test_render_clears_old_images_even_without_pdftoppm(tmp_path, monkeypatch):
 
     assert bench._render(pdf) == []
     assert not old.exists()
+
+
+# package
+
+
+@pytest.fixture
+def eviction(tmp_path):
+    folder = tmp_path / "fc-eviction"
+    folder.mkdir()
+    for name in (
+        "answer.yml",
+        "answer.pdf",
+        "lp-branding.css",
+        "lp-logo.svg",
+        "personas.yml",
+        "README.md",
+    ):
+        (folder / name).write_text(name)
+    return folder
+
+
+def _built(eviction, tmp_path, version="1.0.20261124"):
+    path = bench._package(eviction, version, tmp_path / "dist")
+    archive = zipfile.ZipFile(path)
+    return {
+        name: archive.read(name).decode()
+        for name in archive.namelist()
+        if not name.endswith("/")
+    }
+
+
+def test_package_routes_each_file_into_its_data_folder(eviction, tmp_path):
+    root = "docassemble-fceviction/"
+    data = root + "docassemble/fceviction/data/"
+
+    assert set(_built(eviction, tmp_path)) == {
+        root + "pyproject.toml",
+        root + "MANIFEST.in",
+        root + "docassemble/fceviction/__init__.py",
+        data + "questions/answer.yml",
+        data + "templates/answer.pdf",
+        data + "static/lp-branding.css",
+        data + "static/lp-logo.svg",
+    }
+
+
+def test_package_carries_the_file_contents(eviction, tmp_path):
+    files = _built(eviction, tmp_path)
+
+    assert (
+        files["docassemble-fceviction/docassemble/fceviction/data/questions/answer.yml"]
+        == "answer.yml"
+    )
+
+
+def test_package_is_named_and_versioned_for_docassemble(eviction, tmp_path):
+    files = _built(eviction, tmp_path, version="1.0.42")
+
+    project = tomllib.loads(files["docassemble-fceviction/pyproject.toml"])
+    init = files["docassemble-fceviction/docassemble/fceviction/__init__.py"]
+    assert project["project"]["name"] == "docassemble.fceviction"
+    assert project["project"]["version"] == "1.0.42"
+    assert init == "__version__ = '1.0.42'\n"
+
+
+def test_package_ships_the_data_folder_as_package_data(eviction, tmp_path):
+    files = _built(eviction, tmp_path)
+
+    manifest = files["docassemble-fceviction/MANIFEST.in"].splitlines()
+    assert "graft docassemble/fceviction/data" in manifest
