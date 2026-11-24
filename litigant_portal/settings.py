@@ -367,9 +367,13 @@ else:
     _mailer = {"BACKEND": "django.core.mail.backends.dummy.EmailBackend"}
 MAILERS = {"default": _mailer}
 EMAIL_ENABLED = DEBUG or bool(_email_host)
-DEFAULT_FROM_EMAIL = (
-    os.environ.get("DEFAULT_FROM_EMAIL", "").strip() or "webmaster@localhost"
-)
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
+if not DEFAULT_FROM_EMAIL:
+    if _email_host and not DEBUG:
+        raise ImproperlyConfigured(
+            "DEFAULT_FROM_EMAIL must be set when EMAIL_HOST is set"
+        )
+    DEFAULT_FROM_EMAIL = "webmaster@localhost"
 
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/

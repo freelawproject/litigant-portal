@@ -97,6 +97,7 @@ SMTP_ENV = {
     "EMAIL_HOST": "email-smtp.us-east-1.amazonaws.com",
     "EMAIL_HOST_USER": "smtp-user",
     "EMAIL_HOST_PASSWORD": "smtp-pass",
+    "DEFAULT_FROM_EMAIL": "Portal <no-reply@x.org>",
 }
 
 
@@ -159,6 +160,29 @@ def test_from_address_reads_environment():
     config = _email_config({"DEFAULT_FROM_EMAIL": "Portal <no-reply@x.org>"})
 
     assert config["DEFAULT_FROM_EMAIL"] == "Portal <no-reply@x.org>"
+
+
+@pytest.mark.parametrize(
+    "sender", [None, "", "  "], ids=["unset", "empty", "blank"]
+)
+def test_host_without_from_address_raises_when_debug_off(sender):
+    environ = {**SMTP_ENV, "DEFAULT_FROM_EMAIL": sender}
+    if sender is None:
+        del environ["DEFAULT_FROM_EMAIL"]
+
+    with pytest.raises(ImproperlyConfigured, match="DEFAULT_FROM_EMAIL"):
+        _email_config(environ)
+
+
+@pytest.mark.parametrize(
+    "environ",
+    [{}, {"DEBUG": "true", "EMAIL_HOST": "smtp.x.org"}],
+    ids=["no-host", "debug"],
+)
+def test_from_address_is_optional_without_smtp(environ):
+    config = _email_config(environ)
+
+    assert config["DEFAULT_FROM_EMAIL"] == "webmaster@localhost"
 
 
 def test_email_environment_does_not_leak_into_deprecated_settings():
