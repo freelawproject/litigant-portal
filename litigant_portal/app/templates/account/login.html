@@ -21,6 +21,11 @@
     {# Remember me #}
     {% trans "Remember me" as remember_label %}
     <c-atoms.checkbox name="remember" id="id_remember" checked label="{{ remember_label }}" />
+    {% if email_enabled %}
+      <p class="text-sm">
+        <c-atoms.link href="{% url 'account_reset_password' %}" variant="primary">{% trans "Forgot your password?" %}</c-atoms.link>
+      </p>
+    {% endif %}
     {# Submit #}
     <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
     {% trans "Sign in" %}
