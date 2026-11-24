@@ -474,7 +474,8 @@ def deploy(args):
     print(f"== docassemble.{_project(folder)} {version} -> {bench.base}")
     task_id = _install(bench, zip_path)
     print("   installing; docassemble restarts itself when it's done")
-    print(_await_install(bench, task_id))
+    # Success needs no log; a failure exits with docassemble's own message.
+    _await_install(bench, task_id)
     print(f"   installed docassemble.{_project(folder)} {version}")
 
 
