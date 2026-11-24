@@ -90,7 +90,7 @@ else:
 
 The policy is report-only by default: the browser sends `Content-Security-Policy-Report-Only`, logs violations, and blocks nothing. Set `CSP_ENFORCED=true` in an instance's environment to send the enforcing `Content-Security-Policy` header instead.
 
-`ASSET_ORIGINS` is the S3/CDN origin the public storage serves from in production (empty in local dev, where everything is same-origin). No third-party CDNs — all frontend assets are local files or served from our own storage.
+`ASSET_ORIGINS` is the S3/CDN origin the public storage serves from when `USE_S3` is on (empty with local storage, where everything is same-origin). No third-party CDNs — all frontend assets are local files or served from our own storage.
 
 ### Testing
 

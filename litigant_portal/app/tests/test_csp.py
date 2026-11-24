@@ -45,8 +45,13 @@ def test_csp_enforced_moves_the_policy_to_the_enforcing_setting():
     assert "SECURE_CSP_REPORT_ONLY" not in config
 
 
-def test_policy_allows_the_s3_origins_when_debug_is_off():
-    policy = _settings({"DEBUG": "false"})["SECURE_CSP_REPORT_ONLY"]
+@pytest.mark.parametrize(
+    "environ",
+    [{"DEBUG": "true", "USE_S3": "true"}, {"DEBUG": "false"}],
+    ids=["debug-on-with-s3", "debug-off-default"],
+)
+def test_policy_allows_the_s3_origins_when_storage_is_s3(environ):
+    policy = _settings(environ)["SECURE_CSP_REPORT_ONLY"]
 
     assert PUBLIC_BUCKET in policy["script-src"]
     assert PUBLIC_BUCKET in policy["img-src"]
@@ -54,8 +59,13 @@ def test_policy_allows_the_s3_origins_when_debug_is_off():
     assert PRIVATE_BUCKET not in policy["script-src"]
 
 
-def test_policy_is_self_only_when_debug_is_on():
-    policy = _settings({"DEBUG": "true"})["SECURE_CSP_REPORT_ONLY"]
+@pytest.mark.parametrize(
+    "environ",
+    [{"DEBUG": "false", "USE_S3": "false"}, {"DEBUG": "true"}],
+    ids=["debug-off-without-s3", "debug-on-default"],
+)
+def test_policy_is_self_only_when_storage_is_local(environ):
+    policy = _settings(environ)["SECURE_CSP_REPORT_ONLY"]
 
     assert policy["script-src"] == [CSP.SELF]
     assert policy["img-src"] == [CSP.SELF, "data:", "blob:"]

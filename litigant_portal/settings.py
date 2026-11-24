@@ -375,16 +375,16 @@ def s3_origins(bucket_name: str) -> tuple[str, ...]:
 if AWS_S3_PUBLIC_CUSTOM_DOMAIN:
     asset_host = AWS_S3_PUBLIC_CUSTOM_DOMAIN.split("/", 1)[0]
     ASSET_ORIGINS = (f"{S3_CONNECTION['url_protocol']}//{asset_host}",)
-elif not DEBUG:
+elif USE_S3:
     ASSET_ORIGINS = s3_origins(AWS_STORAGE_PUBLIC_BUCKET_NAME)
 else:
     ASSET_ORIGINS = ()
 
 # Signed private-media URLs always point at the S3 endpoint (no CDN).
-if DEBUG:
-    PRIVATE_MEDIA_ORIGINS = ()
-else:
+if USE_S3:
     PRIVATE_MEDIA_ORIGINS = s3_origins(AWS_STORAGE_PRIVATE_BUCKET_NAME)
+else:
+    PRIVATE_MEDIA_ORIGINS = ()
 
 # Report-only until CSP_ENFORCED=true.
 CSP_ENFORCED = os.environ.get("CSP_ENFORCED", "false").lower() == "true"
