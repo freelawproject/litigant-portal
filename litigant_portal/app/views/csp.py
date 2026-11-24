@@ -1,4 +1,5 @@
 import json
+import re
 from urllib.parse import urlsplit
 
 from django.http import HttpRequest, HttpResponse
@@ -10,6 +11,7 @@ from litigant_portal.lp_logger import EVENTS, lp_logger
 
 MAX_REPORT_BYTES = 16 * 1024
 MAX_FIELD_LENGTH = 256
+_KEYWORD = re.compile(r"[a-z-]+")
 
 
 def _text(report: dict, key: str) -> str:
@@ -22,7 +24,8 @@ def _blocked(value: str) -> str:
     parts = urlsplit(value)
     if parts.netloc:
         return f"{parts.scheme}://{parts.netloc}"
-    return value.split(":", 1)[0]
+    kind = value.split(":", 1)[0]
+    return kind if _KEYWORD.fullmatch(kind) else ""
 
 
 def _without_query(value: str) -> str:
@@ -43,7 +46,7 @@ def csp_report(request: HttpRequest) -> HttpResponse:
         return HttpResponse(status=413)
     try:
         report = json.loads(body)["csp-report"]
-    except (KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError, RecursionError):
         return HttpResponse(status=400)
     if not isinstance(report, dict):
         return HttpResponse(status=400)

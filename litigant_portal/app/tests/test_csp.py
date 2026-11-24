@@ -151,8 +151,9 @@ def test_report_logs_only_the_fields_needed_to_fix_the_policy(
         ("eval", "eval"),
         ("data:image/png;base64,AAAA", "data"),
         ("blob:https://litigantportal.com/1234", "blob"),
+        ("wasm-eval", "wasm-eval"),
     ],
-    ids=["inline", "eval", "data-url", "blob-url"],
+    ids=["inline", "eval", "data-url", "blob-url", "wasm-eval"],
 )
 def test_report_keeps_only_the_kind_of_a_non_network_blocked_uri(
     client, reporter, blocked_uri, expected
@@ -163,10 +164,27 @@ def test_report_keeps_only_the_kind_of_a_non_network_blocked_uri(
     assert reporter.call_args.kwargs["context"]["blocked"] == expected
 
 
+def test_report_drops_a_blocked_uri_that_is_not_a_url_or_keyword(
+    client, reporter
+):
+    report = {
+        "effective-directive": "script-src",
+        "blocked-uri": "/asset.js?token=secret",
+    }
+    _report(client, json.dumps({"csp-report": report}))
+
+    assert "blocked" not in reporter.call_args.kwargs["context"]
+
+
 @pytest.mark.parametrize(
     "body",
-    ["not json", json.dumps([]), json.dumps({"csp-report": "x"})],
-    ids=["not-json", "not-an-object", "report-not-an-object"],
+    [
+        "not json",
+        json.dumps([]),
+        json.dumps({"csp-report": "x"}),
+        "[" * 8000 + "]" * 8000,
+    ],
+    ids=["not-json", "not-an-object", "report-not-an-object", "deeply-nested"],
 )
 def test_malformed_report_is_rejected_without_logging(client, reporter, body):
     assert _report(client, body).status_code == 400
