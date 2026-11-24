@@ -54,6 +54,7 @@ dependencies = [
     # Security minimums (transitive deps — Dependabot #13-#25)
     "aiohttp>=3.14.3",
     "cryptography>=50.0.0",
+    "filelock>=4.2.1",
     "pygments>=2.20.0",
     "requests>=2.33.0",
     # PostgreSQL driver

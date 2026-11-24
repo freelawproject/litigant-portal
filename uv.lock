@@ -850,11 +850,11 @@ wheels = [
 
 [[package]]
 name = "filelock"
-version = "3.32.7"
+version = "4.3.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/0f/59/e19834834cb01a32febfbb0f8a23a9088088f5d45991824ff2bc3b5e8acb/filelock-3.32.7.tar.gz", hash = "sha256:37b8a3d9811b0f9aef7e5ec5c71bb320de52df51e6ca9bcd6f5ad81187660da7", size = 225154, upload-time = "2026-09-16T00:24:20.907Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e6/86/a5b9ec254b90efb180e390e31a4fa50a93b714d6e4174fa9a4ee25607159/filelock-4.3.1.tar.gz", hash = "sha256:4c5ee627c401f1863ac6a0de9a14a28d3bb5f8c730b45e2fd6e5dbc79cf34b9e", size = 742330, upload-time = "2026-11-23T18:01:13.656Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/15/df/31098c5aeb4d966b553641472bd55fcf5fdfac953549894b8a765ba44e91/filelock-3.32.7-py3-none-any.whl", hash = "sha256:65ff0d0190ea42038b32bda4b77834fb05be2cad4c5b9b01aa4dfb3614536e52", size = 100157, upload-time = "2026-09-16T00:24:19.543Z" },
+    { url = "https://files.pythonhosted.org/packages/53/7b/678c8fbd372ff96375ac0bbdd20b78f20ef8ba6ca5966c49548fa5886557/filelock-4.3.1-py3-none-any.whl", hash = "sha256:79e43df8e9fe509cd83a3899a7c186c8077cbbe4d200a1ed3705c2f3bb6bc487", size = 244559, upload-time = "2026-11-23T18:01:12.261Z" },
 ]
 
 [[package]]
@@ -1392,14 +1392,15 @@ wheels = [
 
 [[package]]
 name = "litellm"
-version = "1.108.0"
+version = "1.110.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiohttp" },
+    { name = "anyio" },
     { name = "boto3" },
     { name = "certifi" },
     { name = "click" },
-    { name = "fastuuid" },
+    { name = "fastuuid", marker = "python_full_version < '3.15'" },
     { name = "filelock" },
     { name = "httpx", extra = ["http2"] },
     { name = "huggingface-hub" },
@@ -1416,15 +1417,15 @@ dependencies = [
     { name = "tokenizers" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6e/8f/44671cdf62fa1cf70a1bde9ffb672cc5a26e3e1853177ef7dd3d307e3699/litellm-1.108.0.tar.gz", hash = "sha256:531b2088cd9b0e95518b450ed8fd7fac4cdd81529af7930a0b5180e67d2b0c04", size = 21426989, upload-time = "2026-11-04T03:31:51.078Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/99/62/af55de5f860ad26208b778657219497bbf55a9229bc3261fd74433b8ac21/litellm-1.110.3.tar.gz", hash = "sha256:c56e20a3a7d015485e98171f0eb1ef92a50b37a5e5435c1f927858610edeee65", size = 25955785, upload-time = "2026-11-24T04:10:27.112Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/62/05f2d9c3a03473f1ac00651b87ee8c81e00660986f8a898c774495b7b0c3/litellm-1.108.0-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:63602ea1243b22775af8484b8ef2a7da73b6b275491ac943377cb2bee9d5af1c", size = 35831637, upload-time = "2026-11-04T03:31:18.256Z" },
-    { url = "https://files.pythonhosted.org/packages/00/86/3e258edcf62c1c77aac31d0b650f84b98c84e3f7c1da2daf9e8b031487ad/litellm-1.108.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:3af9eccea1486a89c4f5c2216f728024114d6ae76b2efe9071f740b007e18706", size = 34944457, upload-time = "2026-11-04T03:31:23.442Z" },
-    { url = "https://files.pythonhosted.org/packages/fb/3c/bc319834a1cee721d4efe9f3412a3cb99777eb994e3a098fe2868c2f5476/litellm-1.108.0-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:d26bffd9c5562589873431e0dbcbb2f64b84d7d3f3a2cba049b6a3a186379fbf", size = 35448091, upload-time = "2026-11-04T03:31:28.026Z" },
-    { url = "https://files.pythonhosted.org/packages/c1/7a/83ef54a21531c4707791ad2438ea0b71fc11b52f1a6e56b36e3992be9e07/litellm-1.108.0-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:1ca5da602631ca4e149e2aba01a5d87e59fda8ce6c66bb5622c06f7ba34f6fb6", size = 36315040, upload-time = "2026-11-04T03:31:32.392Z" },
-    { url = "https://files.pythonhosted.org/packages/4b/81/d3f431c948d1c2e37a5d9ed492802f5b856c78e30fc6540867889259987b/litellm-1.108.0-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:960c78e6fe047d90f105d687475831d9b93726129c9411a8eced77757a488733", size = 35577114, upload-time = "2026-11-04T03:31:36.885Z" },
-    { url = "https://files.pythonhosted.org/packages/8e/25/2f2847c102ebe1376534b651f17b9f34b8b2071bfdefbd1f9f79f2aa455e/litellm-1.108.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:9a101e628c14f277eee1f1083415c6578214d7944275e185e12173bcf01a32d2", size = 36379711, upload-time = "2026-11-04T03:31:41.441Z" },
-    { url = "https://files.pythonhosted.org/packages/84/ab/c17c81740f101a4224487307204f58814e9025a980444f484d3be2ab60b2/litellm-1.108.0-cp310-abi3-win_amd64.whl", hash = "sha256:49ecd810e6ab7d149f3174e0d45e333ae3765acbd12862b49a034b4e6ea533ba", size = 36986423, upload-time = "2026-11-04T03:31:45.72Z" },
+    { url = "https://files.pythonhosted.org/packages/10/f9/035d7dac3b1ab1e2d55895fd4f59155f531d7273b123e4ecc29901c6f9ae/litellm-1.110.3-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:4bc1a16da0e9cdacb844f8683ee8ac22dff3c85fffd2c42b16d0ba241dfaa702", size = 43311337, upload-time = "2026-11-24T04:09:58.574Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/f0/dddf37fc481c68f57cc646593c4e714c98cbb18a584fc5a94fb3d6db9e8e/litellm-1.110.3-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:e809005b433fb19a452fcc4027f219fbf3eed5e3e9bd5723ecc11ad0f42528c5", size = 42465841, upload-time = "2026-11-24T04:10:02.71Z" },
+    { url = "https://files.pythonhosted.org/packages/74/8b/577d21195757b908df3ccc0ffb28c7c605c40c95c5cd8d9579c0c9b385bb/litellm-1.110.3-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:bd9193f2cb2e6e75ef43914dd92a3afee22cbf74a1858bb6f4821bee569a48fc", size = 43060298, upload-time = "2026-11-24T04:10:06.986Z" },
+    { url = "https://files.pythonhosted.org/packages/3d/f8/48c23601bd513aa4cdd7ce9d2575227ada57fc9590319ccd2af437ae6385/litellm-1.110.3-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:90b27d5747369407e42248fe77a1e06c258954fada004cd6d2e2fb176026c5ff", size = 43844086, upload-time = "2026-11-24T04:10:11.096Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/41/d9f4c1e45416cb0bef219bfba11dd6554561f4e2d20268653045dc3c6133/litellm-1.110.3-cp310-abi3-musllinux_1_2_aarch64.whl", hash = "sha256:6f705dd40a204618eac61874f68cb3d4abe2ec3efd03c65450f954c6c157c483", size = 43172833, upload-time = "2026-11-24T04:10:15.187Z" },
+    { url = "https://files.pythonhosted.org/packages/db/b3/41a8fb62ee7064f25bbfeb00c4b2784d5fe4d215e54fb29bfb24661a6016/litellm-1.110.3-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:caee88a2c927b565c902ee5da22c2c20e3c95d51dd322ea3650e53b8121e5c15", size = 44122972, upload-time = "2026-11-24T04:10:19.015Z" },
+    { url = "https://files.pythonhosted.org/packages/92/c2/10952c0a725715f4771bdf9cdbf6007b8a228732b7014a5c336aa9a017fd/litellm-1.110.3-cp310-abi3-win_amd64.whl", hash = "sha256:4f513589da99eaca5f3049bb39d930a087cef444fefd5baddcff3c9e11591df6", size = 45271599, upload-time = "2026-11-24T04:10:22.946Z" },
 ]
 
 [package.optional-dependencies]
@@ -1450,6 +1451,7 @@ dependencies = [
     { name = "django-pydantic-field" },
     { name = "django-ratelimit" },
     { name = "django-storages", extra = ["s3"] },
+    { name = "filelock" },
     { name = "gunicorn" },
     { name = "heroicons" },
     { name = "litellm", extra = ["mcp"] },
@@ -1497,6 +1499,7 @@ requires-dist = [
     { name = "django-ratelimit", specifier = ">=4.1" },
     { name = "django-storages", extras = ["s3"], specifier = ">=1.14" },
     { name = "djlint", marker = "extra == 'dev'", specifier = ">=1.36.4" },
+    { name = "filelock", specifier = ">=4.2.1" },
     { name = "gunicorn", specifier = ">=23.0" },
     { name = "heroicons", specifier = ">=2.0" },
     { name = "litellm", extras = ["mcp"], specifier = ">=1.98" },
