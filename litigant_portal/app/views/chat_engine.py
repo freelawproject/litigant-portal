@@ -18,7 +18,7 @@ from litigant_portal.app.services.chat_engine import (
     chat_thread_delete,
     chat_thread_render_items,
 )
-from litigant_portal.lp_logger import EVENTS, lp_logger
+from litigant_portal.lp_logger import lp_logger
 
 
 def stream(
@@ -36,14 +36,12 @@ def stream(
         return JsonResponse({"error": _("Message is required")}, status=400)
 
     client_timezone = None
+    client_timezone_invalid = False
     if timezone_name := request.POST.get("client_timezone"):
         try:
             client_timezone = ZoneInfo(timezone_name)
         except (ZoneInfoNotFoundError, ValueError):
-            lp_logger(
-                type=EVENTS.warning,
-                msg="Client timezone unavailable; using UTC",
-            )
+            client_timezone_invalid = True
 
     if attachment_ids:
         try:
@@ -67,6 +65,7 @@ def stream(
             thread_id=thread_id,
             attachment_ids=attachment_ids or None,
             client_timezone=client_timezone,
+            client_timezone_invalid=client_timezone_invalid,
             agent_class=agent_class,
             thread_type=thread_type,
         )

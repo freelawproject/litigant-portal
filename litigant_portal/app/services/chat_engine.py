@@ -530,6 +530,7 @@ def chat_stream(
     thread_id: str | None = None,
     attachment_ids: list[str] | None = None,
     client_timezone: ZoneInfo | None = None,
+    client_timezone_invalid: bool = False,
 ) -> StreamingHttpResponse:
     """Stream an agent's reply for ``message``, running the tool loop."""
     thread = (
@@ -594,7 +595,13 @@ def chat_stream(
     history: list[dict[str, Any]] = [dict(m.data) for m in messages]
 
     def event_stream() -> Iterator[str]:
-        yield _sse({"type": "thread", "thread_id": str(thread.id)})
+        yield _sse(
+            {
+                "type": "thread",
+                "thread_id": str(thread.id),
+                "client_timezone_invalid": client_timezone_invalid,
+            }
+        )
         thread.refresh_from_db(fields=["state"])
         yield _sse({"type": "state", "state": thread.state})
 

@@ -19,7 +19,6 @@ from litigant_portal.app.models import Topic, TopicFlow
 from litigant_portal.app.selectors.bedrock import BedrockModelUnavailable
 from litigant_portal.app.services.chat_engine import chat_stream
 from litigant_portal.app.views.chat_engine import stream
-from litigant_portal.lp_logger import EVENTS
 
 pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 
@@ -65,13 +64,11 @@ class ChatTimezoneRequestTests(SimpleTestCase):
                 self.assertEqual(engine.call_args.kwargs["message"], "Hello")
                 zone = engine.call_args.kwargs["client_timezone"]
                 self.assertEqual(zone.key if zone else None, expected_timezone)
-                if name and expected_timezone is None:
-                    log.assert_called_once_with(
-                        type=EVENTS.warning,
-                        msg="Client timezone unavailable; using UTC",
-                    )
-                else:
-                    log.assert_not_called()
+                self.assertIs(
+                    engine.call_args.kwargs["client_timezone_invalid"],
+                    bool(name and expected_timezone is None),
+                )
+                log.assert_not_called()
 
     def test_missing_server_timezone_data_does_not_block_a_turn(self):
         request = RequestFactory().post(
@@ -96,10 +93,8 @@ class ChatTimezoneRequestTests(SimpleTestCase):
         self.assertEqual(response.status_code, 200)
         engine.assert_called_once()
         self.assertIsNone(engine.call_args.kwargs["client_timezone"])
-        log.assert_called_once_with(
-            type=EVENTS.warning,
-            msg="Client timezone unavailable; using UTC",
-        )
+        self.assertIs(engine.call_args.kwargs["client_timezone_invalid"], True)
+        log.assert_not_called()
 
 
 def _flow(court="franklin-county-oh"):
@@ -153,7 +148,13 @@ class ChatStreamFallbackTests(SimpleTestCase):
             save=Mock(),
         )
 
-    def stream_events(self, completions=None, *, model="test-model"):
+    def stream_events(
+        self,
+        completions=None,
+        *,
+        model="test-model",
+        client_timezone_invalid=False,
+    ):
         user_message = SimpleNamespace(
             id=uuid.uuid4(),
             created_at=datetime(2026, 11, 23, tzinfo=UTC),
@@ -197,6 +198,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 thread_type="test_agent",
                 model=model,
                 thread_id=str(self.thread.id),
+                client_timezone_invalid=client_timezone_invalid,
             )
             events = [
                 json.loads(
@@ -445,9 +447,15 @@ class ChatStreamFallbackTests(SimpleTestCase):
     def test_normal_text_and_tool_turns_still_complete(self):
         text_chunk = _text_chunk("Healthy answer")
         tool_chunk = _tool_chunk("call-1")
-        for with_tool in (False, True):
+        for with_tool, timezone_invalid in (
+            (False, False),
+            (False, True),
+            (True, True),
+        ):
             with (
-                self.subTest(with_tool=with_tool),
+                self.subTest(
+                    with_tool=with_tool, timezone_invalid=timezone_invalid
+                ),
                 patch(
                     "litigant_portal.app.services.chat_engine._execute_tool",
                     return_value=ToolOutput(result="Tool finished"),
@@ -456,8 +464,21 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 completions = [iter([text_chunk])]
                 if with_tool:
                     completions.insert(0, iter([tool_chunk]))
-                events = self.stream_events(completions=completions)
+                events = self.stream_events(
+                    completions=completions,
+                    client_timezone_invalid=timezone_invalid,
+                )
 
+                self.assertEqual(
+                    events[0],
+                    {
+                        "type": "thread",
+                        "thread_id": str(self.thread.id),
+                        "client_timezone_invalid": timezone_invalid,
+                    },
+                )
+                for event in events[1:]:
+                    self.assertNotIn("client_timezone_invalid", event)
                 self.assertNotIn("error", [event["type"] for event in events])
                 self.assertEqual(events[-1], {"type": "done"})
                 self.assertIn(

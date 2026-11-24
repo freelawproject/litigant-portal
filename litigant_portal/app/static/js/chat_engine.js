@@ -1116,6 +1116,12 @@ document.addEventListener('alpine:init', () => {
         return
       }
       if (event.type === 'thread') {
+        if (event.client_timezone_invalid === true) {
+          window.lpLogger?.({
+            type: 'warning',
+            msg: 'Client timezone unavailable; using UTC',
+          })
+        }
         stream.threadId = event.thread_id
         this.setThreadStatus(stream.threadId, 'streaming')
         if (this.attached(stream)) {
