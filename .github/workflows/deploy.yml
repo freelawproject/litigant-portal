@@ -70,15 +70,15 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            // Look the PR up by commit, not by recency: a manual run can come
+            // hours after the merge, when other closed PRs have been updated.
             const commitSha = context.sha;
-            const { data: prs } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: "closed",
-              sort: "updated",
-              direction: "desc",
-              per_page: 1
-            });
+            const { data: prs } =
+              await github.rest.repos.listPullRequestsAssociatedWithCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: commitSha
+              });
 
             const pr = prs.find(p => p.merge_commit_sha === commitSha);
             if (!pr) {
