@@ -271,25 +271,59 @@ def test_target_bench_reads_the_local_bench_settings():
     assert bench._target(env, "bench") == ("http://bench", "k")
 
 
-def test_target_names_an_instance_by_its_own_url_and_key():
-    env = {
-        "DA_QA_URL": "https://qa.example/interview/",
-        "DA_QA_API_KEY": "qa-key",
-        "DA_ADMIN_API_KEY": "bench-key",
-    }
+@pytest.fixture
+def targets(tmp_path):
+    path = tmp_path / "targets.yml"
+    path.write_text("qa:\n  url: https://qa.example/interview/\n")
+    return path
 
-    assert bench._target(env, "qa") == (
-        "https://qa.example/interview",
-        "qa-key",
+
+def _named(targets, environ, typed=""):
+    prompts = []
+
+    def prompt(text):
+        prompts.append(text)
+        return typed
+
+    target = bench._target(
+        {"DA_ADMIN_API_KEY": "bench-key"},
+        "qa",
+        targets_file=targets,
+        environ=environ,
+        prompt=prompt,
     )
+    return target, prompts
 
 
-def test_target_missing_settings_names_both_variables():
-    with pytest.raises(SystemExit) as stopped:
-        bench._target({"DA_QA_URL": "https://qa.example"}, "qa")
+def test_target_takes_an_instances_url_from_the_targets_file(targets):
+    target, prompts = _named(targets, {"DA_API_KEY": "qa-key"})
 
-    assert "DA_QA_URL" in str(stopped.value)
-    assert "DA_QA_API_KEY" in str(stopped.value)
+    assert target == ("https://qa.example/interview", "qa-key")
+    assert prompts == []
+
+
+def test_target_asks_for_the_key_when_the_environment_has_none(targets):
+    target, prompts = _named(targets, {}, typed="typed-key")
+
+    assert target == ("https://qa.example/interview", "typed-key")
+    assert len(prompts) == 1
+    assert "qa" in prompts[0]
+
+
+def test_target_without_a_key_stops(targets):
+    with pytest.raises(SystemExit, match="No API key"):
+        _named(targets, {}, typed="")
+
+
+def test_target_unknown_names_the_known_targets(targets):
+    with pytest.raises(SystemExit, match="qa"):
+        bench._target(
+            {},
+            "nope",
+            targets_file=targets,
+            environ={},
+            prompt=lambda _text: "k",
+        )
 
 
 # deploy: _install and _await_install

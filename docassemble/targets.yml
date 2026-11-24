@@ -1,0 +1,6 @@
+# docassemble instances `make bench-deploy TARGET=<name>` can install on.
+# URLs only: the admin API key comes from DA_API_KEY or a prompt, never a file.
+# `bench`, the local dev bench, isn't listed: it reads the repo's .env.
+
+qa:
+  url: https://qa.litigantportal.com/interview

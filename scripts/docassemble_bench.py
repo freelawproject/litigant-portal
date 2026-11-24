@@ -34,8 +34,10 @@ The bench and its API key come from the repo's ``.env``: ``DA_ADMIN_API_KEY``
 """
 
 import argparse
+import getpass
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -58,6 +60,7 @@ from pypdf.generic import (
 
 REPO = Path(__file__).resolve().parents[1]
 INTERVIEWS = REPO / "docassemble"
+TARGETS = INTERVIEWS / "targets.yml"
 OUTPUT = REPO / "build/bench"
 STATE = Path.home() / ".cache/lp-docassemble-bench.json"
 PLAYGROUND_FOLDERS = {
@@ -352,20 +355,31 @@ INSTALL_TIMEOUT = 15 * 60
 INSTALL_POLL = 5
 
 
-def _target(env, name):
-    """(base URL, admin API key) for a docassemble instance. ``bench`` is the
-    local bench; any other name, like ``qa``, reads DA_QA_URL and
-    DA_QA_API_KEY from .env."""
+def _target(
+    env,
+    name,
+    *,
+    targets_file=TARGETS,
+    environ=os.environ,
+    prompt=getpass.getpass,
+):
+    """(base URL, admin API key) for a docassemble instance.
+
+    ``bench`` is the local bench, set up from the repo's .env. Any other name
+    is an instance in docassemble/targets.yml, which holds its URL. Its key is
+    never stored: it comes from DA_API_KEY (how CI would pass a secret) or a
+    hidden prompt, so deploying never touches the local dev settings."""
     if name == "bench":
         base = env.get("DOCASSEMBLE_PUBLIC_URL") or "http://localhost:8100"
         return base.rstrip("/"), _api_key(env)
-    prefix = "DA_" + name.upper().replace("-", "_")
-    base, key = env.get(f"{prefix}_URL"), env.get(f"{prefix}_API_KEY")
-    if not (base and key):
-        sys.exit(
-            f"Set {prefix}_URL and {prefix}_API_KEY in .env to reach {name}"
-        )
-    return base.rstrip("/"), key
+    targets = yaml.safe_load(targets_file.read_text()) or {}
+    if name not in targets:
+        known = ", ".join(["bench", *sorted(targets)])
+        sys.exit(f"No target {name!r} in {targets_file.name}. Known: {known}")
+    key = environ.get("DA_API_KEY") or prompt(f"{name} admin API key: ")
+    if not key:
+        sys.exit(f"No API key for {name}")
+    return targets[name]["url"].rstrip("/"), key
 
 
 def _install(bench, zip_path):
@@ -710,8 +724,8 @@ def main():
         "-t",
         "--target",
         default="bench",
-        help="instance to install on: bench (default), or a name like qa "
-        "with DA_QA_URL and DA_QA_API_KEY in .env",
+        help="instance to install on: bench (default), or a name in "
+        "docassemble/targets.yml, like qa",
     )
     deploy_parser.set_defaults(run=deploy)
 
