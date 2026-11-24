@@ -1,6 +1,7 @@
 from typing import Any
 
 from litigant_portal.agents.base import Field, Tool, ToolOutput
+from litigant_portal.state.types import FactInputType
 
 
 class RecordFact(Tool):
@@ -45,11 +46,14 @@ class RecordFact(Tool):
     def __call__(self, *, thread_id) -> ToolOutput:
         from django.core.exceptions import ValidationError
 
-        from litigant_portal.app.models import Variable, VariableAnswer
+        from litigant_portal.app.models import Variable
         from litigant_portal.app.selectors.chat_engine import (
             chat_thread_identity_get,
         )
-        from litigant_portal.app.services.topic_flow import variable_answer_set
+        from litigant_portal.app.services.topic_flow import (
+            variable_answers_record,
+            variable_value_validate,
+        )
 
         if not self.facts:
             return ToolOutput(
@@ -67,17 +71,11 @@ class RecordFact(Tool):
                 name__in=self.facts, in_schema=True
             )
         }
-        answers = {
-            a.variable_id: a
-            for a in VariableAnswer.objects.filter(
-                identity=identity, variable__in=variables.values()
-            ).select_related("variable")
-        }
-
-        # Per-fact, not atomic: a bad value must not block sibling saves.
+        # Reject bad values individually, then reduce the valid facts once.
         saved: list[dict] = []
         unchanged: list[dict] = []
         errors: list[dict] = []
+        valid: dict[str, FactInputType] = {}
         for name, value in self.facts.items():
             variable = variables.get(name)
             if variable is None:
@@ -90,12 +88,10 @@ class RecordFact(Tool):
                 )
                 continue
             try:
-                answer = variable_answer_set(
-                    identity=identity,
-                    variable=variable,
+                variable_value_validate(
+                    data_type=variable.data_type,
+                    choices=variable.choices,
                     value=value,
-                    reviewed=False,
-                    evidence=self.evidence.get(name),
                 )
             except ValidationError as exc:
                 errors.append(
@@ -106,8 +102,15 @@ class RecordFact(Tool):
                     }
                 )
                 continue
-            existing = answers.get(variable.pk)
-            if existing is not None and existing.value == answer.value:
+            valid[name] = FactInputType(
+                value=value, evidence=self.evidence.get(name)
+            )
+
+        change = variable_answers_record(identity=identity, facts=valid)
+        for name, incoming in valid.items():
+            answer = change.answers[name]
+            variable = answer.variable
+            if name not in change.value_changed_names:
                 unchanged.append(
                     {
                         "name": name,
@@ -121,7 +124,7 @@ class RecordFact(Tool):
                     "name": name,
                     "label": variable.label or name,
                     "display_value": answer.display_value,
-                    "cleared": value is None,
+                    "cleared": incoming.value is None,
                 }
             )
 

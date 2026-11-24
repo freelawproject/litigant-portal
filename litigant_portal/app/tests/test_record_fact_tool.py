@@ -82,8 +82,8 @@ def test_hallucinated_reviewed_arg_is_ignored_and_save_stays_unconfirmed(
     thread, county
 ):
     # extra="allow" keeps the stray argument as an instance attribute; the
-    # save stays unconfirmed because __call__ passes a literal
-    # reviewed=False and never reads self.reviewed.
+    # batch service always uses assistant authority and never reads
+    # self.reviewed.
     output = RecordFact(facts={"county": "burleigh"}, reviewed=True)(
         thread_id=thread.id
     )

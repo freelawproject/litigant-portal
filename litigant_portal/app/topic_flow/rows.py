@@ -172,9 +172,11 @@ def flow_deadlines(deadlines, answers) -> list[dict]:
 
 
 def form_condition_holds(condition, answers) -> bool:
-    """Whether a packet entry shows: always without a variable; ``equals``
+    """
+    Whether a packet entry shows: always without a variable; ``equals``
     when the stored answer is the value; ``not_equals`` when it is anything
-    else, unanswered included."""
+    else. An unanswered prerequisite matches neither.
+    """
     if condition.variable is None:
         return True
     return condition_holds(

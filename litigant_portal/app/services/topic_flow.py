@@ -1,8 +1,10 @@
+from dataclasses import dataclass
 from datetime import date, datetime
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Max
+from django.utils import timezone
 from django.utils.text import slugify
 
 from litigant_portal.app.cache import (
@@ -10,8 +12,25 @@ from litigant_portal.app.cache import (
     TOPIC_FLOW_LIST_CACHE_KEY,
     TOPIC_LIST_CACHE_KEY,
 )
-from litigant_portal.app.models import Topic, Variable, VariableAnswer
+from litigant_portal.app.models import (
+    FlowViewState,
+    Topic,
+    TopicFlow,
+    UserIdentity,
+    Variable,
+    VariableAnswer,
+)
 from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.state.reducer import reduce
+from litigant_portal.state.types import (
+    ActionType,
+    ConfirmFactsActionType,
+    FactInputType,
+    FactType,
+    MarkViewedActionType,
+    SetFactsActionType,
+    StateType,
+)
 
 from .utils import busts_cache
 
@@ -104,7 +123,118 @@ def variable_value_validate(*, data_type: str, choices: list, value):
     return value
 
 
+@dataclass(frozen=True)
+class StateChangeType:
+    answers: dict[str, VariableAnswer]
+    changed_names: set[str]
+    value_changed_names: set[str]
+
+
 @transaction.atomic
+def _state_apply(
+    *,
+    identity: UserIdentity,
+    action: ActionType,
+    flow: TopicFlow | None = None,
+) -> StateChangeType:
+    """
+    Serialize a domain transition and persist only its changed facts.
+
+    Lock the owner, including for first writes where no answer row exists.
+    Django assigns persisted timestamps; subsequent snapshots read those
+    timestamps for confirmation and concurrency checks.
+    """
+    UserIdentity.objects.select_for_update().get(pk=identity.pk)
+    answers = {
+        answer.variable.name: answer
+        for answer in VariableAnswer.objects.filter(
+            identity=identity
+        ).select_related("variable")
+    }
+    viewed = (
+        FlowViewState.objects.filter(identity=identity, flow=flow)
+        .values_list("viewed", flat=True)
+        .first()
+        if flow is not None
+        else None
+    )
+    current_state = StateType(
+        identity_id=identity.pk,
+        flow_id=flow.pk if flow is not None else None,
+        viewed=viewed or {},
+        facts={
+            name: FactType(
+                value=answer.value,
+                reviewed=answer.reviewed,
+                evidence=answer.evidence,
+                updated_at=answer.updated_at,
+            )
+            for name, answer in answers.items()
+        },
+    )
+    variables = {}
+    if isinstance(action, SetFactsActionType):
+        variables = {
+            variable.name: variable
+            for variable in Variable.objects.filter(name__in=action.facts)
+        }
+        missing = sorted(set(action.facts) - variables.keys())
+        if missing:
+            raise Variable.DoesNotExist(
+                f"No glossary variable named {missing}"
+            )
+        for name, fact in action.facts.items():
+            variable = variables[name]
+            variable_value_validate(
+                data_type=variable.data_type,
+                choices=variable.choices,
+                value=fact.value,
+            )
+        action = action.model_copy(update={"at": timezone.now()})
+    elif isinstance(action, ConfirmFactsActionType):
+        action = action.model_copy(
+            update={
+                "names": tuple(
+                    name
+                    for name in action.names
+                    if name in answers and answers[name].variable.in_schema
+                )
+            }
+        )
+    next_state = reduce(current_state, action)
+    changed: set[str] = set()
+    value_changed: set[str] = set()
+    for name, fact in next_state.facts.items():
+        previous = current_state.facts.get(name)
+        if fact == previous:
+            continue
+        changed.add(name)
+        if previous is None or previous.value != fact.value:
+            value_changed.add(name)
+        fields = fact.model_dump()
+        if previous is None:
+            answers[name] = VariableAnswer.objects.create(
+                identity=identity, variable=variables[name], **fields
+            )
+            continue
+        updated_fields = [
+            field
+            for field, value in fields.items()
+            if value != getattr(previous, field)
+        ]
+        answer = answers[name]
+        for field in updated_fields:
+            setattr(answer, field, fields[field])
+        answer.save(update_fields=updated_fields)
+    if next_state.viewed != current_state.viewed:
+        FlowViewState.objects.update_or_create(
+            identity=identity,
+            flow=flow,
+            defaults={"viewed": next_state.viewed},
+        )
+    return StateChangeType(answers, changed, value_changed)
+
+
 def variable_answer_set(
     *,
     identity,
@@ -122,35 +252,17 @@ def variable_answer_set(
     use the caller's reviewed status, defaulting to False for AI writes.
     Only reviewed answers may reach docassemble prefill.
     """
-    value = variable_value_validate(
-        data_type=variable.data_type, choices=variable.choices, value=value
-    )
-    if value is None or not evidence or not evidence.get("quote"):
-        evidence = None
-    answer, created = VariableAnswer.objects.select_for_update().get_or_create(
+    change = _state_apply(
         identity=identity,
-        variable=variable,
-        defaults={"value": value, "reviewed": reviewed, "evidence": evidence},
+        action=SetFactsActionType(
+            actor="human" if reviewed else "assistant",
+            facts={
+                variable.name: FactInputType(value=value, evidence=evidence)
+            },
+            at=timezone.now(),
+        ),
     )
-    if created:
-        return answer
-    if answer.value == value:
-        updated_fields = []
-        if answer.evidence is None and evidence is not None:
-            answer.evidence = evidence
-            updated_fields.append("evidence")
-        if reviewed and not answer.reviewed:
-            answer.reviewed = True
-            updated_fields.append("reviewed")
-        if updated_fields:
-            answer.save(update_fields=updated_fields)
-        return answer
-
-    answer.value = value
-    answer.reviewed = reviewed
-    answer.evidence = evidence
-    answer.save(update_fields=["value", "reviewed", "evidence", "updated_at"])
-    return answer
+    return change.answers[variable.name]
 
 
 def variable_answer_confirm(
@@ -168,17 +280,15 @@ def variable_answer_confirm(
     answers reach the docassemble prefill, and the model must not confirm
     what it wrote itself.
     """
-    return VariableAnswer.objects.filter(
+    change = _state_apply(
         identity=identity,
-        variable__name__in=names,
-        variable__in_schema=True,
-        value__isnull=False,
-        reviewed=False,
-        updated_at__lte=as_of,
-    ).update(reviewed=True)
+        action=ConfirmFactsActionType(
+            actor="human", names=tuple(names), as_of=as_of
+        ),
+    )
+    return len(change.changed_names)
 
 
-@transaction.atomic
 def variable_answer_set_many(
     *, identity, values: dict, reviewed: bool = False
 ) -> int:
@@ -190,19 +300,57 @@ def variable_answer_set_many(
     than drop the answer silently. All-or-nothing: one invalid value rolls
     the whole batch back.
     """
-    variables = {
-        variable.name: variable
-        for variable in Variable.objects.filter(name__in=values)
-    }
-    missing = sorted(set(values) - set(variables))
-    if missing:
-        raise Variable.DoesNotExist(f"No glossary variable named {missing}")
-
-    for name, value in values.items():
-        variable_answer_set(
-            identity=identity,
-            variable=variables[name],
-            value=value,
-            reviewed=reviewed,
-        )
+    _state_apply(
+        identity=identity,
+        action=SetFactsActionType(
+            actor="human" if reviewed else "assistant",
+            facts={
+                name: FactInputType(value=value)
+                for name, value in values.items()
+            },
+            at=timezone.now(),
+        ),
+    )
     return len(values)
+
+
+def variable_answers_record(
+    *, identity: UserIdentity, facts: dict[str, FactInputType]
+) -> StateChangeType:
+    """
+    Save an assistant's valid facts as one unconfirmed batch.
+
+    The tool reports invalid siblings before submitting this batch. The
+    boundary revalidates against the current glossary under the owner lock.
+    """
+    if not facts:
+        return StateChangeType({}, set(), set())
+    return _state_apply(
+        identity=identity,
+        action=SetFactsActionType(
+            actor="assistant", facts=facts, at=timezone.now()
+        ),
+    )
+
+
+def topic_flow_section_viewed(
+    *,
+    identity: UserIdentity,
+    flow: TopicFlow,
+    component_id: str,
+    signature: str,
+) -> None:
+    """
+    Record a human Continue action using the server's component signature.
+
+    The HTTP adapter must resolve the applicable component and its
+    signature before calling this service, just as it establishes the
+    identity for a fact write.
+    """
+    _state_apply(
+        identity=identity,
+        flow=flow,
+        action=MarkViewedActionType(
+            actor="human", component_id=component_id, signature=signature
+        ),
+    )

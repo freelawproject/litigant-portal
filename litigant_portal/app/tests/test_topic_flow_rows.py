@@ -214,7 +214,7 @@ def _condition(form, variable=None, operator="equals", value=None):
             {"licensed": False},
             True,
         ),
-        (_condition(WAIVER, LICENSED, "not_equals", True), {}, True),
+        (_condition(WAIVER, LICENSED, "not_equals", True), {}, False),
         (
             _condition(WAIVER, LICENSED, "not_equals", True),
             {"licensed": True},

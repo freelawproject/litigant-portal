@@ -8,6 +8,11 @@ from django.utils.dateparse import parse_date, parse_datetime
 from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.formatting import format_long_date
+from litigant_portal.state.rules import (
+    EqualsConditionType,
+    NotConditionType,
+    condition_matches,
+)
 
 from .base import BaseModel
 from .choices import TopicFlowFormConditionOperator, VariableDataType
@@ -75,6 +80,25 @@ class TopicFlowSection(BaseModel):
 
     class Meta:
         ordering = ["order", "created_at"]
+
+
+class FlowViewState(BaseModel):
+    """
+    Viewed component signatures, separate from an identity's case facts.
+    """
+
+    identity = models.ForeignKey(
+        "UserIdentity", on_delete=models.CASCADE, related_name="flow_views"
+    )
+    flow = models.ForeignKey(TopicFlow, on_delete=models.CASCADE)
+    viewed = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["identity", "flow"], name="unique_identity_flow_view"
+            )
+        ]
 
 
 class Variable(BaseModel):
@@ -148,14 +172,17 @@ def condition_holds(
     value,
     operator=TopicFlowFormConditionOperator.EQUALS,
 ) -> bool:
-    """Whether a ``{variable, operator, value}`` rule holds against
-    ``{name: value}`` answers: ``equals`` when the stored answer is the
-    value, ``not_equals`` when it is anything else, unanswered included.
-    The one evaluator for a gate, a packet condition and a checkbox rule."""
-    matches = answers.get(name) == value
+    """
+    Adapt existing condition rows to the shared state evaluator.
+
+    An unanswered prerequisite matches neither equals nor not_equals.
+    """
+    condition = EqualsConditionType(fact=name, equals=value)
     if operator == TopicFlowFormConditionOperator.NOT_EQUALS:
-        return not matches
-    return matches
+        return condition_matches(
+            NotConditionType.model_validate({"not": condition}), answers
+        )
+    return condition_matches(condition, answers)
 
 
 class VariableAnswer(BaseModel):

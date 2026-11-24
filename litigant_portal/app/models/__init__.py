@@ -1,6 +1,7 @@
 from .chat_engine import ChatMessage, ChatThread, PromptArtifact
 from .site import Contact, Resource, Site
 from .topic_flow import (
+    FlowViewState,
     Form,
     FormField,
     Topic,
@@ -18,6 +19,7 @@ from .upload import UserUpload
 from .user import UserIdentity, UserProfile
 
 __all__ = [
+    "FlowViewState",
     "ChatMessage",
     "ChatThread",
     "PromptArtifact",
