@@ -55,6 +55,30 @@ Infra must keep three things true on every environment behind CloudFront:
 - **CloudFront forwards `CloudFront-Viewer-Address` to the origin.** It is only sent when the origin request policy includes it. Without it every visitor shares the proxy's bucket, and one busy visitor can lock everyone out.
 - **The load balancer accepts traffic only from CloudFront.** CloudFront overwrites the header on every request. A visitor who can reach the app without CloudFront can send their own value and get a fresh bucket each time.
 
+## Dependency and Code Scanning
+
+| Check      | What it reads                                   | When it runs                  | What it blocks                |
+| ---------- | ----------------------------------------------- | ----------------------------- | ----------------------------- |
+| `audit`    | The packages the image installs, from `uv.lock` | Every PR, every deploy, daily | The deploy                    |
+| CodeQL     | Our own Python and JavaScript                   | Every PR, and on a schedule   | Nothing. It reports on the PR |
+| Dependabot | All `uv.lock` files, actions, pre-commit hooks  | On each advisory, and monthly | Nothing. It opens a PR        |
+
+Run the audit locally with `make audit`. It is the same script CI runs (`scripts/audit_deps.sh`).
+
+The audit does not see the Debian packages in the image or the JavaScript files we vendor.
+
+### When the audit fails
+
+A failure means a package we ship has a published advisory. It can appear on a PR that did not touch dependencies, because advisories are published every day.
+
+1. **Upgrade the package.** `uv lock --upgrade-package <name>`. If a parent package holds it back, add a floor to the "Security minimums" block in `pyproject.toml` and run `uv lock`.
+2. **If there is no fixed version, or the upgrade cannot land today, ignore that one advisory.** Add its ID to `IGNORED` in `scripts/audit_deps.sh` with a comment: the date, your name, why it is safe for us, and a review date.
+3. **Remove the entry** when the fixed version is in `uv.lock`.
+
+An ignore entry goes through a normal PR and needs the normal one approval. For an urgent fix, put the entry in the same PR as the fix.
+
+The ignore list is the only override. Do not add a skip label, mark the job `continue-on-error`, or remove `audit` from a deploy job's `needs`. Each of those turns the gate off for every advisory and records no reason.
+
 ---
 
 ## Content Security Policy (CSP)
