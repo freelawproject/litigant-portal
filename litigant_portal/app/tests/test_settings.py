@@ -3,6 +3,7 @@ import os
 import runpy
 from unittest import mock
 
+import pytest
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
@@ -85,3 +86,93 @@ class BedrockSettingTests(SimpleTestCase):
                     config["BEDROCK_ALLOWED_GEOGRAPHY"],
                     "US",
                 )
+
+
+def _email_config(environ):
+    with mock.patch.dict(os.environ, {**SECRET, **environ}, clear=True):
+        return runpy.run_path(litigant_portal.settings.__file__)
+
+
+SMTP_ENV = {
+    "EMAIL_HOST": "email-smtp.us-east-1.amazonaws.com",
+    "EMAIL_HOST_USER": "smtp-user",
+    "EMAIL_HOST_PASSWORD": "smtp-pass",
+}
+
+
+def test_debug_prints_email_to_console():
+    config = _email_config({"DEBUG": "true", **SMTP_ENV})
+
+    assert config["MAILERS"]["default"] == {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend"
+    }
+    assert config["EMAIL_ENABLED"] is True
+
+
+def test_smtp_options_read_environment():
+    config = _email_config(
+        {**SMTP_ENV, "EMAIL_PORT": "2587", "EMAIL_USE_TLS": "false"}
+    )
+
+    assert config["MAILERS"]["default"] == {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": "email-smtp.us-east-1.amazonaws.com",
+            "port": 2587,
+            "username": "smtp-user",
+            "password": "smtp-pass",
+            "use_tls": False,
+            "timeout": 10,
+        },
+    }
+    assert config["EMAIL_ENABLED"] is True
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{}, {"EMAIL_PORT": "", "EMAIL_USE_TLS": ""}],
+    ids=["unset", "blank"],
+)
+def test_smtp_defaults_to_port_587_with_tls(extra):
+    options = _email_config({**SMTP_ENV, **extra})["MAILERS"]["default"][
+        "OPTIONS"
+    ]
+
+    assert options["port"] == 587
+    assert options["use_tls"] is True
+
+
+@pytest.mark.parametrize(
+    "host", [None, "", "  "], ids=["unset", "empty", "blank"]
+)
+def test_missing_host_drops_mail_and_disables_email(host):
+    environ = {} if host is None else {"EMAIL_HOST": host}
+    config = _email_config(environ)
+
+    assert config["MAILERS"]["default"] == {
+        "BACKEND": "django.core.mail.backends.dummy.EmailBackend"
+    }
+    assert config["EMAIL_ENABLED"] is False
+
+
+def test_from_address_reads_environment():
+    config = _email_config({"DEFAULT_FROM_EMAIL": "Portal <no-reply@x.org>"})
+
+    assert config["DEFAULT_FROM_EMAIL"] == "Portal <no-reply@x.org>"
+
+
+def test_email_environment_does_not_leak_into_deprecated_settings():
+    config = _email_config({**SMTP_ENV, "EMAIL_PORT": "587"})
+
+    # Django refuses these names as settings once MAILERS is defined.
+    assert (
+        not {
+            "EMAIL_HOST",
+            "EMAIL_PORT",
+            "EMAIL_HOST_USER",
+            "EMAIL_HOST_PASSWORD",
+            "EMAIL_USE_TLS",
+            "EMAIL_TIMEOUT",
+        }
+        & config.keys()
+    )

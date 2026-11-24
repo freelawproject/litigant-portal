@@ -338,15 +338,33 @@ CSRF_FAILURE_VIEW = "litigant_portal.app.views.topic_flow.csrf_failure"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 
-# Email (console mailer for dev, configure SMTP for production)
-MAILERS = {
-    "default": (
-        {"BACKEND": "django.core.mail.backends.console.EmailBackend"}
-        if DEBUG
-        # SMTP backend by default; host matches the old EMAIL_HOST default.
-        else {"OPTIONS": {"host": "localhost"}}
-    ),
-}
+# Email: console in dev, SMTP from the environment elsewhere. Without
+# EMAIL_HOST the instance drops mail and keeps the no-email admin flows.
+# Locals stay lowercase: Django rejects EMAIL_HOST and friends as settings
+# once MAILERS is defined.
+_email_host = os.environ.get("EMAIL_HOST", "").strip()
+if DEBUG:
+    _mailer = {"BACKEND": "django.core.mail.backends.console.EmailBackend"}
+elif _email_host:
+    _mailer = {
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "OPTIONS": {
+            "host": _email_host,
+            "port": int(os.environ.get("EMAIL_PORT", "").strip() or 587),
+            "username": os.environ.get("EMAIL_HOST_USER", ""),
+            "password": os.environ.get("EMAIL_HOST_PASSWORD", ""),
+            "use_tls": os.environ.get("EMAIL_USE_TLS", "").strip().lower()
+            != "false",
+            "timeout": 10,
+        },
+    }
+else:
+    _mailer = {"BACKEND": "django.core.mail.backends.dummy.EmailBackend"}
+MAILERS = {"default": _mailer}
+EMAIL_ENABLED = DEBUG or bool(_email_host)
+DEFAULT_FROM_EMAIL = (
+    os.environ.get("DEFAULT_FROM_EMAIL", "").strip() or "webmaster@localhost"
+)
 
 # Content Security Policy (django-csp)
 # https://django-csp.readthedocs.io/
