@@ -787,6 +787,16 @@ class PasswordLinkTests(TierSetup):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(mail.outbox, [])
 
+    def test_account_without_an_address_is_refused(self):
+        self.app_user.email = ""
+        self.app_user.save(update_fields=["email"])
+
+        response = self.send(self.app_user)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("no email address", response.json()["error"])
+        self.assertEqual(mail.outbox, [])
+
     def test_failed_send_says_so(self):
         with mock.patch(
             "django.core.mail.backends.locmem.EmailBackend.send_messages",

@@ -440,6 +440,11 @@ def user_password_link_view(
         )
     try:
         user_password_link_send(user=target, request=request)
+    except ValidationError:
+        return JsonResponse(
+            {"error": _("This account has no email address we can send to")},
+            status=400,
+        )
     except (smtplib.SMTPException, OSError):
         logger.exception(
             "Could not send a password link to user %s", target.pk
