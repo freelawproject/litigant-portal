@@ -535,6 +535,11 @@ class PromptArtifactCaptureTests(TestCase):
                 self.assertIn(
                     "browser-reported America/New_York", stored["text"]
                 )
+                self.assertIn(
+                    "Use client-local dates and times in replies",
+                    stored["text"],
+                )
+                self.assertNotIn("(UTC)", stored["text"])
                 self.assertIn(elapsed, stored["text"])
                 self.assertIn(stored["text"], model_text)
                 self.assertEqual(stored["values"], {})
@@ -706,6 +711,8 @@ class PromptArtifactCaptureTests(TestCase):
         time_text = before.identity_prompt["text"]
         self.assertIn("2026-11-23T23:59:00+00:00", time_text)
         self.assertIn("Client timezone unavailable; using UTC", time_text)
+        self.assertIn("(UTC)", time_text)
+        self.assertNotIn("Use client-local dates and times", time_text)
         self.assertIn(time_text, after.identity_prompt["text"])
         self.assertIn(time_text, first.kwargs["messages"][0]["content"])
         self.assertIn(time_text, second.kwargs["messages"][0]["content"])

@@ -18,7 +18,7 @@ from litigant_portal.app.services.chat_engine import (
     chat_thread_delete,
     chat_thread_render_items,
 )
-from litigant_portal.lp_logger import lp_logger
+from litigant_portal.lp_logger import EVENTS, lp_logger
 
 
 def stream(
@@ -40,7 +40,10 @@ def stream(
         try:
             client_timezone = ZoneInfo(timezone_name)
         except (ZoneInfoNotFoundError, ValueError):
-            return JsonResponse({"error": _("Invalid timezone")}, status=400)
+            lp_logger(
+                type=EVENTS.warning,
+                msg="Client timezone unavailable; using UTC",
+            )
 
     if attachment_ids:
         try:

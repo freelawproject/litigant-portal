@@ -6,6 +6,7 @@ import uuid
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
 from django.http import JsonResponse
@@ -18,6 +19,7 @@ from litigant_portal.app.models import Topic, TopicFlow
 from litigant_portal.app.selectors.bedrock import BedrockModelUnavailable
 from litigant_portal.app.services.chat_engine import chat_stream
 from litigant_portal.app.views.chat_engine import stream
+from litigant_portal.lp_logger import EVENTS
 
 pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 
@@ -28,13 +30,15 @@ class FailingAgent(Agent):
 
 
 class ChatTimezoneRequestTests(SimpleTestCase):
-    def test_timezone_is_validated_before_starting_a_turn(self):
-        for name, valid in (
-            (None, True),
-            ("America/New_York", True),
-            ("UTC", True),
-            ("Not/A_Timezone", False),
-            ("/etc/passwd", False),
+    def test_unusable_timezone_does_not_block_a_turn(self):
+        for name, expected_timezone in (
+            (None, None),
+            ("", None),
+            ("America/New_York", "America/New_York"),
+            ("UTC", "UTC"),
+            ("Etc/Unknown", None),
+            ("Not/A_Timezone", None),
+            ("/etc/passwd", None),
         ):
             with self.subTest(timezone=name):
                 data = {"message": "Hello"}
@@ -42,22 +46,60 @@ class ChatTimezoneRequestTests(SimpleTestCase):
                     data["client_timezone"] = name
                 request = RequestFactory().post("/stream/", data)
                 request.identity = object()
-                with patch(
-                    "litigant_portal.app.views.chat_engine.chat_stream",
-                    return_value=JsonResponse({}),
-                ) as engine:
+                with (
+                    patch(
+                        "litigant_portal.app.views.chat_engine.chat_stream",
+                        return_value=JsonResponse({}),
+                    ) as engine,
+                    patch(
+                        "litigant_portal.app.views.chat_engine.lp_logger"
+                    ) as log,
+                ):
                     response = stream(
                         request,
                         agent_class=FailingAgent,
                         thread_type="user_chat",
                     )
-                self.assertEqual(response.status_code, 200 if valid else 400)
-                if valid:
-                    engine.assert_called_once()
-                    zone = engine.call_args.kwargs["client_timezone"]
-                    self.assertEqual(zone.key if zone else None, name)
+                self.assertEqual(response.status_code, 200)
+                engine.assert_called_once()
+                self.assertEqual(engine.call_args.kwargs["message"], "Hello")
+                zone = engine.call_args.kwargs["client_timezone"]
+                self.assertEqual(zone.key if zone else None, expected_timezone)
+                if name and expected_timezone is None:
+                    log.assert_called_once_with(
+                        type=EVENTS.warning,
+                        msg="Client timezone unavailable; using UTC",
+                    )
                 else:
-                    engine.assert_not_called()
+                    log.assert_not_called()
+
+    def test_missing_server_timezone_data_does_not_block_a_turn(self):
+        request = RequestFactory().post(
+            "/stream/",
+            {"message": "Hello", "client_timezone": "America/New_York"},
+        )
+        request.identity = object()
+        with (
+            patch(
+                "litigant_portal.app.views.chat_engine.ZoneInfo",
+                side_effect=ZoneInfoNotFoundError("Missing timezone data"),
+            ),
+            patch(
+                "litigant_portal.app.views.chat_engine.chat_stream",
+                return_value=JsonResponse({}),
+            ) as engine,
+            patch("litigant_portal.app.views.chat_engine.lp_logger") as log,
+        ):
+            response = stream(
+                request, agent_class=FailingAgent, thread_type="user_chat"
+            )
+        self.assertEqual(response.status_code, 200)
+        engine.assert_called_once()
+        self.assertIsNone(engine.call_args.kwargs["client_timezone"])
+        log.assert_called_once_with(
+            type=EVENTS.warning,
+            msg="Client timezone unavailable; using UTC",
+        )
 
 
 def _flow(court="franklin-county-oh"):

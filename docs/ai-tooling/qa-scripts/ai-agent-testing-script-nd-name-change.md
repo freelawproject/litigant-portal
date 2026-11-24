@@ -441,4 +441,6 @@ PY
 3. **Confirmation:** Only after the third user message does `RecordFact` save `name_change_residency_years=11` and `name_change_residency_months=10`. Both answers remain `reviewed=False` pending the normal review step.
 4. **Local date:** The final reply gives **November 22, 2026**, without numeric UTC offsets or timezone-conversion annotations. This checks agent output through the service; it does not verify browser rendering.
 
+For the UTC fallback, repeat with `client_timezone=None` and change the final question to "What are today's date and the current time?" The final reply should give **November 23, 2026**, use the supplied UTC time, and append **(UTC)** to the date/time it states. It must not describe that value as the user's local time or expose numeric offsets or conversion details. This separate check verifies generated wording; request tests cover unknown and malformed browser timezones reaching this fallback.
+
 Record deviations in Appendix A using the actual replies and tool arguments. An error or incomplete stream makes the run incomplete, not a pass. This procedure supplies repeatable manual evidence; it is not automated coverage of model behavior.

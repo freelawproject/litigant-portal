@@ -154,8 +154,9 @@ Current date and time: {current_time}
 {conversion}
 Elapsed since previous user message: {elapsed}
 
-Use client-local dates and times in replies. Keep numeric UTC offsets and \
-timezone-conversion annotations internal; never repeat them to the user."""
+{presentation}
+Keep numeric UTC offsets and timezone-conversion details internal; \
+never repeat them to the user."""
 
 FACTS_PROMPT = """\
 ## Facts the user has already provided
@@ -190,12 +191,18 @@ def generate_time_prompt(context: TurnTimeContext) -> str:
     current_time = context.current_time.astimezone(UTC)
     if context.client_timezone is None:
         conversion = "Client timezone unavailable; using UTC."
+        presentation = (
+            "When stating the current date or time from this context, "
+            'append "(UTC)". Do not describe it as the user\'s local '
+            "date or time."
+        )
     else:
         conversion = (
             f"Converted from UTC {current_time.isoformat(timespec='seconds')} "
             f"using browser-reported {context.client_timezone.key}."
         )
         current_time = current_time.astimezone(context.client_timezone)
+        presentation = "Use client-local dates and times in replies."
     duration = context.elapsed_since_previous_user_message
     elapsed = (
         str(timedelta(seconds=int(duration.total_seconds())))
@@ -206,6 +213,7 @@ def generate_time_prompt(context: TurnTimeContext) -> str:
         current_time=current_time.isoformat(timespec="seconds"),
         conversion=conversion,
         elapsed=elapsed,
+        presentation=presentation,
     )
 
 
