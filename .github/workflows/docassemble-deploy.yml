@@ -20,30 +20,20 @@ on:
         description: Instance named in docassemble/targets.yml
         required: true
         default: qa
-  # Proof of concept only: workflow_dispatch works once this file is on main,
-  # so until then a push to this branch deploys fc-eviction to QA. Remove
-  # before merging.
-  push:
-    branches:
-      - 556-docassemble-deploy
-    paths:
-      - docassemble/**
-      - scripts/docassemble_bench.py
-      - .github/workflows/docassemble-deploy.yml
 
 permissions:
   contents: read
 
 concurrency:
   # One install at a time per instance: each one restarts docassemble.
-  group: docassemble-deploy-${{ inputs.target || 'qa' }}
+  group: docassemble-deploy-${{ inputs.target }}
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     env:
-      FOLDER: ${{ inputs.folder || 'fc-eviction' }}
-      TARGET: ${{ inputs.target || 'qa' }}
+      FOLDER: ${{ inputs.folder }}
+      TARGET: ${{ inputs.target }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
