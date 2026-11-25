@@ -1,5 +1,5 @@
 """Tests for two-factor sign-in: the code step, recovery codes, who may
-set it up, and how secrets are stored. All postgres-marked."""
+set it up, how secrets are stored, and the pages. All postgres-marked."""
 
 import logging
 import re
@@ -268,3 +268,91 @@ def test_a_new_secret_key_leaves_two_factor_working(client, settings):
 
     assert response["Location"] == "/"
     assert _signed_in(client)
+
+
+def _templates(page):
+    return [template.name for template in page.templates]
+
+
+def _input(page, name):
+    [tag] = re.findall(
+        rf'<input[^>]*name="{name}"[^>]*>', page.content.decode()
+    )
+    return tag
+
+
+def test_code_page_uses_our_layout(client):
+    _two_factor_user()
+    _login(client)
+
+    page = client.get(CODE_URL)
+
+    assert "account/base.html" in _templates(page)
+    code = _input(page, "code")
+    assert 'autocomplete="one-time-code"' in code
+    assert 'inputmode="numeric"' in code
+    assert 'form="cancel-sign-in"' in page.content.decode()
+
+
+def test_code_page_shows_an_error_for_a_wrong_code(client):
+    _, secret, _ = _two_factor_user()
+    _login(client)
+
+    page = client.post(CODE_URL, {"code": _wrong_code(secret)})
+
+    assert 'aria-invalid="true"' in _input(page, "code")
+    assert re.search(
+        r'<p id="id_code-error"[^>]*>Incorrect code\.</p>',
+        page.content.decode(),
+    )
+
+
+def test_cancel_on_the_code_page_goes_back_to_sign_in(client):
+    _two_factor_user()
+    _login(client)
+
+    response = client.post("/accounts/logout/", {"next": LOGIN_URL})
+
+    assert response["Location"] == LOGIN_URL
+    assert client.get(CODE_URL)["Location"] == LOGIN_URL
+
+
+def test_confirm_access_page_uses_our_layout(client):
+    user_create(email=EMAIL, password=PASSWORD)
+    _login(client)
+
+    page = client.get(CONFIRM_ACCESS_URL, {"next": SETUP_URL})
+
+    assert "account/base.html" in _templates(page)
+    assert 'autocomplete="current-password"' in _input(page, "password")
+    assert f'name="next" value="{SETUP_URL}"' in page.content.decode()
+
+
+def test_setup_page_shows_the_qr_code_the_key_and_the_code_field(client):
+    user_create(email=EMAIL, password=PASSWORD)
+    _login_and_confirm_access(client)
+
+    page = client.get(SETUP_URL)
+
+    html = page.content.decode()
+    assert "account/base.html" in _templates(page)
+    assert re.search(r'<img src="data:image/svg\+xml;base64,[^"]+"', html)
+    secret = page.context["form"].secret
+    assert re.search(rf'<code id="totp-secret"[^>]*>{secret}</code>', html)
+    assert 'inputmode="numeric"' in _input(page, "code")
+
+
+def test_a_correct_code_at_setup_shows_ten_recovery_codes(client):
+    user = user_create(email=EMAIL, password=PASSWORD)
+    _login_and_confirm_access(client)
+    secret = client.get(SETUP_URL).context["form"].secret
+
+    response = client.post(SETUP_URL, {"code": _code(secret)}, follow=True)
+
+    assert response.redirect_chain == [("/accounts/2fa/recovery-codes/", 302)]
+    assert Authenticator.objects.filter(user=user, type="totp").exists()
+    assert "account/base.html" in _templates(response)
+    html = response.content.decode()
+    codes = re.findall(r"<code[^>]*>(\d{8})</code>", html)
+    assert len(set(codes)) == 10
+    assert 'href="/accounts/2fa/recovery-codes/download/"' in html

@@ -1,0 +1,34 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Recovery Codes" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block auth_content %}
+  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Save your recovery codes" %}</h1>
+  <p class="text-greyscale-600 mb-2">{% trans "A recovery code signs you in when you do not have your phone. Each code works one time. Keep the codes in a safe place." %}</p>
+  <p class="text-greyscale-600 mb-6">
+    {% blocktrans with unused_count=unused_codes|length %}{{ unused_count }} of {{ total_count }} codes are left.{% endblocktrans %}
+  </p>
+  {% if can_view_codes %}
+    <ul id="recovery-codes" class="grid list-none grid-cols-2 gap-2 pl-0 mb-6 text-center">
+      {% for code in unused_codes %}
+        <li class="rounded-lg bg-greyscale-100 py-2">
+          <code class="text-sm select-all">{{ code }}</code>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+  <div class="space-y-4">
+    {% if can_view_codes and can_download_codes %}
+      <c-atoms.button href="{% url 'mfa_download_recovery_codes' %}" variant="outline" size="xl" full_width class="justify-center">
+      {% trans "Download codes" %}
+      </c-atoms.button>
+    {% endif %}
+    <c-atoms.button href="{% url 'pages:home' %}" variant="primary" size="xl" full_width class="justify-center">
+    {% trans "Continue" %}
+    </c-atoms.button>
+  </div>
+{% endblock auth_content %}
