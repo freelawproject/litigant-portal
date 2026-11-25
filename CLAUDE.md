@@ -34,6 +34,11 @@ Model families are curated through `MODEL_MAPPING` and `MODEL_CHOICES` in `litig
 
 **Tooling is OS-agnostic.** Scripts and `make` targets must work on both macOS and Linux; the rules are in [CONTRIBUTING.md](CONTRIBUTING.md#dev-tooling-runs-on-macos-and-linux).
 
+**Name tooling after what it works on, not where it first ran.** The docassemble script was named for the local "bench" it first drove, and needed renaming (#1270) once it also deployed to QA and the courts. Script and target names should still fit when the tool reaches its next environment.
+
+- **Use the words devs use, not the framework's.** `make translation-files` says what changes; Django's `makemessages` doesn't. Name the framework command in the target's help text instead.
+- **A `make` target is a noun when it builds something, a verb when it does something.** Make is already the verb: `make translation-files` builds the `.po` files, while `make interview-deploy` acts on an instance and has no artifact to name.
+
 ### Local Development (Docker)
 
 ```sh
