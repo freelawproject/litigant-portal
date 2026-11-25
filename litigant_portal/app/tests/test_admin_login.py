@@ -1,121 +1,151 @@
-"""Tests for the rate limits on the Django admin login."""
+"""Tests for the Django admin login: it goes through the normal sign-in,
+so the code step and the sign-in rate limits cover it. All
+postgres-marked."""
+
+import re
+import time
 
 import pytest
+from allauth.mfa.recovery_codes.internal.auth import RecoveryCodes
+from allauth.mfa.totp.internal.auth import (
+    TOTP,
+    format_hotp_value,
+    generate_totp_secret,
+    hotp_value,
+)
 from django.contrib.auth import get_user_model
-from django.http import HttpResponse
-
-from litigant_portal.app.views import django_admin
 
 User = get_user_model()
 
-pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
+pytestmark = [
+    pytest.mark.postgres,
+    pytest.mark.django_db,
+    pytest.mark.usefixtures("frozen_clock"),
+]
 
-LOGIN_URL = "/django-admin/login/"
+ADMIN_URL = "/django-admin/"
+ADMIN_LOGIN_URL = "/django-admin/login/"
+SIGN_IN_URL = "/accounts/login/"
+CODE_URL = "/accounts/2fa/authenticate/"
+EMAIL = "admin@example.com"
+PASSWORD = "a-long-new-passphrase-42"
 
 
-def _login(client, username, url=LOGIN_URL, headers=None):
-    return client.post(
-        url,
-        {"username": username, "password": "wrong-password"},
-        headers=headers,
+def _superuser():
+    return User.objects.create_superuser(
+        username=EMAIL, email=EMAIL, password=PASSWORD
     )
 
 
-def test_admin_login_allows_ten_failures_a_minute_per_ip(ratelimited, client):
-    for i in range(10):
-        assert _login(client, f"user{i}@example.com").status_code == 200
-
-    assert _login(client, "user10@example.com").status_code == 429
+def _signed_in(client):
+    return "_auth_user_id" in client.session
 
 
-def test_admin_login_ip_limit_counts_each_viewer_address_apart(
-    ratelimited, behind_cloudfront, client
-):
-    viewer_a = {"CloudFront-Viewer-Address": "203.0.113.10:5000"}
-    viewer_b = {"CloudFront-Viewer-Address": "203.0.113.20:5000"}
-    for i in range(10):
-        _login(client, f"user{i}@example.com", headers=viewer_a)
+def test_admin_login_page_sends_to_the_sign_in_page(client):
+    response = client.get(f"{ADMIN_LOGIN_URL}?next={ADMIN_URL}")
 
-    response = _login(client, "user10@example.com", headers=viewer_a)
-    assert response.status_code == 429
+    assert response.status_code == 302
+    assert response["Location"] == f"{SIGN_IN_URL}?next=%2Fdjango-admin%2F"
 
-    response = _login(client, "other@example.com", headers=viewer_b)
+
+def test_admin_page_ends_at_the_sign_in_page_when_signed_out(client):
+    response = client.get(ADMIN_URL, follow=True)
+
+    assert response.redirect_chain[-1][0] == (
+        f"{SIGN_IN_URL}?next=%2Fdjango-admin%2F"
+    )
     assert response.status_code == 200
 
 
-def test_admin_login_allows_five_failures_per_account(ratelimited, client):
-    for _ in range(5):
-        assert _login(client, "admin@example.com").status_code == 200
+def test_posting_to_the_admin_login_signs_nobody_in(client):
+    _superuser()
 
-    assert _login(client, "admin@example.com").status_code == 429
-
-
-def test_admin_login_account_limit_ignores_case(ratelimited, client):
-    for _ in range(5):
-        _login(client, "admin@example.com")
-
-    assert _login(client, " ADMIN@example.com").status_code == 429
-
-
-def test_admin_login_account_limit_ignores_unicode_form(ratelimited, client):
-    for _ in range(5):
-        _login(client, "admin@example.com")
-
-    assert _login(client, "ａdmin@example.com").status_code == 429
-
-
-def test_admin_login_counts_only_failures(ratelimited, client):
-    User.objects.create_superuser(
-        username="admin@example.com",
-        email="admin@example.com",
-        password="correct-horse-battery",
+    response = client.post(
+        ADMIN_LOGIN_URL, {"username": EMAIL, "password": PASSWORD}
     )
-    for _ in range(10):
-        response = client.post(
-            LOGIN_URL,
-            {
-                "username": "admin@example.com",
-                "password": "correct-horse-battery",
-            },
-        )
-        assert response.status_code == 302
-        client.logout()
 
-    assert _login(client, "admin@example.com").status_code == 200
+    assert response.status_code == 302
+    assert response["Location"].startswith(SIGN_IN_URL)
+    assert not _signed_in(client)
 
 
-def test_admin_login_counts_the_attempt_before_authenticating(
-    ratelimited, client, monkeypatch
-):
-    for _ in range(4):
-        _login(client, "admin@example.com")
-    seen = {}
+def test_signed_in_staff_cannot_switch_account_at_the_admin_login(client):
+    other = "other@example.com"
+    User.objects.create_superuser(
+        username=other, email=other, password=PASSWORD
+    )
+    user = _superuser()
+    client.force_login(user)
 
-    def stub_login(request, extra_context=None):
-        seen["taken"] = django_admin._consume(request, dry_run=True) is None
-        return HttpResponse()
+    response = client.post(
+        ADMIN_LOGIN_URL, {"username": other, "password": PASSWORD}
+    )
 
-    monkeypatch.setattr(django_admin.admin.site, "login", stub_login)
-    _login(client, "admin@example.com")
-
-    assert seen["taken"]
-
-
-def test_admin_login_account_limit_is_per_account(ratelimited, client):
-    for _ in range(5):
-        _login(client, "admin@example.com")
-
-    assert _login(client, "other@example.com").status_code == 200
+    assert response["Location"] == ADMIN_URL
+    assert client.session["_auth_user_id"] == str(user.pk)
 
 
-def test_admin_login_limited_page_says_to_wait(ratelimited, client):
-    url = f"{LOGIN_URL}?next=/django-admin/"
-    for _ in range(5):
-        _login(client, "admin@example.com", url)
+def test_admin_login_page_sends_signed_in_staff_to_the_admin(client):
+    client.force_login(_superuser())
 
-    response = _login(client, "admin@example.com", url)
-    html = response.content.decode()
-    assert "<title>Too many login attempts |" in html
-    assert "<h1>Too many login attempts</h1>" in html
-    assert "Wait a few minutes and try again." in html
-    assert f'href="{url}"' in html
+    response = client.get(f"{ADMIN_LOGIN_URL}?next={ADMIN_URL}auth/user/")
+
+    assert response["Location"] == f"{ADMIN_URL}auth/user/"
+
+
+@pytest.mark.parametrize("url", [ADMIN_URL, ADMIN_LOGIN_URL])
+def test_a_signed_in_litigant_is_sent_to_the_home_page(client, url):
+    client.force_login(User.objects.create_user(username="litigant"))
+
+    response = client.get(url, follow=True)
+
+    assert response.redirect_chain[-1][0] == "/"
+    assert response.status_code == 200
+
+
+def test_staff_without_two_factor_reach_the_admin_after_sign_in(client):
+    _superuser()
+
+    response = client.post(
+        f"{SIGN_IN_URL}?next={ADMIN_URL}",
+        {"login": EMAIL, "password": PASSWORD},
+    )
+
+    assert response["Location"] == ADMIN_URL
+    assert client.get(ADMIN_URL).status_code == 200
+
+
+def test_the_sign_in_form_sends_staff_back_to_the_admin(client):
+    _superuser()
+    page = client.get(f"{SIGN_IN_URL}?next={ADMIN_URL}").content.decode()
+    field = re.search(
+        r'<input type="hidden" name="next" value="([^"]*)"', page
+    )
+
+    response = client.post(
+        SIGN_IN_URL,
+        {"login": EMAIL, "password": PASSWORD, "next": field[1]},
+    )
+
+    assert response["Location"] == ADMIN_URL
+
+
+def test_staff_with_two_factor_reach_the_admin_only_after_the_code(client):
+    user = _superuser()
+    secret = generate_totp_secret()
+    TOTP.activate(user, secret)
+    RecoveryCodes.activate(user)
+
+    response = client.post(
+        f"{SIGN_IN_URL}?next={ADMIN_URL}",
+        {"login": EMAIL, "password": PASSWORD},
+    )
+    assert response["Location"] == CODE_URL
+    assert client.get(ADMIN_URL)["Location"].startswith(ADMIN_LOGIN_URL)
+    assert not _signed_in(client)
+
+    code = format_hotp_value(hotp_value(secret, int(time.time()) // 30))
+    response = client.post(CODE_URL, {"code": code})
+
+    assert response["Location"] == ADMIN_URL
+    assert client.get(ADMIN_URL).status_code == 200
