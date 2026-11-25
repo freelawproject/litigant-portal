@@ -13,6 +13,9 @@ from unittest import mock
 
 import pytest
 from allauth.account.models import EmailAddress
+from allauth.mfa.models import Authenticator
+from allauth.mfa.recovery_codes.internal.auth import RecoveryCodes
+from allauth.mfa.totp.internal.auth import TOTP, generate_totp_secret
 from django.contrib.auth import authenticate, get_user_model
 from django.core import mail
 from django.test import TestCase, override_settings
@@ -46,6 +49,12 @@ def new_password(password: str = NEW_PASSWORD, confirm: str | None = None):
         "password": password,
         "password_confirm": password if confirm is None else confirm,
     }
+
+
+def two_factor_on(user: User) -> User:
+    TOTP.activate(user, generate_totp_secret())
+    RecoveryCodes.activate(user)
+    return user
 
 
 def action_paths(user_id: int) -> list[str]:
@@ -874,3 +883,125 @@ def test_password_link_allows_thirty_a_minute_per_ip(ratelimited, settings):
         assert client.post(path).status_code == 200
 
     assert client.post(path).status_code == 429
+
+
+@pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="prod", PILOT=False)
+class TwoFactorResetTests(TierSetup):
+    """The reset works on every deploy, plain prod included, for the
+    tiers below the viewer."""
+
+    def reset(self, viewer, target):
+        return client_for(viewer).post(
+            f"/api/admin/users/{target.pk}/two-factor/reset/"
+        )
+
+    def has_two_factor(self, user) -> bool:
+        return Authenticator.objects.filter(user=user).exists()
+
+    def test_flp_staff_reset_a_court_admin(self):
+        two_factor_on(self.court_admin)
+
+        response = self.reset(self.staff, self.court_admin)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.has_two_factor(self.court_admin))
+        data = response.json()
+        self.assertFalse(data["two_factor"])
+        self.assertFalse(data["can_reset_two_factor"])
+        self.assertEqual(data["notice"], "Two-factor reset for ca@court.gov")
+
+    def test_superuser_resets_flp_staff(self):
+        two_factor_on(self.staff)
+
+        response = self.reset(self.superuser, self.staff)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self.has_two_factor(self.staff))
+
+    def test_no_one_resets_their_own_tier_or_above(self):
+        other_staff = join(account("f2", "f2@free.law"), FLP_STAFF_GROUP)
+        for target in (
+            self.staff,
+            other_staff,
+            self.django_staff,
+            self.superuser,
+        ):
+            two_factor_on(target)
+            with self.subTest(target=target.email):
+                response = self.reset(self.staff, target)
+                self.assertEqual(response.status_code, 403)
+                self.assertTrue(self.has_two_factor(target))
+
+    def test_court_admin_cannot_reset(self):
+        two_factor_on(self.app_user)
+
+        response = self.reset(self.court_admin, self.app_user)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertTrue(self.has_two_factor(self.app_user))
+
+    def test_unknown_account_is_not_found(self):
+        response = client_for(self.staff).post(
+            "/api/admin/users/999999/two-factor/reset/"
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_reset_needs_a_post(self):
+        response = client_for(self.staff).get(
+            f"/api/admin/users/{self.court_admin.pk}/two-factor/reset/"
+        )
+        self.assertEqual(response.status_code, 405)
+
+    def test_reset_is_logged_without_the_email(self):
+        two_factor_on(self.court_admin)
+
+        with self.assertLogs("litigant_portal.lp_logger", "INFO") as logs:
+            self.reset(self.staff, self.court_admin)
+
+        (record,) = logs.records
+        self.assertEqual(record.getMessage(), "Two-factor reset")
+        self.assertEqual(
+            record.context,
+            {"actor_id": self.staff.pk, "target_id": self.court_admin.pk},
+        )
+
+    def test_rows_say_who_has_two_factor_and_who_can_be_reset(self):
+        two_factor_on(self.court_admin)
+        two_factor_on(self.staff)
+
+        rows = self.rows(self.staff)
+
+        self.assertTrue(rows["ca@court.gov"]["two_factor"])
+        self.assertTrue(rows["ca@court.gov"]["can_reset_two_factor"])
+        self.assertTrue(rows["f@free.law"]["two_factor"])
+        self.assertFalse(rows["f@free.law"]["can_reset_two_factor"])
+        self.assertFalse(rows["jane@example.com"]["two_factor"])
+        self.assertFalse(rows["jane@example.com"]["can_reset_two_factor"])
+
+    def test_page_shows_the_badge_and_the_reset_action_to_flp_staff(self):
+        html = client_for(self.staff).get("/admin/").content.decode()
+
+        self.assertRegex(
+            html,
+            r'<span class="[^"]*rounded-full[^"]*"\s+'
+            r'x-show="user.two_factor">\s*Two-factor\s*</span>',
+        )
+        self.assertRegex(
+            html,
+            r'<button[^>]*x-show="user.can_reset_two_factor"[^>]*'
+            r'x-on:click="openUserTwoFactorReset"',
+        )
+        self.assertIn('id="user-two-factor-reset-dialog"', html)
+        self.assertNotIn("openUserDelete", html)
+
+
+@pytest.mark.postgres
+@override_settings(DEPLOYMENT_ENV="qa", PILOT=False)
+class TwoFactorResetCourtAdminTests(TierSetup):
+    def test_court_admin_page_has_no_reset_action(self):
+        html = self.client.get("/admin/").content.decode()
+
+        self.assertIn("openUserDelete", html)
+        self.assertNotIn("openUserTwoFactorReset", html)
+        self.assertNotIn('id="user-two-factor-reset-dialog"', html)

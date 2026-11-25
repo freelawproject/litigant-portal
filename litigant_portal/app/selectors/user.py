@@ -1,4 +1,5 @@
 from allauth.account.models import EmailAddress
+from allauth.mfa.models import Authenticator
 from django.contrib.auth.models import Group, User
 from django.db.models import Exists, OuterRef, QuerySet
 
@@ -23,7 +24,7 @@ def user_list(
     *, search: str = "", max_tier: Tier = Tier.SUPERUSER
 ) -> QuerySet[User]:
     """Users for the admin users tab, filtered by email substring, each
-    annotated with its role memberships.
+    annotated with its role memberships and whether two-factor is on.
 
     ``max_tier`` is the highest tier listed: a viewer sees their own tier
     and below, so a Court Admin never sees FLP Staff and only a superuser
@@ -33,6 +34,11 @@ def user_list(
     users = User.objects.order_by("email").annotate(
         is_flp_staff_member=_member_of(FLP_STAFF_GROUP),
         is_court_admin_member=_member_of(COURT_ADMINS_GROUP),
+        has_two_factor=Exists(
+            Authenticator.objects.filter(
+                user=OuterRef("pk"), type=Authenticator.Type.TOTP
+            )
+        ),
     )
     if search:
         users = users.filter(email__icontains=search)
