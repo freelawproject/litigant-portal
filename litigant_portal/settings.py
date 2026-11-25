@@ -336,7 +336,8 @@ ACCOUNT_SIGNUP_FIELDS = [
     "password1*",
     "password2*",
 ]  # Required fields
-ACCOUNT_EMAIL_VERIFICATION = "none"  # Disable email verification for now
+# The confirm click signs in, in the browser that signed up.
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGOUT_ON_GET = False  # Require POST for CSRF protection
 # No mail to addresses without an account: anyone could make us send it.
 ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
@@ -375,6 +376,10 @@ else:
     _mailer = {"BACKEND": "django.core.mail.backends.dummy.EmailBackend"}
 MAILERS = {"default": _mailer}
 EMAIL_ENABLED = DEBUG or bool(_email_host)
+# New accounts confirm their address wherever real mail goes out.
+ACCOUNT_EMAIL_VERIFICATION = (
+    "mandatory" if _email_host and not DEBUG else "none"
+)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
 if not DEFAULT_FROM_EMAIL:
     if _email_host and not DEBUG:
