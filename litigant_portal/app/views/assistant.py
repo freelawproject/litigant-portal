@@ -1,12 +1,16 @@
-from django.http import HttpRequest, HttpResponse, JsonResponse
+from uuid import UUID
+
+from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_POST
 from django_ratelimit.decorators import ratelimit
 
 from litigant_portal.agents.assistant import LitigantAssistant
-from litigant_portal.app.models import UserUpload
+from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
+from litigant_portal.app.models import ChatThread, UserUpload
 from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
+from litigant_portal.app.selectors.chat_engine import chat_thread_get
 from litigant_portal.app.selectors.upload import user_upload_list
 from litigant_portal.app.services.upload import (
     UploadValidationError,
@@ -15,7 +19,7 @@ from litigant_portal.app.services.upload import (
     user_upload_serialize,
 )
 from litigant_portal.app.views import chat_engine
-from litigant_portal.app.views.utils import briefcase_answers
+from litigant_portal.app.views.utils import briefcase_answers, has_identity
 
 # General chat endpoints
 
@@ -71,15 +75,27 @@ def thread_delete(request: HttpRequest, thread_id) -> JsonResponse:
 @require_GET
 @ratelimit(key="ip", rate="60/m", method="GET", block=True)
 def briefcase(request: HttpRequest) -> HttpResponse:
-    """The chat page's briefcase panel alone, swapped in when a tool saves a fact (#941).
-
-    Same component and context as the page's first paint, so a refreshed
-    panel can't drift from a server-rendered one.
     """
+    Refresh saved facts, scoped to the displayed thread's active flow.
+    """
+    flow = None
+    if thread_id := request.GET.get("thread_id"):
+        if not has_identity(request):
+            raise Http404("Thread not found")
+        try:
+            thread = chat_thread_get(
+                identity=request.identity,
+                thread_id=UUID(thread_id),
+                thread_type=USER_CHAT_THREAD_TYPE,
+            )
+        except (ValueError, ChatThread.DoesNotExist) as exc:
+            raise Http404("Thread not found") from exc
+        path = (thread.state or {}).get("active_topic_flow")
+        flow = topic_flow_from_path(path) if path else None
     return render(
         request,
         "pages/chat/partials/_briefcase.html",
-        {"briefcase_groups": briefcase_answers(request)},
+        {"briefcase_groups": briefcase_answers(request, flow=flow)},
     )
 
 

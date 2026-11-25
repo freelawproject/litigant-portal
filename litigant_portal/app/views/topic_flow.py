@@ -40,7 +40,6 @@ from litigant_portal.app.topic_flow.prefill import (
 from litigant_portal.app.views.utils import (
     briefcase_answers,
     has_identity,
-    topic_flow_reviewed_answers,
     topic_flow_row_get,
 )
 
@@ -226,6 +225,9 @@ def _projected_page(
             for s in rendered
         ],
         flow_complete=not projection.candidates,
+        briefcase_groups=briefcase_answers(
+            request, flow=flow, current=current
+        ),
     )
 
 
@@ -283,7 +285,9 @@ def _flash_saved(request, valid, protected, revealed=()):
 def _render_flow_page(request, page_title, rendered_sections, **extra):
     """Render ``pages/topic_flow.html`` from an ordered ``RenderedSection``
     list."""
-    briefcase_groups = briefcase_answers(request)
+    briefcase_groups = extra.pop("briefcase_groups", None)
+    if briefcase_groups is None:
+        briefcase_groups = briefcase_answers(request)
     evidence_by_name = {
         answer.variable.name: answer.evidence
         for group in briefcase_groups
@@ -379,10 +383,11 @@ def topic_flow_interview(request, court, topic, role):
     Any failure redirects to the plain interview link instead. Unprefilled is a
     worse handoff than prefilled, but a dead button is worse than both.
     """
-    target = _interview_target(court, topic, role)
+    flow = topic_flow_row_get(court, topic, role)
+    target = flow_interview_target(flow)
     if target is None:
         raise Http404(f"No interview handoff for {court}/{topic}/{role}")
-    return _interview_redirect(request, court, topic, role, target)
+    return _interview_redirect(request, court, topic, role, target, flow)
 
 
 def _interview_target(court, topic, role):
@@ -393,7 +398,7 @@ def _interview_target(court, topic, role):
     )
 
 
-def _interview_redirect(request, court, topic, role, target):
+def _interview_redirect(request, court, topic, role, target, flow):
     interview, mapping = target
     launch_url = interview_launch_url(interview)
     if launch_url is None:
@@ -401,10 +406,17 @@ def _interview_redirect(request, court, topic, role, target):
         # hides the button, so only a stale or hand-built POST lands here.
         raise Http404(f"No docassemble configured for {court}/{topic}/{role}")
 
-    variables = prefill_variables(
-        mapping=mapping,
-        answers=topic_flow_reviewed_answers(request, list(mapping)),
-    )
+    answers = {}
+    if has_identity(request):
+        current = flow_state(
+            identity=request.identity, flow=flow, contacts=[], resources=[]
+        )
+        answers = {
+            name: current.state.facts[name].value
+            for name in current.projection.answered
+            if current.state.facts[name].reviewed
+        }
+    variables = prefill_variables(mapping=mapping, answers=answers)
     if not variables:
         # Nothing to prefill: a session would cost three API calls and an
         # unencrypted multi_user session holding nothing, for the same

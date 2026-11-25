@@ -67,6 +67,7 @@ def snapshot_current() -> dict:
         topic_flow_markdown,
     )
     from litigant_portal.app.selectors.site import site_get
+    from litigant_portal.app.selectors.state import flow_state
     from litigant_portal.app.selectors.topic_flow import (
         topic_flow_find,
         topic_flow_list,
@@ -76,10 +77,13 @@ def snapshot_current() -> dict:
     flows = []
     for flow in topic_flow_list():
         full = topic_flow_find(topic_slug=flow.topic.slug, flow_slug=flow.slug)
+        current = flow_state(
+            identity=None, flow=full, contacts=[], resources=[]
+        )
         flows.append(
             {
                 "path": f"{flow.topic.slug}/{flow.slug}",
-                "content": topic_flow_markdown(full),
+                "content": topic_flow_markdown(full, current.projection),
             }
         )
     return {

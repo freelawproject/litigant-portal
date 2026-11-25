@@ -1,6 +1,7 @@
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass
+from datetime import date
 
 from django.forms.models import model_to_dict
 from django.utils import timezone
@@ -41,6 +42,7 @@ class FlowStateType:
     rules: CourtRulesType
     projection: ProjectionType
     variables: dict[str, Variable]
+    answers: dict[str, VariableAnswer]
 
 
 def flow_state(
@@ -50,6 +52,7 @@ def flow_state(
     contacts: Iterable[Contact],
     resources: Iterable[Resource],
     limit: int = 1,
+    time_context: date | None = None,
 ) -> FlowStateType:
     """
     Load a fresh snapshot and compute one projection for the caller.
@@ -58,19 +61,26 @@ def flow_state(
     Writes always resolve a real identity through the request middleware.
     """
     variables = {v.name: v for v in Variable.objects.filter(in_schema=True)}
+    answers = {}
     if identity is None:
         state = StateType(identity_id=0, flow_id=flow.pk)
     else:
-        answers = VariableAnswer.objects.filter(
-            identity=identity
-        ).select_related("variable")
+        answers = {
+            answer.variable.name: answer
+            for answer in VariableAnswer.objects.filter(
+                identity=identity
+            ).select_related("variable")
+        }
         viewed = (
             FlowViewState.objects.filter(identity=identity, flow=flow)
             .values_list("viewed", flat=True)
             .first()
         )
         state = state_snapshot(
-            identity=identity, flow=flow, answers=answers, viewed=viewed
+            identity=identity,
+            flow=flow,
+            answers=answers.values(),
+            viewed=viewed,
         )
     rules = court_rules(
         flow=flow,
@@ -81,8 +91,9 @@ def flow_state(
     return FlowStateType(
         state,
         rules,
-        project(state, rules, timezone.localdate(), limit),
+        project(state, rules, time_context or timezone.localdate(), limit),
         variables,
+        answers,
     )
 
 

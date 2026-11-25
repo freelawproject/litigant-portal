@@ -20,13 +20,12 @@ from litigant_portal.app.features import features
 from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 from litigant_portal.app.permissions import Tier
 from litigant_portal.app.selectors.chat_engine import chat_thread_list
+from litigant_portal.app.selectors.state import FlowStateType, flow_state
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
     topic_flow_list,
     topic_flow_url_kwargs,
-    variable_answer_cleared_names,
     variable_answer_groups,
-    variable_answer_map,
 )
 from litigant_portal.app.selectors.user import user_assignable_roles
 
@@ -63,36 +62,6 @@ def topic_flow_row_get(court, topic, role, *, graph=True):
     return flow
 
 
-def topic_flow_row_answers(request, names: list[str]) -> dict:
-    """``{variable_name: value}`` for the given names, for the page and its
-    downloads. Reads through the glossary, so a fact the assistant stored
-    shows up here too. Empty for a visitor with no identity yet."""
-    return _answer_map(request, names)
-
-
-def topic_flow_row_cleared_names(request, names: list[str]) -> set[str]:
-    """The given names this visitor has cleared, so the rows page shows a
-    blank there instead of the glossary default. Empty without an identity."""
-    if not has_identity(request):
-        return set()
-    return set(
-        variable_answer_cleared_names(identity=request.identity, names=names)
-    )
-
-
-def topic_flow_reviewed_answers(request, names: list[str]) -> dict:
-    """``{question_id: value}`` for confirmed answers only, for the prefill."""
-    return _answer_map(request, names, reviewed_only=True)
-
-
-def _answer_map(request, names, *, reviewed_only=False) -> dict:
-    if not has_identity(request):
-        return {}
-    return variable_answer_map(
-        identity=request.identity, names=names, reviewed_only=reviewed_only
-    )
-
-
 def topic_flow_cards() -> list[dict]:
     """``{title, description, icon, url}`` per enabled flow with a guided
     page: the home grid's cards (#1068).
@@ -116,7 +85,9 @@ def topic_flow_cards() -> list[dict]:
     return cards
 
 
-def briefcase_answers(request) -> list[dict]:
+def briefcase_answers(
+    request, *, flow=None, current: FlowStateType | None = None
+) -> list[dict]:
     """The visitor's stored facts, grouped for the briefcase panel.
 
     Empty for a visitor with no identity yet, which renders as the panel's
@@ -124,6 +95,18 @@ def briefcase_answers(request) -> list[dict]:
     """
     if not has_identity(request):
         return []
+    if flow is not None:
+        if current is None:
+            current = flow_state(
+                identity=request.identity, flow=flow, contacts=[], resources=[]
+            )
+        return variable_answer_groups(
+            identity=request.identity,
+            flow=flow,
+            answers=[
+                current.answers[name] for name in current.projection.answered
+            ],
+        )
     return variable_answer_groups(identity=request.identity)
 
 

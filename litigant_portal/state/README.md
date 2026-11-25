@@ -2,7 +2,7 @@
 
 This package owns database-free state transitions and computed progress. Django services own identity resolution, glossary validation, transactions, persistence, and external operations.
 
-The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, and guided selection and Continue actions. Chat integration and the remaining corpus cleanup are next. The application is intentionally incomplete; the single feature migration and database rebuild come after the schema is settled.
+The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, guided selection and Continue actions, and chat integration. Corpus cleanup and the North Dakota demonstration are next. The application is intentionally incomplete; the single feature migration and database rebuild come after the schema is settled.
 
 ## Contract
 
@@ -56,6 +56,10 @@ Required questions remain unfinished until answered and confirmed. Optional ques
 The projector leaves its inputs unchanged and never records a view or confirms a fact. A flow mismatch or nonpositive candidate limit is rejected. Deadline calculation now lives here; application display formatting stays in `app/topic_flow/deadlines.py`.
 
 The guided view displays projected candidates and links to every applicable component for revisiting. Saving accepts only that component's applicable questions and preserves valid siblings when another answer fails validation. Continue records the displayed content signature, rejects stale content, and cannot bypass required answers or their confirmation. Optional questions may be skipped. The calendar download uses the same projected deadlines as the page. These paths reuse the existing forms and work through ordinary GET and POST requests.
+
+The assistant's identity prompt contains the active flow's projected guidance, facts, forms, deadlines, and progress. It refreshes each turn and after `LoadTopicFlow` or a fact change, using the turn's fixed local date. The stored snapshot masks private fact values and dates derived from private facts. Shared prompt artifacts contain no identity projection. Successful historical `LoadTopicFlow` payloads are replaced only in the outgoing model context; stored history stays intact, and citation diagnostics inspect the actual model request.
+
+`ReviewFacts`, the active-flow briefcase, and Docassemble prefill use projected answers. Prefill additionally requires human confirmation. The briefcase follows the displayed chat thread, verifies thread ownership, and ignores late responses for a different thread. Hidden answers remain stored so changing a condition can reveal them again.
 
 ## Verification
 

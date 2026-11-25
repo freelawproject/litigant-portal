@@ -175,6 +175,7 @@ def test_guided_selection_and_human_actions(
         rules,
         project(state, rules, date(2026, 11, 25)),
         {v.name: v for v in (gate, started)},
+        {},
     )
     for name, value in {
         "topic_flow_row_get": flow,

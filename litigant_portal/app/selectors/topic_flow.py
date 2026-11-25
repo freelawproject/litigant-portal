@@ -206,15 +206,13 @@ def variable_answer_unreviewed_names(*, identity, names: list[str]) -> list:
     )
 
 
-def variable_answer_groups(*, identity) -> list[dict]:
-    """An identity's answers, grouped for reading by interview page.
+def variable_answer_groups(*, identity, flow=None, answers=None) -> list[dict]:
+    """
+    An identity's answers, grouped for reading by interview page.
 
-    Grouping comes from each answered variable's own placement
-    (``TopicFlowInterviewVariable``), not from an active flow: the chat page
-    resolves no flow server-side, so placement is the only grouping available
-    without a model change. A variable placed on more than one page is grouped
-    under the first placement in (topic, flow, page, placement) order, which
-    keeps the grouping stable across requests.
+    With a flow, use its prefetched placements and the caller's projected
+    answers. Otherwise, load applicable stored answers and use the first
+    placement in (topic, flow, page, placement) order for stable grouping.
 
     Pages that place nothing this identity answered are skipped rather than
     rendered as empty headings, and answers with no placement collect in a
@@ -224,13 +222,21 @@ def variable_answer_groups(*, identity) -> list[dict]:
     matching ``variable_answer_map``: a cleared fact is not a fact, and no
     surface should show a variable the corpus no longer names.
     """
-    answers = variable_answer_list(identity=identity, answered_only=True)
+    if answers is None:
+        answers = variable_answer_list(identity=identity, answered_only=True)
     if not answers:
         return []
 
     answer_by_variable = {a.variable_id: a for a in answers}
     placements = (
-        TopicFlowInterviewVariable.objects.filter(
+        [
+            placement
+            for page in flow.interview_pages.all()
+            for placement in page.variables.all()
+            if placement.variable_id in answer_by_variable
+        ]
+        if flow is not None
+        else TopicFlowInterviewVariable.objects.filter(
             variable_id__in=answer_by_variable, page__flow__enabled=True
         )
         .select_related("page")

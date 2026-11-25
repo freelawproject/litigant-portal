@@ -145,9 +145,7 @@ def test_answered_flow_variables_are_listed_with_their_review_state(
     assert data["all_reviewed"] is False
 
 
-def test_the_tool_reads_the_flow_row_without_its_content_graph(
-    thread, active_flow
-):
+def test_the_tool_reads_the_flow_graph_for_projection(thread, active_flow):
     _store(thread, "first_name", "Ada")
     with patch.object(
         tool_module,
@@ -155,7 +153,7 @@ def test_the_tool_reads_the_flow_row_without_its_content_graph(
         wraps=tool_module.topic_flow_from_path,
     ) as from_path:
         data = ReviewFacts()(thread_id=thread.id).render_data
-    from_path.assert_called_once_with("name_change/standard", graph=False)
+    from_path.assert_called_once_with("name_change/standard")
     assert [f["name"] for f in data["facts"]] == ["first_name"]
 
 
