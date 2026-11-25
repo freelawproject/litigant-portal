@@ -4,6 +4,7 @@ All tests are DB-free and run in the fast suite. The Docker test image
 ships without scripts/, so the module is skipped there.
 """
 
+import http.client
 import json
 import tomllib
 import zipfile
@@ -382,15 +383,75 @@ def test_aws_secret_failure_shows_the_cli_error():
 # deploy: _install and _await_install
 
 
-class _FakeServer:
-    """Answers requests in order; the last answer repeats."""
+class _DroppedConnection:
+    """Stands in for urllib's opener when the server goes away mid-request."""
 
-    def __init__(self, *answers):
+    def __init__(self, error):
+        self.error = error
+
+    def open(self, request, timeout):
+        raise self.error
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        http.client.RemoteDisconnected("closed without response"),
+        ConnectionResetError("reset by peer"),
+        TimeoutError("read timed out"),
+    ],
+)
+def test_request_treats_a_dropped_connection_as_unreachable(
+    error, monkeypatch
+):
+    # urllib wraps connect failures in URLError, but not these, which
+    # happen while reading the response during docassemble's restart.
+    monkeypatch.setattr(bench, "_NO_REDIRECTS", _DroppedConnection(error))
+    server = bench.Bench.__new__(bench.Bench)
+    server.base, server.key = "https://da.example", "key"
+
+    with pytest.raises(bench.BenchUnreachable):
+        server._request("GET", "/api/package_update_status")
+
+
+class _Clock:
+    """A monotonic clock that moves only when told to."""
+
+    def __init__(self):
+        self.now = 0.0
+
+    def __call__(self):
+        return self.now
+
+    def advance(self, seconds):
+        self.now += seconds
+
+
+class _FakeServer:
+    """Answers requests in order; the last answer repeats. Each request
+    takes `cost` seconds on `clock`, like a server slow to answer."""
+
+    def __init__(self, *answers, clock=None, cost=0):
         self.answers = list(answers)
         self.requests = []
+        self.timeouts = []
+        self.clock = clock
+        self.cost = cost
 
-    def _request(self, method, path, *, query=None, data=None, headers=None):
+    def _request(
+        self,
+        method,
+        path,
+        *,
+        query=None,
+        data=None,
+        headers=None,
+        timeout=None,
+    ):
         self.requests.append((method, path, query))
+        self.timeouts.append(timeout)
+        if self.clock:
+            self.clock.advance(self.cost)
         answer = (
             self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
         )
@@ -420,8 +481,14 @@ def test_install_refused_shows_the_servers_reason(tmp_path):
 
 
 def _wait(server, timeout=60):
+    clock = server.clock or _Clock()
     return bench._await_install(
-        server, "abc", timeout=timeout, interval=1, sleep=lambda _s: None
+        server,
+        "abc",
+        timeout=timeout,
+        interval=1,
+        sleep=clock.advance,
+        clock=clock,
     )
 
 
@@ -474,6 +541,25 @@ def test_await_install_gives_up_after_the_timeout():
     with pytest.raises(SystemExit, match="still installing"):
         _wait(server, timeout=3)
     assert len(server.requests) == 3
+
+
+def test_await_install_counts_time_spent_waiting_on_the_server():
+    # Each status check takes a minute to come back with a 502, so a
+    # 3-minute budget allows 3 checks, not one per poll interval.
+    server = _FakeServer((502, "Bad Gateway"), clock=_Clock(), cost=60)
+
+    with pytest.raises(SystemExit, match="still installing"):
+        _wait(server, timeout=180)
+    assert len(server.requests) == 3
+
+
+def test_await_install_caps_each_status_check_at_the_time_left():
+    server = _FakeServer((502, "Bad Gateway"), clock=_Clock(), cost=60)
+
+    with pytest.raises(SystemExit, match="still installing"):
+        _wait(server, timeout=100)
+    # 100s left for the first check; 100 - 60 (check) - 1 (poll) for the next.
+    assert server.timeouts == [100, 39]
 
 
 def test_await_install_fails_on_a_refused_status_check():

@@ -35,6 +35,7 @@ The bench and its API key come from the repo's ``.env``: ``DA_ADMIN_API_KEY``
 
 import argparse
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -105,6 +106,9 @@ class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
 
 _NO_REDIRECTS = urllib.request.build_opener(_RefuseRedirects)
 
+# Longest wait for one answer from docassemble, in seconds.
+REQUEST_TIMEOUT = 120
+
 
 class BenchUnreachable(SystemExit):
     """docassemble didn't answer at all. Exits like any other failure, unless
@@ -119,7 +123,16 @@ class Bench:
         user = self.get_json("/api/user")
         self.user_id = user["id"]
 
-    def _request(self, method, path, *, query=None, data=None, headers=None):
+    def _request(
+        self,
+        method,
+        path,
+        *,
+        query=None,
+        data=None,
+        headers=None,
+        timeout=REQUEST_TIMEOUT,
+    ):
         url = f"{self.base}{path}"
         if query:
             url += "?" + urllib.parse.urlencode(query)
@@ -130,7 +143,7 @@ class Bench:
             headers={"X-API-Key": self.key, **(headers or {})},
         )
         try:
-            with _NO_REDIRECTS.open(request, timeout=120) as response:
+            with _NO_REDIRECTS.open(request, timeout=timeout) as response:
                 return response.status, response.read()
         except urllib.error.HTTPError as error:
             if 300 <= error.code < 400:
@@ -140,9 +153,14 @@ class Bench:
                     f"{error.headers.get('Location')}"
                 )
             return error.code, error.read()
-        except urllib.error.URLError as error:
+        except (OSError, http.client.HTTPException) as error:
+            # URLError (an OSError) covers a failed connect. A connection
+            # dropped while reading the response, as during docassemble's
+            # restart, raises RemoteDisconnected, ConnectionResetError or
+            # TimeoutError instead, which urllib passes through unwrapped.
+            reason = getattr(error, "reason", error)
             raise BenchUnreachable(
-                f"Can't reach docassemble at {self.base}: {error.reason}"
+                f"Can't reach docassemble at {self.base}: {reason}"
             ) from error
 
     def get_json(self, path, **query):
@@ -435,17 +453,21 @@ def _await_install(
     timeout=INSTALL_TIMEOUT,
     interval=INSTALL_POLL,
     sleep=time.sleep,
+    clock=time.monotonic,
 ):
     """Poll an install until docassemble reports it done, and return its log.
 
     docassemble restarts itself after installing, so the server going away or
-    the ingress answering 5xx means keep waiting, not failure."""
-    for _ in range(max(1, timeout // interval)):
+    the ingress answering 5xx means keep waiting, not failure. `timeout` is
+    elapsed time, including time spent waiting on slow answers."""
+    deadline = clock() + timeout
+    while (remaining := deadline - clock()) > 0:
         try:
             status, body = bench._request(
                 "GET",
                 "/api/package_update_status",
                 query={"task_id": task_id},
+                timeout=min(REQUEST_TIMEOUT, remaining),
             )
         except BenchUnreachable:
             status, body = None, b""
@@ -462,7 +484,7 @@ def _await_install(
                 )
         elif status is not None and status < 500:
             sys.exit(f"Install status: HTTP {status}: {body.decode()[:500]}")
-        sleep(interval)
+        sleep(max(0, min(interval, deadline - clock())))
     sys.exit(f"Gave up after {timeout}s: docassemble is still installing")
 
 
