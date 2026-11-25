@@ -1,4 +1,4 @@
-.PHONY: help install lint test test-v test-failed test-fo pre-commit \
+.PHONY: help install lint test test-v test-failed pre-commit \
 	   css css-watch css-minify clean \
 	   check migrate shell collectstatic superuser messages compilemessages \
 	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
@@ -43,9 +43,7 @@ test-js: ## Run the browser JS tests (Node's built-in runner, no install needed)
 
 test-failed: ## Rerun only the tests that failed last run (pytest --lf); CI runs the full suite
 	$(require-docker)
-	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short --lf $(PYTEST_CACHE) $(filter-out test-failed test-fo,$(MAKECMDGOALS))
-
-test-fo: test-failed ## Short form of test-failed
+	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short --lf $(PYTEST_CACHE) $(filter-out test-failed,$(MAKECMDGOALS))
 
 test-v: ## Run tests — verbose output
 	$(require-docker)
