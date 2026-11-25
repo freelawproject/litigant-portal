@@ -120,6 +120,7 @@ INSTALLED_APPS = [
     # Third-party apps
     "allauth",
     "allauth.account",
+    "allauth.mfa",
     "allauth.socialaccount",
     "django_cotton",
     "django_linear_migrations",
@@ -346,6 +347,9 @@ ACCOUNT_EMAIL_SUBJECT_PREFIX = ""  # Our subjects name the court
 # length in days.
 PASSWORD_RESET_TIMEOUT = 7 * 24 * 60 * 60
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7
+# Two-factor: authenticator app codes and recovery codes.
+MFA_ADAPTER = "litigant_portal.app.adapters.MFAAdapter"
+MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
 CSRF_FAILURE_VIEW = "litigant_portal.app.views.topic_flow.csrf_failure"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
@@ -381,6 +385,9 @@ EMAIL_ENABLED = DEBUG or bool(_email_host)
 ACCOUNT_EMAIL_VERIFICATION = (
     "mandatory" if _email_host and not DEBUG else "none"
 )
+# Sign-in already needs a confirmed address where confirming is possible.
+# An unconfirmed second address must not block two-factor setup.
+MFA_ALLOW_UNVERIFIED_EMAIL = True
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
 if not DEFAULT_FROM_EMAIL:
     if _email_host and not DEBUG:

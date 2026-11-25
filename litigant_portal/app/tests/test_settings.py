@@ -185,6 +185,7 @@ def test_verification_is_mandatory_when_real_mail_goes_out():
     config = _email_config(SMTP_ENV)
 
     assert config["ACCOUNT_EMAIL_VERIFICATION"] == "mandatory"
+    assert config["MFA_ALLOW_UNVERIFIED_EMAIL"] is True
 
 
 @pytest.mark.parametrize(
@@ -196,6 +197,7 @@ def test_verification_is_off_without_real_mail(environ):
     config = _email_config(environ)
 
     assert config["ACCOUNT_EMAIL_VERIFICATION"] == "none"
+    assert config["MFA_ALLOW_UNVERIFIED_EMAIL"] is True
 
 
 def test_from_address_reads_environment():
