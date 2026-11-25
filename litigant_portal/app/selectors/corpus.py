@@ -23,9 +23,9 @@ from litigant_portal.app.models.choices import (
     ContactKind,
     JurisdictionLevel,
     State,
-    VariableDataType,
 )
 from litigant_portal.app.services.topic_flow import variable_value_validate
+from litigant_portal.state.models import VariableDataType
 from litigant_portal.state.rules import (
     condition_leaves,
     condition_names,

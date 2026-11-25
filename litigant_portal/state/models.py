@@ -1,23 +1,25 @@
 import uuid
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import RegexValidator
 from django.db import models
-from django.utils import formats
-from django.utils.dateparse import parse_date, parse_datetime
-from django.utils.translation import gettext_lazy as _
 
-from litigant_portal.app.formatting import format_long_date
+from litigant_portal.app.models.base import BaseModel
 from litigant_portal.state.rules import (
     condition_matches,
     parse_condition,
 )
 from litigant_portal.state.types import ConditionType
 
-from .base import BaseModel
-from .choices import VariableDataType
-
 SNAKE_CASE_PATTERN = r"^[a-z][a-z0-9_]*$"
+
+
+class VariableDataType(models.TextChoices):
+    TEXT = "text", "Text"
+    DATE = "date", "Date"
+    DATETIME = "datetime", "Datetime"
+    NUMBER = "number", "Number"
+    CHOICE = "choice", "Choice"
+    BOOLEAN = "boolean", "Boolean"
 
 
 class Topic(BaseModel):
@@ -35,6 +37,7 @@ class Topic(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
 
@@ -56,6 +59,7 @@ class TopicFlow(BaseModel):
     interview_prefill = models.JSONField(default=dict, blank=True)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
@@ -80,6 +84,7 @@ class TopicFlowSection(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
 
@@ -95,6 +100,7 @@ class FlowViewState(BaseModel):
     viewed = models.JSONField(default=dict, blank=True)
 
     class Meta:
+        app_label = "app"
         constraints = [
             models.UniqueConstraint(
                 fields=["identity", "flow"], name="unique_identity_flow_view"
@@ -128,6 +134,7 @@ class Variable(BaseModel):
     asked_when = models.JSONField(null=True, blank=True)
 
     class Meta:
+        app_label = "app"
         ordering = ["name"]
         constraints = [
             models.CheckConstraint(
@@ -165,57 +172,8 @@ class VariableAnswer(BaseModel):
     reviewed = models.BooleanField(default=False)
     evidence = models.JSONField(null=True, blank=True)
 
-    @property
-    def display_value(self) -> str:
-        """The stored value rendered for reading.
-
-        ``value`` is jsonb, so a multi-choice answer arrives as a list, a
-        boolean as a bool, and a date as an ISO string. Handing any of those
-        straight to a template shows the litigant a Python repr or a raw
-        `2026-09-09`, so the shaping lives here rather than in the template.
-        """
-        if isinstance(self.value, bool):
-            return str(_("Yes")) if self.value else str(_("No"))
-        if isinstance(self.value, list):
-            return ", ".join(str(item) for item in self.value)
-        if self.value is None:
-            return ""
-        return self._formatted_value_from_data_type()
-
-    def _formatted_value_from_data_type(self) -> str:
-        raw = str(self.value)
-
-        try:
-            data_type = self.variable.data_type
-        except ObjectDoesNotExist:
-            return raw
-
-        if data_type == VariableDataType.CHOICE:
-            return self._formatted_choice()
-        elif data_type == VariableDataType.DATE:
-            parsed = parse_date(raw)
-            # Same shape the flow page's deadlines use, so a litigant sees one
-            # date format across both surfaces.
-            return format_long_date(parsed) if parsed else raw
-        elif data_type == VariableDataType.DATETIME:
-            parsed = parse_datetime(raw)
-            if parsed is None:
-                return raw
-            return formats.date_format(parsed, "DATETIME_FORMAT")
-        return raw
-
-    def _formatted_choice(self) -> str:
-        # A stored answer can outlive its choice when the corpus changes.
-        return next(
-            (
-                choice["label"]
-                for choice in self.variable.choices
-                if choice["value"] == self.value
-            ),
-            str(self.value),
-        )
-
     class Meta:
+        app_label = "app"
         constraints = [
             models.UniqueConstraint(
                 fields=["identity", "variable"],
@@ -234,6 +192,7 @@ class Form(BaseModel):
     url = models.URLField(max_length=500, blank=True)
 
     class Meta:
+        app_label = "app"
         ordering = ["slug"]
 
 
@@ -254,6 +213,7 @@ class FormField(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
         constraints = [
             models.CheckConstraint(
@@ -298,6 +258,7 @@ class TopicFlowFormCondition(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
 
@@ -318,6 +279,7 @@ class TopicFlowInterviewPage(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
 
@@ -338,6 +300,7 @@ class TopicFlowInterviewVariable(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
@@ -362,6 +325,7 @@ class TopicFlowLink(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
 
@@ -387,6 +351,7 @@ class TopicFlowDeadline(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
     @property

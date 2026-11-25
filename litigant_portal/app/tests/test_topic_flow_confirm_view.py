@@ -12,9 +12,9 @@ from django.urls import resolve, reverse
 from django.utils import timezone
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.views import topic_flow as topic_flow_views
+from litigant_portal.state.models import VariableDataType
 
 URL = "/facts/confirm/"
 

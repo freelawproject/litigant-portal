@@ -21,9 +21,9 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.permissions import COURT_ADMINS_GROUP, FLP_STAFF_GROUP
 from litigant_portal.app.tests.test_permissions import client_for, join, reload
+from litigant_portal.state.models import VariableDataType
 
 User = get_user_model()
 

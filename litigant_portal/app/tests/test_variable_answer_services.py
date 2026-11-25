@@ -9,11 +9,11 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.services.topic_flow import (
     variable_answer_set,
     variable_value_validate,
 )
+from litigant_portal.state.models import VariableDataType
 
 # Variable.choices is stored as the corpus writes it: {value, label} dicts.
 COUNTY_CHOICES = [

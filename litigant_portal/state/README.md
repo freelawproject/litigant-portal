@@ -2,7 +2,7 @@
 
 This package owns database-free state transitions and computed progress. Django services own identity resolution, glossary validation, transactions, persistence, and external operations.
 
-The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, guided selection and Continue actions, chat integration, and corpus cleanup. The optional System One backend is next. The application is intentionally incomplete; the single feature migration, database rebuild, and live verification come during final assembly.
+The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, guided selection and Continue actions, chat integration, and corpus cleanup. The optional System One backend is scaffolded only. The application is intentionally incomplete; the single feature migration, database rebuild, and live verification come during final assembly.
 
 ## Contract
 
@@ -34,6 +34,10 @@ The service locks the identity before reading its snapshot, validates the action
 ## Docassemble
 
 `docassemble.request_interview` is an intentional no-op lifecycle boundary. It creates no session, operation result, or completion status. The existing user-initiated interview launch remains in the application service.
+
+## System One
+
+`system_one.reduce` and `system_one.project` are no-op placeholders with the same inputs as their Python counterparts. Both return `None`, perform no model calls, and leave their inputs unchanged. They are not wired into the application; Python reduction and projection remain active. Implementing the model backend and its validated result contracts is deferred.
 
 ## Conditions
 

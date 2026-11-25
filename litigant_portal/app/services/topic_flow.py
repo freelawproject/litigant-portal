@@ -20,8 +20,8 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.state import state_snapshot
+from litigant_portal.state.models import VariableDataType
 from litigant_portal.state.reducer import reduce
 from litigant_portal.state.rules import applicable_facts
 from litigant_portal.state.types import (
@@ -162,7 +162,7 @@ def _state_apply(
         identity=identity,
         flow=flow,
         answers=answers.values(),
-        viewed=viewed
+        viewed=viewed,
     )
     variables = {}
     if isinstance(action, SetFactsActionType):

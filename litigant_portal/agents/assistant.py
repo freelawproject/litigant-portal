@@ -2,6 +2,8 @@ import json
 from datetime import UTC, timedelta
 from typing import Any
 
+from litigant_portal.app.topic_flow.formatting import format_answer
+
 from .base import (
     Agent,
     AgentState,
@@ -328,7 +330,7 @@ def _fact_values(answers) -> dict[str, str]:
         a.variable.name: (
             f"value: {json.dumps(a.value, ensure_ascii=False)}, "
             "display_value: "
-            f"{json.dumps(a.display_value, ensure_ascii=False)}"
+            f"{json.dumps(format_answer(a), ensure_ascii=False)}"
         )
         for a in answers
     }

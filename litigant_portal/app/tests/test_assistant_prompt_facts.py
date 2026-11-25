@@ -10,8 +10,8 @@ import pytest
 
 from litigant_portal.agents.assistant import LitigantAssistant
 from litigant_portal.app.models import ChatThread, UserIdentity, Variable
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.services.topic_flow import variable_answer_set
+from litigant_portal.state.models import VariableDataType
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 

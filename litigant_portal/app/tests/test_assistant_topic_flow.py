@@ -31,13 +31,13 @@ from litigant_portal.app.models import (
     UserIdentity,
     Variable,
 )
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.state import flow_state
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
     topic_flow_list,
 )
 from litigant_portal.app.services.site import site_update
+from litigant_portal.state.models import VariableDataType
 
 
 def _eviction_flow() -> TopicFlow:

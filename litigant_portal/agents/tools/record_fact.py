@@ -1,6 +1,7 @@
 from typing import Any
 
 from litigant_portal.agents.base import Field, Tool, ToolOutput
+from litigant_portal.app.topic_flow.formatting import format_answer
 from litigant_portal.state.types import FactInputType
 
 
@@ -115,7 +116,7 @@ class RecordFact(Tool):
                     {
                         "name": name,
                         "label": variable.label or name,
-                        "display_value": answer.display_value,
+                        "display_value": format_answer(answer),
                     }
                 )
                 continue
@@ -123,7 +124,7 @@ class RecordFact(Tool):
                 {
                     "name": name,
                     "label": variable.label or name,
-                    "display_value": answer.display_value,
+                    "display_value": format_answer(answer),
                     "cleared": incoming.value is None,
                 }
             )

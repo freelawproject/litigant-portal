@@ -79,12 +79,3 @@ class State(models.TextChoices):
     NORTHERN_MARIANA_ISLANDS = "MP", _("Northern Mariana Islands")
     PUERTO_RICO = "PR", _("Puerto Rico")
     VIRGIN_ISLANDS = "VI", _("U.S. Virgin Islands")
-
-
-class VariableDataType(models.TextChoices):
-    TEXT = "text", "Text"
-    DATE = "date", "Date"
-    DATETIME = "datetime", "Datetime"
-    NUMBER = "number", "Number"
-    CHOICE = "choice", "Choice"
-    BOOLEAN = "boolean", "Boolean"

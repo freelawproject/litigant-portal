@@ -2,6 +2,7 @@ from django.utils import timezone
 
 from litigant_portal.agents.base import Tool, ToolOutput
 from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
+from litigant_portal.app.topic_flow.formatting import format_answer
 
 
 class ReviewFacts(Tool):
@@ -66,7 +67,7 @@ class ReviewFacts(Tool):
                 {
                     "name": name,
                     "label": variable.label or name,
-                    "display_value": answer.display_value,
+                    "display_value": format_answer(answer),
                     "reviewed": answer.reviewed,
                     "evidence": answer.evidence,
                 }

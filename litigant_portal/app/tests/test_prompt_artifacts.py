@@ -25,7 +25,6 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.chat_engine import (
     chat_thread_export_data,
     chat_thread_export_markdown,
@@ -40,6 +39,7 @@ from litigant_portal.app.services.chat_engine import (
     prompt_artifact_get_or_create,
 )
 from litigant_portal.app.services.topic_flow import variable_answer_set
+from litigant_portal.state.models import VariableDataType
 
 pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 

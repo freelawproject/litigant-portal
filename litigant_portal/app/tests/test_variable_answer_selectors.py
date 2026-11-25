@@ -4,11 +4,11 @@ import pytest
 from django.test import TestCase
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.topic_flow import (
     variable_answer_list,
     variable_answer_map,
 )
+from litigant_portal.state.models import VariableDataType
 
 
 @pytest.mark.postgres

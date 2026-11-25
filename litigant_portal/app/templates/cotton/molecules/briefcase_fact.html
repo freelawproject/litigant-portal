@@ -1,4 +1,4 @@
-{% load i18n %}
+{% load i18n facts %}
 
 {# One stored fact: its label over its value. Label falls back to the #}
 {# variable's name so a corpus entry with no label still reads. #}
@@ -12,7 +12,7 @@
           x-data="revealToggle">
         <span aria-hidden="true" x-show="masked">••••••</span>
         <span class="sr-only" x-show="masked">{% trans "Hidden for your privacy" %}</span>
-        <span class="min-w-0" x-show="revealed" x-cloak>{{ answer.display_value }}</span>
+        <span class="min-w-0" x-show="revealed" x-cloak>{{ answer|display_answer }}</span>
         <c-atoms.button type="button"
                         variant="ghost"
                         size="icon"
@@ -27,7 +27,7 @@
         </c-atoms.button>
       </dd>
     {% else %}
-      <dd class="text-sm text-greyscale-800 break-words">{{ answer.display_value }}</dd>
+      <dd class="text-sm text-greyscale-800 break-words">{{ answer|display_answer }}</dd>
     {% endif %}
   </div>
 {% endwith %}

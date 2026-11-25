@@ -11,13 +11,13 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 from litigant_portal.app.features import features
 from litigant_portal.app.models import Variable, VariableAnswer
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.theme import (
     contrast_level,
     contrast_ratio,
     theme_colors,
 )
 from litigant_portal.app.views.utils import topic_flow_cards
+from litigant_portal.state.models import VariableDataType
 
 
 def _style_guide_required(view):

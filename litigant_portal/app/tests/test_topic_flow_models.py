@@ -28,7 +28,7 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.models.choices import (
+from litigant_portal.state.models import (
     VariableDataType,
 )
 

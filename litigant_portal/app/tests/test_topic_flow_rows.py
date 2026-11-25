@@ -22,13 +22,13 @@ from litigant_portal.app.models import (
     TopicFlowSection,
     Variable,
 )
-from litigant_portal.app.models.choices import (
-    VariableDataType,
-)
 from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
 from litigant_portal.app.selectors.state import court_rules
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.rows import RenderedSection
+from litigant_portal.state.models import (
+    VariableDataType,
+)
 from litigant_portal.state.projector import project
 from litigant_portal.state.types import FactType, StateType
 

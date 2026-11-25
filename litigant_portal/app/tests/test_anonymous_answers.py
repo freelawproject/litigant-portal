@@ -24,8 +24,8 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.session import ANONYMOUS_SESSION_KEY
+from litigant_portal.state.models import VariableDataType
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
