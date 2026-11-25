@@ -65,10 +65,11 @@ def user_create(
 def user_password_link_send(*, user: User, request) -> None:
     """Email ``user`` a link to set their password: the invite while the
     account has no password, a reset after. Raises ``ValidationError``
-    when there is no account to send to, and when sending fails."""
+    when the address does not reach this account, and when sending
+    fails."""
     form = ResetPasswordForm(data={"email": user.email})
-    if not form.is_valid() or not form.users:
-        raise ValidationError("No active account with this email address")
+    if not form.is_valid() or user not in form.users:
+        raise ValidationError("This address does not reach the account")
     form.save(request)
 
 
