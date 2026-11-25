@@ -1,6 +1,7 @@
 """Tests for two-factor sign-in: the code step, recovery codes, who may
-set it up, how secrets are stored, the pages, the menu link, and the
-rule that staff must set it up. All postgres-marked."""
+set it up, how secrets are stored, the pages, the menu link, the rule
+that staff must set it up, and the block for other accounts. All
+postgres-marked."""
 
 import logging
 import re
@@ -24,7 +25,11 @@ from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.permissions import Tier
 from litigant_portal.app.services.site import site_update
-from litigant_portal.app.services.user import user_create, user_role_set
+from litigant_portal.app.services.user import (
+    user_create,
+    user_role_set,
+    user_two_factor_reset,
+)
 
 User = get_user_model()
 
@@ -52,7 +57,7 @@ def court(django_capture_on_commit_callbacks):
         site_update(court_name="Franklin County Municipal Court")
 
 
-def _two_factor_user(role=Tier.APP_USER):
+def _two_factor_user(role=Tier.COURT_ADMIN):
     """Return an account with two-factor on, its secret and its recovery
     codes."""
     user = user_create(email=EMAIL, password=PASSWORD, role=role)
@@ -60,6 +65,10 @@ def _two_factor_user(role=Tier.APP_USER):
     TOTP.activate(user, secret)
     recovery_codes = RecoveryCodes.activate(user).generate_codes()
     return user, secret, recovery_codes
+
+
+def _staff_user():
+    return user_create(email=EMAIL, password=PASSWORD, role=Tier.COURT_ADMIN)
 
 
 def _code(secret):
@@ -147,7 +156,7 @@ def test_a_recovery_code_signs_in_once(client):
 
 
 def test_setup_asks_to_confirm_access_after_a_new_sign_in(client):
-    user_create(email=EMAIL, password=PASSWORD)
+    _staff_user()
     _login(client)
 
     response = client.get(SETUP_URL)
@@ -169,7 +178,7 @@ def test_sign_in_without_two_factor_has_no_code_step(client):
 def test_staff_with_anonymous_work_reach_the_answers_page_after_the_code(
     client,
 ):
-    _, secret, _ = _two_factor_user(role=Tier.COURT_ADMIN)
+    _, secret, _ = _two_factor_user()
     _anonymous_answer(client)
     _login(client)
 
@@ -181,7 +190,7 @@ def test_staff_with_anonymous_work_reach_the_answers_page_after_the_code(
 
 
 def test_setup_link_names_the_court(client, court):
-    user_create(email=EMAIL, password=PASSWORD)
+    _staff_user()
     _login_and_confirm_access(client)
 
     page = client.get(SETUP_URL)
@@ -203,7 +212,7 @@ def test_setup_with_an_unconfirmed_address(
 ):
     settings.MFA_ALLOW_UNVERIFIED_EMAIL = allow_unverified
     user = User.objects.create_user(
-        username=EMAIL, email=EMAIL, password=PASSWORD
+        username=EMAIL, email=EMAIL, password=PASSWORD, is_staff=True
     )
     EmailAddress.objects.create(
         user=user, email=EMAIL, verified=False, primary=True
@@ -323,7 +332,7 @@ def test_cancel_on_the_code_page_goes_back_to_sign_in(client):
 
 
 def test_confirm_access_page_uses_our_layout(client):
-    user_create(email=EMAIL, password=PASSWORD)
+    _staff_user()
     _login(client)
 
     page = client.get(CONFIRM_ACCESS_URL, {"next": SETUP_URL})
@@ -334,7 +343,7 @@ def test_confirm_access_page_uses_our_layout(client):
 
 
 def test_setup_page_shows_the_qr_code_the_key_and_the_code_field(client):
-    user_create(email=EMAIL, password=PASSWORD)
+    _staff_user()
     _login_and_confirm_access(client)
 
     page = client.get(SETUP_URL)
@@ -348,7 +357,7 @@ def test_setup_page_shows_the_qr_code_the_key_and_the_code_field(client):
 
 
 def test_a_correct_code_at_setup_shows_ten_recovery_codes(client):
-    user = user_create(email=EMAIL, password=PASSWORD)
+    user = _staff_user()
     _login_and_confirm_access(client)
     secret = client.get(SETUP_URL).context["form"].secret
 
@@ -376,7 +385,7 @@ def _status(page):
 
 
 def test_overview_shows_that_two_factor_is_off(client):
-    user_create(email=EMAIL, password=PASSWORD)
+    _staff_user()
     _login(client)
 
     page = client.get(OVERVIEW_URL)
@@ -606,3 +615,80 @@ def test_nobody_is_sent_to_setup_when_the_rule_is_off(
     client.force_login(make_user())
 
     assert client.get("/").status_code == 200
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        OVERVIEW_URL,
+        SETUP_URL,
+        TURN_OFF_URL,
+        NEW_CODES_URL,
+        "/accounts/2fa/recovery-codes/",
+        CONFIRM_BY_CODE_URL,
+    ],
+)
+@pytest.mark.parametrize("rule", [True, False], ids=["rule-on", "rule-off"])
+def test_two_factor_pages_answer_404_to_a_litigant(
+    client, settings, rule, url
+):
+    settings.STAFF_TWO_FACTOR_REQUIRED = rule
+    user_create(email=EMAIL, password=PASSWORD)
+    _login(client)
+
+    assert client.get(url).status_code == 404
+
+
+def test_a_litigant_with_two_factor_still_signs_in_with_the_code(client):
+    _, secret, _ = _two_factor_user(role=Tier.APP_USER)
+
+    response = _login(client)
+    assert response["Location"] == CODE_URL
+    assert client.get(CODE_URL).status_code == 200
+
+    client.post(CODE_URL, {"code": _code(secret)})
+    assert _signed_in(client)
+
+
+def test_a_litigant_with_two_factor_can_turn_it_off(client):
+    user, secret, _ = _two_factor_user(role=Tier.APP_USER)
+    _login_with_code(client, secret)
+
+    assert client.get(OVERVIEW_URL).status_code == 200
+    client.post(CONFIRM_ACCESS_URL, {"password": PASSWORD})
+    client.post(TURN_OFF_URL)
+
+    assert not Authenticator.objects.filter(user=user).exists()
+    assert client.get(OVERVIEW_URL).status_code == 404
+
+
+def test_reset_removes_the_authenticator_and_the_recovery_codes(client):
+    user, _, _ = _two_factor_user()
+
+    user_two_factor_reset(user=user)
+
+    assert not Authenticator.objects.filter(user=user).exists()
+    assert _login(client)["Location"] == "/"
+    assert _signed_in(client)
+
+
+def test_reset_leaves_other_accounts_alone():
+    user, _, _ = _two_factor_user()
+    other = user_create(email="other@example.com", role=Tier.COURT_ADMIN)
+
+    user_two_factor_reset(user=other)
+
+    assert Authenticator.objects.filter(user=user).count() == 2
+
+
+@pytest.mark.parametrize(
+    ("role", "kept"),
+    [(Tier.APP_USER, False), (Tier.COURT_ADMIN, True)],
+    ids=["made-app-user", "made-court-admin"],
+)
+def test_only_a_change_to_app_user_removes_two_factor(role, kept):
+    user, _, _ = _two_factor_user(role=Tier.FLP_STAFF)
+
+    user_role_set(user=user, role=role)
+
+    assert Authenticator.objects.filter(user=user).exists() is kept

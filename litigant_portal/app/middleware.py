@@ -3,7 +3,7 @@ import secrets
 from allauth.mfa.models import Authenticator
 from allauth.mfa.utils import is_mfa_enabled
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.functional import SimpleLazyObject
@@ -114,18 +114,27 @@ def _two_factor_exempt_paths() -> tuple[str, ...]:
 
 class StaffTwoFactorMiddleware:
     """Send a staff account with no two-factor to the setup page. The
-    API answers 403 instead."""
+    API answers 403 instead. Any other account gets a 404 on the
+    two-factor pages, unless it still has two-factor to turn off."""
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         user = request.user
+        if not user.is_authenticated:
+            return self.get_response(request)
+        staff = needs_two_factor(user)
+        if (
+            not staff
+            and request.path.startswith(reverse("mfa_index"))
+            and not is_mfa_enabled(user, [Authenticator.Type.TOTP])
+        ):
+            raise Http404
         if (
             not settings.STAFF_TWO_FACTOR_REQUIRED
-            or not user.is_authenticated
+            or not staff
             or request.path.startswith(_two_factor_exempt_paths())
-            or not needs_two_factor(user)
             or is_mfa_enabled(user, [Authenticator.Type.TOTP])
         ):
             return self.get_response(request)
