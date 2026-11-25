@@ -777,6 +777,10 @@ class PasswordLinkTests(TierSetup):
         self.assertEqual(message.to, ["jane@example.com"])
         self.assertTrue(message.subject.startswith("Reset your password"))
         self.assertTrue(reload(self.app_user).check_password(PASSWORD))
+        self.assertEqual(
+            response.json()["notice"],
+            "Password link sent to jane@example.com",
+        )
 
     def test_disabled_account_is_refused_and_gets_no_email(self):
         self.app_user.is_active = False

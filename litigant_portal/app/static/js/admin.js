@@ -532,7 +532,7 @@ document.addEventListener('alpine:init', () => {
         return
       }
       this.closeUserDialogs()
-      this.usersActionNotice = 'Password link sent to ' + this.userDialogEmail
+      this.usersActionNotice = data.notice
     },
 
     async disableUser(e) {

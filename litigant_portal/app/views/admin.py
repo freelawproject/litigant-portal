@@ -453,7 +453,13 @@ def user_password_link_view(
             {"error": _("The email was not sent. Try again later.")},
             status=502,
         )
-    return JsonResponse({"id": target.id})
+    return JsonResponse(
+        {
+            "id": target.id,
+            "notice": _("Password link sent to %(email)s")
+            % {"email": target.email},
+        }
+    )
 
 
 def _active_set_view(request: HttpRequest, user_id: int, *, active: bool):
