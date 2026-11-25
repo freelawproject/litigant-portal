@@ -23,6 +23,8 @@ If the page says the invite was not sent, the account was still added. Use **Sen
 - **They lost the invite, or the link expired:** choose **Send password link** next to their address. They get a new invite.
 - **They forgot their password:** they can choose **Forgot your password?** on the sign-in page. You can also choose **Send password link** for them. Their old password keeps working until they set a new one.
 
+- **They made their own account and can't sign in:** a person who signs up on their own must confirm their email address first. They get an email with a link, which works for 7 days. If they lost it, they can sign in again and a new email is sent. This can take a few minutes, and it may land in the spam folder. People you add yourself skip this step.
+
 You never see or choose anyone's password.
 
 ## Remove access
@@ -36,4 +38,4 @@ You can manage the people you add, but not other court admins or your own accoun
 
 ## Instances without email
 
-Some instances can't send email yet. There, **Add account** asks you to type a password, and the button next to each person is **Password** instead of **Send password link**. Share the password with the person directly and safely, never by plain email or chat.
+Some instances can't send email yet. There, **Add account** asks you to type a password, and the button next to each person is **Password** instead of **Send password link**. Share the password with the person directly and safely, never by plain email or chat. People who sign up on their own are not asked to confirm their email address there.
