@@ -8,9 +8,7 @@ def _flow_variables(flow) -> list:
     """The flow's interview variables in page order, without duplicates."""
     seen = set()
     variables = []
-    pages = flow.interview_pages.prefetch_related(
-        "variables__variable__asked_when"
-    )
+    pages = flow.interview_pages.prefetch_related("variables__variable")
     for page in pages:
         for placement in page.variables.all():
             variable = placement.variable

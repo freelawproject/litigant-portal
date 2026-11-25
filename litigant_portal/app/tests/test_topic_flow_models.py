@@ -95,42 +95,6 @@ class GlossaryTests(TestCase):
         self.assertEqual(variable.data_type, VariableDataType.TEXT)
         self.assertFalse(variable.is_global)
 
-    def test_a_gate_value_requires_a_gate(self):
-        # asked_when_value is meaningless without asked_when; the check
-        # constraint keeps a half-written gate from silently meaning
-        # "always askable".
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Variable.objects.create(name="was_felony", asked_when_value=True)
-
-    def test_a_gate_requires_a_value(self):
-        # The mirror shape: a gate with no value to compare against can
-        # never be evaluated, so the pair is all-or-nothing.
-        gate = Variable.objects.create(name="has_conviction")
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            Variable.objects.create(name="was_felony", asked_when=gate)
-
-    def test_gating_chains_are_expressible(self):
-        gate = Variable.objects.create(
-            name="has_conviction", data_type=VariableDataType.BOOLEAN
-        )
-        gated = Variable.objects.create(
-            name="was_felony",
-            data_type=VariableDataType.BOOLEAN,
-            asked_when=gate,
-            asked_when_value=True,
-        )
-        self.assertEqual(list(gate.gated_variables.all()), [gated])
-
-    def test_deleting_a_gate_with_dependents_is_blocked(self):
-        # PROTECT: removing has_conviction must not silently cascade away
-        # was_felony; the author has to untangle the chain deliberately.
-        gate = Variable.objects.create(name="has_conviction")
-        Variable.objects.create(
-            name="was_felony", asked_when=gate, asked_when_value=True
-        )
-        with self.assertRaises(ProtectedError):
-            gate.delete()
-
 
 @pytest.mark.postgres
 class AnswerTests(TestCase):

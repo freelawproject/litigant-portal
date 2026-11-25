@@ -11,6 +11,7 @@ import pytest
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
+from litigant_portal.agents.assistant import LitigantAssistant
 from litigant_portal.agents.tools import review_facts as tool_module
 from litigant_portal.agents.tools.review_facts import ReviewFacts
 from litigant_portal.app.models import (
@@ -24,8 +25,16 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.selectors.topic_flow import (
+    variable_answer_groups,
+    variable_answer_map,
+    variable_answer_unreviewed_names,
+)
 from litigant_portal.app.services.chat_engine import chat_thread_state_merge
-from litigant_portal.app.services.topic_flow import variable_answer_set
+from litigant_portal.app.services.topic_flow import (
+    variable_answer_confirm,
+    variable_answer_set,
+)
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
@@ -68,8 +77,7 @@ def flow():
         name="alias",
         label="Other name used",
         required=True,
-        asked_when=has_alias,
-        asked_when_value=True,
+        when={"fact": has_alias.name, "equals": True},
     )
     for order, variable in enumerate([first_name, county, has_alias, alias]):
         TopicFlowInterviewVariable.objects.create(
@@ -193,6 +201,54 @@ def test_a_gated_variable_is_missing_only_when_its_gate_is_met(
     assert ReviewFacts()(thread_id=thread.id).render_data["missing"] == [
         {"name": "alias", "label": "Other name used"}
     ]
+
+
+@pytest.mark.parametrize("reviewed", [False, True])
+def test_hidden_answers_stay_stored_and_agree_across_consumers(
+    thread, active_flow, reviewed
+):
+    _store(thread, "has_alias", True)
+    _store(thread, "alias", "Earlier name", reviewed=reviewed)
+    before = VariableAnswer.objects.get(variable__name="alias")
+    as_of = timezone.now()
+    for gate in (False, True):
+        _store(thread, "has_alias", gate)
+        data = ReviewFacts()(thread_id=thread.id).render_data
+        assert ("alias" in data["confirm_names"]) is gate
+        assert not any(f["name"] == "alias" for f in data["missing"])
+        prompt = LitigantAssistant().generate_identity_prompt(
+            thread_id=thread.id
+        )
+        assert ("Earlier name" in prompt.text) is gate
+        grouped_names = {
+            a.variable.name
+            for group in variable_answer_groups(identity=thread.identity)
+            for a in group["answers"]
+        }
+        assert ("alias" in grouped_names) is gate
+        prefill = variable_answer_map(
+            identity=thread.identity, names=["alias"], reviewed_only=True
+        )
+        assert prefill == (
+            {"alias": "Earlier name"} if gate and reviewed else {}
+        )
+        pending = variable_answer_unreviewed_names(
+            identity=thread.identity, names=["alias"]
+        )
+        assert pending == ([] if reviewed else ["alias"])
+        if not gate:
+            assert (
+                variable_answer_confirm(
+                    identity=thread.identity, names=["alias"], as_of=as_of
+                )
+                == 0
+            )
+    after = VariableAnswer.objects.get(pk=before.pk)
+    assert (after.value, after.reviewed, after.updated_at) == (
+        before.value,
+        before.reviewed,
+        before.updated_at,
+    )
 
 
 def test_the_result_says_nothing_is_missing_and_only_the_user_confirms(

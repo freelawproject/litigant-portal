@@ -13,6 +13,7 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
+from litigant_portal.state.rules import applicable_facts
 
 
 def topic_list() -> list[Topic]:
@@ -82,7 +83,7 @@ def topic_flow_find(
             "deadlines__offset_from",
             "form_conditions__form",
             "form_conditions__variable",
-            "interview_pages__variables__variable__asked_when",
+            "interview_pages__variables__variable",
         )
     return flows.first()
 
@@ -109,6 +110,10 @@ def variable_answer_list(
     are left out: sync keeps those rows so a migration can move them, but
     no form references them, so no surface should show them.
 
+    Inapplicable answers stay stored but are excluded, including when a
+    prerequisite is itself inapplicable. Conditions use the whole identity
+    snapshot before callers narrow to a flow or confirmed answers.
+
     ``answered_only`` drops cleared answers (``value`` None), matching
     ``variable_answer_map``: a cleared fact is not a fact.
     """
@@ -117,7 +122,14 @@ def variable_answer_list(
     )
     if answered_only:
         answers = answers.filter(value__isnull=False)
-    return list(answers.select_related("variable").order_by("variable__name"))
+    answers = list(
+        answers.select_related("variable").order_by("variable__name")
+    )
+    applicable = applicable_facts(
+        {a.variable.name: a.value for a in answers},
+        {a.variable.name: a.variable.condition for a in answers},
+    )
+    return [a for a in answers if a.variable.is_asked(applicable)]
 
 
 def variable_public_ids(*, variable_ids: list[UUID]) -> set[UUID]:
@@ -146,15 +158,15 @@ def variable_answer_map(
     happens; the docassemble prefill reads with it, because a prefilled
     variable skips its interview question and so never gets reviewed there.
     """
-    answers = VariableAnswer.objects.filter(
-        identity=identity,
-        variable__name__in=names,
-        variable__in_schema=True,
-        value__isnull=False,
-    )
-    if reviewed_only:
-        answers = answers.filter(reviewed=True)
-    return dict(answers.values_list("variable__name", "value"))
+    wanted = set(names)
+    return {
+        answer.variable.name: answer.value
+        for answer in variable_answer_list(
+            identity=identity, answered_only=True
+        )
+        if answer.variable.name in wanted
+        and (not reviewed_only or answer.reviewed)
+    }
 
 
 def variable_answer_cleared_names(*, identity, names: list[str]) -> list:
@@ -180,6 +192,9 @@ def variable_answer_unreviewed_names(*, identity, names: list[str]) -> list:
     Same exclusions as ``variable_answer_map``: cleared and out-of-schema
     answers are not pending, since nothing shows them. Names with no
     answer at all are left out too.
+
+    Include currently hidden answers named by an older card, so it cannot
+    report successful confirmation of an answer the write boundary refused.
     """
     return sorted(
         VariableAnswer.objects.filter(

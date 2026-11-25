@@ -114,14 +114,15 @@ def test_frozen_corpus_load_ignores_application_files(
 
     for name in ("VARIABLES_PATH", "FORMS_DIR", "COURTS_DIR"):
         monkeypatch.setattr(corpus, name, tmp_path / "missing")
-    root = runner.HERE / "references" / "corpus"
-    if variant != "current":
-        for folder in ("references", "fixtures"):
-            shutil.copytree(
-                runner.HERE / folder, tmp_path / "references" / folder
-            )
-        root = fixture_root(tmp_path, variant)
+    for folder in ("references", "fixtures"):
+        shutil.copytree(runner.HERE / folder, tmp_path / "references" / folder)
+    frozen = (
+        tmp_path / "references" / "references" / "corpus" / "variables.yml"
+    )
+    before = frozen.read_bytes()
+    root = fixture_root(tmp_path, variant)
     loaded = corpus.corpus_load(root=root)
+    assert frozen.read_bytes() == before
     assert set(loaded.courts) == {
         "north-dakota" if variant == "current" else "eval-ohio"
     }

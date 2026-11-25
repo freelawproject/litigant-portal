@@ -137,7 +137,7 @@ _GLOSSARY = {
     "adoption_shelter": VariableSchema(
         name="adoption_shelter",
         label="Shelter",
-        asked_when={"variable": "adopted", "value": True},
+        when={"fact": "adopted", "equals": True},
     ),
 }
 

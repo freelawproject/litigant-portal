@@ -22,6 +22,7 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.state.reducer import reduce
+from litigant_portal.state.rules import applicable_facts
 from litigant_portal.state.types import (
     ActionType,
     ConfirmFactsActionType,
@@ -192,12 +193,22 @@ def _state_apply(
             )
         action = action.model_copy(update={"at": timezone.now()})
     elif isinstance(action, ConfirmFactsActionType):
+        applicable = applicable_facts(
+            {
+                name: a.value
+                for name, a in answers.items()
+                if a.variable.in_schema
+            },
+            {
+                name: a.variable.condition
+                for name, a in answers.items()
+                if a.variable.in_schema
+            },
+        )
         action = action.model_copy(
             update={
                 "names": tuple(
-                    name
-                    for name in action.names
-                    if name in answers and answers[name].variable.in_schema
+                    name for name in action.names if name in applicable
                 )
             }
         )

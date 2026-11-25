@@ -16,7 +16,7 @@ stored answer to its source variable; the ``contacts`` and ``resources``
 blocks list the court's whole ``Contact`` and ``Resource`` lists in stored
 order. A block with nothing to show is skipped.
 
-A gated variable (``asked_when``) is asked only while the stored answer to
+A gated variable (``when``) is asked only while the stored answer to
 its gate matches, the same rule the review-facts tool applies. There is no
 client-side show/hide: the litigant saves the gate, the page reloads, and the
 gated fields appear.
@@ -42,6 +42,7 @@ from litigant_portal.app.topic_flow.deadlines import (
     deadline_display,
 )
 from litigant_portal.app.topic_flow.resources import resource_dicts
+from litigant_portal.state.rules import condition_names
 
 
 @dataclass(frozen=True)
@@ -145,8 +146,7 @@ def flow_variable_names(pages, form_conditions=(), deadlines=()) -> list[str]:
     for _page, variables in pages:
         for variable in variables:
             names.append(variable.name)
-            if variable.asked_when is not None:
-                names.append(variable.asked_when.name)
+            names.extend(sorted(condition_names(variable.condition)))
     for condition in form_conditions:
         if condition.variable is not None:
             names.append(condition.variable.name)
@@ -201,27 +201,6 @@ def asked_names(pages, answers) -> list[str]:
         for _page, variables in pages
         for variable in variables
         if variable.is_asked(answers)
-    ]
-
-
-def stale_gated_names(pages, answers, valid) -> list[str]:
-    """Gated variables whose gate is written by ``valid`` and will not match
-    afterwards, and that have an answer to clear. A gate this POST does not
-    touch leaves its dependents alone: the assistant may store a dependent
-    before the gate is answered, and an unrelated save must not erase it."""
-    after = {
-        name: value
-        for name, value in {**answers, **valid}.items()
-        if value is not None
-    }
-    return [
-        variable.name
-        for _page, variables in pages
-        for variable in variables
-        if variable.asked_when is not None
-        and variable.asked_when.name in valid
-        and not variable.is_asked(after)
-        and variable.name in after
     ]
 
 
@@ -286,10 +265,10 @@ def gate_names(pages) -> set[str]:
     """The variables that gate another one, across every page: a gate's
     dependents may sit on a later page than the gate itself."""
     return {
-        variable.asked_when.name
+        name
         for _page, variables in pages
         for variable in variables
-        if variable.asked_when is not None
+        for name in condition_names(variable.condition)
     }
 
 

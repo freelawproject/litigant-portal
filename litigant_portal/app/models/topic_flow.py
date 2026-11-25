@@ -9,9 +9,11 @@ from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.formatting import format_long_date
 from litigant_portal.state.rules import (
+    ConditionType,
     EqualsConditionType,
     NotConditionType,
     condition_matches,
+    parse_condition,
 )
 
 from .base import BaseModel
@@ -124,14 +126,7 @@ class Variable(BaseModel):
     is_global = models.BooleanField(default=False)
     is_private = models.BooleanField(default=False)
     in_schema = models.BooleanField(default=True)
-    asked_when = models.ForeignKey(
-        "self",
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="gated_variables",
-    )
-    asked_when_value = models.JSONField(null=True, blank=True)
+    when = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -140,30 +135,17 @@ class Variable(BaseModel):
                 condition=models.Q(name__regex=SNAKE_CASE_PATTERN),
                 name="variable_name_snake_case",
             ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(asked_when__isnull=False)
-                    | models.Q(asked_when_value__isnull=True)
-                ),
-                name="variable_gate_value_requires_gate",
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(asked_when__isnull=True)
-                    | models.Q(asked_when_value__isnull=False)
-                ),
-                name="variable_gate_requires_value",
-            ),
         ]
 
+    @property
+    def condition(self) -> ConditionType | None:
+        return parse_condition(self.when)
+
     def is_asked(self, answers: dict) -> bool:
-        """Whether this variable's question currently applies, given
-        ``{name: value}`` answers. Callers prefetch ``asked_when``."""
-        if self.asked_when is None:
-            return True
-        return condition_holds(
-            answers, self.asked_when.name, self.asked_when_value
-        )
+        """
+        Whether this question applies to the current applicable answers.
+        """
+        return condition_matches(self.condition, answers)
 
 
 def condition_holds(

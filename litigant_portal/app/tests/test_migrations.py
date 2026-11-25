@@ -11,9 +11,10 @@ import pytest
 from django.contrib.auth.models import Group, Permission, User
 from django.contrib.contenttypes.models import ContentType
 from django.db import connection
+from django.db.migrations.exceptions import IrreversibleError
 from django.db.migrations.executor import MigrationExecutor
 
-from litigant_portal.app.models import ChatMessage, PromptArtifact
+from litigant_portal.app.models import ChatMessage, PromptArtifact, Variable
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db(transaction=True)]
 
@@ -129,3 +130,29 @@ def test_0037_carries_role_membership_into_the_renamed_groups(migrator):
         )
     ) == ["court"]
     assert not Permission.objects.filter(codename="manage_developers").exists()
+
+
+def test_0039_preserves_gates_and_refuses_lossy_rollback(migrator):
+    apps = migrator.rewind("0038_flow_view_state")
+    old_variable = apps.get_model("app", "Variable")
+    gate = old_variable.objects.create(name="has_alias", data_type="boolean")
+    dependent = old_variable.objects.create(
+        name="alias", asked_when=gate, asked_when_value=False
+    )
+    migrator.head()
+    assert Variable.objects.get(pk=dependent.pk).when == {
+        "fact": "has_alias",
+        "equals": False,
+    }
+    apps = migrator.rewind("0038_flow_view_state")
+    restored = apps.get_model("app", "Variable").objects.get(pk=dependent.pk)
+    assert (restored.asked_when_id, restored.asked_when_value) == (
+        gate.pk,
+        False,
+    )
+    migrator.head()
+    compound = {"not": {"fact": "has_alias", "equals": False}}
+    Variable.objects.filter(pk=dependent.pk).update(when=compound)
+    with pytest.raises(IrreversibleError, match="compound"):
+        migrator.rewind("0038_flow_view_state")
+    assert Variable.objects.get(pk=dependent.pk).when == compound

@@ -57,8 +57,7 @@ LICENSED = _variable("licensed", data_type=VariableDataType.BOOLEAN)
 VACCINATED = _variable(
     "vaccinated",
     data_type=VariableDataType.BOOLEAN,
-    asked_when=LICENSED,
-    asked_when_value=True,
+    when={"fact": LICENSED.name, "equals": True},
 )
 
 
@@ -528,7 +527,7 @@ def test_the_gate_hint_follows_the_gate_questions_own_help_text():
     gate = _variable(
         "licensed", data_type=VariableDataType.BOOLEAN, help_text="Yes or no."
     )
-    gated = _variable("vaccinated", asked_when=gate, asked_when_value=True)
+    gated = _variable("vaccinated", when={"fact": gate.name, "equals": True})
     (question,) = rows.page_questions([gate, gated], {}, {"licensed"})
     assert question["help_text"] == f"Yes or no. {rows.GATE_HINT}"
 
@@ -563,49 +562,6 @@ def test_asked_names_spans_every_page():
         "licensed",
         "vaccinated",
     ]
-
-
-GATED_PAGES = [
-    (TopicFlowInterviewPage(title="A"), [FULL_NAME]),
-    (TopicFlowInterviewPage(title="B"), [LICENSED, VACCINATED]),
-]
-
-
-@pytest.mark.parametrize(
-    ("answers", "valid", "stale"),
-    [
-        (
-            {"licensed": True, "vaccinated": True},
-            {"licensed": False},
-            ["vaccinated"],
-        ),
-        (
-            {"licensed": True, "vaccinated": True},
-            {"licensed": False, "vaccinated": False},
-            ["vaccinated"],
-        ),
-        ({"licensed": True, "vaccinated": True}, {"full_name": "Sam"}, []),
-        ({"licensed": True}, {"licensed": False}, []),
-        ({"licensed": False, "vaccinated": None}, {"full_name": "Sam"}, []),
-        ({"vaccinated": True}, {"full_name": "Sam"}, []),
-        ({"vaccinated": True}, {"licensed": True}, []),
-        ({"vaccinated": True}, {"licensed": False}, ["vaccinated"]),
-    ],
-    ids=[
-        "gate-flipped-clears-the-stored-gated-answer",
-        "gate-flipped-and-gated-field-posted-together-clears-it",
-        "gate-unchanged-leaves-it-alone",
-        "gated-variable-with-no-answer-is-not-listed",
-        "already-cleared-gated-answer-is-not-listed",
-        "unanswered-gate-untouched-keeps-a-pre-stored-dependent",
-        "unanswered-gate-now-matching-keeps-it",
-        "unanswered-gate-now-mismatching-clears-it",
-    ],
-)
-def test_stale_gated_names_lists_answers_whose_gate_stops_matching(
-    answers, valid, stale
-):
-    assert rows.stale_gated_names(GATED_PAGES, answers, valid) == stale
 
 
 # --- questions --------------------------------------------------------------

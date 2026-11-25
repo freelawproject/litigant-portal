@@ -143,31 +143,31 @@ variables:
   - name: name_change_conviction_charge
     label: 'Charge you were convicted of'
     private: true
-    asked_when:
-      variable: name_change_criminal_history
-      value: convicted
+    when:
+      fact: name_change_criminal_history
+      equals: convicted
 
   - name: name_change_conviction_class
     label: 'Class (felony or misdemeanor)'
     private: true
-    asked_when:
-      variable: name_change_criminal_history
-      value: convicted
+    when:
+      fact: name_change_criminal_history
+      equals: convicted
 
   - name: name_change_conviction_court
     label: 'Court that convicted you'
     private: true
-    asked_when:
-      variable: name_change_criminal_history
-      value: convicted
+    when:
+      fact: name_change_criminal_history
+      equals: convicted
 
   - name: name_change_conviction_year
     label: 'Year of conviction'
     private: true
     data_type: number
-    asked_when:
-      variable: name_change_criminal_history
-      value: convicted
+    when:
+      fact: name_change_criminal_history
+      equals: convicted
 
   - name: name_change_residency_years
     label: 'Years you have lived in North Dakota'
@@ -287,9 +287,9 @@ variables:
   - name: eviction_paid_in_part_amount
     label: 'How much you paid'
     data_type: number
-    asked_when:
-      variable: eviction_defense_paid_in_part
-      value: true
+    when:
+      fact: eviction_defense_paid_in_part
+      equals: true
 
   - name: eviction_defense_repairs
     label: 'I paid for repairs the landlord would not make'
@@ -298,9 +298,9 @@ variables:
   - name: eviction_repairs_amount
     label: 'About how much the repairs cost'
     data_type: number
-    asked_when:
-      variable: eviction_defense_repairs
-      value: true
+    when:
+      fact: eviction_defense_repairs
+      equals: true
 
   - name: eviction_defense_work_for_rent
     label: 'The landlord agreed I could do work instead of paying rent, and I did the work'
@@ -332,9 +332,9 @@ variables:
 
   - name: eviction_defense_other_reasons
     label: 'Your other reasons'
-    asked_when:
-      variable: eviction_defense_other
-      value: true
+    when:
+      fact: eviction_defense_other
+      equals: true
 
   - name: eviction_answer_mailed_date
     label: 'Date you mailed a copy of your Answer'
@@ -348,33 +348,33 @@ variables:
 
   - name: eviction_landlord_attorney_name
     label: "Your landlord's attorney"
-    asked_when:
-      variable: eviction_landlord_has_attorney
-      value: true
+    when:
+      fact: eviction_landlord_has_attorney
+      equals: true
 
   - name: eviction_landlord_attorney_street
     label: "Attorney's street address"
-    asked_when:
-      variable: eviction_landlord_has_attorney
-      value: true
+    when:
+      fact: eviction_landlord_has_attorney
+      equals: true
 
   - name: eviction_landlord_attorney_city
     label: "Attorney's city"
-    asked_when:
-      variable: eviction_landlord_has_attorney
-      value: true
+    when:
+      fact: eviction_landlord_has_attorney
+      equals: true
 
   - name: eviction_landlord_attorney_state
     label: "Attorney's state"
-    asked_when:
-      variable: eviction_landlord_has_attorney
-      value: true
+    when:
+      fact: eviction_landlord_has_attorney
+      equals: true
 
   - name: eviction_landlord_attorney_zip
     label: "Attorney's ZIP code"
-    asked_when:
-      variable: eviction_landlord_has_attorney
-      value: true
+    when:
+      fact: eviction_landlord_has_attorney
+      equals: true
 
   - name: eviction_landlord_street
     label: "Landlord's street address"

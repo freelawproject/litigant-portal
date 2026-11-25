@@ -29,11 +29,8 @@ def _variable_line(variable) -> str:
     if variable.choices:
         values = ", ".join(c["value"] for c in variable.choices)
         line += f" [choices: {values}]"
-    if variable.asked_when:
-        line += (
-            f" (asked when {variable.asked_when.name} = "
-            f"{json.dumps(variable.asked_when_value)})"
-        )
+    if variable.when is not None:
+        line += f" (when {json.dumps(variable.when)})"
     if help_text := variable.help_text.strip():
         line += f"\n  Help: {help_text}"
     return line

@@ -120,6 +120,24 @@ def test_an_answer_changed_after_the_card_was_shown_is_not_confirmed(
 
 @pytest.mark.postgres
 @pytest.mark.django_db
+def test_a_now_hidden_answer_keeps_its_old_card_from_claiming_confirmation(
+    variables,
+):
+    Variable.objects.filter(name="county").update(
+        when={"fact": "first_name", "equals": "Sandra"}
+    )
+    client = _session_client()
+    _store(client, "first_name", "Sandra")
+    _store(client, "county", "Cass")
+    shown_at = timezone.now()
+    _store(client, "first_name", "Jane")
+    response = _post(client, ["county"], as_of=shown_at)
+    assert response.json() == {"confirmed": 0, "pending": ["county"]}
+    assert _reviewed(client, "county") is False
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
 def test_a_visitor_without_a_session_is_forbidden_and_mints_no_identity(
     variables,
 ):

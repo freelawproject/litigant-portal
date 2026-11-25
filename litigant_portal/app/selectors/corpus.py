@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from graphlib import CycleError, TopologicalSorter
 from pathlib import Path
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
@@ -26,6 +27,11 @@ from litigant_portal.app.models.choices import (
     VariableDataType,
 )
 from litigant_portal.app.services.topic_flow import variable_value_validate
+from litigant_portal.state.rules import (
+    ConditionType,
+    condition_leaves,
+    condition_names,
+)
 
 CORPUS_DIR = settings.BASE_DIR / "corpus"
 FORMS_DIR = CORPUS_DIR / "forms"
@@ -120,13 +126,6 @@ class ChoiceSchema(BaseSchema):
     label: str = Field(min_length=1)
 
 
-class AskedWhenSchema(BaseSchema):
-    """Populates ``Variable.asked_when`` and ``Variable.asked_when_value``."""
-
-    variable: VariableNameField
-    value: ValueType
-
-
 class VariableSchema(BaseSchema):
     """Populates a ``Variable`` row. ``help_text`` and ``required`` are
     glossary facts, not page ones: a variable means the same wherever it
@@ -142,7 +141,7 @@ class VariableSchema(BaseSchema):
     default: ValueType | None = None
     is_global: bool = Field(default=False, alias="global")
     is_private: bool = Field(default=False, alias="private")
-    asked_when: AskedWhenSchema | None = None
+    when: ConditionType | None = None
 
     @model_validator(mode="after")
     def _choices_iff_choice_type(self):
@@ -190,50 +189,29 @@ class VariablesSchema(BaseSchema):
         return self
 
     @model_validator(mode="after")
-    def _gates_resolve(self):
-        """Validates:
-        - asked_when names a known variable
-        - asked_when value is legal for the gate's data type
-        - no asked_when cycles
+    def _conditions_resolve(self):
+        """
+        Validate condition references, operand types, and dependency cycles.
         """
         by_name = {v.name: v for v in self.variables}
-        problems = []
-        for v in self.variables:
-            if v.asked_when is None:
-                continue
-            gate = by_name.get(v.asked_when.variable)
-            if gate is None:
-                problems.append(
-                    f"{v.name}: asked_when names unknown variable "
-                    f"{v.asked_when.variable!r}"
-                )
-                continue
-            value_problem = _variable_value_problem(v.asked_when.value, gate)
-            if value_problem is not None:
-                problems.append(
-                    f"{v.name}: asked_when value {v.asked_when.value!r} "
-                    f"{value_problem} (gate {gate.name} is {gate.data_type})"
-                )
-
-        done: set[str] = set()
-        for start in by_name:
-            chain: list[str] = []
-            name: str | None = start
-            while name is not None and name not in done:
-                if name in chain:
-                    cycle = chain[chain.index(name) :] + [name]
-                    problems.append(f"asked_when cycle: {' -> '.join(cycle)}")
-                    break
-                chain.append(name)
-                gate_ref = by_name[name].asked_when
-                name = (
-                    gate_ref.variable
-                    if gate_ref is not None and gate_ref.variable in by_name
-                    else None
-                )
-            done.update(chain)
-        if problems:
-            raise ValueError("; ".join(problems))
+        for variable in self.variables:
+            for leaf in condition_leaves(variable.when):
+                prerequisite = by_name.get(leaf.fact)
+                if prerequisite is None:
+                    raise ValueError(
+                        f"{variable.name}: when names unknown variable "
+                        f"{leaf.fact!r}"
+                    )
+                problem = _variable_value_problem(leaf.equals, prerequisite)
+                if problem is not None:
+                    raise ValueError(f"{variable.name}: when {problem}")
+        graph = {v.name: condition_names(v.when) for v in self.variables}
+        try:
+            tuple(TopologicalSorter(graph).static_order())
+        except CycleError as exc:
+            raise ValueError(
+                f"when cycle: {' -> '.join(exc.args[1])}"
+            ) from exc
         return self
 
 
@@ -546,9 +524,10 @@ class FlowSchema(BaseSchema):
             {deadline.offset_from for deadline in self.deadlines}
             | {entry.when.variable for entry in self.packet if entry.when}
             | {
-                variables[name].asked_when.variable
+                dependency
                 for name in asked
-                if name in variables and variables[name].asked_when
+                if name in variables
+                for dependency in condition_names(variables[name].when)
             }
         )
         return sorted(decided - asked)
@@ -669,6 +648,11 @@ class CorpusSchema(BaseSchema):
     courts: dict[SlugField, CourtSchema]
     topics: dict[tuple[SlugField, SlugField], TopicSchema]
     flows: dict[tuple[SlugField, SlugField, SlugField], FlowSchema]
+
+    @model_validator(mode="after")
+    def _variables_resolve(self):
+        VariablesSchema(variables=list(self.variables.values()))
+        return self
 
     @model_validator(mode="after")
     def _forms_resolve(self):
@@ -836,20 +820,17 @@ class CorpusSchema(BaseSchema):
                 f"{missing}"
             )
         for name in sorted(position, key=position.get):
-            gate_spec = variables[name].asked_when
-            if gate_spec is None:
-                continue
-            gate = gate_spec.variable
-            if gate not in position:
-                raise ValueError(
-                    f"flow {label}: {name} is gated on {gate}, which is "
-                    f"not placed"
-                )
-            if position[gate] > position[name]:
-                raise ValueError(
-                    f"flow {label}: gate variable {gate} must be placed "
-                    f"before {name}"
-                )
+            for gate in sorted(condition_names(variables[name].when)):
+                if gate not in position:
+                    raise ValueError(
+                        f"flow {label}: {name} is gated on {gate}, which is "
+                        f"not placed"
+                    )
+                if position[gate] > position[name]:
+                    raise ValueError(
+                        f"flow {label}: gate variable {gate} must be placed "
+                        f"before {name}"
+                    )
         for condition, form_names in conditional:
             for name in sorted(form_names - unconditional):
                 if position[name] < position[condition]:

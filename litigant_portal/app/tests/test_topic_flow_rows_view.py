@@ -136,7 +136,7 @@ def _corpus():
             "name": "vaccinated",
             "label": "Vaccinated",
             "data_type": "boolean",
-            "asked_when": {"variable": "licensed", "value": True},
+            "when": {"fact": "licensed", "equals": True},
         },
         "pet_count": {
             "name": "pet_count",
@@ -1258,24 +1258,25 @@ def _briefcase_names(client):
 
 
 @pytest.mark.postgres
-def test_flipping_a_gate_on_a_later_save_clears_the_gated_answer(
-    client, synced
-):
+def test_flipping_a_gate_retains_hides_and_restores_the_answer(client, synced):
     client.post(URL, {"licensed": "true"})
     client.post(URL, {"licensed": "true", "vaccinated": "true"})
     assert "vaccinated" in _briefcase_names(client)
     client.post(URL, {"licensed": "false"})
-    assert _values() == {"licensed": False, "vaccinated": None}
+    assert _values() == {"licensed": False, "vaccinated": True}
     assert "vaccinated" not in _briefcase_names(client)
+    client.post(URL, {"licensed": "true"})
+    assert "vaccinated" in _briefcase_names(client)
+    assert _values()["vaccinated"] is True
 
 
 @pytest.mark.postgres
-def test_flipping_a_gate_and_posting_the_gated_field_together_clears_it(
+def test_flipping_a_gate_keeps_a_dependent_posted_in_the_same_save(
     client, synced
 ):
     client.post(URL, {"licensed": "true", "vaccinated": "true"})
     client.post(URL, {"licensed": "false", "vaccinated": "true"})
-    assert _values() == {"licensed": False, "vaccinated": None}
+    assert _values() == {"licensed": False, "vaccinated": True}
     assert "vaccinated" not in _briefcase_names(client)
 
 

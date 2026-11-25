@@ -74,23 +74,19 @@ def _warn_removed_keys(scope: str, stored, authored) -> None:
 
 
 def _sync_variables(corpus: CorpusSchema) -> dict[str, Variable]:
-    """Upsert every variable by name. Two passes: rows first, then gates,
-    so a gate can point at a variable created in the same sync."""
+    """
+    Upsert each variable with its validated condition expression.
+    """
     rows = {v.name: v for v in Variable.objects.all()}
     for name, schema in corpus.variables.items():
         row = rows.get(name) or Variable(name=name)
-        _apply(row, schema, exclude={"asked_when"})
+        _apply(row, schema, exclude={"when"})
+        row.when = (
+            schema.when.model_dump(by_alias=True) if schema.when else None
+        )
         row.in_schema = True
         row.save()
         rows[name] = row
-    for name, schema in corpus.variables.items():
-        row = rows[name]
-        gate = schema.asked_when
-        row.asked_when = rows[gate.variable] if gate else None
-        row.asked_when_value = gate.value if gate else None
-        row.save(
-            update_fields=["asked_when", "asked_when_value", "updated_at"]
-        )
     return rows
 
 

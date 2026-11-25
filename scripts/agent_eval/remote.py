@@ -314,14 +314,11 @@ def serve(run: Path, payload: dict, wire):
                 }
             elif command == "fixture":
                 variant = message["variant"]
-                if variant == "current":
-                    root = run / "references" / "references" / "corpus"
-                    corpus.install_fixture(root, "north-dakota")
-                else:
-                    root = corpus.fixture_root(run, variant)
-                    corpus.install_fixture(root, "eval-ohio")
-                    for path in sorted(root.rglob("*.yml")):
-                        publish(path)
+                root = corpus.fixture_root(run, variant)
+                court = "north-dakota" if variant == "current" else "eval-ohio"
+                corpus.install_fixture(root, court)
+                for path in sorted(root.rglob("*.yml")):
+                    publish(path)
                 path = run / "corpora" / f"{variant}-database.json"
                 write_json(path, corpus.snapshot_current())
                 publish(path)

@@ -32,7 +32,7 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.selectors.corpus import CorpusSchema
+from litigant_portal.app.selectors.corpus import CorpusSchema, VariableSchema
 from litigant_portal.app.selectors.site import contact_list, resource_list
 from litigant_portal.app.selectors.topic_flow import topic_flow_list
 from litigant_portal.app.services import corpus as services
@@ -81,7 +81,7 @@ def _make_corpus(
             "name": "vaccinated",
             "label": "Vaccinated",
             "data_type": "boolean",
-            "asked_when": {"variable": "licensed", "value": True},
+            "when": {"fact": "licensed", "equals": True},
         },
     }
     if include_vestigial:
@@ -255,10 +255,19 @@ class IdempotencyTests(CorpusSyncTests):
         self.assertEqual(urls["addendum"], "")
 
     def test_gate_wiring(self):
-        self._sync(_make_corpus(), court=None)
+        corpus = _make_corpus()
+        condition = {"not": {"fact": "licensed", "equals": False}}
+        corpus.variables["vaccinated"] = VariableSchema.model_validate(
+            {
+                **corpus.variables["vaccinated"].model_dump(by_alias=True),
+                "when": condition,
+            }
+        )
+        self._sync(corpus, court=None)
         vaccinated = Variable.objects.get(name="vaccinated")
-        self.assertEqual(vaccinated.asked_when.name, "licensed")
-        self.assertIs(vaccinated.asked_when_value, True)
+        self.assertEqual(vaccinated.when, condition)
+        self.assertFalse(vaccinated.is_asked({}))
+        self.assertTrue(vaccinated.is_asked({"licensed": True}))
 
     def test_checkbox_wiring(self):
         self._sync(_make_corpus(), court=None)

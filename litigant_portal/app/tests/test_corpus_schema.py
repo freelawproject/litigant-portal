@@ -465,43 +465,43 @@ def test_duplicate_variable_names_are_rejected():
         )
 
 
-def test_asked_when_must_name_a_known_variable():
+def test_when_must_name_a_known_variable():
     with pytest.raises(ValidationError, match="unknown variable 'ghost'"):
         _glossary(
             {
                 "name": "vaccinated",
                 "label": "Vaccinated",
-                "asked_when": {"variable": "ghost", "value": True},
+                "when": {"not": {"fact": "ghost", "equals": True}},
             }
         )
 
 
-def test_asked_when_value_must_be_legal_for_the_gate():
+def test_when_value_must_be_legal_for_the_gate():
     with pytest.raises(ValidationError, match="must be true or false"):
         _glossary(
             {"name": "licensed", "label": "Licensed", "data_type": "boolean"},
             {
                 "name": "vaccinated",
                 "label": "Vaccinated",
-                "asked_when": {"variable": "licensed", "value": "yes"},
+                "when": {"all": [{"fact": "licensed", "equals": "yes"}]},
             },
         )
 
 
-def test_asked_when_cycles_are_rejected():
-    with pytest.raises(ValidationError, match="asked_when cycle"):
+def test_when_cycles_are_rejected():
+    with pytest.raises(ValidationError, match="when cycle"):
         _glossary(
             {
                 "name": "a",
                 "label": "A",
                 "data_type": "boolean",
-                "asked_when": {"variable": "b", "value": True},
+                "when": {"any": [{"fact": "b", "equals": True}]},
             },
             {
                 "name": "b",
                 "label": "B",
                 "data_type": "boolean",
-                "asked_when": {"variable": "a", "value": True},
+                "when": {"fact": "a", "equals": True},
             },
         )
 
@@ -718,7 +718,7 @@ _GATED_GLOSSARY = {
     "license_number": VariableSchema(
         name="license_number",
         label="License number",
-        asked_when={"variable": "licensed", "value": True},
+        when={"fact": "licensed", "equals": True},
     ),
 }
 
@@ -1059,7 +1059,7 @@ def test_gate_variable_must_be_placed():
         "name": "vaccinated",
         "label": "Vaccinated",
         "data_type": "boolean",
-        "asked_when": {"variable": "licensed", "value": True},
+        "when": {"fact": "licensed", "equals": True},
     }
     page = _flow(data)["interview"][0]["variables"]
     page.remove("licensed")
@@ -1074,7 +1074,7 @@ def test_gate_must_be_placed_before_the_variable_it_gates():
         "name": "vaccinated",
         "label": "Vaccinated",
         "data_type": "boolean",
-        "asked_when": {"variable": "licensed", "value": True},
+        "when": {"fact": "licensed", "equals": True},
     }
     page = _flow(data)["interview"][0]["variables"]
     page.remove("licensed")

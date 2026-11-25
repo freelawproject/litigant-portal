@@ -134,8 +134,7 @@ class TopicFlowMarkdownTests(TestCase):
             name="lease_end",
             question="When does your lease end?",
             data_type=VariableDataType.DATE,
-            asked_when=county,
-            asked_when_value="cass",
+            when={"fact": county.name, "equals": "cass"},
         )
         page = TopicFlowInterviewPage.objects.create(
             flow=flow, title="About your case"
@@ -194,7 +193,7 @@ class TopicFlowMarkdownTests(TestCase):
         )
         self.assertIn(
             "- lease_end (date): When does your lease end? "
-            '(asked when county = "cass")',
+            '(when {"fact": "county", "equals": "cass"})',
             markdown,
         )
         self.assertIn(
