@@ -148,20 +148,20 @@ docker-bash: ## Open a bash shell in the Django container
 docker-clean: ## Remove containers, volumes, and images
 	docker compose down -v --rmi local
 
-docassemble-up: ## Start the local-dev docassemble bench (http://localhost:8100)
+docassemble-up: ## Start local docassemble (http://localhost:8100)
 	docker compose -f docker-compose.docassemble.yml up -d
 
-docassemble-down: ## Stop the local-dev docassemble bench
+docassemble-down: ## Stop local docassemble
 	docker compose -f docker-compose.docassemble.yml down
 
-bench-sync: ## Upload docassemble/ interviews to the bench Playground (ARGS="-n" dry run, "-a" all, or paths)
-	uv run python scripts/docassemble_bench.py sync $(ARGS)
+interview-sync: ## Upload docassemble/ interviews to the local Playground (ARGS="-n" dry run, "-a" all, or paths)
+	uv run python scripts/interviews.py sync $(ARGS)
 
-bench-fill: ## Fill a bench interview with its test personas (FOLDER=fc-eviction [PERSONA=emily])
-	uv run python scripts/docassemble_bench.py fill $(FOLDER) $(PERSONA)
+interview-fill: ## Fill an interview with its test personas (FOLDER=fc-eviction [PERSONA=emily])
+	uv run python scripts/interviews.py fill $(FOLDER) $(PERSONA)
 
-bench-deploy: ## Install an interview folder as a package (FOLDER=fc-eviction [TARGET=qa], default the bench)
-	uv run python scripts/docassemble_bench.py deploy $(FOLDER) --target $(or $(TARGET),bench)
+interview-deploy: ## Install an interview folder as a package (FOLDER=fc-eviction [TARGET=qa], default local)
+	uv run python scripts/interviews.py deploy $(FOLDER) --target $(or $(TARGET),local)
 
 
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)

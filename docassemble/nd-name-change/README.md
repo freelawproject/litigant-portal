@@ -1,8 +1,8 @@
 # ND adult name change — docassemble test packet
 
 Versioned docassemble interviews and the court form they fill, so any dev can
-reproduce the Topic Flow → document-assembly handoff fill locally. **Local bench
-/ test material only** — not wired into LP's `dev`/`prod`, ships nothing to prod.
+reproduce the Topic Flow → document-assembly handoff fill locally. Installed on each
+docassemble instance with `make interview-deploy`, separate from LP's own deploy.
 
 Each demo gets its own folder under `docassemble/` (form set + interviews +
 README together), not split by file type.
@@ -37,11 +37,11 @@ code block, not a bare `multi_user: True` key, which throws `DASourceError`
 
 ## Test it locally
 
-Prereq: the bench is up. See [`docs/docassemble.md`](../../docs/docassemble.md).
+Prereq: local docassemble is up. See [`docs/docassemble.md`](../../docs/docassemble.md).
 
-- Start the bench: `make docassemble-up`
-- Open `http://localhost:8100` and log in with the `DA_ADMIN_EMAIL` / `DA_ADMIN_PASSWORD` seeded on the bench's first boot (see [`docs/docassemble.md`](../../docs/docassemble.md)).
-  The seed only applies to an empty database: a bench volume that predates these
+- Start local docassemble: `make docassemble-up`
+- Open `http://localhost:8100` and log in with the `DA_ADMIN_EMAIL` / `DA_ADMIN_PASSWORD` seeded on its first boot (see [`docs/docassemble.md`](../../docs/docassemble.md)).
+  The seed only applies to an empty database: a docassemble volume that predates these
   vars keeps its old credentials, and the login fails — `docker compose down -v`
   and re-seed.
 - Top-right menu → **Playground**
@@ -88,14 +88,14 @@ dead/stock affordances are removed. Versioned here:
   (parity, not a design-system port).
 - `lp-logo.svg` — LP logo for the navbar.
 
-Apply on the bench (Playground):
+Apply on local docassemble (Playground):
 
 1. Upload `lp-branding.css` and `lp-logo.svg` to the project's **Static** folder.
    Both interviews already reference the CSS via `features: css: lp-branding.css`.
 2. End screen is **download-only** — `allow emailing: False` is set in both
    interviews (email delivery isn't wired and is deferred to v2, #441; no SMS).
 3. Server → **Configuration** for the global brand + clean anonymous entry
-   (verify exact key names on the bench — docassemble's config docs weren't
+   (verify exact key names on local docassemble — docassemble's config docs weren't
    reachable when this was drafted):
    - `brandname: Litigant Portal`
    - `show login: False` — no login wall for an anonymous litigant
@@ -129,7 +129,7 @@ static parsing couldn't settle were confirmed by a full-packet bench fill (#560)
 
 The packet is filled by **pikepdf inside the docassemble container** — that is the
 only PDF dependency the project has. The tools below are **local analysis aids**
-for checking a bench fill by hand; nothing in the repo or CI requires them.
+for checking a filled interview by hand; nothing in the repo or CI requires them.
 
 Dump every AcroForm field name and value from a filled (or blank) form with
 [qpdf](https://github.com/qpdf/qpdf) (actively maintained, Apache-2.0):
@@ -152,7 +152,7 @@ one row above where it actually prints. It has now bitten three forms — the
 Petition §3 address block, the Confidential Information signature block, and the
 Declaration §13 signature block — each needing values shifted up one field name
 (e.g. on the Declaration the printed name goes in `Text15`, not `Printed Name of
-Petitioner`). Assume any new ND form has it, and dump the fields after a bench
+Petitioner`). Assume any new ND form has it, and dump the fields after a test
 fill to confirm before trusting the mapping.
 
 ## Related

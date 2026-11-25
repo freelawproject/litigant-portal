@@ -1,4 +1,4 @@
-"""Tests for the docassemble bench script, scripts/docassemble_bench.py.
+"""Tests for the docassemble interviews script, scripts/interviews.py.
 
 All tests are DB-free and run in the fast suite. The Docker test image
 ships without scripts/, so the module is skipped there.
@@ -11,10 +11,10 @@ import zipfile
 
 import pytest
 
-bench = pytest.importorskip("scripts.docassemble_bench")
+script = pytest.importorskip("scripts.interviews")
 
 
-class _FakeBench:
+class _FakeInstance:
     """Serves interview screens in order; the last one repeats."""
 
     def __init__(self, *screens):
@@ -51,10 +51,10 @@ ATTORNEY = _screen(
 
 
 def test_walk_names_the_missing_field_when_a_screen_comes_back():
-    fake = _FakeBench(ATTORNEY)
+    fake = _FakeInstance(ATTORNEY)
 
     with pytest.raises(SystemExit) as stopped:
-        bench._walk(fake, "i", "emily", {"landlord_has_attorney": True})
+        script._walk(fake, "i", "emily", {"landlord_has_attorney": True})
 
     message = str(stopped.value)
     assert "no answer for attorney_name" in message
@@ -63,14 +63,14 @@ def test_walk_names_the_missing_field_when_a_screen_comes_back():
 
 
 def test_walk_answers_a_repeated_question_that_asks_for_new_variables():
-    fake = _FakeBench(
+    fake = _FakeInstance(
         _screen("child", {"variable_name": "children[0].name"}),
         _screen("child", {"variable_name": "children[1].name"}),
         {"questionText": '<a href="/uploadedfile/7/answer.pdf">Download</a>'},
     )
     answers = {"children[0].name": "Ana", "children[1].name": "Ben"}
 
-    assert bench._walk(fake, "i", "emily", answers) == "7"
+    assert script._walk(fake, "i", "emily", answers) == "7"
     assert len(fake.posts) == 2
 
 
@@ -83,13 +83,13 @@ def interviews(tmp_path, monkeypatch):
     folder.mkdir()
     for name in ("petition.yml", "petition.pdf", "personas.yml", "notes.md"):
         (folder / name).write_text("")
-    monkeypatch.setattr(bench, "INTERVIEWS", tmp_path)
+    monkeypatch.setattr(script, "INTERVIEWS", tmp_path)
     return tmp_path
 
 
 def test_selected_rejects_a_path_that_does_not_exist(interviews):
     with pytest.raises(SystemExit, match="No interview folder"):
-        bench._selected([str(interviews / "nope")])
+        script._selected([str(interviews / "nope")])
 
 
 def test_selected_takes_a_folders_uploadable_files_but_not_its_personas(
@@ -97,7 +97,7 @@ def test_selected_takes_a_folders_uploadable_files_but_not_its_personas(
 ):
     folder = interviews / "nd-name-change"
 
-    selected = bench._selected([str(folder)])
+    selected = script._selected([str(folder)])
 
     assert selected == {
         folder: [folder / "petition.pdf", folder / "petition.yml"]
@@ -107,25 +107,25 @@ def test_selected_takes_a_folders_uploadable_files_but_not_its_personas(
 def test_selected_takes_one_file_when_given_a_file(interviews):
     file = interviews / "nd-name-change" / "petition.yml"
 
-    assert bench._selected([str(file)]) == {file.parent: [file]}
+    assert script._selected([str(file)]) == {file.parent: [file]}
 
 
 # _api_key and _env
 
 
-def test_api_key_prefers_the_bench_admin_key():
+def test_api_key_prefers_the_local_admin_key():
     env = {"DA_ADMIN_API_KEY": "admin", "DOCASSEMBLE_API_KEY": "lp"}
 
-    assert bench._api_key(env) == "admin"
+    assert script._api_key(env) == "admin"
 
 
 def test_api_key_falls_back_to_the_key_lp_uses():
-    assert bench._api_key({"DOCASSEMBLE_API_KEY": "lp"}) == "lp"
+    assert script._api_key({"DOCASSEMBLE_API_KEY": "lp"}) == "lp"
 
 
 def test_api_key_missing_names_both_variables():
     with pytest.raises(SystemExit) as stopped:
-        bench._api_key({})
+        script._api_key({})
 
     assert "DA_ADMIN_API_KEY" in str(stopped.value)
     assert "DOCASSEMBLE_API_KEY" in str(stopped.value)
@@ -135,14 +135,14 @@ def test_env_reads_values_and_skips_comments(tmp_path, monkeypatch):
     (tmp_path / ".env").write_text(
         "# DA_ADMIN_API_KEY=commented\n"
         "DA_ADMIN_API_KEY='abc=123'\n"
-        'DOCASSEMBLE_PUBLIC_URL = "http://bench"\n'
+        'DOCASSEMBLE_PUBLIC_URL = "http://local"\n'
         "not a setting\n"
     )
-    monkeypatch.setattr(bench, "REPO", tmp_path)
+    monkeypatch.setattr(script, "REPO", tmp_path)
 
-    assert bench._env() == {
+    assert script._env() == {
         "DA_ADMIN_API_KEY": "abc=123",
-        "DOCASSEMBLE_PUBLIC_URL": "http://bench",
+        "DOCASSEMBLE_PUBLIC_URL": "http://local",
     }
 
 
@@ -159,11 +159,11 @@ def test_env_reads_values_and_skips_comments(tmp_path, monkeypatch):
     ],
 )
 def test_optional(field, optional):
-    assert bench._optional(_screen("q", field), "v") is optional
+    assert script._optional(_screen("q", field), "v") is optional
 
 
 def test_optional_is_false_for_a_variable_the_screen_does_not_ask():
-    assert bench._optional(ATTORNEY, "case_number") is False
+    assert script._optional(ATTORNEY, "case_number") is False
 
 
 @pytest.mark.parametrize(
@@ -175,7 +175,7 @@ def test_optional_is_false_for_a_variable_the_screen_does_not_ask():
     ],
 )
 def test_document_link(html, number):
-    assert bench._document_link({"questionText": html}) == number
+    assert script._document_link({"questionText": html}) == number
 
 
 # _render
@@ -185,9 +185,9 @@ def test_render_clears_old_images_even_without_pdftoppm(tmp_path, monkeypatch):
     pdf = tmp_path / "emily-outlined.pdf"
     old = tmp_path / "emily-outlined-1.png"
     old.write_text("")
-    monkeypatch.setattr(bench.shutil, "which", lambda _name: None)
+    monkeypatch.setattr(script.shutil, "which", lambda _name: None)
 
-    assert bench._render(pdf) == []
+    assert script._render(pdf) == []
     assert not old.exists()
 
 
@@ -211,7 +211,7 @@ def eviction(tmp_path):
 
 
 def _built(eviction, tmp_path, version="1.0.20261124"):
-    path = bench._package(eviction, version, tmp_path / "dist")
+    path = script._package(eviction, version, tmp_path / "dist")
     archive = zipfile.ZipFile(path)
     return {
         name: archive.read(name).decode()
@@ -266,10 +266,10 @@ def test_package_ships_the_data_folder_as_package_data(eviction, tmp_path):
 # deploy: _target
 
 
-def test_target_bench_reads_the_local_bench_settings():
-    env = {"DOCASSEMBLE_PUBLIC_URL": "http://bench/", "DA_ADMIN_API_KEY": "k"}
+def test_target_local_reads_the_local_settings():
+    env = {"DOCASSEMBLE_PUBLIC_URL": "http://local/", "DA_ADMIN_API_KEY": "k"}
 
-    assert bench._target(env, "bench") == ("http://bench", "k")
+    assert script._target(env, "local") == ("http://local", "k")
 
 
 @pytest.fixture
@@ -293,8 +293,8 @@ def _named(targets, name="qa", environ=None, secret=None):
         reads.append((secret_id, region))
         return secret or {}
 
-    target = bench._target(
-        {"DA_ADMIN_API_KEY": "bench-key"},
+    target = script._target(
+        {"DA_ADMIN_API_KEY": "local-key"},
         name,
         targets_file=targets,
         environ=environ or {},
@@ -333,7 +333,7 @@ def test_target_with_no_secret_needs_the_key_in_the_environment(targets):
 
 
 def test_target_unknown_names_the_known_targets(targets):
-    with pytest.raises(SystemExit, match="bench, keyless, qa"):
+    with pytest.raises(SystemExit, match="local, keyless, qa"):
         _named(targets, name="nope")
 
 
@@ -352,7 +352,7 @@ def test_aws_secret_reads_the_secret_json_with_the_aws_cli():
         calls.append(command)
         return _Ran(stdout='{"DA_ADMIN_API_KEY": "k"}\n')
 
-    assert bench._aws_secret("k8s/qa/env", "us-west-2", run=run) == {
+    assert script._aws_secret("k8s/qa/env", "us-west-2", run=run) == {
         "DA_ADMIN_API_KEY": "k"
     }
     assert calls == [
@@ -377,7 +377,7 @@ def test_aws_secret_failure_shows_the_cli_error():
         return _Ran(returncode=255, stderr="AccessDeniedException: nope")
 
     with pytest.raises(SystemExit, match="AccessDeniedException"):
-        bench._aws_secret("k8s/qa/env", "us-west-2", run=run)
+        script._aws_secret("k8s/qa/env", "us-west-2", run=run)
 
 
 # deploy: _install and _await_install
@@ -406,11 +406,11 @@ def test_request_treats_a_dropped_connection_as_unreachable(
 ):
     # urllib wraps connect failures in URLError, but not these, which
     # happen while reading the response during docassemble's restart.
-    monkeypatch.setattr(bench, "_NO_REDIRECTS", _DroppedConnection(error))
-    server = bench.Bench.__new__(bench.Bench)
+    monkeypatch.setattr(script, "_NO_REDIRECTS", _DroppedConnection(error))
+    server = script.Instance.__new__(script.Instance)
     server.base, server.key = "https://da.example", "key"
 
-    with pytest.raises(bench.BenchUnreachable):
+    with pytest.raises(script.InstanceUnreachable):
         server._request("GET", "/api/package_update_status")
 
 
@@ -469,7 +469,7 @@ def test_install_uploads_the_zip_and_returns_the_task(tmp_path):
     zip_path = tmp_path / "docassemble-fceviction.zip"
     server = _FakeServer((200, {"task_id": "abc"}))
 
-    assert bench._install(server, zip_path) == "abc"
+    assert script._install(server, zip_path) == "abc"
     assert server.posted == ("/api/package", {}, [("zip", zip_path)])
 
 
@@ -477,12 +477,12 @@ def test_install_refused_shows_the_servers_reason(tmp_path):
     server = _FakeServer((403, "You do not have permission"))
 
     with pytest.raises(SystemExit, match="403.*You do not have permission"):
-        bench._install(server, tmp_path / "p.zip")
+        script._install(server, tmp_path / "p.zip")
 
 
 def _wait(server, timeout=60):
     clock = server.clock or _Clock()
-    return bench._await_install(
+    return script._await_install(
         server,
         "abc",
         timeout=timeout,
@@ -508,7 +508,7 @@ def test_await_install_returns_the_log_once_the_install_succeeds():
 
 def test_await_install_waits_through_the_server_restart():
     server = _FakeServer(
-        bench.BenchUnreachable("down"),
+        script.InstanceUnreachable("down"),
         (502, "Bad Gateway"),
         (200, {"status": "completed", "ok": True, "log": "installed"}),
     )

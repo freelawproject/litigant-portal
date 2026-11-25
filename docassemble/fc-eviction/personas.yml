@@ -1,5 +1,5 @@
-# Test personas for the bench fill (scripts/docassemble_bench.py fill
-# fc-eviction). Each persona answers every screen of its interview; the
+# Test personas for `make interview-fill FOLDER=fc-eviction`.
+# Each persona answers every screen of its interview; the
 # names under `answers` are the interview's own variables. Between them the
 # two personas fill every field on the Answer at least once.
 #
