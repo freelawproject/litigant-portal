@@ -1,0 +1,44 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Confirm Your Email Address" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block auth_content %}
+  {% if confirmation and can_confirm %}
+    {% trans "Confirm your email address" as status_heading %}
+    {% blocktrans asvar status_description %}Is {{ email }} your email address? Confirm it to finish setting up your account.{% endblocktrans %}
+    <c-molecules.auth-status
+      icon="envelope"
+      icon_class="text-greyscale-400"
+      heading="{{ status_heading }}"
+      description="{{ status_description }}"
+    >
+      <form method="post" action="{% url 'account_confirm_email' confirmation.key %}">
+        {% csrf_token %}
+        <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
+        {% trans "Confirm" %}
+        </c-atoms.button>
+      </form>
+    </c-molecules.auth-status>
+  {% else %}
+    {% trans "This link no longer works" as status_heading %}
+    {% if confirmation %}
+      {% blocktrans asvar status_description %}Another account already uses {{ email }}. Sign in with that account.{% endblocktrans %}
+    {% else %}
+      {% trans "The link has expired or was already used. Sign in to continue. If your email address is not confirmed yet, we will send you a new link." as status_description %}
+    {% endif %}
+    <c-molecules.auth-status
+      icon="exclamation-circle"
+      icon_class="text-red-500"
+      heading="{{ status_heading }}"
+      description="{{ status_description }}"
+    >
+      <c-atoms.button href="{% url 'account_login' %}" variant="primary" size="xl" full_width class="justify-center">
+      {% trans "Sign in" %}
+      </c-atoms.button>
+    </c-molecules.auth-status>
+  {% endif %}
+{% endblock auth_content %}

@@ -1,0 +1,22 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Check Your Email" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block auth_content %}
+  {% trans "Check your email" as status_heading %}
+  {% trans "We sent you an email. Open it and follow the link to continue. If you do not see it in a few minutes, check your spam folder." as status_description %}
+  <c-molecules.auth-status
+    icon="envelope"
+    icon_class="text-greyscale-400"
+    heading="{{ status_heading }}"
+    description="{{ status_description }}"
+  >
+    <c-atoms.button href="{% url 'account_login' %}" variant="outline" class="justify-center">
+    {% trans "Back to sign in" %}
+    </c-atoms.button>
+  </c-molecules.auth-status>
+{% endblock auth_content %}

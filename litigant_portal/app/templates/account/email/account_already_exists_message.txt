@@ -1,0 +1,10 @@
+{% extends "account/email/base_message.txt" %}
+{% load i18n %}
+
+{% block content %}{% autoescape off %}{% blocktrans %}Someone tried to make an account for {{ court_name }} with this email address, {{ email }}. You already have an account with this address, so no new account was made.{% endblocktrans %}
+
+{% blocktrans %}If you forgot your password, open this page and enter this email address. We will send you a link to choose a new one:{% endblocktrans %}
+
+{{ password_reset_url }}
+
+{% blocktrans %}If this was not you, you can ignore this email. Your account stays the same.{% endblocktrans %}{% endautoescape %}{% endblock content %}

@@ -1,0 +1,10 @@
+{% extends "account/email/base_message.txt" %}
+{% load i18n %}
+
+{% block content %}{% autoescape off %}{% blocktrans %}This email address was used for an account at {{ court_name }}. To confirm it is yours, open this link:{% endblocktrans %}
+
+{{ activate_url }}
+
+{% blocktrans %}The link works for {{ link_days }} days. After you confirm, it stops working.{% endblocktrans %}
+
+{% blocktrans %}If you did not make this account, you can ignore this email.{% endblocktrans %}{% endautoescape %}{% endblock content %}

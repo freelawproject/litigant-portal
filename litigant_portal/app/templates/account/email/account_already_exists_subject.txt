@@ -1,0 +1,1 @@
+{% load i18n %}{% autoescape off %}{% blocktrans %}Your account for {{ court_name }}{% endblocktrans %}{% endautoescape %}

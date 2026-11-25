@@ -341,8 +341,9 @@ ACCOUNT_LOGOUT_ON_GET = False  # Require POST for CSRF protection
 # No mail to addresses without an account: anyone could make us send it.
 ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""  # Our subjects name the court
-# Reset and invite links. The emails state the length in days.
+# Reset, invite and confirm links. The emails state the length in days.
 PASSWORD_RESET_TIMEOUT = 7 * 24 * 60 * 60
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7
 CSRF_FAILURE_VIEW = "litigant_portal.app.views.topic_flow.csrf_failure"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
