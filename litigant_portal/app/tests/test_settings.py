@@ -123,6 +123,7 @@ def test_smtp_options_read_environment():
             "username": "smtp-user",
             "password": "smtp-pass",
             "use_tls": False,
+            "use_ssl": False,
             "timeout": 10,
         },
     }
@@ -140,6 +141,30 @@ def test_smtp_defaults_to_port_587_with_tls(extra):
     ]
 
     assert options["port"] == 587
+    assert options["use_tls"] is True
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [{}, {"EMAIL_USE_TLS": "true"}],
+    ids=["tls-unset", "tls-true"],
+)
+def test_ssl_flag_uses_implicit_tls_and_turns_starttls_off(extra):
+    options = _email_config(
+        {**SMTP_ENV, "EMAIL_PORT": "465", "EMAIL_USE_SSL": "true", **extra}
+    )["MAILERS"]["default"]["OPTIONS"]
+
+    assert options["use_ssl"] is True
+    assert options["use_tls"] is False
+
+
+@pytest.mark.parametrize("value", ["", "false", "1", "yes"])
+def test_ssl_flag_is_on_only_for_true(value):
+    options = _email_config({**SMTP_ENV, "EMAIL_USE_SSL": value})["MAILERS"][
+        "default"
+    ]["OPTIONS"]
+
+    assert options["use_ssl"] is False
     assert options["use_tls"] is True
 
 

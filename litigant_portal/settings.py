@@ -349,6 +349,8 @@ LOGOUT_REDIRECT_URL = "/"
 # Locals stay lowercase: Django rejects EMAIL_HOST and friends as settings
 # once MAILERS is defined.
 _email_host = os.environ.get("EMAIL_HOST", "").strip()
+# Implicit TLS (port 465) and STARTTLS (port 587) exclude each other.
+_email_use_ssl = os.environ.get("EMAIL_USE_SSL", "").strip().lower() == "true"
 if DEBUG:
     _mailer = {"BACKEND": "django.core.mail.backends.console.EmailBackend"}
 elif _email_host:
@@ -359,8 +361,9 @@ elif _email_host:
             "port": int(os.environ.get("EMAIL_PORT", "").strip() or 587),
             "username": os.environ.get("EMAIL_HOST_USER", ""),
             "password": os.environ.get("EMAIL_HOST_PASSWORD", ""),
-            "use_tls": os.environ.get("EMAIL_USE_TLS", "").strip().lower()
-            != "false",
+            "use_tls": not _email_use_ssl
+            and os.environ.get("EMAIL_USE_TLS", "").strip().lower() != "false",
+            "use_ssl": _email_use_ssl,
             "timeout": 10,
         },
     }
