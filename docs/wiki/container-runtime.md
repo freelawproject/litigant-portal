@@ -37,7 +37,7 @@ for litigant-portal-django, repository does not exist or may require 'docker log
 
 That is expected for `litigant-portal-django`. It is built from this repo's Dockerfile and comes back on the next build (step 7).
 
-**Decide what you actually need first.** Named volumes hold local Postgres data (disposable — `docker compose down -v` is the documented reset) and the local docassemble bench, which holds Playground work. Anonymous hash volumes and duplicate `postgres_data*` volumes from past upgrades are cruft. To see what is at stake:
+**Decide what you actually need first.** Named volumes hold local Postgres data (disposable — `docker compose down -v` is the documented reset) and local docassemble, which holds Playground work. Anonymous hash volumes and duplicate `postgres_data*` volumes from past upgrades are cruft. To see what is at stake:
 
 ```sh
 docker volume ls

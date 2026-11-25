@@ -1,7 +1,7 @@
-# docassemble instances `make bench-deploy TARGET=<name>` and the
+# docassemble instances `make interview-deploy TARGET=<name>` and the
 # docassemble-deploy workflow can install on. Each names its URL and the AWS
 # Secrets Manager secret holding its DA_ADMIN_API_KEY; the key itself is read
-# at deploy time and never stored. `bench`, the local dev bench, isn't listed:
+# at deploy time and never stored. `local`, the local dev docassemble, isn't listed:
 # it reads the repo's .env.
 
 qa:

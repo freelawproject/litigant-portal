@@ -5,7 +5,7 @@
  * the atomic-design system, just palette + type + component parity, which is
  * cheap to do via Bootstrap's CSS variables.
  *
- * Apply on the bench: upload this file to the interview's Playground Static
+ * Apply on local docassemble: upload this file to the interview's Playground Static
  * folder; the interviews reference it via `features: css: lp-branding.css`.
  *
  * Font note: Inter is named first but the box has no local Inter and we don't

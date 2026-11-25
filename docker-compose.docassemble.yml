@@ -4,7 +4,7 @@
 # NOT production, and deliberately NOT wired into LP's dev/prod profiles —
 # docassemble is a ~20 GB all-in-one container (Postgres/Redis/RabbitMQ/Celery/
 # nginx under supervisor), so it's opt-in for anyone working on the handoff.
-# Real hosting waits for the infra-team move; this is just the local test bench.
+# Real hosting waits for the infra-team move; this is just local docassemble for testing.
 #
 # Config grounded in docassemble's docker docs (docassemble.org/docs/docker.html):
 #   - single jhpyle/docassemble container; nginx is internal on :80

@@ -1,6 +1,6 @@
 # Test personas — ND name-change interviews
 
-Concrete answer sets for running the interviews in the bench Playground. Each is
+Concrete answer sets for running the interviews in the local Playground. Each is
 tied to a Litigant Portal user story so the test data stays grounded in a real
 scenario. Values the story doesn't specify are filled plausibly and marked `*`.
 

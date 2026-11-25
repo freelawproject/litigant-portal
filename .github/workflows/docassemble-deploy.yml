@@ -50,4 +50,4 @@ jobs:
         uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
 
       - name: Install the package
-        run: uv run --frozen python scripts/docassemble_bench.py deploy "$FOLDER" --target "$TARGET"
+        run: uv run --frozen python scripts/interviews.py deploy "$FOLDER" --target "$TARGET"

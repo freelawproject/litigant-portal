@@ -26,9 +26,9 @@ The repo's reference shelf: material you reach for when you need it. Day-to-day 
 
 ## Document assembly
 
-| Doc                                | Purpose                                                 |
-| ---------------------------------- | ------------------------------------------------------- |
-| [docassemble.md](./docassemble.md) | docassemble: authoring gotchas, local bench, QA hosting |
+| Doc                                | Purpose                                                       |
+| ---------------------------------- | ------------------------------------------------------------- |
+| [docassemble.md](./docassemble.md) | docassemble: authoring gotchas, local docassemble, QA hosting |
 
 ## Wiki
 
