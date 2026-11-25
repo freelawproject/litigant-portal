@@ -1,0 +1,10 @@
+# docassemble instances `make bench-deploy TARGET=<name>` and the
+# docassemble-deploy workflow can install on. Each names its URL and the AWS
+# Secrets Manager secret holding its DA_ADMIN_API_KEY; the key itself is read
+# at deploy time and never stored. `bench`, the local dev bench, isn't listed:
+# it reads the repo's .env.
+
+qa:
+  url: https://qa.litigantportal.com/interview
+  secret: k8s/qa-litigant/docassemble-env
+  region: us-west-2

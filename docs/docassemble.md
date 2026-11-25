@@ -92,10 +92,17 @@ Sending the payload creates a session, so the handoff is a POST from a form, not
 
 ## Serving the handoff: the interviews must be installed as a package
 
-The corpus references name the `docassemble.ndnamechange` package, so a Playground upload alone no longer resolves them: the interviews must be installed as that package on whichever docassemble serves the handoff (bench or QA). From the Playground it takes a minute:
+The corpus references name packages (`docassemble.ndnamechange`, `docassemble.fceviction`), so a Playground upload alone doesn't resolve them: each interview folder must be installed as its package on whichever docassemble serves the handoff. `deploy` does that from the repo, without the Playground (#556):
 
-1. Upload the interviews on the Playground's main page (the interview editor) and the PDFs to **Templates** (the "Test it locally" steps in [`docassemble/nd-name-change/README.md`](../docassemble/nd-name-change/README.md)). Not Folders → Sources: that folder installs to `data/sources/`, so a package built from it installs cleanly but serves no interviews, and every launch 404s.
-2. **Folders → Packages** → add a package named `ndnamechange`. Select both interviews in the **Interview files** box (the first one, not **Source files**) and the five PDFs in **Template files**. Add `lp-branding.css` and `lp-logo.svg` under **Static files** for the portal look.
-3. Click **Install**. The server now resolves `docassemble.ndnamechange:data/questions/petition-standard.yml` for every user, and the LP handoff works.
+```sh
+make bench-deploy FOLDER=fc-eviction                 # the local bench
+AWS_PROFILE=flp-root make bench-deploy FOLDER=fc-eviction TARGET=qa
+```
 
-Re-run the Install after changing an interview: the Playground copy and the installed package are separate copies.
+- **Package:** the folder is zipped in the layout docassemble's own Package button produces: interviews in `data/questions/`, PDFs in `data/templates/`, CSS and SVG in `data/static/`, named `docassemble.<folder without dashes>`. Each build gets a new version, so pip always reinstalls.
+- **Install:** the zip goes to the instance's `/api/package`, and the script waits on `/api/package_update_status` through the restart docassemble runs after every install, a few minutes. A failure exits with docassemble's own error. Re-installing replaces the package, including one installed by hand from the Playground.
+- **Targets:** [`docassemble/targets.yml`](../docassemble/targets.yml) lists each instance's URL and the AWS Secrets Manager secret holding its `DA_ADMIN_API_KEY`. The key is read at deploy time with whatever AWS identity is active and never stored or typed. `DA_API_KEY` overrides it. `bench` isn't listed: it reads the repo's `.env`.
+- **AWS sign-in:** FLP's AWS uses IAM Identity Center. Once, run `aws configure sso` with start URL `https://freelawproject.awsapps.com/start`, SSO region `us-west-2`, session name `flp`, and name the profile after the account (`flp-root` for "Free Law Project (root)", which holds QA). After that, `aws sso login --sso-session flp` once a day covers every profile.
+- **CI:** the `docassemble-deploy` workflow runs the same install from GitHub, separate from the web deploy: `gh workflow run docassemble-deploy.yml -f folder=fc-eviction -f target=qa`. It can't read QA's secret yet: the `litigant-deploy` user it signs in as needs `secretsmanager:GetSecretValue` on it, an infra grant.
+
+Re-deploy after changing an interview: an installed package doesn't follow later edits to the repo or the Playground.

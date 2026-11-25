@@ -1,0 +1,53 @@
+# Installs one docassemble interview folder as a package on one instance,
+# without a web deploy (#556). The instance's admin API key is read from AWS
+# Secrets Manager at run time (docassemble/targets.yml names the secret), so
+# no one copies, stores or rotates it here.
+#
+# From a terminal:
+#   gh workflow run docassemble-deploy.yml -f folder=fc-eviction -f target=qa
+#
+# Signs in to AWS the way the QA deploy does. Court targets will use their
+# <court>-github-deploy roles instead, like deploy-courts.yml.
+name: Deploy docassemble interviews
+
+on:
+  workflow_dispatch:
+    inputs:
+      folder:
+        description: Interview folder under docassemble/, like fc-eviction
+        required: true
+      target:
+        description: Instance named in docassemble/targets.yml
+        required: true
+        default: qa
+
+permissions:
+  contents: read
+
+concurrency:
+  # One install at a time per instance: each one restarts docassemble.
+  group: docassemble-deploy-${{ inputs.target }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      FOLDER: ${{ inputs.folder }}
+      TARGET: ${{ inputs.target }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Install the package
+        run: uv run --frozen python scripts/docassemble_bench.py deploy "$FOLDER" --target "$TARGET"

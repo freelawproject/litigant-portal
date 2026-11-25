@@ -162,6 +162,19 @@ EOF
 
 Field ids are validated against the chosen template — a section that doesn't match (wrong field or wrong template) warns and would render blank. The label is applied by the template; set assignee/priority/size in the browser. See `scripts/file_issue.py` for the full format and accepted type aliases.
 
+### Check for overlap before filing
+
+**Before drafting any issue, search for existing issues that already cover it, in whole or in part.** Search open and closed issues by keyword, and read the parent epics the new work would sit under. A manual checklist, a parked decision, or a closed issue's leftover scope often already holds part of the work.
+
+**Resolve each overlap in the draft itself.** For every overlapping issue, the draft says which of these applies, and why:
+
+- **Amend** the existing issue instead of filing, when it already covers the work.
+- **Edit** the existing issue's scope, when the new issue takes over part of it (say what moves).
+- **Split**, when the existing issue mixes this work with something else.
+- **Link only**, when they relate but don't overlap.
+
+**An issue someone else filed is edited only with the go-ahead of the person directing the work.** The draft proposes the change; that person decides.
+
 ## Work tracking
 
 Contributor-facing docs are canonical — don't restate them here:

@@ -35,15 +35,19 @@ The bench and its API key come from the repo's ``.env``: ``DA_ADMIN_API_KEY``
 
 import argparse
 import hashlib
+import http.client
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
+import zipfile
 from pathlib import Path
 
 import yaml
@@ -56,6 +60,7 @@ from pypdf.generic import (
 
 REPO = Path(__file__).resolve().parents[1]
 INTERVIEWS = REPO / "docassemble"
+TARGETS = INTERVIEWS / "targets.yml"
 OUTPUT = REPO / "build/bench"
 STATE = Path.home() / ".cache/lp-docassemble-bench.json"
 PLAYGROUND_FOLDERS = {
@@ -101,20 +106,33 @@ class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
 
 _NO_REDIRECTS = urllib.request.build_opener(_RefuseRedirects)
 
+# Longest wait for one answer from docassemble, in seconds.
+REQUEST_TIMEOUT = 120
+
+
+class BenchUnreachable(SystemExit):
+    """docassemble didn't answer at all. Exits like any other failure, unless
+    a caller expects the outage, as an install's restart does."""
+
 
 class Bench:
     """The docassemble API, authenticated with the admin key."""
 
-    def __init__(self):
-        env = _env()
-        self.base = (
-            env.get("DOCASSEMBLE_PUBLIC_URL") or "http://localhost:8100"
-        ).rstrip("/")
-        self.key = _api_key(env)
+    def __init__(self, target="bench"):
+        self.base, self.key = _target(_env(), target)
         user = self.get_json("/api/user")
         self.user_id = user["id"]
 
-    def _request(self, method, path, *, query=None, data=None, headers=None):
+    def _request(
+        self,
+        method,
+        path,
+        *,
+        query=None,
+        data=None,
+        headers=None,
+        timeout=REQUEST_TIMEOUT,
+    ):
         url = f"{self.base}{path}"
         if query:
             url += "?" + urllib.parse.urlencode(query)
@@ -125,7 +143,7 @@ class Bench:
             headers={"X-API-Key": self.key, **(headers or {})},
         )
         try:
-            with _NO_REDIRECTS.open(request, timeout=120) as response:
+            with _NO_REDIRECTS.open(request, timeout=timeout) as response:
                 return response.status, response.read()
         except urllib.error.HTTPError as error:
             if 300 <= error.code < 400:
@@ -135,8 +153,15 @@ class Bench:
                     f"{error.headers.get('Location')}"
                 )
             return error.code, error.read()
-        except urllib.error.URLError as error:
-            sys.exit(f"Can't reach the bench at {self.base}: {error.reason}")
+        except (OSError, http.client.HTTPException) as error:
+            # URLError (an OSError) covers a failed connect. A connection
+            # dropped while reading the response, as during docassemble's
+            # restart, raises RemoteDisconnected, ConnectionResetError or
+            # TimeoutError instead, which urllib passes through unwrapped.
+            reason = getattr(error, "reason", error)
+            raise BenchUnreachable(
+                f"Can't reach docassemble at {self.base}: {reason}"
+            ) from error
 
     def get_json(self, path, **query):
         status, body = self._request("GET", path, query=query)
@@ -219,12 +244,14 @@ def _selected(paths):
             sys.exit(f"No interview folder or file {str(target)!r}")
         folder = target if target.is_dir() else target.parent
         files = sorted(folder.iterdir()) if target.is_dir() else [target]
-        selected.setdefault(folder, []).extend(
-            f
-            for f in files
-            if f.suffix in PLAYGROUND_FOLDERS and f.name != PERSONAS_FILE
-        )
+        selected.setdefault(folder, []).extend(f for f in files if _ships(f))
     return selected
+
+
+def _ships(file: Path) -> bool:
+    """Whether a file in an interview folder goes to docassemble: the
+    interviews, PDFs and branding, not the test personas or the README."""
+    return file.suffix in PLAYGROUND_FOLDERS and file.name != PERSONAS_FILE
 
 
 def _remote_names(bench, project, folder):
@@ -289,6 +316,189 @@ def sync(args):
     if not args.dry_run:
         STATE.parent.mkdir(parents=True, exist_ok=True)
         STATE.write_text(json.dumps(state, indent=2))
+
+
+# package
+
+
+def _pyproject(name: str, version: str) -> str:
+    # The build settings docassemble's own Package button writes
+    # (make_package_dir in docassemble/webapp/files/savedfile.py).
+    return (
+        "[build-system]\n"
+        'requires = ["setuptools>=80.9.0"]\n'
+        'build-backend = "setuptools.build_meta"\n'
+        "\n"
+        "[project]\n"
+        f'name = "{name}"\n'
+        f'version = "{version}"\n'
+        "\n"
+        "[tool.setuptools.packages.find]\n"
+        'where = ["."]\n'
+    )
+
+
+def _package(folder: Path, version: str, out_dir: Path) -> Path:
+    """An installable zip of one interview folder, in the layout docassemble's
+    Package button produces: interviews under data/questions, PDFs under
+    data/templates, CSS and SVG under data/static. ``docassemble`` is a
+    namespace package shared with the server, so it gets no __init__.py;
+    MANIFEST.in's graft is what carries the data files into the install."""
+    project = _project(folder)
+    root = f"docassemble-{project}"
+    package = f"{root}/docassemble/{project}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"{root}.zip"
+    with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr(
+            f"{root}/pyproject.toml",
+            _pyproject(f"docassemble.{project}", version),
+        )
+        zf.writestr(
+            f"{root}/MANIFEST.in", f"graft docassemble/{project}/data\n"
+        )
+        zf.writestr(f"{package}/__init__.py", f"__version__ = {version!r}\n")
+        for file in sorted(folder.iterdir()):
+            if _ships(file):
+                data = PLAYGROUND_FOLDERS[file.suffix]
+                zf.write(file, f"{package}/data/{data}/{file.name}")
+    return path
+
+
+# deploy
+
+
+INSTALL_TIMEOUT = 15 * 60
+INSTALL_POLL = 5
+
+
+ADMIN_KEY_NAME = "DA_ADMIN_API_KEY"
+
+
+def _aws_secret(secret_id, region, *, run=subprocess.run):
+    """One AWS Secrets Manager secret's JSON, read with the aws CLI and
+    whatever AWS identity the caller already has (a CI role, an SSO login)."""
+    result = run(
+        [
+            "aws",
+            "secretsmanager",
+            "get-secret-value",
+            "--secret-id",
+            secret_id,
+            "--region",
+            region,
+            "--query",
+            "SecretString",
+            "--output",
+            "text",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        sys.exit(f"Can't read {secret_id}: {result.stderr.strip()}")
+    return json.loads(result.stdout)
+
+
+def _target(
+    env,
+    name,
+    *,
+    targets_file=TARGETS,
+    environ=os.environ,
+    read_secret=_aws_secret,
+):
+    """(base URL, admin API key) for a docassemble instance.
+
+    ``bench`` is the local bench, set up from the repo's .env. Any other name
+    is an instance in docassemble/targets.yml, which holds its URL and the
+    AWS secret its admin key lives in. Nobody handles the key: it's read from
+    that secret at deploy time, or taken from DA_API_KEY when set."""
+    if name == "bench":
+        base = env.get("DOCASSEMBLE_PUBLIC_URL") or "http://localhost:8100"
+        return base.rstrip("/"), _api_key(env)
+    targets = yaml.safe_load(targets_file.read_text()) or {}
+    if name not in targets:
+        known = ", ".join(["bench", *sorted(targets)])
+        sys.exit(f"No target {name!r} in {targets_file.name}. Known: {known}")
+    target = targets[name]
+    base = target["url"].rstrip("/")
+    if environ.get("DA_API_KEY"):
+        return base, environ["DA_API_KEY"]
+    if "secret" not in target:
+        sys.exit(f"{name} names no AWS secret; set DA_API_KEY to deploy to it")
+    secret = read_secret(target["secret"], target["region"])
+    if ADMIN_KEY_NAME not in secret:
+        held = ", ".join(sorted(secret)) or "nothing"
+        sys.exit(
+            f"{target['secret']} has no {ADMIN_KEY_NAME}; it holds {held}"
+        )
+    return base, secret[ADMIN_KEY_NAME]
+
+
+def _install(bench, zip_path):
+    """Upload a package zip for docassemble to install; returns its task id."""
+    status, body = bench.post_form(
+        "/api/package", {}, files=[("zip", zip_path)]
+    )
+    if not 200 <= status < 300:
+        sys.exit(f"Install refused (HTTP {status}): {body.decode()[:500]}")
+    return json.loads(body)["task_id"]
+
+
+def _await_install(
+    bench,
+    task_id,
+    *,
+    timeout=INSTALL_TIMEOUT,
+    interval=INSTALL_POLL,
+    sleep=time.sleep,
+    clock=time.monotonic,
+):
+    """Poll an install until docassemble reports it done, and return its log.
+
+    docassemble restarts itself after installing, so the server going away or
+    the ingress answering 5xx means keep waiting, not failure. `timeout` is
+    elapsed time, including time spent waiting on slow answers."""
+    deadline = clock() + timeout
+    while (remaining := deadline - clock()) > 0:
+        try:
+            status, body = bench._request(
+                "GET",
+                "/api/package_update_status",
+                query={"task_id": task_id},
+                timeout=min(REQUEST_TIMEOUT, remaining),
+            )
+        except BenchUnreachable:
+            status, body = None, b""
+        if status == 200:
+            result = json.loads(body)
+            if result["status"] == "completed":
+                if result.get("ok"):
+                    return result.get("log", "")
+                sys.exit(f"Install failed: {result.get('error_message')}")
+            if result["status"] == "unknown":
+                sys.exit(
+                    "docassemble has no record of this install (status "
+                    "unknown); check its Package Management page"
+                )
+        elif status is not None and status < 500:
+            sys.exit(f"Install status: HTTP {status}: {body.decode()[:500]}")
+        sleep(max(0, min(interval, deadline - clock())))
+    sys.exit(f"Gave up after {timeout}s: docassemble is still installing")
+
+
+def deploy(args):
+    folder = _folder(args.folder)
+    bench = Bench(args.target)
+    version = time.strftime("1.0.%Y%m%d%H%M%S", time.gmtime())
+    zip_path = _package(folder, version, OUTPUT / "packages")
+    print(f"== docassemble.{_project(folder)} {version} -> {bench.base}")
+    task_id = _install(bench, zip_path)
+    print("   installing; docassemble restarts itself when it's done")
+    # Success needs no log; a failure exits with docassemble's own message.
+    _await_install(bench, task_id)
+    print(f"   installed docassemble.{_project(folder)} {version}")
 
 
 # fill
@@ -562,6 +772,21 @@ def main():
         "personas", nargs="*", help="persona names (default: all)"
     )
     fill_parser.set_defaults(run=fill)
+
+    deploy_parser = commands.add_parser(
+        "deploy", help="Install an interview folder as a package."
+    )
+    deploy_parser.add_argument(
+        "folder", help="interview folder under docassemble/, like fc-eviction"
+    )
+    deploy_parser.add_argument(
+        "-t",
+        "--target",
+        default="bench",
+        help="instance to install on: bench (default), or a name in "
+        "docassemble/targets.yml, like qa",
+    )
+    deploy_parser.set_defaults(run=deploy)
 
     args = parser.parse_args()
     args.run(args)
