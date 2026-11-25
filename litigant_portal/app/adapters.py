@@ -1,13 +1,17 @@
+import base64
 import logging
 import smtplib
 
 from allauth.account.adapter import DefaultAccountAdapter
 from allauth.core import context
 from allauth.mfa.adapter import DefaultMFAAdapter
+from allauth.mfa.totp.internal.auth import generate_totp_secret
+from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
+from django.utils.crypto import salted_hmac
 from django.utils.http import urlencode
 from django.utils.translation import gettext as _
 
@@ -110,7 +114,39 @@ class AccountAdapter(DefaultAccountAdapter):
         super().logout(request)
 
 
+def _two_factor_cipher() -> MultiFernet:
+    """Encrypt with TWO_FACTOR_KEY, decrypt with it or an old key."""
+    return MultiFernet(
+        [
+            Fernet(
+                base64.urlsafe_b64encode(
+                    salted_hmac(
+                        "two-factor", "", secret=key, algorithm="sha256"
+                    ).digest()
+                )
+            )
+            for key in [
+                settings.TWO_FACTOR_KEY,
+                *settings.TWO_FACTOR_KEY_FALLBACKS,
+            ]
+        ]
+    )
+
+
 class MFAAdapter(DefaultMFAAdapter):
     def get_totp_issuer(self):
         # The name the authenticator app shows for the account.
         return _court_name()
+
+    def encrypt(self, text):
+        return _two_factor_cipher().encrypt(text.encode()).decode()
+
+    def decrypt(self, encrypted_text):
+        try:
+            return (
+                _two_factor_cipher().decrypt(encrypted_text.encode()).decode()
+            )
+        except InvalidToken:
+            logger.error("Could not decrypt a two-factor secret")
+            # A new random secret matches no code.
+            return generate_totp_secret()

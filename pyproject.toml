@@ -36,6 +36,8 @@ urls."Organisation Homepage" = "https://free.law/"
 dependencies = [
     "Django>=6.0.5",
     "django-allauth[mfa]>=65.0",
+    # Encrypts two-factor secrets (also a Dependabot security minimum)
+    "cryptography>=50.0.0",
     "django-cotton>=1.0",
     "django-linear-migrations>=2.19",
     "django-pydantic-field>=0.5.1",
@@ -52,7 +54,6 @@ dependencies = [
     "vobject>=0.9.6.1",
     # Security minimums (transitive deps — Dependabot #13-#25)
     "aiohttp>=3.14.3",
-    "cryptography>=50.0.0",
     "filelock>=4.2.1",
     "pygments>=2.20.0",
     "requests>=2.33.0",

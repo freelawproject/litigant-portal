@@ -1,10 +1,13 @@
-"""Tests for two-factor sign-in: the code step, recovery codes, and who
-may set it up. All postgres-marked."""
+"""Tests for two-factor sign-in: the code step, recovery codes, who may
+set it up, and how secrets are stored. All postgres-marked."""
 
+import logging
+import re
 import time
 
 import pytest
 from allauth.account.models import EmailAddress
+from allauth.mfa.models import Authenticator
 from allauth.mfa.recovery_codes.internal.auth import RecoveryCodes
 from allauth.mfa.totp.internal.auth import (
     TOTP,
@@ -207,3 +210,61 @@ def test_setup_with_an_unconfirmed_address(
     assert response.status_code == status_code
     if not allow_unverified:
         assert response["Location"] == "/accounts/2fa/"
+
+
+def test_secrets_are_not_stored_as_plain_text():
+    user, secret, _ = _two_factor_user()
+
+    rows = {
+        row.type: row.data for row in Authenticator.objects.filter(user=user)
+    }
+
+    assert secret not in rows["totp"]["secret"]
+    # A plain seed is 80 hex characters.
+    assert not re.fullmatch(r"[0-9a-f]{80}", rows["recovery_codes"]["seed"])
+
+
+def test_an_old_key_in_the_fallbacks_still_reads_the_secret(client, settings):
+    _, secret, _ = _two_factor_user()
+    settings.TWO_FACTOR_KEY_FALLBACKS = [settings.TWO_FACTOR_KEY]
+    settings.TWO_FACTOR_KEY = "a-new-key"
+    _login(client)
+
+    response = client.post(CODE_URL, {"code": _code(secret)})
+
+    assert response["Location"] == "/"
+    assert _signed_in(client)
+
+
+@pytest.mark.parametrize(
+    "code_from",
+    [lambda secret, codes: _code(secret), lambda secret, codes: codes[0]],
+    ids=["authenticator-code", "recovery-code"],
+)
+def test_a_new_key_without_a_fallback_makes_the_code_wrong(
+    client, settings, caplog, code_from
+):
+    _, secret, recovery_codes = _two_factor_user()
+    settings.TWO_FACTOR_KEY = "a-new-key"
+    _login(client)
+
+    with caplog.at_level(logging.ERROR, logger="litigant_portal.app.adapters"):
+        response = client.post(
+            CODE_URL, {"code": code_from(secret, recovery_codes)}
+        )
+
+    assert response.status_code == 200
+    assert response.context["form"].errors["code"] == ["Incorrect code."]
+    assert not _signed_in(client)
+    assert "Could not decrypt a two-factor secret" in caplog.text
+
+
+def test_a_new_secret_key_leaves_two_factor_working(client, settings):
+    _, secret, _ = _two_factor_user()
+    settings.SECRET_KEY = "a-new-key"
+    _login(client)
+
+    response = client.post(CODE_URL, {"code": _code(secret)})
+
+    assert response["Location"] == "/"
+    assert _signed_in(client)

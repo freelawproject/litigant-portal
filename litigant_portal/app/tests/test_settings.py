@@ -52,6 +52,32 @@ class SecretKeySettingTests(SimpleTestCase):
         config = self._load({"DEBUG": "true"})
         self.assertEqual(len(config["SECRET_KEY"]), 50)
 
+    def test_two_factor_key_defaults_to_the_secret_key(self):
+        config = self._load({"DEBUG": "false", "SECRET_KEY": "from-env"})
+        self.assertEqual(config["TWO_FACTOR_KEY"], "from-env")
+
+    def test_two_factor_key_reads_environment(self):
+        config = self._load(
+            {
+                "DEBUG": "false",
+                "SECRET_KEY": "from-env",
+                "TWO_FACTOR_KEY": "its-own-key",
+            }
+        )
+        self.assertEqual(config["TWO_FACTOR_KEY"], "its-own-key")
+
+    def test_two_factor_fallback_keys_default_to_none(self):
+        config = self._load({"DEBUG": "true"})
+        self.assertEqual(config["TWO_FACTOR_KEY_FALLBACKS"], [])
+
+    def test_two_factor_fallback_keys_read_a_comma_separated_list(self):
+        config = self._load(
+            {"DEBUG": "true", "TWO_FACTOR_KEY_FALLBACKS": "old-one, old-two,"}
+        )
+        self.assertEqual(
+            config["TWO_FACTOR_KEY_FALLBACKS"], ["old-one", "old-two"]
+        )
+
 
 class BedrockSettingTests(SimpleTestCase):
     def test_region_defaults_to_us_east_1_and_preserves_overrides(self):

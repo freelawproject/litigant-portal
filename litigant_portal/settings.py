@@ -87,6 +87,14 @@ if not SECRET_KEY.strip():
     if not DEBUG:
         raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG is off")
     SECRET_KEY = get_random_secret_key()
+# Encrypts two-factor secrets. Its own key, so SECRET_KEY can change
+# without it. Old keys, comma separated, still read what they encrypted.
+TWO_FACTOR_KEY = os.environ.get("TWO_FACTOR_KEY", "").strip() or SECRET_KEY
+TWO_FACTOR_KEY_FALLBACKS = [
+    key.strip()
+    for key in os.environ.get("TWO_FACTOR_KEY_FALLBACKS", "").split(",")
+    if key.strip()
+]
 
 # Temporary site-wide password gate; empty disables it. See
 # SitePasswordMiddleware.

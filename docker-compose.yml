@@ -36,6 +36,8 @@ services:
       - PILOT=${PILOT:-}
       - FEEDBACK_EMAIL=${FEEDBACK_EMAIL:-}
       - SECRET_KEY=dev
+      - TWO_FACTOR_KEY=${TWO_FACTOR_KEY:-}
+      - TWO_FACTOR_KEY_FALLBACKS=${TWO_FACTOR_KEY_FALLBACKS:-}
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379/0
