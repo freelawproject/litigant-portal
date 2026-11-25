@@ -1,33 +1,35 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from litigant_portal.app.models.choices import TopicFlowFormConditionOperator
-from litigant_portal.app.models.topic_flow import condition_holds
 from litigant_portal.state.rules import (
-    ConditionType,
     applicable_facts,
     condition_matches,
     parse_condition,
 )
-
-
-def test_unanswered_fact_does_not_satisfy_a_negated_condition():
-    assert not condition_holds(
-        {}, "county", "Cass", TopicFlowFormConditionOperator.NOT_EQUALS
-    )
+from litigant_portal.state.types import ConditionType
 
 
 @pytest.mark.parametrize(
     ("condition", "facts", "expected"),
     [
-        ({"not": {"fact": "gate", "equals": True}}, {}, False),
-        ({"not": {"fact": "gate", "equals": True}}, {"gate": None}, False),
-        ({"not": {"fact": "gate", "equals": True}}, {"gate": False}, True),
+        ({"not": {"variable": "gate", "value": True}}, {}, False),
+        ({"not": {"variable": "gate", "value": True}}, {"gate": None}, False),
+        ({"not": {"variable": "gate", "value": True}}, {"gate": False}, True),
+        (
+            {"variable": "gate", "value": True, "operator": "not_equals"},
+            {},
+            False,
+        ),
+        (
+            {"variable": "gate", "value": True, "operator": "not_equals"},
+            {"gate": False},
+            True,
+        ),
         (
             {
                 "all": [
-                    {"fact": "gate", "equals": True},
-                    {"not": {"fact": "other", "equals": True}},
+                    {"variable": "gate", "value": True},
+                    {"not": {"variable": "other", "value": True}},
                 ]
             },
             {"gate": True},
@@ -36,8 +38,8 @@ def test_unanswered_fact_does_not_satisfy_a_negated_condition():
         (
             {
                 "any": [
-                    {"fact": "gate", "equals": True},
-                    {"fact": "other", "equals": True},
+                    {"variable": "gate", "value": True},
+                    {"variable": "other", "value": True},
                 ]
             },
             {"gate": True},
@@ -56,8 +58,8 @@ def test_compound_conditions_preserve_unknown_prerequisites(
     "condition",
     [
         {"all": []},
-        {"fact": "gate"},
-        {"fact": "gate", "equals": True, "extra": True},
+        {"variable": "gate"},
+        {"variable": "gate", "value": True, "extra": True},
     ],
 )
 def test_invalid_conditions_are_rejected(condition):
@@ -70,9 +72,9 @@ def test_hidden_prerequisites_stay_unknown_until_their_path_applies(gate):
     facts = {"gate": gate, "detail": True, "dependent": "kept"}
     conditions = {
         "dependent": parse_condition(
-            {"not": {"fact": "detail", "equals": False}}
+            {"not": {"variable": "detail", "value": False}}
         ),
-        "detail": parse_condition({"fact": "gate", "equals": True}),
+        "detail": parse_condition({"variable": "gate", "value": True}),
         "gate": None,
     }
     projected = applicable_facts(facts, conditions)

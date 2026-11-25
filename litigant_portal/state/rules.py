@@ -4,38 +4,16 @@ from collections.abc import Iterator, Mapping
 from graphlib import TopologicalSorter
 from typing import assert_never
 
-from pydantic import Field, JsonValue, TypeAdapter
+from pydantic import JsonValue, TypeAdapter
 
-from litigant_portal.state.types import StateModelType
-
-
-class EqualsConditionType(StateModelType):
-    fact: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
-    equals: bool | int | float | str
-
-
-class AllConditionType(StateModelType):
-    all: list[ConditionType] = Field(min_length=1)
-
-
-class AnyConditionType(StateModelType):
-    any: list[ConditionType] = Field(min_length=1)
-
-
-class NotConditionType(StateModelType):
-    not_: ConditionType = Field(alias="not")
-
-
-type ConditionType = (
-    EqualsConditionType
-    | AllConditionType
-    | AnyConditionType
-    | NotConditionType
+from litigant_portal.state.types import (
+    AllConditionType,
+    AnyConditionType,
+    ComparisonConditionType,
+    ConditionType,
+    NotConditionType,
 )
 
-AllConditionType.model_rebuild()
-AnyConditionType.model_rebuild()
-NotConditionType.model_rebuild()
 _condition_adapter = TypeAdapter(ConditionType | None)
 
 
@@ -45,9 +23,9 @@ def parse_condition(value: JsonValue) -> ConditionType | None:
 
 def condition_leaves(
     condition: ConditionType | None,
-) -> Iterator[EqualsConditionType]:
+) -> Iterator[ComparisonConditionType]:
     match condition:
-        case EqualsConditionType():
+        case ComparisonConditionType():
             yield condition
         case AllConditionType():
             for child in condition.all:
@@ -64,7 +42,7 @@ def condition_leaves(
 
 
 def condition_names(condition: ConditionType | None) -> set[str]:
-    return {leaf.fact for leaf in condition_leaves(condition)}
+    return {leaf.variable for leaf in condition_leaves(condition)}
 
 
 def applicable_facts(
@@ -107,9 +85,12 @@ def _evaluate(
     condition: ConditionType, facts: Mapping[str, JsonValue]
 ) -> bool | None:
     match condition:
-        case EqualsConditionType():
-            value = facts.get(condition.fact)
-            return None if value is None else value == condition.equals
+        case ComparisonConditionType():
+            value = facts.get(condition.variable)
+            if value is None:
+                return None
+            matches = value == condition.value
+            return matches if condition.operator == "equals" else not matches
         case AllConditionType():
             values = [_evaluate(child, facts) for child in condition.all]
             if False in values:

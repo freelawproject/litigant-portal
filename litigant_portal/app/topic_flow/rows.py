@@ -37,11 +37,9 @@ from litigant_portal.app.selectors.corpus import default_layout
 from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.app.topic_flow.contacts import contact_dicts
-from litigant_portal.app.topic_flow.deadlines import (
-    deadline_date,
-    deadline_display,
-)
+from litigant_portal.app.topic_flow.deadlines import deadline_display
 from litigant_portal.app.topic_flow.resources import resource_dicts
+from litigant_portal.state.projector import deadline_date
 from litigant_portal.state.rules import condition_names
 
 

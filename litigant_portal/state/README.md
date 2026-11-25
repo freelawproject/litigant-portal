@@ -1,6 +1,8 @@
-# State transitions
+# State reduction and projection
 
-This package owns database-free state transitions. Django services own identity resolution, glossary validation, transactions, persistence, and external operations.
+This package owns database-free state transitions and computed progress. Django services own identity resolution, glossary validation, transactions, persistence, and external operations.
+
+The current checkpoint implements the domain layer. Application adapters still need the restored condition vocabulary and projector integration. The application is intentionally incomplete; the single feature migration and database rebuild come after the schema is settled.
 
 ## Contract
 
@@ -18,7 +20,7 @@ An unchanged fact retains its timestamp, existing evidence, and confirmation. It
 
 ## Application boundary
 
-Live writes use the existing services in `app/services/topic_flow.py`:
+The existing write boundary in `app/services/topic_flow.py` is retained for the integration stage:
 
 - `variable_answer_set` and `variable_answer_set_many` preserve the existing single-write and atomic-batch interfaces.
 - `variable_answers_record` accepts the assistant's valid facts in one batch. `RecordFact` reports invalid siblings separately; the service cannot accept human confirmation authority.
@@ -35,14 +37,32 @@ The service locks the identity before reading its snapshot, validates the action
 
 ## Conditions
 
-`rules.ConditionType` accepts `{fact, equals}` expressions and nested `all`, `any`, and `not` expressions. `condition_matches` returns true only for a satisfied condition. Missing or cleared prerequisites remain unknown under negation; they do not satisfy `not_equals`.
+`types.ConditionType` accepts `{variable, value}` comparisons with an optional `operator` (`equals` by default, or `not_equals`), and nested `all`, `any`, and `not` expressions. `condition_matches` returns true only for a satisfied condition. Missing or cleared prerequisites remain unknown under negation; they do not satisfy `not_equals`.
 
-Variables store this expression in `when`. Corpus validation checks every referenced fact, comparison value, and dependency cycle. Sync stores the validated expression; migration `0039` converts existing gates before removing their old columns.
+Variable rules retain `asked_when`. Component rules use `when`; checkbox mappings will retain `checked_when`. Corpus validation and persistence will adopt these expressions in the next stage, preserving the original terminology.
 
-`applicable_facts` evaluates prerequisites before dependents. Hidden answers stay stored with their evidence, review status, and timestamps. The shared answer selectors exclude them from guided pages, the briefcase, review cards, identity prompts, and Docassemble prefill. Restoring a matching condition makes the stored answer available again. A stale review card cannot confirm a currently hidden fact.
+`applicable_facts` evaluates prerequisites before dependents. Hidden answers stay stored with their evidence, review status, and timestamps. The projector excludes them from current requirements and outputs; restoring a matching condition makes them available again.
 
-Packet and checkbox conditions still use their existing row adapters. Conditions on informational sections, interview pages, and deadlines, along with ranked component projection, are pending in the next integration slices.
+## Projection
+
+`project(state, court_rules, time_context, limit=1)` accepts a flow-scoped snapshot, validated rules, and the explicit local calendar date. Components arrive in authored layout order. Their `content` is authored source text, including question wording and choices, supplied by the selector; candidates reference that content by component ID.
+
+The result contains applicable variables in question order, answered and unconfirmed variables, missing required answers, applicable components, selected form references, resolved deadlines, and the next N unfinished components. Python candidates have no fit score. Empty question groups, packets without forms or an available interview, and calendars without applicable deadlines are omitted.
+
+Required questions remain unfinished until answered and confirmed. Optional questions can be skipped by viewing the component. Information and output components finish when their current content signature is viewed. Signatures incorporate authored content, applicable question definitions, selected forms, and computed deadlines, so a previously viewed output can become unfinished when its contents change.
+
+The projector leaves its inputs unchanged and never records a view or confirms a fact. A flow mismatch or nonpositive candidate limit is rejected. Deadline calculation now lives here; application display formatting stays in `app/topic_flow/deadlines.py`.
 
 ## Verification
 
-Reducer and condition tests run without a database or model calls. The existing answer, confirmation, and agent-tool tests cover the integrated write paths. Focused PostgreSQL tests cover owner locking, batch rollback, viewing-state ownership and deletion, and hidden-answer retention across consumers.
+Run the domain tests independently of the unfinished Django integration:
+
+```sh
+uv run --no-sync pytest -c /dev/null --noconftest -p no:django \
+  litigant_portal/app/tests/test_state_reducer.py \
+  litigant_portal/app/tests/test_state_rules.py \
+  litigant_portal/app/tests/test_state_projector.py \
+  litigant_portal/app/tests/test_topic_flow_deadlines.py
+```
+
+These checks make no database or model calls. Application and fresh-database verification remain part of final assembly.

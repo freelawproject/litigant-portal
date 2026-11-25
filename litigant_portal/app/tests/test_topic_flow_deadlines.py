@@ -12,10 +12,8 @@ from datetime import date
 
 import pytest
 
-from litigant_portal.app.topic_flow.deadlines import (
-    deadline_date,
-    deadline_display,
-)
+from litigant_portal.app.topic_flow.deadlines import deadline_display
+from litigant_portal.state.projector import deadline_date
 
 ANSWERS = {"license_date": "2026-02-01"}
 
