@@ -1,7 +1,9 @@
 import logging
 
+from allauth.account.forms import ResetPasswordForm
 from allauth.account.models import EmailAddress
 from django.contrib.auth.models import Group, User
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import QuerySet
 
@@ -42,13 +44,12 @@ def user_role_set(*, user: User, role: Tier) -> None:
 
 @transaction.atomic
 def user_create(
-    *, email: str, password: str, role: Tier = Tier.APP_USER
+    *, email: str, password: str | None = None, role: Tier = Tier.APP_USER
 ) -> User:
-    """Create an account with a password an admin set, in ``role``.
-
-    The pilots send no email, so there's no invite: the account can log in
-    as soon as it exists, and its address is recorded as verified the way
-    ``bootstrap_superuser`` does it.
+    """Create an account in ``role``, with the password an admin set or,
+    without one, no usable password until the invite link sets it. The
+    address is recorded as verified the way ``bootstrap_superuser`` does
+    it.
     """
     user = User.objects.create_user(
         username=email, email=email, password=password
@@ -59,6 +60,17 @@ def user_create(
     if role != Tier.APP_USER:
         user_role_set(user=user, role=role)
     return user
+
+
+def user_password_link_send(*, user: User, request) -> None:
+    """Email ``user`` a link to set their password: the invite while the
+    account has no password, a reset after. Raises ``ValidationError``
+    when the address does not reach this account, and when sending
+    fails."""
+    form = ResetPasswordForm(data={"email": user.email})
+    if not form.is_valid() or user not in form.users:
+        raise ValidationError("This address does not reach the account")
+    form.save(request)
 
 
 def user_password_set(*, user: User, password: str) -> None:

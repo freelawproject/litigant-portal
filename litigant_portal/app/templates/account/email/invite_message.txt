@@ -1,0 +1,10 @@
+{% extends "account/email/base_message.txt" %}
+{% load i18n %}
+
+{% block content %}{% autoescape off %}{% blocktrans %}Someone at {{ court_name }} made an account for you. To start, open this link and choose a password:{% endblocktrans %}
+
+{{ password_reset_url }}
+
+{% blocktrans %}The link works for {{ link_days }} days. After you choose a password, it stops working. You sign in with this email address, {{ email }}.{% endblocktrans %}
+
+{% blocktrans %}If the link no longer works, go to the sign-in page, choose "Forgot your password?", and enter this email address. We will send you a new link.{% endblocktrans %}{% endautoescape %}{% endblock content %}

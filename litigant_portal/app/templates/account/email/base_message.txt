@@ -1,0 +1,4 @@
+{% load i18n %}{% autoescape off %}{% block content %}{% endblock content %}
+
+{% blocktrans %}This email was sent by {{ court_name }}.{% endblocktrans %}
+{% endautoescape %}

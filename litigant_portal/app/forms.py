@@ -1,7 +1,25 @@
+import logging
+import smtplib
+
+from allauth.account.forms import ResetPasswordForm
 from django import forms
 from django.utils.translation import gettext_lazy as _
 
 from .models import UserProfile
+
+logger = logging.getLogger(__name__)
+
+
+class PublicResetPasswordForm(ResetPasswordForm):
+    """The "Forgot your password?" form. A failed send answers like a
+    sent one, so the page never tells which addresses have an account."""
+
+    def save(self, request, **kwargs) -> str:
+        try:
+            return super().save(request, **kwargs)
+        except (smtplib.SMTPException, OSError):
+            logger.exception("Could not send a password reset email")
+            return self.cleaned_data["email"]
 
 
 class UserProfileForm(forms.ModelForm):

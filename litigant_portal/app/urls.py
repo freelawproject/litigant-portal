@@ -150,6 +150,11 @@ admin_api_patterns = [
         name="user_password",
     ),
     path(
+        "users/<int:user_id>/password-link/",
+        admin_views.user_password_link_view,
+        name="user_password_link",
+    ),
+    path(
         "users/<int:user_id>/disable/",
         admin_views.user_disable_view,
         name="user_disable",

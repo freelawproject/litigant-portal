@@ -31,8 +31,9 @@ tier is also an app user, so any admin account can be used for testing.
 | Chat token and agent state     | ✓                                  | ✓                              | —                     | —                   |
 | Stored as                      | `is_superuser`                     | `FLP Staff` group              | `Court Admins` group  | No group            |
 
-"Manages" means add an account, set its password, disable or re-enable it,
-and delete it, and give it a role below one's own: FLP Staff make Court
+"Manages" means add an account, send it a password link (or, on an
+instance without email, set its password), disable or re-enable it, and
+delete it, and give it a role below one's own: FLP Staff make Court
 Admins, and only a superuser makes FLP Staff (`user_role_set`, which also
 sets `is_staff` for FLP Staff and clears it for every other role).
 
@@ -82,8 +83,9 @@ below their own.
 No one manages anyone else at their own tier, or their own account, from
 the Users tab. Anyone signed in changes their own password at
 `/accounts/password/change/` (linked from the Users tab), which needs the
-current one. A Court Admin who has forgotten theirs asks FLP Staff; FLP
-Staff ask a superuser.
+current one. On an instance with email, anyone who has forgotten theirs
+uses "Forgot your password?" on the login page. Without email, a Court
+Admin asks FLP Staff, and FLP Staff ask a superuser.
 
 ## Users tab behavior
 
@@ -94,8 +96,17 @@ Staff ask a superuser.
   answer 404 and the Court Admins group grants nothing. The Role picker is
   not gated: plain prod still needs its FLP Staff, so a superuser can make
   them there.
-- **No email.** The pilots send none, so whoever adds or resets an account
-  sets the password, entered twice, and shares it directly.
+- **Email on: invites.** With `EMAIL_HOST` set (`settings.EMAIL_ENABLED`),
+  adding an account creates it with no usable password and emails an
+  invite to set one. The row shows **Invited** until the tester does.
+  **Send password link** emails the invite again, or a reset link once the
+  account has a password; it refuses a disabled account. Both are
+  allauth's reset email (`ResetPasswordForm`), with the invite text chosen
+  by `AccountAdapter.send_password_reset_mail`. Links last 7 days
+  (`PASSWORD_RESET_TIMEOUT`). The admin never sees a password.
+- **Email off: passwords.** Without `EMAIL_HOST`, whoever adds or resets an
+  account sets the password, entered twice, and shares it directly. This
+  flow goes away once every instance can send email.
 - **Disable** sets `is_active=False`: the account can't log in, keeps its
   history, and stays listed so it can be enabled again. **Delete** is
   permanent and removes the account's chats, uploads, and answers.
