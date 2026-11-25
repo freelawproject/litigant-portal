@@ -56,6 +56,10 @@ pre-commit: ## Lint then test — stops if lint fails/fixes anything
 agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'report ...')
 	env -u VIRTUAL_ENV uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
 
+.PHONY: audit
+audit: ## Check the packages the image installs for known vulnerabilities (PROJECT=dir for another checkout)
+	bash scripts/audit_deps.sh $(PROJECT)
+
 BASE_URL ?= http://localhost
 
 .PHONY: smoke

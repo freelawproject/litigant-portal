@@ -31,8 +31,13 @@ jobs:
     with:
       ref: ${{ github.event.inputs.deploy_ref || github.sha }}
 
+  audit:
+    uses: ./.github/workflows/audit.yml
+    with:
+      ref: ${{ github.event.inputs.deploy_ref || github.sha }}
+
   build:
-    needs: tests
+    needs: [tests, audit]
     runs-on: ubuntu-latest
     outputs:
       sha_short: ${{ steps.vars.outputs.sha_short }}

@@ -4,10 +4,11 @@ name: Build and Push to Docker Hub
 # namespace on the EKS cluster.
 #
 # The action enforces the following order:
-#   tests -> build & publish -> smoke -> deploy
+#   tests + audit -> build & publish -> smoke -> deploy
 #
-# The test suite is invoked as a reusable workflow so each stage depends on
-# the previous one, preventing failed tests from reaching production.
+# The test suite and the dependency audit are invoked as reusable workflows so
+# each stage depends on the previous one, preventing failed tests or a known
+# vulnerability from reaching production.
 #
 # Smoke loads key pages of the image just published in a browser and sends one
 # chat message, so a page that breaks only at render or asset-load time, or a
@@ -60,6 +61,9 @@ jobs:
   tests:
     uses: ./.github/workflows/tests.yml
 
+  audit:
+    uses: ./.github/workflows/audit.yml
+
   get-pr-labels:
     runs-on: ubuntu-latest
     outputs:
@@ -106,7 +110,7 @@ jobs:
             console.log(`PR #${pr.number} labels: ${labels.join(", ")}`);
 
   build:
-    needs: [tests, get-pr-labels]
+    needs: [tests, audit, get-pr-labels]
     runs-on: ubuntu-latest
     if: ${{ !contains(needs.get-pr-labels.outputs.labels, 'skip-deploy') }}
     outputs:
