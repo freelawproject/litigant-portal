@@ -2,7 +2,7 @@
 
 This package owns database-free state transitions and computed progress. Django services own identity resolution, glossary validation, transactions, persistence, and external operations.
 
-The current checkpoint includes the domain layer, shared corpus conditions, and stored-row adapters. Guided and chat integration are next. The application is intentionally incomplete; the single feature migration and database rebuild come after the schema is settled.
+The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, and guided selection and Continue actions. Chat integration and the remaining corpus cleanup are next. The application is intentionally incomplete; the single feature migration and database rebuild come after the schema is settled.
 
 ## Contract
 
@@ -54,6 +54,8 @@ The result contains applicable variables in question order, answered and unconfi
 Required questions remain unfinished until answered and confirmed. Optional questions can be skipped by viewing the component. Information and output components finish when their current content signature is viewed. Signatures incorporate authored content, applicable question definitions, selected forms, and computed deadlines, so a previously viewed output can become unfinished when its contents change.
 
 The projector leaves its inputs unchanged and never records a view or confirms a fact. A flow mismatch or nonpositive candidate limit is rejected. Deadline calculation now lives here; application display formatting stays in `app/topic_flow/deadlines.py`.
+
+The guided view displays projected candidates and links to every applicable component for revisiting. Saving accepts only that component's applicable questions and preserves valid siblings when another answer fails validation. Continue records the displayed content signature, rejects stale content, and cannot bypass required answers or their confirmation. Optional questions may be skipped. The calendar download uses the same projected deadlines as the page. These paths reuse the existing forms and work through ordinary GET and POST requests.
 
 ## Verification
 

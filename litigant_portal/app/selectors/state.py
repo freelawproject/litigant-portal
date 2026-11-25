@@ -1,10 +1,13 @@
 import json
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from django.forms.models import model_to_dict
+from django.utils import timezone
 
 from litigant_portal.app.models import (
     Contact,
+    FlowViewState,
     Resource,
     TopicFlow,
     UserIdentity,
@@ -14,6 +17,7 @@ from litigant_portal.app.models import (
 from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.resources import resource_dicts
+from litigant_portal.state.projector import project
 from litigant_portal.state.rules import parse_condition
 from litigant_portal.state.types import (
     CalendarRuleType,
@@ -24,10 +28,62 @@ from litigant_portal.state.types import (
     InformationRuleType,
     PacketEntryRuleType,
     PacketRuleType,
+    ProjectionType,
     QuestionsRuleType,
     StateType,
     VariableRuleType,
 )
+
+
+@dataclass(frozen=True)
+class FlowStateType:
+    state: StateType
+    rules: CourtRulesType
+    projection: ProjectionType
+    variables: dict[str, Variable]
+
+
+def flow_state(
+    *,
+    identity: UserIdentity | None,
+    flow: TopicFlow,
+    contacts: Iterable[Contact],
+    resources: Iterable[Resource],
+    limit: int = 1,
+) -> FlowStateType:
+    """
+    Load a fresh snapshot and compute one projection for the caller.
+
+    Anonymous reads use an empty snapshot without creating an identity.
+    Writes always resolve a real identity through the request middleware.
+    """
+    variables = {v.name: v for v in Variable.objects.filter(in_schema=True)}
+    if identity is None:
+        state = StateType(identity_id=0, flow_id=flow.pk)
+    else:
+        answers = VariableAnswer.objects.filter(
+            identity=identity
+        ).select_related("variable")
+        viewed = (
+            FlowViewState.objects.filter(identity=identity, flow=flow)
+            .values_list("viewed", flat=True)
+            .first()
+        )
+        state = state_snapshot(
+            identity=identity, flow=flow, answers=answers, viewed=viewed
+        )
+    rules = court_rules(
+        flow=flow,
+        variables=variables.values(),
+        contacts=contacts,
+        resources=resources,
+    )
+    return FlowStateType(
+        state,
+        rules,
+        project(state, rules, timezone.localdate(), limit),
+        variables,
+    )
 
 
 def state_snapshot(

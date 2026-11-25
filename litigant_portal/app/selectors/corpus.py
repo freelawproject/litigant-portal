@@ -510,7 +510,7 @@ class FlowSchema(BaseSchema):
         conditions, the gates of the variables it asks) that no page marked
         ``on_page`` asks, sorted. ``variables`` is the glossary, which
         holds the gates. Only the chat can set them, which ``corpus.W001``
-        warns about. The same set ``rows.flow_variable_names`` reads."""
+        warns about."""
         asked = {
             name
             for page in self.interview
