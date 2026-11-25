@@ -36,6 +36,8 @@
           <c-atoms.icon name="wrench-screwdriver" class="w-5 h-5 text-greyscale-500" />
           {% trans "Admin" %}
         </a>
+      {% endif %}
+      {% if two_factor_link %}
         <a href="{% url 'mfa_index' %}"
            class="flex items-center gap-2 px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100"
            role="menuitem">

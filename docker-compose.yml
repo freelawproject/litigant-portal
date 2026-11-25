@@ -38,6 +38,7 @@ services:
       - SECRET_KEY=dev
       - TWO_FACTOR_KEY=${TWO_FACTOR_KEY:-}
       - TWO_FACTOR_KEY_FALLBACKS=${TWO_FACTOR_KEY_FALLBACKS:-}
+      - STAFF_TWO_FACTOR_REQUIRED=${STAFF_TWO_FACTOR_REQUIRED:-}
       - POSTGRES_HOST=postgres
       - POSTGRES_PASSWORD=postgres
       - REDIS_URL=redis://redis:6379/0

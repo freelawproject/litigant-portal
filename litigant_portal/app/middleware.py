@@ -1,13 +1,19 @@
 import secrets
 
+from allauth.mfa.models import Authenticator
+from allauth.mfa.utils import is_mfa_enabled
 from django.conf import settings
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.functional import SimpleLazyObject
+from django.utils.translation import gettext as _
 from django_ratelimit.core import is_ratelimited
 
 from litigant_portal.app.models import UserIdentity
 from litigant_portal.app.services.user import user_identity_ensure
 from litigant_portal.app.session import ANONYMOUS_SESSION_KEY
+from litigant_portal.app.views.utils import needs_two_factor
 
 
 def _gate_exempt_paths() -> tuple[str, ...]:
@@ -81,6 +87,53 @@ class AnonymousSessionKeyMiddleware:
         ):
             session[ANONYMOUS_SESSION_KEY] = session.session_key
         return self.get_response(request)
+
+
+def _two_factor_exempt_paths() -> tuple[str, ...]:
+    """Path prefixes a staff account can open before two-factor is set
+    up: the setup and confirm pages, sign out, and what every page needs
+    to load."""
+    return tuple(
+        p
+        for p in (
+            reverse("mfa_activate_totp"),
+            reverse("account_reauthenticate"),
+            reverse("mfa_reauthenticate"),
+            reverse("account_logout"),
+            reverse("browser_log"),
+            reverse("csp_report"),
+            reverse("health"),
+            "/i18n/",
+            "/jsi18n/",
+            settings.STATIC_URL,
+            settings.MEDIA_URL,
+        )
+        if p
+    )
+
+
+class StaffTwoFactorMiddleware:
+    """Send a staff account with no two-factor to the setup page. The
+    API answers 403 instead."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = request.user
+        if (
+            not settings.STAFF_TWO_FACTOR_REQUIRED
+            or not user.is_authenticated
+            or request.path.startswith(_two_factor_exempt_paths())
+            or not needs_two_factor(user)
+            or is_mfa_enabled(user, [Authenticator.Type.TOTP])
+        ):
+            return self.get_response(request)
+        if request.path.startswith("/api/"):
+            return JsonResponse(
+                {"error": _("Set up two-factor sign-in first.")}, status=403
+            )
+        return redirect("mfa_activate_totp")
 
 
 def resolve_identity(request) -> UserIdentity:

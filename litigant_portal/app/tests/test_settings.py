@@ -270,3 +270,28 @@ def test_email_environment_does_not_leak_into_deprecated_settings():
         }
         & config.keys()
     )
+
+
+@pytest.mark.parametrize(
+    ("environ", "required"),
+    [
+        ({}, True),
+        ({"DEBUG": "true"}, False),
+        ({"DEBUG": "true", "STAFF_TWO_FACTOR_REQUIRED": "true"}, True),
+        ({"STAFF_TWO_FACTOR_REQUIRED": "false"}, False),
+        ({"STAFF_TWO_FACTOR_REQUIRED": " False "}, False),
+        ({"STAFF_TWO_FACTOR_REQUIRED": "no"}, True),
+    ],
+    ids=[
+        "on-by-default",
+        "off-by-default-in-debug",
+        "true-wins-in-debug",
+        "false-wins-without-debug",
+        "case-and-spaces-are-ignored",
+        "other-values-keep-the-default",
+    ],
+)
+def test_staff_two_factor_rule_reads_environment(environ, required):
+    config = _email_config(environ)
+
+    assert config["STAFF_TWO_FACTOR_REQUIRED"] is required

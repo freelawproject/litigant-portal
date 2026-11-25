@@ -146,6 +146,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "litigant_portal.app.middleware.StaffTwoFactorMiddleware",
     "litigant_portal.app.middleware.AnonymousSessionKeyMiddleware",
     "litigant_portal.app.middleware.IdentityMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -358,6 +359,15 @@ ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7
 # Two-factor: authenticator app codes and recovery codes.
 MFA_ADAPTER = "litigant_portal.app.adapters.MFAAdapter"
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
+# Staff accounts must set up two-factor before anything else opens.
+_staff_two_factor = (
+    os.environ.get("STAFF_TWO_FACTOR_REQUIRED", "").strip().lower()
+)
+STAFF_TWO_FACTOR_REQUIRED = (
+    _staff_two_factor == "true"
+    if _staff_two_factor in ("true", "false")
+    else not DEBUG
+)
 CSRF_FAILURE_VIEW = "litigant_portal.app.views.topic_flow.csrf_failure"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"

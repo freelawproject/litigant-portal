@@ -18,6 +18,7 @@ from litigant_portal.app.views.utils import (
     ALL_COURTS,
     BRANDING_FIELDS,
     admin_tabs,
+    needs_two_factor,
     password_rule,
 )
 
@@ -102,6 +103,11 @@ def app_meta(request):
         # built outside the middleware stack carry no user.
         "admin_tabs": (
             admin_tabs(request.user) if hasattr(request, "user") else []
+        ),
+        "two_factor_link": (
+            needs_two_factor(request.user)
+            if hasattr(request, "user")
+            else False
         ),
         "tester_flow_links": (
             _tester_flow_links(settings.CORPUS_COURT)

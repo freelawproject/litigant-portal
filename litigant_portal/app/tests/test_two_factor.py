@@ -1,6 +1,6 @@
 """Tests for two-factor sign-in: the code step, recovery codes, who may
-set it up, how secrets are stored, the pages, and the menu link. All
-postgres-marked."""
+set it up, how secrets are stored, the pages, the menu link, and the
+rule that staff must set it up. All postgres-marked."""
 
 import logging
 import re
@@ -24,7 +24,7 @@ from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.permissions import Tier
 from litigant_portal.app.services.site import site_update
-from litigant_portal.app.services.user import user_create
+from litigant_portal.app.services.user import user_create, user_role_set
 
 User = get_user_model()
 
@@ -484,7 +484,7 @@ def test_new_recovery_codes_replace_the_old_ones(client):
 
 @pytest.mark.parametrize(
     ("role", "shown"),
-    [(Tier.FLP_STAFF, True), (Tier.APP_USER, False)],
+    [(Tier.COURT_ADMIN, True), (Tier.APP_USER, False)],
     ids=["staff", "litigant"],
 )
 def test_menu_links_to_two_factor_only_for_staff(client, role, shown):
@@ -497,3 +497,112 @@ def test_menu_links_to_two_factor_only_for_staff(client, role, shown):
         rf'<a href="{OVERVIEW_URL}"[^>]*role="menuitem"', page.content.decode()
     )
     assert bool(link) is shown
+
+
+ADMIN_URL = "/admin/"
+ADMIN_API_URL = "/api/admin/site/"
+
+
+@pytest.fixture
+def required(settings):
+    settings.STAFF_TWO_FACTOR_REQUIRED = True
+
+
+def _court_admin():
+    return user_create(email=EMAIL, role=Tier.COURT_ADMIN)
+
+
+def _flp_staff():
+    return user_create(email=EMAIL, role=Tier.FLP_STAFF)
+
+
+def _superuser():
+    return User.objects.create_superuser(username=EMAIL, email=EMAIL)
+
+
+def _django_admin_staff():
+    return User.objects.create_user(username=EMAIL, email=EMAIL, is_staff=True)
+
+
+STAFF = pytest.mark.parametrize(
+    "make_user",
+    [_court_admin, _flp_staff, _superuser, _django_admin_staff],
+    ids=["court-admin", "flp-staff", "superuser", "django-admin-staff"],
+)
+
+
+@STAFF
+def test_staff_without_two_factor_are_sent_to_setup(
+    client, required, make_user
+):
+    client.force_login(make_user())
+
+    for url in (ADMIN_URL, "/", "/chat/", OVERVIEW_URL):
+        assert client.get(url)["Location"] == SETUP_URL
+
+
+@STAFF
+def test_api_answers_403_to_staff_without_two_factor(
+    client, required, make_user
+):
+    client.force_login(make_user())
+
+    response = client.get(ADMIN_API_URL)
+
+    assert response.status_code == 403
+    assert response.json() == {"error": "Set up two-factor sign-in first."}
+
+
+def test_staff_without_two_factor_can_set_up_and_sign_out(client, required):
+    user_create(email=EMAIL, password=PASSWORD, role=Tier.COURT_ADMIN)
+    _login(client)
+
+    assert client.get(CONFIRM_ACCESS_URL).status_code == 200
+    client.post(CONFIRM_ACCESS_URL, {"password": PASSWORD})
+    assert client.get(SETUP_URL).status_code == 200
+    assert client.get("/api/health/").status_code == 200
+    assert client.post("/accounts/logout/")["Location"] == "/"
+    assert not _signed_in(client)
+
+
+def test_admin_opens_after_setup(client, required):
+    user_create(email=EMAIL, password=PASSWORD, role=Tier.FLP_STAFF)
+    _login_and_confirm_access(client)
+    secret = client.get(SETUP_URL).context["form"].secret
+
+    client.post(SETUP_URL, {"code": _code(secret)})
+
+    assert client.get(ADMIN_URL).status_code == 200
+    assert client.get(ADMIN_API_URL).status_code == 200
+
+
+def test_a_litigant_is_never_sent_to_setup(client, required):
+    user_create(email=EMAIL, password=PASSWORD)
+
+    response = _login(client)
+
+    assert response["Location"] == "/"
+    assert client.get("/").status_code == 200
+    assert client.get("/chat/").status_code == 200
+
+
+def test_a_litigant_made_court_admin_is_sent_to_setup_on_the_next_page(
+    client, required
+):
+    user = user_create(email=EMAIL, password=PASSWORD)
+    _login(client)
+    assert client.get("/").status_code == 200
+
+    user_role_set(user=user, role=Tier.COURT_ADMIN)
+
+    assert client.get("/")["Location"] == SETUP_URL
+
+
+@STAFF
+def test_nobody_is_sent_to_setup_when_the_rule_is_off(
+    client, settings, make_user
+):
+    settings.STAFF_TWO_FACTOR_REQUIRED = False
+    client.force_login(make_user())
+
+    assert client.get("/").status_code == 200

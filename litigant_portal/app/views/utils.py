@@ -215,6 +215,17 @@ def admin_tabs(user) -> list[str]:
     return []
 
 
+def needs_two_factor(user) -> bool:
+    """Whether the account is staff: a superuser, Django admin staff, or
+    anyone who may manage the site or its users."""
+    return user.is_authenticated and (
+        user.is_superuser
+        or user.is_staff
+        or user.has_perm("app.manage_site")
+        or user.has_perm("app.manage_app_users")
+    )
+
+
 def app_user_admin_required(view):
     """JSON guard for the app user account actions: not found where the
     feature is off, forbidden without ``app.manage_app_users``."""
