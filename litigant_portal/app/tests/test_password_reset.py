@@ -2,7 +2,9 @@
 and how long its link works. All postgres-marked."""
 
 import re
+import smtplib
 from datetime import datetime, timedelta
+from unittest import mock
 
 import pytest
 from django.contrib.auth import get_user_model
@@ -90,6 +92,17 @@ def test_unknown_address_gets_no_email_and_the_same_done_page(client):
     assert response.status_code == 302
     assert response["Location"] == "/accounts/password/reset/done/"
     assert mail.outbox == []
+
+
+def test_failed_send_shows_the_same_done_page(client, tester):
+    with mock.patch(
+        "django.core.mail.backends.locmem.EmailBackend.send_messages",
+        side_effect=smtplib.SMTPException("down"),
+    ):
+        response = client.post(RESET_URL, {"email": "tester@example.com"})
+
+    assert response.status_code == 302
+    assert response["Location"] == "/accounts/password/reset/done/"
 
 
 def test_disabled_account_gets_no_email(client, tester):

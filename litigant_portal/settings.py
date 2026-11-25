@@ -327,6 +327,9 @@ SITE_ID = 1
 
 # Allauth account settings
 ACCOUNT_ADAPTER = "litigant_portal.app.adapters.AccountAdapter"
+ACCOUNT_FORMS = {
+    "reset_password": "litigant_portal.app.forms.PublicResetPasswordForm",
+}
 ACCOUNT_LOGIN_METHODS = {"email"}  # Email-based login (not username)
 ACCOUNT_SIGNUP_FIELDS = [
     "email*",
