@@ -29,6 +29,8 @@ Secrets are set in the `.env` file and exported to the environment. See `.env.ex
 
 `SECRET_KEY` is required when `DEBUG` is off: settings raise `ImproperlyConfigured` at startup instead of falling back to a random key per worker.
 
+`TWO_FACTOR_KEY` encrypts the two-factor secrets of staff accounts, so `SECRET_KEY` can change without it. Without `TWO_FACTOR_KEY`, the key is made from `SECRET_KEY`. See [Two-factor sign-in](permissions.md#two-factor-sign-in).
+
 ---
 
 ## Login Rate Limits
@@ -36,10 +38,11 @@ Secrets are set in the `.env` file and exported to the environment. See `.env.ex
 | Login                  | Limit                                                                     | Over the limit         |
 | ---------------------- | ------------------------------------------------------------------------- | ---------------------- |
 | allauth (`/accounts/`) | allauth default: 10 failures/min per IP, 5 failures per 5 min per account | allauth's own response |
-| Django admin           | 10 failures/min per IP, 5 failures per 5 min per account                  | 429, "try again" page  |
 | Site password gate     | 10/min per IP                                                             | 429, gate page message |
 
-The allauth and admin limits run on allauth's limiter, which uses sliding windows: a blocked visitor waits until their oldest counted failure is older than the window (1 minute for the IP limit, 5 minutes for the account limit). The site gate runs on django-ratelimit, which uses fixed windows: a blocked visitor waits until the current minute's window ends.
+The Django admin login has no form of its own: it goes through the allauth sign-in page, so the allauth limits cover it. A wrong two-factor code counts as a failed login.
+
+The allauth limits run on allauth's limiter, which uses sliding windows: a blocked visitor waits until their oldest counted failure is older than the window (1 minute for the IP limit, 5 minutes for the account limit). The site gate runs on django-ratelimit, which uses fixed windows: a blocked visitor waits until the current minute's window ends.
 
 ### Which address a per-IP limit counts
 

@@ -87,15 +87,75 @@ current one. On an instance with email, anyone who has forgotten theirs
 uses "Forgot your password?" on the login page. Without email, a Court
 Admin asks FLP Staff, and FLP Staff ask a superuser.
 
+## Two-factor sign-in
+
+Staff accounts sign in with a password and then a code from an
+authenticator app (TOTP), or a recovery code. This is allauth's `mfa` app.
+The pages live under `/accounts/2fa/`.
+
+- **Who must have it:** a superuser, any `is_staff` account, and anyone
+  holding `app.manage_site` or `app.manage_app_users`
+  (`needs_two_factor` in `views/utils.py`). So every tier above
+  app user.
+- **The rule:** with `STAFF_TWO_FACTOR_REQUIRED` on,
+  `StaffTwoFactorMiddleware` sends a staff account with no two-factor to
+  the setup page from every page, and answers a JSON 403 on `/api/`. Only
+  setup, confirm access, sign out, health and static files stay open. The
+  rule is on by default when `DEBUG` is off and off by default in `DEBUG`;
+  `true` or `false` wins in both. With the rule off outside `DEBUG`, the
+  `two_factor.W001` system check warns at startup.
+- **Unconfirmed addresses:** setup does not wait for every email address
+  to be confirmed (`MFA_ALLOW_UNVERIFIED_EMAIL`). Sign-in already needs a
+  confirmed address where real mail goes out, and an unconfirmed second
+  address would lock a staff account out of setup.
+- **Confirm access:** setup, turning it off, and recovery codes ask for
+  the password again first (or a code, once two-factor is on). That lasts
+  5 minutes. A new sign-in does not count.
+- **App users:** a signed-in account that is not staff gets a 404 on
+  `/accounts/2fa/`, whether the rule is on or off. Making an account an
+  app user (`user_role_set`) removes its two-factor. An account that
+  lost staff access another way (Django admin, a shell) keeps its
+  two-factor, and can open the pages until it turns it off.
+- **Django admin:** `/django-admin/login/` goes through the normal sign-in
+  page (`secure_admin_login`), so the code step covers Django admin too.
+  A signed-in account without `is_staff` is sent to the home page.
+- **Reset:** on the Users tab, **Reset two-factor** removes an account's
+  authenticator and recovery codes (`user_two_factor_reset`). FLP Staff
+  reset Court Admins, and a superuser resets FLP Staff. Each reset is
+  logged with the two account ids.
+- **A superuser who is locked out** has nobody above them. Infra resets
+  them from a shell in the app container:
+
+  ```sh
+  python litigant_portal/manage.py shell -c "
+  from django.contrib.auth.models import User
+  from litigant_portal.app.services.user import user_two_factor_reset
+  user_two_factor_reset(user=User.objects.get(email='admin@yourdomain.com'))
+  "
+  ```
+
+- **Secrets are encrypted** in the database with a key made from
+  `TWO_FACTOR_KEY` (`MFAAdapter` in `adapters.py`). Set it once per
+  instance. Without it the key is made from `SECRET_KEY`, and a change to
+  `SECRET_KEY` then breaks two-factor; with `DEBUG` off the instance
+  warns at startup (`two_factor.W002`). To change `TWO_FACTOR_KEY`, put
+  the old key in `TWO_FACTOR_KEY_FALLBACKS` (comma separated). To start
+  using `TWO_FACTOR_KEY` on an instance that ran without it, put the
+  `SECRET_KEY` value in `TWO_FACTOR_KEY_FALLBACKS`.
+- **After a lost key,** no code or recovery code matches, and the
+  recovery codes page shows codes that do not work. Reset two-factor for
+  every staff account (Users tab, or the shell command above).
+
 ## Users tab behavior
 
 - **Each viewer lists their own tier and below.** A Court Admin sees app
   users and Court Admins; FLP Staff see everyone but superusers.
 - **Gated by the `user_admin` feature,** on for dev, QA, and pilots
   (`app/features.py`). Where it's off (plain prod), the account actions
-  answer 404 and the Court Admins group grants nothing. The Role picker is
-  not gated: plain prod still needs its FLP Staff, so a superuser can make
-  them there.
+  answer 404 and the Court Admins group grants nothing. The Role picker
+  and **Reset two-factor** are not gated: plain prod still needs its FLP
+  Staff, so a superuser can make them there and help one who lost their
+  phone.
 - **Email on: invites.** With `EMAIL_HOST` set (`settings.EMAIL_ENABLED`),
   adding an account creates it with no usable password and emails an
   invite to set one. The row shows **Invited** until the tester does.
@@ -147,7 +207,8 @@ sent to log in rather than shown a bare 403.
 
 **JSON endpoints** use the app's decorators from
 [`views/utils.py`](../../litigant_portal/app/views/utils.py):
-`manage_site_required` (including the role change), and
+`manage_site_required` (including the role change and the two-factor
+reset), and
 `app_user_admin_required` for the account actions (404 where the feature
 is off, 403 without `manage_app_users`).
 They exist because the built-in renders an **HTML** 403, and these

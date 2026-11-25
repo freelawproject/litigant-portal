@@ -8,6 +8,30 @@ To start, sign in and open **Admin** in the menu. You will see the **Users** tab
 
 While the portal is in testing, everyone needs the **site password** before they see the sign-in page. Share it with each person you add, along with their invite. Your Free Law Project contact can give it to you.
 
+## Two-factor sign-in for your account
+
+Your court admin account needs two-factor sign-in. After your password, the portal asks for a 6-digit code from an app on your phone. This keeps your account safe if someone learns your password.
+
+You need an authenticator app, for example Google Authenticator, Microsoft Authenticator, or 1Password.
+
+The first time you sign in, the portal takes you to the setup page:
+
+1. Type your password again when the portal asks.
+2. Open the authenticator app and scan the QR code on the page. If you can't scan it, type the key shown under the code.
+3. Type the 6-digit code from the app and choose **Turn on two-factor sign-in**.
+4. The portal shows 10 recovery codes. Save them in a safe place, for example a password manager. You can also download them.
+
+From then on, every sign-in asks for your password and then a code from the app.
+
+To see your recovery codes again or make new ones, open **Two-factor sign-in** in the menu.
+
+### You lost your phone
+
+- **You have a recovery code:** on the code page, type a recovery code where the 6-digit code goes. Each recovery code works one time.
+- **You have no recovery codes:** ask your Free Law Project contact to reset two-factor on your account. After the reset you sign in with your password and set up two-factor again.
+
+The people you add do not use two-factor. They sign in with their email address and password only.
+
 ## Add a person
 
 1. On the Users tab, choose **Add account**.
