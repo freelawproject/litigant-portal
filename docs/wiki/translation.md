@@ -13,9 +13,10 @@ is decided, wrap strings opportunistically; don't sweep, and don't churn
 ## Quick Reference
 
 ```bash
-make messages          # Extract/update strings for all languages
-make compilemessages   # Compile .po → .mo (build step)
+make translation-files   # Update the .po files with new and changed strings, all languages
 ```
+
+The `.mo` files Django serves are compiled from the `.po` files on every container start, so there's no command for that.
 
 ## How It Works
 
@@ -23,7 +24,7 @@ make compilemessages   # Compile .po → .mo (build step)
 - **Templates**: `{% trans %}` / `{% blocktrans %}` marks strings
 - **JavaScript**: `gettext()` / `interpolate()` via `JavaScriptCatalog`
 - **Extraction**: `makemessages` scans code → `.po` files
-- **Compilation**: `compilemessages` compiles `.po` → `.mo` (binary, gitignored)
+- **Compilation**: `compilemessages` compiles `.po` → `.mo` (binary, gitignored) when the container starts
 
 ## Adding a New Language
 
@@ -46,7 +47,7 @@ LANGUAGES = [
 ## Updating Translations After Code Changes
 
 ```bash
-make messages          # Updates all .po files, marks changed strings as fuzzy
+make translation-files   # Updates all .po files, marks changed strings as fuzzy
 ```
 
 Translators then review fuzzy strings and provide translations.
@@ -88,11 +89,4 @@ next path for everything else.
 
 ## Build Integration
 
-`compilemessages` must run as part of the build/deploy pipeline.
-The `.mo` files are gitignored (binary build artifacts).
-
-In the Dockerfile, add before `collectstatic`:
-
-```dockerfile
-RUN python manage.py compilemessages
-```
+`docker/django/entrypoint.sh` runs `compilemessages` before `collectstatic` on every `web-dev` and `web-prod` start. The `.mo` files are gitignored (binary build artifacts). After editing a `.po` file locally, restart the container to compile it.

@@ -1,6 +1,6 @@
 .PHONY: help install lint test test-v test-failed pre-commit \
 	   css css-watch css-minify clean \
-	   check migrate shell collectstatic superuser messages compilemessages \
+	   check migrate shell collectstatic superuser translation-files \
 	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
 	   docassemble-up docassemble-down \
 	   file-issue screenshots build-image push-image
@@ -114,14 +114,10 @@ superuser: ## Create Django superuser
 	$(require-docker)
 	docker compose exec django manage createsuperuser
 
-messages: ## Extract translation strings (all languages)
+translation-files: ## Update the .po translation files with new and changed strings, all languages (Django's makemessages)
 	$(require-docker)
 	docker compose exec django manage makemessages -a --no-location
 	docker compose exec django manage makemessages -d djangojs -a --no-location
-
-compilemessages: ## Compile .po to .mo files
-	$(require-docker)
-	docker compose exec django manage compilemessages
 
 
 # Docker targets
