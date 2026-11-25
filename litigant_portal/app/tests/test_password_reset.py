@@ -67,6 +67,10 @@ def test_reset_emails_a_link_that_opens_the_set_password_page(
         "Reset your password for Franklin County Municipal Court"
     )
     assert "Franklin County Municipal Court" in message.body
+    assert (
+        "This email was sent by Franklin County Municipal Court."
+        in message.body
+    )
     assert "7 days" in message.body
     assert "—" not in message.body
     assert _link_works(client, _reset_link(message))

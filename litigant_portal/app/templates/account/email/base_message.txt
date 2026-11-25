@@ -1,4 +1,4 @@
 {% load i18n %}{% autoescape off %}{% block content %}{% endblock content %}
 
-{% trans "This email was sent by the Litigant Portal." %}
+{% blocktrans %}This email was sent by {{ court_name }}.{% endblocktrans %}
 {% endautoescape %}
