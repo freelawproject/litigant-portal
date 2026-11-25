@@ -1,6 +1,6 @@
 # docassemble — notes the code doesn't tell you
 
-One page for the document-assembly side: authoring gotchas, the local bench, QA hosting. The worked example lives in [`docassemble/nd-name-change/`](../docassemble/nd-name-change/) (interviews, form PDFs, branding, its own README). When stuck, check primary sources before guessing: [docassemble docs](https://docassemble.org/docs/documents.html) and the [jhpyle/docassemble](https://github.com/jhpyle/docassemble) source.
+One page for the document-assembly side: authoring gotchas, local docassemble, QA hosting. The worked example lives in [`docassemble/nd-name-change/`](../docassemble/nd-name-change/) (interviews, form PDFs, branding, its own README). When stuck, check primary sources before guessing: [docassemble docs](https://docassemble.org/docs/documents.html) and the [jhpyle/docassemble](https://github.com/jhpyle/docassemble) source.
 
 ## Authoring gotchas (learned on #560)
 
@@ -10,9 +10,9 @@ One page for the document-assembly side: authoring gotchas, the local bench, QA 
 - **`pdf_concatenate()`** takes the attachment's `DAFileCollection` directly (`petition_doc`, not `petition_doc.pdf`), returns a `DAFile`; download via `url_for(attachment=True)`. Not in the published docs — signature read from `docassemble/base/util.py`.
 - **Map AcroForm fields by page + position, never by the name's apparent meaning.** Acrobat auto-names are ambiguous (`Text1`, `First name_2`) and these court forms label blanks _after_ the blank, so a field named `X` frequently fills the _next_ label's blank (the trailing-label shift). A name from nearby preprinted text can be a different blank entirely (the Confidential form's `State Of North Dakota` is the Case No line — leave it empty). Extract names + positions with `pdfminer.six` (walk `/Fields`, read `/Rect` + page).
 - **Pin the form revision** (bundled Petition is "NC Pet/Rev. May 2024"). A court revising the form silently breaks the map — re-verify on revision.
-- **Programmatic checks don't prove placement.** Zero-orphans/zero-unmapped cross-checks catch bad _names_; every placement bug survived them. Only bench-filling the interview and _reading the output PDF_ catches shifts and misassigned blanks.
+- **Programmatic checks don't prove placement.** Zero-orphans/zero-unmapped cross-checks catch bad _names_; every placement bug survived them. Only filling the interview with `make interview-fill` and _reading the output PDF_ catches shifts and misassigned blanks.
 
-## Local bench
+## Local docassemble
 
 `make docassemble-up` / `make docassemble-down` → http://localhost:8100. Deliberately outside LP's dev/prod compose profiles (~20 GB all-in-one image, opt-in; first pull takes minutes).
 
@@ -23,17 +23,17 @@ One page for the document-assembly side: authoring gotchas, the local bench, QA 
 
 ### Test fills from the command line (#1197)
 
-`scripts/docassemble_bench.py` uploads interviews to the bench and fills them with test personas, no browser needed. It reads `DA_ADMIN_API_KEY` (or `DOCASSEMBLE_API_KEY`, the same key under LP's name) and `DOCASSEMBLE_PUBLIC_URL` from `.env`.
+`scripts/interviews.py` uploads interviews to local docassemble and fills them with test personas, no browser needed. It reads `DA_ADMIN_API_KEY` (or `DOCASSEMBLE_API_KEY`, the same key under LP's name) and `DOCASSEMBLE_PUBLIC_URL` from `.env`.
 
 ```sh
-make bench-sync                                  # upload new or changed files under docassemble/
-make bench-sync ARGS="-n"                        # show what would upload
-make bench-fill FOLDER=fc-eviction               # fill every persona in docassemble/fc-eviction/personas.yml
-make bench-fill FOLDER=nd-name-change PERSONA=alex
+make interview-sync                                  # upload new or changed files under docassemble/
+make interview-sync ARGS="-n"                        # show what would upload
+make interview-fill FOLDER=fc-eviction               # fill every persona in docassemble/fc-eviction/personas.yml
+make interview-fill FOLDER=nd-name-change PERSONA=alex
 ```
 
-- **Sync:** each folder under `docassemble/` becomes its own Playground project (`nd-name-change` → `ndnamechange`): `*.yml` to the interview editor, `*.pdf` to Templates, `*.css`/`*.svg` to Static. It uploads only what the bench lacks or what changed since the last upload (hashes in `~/.cache/lp-docassemble-bench.json`), so a `down -v` reset re-uploads everything.
-- **Fill:** answers each screen from the persona's `answers` (the interview's own variable names) and writes to `build/bench/<project>/`: the filled `<persona>.pdf`, an `-outlined.pdf` with every field boxed and named (red text, blue checkboxes), and PNGs of the outlined pages when poppler's `pdftoppm` is installed.
+- **Sync:** each folder under `docassemble/` becomes its own Playground project (`nd-name-change` → `ndnamechange`): `*.yml` to the interview editor, `*.pdf` to Templates, `*.css`/`*.svg` to Static. It uploads only what local docassemble lacks or what changed since the last upload (hashes in `~/.cache/lp-docassemble-sync.json`), so a `down -v` reset re-uploads everything.
+- **Fill:** answers each screen from the persona's `answers` (the interview's own variable names) and writes to `build/interviews/<project>/`: the filled `<persona>.pdf`, an `-outlined.pdf` with every field boxed and named (red text, blue checkboxes), and PNGs of the outlined pages when poppler's `pdftoppm` is installed.
 - **A persona missing an answer** stops the fill at that screen and names the variables it still wants. A yes/no checkbox needs an explicit `false`; a checkboxes field takes a map of choice to true/false.
 - **Personas:** `fc-eviction` has Emily (landlord's attorney) and Marcus (no attorney, the other defenses); `nd-name-change` has Sandra (standard track, #311) and Alex (waiver track, #312). The two eviction personas fill every field on the Answer at least once.
 - Sync puts interviews in the Playground only. The LP handoff still needs the package installed (below).
@@ -92,10 +92,17 @@ Sending the payload creates a session, so the handoff is a POST from a form, not
 
 ## Serving the handoff: the interviews must be installed as a package
 
-The corpus references name the `docassemble.ndnamechange` package, so a Playground upload alone no longer resolves them: the interviews must be installed as that package on whichever docassemble serves the handoff (bench or QA). From the Playground it takes a minute:
+The corpus references name packages (`docassemble.ndnamechange`, `docassemble.fceviction`), so a Playground upload alone doesn't resolve them: each interview folder must be installed as its package on whichever docassemble serves the handoff. `deploy` does that from the repo, without the Playground (#556):
 
-1. Upload the interviews on the Playground's main page (the interview editor) and the PDFs to **Templates** (the "Test it locally" steps in [`docassemble/nd-name-change/README.md`](../docassemble/nd-name-change/README.md)). Not Folders → Sources: that folder installs to `data/sources/`, so a package built from it installs cleanly but serves no interviews, and every launch 404s.
-2. **Folders → Packages** → add a package named `ndnamechange`. Select both interviews in the **Interview files** box (the first one, not **Source files**) and the five PDFs in **Template files**. Add `lp-branding.css` and `lp-logo.svg` under **Static files** for the portal look.
-3. Click **Install**. The server now resolves `docassemble.ndnamechange:data/questions/petition-standard.yml` for every user, and the LP handoff works.
+```sh
+make interview-deploy FOLDER=fc-eviction                 # local docassemble
+AWS_PROFILE=flp-root make interview-deploy FOLDER=fc-eviction TARGET=qa
+```
 
-Re-run the Install after changing an interview: the Playground copy and the installed package are separate copies.
+- **Package:** the folder is zipped in the layout docassemble's own Package button produces: interviews in `data/questions/`, PDFs in `data/templates/`, CSS and SVG in `data/static/`, named `docassemble.<folder without dashes>`. Each build gets a new version, so pip always reinstalls.
+- **Install:** the zip goes to the instance's `/api/package`, and the script waits on `/api/package_update_status` through the restart docassemble runs after every install, a few minutes. A failure exits with docassemble's own error. Re-installing replaces the package, including one installed by hand from the Playground.
+- **Targets:** [`docassemble/targets.yml`](../docassemble/targets.yml) lists each instance's URL and the AWS Secrets Manager secret holding its `DA_ADMIN_API_KEY`. The key is read at deploy time with whatever AWS identity is active and never stored or typed. `DA_API_KEY` overrides it. `local` isn't listed: it reads the repo's `.env`.
+- **AWS sign-in:** FLP's AWS uses IAM Identity Center. Once, run `aws configure sso` with start URL `https://freelawproject.awsapps.com/start`, SSO region `us-west-2`, session name `flp`, and name the profile after the account (`flp-root` for "Free Law Project (root)", which holds QA). After that, `aws sso login --sso-session flp` once a day covers every profile.
+- **CI:** the `docassemble-deploy` workflow runs the same install from GitHub, separate from the web deploy: `gh workflow run docassemble-deploy.yml -f folder=fc-eviction -f target=qa`. It can't read QA's secret yet: the `litigant-deploy` user it signs in as needs `secretsmanager:GetSecretValue` on it, an infra grant.
+
+Re-deploy after changing an interview: an installed package doesn't follow later edits to the repo or the Playground.

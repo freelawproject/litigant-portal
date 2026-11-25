@@ -140,7 +140,7 @@ described below.
 > `refresh_system_prompt=True`). This is what lets state changes show up in the
 > model's instructions instantly.
 
-### Optional: the identity part — `generate_identity_prompt(thread_id)`
+### Optional identity prompt: `generate_identity_prompt`
 
 `generate_system_prompt` is the **shared** prompt: the engine hashes it and
 stores it in a `PromptArtifact` row that other threads and identities reuse,
@@ -155,6 +155,32 @@ save. It uses the current variable privacy flags to mask private values in
 `text` and omit them from `values`. Without a callable, the engine saves
 the supplied `text` and `values`. Both prompt methods are regenerated
 together on a refresh.
+
+Use this signature for overrides, including those that do not use timing:
+
+```python
+from litigant_portal.agents.base import IdentityPrompt, TurnTimeContext
+
+
+def generate_identity_prompt(
+    self, *, thread_id, time_context: TurnTimeContext | None = None
+) -> IdentityPrompt | None:
+    return None
+```
+
+The engine always passes both `thread_id` and `time_context` as keyword arguments. An override that accepts only `thread_id` will fail. The optional default supports direct callers that do not supply timing.
+
+`TurnTimeContext` is a frozen dataclass with three fields:
+
+| Field                                 | Type                | Meaning                                                                                                                                                               |
+| ------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `current_time`                        | `datetime`          | The current user message's timestamp, represented in UTC.                                                                                                             |
+| `elapsed_since_previous_user_message` | `timedelta \| None` | The UTC-calculated interval since the previous actual user message in this thread, excluding hidden and meta messages; `None` when there is no previous user message. |
+| `client_timezone`                     | `ZoneInfo \| None`  | The validated browser timezone for presentation, or `None` when unavailable. The litigant assistant explicitly identifies its UTC fallback in the internal context.   |
+
+The engine creates fresh time context once per user turn and passes the same object to every identity-prompt refresh during that turn. A tool's `refresh_system_prompt=True` refreshes facts and instructions without advancing the timestamp or elapsed interval. Keep this conversation-specific timing in the identity prompt, outside the shared `PromptArtifact`. The litigant assistant converts UTC to client-local time for presentation and keeps numeric offsets and conversion details internal. If the browser timezone is missing, empty, unknown, or malformed, chat continues with UTC. The fallback prompt instructs the assistant to append `(UTC)` when stating the current date or time from that context, without describing it as the user's local time.
+
+For an unusable supplied timezone, the view passes `client_timezone_invalid=True` to `chat_stream`; its default is `False`. The engine adds the flag to the initial `thread` event only when true; normal events omit it. The flag stays outside the time context and saved conversation data. On receiving `True`, the browser calls `lpLogger` once with a fixed warning and continues the reply, even if the conversation is not currently displayed. The logger writes to the browser console and attempts a sanitized server report; the view does not also log the warning. No raw timezone or exception details are sent. Missing or empty metadata emits no warning. Reporting remains best effort, subject to connectivity and the browser logging endpoint's rate limit.
 
 ### Optional: the per-message hook — `prepare_thread(thread_id)`
 

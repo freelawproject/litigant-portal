@@ -19,14 +19,14 @@ positions under names read off the page (`plaintiff_landlord`,
 `defense_paid_in_full`, `landlord_attorney_address_line_1`). It writes this
 folder's `answer.pdf` and the corpus copy at
 `litigant_portal/corpus/forms/fc-eviction-answer.pdf`. Its docstring has the
-setup. Rerun it when the court revises the form, then bench-fill again.
+setup. Rerun it when the court revises the form, then run `make interview-fill` again.
 
 The field names describe what the blank holds, so the trailing-label shift that
 North Dakota's Acrobat names have (`../nd-name-change/README.md`) doesn't apply.
 
 ## Test it locally
 
-Same bench as North Dakota: see [`docs/docassemble.md`](../../docs/docassemble.md)
+Same local docassemble as North Dakota: see [`docs/docassemble.md`](../../docs/docassemble.md)
 and the steps in [`../nd-name-change/README.md`](../nd-name-change/README.md#test-it-locally).
 Upload `answer.pdf` to **Templates**, `lp-branding.css` to **Static**, and
 `answer.yml` as the interview, then **Save and Run**.

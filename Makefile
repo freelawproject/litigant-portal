@@ -1,6 +1,6 @@
-.PHONY: help install lint test test-v test-failed test-fo pre-commit \
+.PHONY: help install lint test test-v test-failed pre-commit \
 	   css css-watch css-minify clean \
-	   check migrate shell collectstatic superuser messages compilemessages \
+	   check migrate shell collectstatic superuser translation-files \
 	   docker docker-build docker-up-build docker-down docker-logs docker-bash docker-clean \
 	   docassemble-up docassemble-down \
 	   file-issue screenshots build-image push-image
@@ -43,9 +43,7 @@ test-js: ## Run the browser JS tests (Node's built-in runner, no install needed)
 
 test-failed: ## Rerun only the tests that failed last run (pytest --lf); CI runs the full suite
 	$(require-docker)
-	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short --lf $(PYTEST_CACHE) $(filter-out test-failed test-fo,$(MAKECMDGOALS))
-
-test-fo: test-failed ## Short form of test-failed
+	docker compose exec django docker/django/entrypoint.sh test -q -- -q --tb=short --lf $(PYTEST_CACHE) $(filter-out test-failed,$(MAKECMDGOALS))
 
 test-v: ## Run tests — verbose output
 	$(require-docker)
@@ -57,6 +55,13 @@ pre-commit: ## Lint then test — stops if lint fails/fixes anything
 .PHONY: agent-eval
 agent-eval: ## Run the local agent benchmark (ARGS='run ...', 'judge ...', or 'report ...')
 	env -u VIRTUAL_ENV uv run --project scripts/agent_eval --locked $(if $(wildcard .env),--env-file .env) python -m scripts.agent_eval $(if $(strip $(ARGS)),$(ARGS),run)
+
+BASE_URL ?= http://localhost
+
+.PHONY: smoke
+smoke: ## Load key pages and /api/health/ and send one chat message in Chromium against BASE_URL (default http://localhost)
+	env -u VIRTUAL_ENV uv run --project scripts/smoke --locked playwright install chromium
+	env -u VIRTUAL_ENV uv run --project scripts/smoke --locked pytest scripts/smoke --base-url $(BASE_URL)
 
 # Only sources newer than their render are re-exported: draw.io stamps a random
 # id into every SVG, so regenerating an unchanged diagram is pure diff noise.
@@ -109,14 +114,10 @@ superuser: ## Create Django superuser
 	$(require-docker)
 	docker compose exec django manage createsuperuser
 
-messages: ## Extract translation strings (all languages)
+translation-files: ## Update the .po translation files with new and changed strings, all languages (Django's makemessages)
 	$(require-docker)
 	docker compose exec django manage makemessages -a --no-location
 	docker compose exec django manage makemessages -d djangojs -a --no-location
-
-compilemessages: ## Compile .po to .mo files
-	$(require-docker)
-	docker compose exec django manage compilemessages
 
 
 # Docker targets
@@ -141,17 +142,20 @@ docker-bash: ## Open a bash shell in the Django container
 docker-clean: ## Remove containers, volumes, and images
 	docker compose down -v --rmi local
 
-docassemble-up: ## Start the local-dev docassemble bench (http://localhost:8100)
+docassemble-up: ## Start local docassemble (http://localhost:8100)
 	docker compose -f docker-compose.docassemble.yml up -d
 
-docassemble-down: ## Stop the local-dev docassemble bench
+docassemble-down: ## Stop local docassemble
 	docker compose -f docker-compose.docassemble.yml down
 
-bench-sync: ## Upload docassemble/ interviews to the bench Playground (ARGS="-n" dry run, "-a" all, or paths)
-	uv run python scripts/docassemble_bench.py sync $(ARGS)
+interview-sync: ## Upload docassemble/ interviews to the local Playground (ARGS="-n" dry run, "-a" all, or paths)
+	uv run python scripts/interviews.py sync $(ARGS)
 
-bench-fill: ## Fill a bench interview with its test personas (FOLDER=fc-eviction [PERSONA=emily])
-	uv run python scripts/docassemble_bench.py fill $(FOLDER) $(PERSONA)
+interview-fill: ## Fill an interview with its test personas (FOLDER=fc-eviction [PERSONA=emily])
+	uv run python scripts/interviews.py fill $(FOLDER) $(PERSONA)
+
+interview-deploy: ## Install an interview folder as a package (FOLDER=fc-eviction [TARGET=qa], default local)
+	uv run python scripts/interviews.py deploy $(FOLDER) --target $(or $(TARGET),local)
 
 
 file-issue: ## Build a prefilled GitHub issue-form URL from a content blob (stdin or FILE=path)

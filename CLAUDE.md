@@ -16,10 +16,11 @@ Getting each court partner's own instance ready for its subject-matter experts t
 
 `docker-compose.yml` is **local development only** — Postgres (pgvector), Redis, Django, and Caddy on one machine. Production is deployed outside this repo and consumes nothing from this file (see [Production](README.md#production)).
 
-| Environment | Chat Provider | Config Source                        |
-| ----------- | ------------- | ------------------------------------ |
-| Local dev   | AWS Bedrock   | `docker-compose.yml` + `.env`        |
-| CI          | None (mocked) | `tox.ini` — tests mock all providers |
+| Environment       | Chat Provider | Config Source                                        |
+| ----------------- | ------------- | ---------------------------------------------------- |
+| Local dev         | AWS Bedrock   | `docker-compose.yml` + `.env`                        |
+| CI tests          | None (mocked) | `tox.ini` — tests mock all providers                 |
+| Deploy smoke gate | AWS Bedrock   | `smoke.yml` — `AWS_BEARER_TOKEN_BEDROCK` repo secret |
 
 Model families are curated through `MODEL_MAPPING` and `MODEL_CHOICES` in `litigant_portal/agents/bedrock.py` and selected in admin settings. Unset assistant/fast roles use the first available Balanced/Economy model, currently GPT Terra/GPT Luna; the previous defaults were GPT Luna/Claude Haiku. An unset assistant can fall back from Balanced to Economy; the fast role stays in Economy. Judging is disabled until selected. `site_get_model_target` resolves role preferences to concrete routes. `AWS_REGION` is optional and defaults to `us-east-1`; `BEDROCK_ALLOWED_GEOGRAPHY` is optional and defaults to `US`. Setup commands live under Commands below.
 
@@ -32,6 +33,11 @@ Model families are curated through `MODEL_MAPPING` and `MODEL_CHOICES` in `litig
 **Architecture diagrams** — after editing any `docs/architecture/*.drawio`, run `make diagrams` to regenerate its `.drawio.svg` render, and commit both files. It re-exports only sources newer than their render, because draw.io stamps a random id into every SVG and a blanket regenerate is pure diff noise. Claude must run it outside the sandbox: the draw.io CLI is an Electron app, and Electron aborts at startup (`bootstrap_check_in … Permission denied`, then `SIGTRAP`) when the macOS sandbox denies it a Mach port. Before re-exporting, check the source with `xmllint --noout <file>.drawio`. draw.io renders a malformed file (for example, `--` inside an XML comment) only up to the error and reports no failure, so a broken diagram exports looking half-empty.
 
 **Tooling is OS-agnostic.** Scripts and `make` targets must work on both macOS and Linux; the rules are in [CONTRIBUTING.md](CONTRIBUTING.md#dev-tooling-runs-on-macos-and-linux).
+
+**Name tooling after what it works on, not where it first ran.** The docassemble script was named for the local "bench" it first drove, and needed renaming (#1270) once it also deployed to QA and the courts. Script and target names should still fit when the tool reaches its next environment.
+
+- **Use the words devs use, not the framework's.** `make translation-files` says what changes; Django's `makemessages` doesn't. Name the framework command in the target's help text instead.
+- **A `make` target is a noun when it builds something, a verb when it does something.** Make is already the verb: `make translation-files` builds the `.po` files, while `make interview-deploy` acts on an instance and has no artifact to name.
 
 ### Local Development (Docker)
 
@@ -160,6 +166,19 @@ EOF
 ```
 
 Field ids are validated against the chosen template — a section that doesn't match (wrong field or wrong template) warns and would render blank. The label is applied by the template; set assignee/priority/size in the browser. See `scripts/file_issue.py` for the full format and accepted type aliases.
+
+### Check for overlap before filing
+
+**Before drafting any issue, search for existing issues that already cover it, in whole or in part.** Search open and closed issues by keyword, and read the parent epics the new work would sit under. A manual checklist, a parked decision, or a closed issue's leftover scope often already holds part of the work.
+
+**Resolve each overlap in the draft itself.** For every overlapping issue, the draft says which of these applies, and why:
+
+- **Amend** the existing issue instead of filing, when it already covers the work.
+- **Edit** the existing issue's scope, when the new issue takes over part of it (say what moves).
+- **Split**, when the existing issue mixes this work with something else.
+- **Link only**, when they relate but don't overlap.
+
+**An issue someone else filed is edited only with the go-ahead of the person directing the work.** The draft proposes the change; that person decides.
 
 ## Work tracking
 

@@ -13,12 +13,12 @@ Visit: http://localhost (Caddy serves on port 80).
 
 ## Documentation
 
-| Doc                                                   | Description                                           |
-| ----------------------------------------------------- | ----------------------------------------------------- |
-| [Docs index](docs/README.md)                          | The reference shelf: AI tooling, wiki, docassemble    |
-| [Agent dev guide](docs/ai-tooling/AGENT_DEV_GUIDE.md) | Building agents on the chat engine                    |
-| [docassemble](docs/docassemble.md)                    | Document assembly: authoring, local bench, QA hosting |
-| [Security](docs/wiki/SECURITY.md)                     | Security architecture: CSP, headers, secrets          |
+| Doc                                                   | Description                                                 |
+| ----------------------------------------------------- | ----------------------------------------------------------- |
+| [Docs index](docs/README.md)                          | The reference shelf: AI tooling, wiki, docassemble          |
+| [Agent dev guide](docs/ai-tooling/AGENT_DEV_GUIDE.md) | Building agents on the chat engine                          |
+| [docassemble](docs/docassemble.md)                    | Document assembly: authoring, local docassemble, QA hosting |
+| [Security](docs/wiki/SECURITY.md)                     | Security architecture: CSP, headers, secrets                |
 
 ## Tech Stack
 
