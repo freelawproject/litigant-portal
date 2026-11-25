@@ -16,7 +16,7 @@ stored answer to its source variable; the ``contacts`` and ``resources``
 blocks list the court's whole ``Contact`` and ``Resource`` lists in stored
 order. A block with nothing to show is skipped.
 
-A gated variable (``when``) is asked only while the stored answer to
+A gated variable (``asked_when``) is asked only while the stored answer to
 its gate matches, the same rule the review-facts tool applies. There is no
 client-side show/hide: the litigant saves the gate, the page reloads, and the
 gated fields appear.
@@ -32,7 +32,6 @@ from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.models.choices import VariableDataType
-from litigant_portal.app.models.topic_flow import condition_holds
 from litigant_portal.app.selectors.corpus import default_layout
 from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.services.topic_flow import variable_value_validate
@@ -40,7 +39,11 @@ from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.deadlines import deadline_display
 from litigant_portal.app.topic_flow.resources import resource_dicts
 from litigant_portal.state.projector import deadline_date
-from litigant_portal.state.rules import condition_names
+from litigant_portal.state.rules import (
+    condition_matches,
+    condition_names,
+    parse_condition,
+)
 
 
 @dataclass(frozen=True)
@@ -146,8 +149,7 @@ def flow_variable_names(pages, form_conditions=(), deadlines=()) -> list[str]:
             names.append(variable.name)
             names.extend(sorted(condition_names(variable.condition)))
     for condition in form_conditions:
-        if condition.variable is not None:
-            names.append(condition.variable.name)
+        names.extend(sorted(condition_names(parse_condition(condition.when))))
     names.extend(deadline.offset_from.name for deadline in deadlines)
     return list(dict.fromkeys(names))
 
@@ -171,15 +173,9 @@ def flow_deadlines(deadlines, answers) -> list[dict]:
 
 def form_condition_holds(condition, answers) -> bool:
     """
-    Whether a packet entry shows: always without a variable; ``equals``
-    when the stored answer is the value; ``not_equals`` when it is anything
-    else. An unanswered prerequisite matches neither.
+    Whether a packet entry's condition matches the stored answers.
     """
-    if condition.variable is None:
-        return True
-    return condition_holds(
-        answers, condition.variable.name, condition.value, condition.operator
-    )
+    return condition_matches(parse_condition(condition.when), answers)
 
 
 def packet_forms(form_conditions, answers) -> list[dict]:

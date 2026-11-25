@@ -320,7 +320,7 @@ def test_checkbox_mode_on_a_text_field_is_rejected():
 
 def test_unknown_variable_is_rejected():
     data = _checkbox(checked_when={"variable": "pet_knid", "value": "dog"})
-    with pytest.raises(ValidationError, match="unknown variable pet_knid"):
+    with pytest.raises(ValidationError, match="unknown variable 'pet_knid'"):
         CorpusSchema.model_validate(data)
 
 
@@ -359,6 +359,34 @@ FLOW_KEY = ("north-dakota", "pets", "standard")
 
 def _flow(data):
     return data["flows"][FLOW_KEY]
+
+
+@pytest.mark.parametrize(
+    "placement",
+    ["variable", "section", "page", "packet", "deadline", "checkbox"],
+)
+def test_compound_conditions_share_glossary_validation(placement):
+    data = _corpus_data()
+    flow = _flow(data)
+    flow["interview"] = [
+        {"title": "Decisions", "variables": ["licensed", "pet_kind"]},
+        {"title": "Details", "variables": ["full_name", "adopted_on"]},
+    ]
+    targets = {
+        "variable": (data["variables"]["full_name"], "asked_when"),
+        "section": (flow["sections"][0], "when"),
+        "page": (flow["interview"][1], "when"),
+        "packet": (flow["packet"][0], "when"),
+        "deadline": (flow["deadlines"][0], "when"),
+        "checkbox": (data["forms"]["license"]["fields"][1], "checked_when"),
+    }
+    target, key = targets[placement]
+    comparison = {"variable": "licensed", "value": False}
+    target[key] = {"all": [{"not": comparison}]}
+    CorpusSchema.model_validate(data)
+    comparison["value"] = "yes"
+    with pytest.raises(ValidationError, match="must be true or false"):
+        CorpusSchema.model_validate(data)
 
 
 # Variable rules
@@ -465,43 +493,45 @@ def test_duplicate_variable_names_are_rejected():
         )
 
 
-def test_when_must_name_a_known_variable():
+def test_asked_when_must_name_a_known_variable():
     with pytest.raises(ValidationError, match="unknown variable 'ghost'"):
         _glossary(
             {
                 "name": "vaccinated",
                 "label": "Vaccinated",
-                "when": {"not": {"fact": "ghost", "equals": True}},
+                "asked_when": {"not": {"variable": "ghost", "value": True}},
             }
         )
 
 
-def test_when_value_must_be_legal_for_the_gate():
+def test_asked_when_value_must_be_legal_for_the_gate():
     with pytest.raises(ValidationError, match="must be true or false"):
         _glossary(
             {"name": "licensed", "label": "Licensed", "data_type": "boolean"},
             {
                 "name": "vaccinated",
                 "label": "Vaccinated",
-                "when": {"all": [{"fact": "licensed", "equals": "yes"}]},
+                "asked_when": {
+                    "all": [{"variable": "licensed", "value": "yes"}]
+                },
             },
         )
 
 
-def test_when_cycles_are_rejected():
+def test_asked_when_cycles_are_rejected():
     with pytest.raises(ValidationError, match="when cycle"):
         _glossary(
             {
                 "name": "a",
                 "label": "A",
                 "data_type": "boolean",
-                "when": {"any": [{"fact": "b", "equals": True}]},
+                "asked_when": {"any": [{"variable": "b", "value": True}]},
             },
             {
                 "name": "b",
                 "label": "B",
                 "data_type": "boolean",
-                "when": {"fact": "a", "equals": True},
+                "asked_when": {"variable": "a", "value": True},
             },
         )
 
@@ -718,7 +748,7 @@ _GATED_GLOSSARY = {
     "license_number": VariableSchema(
         name="license_number",
         label="License number",
-        when={"fact": "licensed", "equals": True},
+        asked_when={"variable": "licensed", "value": True},
     ),
 }
 
@@ -1021,7 +1051,7 @@ def test_interview_placing_an_unknown_variable_is_rejected():
 def test_condition_naming_an_unknown_variable_is_rejected():
     data = _corpus_data()
     _flow(data)["packet"][0]["when"] = {"variable": "ghost", "value": True}
-    with pytest.raises(ValidationError, match="unknown variable ghost"):
+    with pytest.raises(ValidationError, match="unknown variable 'ghost'"):
         CorpusSchema.model_validate(data)
 
 
@@ -1053,13 +1083,27 @@ def test_template_variable_must_be_placed_in_the_interview():
         CorpusSchema.model_validate(data)
 
 
+@pytest.mark.parametrize("gate_page", [0, 1])
+def test_page_condition_cannot_depend_on_its_own_or_a_later_page(gate_page):
+    data = _corpus_data()
+    pages = [
+        {"title": "First", "variables": ["full_name", "pet_kind"]},
+        {"title": "Second", "variables": ["adopted_on"]},
+    ]
+    pages[gate_page]["variables"].append("licensed")
+    pages[0]["when"] = {"variable": "licensed", "value": True}
+    _flow(data)["interview"] = pages
+    with pytest.raises(ValidationError, match="must be placed before page"):
+        CorpusSchema.model_validate(data)
+
+
 def test_gate_variable_must_be_placed():
     data = _corpus_data()
     data["variables"]["vaccinated"] = {
         "name": "vaccinated",
         "label": "Vaccinated",
         "data_type": "boolean",
-        "when": {"fact": "licensed", "equals": True},
+        "asked_when": {"variable": "licensed", "value": True},
     }
     page = _flow(data)["interview"][0]["variables"]
     page.remove("licensed")
@@ -1074,7 +1118,7 @@ def test_gate_must_be_placed_before_the_variable_it_gates():
         "name": "vaccinated",
         "label": "Vaccinated",
         "data_type": "boolean",
-        "when": {"fact": "licensed", "equals": True},
+        "asked_when": {"variable": "licensed", "value": True},
     }
     page = _flow(data)["interview"][0]["variables"]
     page.remove("licensed")

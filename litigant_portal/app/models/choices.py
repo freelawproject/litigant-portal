@@ -81,11 +81,6 @@ class State(models.TextChoices):
     VIRGIN_ISLANDS = "VI", _("U.S. Virgin Islands")
 
 
-class TopicFlowFormConditionOperator(models.TextChoices):
-    EQUALS = "equals", "Equals"
-    NOT_EQUALS = "not_equals", "Not equals"
-
-
 class VariableDataType(models.TextChoices):
     TEXT = "text", "Text"
     DATE = "date", "Date"

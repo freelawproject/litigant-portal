@@ -91,33 +91,17 @@ def snapshot_current() -> dict:
 
 
 def fixture_root(run: Path, variant: str) -> Path:
-    root = run / "corpora" / variant
-    source = run / "references" / "references" / "corpus"
-    if variant == "current":
-        shutil.copytree(source, root, dirs_exist_ok=True)
-    else:
-        root.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(source / "variables.yml", root / "variables.yml")
-    # Adapt the working copy, preserving the frozen inputs and their hashes.
-    variables = yaml.safe_load((root / "variables.yml").read_text())
-    for variable in variables["variables"]:
-        gate = variable.pop("asked_when", None)
-        if gate is not None:
-            variable["when"] = {
-                "fact": gate["variable"],
-                "equals": gate["value"],
-            }
-    (root / "variables.yml").write_text(
-        yaml.safe_dump(variables, allow_unicode=True, sort_keys=False)
-    )
-    if variant == "current":
-        return root
     fixture = yaml.safe_load(
         (run / "references" / "fixtures" / f"{variant}.yml").read_text()
     )
+    root = run / "corpora" / variant
     court = root / "courts" / "eval-ohio"
     topic = court / "topics" / TOPIC
     (topic / "flows").mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(
+        run / "references" / "references" / "corpus" / "variables.yml",
+        root / "variables.yml",
+    )
     values = {
         court / "court.yml": {
             "name": "Fictional Ohio",

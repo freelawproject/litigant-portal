@@ -10,8 +10,6 @@ Compare raw Bedrock calls with the `LitigantAssistant` chat engine using the sam
 
 Both application modes use the same adapter. A pinned external evaluator grades all three modes afterward. This is an API baseline, not a measurement of chatgpt.com.
 
-The harness imports working copies of the frozen corpus. It translates legacy `asked_when` gates to the application's `when` syntax in those copies, preserving the frozen files and their provenance hashes.
-
 ## Run
 
 Run commands from the repository root. `make agent-eval` uses this directory's

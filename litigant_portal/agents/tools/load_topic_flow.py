@@ -29,8 +29,8 @@ def _variable_line(variable) -> str:
     if variable.choices:
         values = ", ".join(c["value"] for c in variable.choices)
         line += f" [choices: {values}]"
-    if variable.when is not None:
-        line += f" (when {json.dumps(variable.when)})"
+    if variable.asked_when is not None:
+        line += f" (asked when {json.dumps(variable.asked_when)})"
     if help_text := variable.help_text.strip():
         line += f"\n  Help: {help_text}"
     return line
@@ -85,11 +85,8 @@ def topic_flow_markdown(flow) -> str:
         lines += ["", "## Form packet"]
         for c in conditions:
             line = f"- {cited(source_marker(flow, c.form.slug), c.form.name)}"
-            if c.variable:
-                line += (
-                    f" (included when {c.variable.name} {c.operator} "
-                    f"{json.dumps(c.value)})"
-                )
+            if c.when is not None:
+                line += f" (included when {json.dumps(c.when)})"
             lines.append(line)
 
     pages = list(flow.interview_pages.all())

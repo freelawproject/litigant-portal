@@ -22,7 +22,6 @@ from litigant_portal.app.models import (
     Variable,
 )
 from litigant_portal.app.models.choices import (
-    TopicFlowFormConditionOperator,
     VariableDataType,
 )
 from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
@@ -57,7 +56,7 @@ LICENSED = _variable("licensed", data_type=VariableDataType.BOOLEAN)
 VACCINATED = _variable(
     "vaccinated",
     data_type=VariableDataType.BOOLEAN,
-    when={"fact": LICENSED.name, "equals": True},
+    asked_when={"variable": LICENSED.name, "value": True},
 )
 
 
@@ -187,9 +186,11 @@ WAIVER = Form(slug="waiver", name="Fee waiver")
 def _condition(form, variable=None, operator="equals", value=None):
     return TopicFlowFormCondition(
         form=form,
-        variable=variable,
-        operator=TopicFlowFormConditionOperator(operator),
-        value=value,
+        when=(
+            {"variable": variable.name, "value": value, "operator": operator}
+            if variable is not None
+            else None
+        ),
     )
 
 
@@ -527,7 +528,9 @@ def test_the_gate_hint_follows_the_gate_questions_own_help_text():
     gate = _variable(
         "licensed", data_type=VariableDataType.BOOLEAN, help_text="Yes or no."
     )
-    gated = _variable("vaccinated", when={"fact": gate.name, "equals": True})
+    gated = _variable(
+        "vaccinated", asked_when={"variable": gate.name, "value": True}
+    )
     (question,) = rows.page_questions([gate, gated], {}, {"licensed"})
     assert question["help_text"] == f"Yes or no. {rows.GATE_HINT}"
 

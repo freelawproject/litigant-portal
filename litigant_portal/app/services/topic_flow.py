@@ -21,16 +21,15 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.models.choices import VariableDataType
+from litigant_portal.app.selectors.state import state_snapshot
 from litigant_portal.state.reducer import reduce
 from litigant_portal.state.rules import applicable_facts
 from litigant_portal.state.types import (
     ActionType,
     ConfirmFactsActionType,
     FactInputType,
-    FactType,
     MarkViewedActionType,
     SetFactsActionType,
-    StateType,
 )
 
 from .utils import busts_cache
@@ -159,19 +158,11 @@ def _state_apply(
         if flow is not None
         else None
     )
-    current_state = StateType(
-        identity_id=identity.pk,
-        flow_id=flow.pk if flow is not None else None,
-        viewed=viewed or {},
-        facts={
-            name: FactType(
-                value=answer.value,
-                reviewed=answer.reviewed,
-                evidence=answer.evidence,
-                updated_at=answer.updated_at,
-            )
-            for name, answer in answers.items()
-        },
+    current_state = state_snapshot(
+        identity=identity,
+        flow=flow,
+        answers=answers.values(),
+        viewed=viewed
     )
     variables = {}
     if isinstance(action, SetFactsActionType):

@@ -124,7 +124,7 @@ def test_a_now_hidden_answer_keeps_its_old_card_from_claiming_confirmation(
     variables,
 ):
     Variable.objects.filter(name="county").update(
-        when={"fact": "first_name", "equals": "Sandra"}
+        asked_when={"variable": "first_name", "value": "Sandra"}
     )
     client = _session_client()
     _store(client, "first_name", "Sandra")

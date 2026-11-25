@@ -81,7 +81,7 @@ def _make_corpus(
             "name": "vaccinated",
             "label": "Vaccinated",
             "data_type": "boolean",
-            "when": {"fact": "licensed", "equals": True},
+            "asked_when": {"variable": "licensed", "value": True},
         },
     }
     if include_vestigial:
@@ -256,16 +256,22 @@ class IdempotencyTests(CorpusSyncTests):
 
     def test_gate_wiring(self):
         corpus = _make_corpus()
-        condition = {"not": {"fact": "licensed", "equals": False}}
+        condition = {
+            "not": {
+                "variable": "licensed",
+                "value": False,
+                "operator": "equals",
+            }
+        }
         corpus.variables["vaccinated"] = VariableSchema.model_validate(
             {
                 **corpus.variables["vaccinated"].model_dump(by_alias=True),
-                "when": condition,
+                "asked_when": condition,
             }
         )
         self._sync(corpus, court=None)
         vaccinated = Variable.objects.get(name="vaccinated")
-        self.assertEqual(vaccinated.when, condition)
+        self.assertEqual(vaccinated.asked_when, condition)
         self.assertFalse(vaccinated.is_asked({}))
         self.assertTrue(vaccinated.is_asked({"licensed": True}))
 
@@ -277,8 +283,10 @@ class IdempotencyTests(CorpusSyncTests):
             for row in FormField.objects.filter(form__slug="license")
         }
         conditional = fields["Check Box1"]
-        self.assertEqual(conditional.checked_when.name, "pet_kind")
-        self.assertEqual(conditional.checked_when_value, "dog")
+        self.assertEqual(
+            conditional.checked_when,
+            {"variable": "pet_kind", "value": "dog", "operator": "equals"},
+        )
         self.assertIs(fields["Check Box2"].checked, True)
         self.assertIsNone(fields["Name"].checked)
         self.assertIsNone(fields["Name"].checked_when)

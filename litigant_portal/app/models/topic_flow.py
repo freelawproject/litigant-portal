@@ -9,15 +9,13 @@ from django.utils.translation import gettext_lazy as _
 
 from litigant_portal.app.formatting import format_long_date
 from litigant_portal.state.rules import (
-    ConditionType,
-    EqualsConditionType,
-    NotConditionType,
     condition_matches,
     parse_condition,
 )
+from litigant_portal.state.types import ConditionType
 
 from .base import BaseModel
-from .choices import TopicFlowFormConditionOperator, VariableDataType
+from .choices import VariableDataType
 
 SNAKE_CASE_PATTERN = r"^[a-z][a-z0-9_]*$"
 
@@ -78,6 +76,7 @@ class TopicFlowSection(BaseModel):
     key = models.SlugField(max_length=64, blank=True, default="")
     heading = models.CharField(max_length=255)
     content = models.TextField(blank=True)
+    when = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -126,7 +125,7 @@ class Variable(BaseModel):
     is_global = models.BooleanField(default=False)
     is_private = models.BooleanField(default=False)
     in_schema = models.BooleanField(default=True)
-    when = models.JSONField(null=True, blank=True)
+    asked_when = models.JSONField(null=True, blank=True)
 
     class Meta:
         ordering = ["name"]
@@ -139,32 +138,13 @@ class Variable(BaseModel):
 
     @property
     def condition(self) -> ConditionType | None:
-        return parse_condition(self.when)
+        return parse_condition(self.asked_when)
 
     def is_asked(self, answers: dict) -> bool:
         """
         Whether this question applies to the current applicable answers.
         """
         return condition_matches(self.condition, answers)
-
-
-def condition_holds(
-    answers: dict,
-    name: str,
-    value,
-    operator=TopicFlowFormConditionOperator.EQUALS,
-) -> bool:
-    """
-    Adapt existing condition rows to the shared state evaluator.
-
-    An unanswered prerequisite matches neither equals nor not_equals.
-    """
-    condition = EqualsConditionType(fact=name, equals=value)
-    if operator == TopicFlowFormConditionOperator.NOT_EQUALS:
-        return condition_matches(
-            NotConditionType.model_validate({"not": condition}), answers
-        )
-    return condition_matches(condition, answers)
 
 
 class VariableAnswer(BaseModel):
@@ -270,33 +250,12 @@ class FormField(BaseModel):
     pdf_field = models.CharField(max_length=255)
     template = models.TextField(blank=True)
     checked = models.BooleanField(null=True, blank=True)
-    checked_when = models.ForeignKey(
-        Variable,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="checkbox_fields",
-    )
-    checked_when_value = models.JSONField(null=True, blank=True)
+    checked_when = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["order", "created_at"]
         constraints = [
-            models.CheckConstraint(
-                condition=(
-                    models.Q(checked_when__isnull=False)
-                    | models.Q(checked_when_value__isnull=True)
-                ),
-                name="formfield_condition_value_requires_condition",
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(checked_when__isnull=True)
-                    | models.Q(checked_when_value__isnull=False)
-                ),
-                name="formfield_condition_requires_value",
-            ),
             models.CheckConstraint(
                 condition=(
                     models.Q(checked__isnull=True)
@@ -335,39 +294,11 @@ class TopicFlowFormCondition(BaseModel):
         on_delete=models.CASCADE,
         related_name="flow_conditions",
     )
-    variable = models.ForeignKey(
-        Variable,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="form_conditions",
-    )
-    operator = models.CharField(
-        max_length=32,
-        choices=TopicFlowFormConditionOperator.choices,
-        default=TopicFlowFormConditionOperator.EQUALS,
-    )
-    value = models.JSONField(null=True, blank=True)
+    when = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ["order", "created_at"]
-        constraints = [
-            models.CheckConstraint(
-                condition=(
-                    models.Q(variable__isnull=False)
-                    | models.Q(value__isnull=True)
-                ),
-                name="form_condition_value_requires_variable",
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(variable__isnull=True)
-                    | models.Q(value__isnull=False)
-                ),
-                name="form_condition_variable_requires_value",
-            ),
-        ]
 
 
 class TopicFlowInterviewPage(BaseModel):
@@ -384,6 +315,7 @@ class TopicFlowInterviewPage(BaseModel):
     )
     title = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
+    when = models.JSONField(null=True, blank=True)
     on_page = models.BooleanField(default=False)
     order = models.PositiveIntegerField(default=0)
 
@@ -447,6 +379,7 @@ class TopicFlowDeadline(BaseModel):
     key = models.SlugField(max_length=64, blank=True, default="")
     label = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    when = models.JSONField(null=True, blank=True)
     offset_days = models.IntegerField(default=0)
     offset_from = models.ForeignKey(
         Variable,

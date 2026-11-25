@@ -2,7 +2,7 @@
 
 This package owns database-free state transitions and computed progress. Django services own identity resolution, glossary validation, transactions, persistence, and external operations.
 
-The current checkpoint implements the domain layer. Application adapters still need the restored condition vocabulary and projector integration. The application is intentionally incomplete; the single feature migration and database rebuild come after the schema is settled.
+The current checkpoint includes the domain layer, shared corpus conditions, and stored-row adapters. Guided and chat integration are next. The application is intentionally incomplete; the single feature migration and database rebuild come after the schema is settled.
 
 ## Contract
 
@@ -39,13 +39,15 @@ The service locks the identity before reading its snapshot, validates the action
 
 `types.ConditionType` accepts `{variable, value}` comparisons with an optional `operator` (`equals` by default, or `not_equals`), and nested `all`, `any`, and `not` expressions. `condition_matches` returns true only for a satisfied condition. Missing or cleared prerequisites remain unknown under negation; they do not satisfy `not_equals`.
 
-Variable rules retain `asked_when`. Component rules use `when`; checkbox mappings will retain `checked_when`. Corpus validation and persistence will adopt these expressions in the next stage, preserving the original terminology.
+Variables retain `asked_when`, components and packet entries use `when`, and checkbox mappings retain `checked_when`. Corpus validation checks every nested comparison against the glossary and stores these expressions as JSON. Conditional pages must place their prerequisites on earlier pages.
 
 `applicable_facts` evaluates prerequisites before dependents. Hidden answers stay stored with their evidence, review status, and timestamps. The projector excludes them from current requirements and outputs; restoring a matching condition makes them available again.
 
 ## Projection
 
 `project(state, court_rules, time_context, limit=1)` accepts a flow-scoped snapshot, validated rules, and the explicit local calendar date. Components arrive in authored layout order. Their `content` is authored source text, including question wording and choices, supplied by the selector; candidates reference that content by component ID.
+
+`app/selectors/state.py` adapts already-loaded answer rows into snapshots and the prefetched flow graph into court rules. The write service uses the snapshot adapter inside its existing identity lock. The rules adapter includes every authored interview page and preserves layout order, conditions, question wording, forms, and deadline metadata without embedding identity answers.
 
 The result contains applicable variables in question order, answered and unconfirmed variables, missing required answers, applicable components, selected form references, resolved deadlines, and the next N unfinished components. Python candidates have no fit score. Empty question groups, packets without forms or an available interview, and calendars without applicable deadlines are omitted.
 

@@ -82,7 +82,6 @@ def topic_flow_find(
             "links",
             "deadlines__offset_from",
             "form_conditions__form",
-            "form_conditions__variable",
             "interview_pages__variables__variable",
         )
     return flows.first()

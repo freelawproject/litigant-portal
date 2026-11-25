@@ -134,7 +134,7 @@ class TopicFlowMarkdownTests(TestCase):
             name="lease_end",
             question="When does your lease end?",
             data_type=VariableDataType.DATE,
-            when={"fact": county.name, "equals": "cass"},
+            asked_when={"variable": county.name, "value": "cass"},
         )
         page = TopicFlowInterviewPage.objects.create(
             flow=flow, title="About your case"
@@ -148,7 +148,9 @@ class TopicFlowMarkdownTests(TestCase):
         TopicFlowFormCondition.objects.create(flow=flow, form=form)
         fee_waiver = Form.objects.create(slug="fee-waiver", name="Fee Waiver")
         TopicFlowFormCondition.objects.create(
-            flow=flow, form=fee_waiver, variable=county, value="cass"
+            flow=flow,
+            form=fee_waiver,
+            when={"variable": county.name, "value": "cass"},
         )
         TopicFlowLink.objects.create(
             flow=flow,
@@ -178,7 +180,7 @@ class TopicFlowMarkdownTests(TestCase):
         )
         self.assertIn(
             "- [source:eviction/tenant/fee-waiver] Fee Waiver (included when "
-            'county equals "cass")',
+            '{"variable": "county", "value": "cass"})',
             markdown,
         )
         self.assertIn("### About your case", markdown)
@@ -193,7 +195,7 @@ class TopicFlowMarkdownTests(TestCase):
         )
         self.assertIn(
             "- lease_end (date): When does your lease end? "
-            '(when {"fact": "county", "equals": "cass"})',
+            '(asked when {"variable": "county", "value": "cass"})',
             markdown,
         )
         self.assertIn(

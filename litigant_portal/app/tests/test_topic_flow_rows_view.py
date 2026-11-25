@@ -136,7 +136,7 @@ def _corpus():
             "name": "vaccinated",
             "label": "Vaccinated",
             "data_type": "boolean",
-            "when": {"fact": "licensed", "equals": True},
+            "asked_when": {"variable": "licensed", "value": True},
         },
         "pet_count": {
             "name": "pet_count",

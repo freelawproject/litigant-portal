@@ -23,15 +23,14 @@ from litigant_portal.app.models.choices import (
     ContactKind,
     JurisdictionLevel,
     State,
-    TopicFlowFormConditionOperator,
     VariableDataType,
 )
 from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.state.rules import (
-    ConditionType,
     condition_leaves,
     condition_names,
 )
+from litigant_portal.state.types import ConditionType
 
 CORPUS_DIR = settings.BASE_DIR / "corpus"
 FORMS_DIR = CORPUS_DIR / "forms"
@@ -141,7 +140,7 @@ class VariableSchema(BaseSchema):
     default: ValueType | None = None
     is_global: bool = Field(default=False, alias="global")
     is_private: bool = Field(default=False, alias="private")
-    when: ConditionType | None = None
+    asked_when: ConditionType | None = None
 
     @model_validator(mode="after")
     def _choices_iff_choice_type(self):
@@ -172,6 +171,25 @@ class VariableSchema(BaseSchema):
         return self
 
 
+def _condition_resolves(
+    condition: ConditionType | None,
+    variables: dict[str, VariableSchema],
+    label: str,
+) -> None:
+    """
+    Check every comparison against the glossary, including nested ones.
+    """
+    for leaf in condition_leaves(condition):
+        variable = variables.get(leaf.variable)
+        if variable is None:
+            raise ValueError(
+                f"{label}: names unknown variable {leaf.variable!r}"
+            )
+        problem = _variable_value_problem(leaf.value, variable)
+        if problem is not None:
+            raise ValueError(f"{label}: {leaf.variable} {problem}")
+
+
 class VariablesSchema(BaseSchema):
     """Populates the ``Variable`` table."""
 
@@ -195,17 +213,10 @@ class VariablesSchema(BaseSchema):
         """
         by_name = {v.name: v for v in self.variables}
         for variable in self.variables:
-            for leaf in condition_leaves(variable.when):
-                prerequisite = by_name.get(leaf.fact)
-                if prerequisite is None:
-                    raise ValueError(
-                        f"{variable.name}: when names unknown variable "
-                        f"{leaf.fact!r}"
-                    )
-                problem = _variable_value_problem(leaf.equals, prerequisite)
-                if problem is not None:
-                    raise ValueError(f"{variable.name}: when {problem}")
-        graph = {v.name: condition_names(v.when) for v in self.variables}
+            _condition_resolves(
+                variable.asked_when, by_name, f"{variable.name}: asked_when"
+            )
+        graph = {v.name: condition_names(v.asked_when) for v in self.variables}
         try:
             tuple(TopologicalSorter(graph).static_order())
         except CycleError as exc:
@@ -218,20 +229,13 @@ class VariablesSchema(BaseSchema):
 # Forms
 
 
-class CheckedWhenSchema(BaseSchema):
-    """Populates ``FormField.checked_when`` and ``checked_when_value``."""
-
-    variable: VariableNameField
-    value: ValueType
-
-
 class FormFieldMappingSchema(BaseSchema):
     """Populates a ``FormField`` row."""
 
     pdf_field: str = Field(min_length=1)
     template: str = ""
     checked: bool | None = None
-    checked_when: CheckedWhenSchema | None = None
+    checked_when: ConditionType | None = None
 
     @model_validator(mode="after")
     def _one_mode(self):
@@ -411,6 +415,7 @@ class SectionSchema(SourceSchema):
 
     heading: str = Field(min_length=1)
     content: str = Field(min_length=1)
+    when: ConditionType | None = None
 
 
 class InterviewPageSchema(BaseSchema):
@@ -424,23 +429,14 @@ class InterviewPageSchema(BaseSchema):
     description: str = ""
     on_page: bool = False
     variables: list[VariableNameField] = Field(min_length=1)
-
-
-class WhenSchema(BaseSchema):
-    """Populates ``TopicFlowFormCondition``'s condition fields."""
-
-    variable: VariableNameField
-    operator: TopicFlowFormConditionOperator = (
-        TopicFlowFormConditionOperator.EQUALS
-    )
-    value: ValueType
+    when: ConditionType | None = None
 
 
 class PacketEntrySchema(BaseSchema):
     """Populates a ``TopicFlowFormCondition`` row."""
 
     form: SlugField
-    when: WhenSchema | None = None
+    when: ConditionType | None = None
 
 
 class DeadlineSchema(SourceSchema):
@@ -450,6 +446,7 @@ class DeadlineSchema(SourceSchema):
     description: str = ""
     offset_days: int
     offset_from: VariableNameField
+    when: ConditionType | None = None
 
 
 class LinkSchema(SourceSchema):
@@ -522,12 +519,21 @@ class FlowSchema(BaseSchema):
         }
         decided = (
             {deadline.offset_from for deadline in self.deadlines}
-            | {entry.when.variable for entry in self.packet if entry.when}
+            | {
+                dependency
+                for item in (
+                    *self.sections,
+                    *self.interview,
+                    *self.packet,
+                    *self.deadlines,
+                )
+                for dependency in condition_names(item.when)
+            }
             | {
                 dependency
                 for name in asked
                 if name in variables
-                for dependency in condition_names(variables[name].when)
+                for dependency in condition_names(variables[name].asked_when)
             }
         )
         return sorted(decided - asked)
@@ -607,11 +613,7 @@ class FlowSchema(BaseSchema):
         seen = set()
         for entry in self.packet:
             when = entry.when
-            key = (
-                (entry.form,)
-                if when is None
-                else (entry.form, when.variable, when.operator, when.value)
-            )
+            key = (entry.form, when.model_dump_json() if when else None)
             if key in seen:
                 raise ValueError(
                     f"duplicate packet entry for form {entry.form!r}; repeating "
@@ -698,22 +700,11 @@ class CorpusSchema(BaseSchema):
                         f"form {slug}: template references unknown "
                         f"variable {unknown[0]}"
                     )
-                condition = mapping.checked_when
-                if condition is None:
-                    continue
-                variable = self.variables.get(condition.variable)
-                if variable is None:
-                    raise ValueError(
-                        f"form {slug}: checked_when names unknown "
-                        f"variable {condition.variable}"
-                    )
-                problem = _variable_value_problem(condition.value, variable)
-                if problem is not None:
-                    raise ValueError(
-                        f"form {slug}: checked_when value "
-                        f"{condition.value!r} {problem} "
-                        f"({condition.variable} is {variable.data_type})"
-                    )
+                _condition_resolves(
+                    mapping.checked_when,
+                    self.variables,
+                    f"form {slug}: {mapping.pdf_field}: checked_when",
+                )
         for stem in sorted(set(self.form_acro_fields) - set(self.forms)):
             raise ValueError(f"{stem}.pdf: no matching form document")
         return self
@@ -757,6 +748,17 @@ class CorpusSchema(BaseSchema):
         consumed: set[str] = set()
         unconditional: set[str] = set()
         conditional: list[tuple[str, set[str]]] = []
+        for kind, items in (
+            ("section", flow.sections),
+            ("page", flow.interview),
+            ("deadline", flow.deadlines),
+        ):
+            for number, item in enumerate(items, 1):
+                _condition_resolves(
+                    item.when, variables, f"flow {label}: {kind} {number}"
+                )
+                consumed |= condition_names(item.when)
+                unconditional |= condition_names(item.when)
         if flow.handoff is not None:
             prefilled = set(flow.handoff.interview_prefill)
             unknown = sorted(prefilled - set(variables))
@@ -773,30 +775,21 @@ class CorpusSchema(BaseSchema):
                 form_names |= set(
                     TEMPLATE_VARIABLE_PATTERN.findall(mapping.template)
                 )
-                if mapping.checked_when is not None:
-                    form_names.add(mapping.checked_when.variable)
+                form_names |= condition_names(mapping.checked_when)
             form_names &= set(variables)
             consumed |= form_names
             if entry.when is None:
                 unconditional |= form_names
                 continue
-            condition = entry.when
-            variable = variables.get(condition.variable)
-            if variable is None:
-                raise ValueError(
-                    f"flow {label}: condition names unknown variable "
-                    f"{condition.variable}"
-                )
-            consumed.add(condition.variable)
-            unconditional.add(condition.variable)
-            conditional.append((condition.variable, form_names))
-            value_problem = _variable_value_problem(condition.value, variable)
-            if value_problem is not None:
-                raise ValueError(
-                    f"flow {label}: condition value {condition.value!r} "
-                    f"{value_problem} ({condition.variable} is "
-                    f"{variable.data_type})"
-                )
+            _condition_resolves(
+                entry.when, variables, f"flow {label}: packet {entry.form}"
+            )
+            dependencies = condition_names(entry.when)
+            consumed |= dependencies
+            unconditional |= dependencies
+            conditional.extend(
+                (name, form_names) for name in sorted(dependencies)
+            )
         for deadline in flow.deadlines:
             variable = variables.get(deadline.offset_from)
             if variable is None:
@@ -820,7 +813,7 @@ class CorpusSchema(BaseSchema):
                 f"{missing}"
             )
         for name in sorted(position, key=position.get):
-            for gate in sorted(condition_names(variables[name].when)):
+            for gate in sorted(condition_names(variables[name].asked_when)):
                 if gate not in position:
                     raise ValueError(
                         f"flow {label}: {name} is gated on {gate}, which is "
@@ -830,6 +823,15 @@ class CorpusSchema(BaseSchema):
                     raise ValueError(
                         f"flow {label}: gate variable {gate} must be placed "
                         f"before {name}"
+                    )
+        for page in flow.interview:
+            for gate in sorted(condition_names(page.when)):
+                if position[gate] >= min(
+                    position[name] for name in page.variables
+                ):
+                    raise ValueError(
+                        f"flow {label}: page condition variable {gate} must "
+                        f"be placed before page {page.title!r}"
                     )
         for condition, form_names in conditional:
             for name in sorted(form_names - unconditional):

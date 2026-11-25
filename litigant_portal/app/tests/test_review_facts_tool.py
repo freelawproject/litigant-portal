@@ -77,7 +77,7 @@ def flow():
         name="alias",
         label="Other name used",
         required=True,
-        when={"fact": has_alias.name, "equals": True},
+        asked_when={"variable": has_alias.name, "value": True},
     )
     for order, variable in enumerate([first_name, county, has_alias, alias]):
         TopicFlowInterviewVariable.objects.create(

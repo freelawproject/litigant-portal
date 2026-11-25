@@ -29,7 +29,6 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.models.choices import (
-    TopicFlowFormConditionOperator,
     VariableDataType,
 )
 
@@ -172,33 +171,6 @@ class FormConditionTests(TestCase):
         self.flow = build_flow()
         self.form = build_form()
 
-    def test_no_variable_means_always_in_the_packet(self):
-        condition = TopicFlowFormCondition.objects.create(
-            flow=self.flow, form=self.form
-        )
-        self.assertIsNone(condition.variable)
-        self.assertEqual(
-            condition.operator, TopicFlowFormConditionOperator.EQUALS
-        )
-
-    def test_a_value_requires_a_variable(self):
-        # The check constraint keeps a condition from carrying a value with
-        # nothing to compare it against, which would read as conditional
-        # while behaving as unconditional.
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            TopicFlowFormCondition.objects.create(
-                flow=self.flow, form=self.form, value=True
-            )
-
-    def test_a_variable_requires_a_value(self):
-        # The mirror shape: NULL means "no answer yet", so a condition can
-        # never match on it; variable and value are all-or-nothing.
-        fee = Variable.objects.create(name="can_pay_filing_fee")
-        with self.assertRaises(IntegrityError), transaction.atomic():
-            TopicFlowFormCondition.objects.create(
-                flow=self.flow, form=self.form, variable=fee
-            )
-
     def test_repeat_rows_for_the_same_pair_are_allowed(self):
         # Deliberate: one condition per row, and a form more than one
         # answer can pull in gets one row per answer, OR'd together. No
@@ -206,22 +178,16 @@ class FormConditionTests(TestCase):
         fee = Variable.objects.create(name="can_pay_filing_fee")
         served = Variable.objects.create(name="received_court_papers")
         TopicFlowFormCondition.objects.create(
-            flow=self.flow, form=self.form, variable=fee, value=False
+            flow=self.flow,
+            form=self.form,
+            when={"variable": fee.name, "value": False},
         )
         TopicFlowFormCondition.objects.create(
-            flow=self.flow, form=self.form, variable=served, value=True
+            flow=self.flow,
+            form=self.form,
+            when={"variable": served.name, "value": True},
         )
         self.assertEqual(self.flow.form_conditions.count(), 2)
-
-    def test_deleting_a_conditioning_variable_is_blocked(self):
-        # PROTECT: deleting a variable that decides packet membership would
-        # silently change what litigants are told to file.
-        variable = Variable.objects.create(name="has_conviction")
-        TopicFlowFormCondition.objects.create(
-            flow=self.flow, form=self.form, variable=variable, value=True
-        )
-        with self.assertRaises(ProtectedError):
-            variable.delete()
 
     def test_a_shared_form_survives_losing_one_flow(self):
         # The reuse story: two flows compose the same form through their
