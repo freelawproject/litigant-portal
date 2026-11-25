@@ -1,5 +1,6 @@
 """Tests for two-factor sign-in: the code step, recovery codes, who may
-set it up, how secrets are stored, and the pages. All postgres-marked."""
+set it up, how secrets are stored, the pages, and the menu link. All
+postgres-marked."""
 
 import logging
 import re
@@ -37,6 +38,10 @@ LOGIN_URL = "/accounts/login/"
 CODE_URL = "/accounts/2fa/authenticate/"
 SETUP_URL = "/accounts/2fa/totp/activate/"
 CONFIRM_ACCESS_URL = "/accounts/reauthenticate/"
+CONFIRM_BY_CODE_URL = "/accounts/2fa/reauthenticate/"
+OVERVIEW_URL = "/accounts/2fa/"
+TURN_OFF_URL = "/accounts/2fa/totp/deactivate/"
+NEW_CODES_URL = "/accounts/2fa/recovery-codes/generate/"
 EMAIL = "staff@example.com"
 PASSWORD = "a-long-new-passphrase-42"
 
@@ -356,3 +361,139 @@ def test_a_correct_code_at_setup_shows_ten_recovery_codes(client):
     codes = re.findall(r"<code[^>]*>(\d{8})</code>", html)
     assert len(set(codes)) == 10
     assert 'href="/accounts/2fa/recovery-codes/download/"' in html
+
+
+def _login_with_code(client, secret):
+    _login(client)
+    client.post(CODE_URL, {"code": _code(secret)})
+
+
+def _status(page):
+    [text] = re.findall(
+        r'<p id="two-factor-status"[^>]*>([^<]*)</p>', page.content.decode()
+    )
+    return text
+
+
+def test_overview_shows_that_two_factor_is_off(client):
+    user_create(email=EMAIL, password=PASSWORD)
+    _login(client)
+
+    page = client.get(OVERVIEW_URL)
+
+    assert "account/base.html" in _templates(page)
+    assert _status(page).startswith("Two-factor sign-in is off.")
+    assert f'href="{SETUP_URL}"' in page.content.decode()
+
+
+def test_overview_shows_that_two_factor_is_on(client):
+    _, secret, recovery_codes = _two_factor_user()
+    _login(client)
+    client.post(CODE_URL, {"code": recovery_codes[0]})
+
+    page = client.get(OVERVIEW_URL)
+
+    html = page.content.decode()
+    assert _status(page).startswith("Two-factor sign-in is on.")
+    assert "9 of 10 recovery codes are left." in html
+    assert f'href="{TURN_OFF_URL}"' in html
+    assert f'href="{NEW_CODES_URL}"' in html
+    assert f'href="{SETUP_URL}"' not in html
+
+
+@pytest.mark.parametrize("url", [TURN_OFF_URL, NEW_CODES_URL])
+def test_manage_pages_ask_to_confirm_access_first(client, url):
+    _, secret, _ = _two_factor_user()
+    _login_with_code(client, secret)
+
+    response = client.get(url)
+
+    assert response["Location"] == (
+        f"{CONFIRM_ACCESS_URL}?{urlencode({'next': url})}"
+    )
+
+
+def test_confirm_access_page_offers_the_code_instead(client):
+    _, secret, _ = _two_factor_user()
+    _login_with_code(client, secret)
+
+    page = client.get(CONFIRM_ACCESS_URL, {"next": TURN_OFF_URL})
+
+    assert f'href="{CONFIRM_BY_CODE_URL}?' in page.content.decode()
+
+
+def test_a_code_confirms_access(client):
+    _, secret, recovery_codes = _two_factor_user()
+    _login_with_code(client, secret)
+
+    page = client.get(CONFIRM_BY_CODE_URL, {"next": TURN_OFF_URL})
+    response = client.post(
+        CONFIRM_BY_CODE_URL, {"code": recovery_codes[0], "next": TURN_OFF_URL}
+    )
+
+    assert "account/base.html" in _templates(page)
+    assert 'inputmode="numeric"' in _input(page, "code")
+    assert response["Location"] == TURN_OFF_URL
+    assert client.get(TURN_OFF_URL).status_code == 200
+
+
+def test_access_is_confirmed_again_after_five_minutes(client, monkeypatch):
+    _, secret, _ = _two_factor_user()
+    _login_with_code(client, secret)
+    client.post(CONFIRM_ACCESS_URL, {"password": PASSWORD})
+    assert client.get(TURN_OFF_URL).status_code == 200
+
+    later = time.time() + 301
+    monkeypatch.setattr(
+        "allauth.account.internal.flows.reauthentication.time.time",
+        lambda: later,
+    )
+
+    assert client.get(TURN_OFF_URL).status_code == 302
+
+
+def test_turning_off_removes_the_authenticator_and_the_recovery_codes(client):
+    user, secret, _ = _two_factor_user()
+    _login_with_code(client, secret)
+    client.post(CONFIRM_ACCESS_URL, {"password": PASSWORD})
+
+    page = client.get(TURN_OFF_URL)
+    response = client.post(TURN_OFF_URL)
+
+    assert "account/base.html" in _templates(page)
+    assert response["Location"] == OVERVIEW_URL
+    assert not Authenticator.objects.filter(user=user).exists()
+
+
+def test_new_recovery_codes_replace_the_old_ones(client):
+    user, secret, old_codes = _two_factor_user()
+    _login_with_code(client, secret)
+    client.post(CONFIRM_ACCESS_URL, {"password": PASSWORD})
+
+    page = client.get(NEW_CODES_URL)
+    response = client.post(NEW_CODES_URL)
+
+    assert "account/base.html" in _templates(page)
+    assert "Your old codes stop working." in page.content.decode()
+    assert response["Location"] == "/accounts/2fa/recovery-codes/"
+    recovery = Authenticator.objects.get(user=user, type="recovery_codes")
+    new_codes = recovery.wrap().get_unused_codes()
+    assert len(new_codes) == 10
+    assert not set(new_codes) & set(old_codes)
+
+
+@pytest.mark.parametrize(
+    ("role", "shown"),
+    [(Tier.FLP_STAFF, True), (Tier.APP_USER, False)],
+    ids=["staff", "litigant"],
+)
+def test_menu_links_to_two_factor_only_for_staff(client, role, shown):
+    user_create(email=EMAIL, password=PASSWORD, role=role)
+    _login(client)
+
+    page = client.get("/")
+
+    link = re.search(
+        rf'<a href="{OVERVIEW_URL}"[^>]*role="menuitem"', page.content.decode()
+    )
+    assert bool(link) is shown

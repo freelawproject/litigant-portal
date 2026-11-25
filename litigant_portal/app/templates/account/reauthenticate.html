@@ -8,17 +8,23 @@
 
 {% block auth_content %}
   <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Confirm it is you" %}</h1>
-  <p class="text-greyscale-600 mb-6">{% trans "Type your password to continue." %}</p>
+  <p class="text-greyscale-600 mb-6">
+    {% block confirm_text %}
+      {% trans "Type your password to continue." %}
+    {% endblock confirm_text %}
+  </p>
   <c-molecules.form-errors :form="form" />
-  <form method="post" action="{% url 'account_reauthenticate' %}" class="space-y-4">
-    {% csrf_token %}
-    {{ redirect_field }}
-    {% trans "Password" as password_label %}
-    <c-molecules.form-field label="{{ password_label }}" type="password" name="password" id="id_password" required autofocus autocomplete="current-password" :errors="form.password.errors" />
-    <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
-    {% trans "Continue" %}
-    </c-atoms.button>
-  </form>
+  {% block confirm_form %}
+    <form method="post" action="{% url 'account_reauthenticate' %}" class="space-y-4">
+      {% csrf_token %}
+      {{ redirect_field }}
+      {% trans "Password" as password_label %}
+      <c-molecules.form-field label="{{ password_label }}" type="password" name="password" id="id_password" required autofocus autocomplete="current-password" :errors="form.password.errors" />
+      <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
+      {% trans "Continue" %}
+      </c-atoms.button>
+    </form>
+  {% endblock confirm_form %}
 {% endblock auth_content %}
 
 {% block auth_footer %}
