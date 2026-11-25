@@ -581,20 +581,6 @@ def test_variable_placed_on_two_pages_is_rejected():
         )
 
 
-def test_interview_page_stays_off_the_page_by_default():
-    flow = _flow_doc(interview=[{"title": "One", "variables": ["full_name"]}])
-    assert flow.interview[0].on_page is False
-
-
-def test_interview_page_keeps_its_on_page_mark():
-    flow = _flow_doc(
-        interview=[
-            {"title": "One", "variables": ["full_name"], "on_page": True}
-        ]
-    )
-    assert flow.interview[0].on_page is True
-
-
 def _section(id, heading="H"):
     return {"id": id, "heading": heading, "content": "Read."}
 
@@ -621,7 +607,7 @@ def test_authored_layout_is_kept_as_written():
     flow = _flow_doc(
         sections=[_section("start"), _section("fees")],
         layout=layout,
-        interview=[{"title": "You", "variables": ["age"], "on_page": True}],
+        interview=[{"title": "You", "variables": ["age"]}],
     )
     assert flow.resolved_layout == layout
 
@@ -655,11 +641,7 @@ def test_layout_rejects_an_unknown_name():
 
 
 _FILLED_BLOCKS = {
-    "interview": {
-        "interview": [
-            {"title": "About you", "variables": ["age"], "on_page": True}
-        ]
-    },
+    "interview": {"interview": [{"title": "About you", "variables": ["age"]}]},
     "packet": {"packet": [{"form": "license"}]},
     "calendar": {
         "deadlines": [
@@ -690,37 +672,9 @@ def test_layout_may_omit_an_empty_block():
     assert _flow_doc(layout=["start"]).resolved_layout == ["start"]
 
 
-# Only pages marked on_page count as interview content for the layout.
-
-_UNMARKED_PAGE = [{"title": "About you", "variables": ["age"]}]
-
-
-def test_layout_placing_interview_needs_a_marked_page():
-    with pytest.raises(ValidationError, match="no page is marked on_page"):
-        _flow_doc(layout=["start", "interview"], interview=_UNMARKED_PAGE)
-
-
-def test_layout_may_omit_interview_when_no_page_is_marked():
-    flow = _flow_doc(layout=["start"], interview=_UNMARKED_PAGE)
-    assert flow.resolved_layout == ["start"]
-
-
-@pytest.mark.parametrize(
-    ("slug", "titles"),
-    [
-        ("standard", ["The filing fee", "Your publication date"]),
-        ("waiver", ["The filing fee"]),
-    ],
-    ids=["standard", "waiver"],
-)
-def test_shipped_nd_flows_mark_the_pages_the_page_asks(slug, titles):
-    flow = corpus_load().flows[(*ND_TOPIC, slug)]
-    assert [page.title for page in flow.interview if page.on_page] == titles
-
-
-def test_every_shipped_flow_marks_at_least_one_page():
-    for key, flow in corpus_load().flows.items():
-        assert any(page.on_page for page in flow.interview), key
+def test_layout_placing_interview_needs_a_question_group():
+    with pytest.raises(ValidationError, match="no question groups"):
+        _flow_doc(layout=["start", "interview"])
 
 
 # The variables the page reacts to: deadline sources, packet conditions and
@@ -753,13 +707,13 @@ _GATED_GLOSSARY = {
 }
 
 
-def _page(variables, on_page):
-    return {"title": "Page", "variables": variables, "on_page": on_page}
+def _page(variables):
+    return {"title": "Page", "variables": variables}
 
 
-def test_unasked_decision_variables_lists_sources_on_no_marked_page():
+def test_unasked_decision_variables_lists_sources_on_no_page():
     flow = _flow_doc(
-        interview=[_page(["adopted_on", "licensed"], on_page=False)],
+        interview=[_page(["full_name"])],
         packet=[_WHEN_LICENSED],
         deadlines=[_DUE],
     )
@@ -769,12 +723,12 @@ def test_unasked_decision_variables_lists_sources_on_no_marked_page():
     ]
 
 
-def test_unasked_decision_variables_is_empty_when_marked_pages_ask_them():
+def test_unasked_decision_variables_is_empty_when_pages_ask_them():
     flow = _flow_doc(
         layout=["start", "interview", "packet", "calendar"],
         interview=[
-            _page(["adopted_on"], on_page=True),
-            _page(["licensed"], on_page=True),
+            _page(["adopted_on"]),
+            _page(["licensed"]),
         ],
         packet=[_WHEN_LICENSED],
         deadlines=[_DUE],
@@ -784,29 +738,26 @@ def test_unasked_decision_variables_is_empty_when_marked_pages_ask_them():
 
 def test_unasked_decision_variables_ignores_an_unconditional_packet_entry():
     flow = _flow_doc(
-        interview=[_page(["full_name"], on_page=False)],
+        interview=[_page(["full_name"])],
         packet=[{"form": "license"}],
     )
     assert flow.unasked_decision_variables(_GLOSSARY) == []
 
 
-def test_unasked_decision_variables_lists_the_gate_of_a_marked_question():
+def test_unasked_decision_variables_lists_an_unplaced_gate():
     flow = _flow_doc(
         layout=["start", "interview"],
-        interview=[
-            _page(["licensed"], on_page=False),
-            _page(["license_number"], on_page=True),
-        ],
+        interview=[_page(["license_number"])],
     )
     assert flow.unasked_decision_variables(_GATED_GLOSSARY) == ["licensed"]
 
 
-def test_unasked_decision_variables_ignores_the_gate_of_an_unmarked_question():
+def test_unasked_decision_variables_accepts_a_placed_gate():
     flow = _flow_doc(
         layout=["start", "interview"],
         interview=[
-            _page(["full_name"], on_page=True),
-            _page(["licensed", "license_number"], on_page=False),
+            _page(["full_name"]),
+            _page(["licensed", "license_number"]),
         ],
     )
     assert flow.unasked_decision_variables(_GATED_GLOSSARY) == []

@@ -129,10 +129,8 @@ sections:
 
       Saving these here helps you organize them. It does not file them with the court. If a case is filed, you will still need to bring your own copies to the court.
 
-# The guided page asks only the pages marked `on_page` (#1046).
 interview:
   - title: 'Your notice and repair dates'
-    on_page: true
     variables:
       - eviction_notice_received_date
       - eviction_repair_request_date

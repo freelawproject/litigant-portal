@@ -139,8 +139,6 @@ sections:
 
       Then update your records in this order, because each step verifies against the one before it: Social Security Administration first, then the North Dakota DMV, then your passport, then financial accounts, your employer and health insurance, your home title, and voter registration.
 
-# The chat and the docassemble handoff use every page. The guided page asks
-# only the pages marked `on_page`: the facts the page itself reacts to (#1046).
 interview:
   - title: 'Your current legal name'
     variables:
@@ -164,6 +162,11 @@ interview:
     variables:
       - name_change_citizenship
       - name_change_criminal_history
+  - title: 'Details of your conviction'
+    when:
+      variable: name_change_criminal_history
+      value: convicted
+    variables:
       - name_change_conviction_charge
       - name_change_conviction_class
       - name_change_conviction_court
@@ -174,7 +177,6 @@ interview:
       - name_change_waiver_first_or_middle
       - name_change_waiver_domestic_violence
   - title: 'The filing fee'
-    on_page: true
     variables:
       - name_change_fee_waiver_needed
   - title: 'A few more details for the rest of your packet'

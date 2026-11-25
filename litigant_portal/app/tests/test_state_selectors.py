@@ -17,6 +17,7 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
+from litigant_portal.app.selectors.corpus import corpus_load
 from litigant_portal.app.selectors.state import (
     FlowStateType,
     court_rules,
@@ -25,11 +26,114 @@ from litigant_portal.app.selectors.state import (
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.views import topic_flow as views
 from litigant_portal.state.projector import project
+from litigant_portal.state.reducer import reduce
+from litigant_portal.state.types import FactInputType, SetFactsActionType
 
 
 def _prefetched(row, **relations):
     row._prefetched_objects_cache = relations
     return row
+
+
+@pytest.mark.parametrize("slug", ["standard", "waiver"])
+def test_nd_corpus_projects_convictions_fee_waiver_and_publication(slug):
+    corpus = corpus_load()
+    schema = corpus.flows[("north-dakota", "adult-name-change", slug)]
+    variables = {
+        name: Variable(**variable.model_dump())
+        for name, variable in corpus.variables.items()
+    }
+    flow = _prefetched(
+        TopicFlow(
+            topic=Topic(court="north-dakota", slug="adult-name-change"),
+            slug=slug,
+            layout=schema.resolved_layout,
+        ),
+        sections=[
+            TopicFlowSection(
+                key=section.id, **section.model_dump(exclude={"id"})
+            )
+            for section in schema.sections
+        ],
+        interview_pages=[
+            _prefetched(
+                TopicFlowInterviewPage(
+                    **page.model_dump(exclude={"variables"})
+                ),
+                variables=[
+                    TopicFlowInterviewVariable(variable=variables[name])
+                    for name in page.variables
+                ],
+            )
+            for page in schema.interview
+        ],
+        form_conditions=[
+            TopicFlowFormCondition(
+                form=Form(slug=entry.form, name=corpus.forms[entry.form].name),
+                when=entry.when.model_dump() if entry.when else None,
+            )
+            for entry in schema.packet
+        ],
+        deadlines=[
+            TopicFlowDeadline(
+                key=deadline.id,
+                offset_from=variables[deadline.offset_from],
+                **deadline.model_dump(exclude={"id", "offset_from"}),
+            )
+            for deadline in schema.deadlines
+        ],
+    )
+    rules = court_rules(
+        flow=flow, variables=variables.values(), contacts=[], resources=[]
+    )
+    now = datetime(2026, 11, 25, tzinfo=UTC)
+    state = state_snapshot(identity=UserIdentity(id=1), flow=flow, answers=[])
+    details = next(
+        component
+        for component in rules.components
+        if component.when is not None
+    )
+
+    for history, fee in (
+        ("convicted", True),
+        ("none", False),
+        ("convicted", True),
+    ):
+        facts = {
+            "name_change_criminal_history": FactInputType(value=history),
+            "name_change_fee_waiver_needed": FactInputType(value=fee),
+        }
+        if not state.facts:
+            facts.update(
+                {
+                    "name_change_conviction_charge": FactInputType(
+                        value="Saved detail"
+                    ),
+                    "name_change_publication_date": FactInputType(
+                        value="2026-11-01"
+                    ),
+                }
+            )
+        state = reduce(
+            state, SetFactsActionType(actor="human", facts=facts, at=now)
+        )
+        view = project(state, rules, now.date())
+        assert (details.id in {c.id for c in view.components}) == (
+            history == "convicted"
+        )
+        assert ("name_change_conviction_charge" in view.answered) == (
+            history == "convicted"
+        )
+        assert (
+            state.facts["name_change_conviction_charge"].value
+            == "Saved detail"
+        )
+        assert "criminal_history" in {c.id for c in view.components}
+        assert ("nd-fee-waiver-petition" in view.forms) == fee
+        if slug == "standard":
+            assert view.deadlines[0].date == date(2026, 12, 1)
+        else:
+            assert view.deadlines == ()
 
 
 @pytest.fixture
@@ -41,7 +145,7 @@ def stored_flow():
         key="help", heading="Help", content="Read.", when=condition
     )
     page = _prefetched(
-        TopicFlowInterviewPage(title="Your situation", on_page=False),
+        TopicFlowInterviewPage(title="Your situation"),
         variables=[
             TopicFlowInterviewVariable(variable=v) for v in (gate, started)
         ],

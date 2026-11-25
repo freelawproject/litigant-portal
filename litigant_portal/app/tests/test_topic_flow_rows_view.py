@@ -85,11 +85,12 @@ LAYOUT = [
     "resources",
 ]
 # The anchors the layout renders as: the interview block is one section
-# per page marked on_page, numbered in page order.
+# per applicable question group, numbered in authored order.
 ANCHORS = [
     "fees",
     "interview-1",
     "interview-2",
+    "interview-3",
     "overview",
     "packet",
     "calendar",
@@ -161,13 +162,11 @@ def _corpus():
     interview = [
         {
             "title": "About you",
-            "on_page": True,
             "variables": ["first_name", "full_name"],
         },
         {
             "title": "About your pet",
             "description": "A few facts the license needs.",
-            "on_page": True,
             "variables": [
                 "pet_kind",
                 "licensed",
@@ -176,7 +175,6 @@ def _corpus():
                 "license_date",
             ],
         },
-        # Not marked on_page: the chat asks it, the page does not.
         {"title": "Your vet", "variables": ["vet_name"]},
     ]
     # A form with the court's PDF url and one without; the checklist joins
@@ -399,10 +397,10 @@ def test_each_interview_page_renders_a_post_form_with_a_field_per_variable(
 
 
 @pytest.mark.postgres
-def test_a_page_not_marked_on_page_is_not_rendered(client, synced):
-    flat = _flat(client.get(URL))
-    assert "Your vet" not in flat
-    assert not _field_tag(flat, "vet_name")
+def test_any_applicable_question_group_can_be_selected(client, synced):
+    flat = _flat(client.get(URL, {"component": "interview-3"}))
+    assert "Your vet" in flat
+    assert _field_tag(flat, "vet_name")
 
 
 @pytest.mark.postgres
@@ -1165,10 +1163,20 @@ def test_a_save_that_reveals_a_question_redirects_to_that_field(
 
 
 @pytest.mark.postgres
-def test_post_ignores_a_variable_from_a_page_not_marked_on_page(
-    client, synced
-):
-    response = client.post(URL, {**PET_PAGE, "vet_name": "Dr. Vet"})
+def test_post_ignores_a_variable_from_another_question_group(client, synced):
+    selected = client.get(URL, {"component": "interview-2"})
+    response = client.post(
+        URL,
+        {
+            **PET_PAGE,
+            "vet_name": "Dr. Vet",
+            "component": "interview-2",
+            "action": "save",
+            "signature": selected.context["rendered_sections"][0].context[
+                "signature"
+            ],
+        },
+    )
     assert response.status_code == 302
     assert "vet_name" not in _values()
 

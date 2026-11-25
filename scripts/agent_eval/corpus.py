@@ -8,6 +8,7 @@ import shutil
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import yaml
 
@@ -130,7 +131,21 @@ def fixture_root(run: Path, variant: str) -> Path:
 def install_fixture(root: Path, court: str) -> None:
     from litigant_portal.app.services.corpus import corpus_sync
 
-    corpus_sync(root=root, court=court, strict=True)
+    # The frozen benchmark still carries the retired presentation flag.
+    # Adapt a disposable copy without changing its content or source hashes.
+    with TemporaryDirectory(prefix="agent-eval-corpus-") as directory:
+        prepared = Path(directory) / "corpus"
+        shutil.copytree(root, prepared)
+        for path in (prepared / "courts").glob("*/topics/*/flows/*.yml"):
+            flow = yaml.safe_load(path.read_text())
+            pages = flow.get("interview", [])
+            if any("on_page" in page for page in pages):
+                for page in pages:
+                    page.pop("on_page", None)
+                path.write_text(
+                    yaml.safe_dump(flow, allow_unicode=True, sort_keys=False)
+                )
+        corpus_sync(root=prepared, court=court, strict=True)
 
 
 @contextmanager

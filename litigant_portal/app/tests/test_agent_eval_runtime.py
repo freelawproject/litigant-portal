@@ -10,6 +10,7 @@ from copy import deepcopy
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest
+import yaml
 
 pytest.importorskip("scripts.agent_eval.schema")
 
@@ -110,7 +111,7 @@ def test_frozen_corpus_load_ignores_application_files(
     tmp_path, monkeypatch, variant
 ):
     from litigant_portal.app.selectors import corpus
-    from scripts.agent_eval.corpus import fixture_root
+    from scripts.agent_eval.corpus import fixture_root, install_fixture
 
     for name in ("VARIABLES_PATH", "FORMS_DIR", "COURTS_DIR"):
         monkeypatch.setattr(corpus, name, tmp_path / "missing")
@@ -121,13 +122,42 @@ def test_frozen_corpus_load_ignores_application_files(
                 runner.HERE / folder, tmp_path / "references" / folder
             )
         root = fixture_root(tmp_path, variant)
-    loaded = corpus.corpus_load(root=root)
-    assert set(loaded.courts) == {
-        "north-dakota" if variant == "current" else "eval-ohio"
+    original = {
+        path.relative_to(root): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
     }
-    assert len(loaded.flows) == (2 if variant == "current" else 1)
-    assert len(loaded.forms) == (8 if variant == "current" else 0)
-    assert len(loaded.variables) == 34
+    court_name = "north-dakota" if variant == "current" else "eval-ohio"
+
+    def sync(*, root, court, strict):
+        assert court == court_name
+        assert strict is True
+        for relative, content in original.items():
+            prepared = (root / relative).read_bytes()
+            if relative.match("*/flows/*.yml"):
+                expected = yaml.safe_load(content)
+                for page in expected.get("interview", []):
+                    page.pop("on_page", None)
+                assert yaml.safe_load(prepared) == expected
+            else:
+                assert prepared == content
+        loaded = corpus.corpus_load(root=root)
+        assert set(loaded.courts) == {court_name}
+        assert len(loaded.flows) == (2 if variant == "current" else 1)
+        assert len(loaded.forms) == (8 if variant == "current" else 0)
+        assert len(loaded.variables) == 34
+
+    synchronize = Mock(side_effect=sync)
+    monkeypatch.setattr(
+        "litigant_portal.app.services.corpus.corpus_sync", synchronize
+    )
+    install_fixture(root, court_name)
+    synchronize.assert_called_once()
+    assert {
+        path.relative_to(root): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    } == original
 
 
 def test_run_freezes_binary_references_and_rejects_changes(

@@ -2,7 +2,7 @@
 
 This package owns database-free state transitions and computed progress. Django services own identity resolution, glossary validation, transactions, persistence, and external operations.
 
-The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, guided selection and Continue actions, and chat integration. Corpus cleanup and the North Dakota demonstration are next. The application is intentionally incomplete; the single feature migration and database rebuild come after the schema is settled.
+The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, guided selection and Continue actions, chat integration, and corpus cleanup. The optional System One backend is next. The application is intentionally incomplete; the single feature migration, database rebuild, and live verification come during final assembly.
 
 ## Contract
 
@@ -60,6 +60,8 @@ The guided view displays projected candidates and links to every applicable comp
 The assistant's identity prompt contains the active flow's projected guidance, facts, forms, deadlines, and progress. It refreshes each turn and after `LoadTopicFlow` or a fact change, using the turn's fixed local date. The stored snapshot masks private fact values and dates derived from private facts. Shared prompt artifacts contain no identity projection. Successful historical `LoadTopicFlow` payloads are replaced only in the outgoing model context; stored history stays intact, and citation diagnostics inspect the actual model request.
 
 `ReviewFacts`, the active-flow briefcase, and Docassemble prefill use projected answers. Prefill additionally requires human confirmation. The briefcase follows the displayed chat thread, verifies thread ownership, and ignores late responses for a different thread. Hidden answers remain stored so changing a condition can reveal them again.
+
+Both North Dakota name-change flows place conviction details in their own question group, conditional on the existing criminal-history answer. General criminal-history guidance remains unconditional. Fee-waiver answers select the additional packet form, and the standard flow computes the publication waiting date. The retired `on_page` flag is absent from the application schema and corpus; every question group uses projected applicability.
 
 ## Verification
 

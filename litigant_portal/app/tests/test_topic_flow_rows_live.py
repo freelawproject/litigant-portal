@@ -13,62 +13,76 @@ import re
 import pytest
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
-from litigant_portal.app.selectors.corpus import corpus_load_topics
 from litigant_portal.app.selectors.topic_flow import topic_flow_list
 from litigant_portal.app.services.corpus import corpus_sync
 from litigant_portal.app.services.topic_flow import variable_answer_set
 
 
-def _expected_anchors(flow):
-    """The layout with the interview block expanded to its marked pages."""
-    anchors = []
-    for name in flow.layout:
-        if name == "interview":
-            pages = flow.interview_pages.filter(on_page=True).count()
-            anchors += [f"interview-{n}" for n in range(1, pages + 1)]
-        else:
-            anchors.append(name)
-    return anchors
-
-
 @pytest.mark.postgres
-def test_every_live_flow_renders_with_an_anchor_per_section_key(
+def test_every_live_flow_can_revisit_each_applicable_component(
     client, db, settings
 ):
     settings.CORPUS_COURT = None
     corpus_sync(strict=True)
-    court_of = {topic: court for court, topic in corpus_load_topics()}
     flows = topic_flow_list()
     assert flows
 
     for flow in flows:
         topic = flow.topic.slug
-        url = f"/t/{court_of[topic]}/{topic}/{flow.slug}/"
+        url = f"/t/{flow.topic.court}/{topic}/{flow.slug}/"
         response = client.get(url)
         assert response.status_code == 200, url
-        anchors = re.findall(
-            r'<section id="([^"]+)"', response.content.decode()
-        )
-        assert anchors == _expected_anchors(flow), url
+        anchors = [
+            link["anchor"] for link in response.context["section_links"]
+        ]
+        assert len(response.context["rendered_sections"]) == 1
         assert set(flow.sections.values_list("key", flat=True)) <= set(
             anchors
         ), url
+        for anchor in anchors:
+            selected = client.get(url, {"component": anchor})
+            assert selected.status_code == 200, (url, anchor)
+            assert re.findall(
+                r'<section id="([^"]+)"', selected.content.decode()
+            ) == [anchor]
 
     # Save the "The filing fee" page of the ND standard flow: one boolean
     # the packet reacts to. The anchor is not hard-coded, since page order
     # in standard.yml can change.
     url = "/t/north-dakota/adult-name-change/standard/"
-    assert "Petition for Fee Waiver" not in client.get(url).content.decode()
-    response = client.post(url, {"name_change_fee_waiver_needed": "true"})
+    assert (
+        "Petition for Fee Waiver"
+        not in client.get(url, {"component": "packet"}).content.decode()
+    )
+    fee_page = next(
+        link["anchor"]
+        for link in client.get(url).context["section_links"]
+        if link["heading"] == "The filing fee"
+    )
+    selected = client.get(url, {"component": fee_page})
+    response = client.post(
+        url,
+        {
+            "action": "save",
+            "component": fee_page,
+            "signature": selected.context["rendered_sections"][0].context[
+                "signature"
+            ],
+            "name_change_fee_waiver_needed": "true",
+        },
+    )
     assert response.status_code == 302
-    assert response["Location"].startswith(f"{url}#interview-")
+    assert response["Location"] == url
     stored = dict(
         VariableAnswer.objects.filter(reviewed=True).values_list(
             "variable__name", "value"
         )
     )
     assert stored == {"name_change_fee_waiver_needed": True}
-    assert "Petition for Fee Waiver" in client.get(url).content.decode()
+    assert (
+        "Petition for Fee Waiver"
+        in client.get(url, {"component": "packet"}).content.decode()
+    )
 
 
 # --- the ND output files ----------------------------------------------------
