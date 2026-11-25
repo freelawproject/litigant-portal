@@ -408,6 +408,7 @@ document.addEventListener('alpine:init', () => {
         '/api/admin/users/' + userId + '/role/',
         body
       )
+      this.usersActionNotice = ''
       this.usersActionError = ok ? '' : data.error
       if (ok) this.patchUser(userId, data)
       else await this.loadUsers()
@@ -437,6 +438,7 @@ document.addEventListener('alpine:init', () => {
         '/api/admin/users/' + userId + '/' + action + '/',
         body
       )
+      this.usersActionNotice = ''
       this.usersActionError = result.ok ? '' : result.data.error
       return result
     },
@@ -532,6 +534,7 @@ document.addEventListener('alpine:init', () => {
         return
       }
       this.closeUserDialogs()
+      this.usersActionError = ''
       this.usersActionNotice = data.notice
     },
 
