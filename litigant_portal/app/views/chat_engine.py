@@ -1,4 +1,5 @@
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.http import HttpRequest, JsonResponse
 from django.utils.translation import gettext as _
@@ -34,6 +35,14 @@ def stream(
     if not message and not attachment_ids:
         return JsonResponse({"error": _("Message is required")}, status=400)
 
+    client_timezone = None
+    client_timezone_invalid = False
+    if timezone_name := request.POST.get("client_timezone"):
+        try:
+            client_timezone = ZoneInfo(timezone_name)
+        except (ZoneInfoNotFoundError, ValueError):
+            client_timezone_invalid = True
+
     if attachment_ids:
         try:
             attachment_ids = list(
@@ -55,6 +64,8 @@ def stream(
             message=message,
             thread_id=thread_id,
             attachment_ids=attachment_ids or None,
+            client_timezone=client_timezone,
+            client_timezone_invalid=client_timezone_invalid,
             agent_class=agent_class,
             thread_type=thread_type,
         )

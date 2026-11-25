@@ -3,11 +3,14 @@ healthy tool round emits. All DB-free: the engine's collaborators are patched.""
 
 import json
 import uuid
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
+from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
-from django.test import SimpleTestCase
+from django.http import JsonResponse
+from django.test import RequestFactory, SimpleTestCase
 from django.urls import reverse
 
 from litigant_portal.agents.base import Agent, Tool, ToolOutput
@@ -15,6 +18,7 @@ from litigant_portal.agents.bedrock import ResolvedBedrockModel
 from litigant_portal.app.models import Topic, TopicFlow
 from litigant_portal.app.selectors.bedrock import BedrockModelUnavailable
 from litigant_portal.app.services.chat_engine import chat_stream
+from litigant_portal.app.views.chat_engine import stream
 
 pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 
@@ -22,6 +26,75 @@ pytestmark = pytest.mark.usefixtures("resolved_bedrock_model")
 class FailingAgent(Agent):
     def generate_system_prompt(self, *, thread_id) -> str:
         return "Test prompt"
+
+
+class ChatTimezoneRequestTests(SimpleTestCase):
+    def test_unusable_timezone_does_not_block_a_turn(self):
+        for name, expected_timezone in (
+            (None, None),
+            ("", None),
+            ("America/New_York", "America/New_York"),
+            ("UTC", "UTC"),
+            ("Etc/Unknown", None),
+            ("Not/A_Timezone", None),
+            ("/etc/passwd", None),
+        ):
+            with self.subTest(timezone=name):
+                data = {"message": "Hello"}
+                if name is not None:
+                    data["client_timezone"] = name
+                request = RequestFactory().post("/stream/", data)
+                request.identity = object()
+                with (
+                    patch(
+                        "litigant_portal.app.views.chat_engine.chat_stream",
+                        return_value=JsonResponse({}),
+                    ) as engine,
+                    patch(
+                        "litigant_portal.app.views.chat_engine.lp_logger"
+                    ) as log,
+                ):
+                    response = stream(
+                        request,
+                        agent_class=FailingAgent,
+                        thread_type="user_chat",
+                    )
+                self.assertEqual(response.status_code, 200)
+                engine.assert_called_once()
+                self.assertEqual(engine.call_args.kwargs["message"], "Hello")
+                zone = engine.call_args.kwargs["client_timezone"]
+                self.assertEqual(zone.key if zone else None, expected_timezone)
+                self.assertIs(
+                    engine.call_args.kwargs["client_timezone_invalid"],
+                    bool(name and expected_timezone is None),
+                )
+                log.assert_not_called()
+
+    def test_missing_server_timezone_data_does_not_block_a_turn(self):
+        request = RequestFactory().post(
+            "/stream/",
+            {"message": "Hello", "client_timezone": "America/New_York"},
+        )
+        request.identity = object()
+        with (
+            patch(
+                "litigant_portal.app.views.chat_engine.ZoneInfo",
+                side_effect=ZoneInfoNotFoundError("Missing timezone data"),
+            ),
+            patch(
+                "litigant_portal.app.views.chat_engine.chat_stream",
+                return_value=JsonResponse({}),
+            ) as engine,
+            patch("litigant_portal.app.views.chat_engine.lp_logger") as log,
+        ):
+            response = stream(
+                request, agent_class=FailingAgent, thread_type="user_chat"
+            )
+        self.assertEqual(response.status_code, 200)
+        engine.assert_called_once()
+        self.assertIsNone(engine.call_args.kwargs["client_timezone"])
+        self.assertIs(engine.call_args.kwargs["client_timezone_invalid"], True)
+        log.assert_not_called()
 
 
 def _flow(court="franklin-county-oh"):
@@ -75,7 +148,19 @@ class ChatStreamFallbackTests(SimpleTestCase):
             save=Mock(),
         )
 
-    def stream_events(self, completions=None, *, model="test-model"):
+    def stream_events(
+        self,
+        completions=None,
+        *,
+        model="test-model",
+        client_timezone_invalid=False,
+    ):
+        user_message = SimpleNamespace(
+            id=uuid.uuid4(),
+            created_at=datetime(2026, 11, 23, tzinfo=UTC),
+            data={"role": "user", "content": "Please help."},
+            hidden=False,
+        )
         with (
             patch(
                 "litigant_portal.app.services.chat_engine.litellm.completion",
@@ -94,15 +179,12 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 return_value=self.thread,
             ),
             patch(
-                "litigant_portal.app.services.chat_engine.chat_message_create"
+                "litigant_portal.app.services.chat_engine.chat_message_create",
+                return_value=user_message,
             ) as create_message,
             patch(
                 "litigant_portal.app.services.chat_engine.chat_message_list",
-                return_value=[
-                    SimpleNamespace(
-                        data={"role": "user", "content": "Please help."}
-                    )
-                ],
+                return_value=[user_message],
             ),
             patch(
                 "litigant_portal.app.services.chat_engine.prompt_artifact_get_or_create",
@@ -116,6 +198,7 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 thread_type="test_agent",
                 model=model,
                 thread_id=str(self.thread.id),
+                client_timezone_invalid=client_timezone_invalid,
             )
             events = [
                 json.loads(
@@ -364,9 +447,15 @@ class ChatStreamFallbackTests(SimpleTestCase):
     def test_normal_text_and_tool_turns_still_complete(self):
         text_chunk = _text_chunk("Healthy answer")
         tool_chunk = _tool_chunk("call-1")
-        for with_tool in (False, True):
+        for with_tool, timezone_invalid in (
+            (False, False),
+            (False, True),
+            (True, True),
+        ):
             with (
-                self.subTest(with_tool=with_tool),
+                self.subTest(
+                    with_tool=with_tool, timezone_invalid=timezone_invalid
+                ),
                 patch(
                     "litigant_portal.app.services.chat_engine._execute_tool",
                     return_value=ToolOutput(result="Tool finished"),
@@ -375,8 +464,19 @@ class ChatStreamFallbackTests(SimpleTestCase):
                 completions = [iter([text_chunk])]
                 if with_tool:
                     completions.insert(0, iter([tool_chunk]))
-                events = self.stream_events(completions=completions)
+                events = self.stream_events(
+                    completions=completions,
+                    client_timezone_invalid=timezone_invalid,
+                )
 
+                self.assertEqual(events[0]["type"], "thread")
+                self.assertEqual(events[0]["thread_id"], str(self.thread.id))
+                if timezone_invalid:
+                    self.assertIs(events[0]["client_timezone_invalid"], True)
+                else:
+                    self.assertNotIn("client_timezone_invalid", events[0])
+                for event in events[1:]:
+                    self.assertNotIn("client_timezone_invalid", event)
                 self.assertNotIn("error", [event["type"] for event in events])
                 self.assertEqual(events[-1], {"type": "done"})
                 self.assertIn(
