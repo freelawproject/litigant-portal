@@ -1480,7 +1480,7 @@ requires-dist = [
     { name = "django-allauth", specifier = ">=65.0" },
     { name = "django-cotton", specifier = ">=1.0" },
     { name = "django-linear-migrations", specifier = ">=2.19" },
-    { name = "django-pydantic-field", specifier = ">=0.5.1" },
+    { name = "django-pydantic-field", specifier = ">=0.5.1,<0.6" },
     { name = "django-ratelimit", specifier = ">=4.1" },
     { name = "django-storages", extras = ["s3"], specifier = ">=1.14" },
     { name = "djlint", marker = "extra == 'dev'", specifier = ">=1.36.4" },

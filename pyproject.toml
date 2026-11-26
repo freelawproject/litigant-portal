@@ -38,7 +38,8 @@ dependencies = [
     "django-allauth>=65.0",
     "django-cotton>=1.0",
     "django-linear-migrations>=2.19",
-    "django-pydantic-field>=0.5.1",
+    # 0.6 breaks the chat thread list snippet; lift the cap with #1274
+    "django-pydantic-field>=0.5.1,<0.6",
     "gunicorn>=23.0",
     "heroicons>=2.0",
     # AI Chat — 1.98 adds the bedrock_mantle/* model ids
