@@ -313,6 +313,9 @@ def topic_flow_interview(request, court, topic, role):
     are sent: a prefilled variable skips its interview question, so docassemble
     never asks the litigant to confirm it.
 
+    Prefill is for signed-in users. An anonymous visitor goes to the plain
+    interview link.
+
     Any failure redirects to the plain interview link instead. Unprefilled is a
     worse handoff than prefilled, but a dead button is worse than both.
     """
@@ -337,6 +340,8 @@ def _interview_redirect(request, court, topic, role, target):
         # No docassemble configured in this environment; the packet section
         # hides the button, so only a stale or hand-built POST lands here.
         raise Http404(f"No docassemble configured for {court}/{topic}/{role}")
+    if not request.user.is_authenticated:
+        return redirect(launch_url)
 
     variables = prefill_variables(
         mapping=mapping,
