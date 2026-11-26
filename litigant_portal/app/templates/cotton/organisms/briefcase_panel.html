@@ -1,6 +1,6 @@
 {% load i18n %}
 
-<c-vars show_agent_state="" />
+<c-vars show_agent_state="" signed_out="" sign_in_next="" />
 
 {% comment %}
   show_agent_state opts in to the developer disclosure at the bottom. Off by
@@ -11,10 +11,18 @@
 {# The briefcase body: the visitor's stored facts, grouped by interview page. #}
 {# Shared by the desktop column and the mobile drawer, so the two can't drift. #}
 {# Always renders — an empty briefcase is an empty state, never a missing panel. #}
+{# signed_out shows a sign-in link in place of the facts. sign_in_next is where #}
+{# the link returns to (the current page by default). #}
 <div class="flex-1 overflow-y-auto min-h-0">
   {# chatApp.refreshBriefcase replaces this block with a fresh render when a tool saves a fact (#941). #}
   <div data-briefcase-facts>
-    {% if groups %}
+    {% if signed_out %}
+      {% url 'account_login' as sign_in_url %}
+      {% firstof sign_in_next request.get_full_path as next_url %}
+      {% trans "Sign in to see your saved answers in one place. Your answers are still saved as you go." as signed_out_text %}
+      {% trans "Sign in" as sign_in_label %}
+      <c-molecules.empty-state icon="briefcase" text="{{ signed_out_text }}" action_label="{{ sign_in_label }}" action_href="{{ sign_in_url }}?next={{ next_url|urlencode }}" />
+    {% elif groups %}
       <div class="p-4 space-y-5">
         {% for group in groups %}
           <div>

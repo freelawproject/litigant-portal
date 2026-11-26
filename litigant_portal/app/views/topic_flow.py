@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 
 from litigant_portal.app.selectors.site import contact_list, resource_list
 from litigant_portal.app.selectors.topic_flow import (
+    variable_answer_groups,
     variable_answer_unreviewed_names,
 )
 from litigant_portal.app.services.docassemble import (
@@ -218,10 +219,15 @@ def _flash_saved(request, valid, protected, revealed=()):
 def _render_flow_page(request, page_title, rendered_sections, **extra):
     """Render ``pages/topic_flow.html`` from an ordered ``RenderedSection``
     list."""
-    briefcase_groups = briefcase_answers(request)
+    # The help text is part of answering, so it does not wait for sign-in.
+    answer_groups = (
+        variable_answer_groups(identity=request.identity)
+        if has_identity(request)
+        else []
+    )
     evidence_by_name = {
         answer.variable.name: answer.evidence
-        for group in briefcase_groups
+        for group in answer_groups
         for answer in group["answers"]
         if not answer.reviewed and not answer.variable.is_private
     }
@@ -251,7 +257,7 @@ def _render_flow_page(request, page_title, rendered_sections, **extra):
             "section_links": section_links,
             "frame_left_label": _("Sections"),
             "frame_left_icon": "list-bullet",
-            "briefcase_groups": briefcase_groups,
+            "briefcase_groups": briefcase_answers(request),
             **extra,
         },
     )

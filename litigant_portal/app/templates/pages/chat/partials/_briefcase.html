@@ -1,2 +1,2 @@
 {# The briefcase panel alone, fetched by chatApp.refreshBriefcase (#941). #}
-<c-organisms.briefcase-panel :groups="briefcase_groups" />
+<c-organisms.briefcase-panel :groups="briefcase_groups" :signed_out="user.is_anonymous" sign_in_next="{% url 'pages:chat' %}" />

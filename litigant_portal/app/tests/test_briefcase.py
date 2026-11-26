@@ -7,11 +7,15 @@ grouping is the only one available without a model change.
 
 The private-fact tests render the molecule through the chat page and the
 briefcase fragment; they are postgres-marked like the context tests.
+
+Facts show only to a signed-in user. The sign-in tests cover what an
+anonymous visitor gets in their place.
 """
 
 import re
 
 import pytest
+from django.contrib.auth import get_user_model
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
@@ -26,6 +30,7 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.topic_flow import variable_answer_groups
+from litigant_portal.app.services.user import user_identity_ensure
 from litigant_portal.app.views.design_system import _briefcase_sample
 
 
@@ -34,6 +39,28 @@ def _place(page, variable, order):
         page=page, variable=variable, order=order
     )
 
+
+def _sign_in(client):
+    user = get_user_model().objects.create_user(username="jamie")
+    client.force_login(user)
+    return user_identity_ensure(user=user)
+
+
+def _about_you_page(topic_slug, flow_slug):
+    topic = Topic.objects.create(slug=topic_slug, order=0)
+    flow = TopicFlow.objects.create(
+        topic=topic, slug=flow_slug, order=0, enabled=True
+    )
+    return TopicFlowInterviewPage.objects.create(
+        flow=flow, title="About you", order=0
+    )
+
+
+SIGN_IN_TEXT = "Sign in to see your saved answers in one place."
+
+SIGN_IN_LINK_RE = re.compile(
+    r'<a\b[^>]*href="/accounts/login/\?next=([^"]*)"[^>]*>\s*Sign in\s*</a>'
+)
 
 MASKED_VALUE_RE = re.compile(
     r"<span\b[^>]*\bx-cloak\b[^>]*>\s*([^<]*?)\s*</span>"
@@ -193,19 +220,8 @@ class BriefcaseGroupsTests(TestCase):
 @pytest.mark.postgres
 class BriefcaseChatContextTests(TestCase):
     def test_chat_page_exposes_the_visitors_groups(self):
-        # Seed the identity the middleware will resolve, rather than letting a
-        # GET mint one: an anonymous first paint no longer creates a row.
-        self.client.session.save()
-        identity = UserIdentity.objects.create(
-            session_key=self.client.session.session_key
-        )
-        topic = Topic.objects.create(slug="eviction", order=0)
-        flow = TopicFlow.objects.create(
-            topic=topic, slug="tenant", order=0, enabled=True
-        )
-        page = TopicFlowInterviewPage.objects.create(
-            flow=flow, title="About you", order=0
-        )
+        identity = _sign_in(self.client)
+        page = _about_you_page("eviction", "tenant")
         variable = Variable.objects.create(name="tenant_name", label="Name")
         VariableAnswer.objects.create(
             identity=identity, variable=variable, value="Jamie"
@@ -380,18 +396,16 @@ class BriefcaseSampleTests(SimpleTestCase):
 
 @pytest.fixture
 def visitor(client):
+    return _sign_in(client), _about_you_page("name-change", "adult")
+
+
+@pytest.fixture
+def guest(client):
     client.session.save()
     identity = UserIdentity.objects.create(
         session_key=client.session.session_key
     )
-    topic = Topic.objects.create(slug="name-change", order=0)
-    flow = TopicFlow.objects.create(
-        topic=topic, slug="adult", order=0, enabled=True
-    )
-    page = TopicFlowInterviewPage.objects.create(
-        flow=flow, title="About you", order=0
-    )
-    return identity, page
+    return identity, _about_you_page("name-change", "adult")
 
 
 def _answered(visitor, name, label, value, *, is_private=False, order=0):
@@ -502,21 +516,115 @@ def test_a_group_of_only_private_facts_keeps_its_title(client, visitor):
 
 
 @pytest.mark.postgres
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "url_name", ["pages:chat", "pages:home"], ids=["chat", "home"]
+)
+def test_a_guest_with_saved_answers_sees_the_sign_in_state(
+    client, guest, url_name
+):
+    _answered(guest, "first", "First name", "Jamie")
+    url = reverse(url_name)
+
+    response = client.get(url)
+
+    content = response.content.decode()
+    assert response.context["briefcase_groups"] == []
+    assert SIGN_IN_TEXT in content
+    assert SIGN_IN_LINK_RE.search(content).group(1) == url
+    assert "Jamie" not in content
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_the_fragment_sign_in_link_returns_to_the_chat_page(client, guest):
+    _answered(guest, "first", "First name", "Jamie")
+
+    content = client.get(reverse("pages:briefcase")).content.decode()
+
+    assert SIGN_IN_TEXT in content
+    assert SIGN_IN_LINK_RE.search(content).group(1) == reverse("pages:chat")
+    assert "Jamie" not in content
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_a_first_time_visitor_sees_the_sign_in_state_and_gets_no_identity(
+    client,
+):
+    content = _chat_page(client)
+
+    assert SIGN_IN_TEXT in content
+    assert SIGN_IN_LINK_RE.search(content)
+    assert not UserIdentity.objects.exists()
+
+
+NEXT_FIELD_RE = re.compile(
+    r'<input type="hidden" name="next" value="([^"]*)"\s*/?>'
+)
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_signing_in_from_the_briefcase_link_returns_to_the_page(client):
+    get_user_model().objects.create_user(
+        username="jamie", email="jamie@example.com", password="pw"
+    )
+    chat_url = reverse("pages:chat")
+    next_url = SIGN_IN_LINK_RE.search(_chat_page(client)).group(1)
+    login_url = reverse("account_login")
+
+    form = client.get(f"{login_url}?next={next_url}").content.decode()
+    response = client.post(
+        login_url,
+        {
+            "login": "jamie@example.com",
+            "password": "pw",
+            "next": NEXT_FIELD_RE.search(form).group(1),
+        },
+    )
+
+    assert response["Location"] == chat_url
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("page", "other_page"),
+    [("account_login", "account_signup"), ("account_signup", "account_login")],
+    ids=["login-to-signup", "signup-to-login"],
+)
+def test_the_sign_in_and_sign_up_pages_keep_next_between_them(
+    client, page, other_page
+):
+    content = client.get(f"{reverse(page)}?next=/chat/").content.decode()
+
+    assert NEXT_FIELD_RE.search(content).group(1) == "/chat/"
+    assert re.search(
+        rf'<a\b[^>]*href="{reverse(other_page)}\?next=(/chat/|%2Fchat%2F)"',
+        content,
+    )
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_a_signed_in_user_with_no_answers_sees_the_empty_state(client):
+    _sign_in(client)
+
+    content = _chat_page(client)
+
+    assert "Nothing saved yet." in content
+    assert SIGN_IN_TEXT not in content
+    assert not SIGN_IN_LINK_RE.search(content)
+
+
+@pytest.mark.postgres
 class BriefcaseEndpointTests(TestCase):
     """The briefcase fragment chat re-fetches when a tool saves a fact (#941)."""
 
     def test_returns_the_visitors_current_groups(self):
-        self.client.session.save()
-        identity = UserIdentity.objects.create(
-            session_key=self.client.session.session_key
-        )
-        topic = Topic.objects.create(slug="eviction", order=0)
-        flow = TopicFlow.objects.create(
-            topic=topic, slug="tenant", order=0, enabled=True
-        )
-        page = TopicFlowInterviewPage.objects.create(
-            flow=flow, title="About you", order=0
-        )
+        identity = _sign_in(self.client)
+        page = _about_you_page("eviction", "tenant")
         variable = Variable.objects.create(name="tenant_name", label="Name")
         VariableAnswer.objects.create(
             identity=identity, variable=variable, value="Jamie"
@@ -543,11 +651,12 @@ class BriefcaseEndpointTests(TestCase):
 
         self.assertContains(response, "data-briefcase-facts")
 
-    def test_visitor_without_a_session_gets_the_empty_state(self):
+    def test_visitor_without_a_session_gets_the_sign_in_state(self):
         # A fetch must not mint an identity row, same as the chat page.
         response = self.client.get(reverse("pages:briefcase"))
 
         self.assertEqual(response.context["briefcase_groups"], [])
+        self.assertContains(response, SIGN_IN_TEXT)
         self.assertFalse(UserIdentity.objects.exists())
 
     def test_post_is_rejected(self):

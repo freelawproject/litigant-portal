@@ -1257,9 +1257,27 @@ def _briefcase_names(client):
     return [a.variable.name for g in groups for a in g["answers"]]
 
 
+@pytest.fixture
+def signed_in(client):
+    client.force_login(get_user_model().objects.create_user(username="u"))
+
+
+@pytest.mark.postgres
+def test_a_guest_sees_the_briefcase_sign_in_state_not_saved_facts(
+    client, synced
+):
+    _store(client, "first_name", "Sandra")
+    response = client.get(URL)
+    flat = _flat(response)
+    assert response.context["briefcase_groups"] == []
+    assert "Sign in to see your saved answers in one place." in flat
+    assert f'href="/accounts/login/?next={URL}"' in flat
+    assert "Sandra" not in flat
+
+
 @pytest.mark.postgres
 def test_flipping_a_gate_on_a_later_save_clears_the_gated_answer(
-    client, synced
+    client, synced, signed_in
 ):
     client.post(URL, {"licensed": "true"})
     client.post(URL, {"licensed": "true", "vaccinated": "true"})
@@ -1271,7 +1289,7 @@ def test_flipping_a_gate_on_a_later_save_clears_the_gated_answer(
 
 @pytest.mark.postgres
 def test_flipping_a_gate_and_posting_the_gated_field_together_clears_it(
-    client, synced
+    client, synced, signed_in
 ):
     client.post(URL, {"licensed": "true", "vaccinated": "true"})
     client.post(URL, {"licensed": "false", "vaccinated": "true"})
