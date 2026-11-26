@@ -269,6 +269,7 @@ def test_render_flow_packet_lists_the_forms_without_an_interview_button():
             {"name": "Checklist", "url": ""},
         ],
         "interview_available": False,
+        "prefill_available": False,
         **URL_PARTS,
     }
 
@@ -295,6 +296,30 @@ def test_packet_offers_the_interview_only_with_a_reference_and_a_docassemble(
     assert available(TopicFlow(layout=["packet"])) is False
     settings.DOCASSEMBLE_BASE_URL = None
     assert available(with_reference) is False
+
+
+def test_packet_prefill_needs_an_interview_and_a_prefill_map(settings):
+    conditions = [_condition(PETITION)]
+    reference = "docassemble.x:q.yml"
+    mapped = TopicFlow(
+        layout=["packet"],
+        interview_reference=reference,
+        interview_prefill={"full_name": "petitioner_name"},
+    )
+    unmapped = TopicFlow(layout=["packet"], interview_reference=reference)
+
+    def available(flow):
+        (section,) = rows.render_flow(
+            flow, [], [], {}, form_conditions=conditions, **URL_PARTS
+        )
+        return section.context["prefill_available"]
+
+    settings.DOCASSEMBLE_BASE_URL = "https://da.example.gov/interview"
+    settings.DOCASSEMBLE_PUBLIC_URL = None
+    assert available(mapped) is True
+    assert available(unmapped) is False
+    settings.DOCASSEMBLE_BASE_URL = None
+    assert available(mapped) is False
 
 
 def test_packet_with_a_handoff_renders_for_the_button_alone(settings):

@@ -392,8 +392,11 @@ def render_flow(
                 and interview_launch_url(flow.interview_reference)
             )
             if forms or interview:
+                prefill = interview and bool(flow.interview_prefill)
                 rendered.append(
-                    _render_packet(forms, interview, court, topic, role)
+                    _render_packet(
+                        forms, interview, prefill, court, topic, role
+                    )
                 )
         elif name == "calendar" and deadlines:
             rendered.append(
@@ -444,7 +447,9 @@ def _render_info(anchor, section):
     )
 
 
-def _render_packet(forms, interview_available, court, topic, role):
+def _render_packet(
+    forms, interview_available, prefill_available, court, topic, role
+):
     # URL parts, not a built URL: the template owns {% url %}.
     return RenderedSection(
         anchor_id="packet",
@@ -453,6 +458,7 @@ def _render_packet(forms, interview_available, court, topic, role):
         context={
             "forms": forms,
             "interview_available": interview_available,
+            "prefill_available": prefill_available,
             "court": court,
             "topic": topic,
             "role": role,

@@ -606,6 +606,7 @@ def test_packet_has_no_interview_button_without_a_handoff(client, synced):
     assert "License petition" in block
     assert "Fill out your forms" not in block
     assert f"{URL}interview/" not in block
+    assert PREFILL_HINT not in block
 
 
 # --- the docassemble handoff ------------------------------------------------
@@ -644,6 +645,41 @@ def test_packet_posts_the_handoff_when_the_flow_has_a_reference(
         block,
     )
     assert "Fill out your forms" in block
+
+
+PREFILL_HINT = "to fill these forms with the answers you saved here."
+
+
+@pytest.mark.postgres
+def test_packet_tells_a_guest_to_sign_in_for_prefill(
+    client, synced, docassemble
+):
+    block = _packet(client)
+    assert PREFILL_HINT in block
+    assert re.search(
+        rf'<a\b[^>]*href="/accounts/login/\?next={re.escape(URL)}%23packet"'
+        r"[^>]*>\s*Sign in\s*</a>",
+        block,
+    )
+
+
+@pytest.mark.postgres
+def test_packet_has_no_sign_in_hint_for_a_signed_in_user(
+    client, synced, docassemble, signed_in
+):
+    block = _packet(client)
+    assert "Fill out your forms" in block
+    assert PREFILL_HINT not in block
+
+
+@pytest.mark.postgres
+def test_packet_has_no_sign_in_hint_without_a_prefill_map(
+    client, synced, docassemble
+):
+    TopicFlow.objects.filter(slug=ROLE).update(interview_prefill={})
+    block = _packet(client)
+    assert "Fill out your forms" in block
+    assert PREFILL_HINT not in block
 
 
 @pytest.mark.postgres

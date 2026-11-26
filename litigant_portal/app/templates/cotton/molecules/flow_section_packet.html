@@ -33,6 +33,15 @@
       <span class="sr-only">{% trans "(opens in a new tab)" %}</span>
     </c-atoms.button>
   </form>
+  {% if ctx.prefill_available and not user.is_authenticated %}
+  {% url 'account_login' as sign_in_url %}
+  {% with next_url=request.path|add:"#packet" %}
+  <p class="text-sm text-greyscale-700">
+    <c-atoms.link href="{{ sign_in_url }}?next={{ next_url|urlencode }}">{% trans "Sign in" %}</c-atoms.link>
+    {% trans "to fill these forms with the answers you saved here." %}
+  </p>
+  {% endwith %}
+  {% endif %}
   <p class="text-sm text-greyscale-700">
     {% trans "Save your completed packet somewhere easy to find. You'll need to print and sign these forms and bring them with you to court (or mail them in, depending on your court's process)." %}
   </p>
