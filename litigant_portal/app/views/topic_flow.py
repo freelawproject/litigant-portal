@@ -12,6 +12,7 @@ from django.views.decorators.http import require_POST
 
 from litigant_portal.app.selectors.site import contact_list, resource_list
 from litigant_portal.app.selectors.topic_flow import (
+    variable_answer_groups,
     variable_answer_unreviewed_names,
 )
 from litigant_portal.app.services.docassemble import (
@@ -31,7 +32,6 @@ from litigant_portal.app.topic_flow.prefill import (
     prefill_variables,
 )
 from litigant_portal.app.views.utils import (
-    briefcase_answers,
     has_identity,
     topic_flow_reviewed_answers,
     topic_flow_row_answers,
@@ -218,10 +218,15 @@ def _flash_saved(request, valid, protected, revealed=()):
 def _render_flow_page(request, page_title, rendered_sections, **extra):
     """Render ``pages/topic_flow.html`` from an ordered ``RenderedSection``
     list."""
-    briefcase_groups = briefcase_answers(request)
+    # The help text is part of answering, so it does not wait for sign-in.
+    answer_groups = (
+        variable_answer_groups(identity=request.identity)
+        if has_identity(request)
+        else []
+    )
     evidence_by_name = {
         answer.variable.name: answer.evidence
-        for group in briefcase_groups
+        for group in answer_groups
         for answer in group["answers"]
         if not answer.reviewed and not answer.variable.is_private
     }
@@ -251,7 +256,10 @@ def _render_flow_page(request, page_title, rendered_sections, **extra):
             "section_links": section_links,
             "frame_left_label": _("Sections"),
             "frame_left_icon": "list-bullet",
-            "briefcase_groups": briefcase_groups,
+            # The briefcase does wait.
+            "briefcase_groups": (
+                answer_groups if request.user.is_authenticated else []
+            ),
             **extra,
         },
     )
@@ -307,6 +315,9 @@ def topic_flow_interview(request, court, topic, role):
     are sent: a prefilled variable skips its interview question, so docassemble
     never asks the litigant to confirm it.
 
+    Prefill is for signed-in users. An anonymous visitor goes to the plain
+    interview link.
+
     Any failure redirects to the plain interview link instead. Unprefilled is a
     worse handoff than prefilled, but a dead button is worse than both.
     """
@@ -331,6 +342,8 @@ def _interview_redirect(request, court, topic, role, target):
         # No docassemble configured in this environment; the packet section
         # hides the button, so only a stale or hand-built POST lands here.
         raise Http404(f"No docassemble configured for {court}/{topic}/{role}")
+    if not request.user.is_authenticated:
+        return redirect(launch_url)
 
     variables = prefill_variables(
         mapping=mapping,

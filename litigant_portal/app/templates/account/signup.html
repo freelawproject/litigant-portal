@@ -17,6 +17,7 @@
   <c-molecules.form-errors :form="form" />
   <form method="post" action="{% url 'account_signup' %}" class="space-y-4">
     {% csrf_token %}
+    {{ redirect_field }}
     {% trans "Email address" as email_label %}
     {% trans "you@example.com" as email_placeholder %}
     <c-molecules.form-field label="{{ email_label }}" type="email" name="email" id="id_email" placeholder="{{ email_placeholder }}" required autocomplete="email" value="{{ form.email.value|default:'' }}" :errors="form.email.errors" />
@@ -40,6 +41,6 @@
 {% block auth_footer %}
   <p class="text-sm text-greyscale-600">
     {% trans "Already have an account?" %}
-    <c-atoms.link href="{% url 'account_login' %}" variant="primary">{% trans "Sign in" %}</c-atoms.link>
+    <c-atoms.link href="{{ login_url }}" variant="primary">{% trans "Sign in" %}</c-atoms.link>
   </p>
 {% endblock auth_footer %}

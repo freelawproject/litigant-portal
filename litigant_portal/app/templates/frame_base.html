@@ -28,7 +28,7 @@
     {% endblock content %}
     <c-slot name="right">
       {% block frame_right %}
-        <c-organisms.briefcase-panel :groups="briefcase_groups" />
+        <c-organisms.briefcase-panel :groups="briefcase_groups" :signed_out="user.is_anonymous" />
       {% endblock frame_right %}
     </c-slot>
   </c-organisms.site-frame>

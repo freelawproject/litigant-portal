@@ -117,12 +117,12 @@ def topic_flow_cards() -> list[dict]:
 
 
 def briefcase_answers(request) -> list[dict]:
-    """The visitor's stored facts, grouped for the briefcase panel.
+    """A signed-in user's stored facts, grouped for the briefcase panel.
 
-    Empty for a visitor with no identity yet, which renders as the panel's
-    empty state rather than an absent context key.
+    Empty for an anonymous visitor, so the key is always in the context
+    and the panel renders its sign-in state.
     """
-    if not has_identity(request):
+    if not request.user.is_authenticated:
         return []
     return variable_answer_groups(identity=request.identity)
 

@@ -457,5 +457,5 @@
 {% endblock content %}
 
 {% block frame_right %}
-  <c-organisms.briefcase-panel :groups="briefcase_groups" show_agent_state />
+  <c-organisms.briefcase-panel :groups="briefcase_groups" :signed_out="user.is_anonymous" show_agent_state />
 {% endblock frame_right %}

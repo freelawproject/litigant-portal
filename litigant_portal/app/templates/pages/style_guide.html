@@ -1239,8 +1239,12 @@
           <p class="text-sm text-greyscale-500 mb-4">
             Always renders. With no facts it shows its empty state rather
             than collapsing, because the panel is a fixed part of the chat
-            frame. A raw agent-state disclosure appears at the bottom for
-            users holding <code>manage_site</code> (FLP Staff).
+            frame. Pages pass <code>signed_out</code> for an anonymous
+            visitor: the panel then shows a sign-in link and no facts.
+            <code>sign_in_next</code> sets where the link returns to (the
+            current page, without its query, by default). A raw agent-state
+            disclosure appears at the bottom for users holding
+            <code>manage_site</code> (FLP Staff).
           </p>
           <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
             <c-organisms.briefcase-panel :groups="briefcase_groups" />
@@ -1248,6 +1252,10 @@
           <p class="text-sm text-greyscale-500 mb-2">Empty state:</p>
           <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
             <c-organisms.briefcase-panel />
+          </div>
+          <p class="text-sm text-greyscale-500 mb-2">Signed out:</p>
+          <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
+            <c-organisms.briefcase-panel signed_out />
           </div>
         </section>
         <section id="auth-layout" class="mb-12" aria-labelledby="auth-layout-heading">

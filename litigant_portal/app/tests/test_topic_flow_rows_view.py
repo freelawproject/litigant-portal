@@ -14,7 +14,7 @@ from unittest import mock
 
 import pytest
 import vobject
-from django.contrib.auth import get_user_model
+from django.contrib.auth import SESSION_KEY, get_user_model
 from django.test import Client
 from django.urls import Resolver404, resolve, reverse
 from django.utils import timezone
@@ -26,11 +26,14 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.selectors.corpus import CorpusSchema
+from litigant_portal.app.selectors.topic_flow import variable_answer_groups
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
 from litigant_portal.app.services.docassemble import DocassembleError
 from litigant_portal.app.services.topic_flow import variable_answer_set
+from litigant_portal.app.services.user import user_identity_ensure
 from litigant_portal.app.views import topic_flow as topic_flow_views
+from litigant_portal.app.views import utils as views_utils
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
@@ -295,9 +298,15 @@ def _has_option(flat, value, label):
 def _store(client, name, value, reviewed=False, evidence=None):
     """Store an answer the way another surface would (the assistant, say),
     on the identity the middleware will resolve for this client."""
-    identity, _ = UserIdentity.objects.get_or_create(
-        user=None, session_key=client.session.session_key
-    )
+    user_id = client.session.get(SESSION_KEY)
+    if user_id:
+        identity = user_identity_ensure(
+            user=get_user_model().objects.get(pk=user_id)
+        )
+    else:
+        identity, _ = UserIdentity.objects.get_or_create(
+            user=None, session_key=client.session.session_key
+        )
     variable_answer_set(
         identity=identity,
         variable=Variable.objects.get(name=name),
@@ -599,6 +608,7 @@ def test_packet_has_no_interview_button_without_a_handoff(client, synced):
     assert "License petition" in block
     assert "Fill out your forms" not in block
     assert f"{URL}interview/" not in block
+    assert PREFILL_HINT not in block
 
 
 # --- the docassemble handoff ------------------------------------------------
@@ -639,6 +649,41 @@ def test_packet_posts_the_handoff_when_the_flow_has_a_reference(
     assert "Fill out your forms" in block
 
 
+PREFILL_HINT = "to fill these forms with the answers you saved here."
+
+
+@pytest.mark.postgres
+def test_packet_tells_a_guest_to_sign_in_for_prefill(
+    client, synced, docassemble
+):
+    block = _packet(client)
+    assert PREFILL_HINT in block
+    assert re.search(
+        rf'<a\b[^>]*href="/accounts/login/\?next={re.escape(URL)}%23packet"'
+        r"[^>]*>\s*Sign in\s*</a>",
+        block,
+    )
+
+
+@pytest.mark.postgres
+def test_packet_has_no_sign_in_hint_for_a_signed_in_user(
+    client, synced, docassemble, signed_in
+):
+    block = _packet(client)
+    assert "Fill out your forms" in block
+    assert PREFILL_HINT not in block
+
+
+@pytest.mark.postgres
+def test_packet_has_no_sign_in_hint_without_a_prefill_map(
+    client, synced, docassemble
+):
+    TopicFlow.objects.filter(slug=ROLE).update(interview_prefill={})
+    block = _packet(client)
+    assert "Fill out your forms" in block
+    assert PREFILL_HINT not in block
+
+
 @pytest.mark.postgres
 def test_packet_hides_the_handoff_without_docassemble_configured(
     client, synced, settings
@@ -653,7 +698,7 @@ def test_packet_hides_the_handoff_without_docassemble_configured(
 
 @pytest.mark.postgres
 def test_interview_post_sends_reviewed_answers_under_their_interview_names(
-    client, synced, docassemble
+    client, synced, docassemble, signed_in
 ):
     _store(client, "full_name", "Jane Doe", reviewed=True)
     _store(client, "license_date", "2026-02-01", reviewed=True)
@@ -675,7 +720,7 @@ def test_interview_post_sends_reviewed_answers_under_their_interview_names(
 
 @pytest.mark.postgres
 def test_interview_post_never_sends_an_unreviewed_answer(
-    client, synced, docassemble
+    client, synced, docassemble, signed_in
 ):
     _store(client, "full_name", "Jane Doe", reviewed=True)
     _store(client, "license_date", "2026-02-01", reviewed=False)
@@ -685,9 +730,18 @@ def test_interview_post_never_sends_an_unreviewed_answer(
 
 @pytest.mark.postgres
 def test_interview_post_with_nothing_to_prefill_goes_to_the_plain_link(
-    client, synced, docassemble
+    client, synced, docassemble, signed_in
 ):
     _store(client, "pet_kind", "dog", reviewed=True)
+    assert client.post(INTERVIEW_URL)["Location"] == DA_LAUNCH
+    assert docassemble.calls == []
+
+
+@pytest.mark.postgres
+def test_a_guest_with_reviewed_answers_goes_to_the_plain_interview(
+    client, synced, docassemble
+):
+    _store(client, "full_name", "Jane Doe", reviewed=True)
     assert client.post(INTERVIEW_URL)["Location"] == DA_LAUNCH
     assert docassemble.calls == []
 
@@ -704,7 +758,7 @@ def test_a_fresh_guest_goes_straight_to_the_plain_interview(
 
 @pytest.mark.postgres
 def test_a_flow_with_an_empty_prefill_map_links_out_without_a_session(
-    client, synced, docassemble
+    client, synced, docassemble, signed_in
 ):
     TopicFlow.objects.filter(slug=ROLE).update(interview_prefill={})
     _store(client, "full_name", "Jane Doe", reviewed=True)
@@ -714,7 +768,7 @@ def test_a_flow_with_an_empty_prefill_map_links_out_without_a_session(
 
 @pytest.mark.postgres
 def test_a_changed_answer_is_sent_at_its_new_value(
-    client, synced, docassemble
+    client, synced, docassemble, signed_in
 ):
     _store(client, "full_name", "Jane Doe", reviewed=True)
     _store(client, "full_name", "Jane Roe", reviewed=True)
@@ -724,7 +778,7 @@ def test_a_changed_answer_is_sent_at_its_new_value(
 
 @pytest.mark.postgres
 def test_the_same_answer_is_sent_once_the_litigant_confirms_it(
-    client, synced, docassemble
+    client, synced, docassemble, signed_in
 ):
     _store(client, "full_name", "Jane Doe", reviewed=False)
     client.post(URL, {"first_name": "", "full_name": "Jane Doe"})
@@ -734,7 +788,7 @@ def test_the_same_answer_is_sent_once_the_litigant_confirms_it(
 
 @pytest.mark.postgres
 def test_an_answer_confirmed_through_the_chat_endpoint_reaches_the_payload(
-    client, synced, docassemble
+    client, synced, docassemble, signed_in
 ):
     _store(client, "full_name", "Jane Doe", reviewed=False)
     client.post(
@@ -747,7 +801,7 @@ def test_an_answer_confirmed_through_the_chat_endpoint_reaches_the_payload(
 
 @pytest.mark.postgres
 def test_an_assistant_overwrite_drops_a_confirmed_answer_again(
-    client, synced, docassemble
+    client, synced, docassemble, signed_in
 ):
     _store(client, "full_name", "Jane Doe", reviewed=True)
     _store(client, "full_name", "Jane Roe", reviewed=False)
@@ -775,7 +829,7 @@ def test_answers_still_reach_the_payload_after_login(
 
 @pytest.mark.postgres
 def test_interview_post_falls_back_to_the_plain_link_when_the_session_fails(
-    client, synced, settings, monkeypatch
+    client, synced, settings, monkeypatch, signed_in
 ):
     settings.DOCASSEMBLE_BASE_URL = DA_BASE
     settings.DOCASSEMBLE_PUBLIC_URL = None
@@ -792,7 +846,7 @@ def test_interview_post_falls_back_to_the_plain_link_when_the_session_fails(
 
 @pytest.mark.postgres
 def test_an_unexpected_client_error_is_not_swallowed(
-    client, synced, settings, monkeypatch
+    client, synced, settings, monkeypatch, signed_in
 ):
     # Only DocassembleError means "fall back"; a bug in our own code must
     # surface rather than hide behind an unprefilled interview.
@@ -1257,9 +1311,41 @@ def _briefcase_names(client):
     return [a.variable.name for g in groups for a in g["answers"]]
 
 
+@pytest.fixture
+def signed_in(client):
+    client.force_login(get_user_model().objects.create_user(username="u"))
+
+
+@pytest.mark.postgres
+def test_a_guest_sees_the_briefcase_sign_in_state_not_saved_facts(
+    client, synced
+):
+    _store(client, "first_name", "Sandra")
+    response = client.get(URL)
+    flat = _flat(response)
+    assert response.context["briefcase_groups"] == []
+    assert "Sign in to see your saved answers in one place." in flat
+    assert f'href="/accounts/login/?next={URL}"' in flat
+    assert "Sandra" not in flat
+
+
+@pytest.mark.postgres
+def test_a_signed_in_page_load_reads_the_answer_groups_once(
+    client, synced, signed_in
+):
+    # The view and the briefcase helper each import the selector.
+    spy = mock.Mock(wraps=variable_answer_groups)
+    with (
+        mock.patch.object(topic_flow_views, "variable_answer_groups", spy),
+        mock.patch.object(views_utils, "variable_answer_groups", spy),
+    ):
+        client.get(URL)
+    assert spy.call_count == 1
+
+
 @pytest.mark.postgres
 def test_flipping_a_gate_on_a_later_save_clears_the_gated_answer(
-    client, synced
+    client, synced, signed_in
 ):
     client.post(URL, {"licensed": "true"})
     client.post(URL, {"licensed": "true", "vaccinated": "true"})
@@ -1271,7 +1357,7 @@ def test_flipping_a_gate_on_a_later_save_clears_the_gated_answer(
 
 @pytest.mark.postgres
 def test_flipping_a_gate_and_posting_the_gated_field_together_clears_it(
-    client, synced
+    client, synced, signed_in
 ):
     client.post(URL, {"licensed": "true", "vaccinated": "true"})
     client.post(URL, {"licensed": "false", "vaccinated": "true"})
