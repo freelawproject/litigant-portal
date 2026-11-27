@@ -10,7 +10,7 @@ import pytest
 import requests
 from django.test import override_settings
 
-from litigant_portal.app.services.docassemble import (
+from litigant_portal.state.docassemble import (
     DocassembleError,
     docassemble_session_create,
     interview_launch_url,

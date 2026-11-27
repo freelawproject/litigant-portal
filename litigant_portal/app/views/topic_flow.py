@@ -16,11 +16,6 @@ from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_http_methods, require_POST
 
 from litigant_portal.app.selectors.site import contact_list, resource_list
-from litigant_portal.app.services.docassemble import (
-    DocassembleError,
-    docassemble_session_create,
-    interview_launch_url,
-)
 from litigant_portal.app.services.topic_flow import (
     topic_flow_section_viewed,
     variable_answer_confirm,
@@ -29,14 +24,17 @@ from litigant_portal.app.services.topic_flow import (
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.downloads import ics_artifact, vcf_artifact
-from litigant_portal.app.topic_flow.prefill import (
-    flow_interview_target,
-    prefill_variables,
-)
 from litigant_portal.app.views.utils import (
     briefcase_answers,
     has_identity,
     topic_flow_row_get,
+)
+from litigant_portal.state.docassemble import (
+    DocassembleError,
+    docassemble_session_create,
+    flow_interview_target,
+    interview_launch_url,
+    prefill_variables,
 )
 from litigant_portal.state.selectors import (
     flow_pages,

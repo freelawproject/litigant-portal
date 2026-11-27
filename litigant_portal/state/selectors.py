@@ -13,7 +13,7 @@ from litigant_portal.app.cache import (
     TOPIC_LIST_CACHE_KEY,
 )
 from litigant_portal.app.models import Contact, Resource, UserIdentity
-from litigant_portal.app.services.docassemble import interview_launch_url
+from litigant_portal.state.docassemble import interview_launch_url
 from litigant_portal.state.models import (
     FlowViewState,
     Topic,

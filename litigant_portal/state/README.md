@@ -1,6 +1,6 @@
 # State reduction and projection
 
-This package owns state models, snapshot loading, database-free transitions, and computed progress. Application services still own identity resolution, glossary validation, transactions, persistence, and external operations.
+This package owns state models, snapshot loading, database-free transitions, computed progress, and the Docassemble handoff. Application services still own identity resolution, glossary validation, transactions, and persistence.
 
 The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, guided selection and Continue actions, chat integration, and corpus cleanup. The optional System One backend is scaffolded only. The application is intentionally incomplete; the single feature migration, database rebuild, and live verification come during final assembly.
 
@@ -33,7 +33,7 @@ The service locks the identity before reading its snapshot, validates the action
 
 ## Docassemble
 
-`docassemble.request_interview` is an intentional no-op lifecycle boundary. It creates no session, operation result, or completion status. The existing user-initiated interview launch remains in the application service.
+`state/docassemble.py` owns the existing session client and explicit prefill mapping. HTTP redirects and fallback handling stay in the application view. `docassemble.request_interview` remains an intentional no-op lifecycle boundary; it creates no session, operation result, or completion status.
 
 ## System One
 

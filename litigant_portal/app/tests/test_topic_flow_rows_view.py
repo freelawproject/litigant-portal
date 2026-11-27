@@ -28,9 +28,9 @@ from litigant_portal.app.models import (
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
-from litigant_portal.app.services.docassemble import DocassembleError
 from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.views import topic_flow as topic_flow_views
+from litigant_portal.state.docassemble import DocassembleError
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"

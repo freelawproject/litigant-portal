@@ -29,11 +29,9 @@ class ReviewFacts(Tool):
         from litigant_portal.app.selectors.topic_flow import (
             topic_flow_url_kwargs,
         )
-        from litigant_portal.app.services.docassemble import (
-            interview_launch_url,
-        )
-        from litigant_portal.app.topic_flow.prefill import (
+        from litigant_portal.state.docassemble import (
             flow_interview_target,
+            interview_launch_url,
         )
         from litigant_portal.state.selectors import flow_state
 
