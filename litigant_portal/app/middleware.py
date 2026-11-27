@@ -1,5 +1,6 @@
 import secrets
 
+from allauth.account.authentication import get_authentication_records
 from allauth.mfa.models import Authenticator
 from allauth.mfa.utils import is_mfa_enabled
 from django.conf import settings
@@ -7,6 +8,7 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.functional import SimpleLazyObject
+from django.utils.http import urlencode
 from django.utils.translation import gettext as _
 from django_ratelimit.core import is_ratelimited
 
@@ -112,10 +114,20 @@ def _two_factor_exempt_paths() -> tuple[str, ...]:
     )
 
 
+def _used_a_code(request) -> bool:
+    """Whether this session has passed a two-factor code: at sign-in, at
+    setup, or on the confirm page."""
+    return any(
+        record.get("method") == "mfa"
+        for record in get_authentication_records(request, request.user)
+    )
+
+
 class StaffTwoFactorMiddleware:
-    """Send a staff account with no two-factor to the setup page. The
-    API answers 403 instead. Any other account gets a 404 on the
-    two-factor pages, unless it still has two-factor to turn off.
+    """Send a staff account with no two-factor to the setup page, and a
+    staff session that has not passed a code to the code page. The API
+    answers 403 instead. Any other account gets a 404 on the two-factor
+    pages, unless it still has two-factor to turn off.
 
     Recovery codes that can no longer be decrypted are never shown: the
     page says so instead."""
@@ -149,14 +161,24 @@ class StaffTwoFactorMiddleware:
             not settings.STAFF_TWO_FACTOR_REQUIRED
             or not staff
             or request.path.startswith(_two_factor_exempt_paths())
-            or is_mfa_enabled(user, [Authenticator.Type.TOTP])
         ):
             return self.get_response(request)
-        if request.path.startswith("/api/"):
+        api = request.path.startswith("/api/")
+        if not is_mfa_enabled(user, [Authenticator.Type.TOTP]):
+            if api:
+                return JsonResponse(
+                    {"error": _("Set up two-factor sign-in first.")},
+                    status=403,
+                )
+            return redirect("mfa_activate_totp")
+        if _used_a_code(request):
+            return self.get_response(request)
+        if api:
             return JsonResponse(
-                {"error": _("Set up two-factor sign-in first.")}, status=403
+                {"error": _("Type your two-factor code first.")}, status=403
             )
-        return redirect("mfa_activate_totp")
+        query = urlencode({"next": request.get_full_path()})
+        return redirect(f"{reverse('mfa_reauthenticate')}?{query}")
 
 
 def resolve_identity(request) -> UserIdentity:

@@ -18,6 +18,7 @@ from allauth.mfa.totp.internal.auth import (
     hotp_value,
 )
 from django.contrib.auth import get_user_model
+from django.test import Client
 from django.urls import reverse
 from django.utils.http import urlencode
 
@@ -635,15 +636,100 @@ def test_staff_without_two_factor_can_set_up_and_sign_out(client, required):
     assert not _signed_in(client)
 
 
-def test_admin_opens_after_setup(client, required):
-    user_create(email=EMAIL, password=PASSWORD, role=Tier.FLP_STAFF)
+def _set_up_two_factor(client):
+    """Set two-factor up in ``client``'s session and return the secret."""
     _login_and_confirm_access(client)
     secret = client.get(SETUP_URL).context["form"].secret
-
     client.post(SETUP_URL, {"code": _code(secret)})
+    return secret
+
+
+# allauth reports a new authenticator on commit, and the session that set
+# it up is recorded then. Only a real commit happens inside the request.
+commits = pytest.mark.django_db(transaction=True)
+
+
+@commits
+def test_admin_opens_after_setup(client, required):
+    user_create(email=EMAIL, password=PASSWORD, role=Tier.FLP_STAFF)
+
+    _set_up_two_factor(client)
 
     assert client.get(ADMIN_URL).status_code == 200
     assert client.get(ADMIN_API_URL).status_code == 200
+
+
+@commits
+def test_a_session_from_before_setup_is_asked_for_the_code(client, required):
+    user_create(email=EMAIL, password=PASSWORD, role=Tier.FLP_STAFF)
+    older = Client()
+    _login(older)
+    secret = _set_up_two_factor(client)
+    code_page = f"{CONFIRM_BY_CODE_URL}?{urlencode({'next': ADMIN_URL})}"
+
+    assert older.get(ADMIN_URL)["Location"] == code_page
+    response = older.get(ADMIN_API_URL)
+    assert response.status_code == 403
+    assert response.json() == {"error": "Type your two-factor code first."}
+    assert older.get(code_page).status_code == 200
+
+    response = older.post(
+        CONFIRM_BY_CODE_URL, {"code": _code(secret), "next": ADMIN_URL}
+    )
+
+    assert response["Location"] == ADMIN_URL
+    assert older.get(ADMIN_URL).status_code == 200
+    assert older.get(ADMIN_API_URL).status_code == 200
+
+
+@pytest.mark.parametrize(
+    "code_from",
+    [lambda secret, codes: _code(secret), lambda secret, codes: codes[0]],
+    ids=["authenticator-code", "recovery-code"],
+)
+def test_a_session_signed_in_with_a_code_is_not_asked_again(
+    client, required, code_from
+):
+    _, secret, recovery_codes = _two_factor_user()
+    _login(client)
+
+    client.post(CODE_URL, {"code": code_from(secret, recovery_codes)})
+
+    assert client.get("/").status_code == 200
+
+
+def test_the_password_alone_does_not_stand_in_for_the_code(client, required):
+    user, _, _ = _two_factor_user()
+    client.force_login(user)
+
+    client.post(CONFIRM_ACCESS_URL, {"password": PASSWORD})
+
+    assert client.get("/")["Location"].startswith(CONFIRM_BY_CODE_URL)
+
+
+def test_a_session_without_a_code_can_sign_out(client, required):
+    user, _, _ = _two_factor_user()
+    client.force_login(user)
+
+    assert client.post("/accounts/logout/")["Location"] == "/"
+    assert not _signed_in(client)
+
+
+def test_no_code_is_asked_when_the_rule_is_off(client, settings):
+    settings.STAFF_TWO_FACTOR_REQUIRED = False
+    user, _, _ = _two_factor_user()
+    client.force_login(user)
+
+    assert client.get("/").status_code == 200
+
+
+def test_a_litigant_with_two_factor_is_not_asked_for_the_code_again(
+    client, required
+):
+    user, _, _ = _two_factor_user(role=Tier.APP_USER)
+    client.force_login(user)
+
+    assert client.get("/").status_code == 200
 
 
 def test_a_litigant_is_never_sent_to_setup(client, required):

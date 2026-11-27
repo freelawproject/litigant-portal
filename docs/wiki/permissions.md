@@ -104,6 +104,13 @@ The pages live under `/accounts/2fa/`.
   rule is on by default when `DEBUG` is off and off by default in `DEBUG`;
   `true` or `false` wins in both. With the rule off outside `DEBUG`, the
   `two_factor.W001` system check warns at startup.
+- **Every staff session passes a code:** the rule also checks the
+  session, not only the account. A session counts once it has passed a
+  code: at sign-in, at setup (`record_two_factor_setup` in `signals.py`),
+  or on the confirm page. A staff session that has not, for example one
+  signed in on another browser before setup, is sent to the confirm page
+  for a code and then back to where it was going. `/api/` answers a
+  JSON 403. Confirming with the password does not count.
 - **Unconfirmed addresses:** setup does not wait for every email address
   to be confirmed (`MFA_ALLOW_UNVERIFIED_EMAIL`). Sign-in already needs a
   confirmed address where real mail goes out, and an unconfirmed second

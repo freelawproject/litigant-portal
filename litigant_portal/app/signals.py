@@ -1,5 +1,7 @@
 import logging
 
+from allauth.account.internal.flows.login import record_authentication
+from allauth.mfa.models import Authenticator
 from django.contrib.auth.models import Group, Permission
 from django.core.cache import cache
 from django.db import DEFAULT_DB_ALIAS
@@ -61,4 +63,18 @@ def clear_data_model_cache(sender, **kwargs):
             "until the next write.",
             DATA_MODEL_CACHE_KEYS,
             exc_info=True,
+        )
+
+
+def record_two_factor_setup(sender, request, user, authenticator, **kwargs):
+    """Count setting up an authenticator app as a code sign-in for that
+    session: the setup form checked a code. Without it
+    StaffTwoFactorMiddleware would ask for a code right after setup."""
+    if authenticator.type == Authenticator.Type.TOTP:
+        record_authentication(
+            request,
+            user,
+            "mfa",
+            id=authenticator.pk,
+            type=authenticator.type,
         )
