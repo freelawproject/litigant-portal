@@ -666,16 +666,16 @@ wheels = [
 
 [[package]]
 name = "django-pydantic-field"
-version = "0.5.7"
+version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "django" },
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/58/89/cf922c546fb0fd2e6f6db4e35f26e67dfffb104abc66ca922e470e6d7315/django_pydantic_field-0.5.7.tar.gz", hash = "sha256:7e46d0fad52c46502ac079e2635fb0689489949f3b66df0b061707533f76e811", size = 25872, upload-time = "2026-10-30T01:34:13.384Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/d6/18a16db87b15e22d91eda5056472f7235dd3ad85b0cf1367064bc322b3bb/django_pydantic_field-0.6.1.tar.gz", hash = "sha256:db4e1be601ea733cdafed86b197e3b1fb720255780a8edf896f246692da7b247", size = 36535, upload-time = "2026-11-09T17:49:52.51Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6a/a0/af45a026c955de22f9c6c7dc2bfdd777df03cbd412ed067cb41312554f55/django_pydantic_field-0.5.7-py3-none-any.whl", hash = "sha256:084c8f998a5042f2a4b958cdba724528723f013a9dcee50cb1708c993b1ee6c8", size = 37664, upload-time = "2026-10-30T01:34:12.274Z" },
+    { url = "https://files.pythonhosted.org/packages/37/ed/9aa83a0e14a6cf7cfbebc41b24c7c5762ead997c1e6b594b842a02eddcbb/django_pydantic_field-0.6.1-py3-none-any.whl", hash = "sha256:e45d02b2d86137fd0886a36cc579adc3bafeb009331481cc9e118e808bce37c7", size = 50208, upload-time = "2026-11-09T17:49:51.463Z" },
 ]
 
 [[package]]
@@ -1480,7 +1480,7 @@ requires-dist = [
     { name = "django-allauth", specifier = ">=65.0" },
     { name = "django-cotton", specifier = ">=1.0" },
     { name = "django-linear-migrations", specifier = ">=2.19" },
-    { name = "django-pydantic-field", specifier = ">=0.5.1,<0.6" },
+    { name = "django-pydantic-field", specifier = ">=0.5.1" },
     { name = "django-ratelimit", specifier = ">=4.1" },
     { name = "django-storages", extras = ["s3"], specifier = ">=1.14" },
     { name = "djlint", marker = "extra == 'dev'", specifier = ">=1.36.4" },

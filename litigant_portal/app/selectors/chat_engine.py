@@ -2,6 +2,7 @@ import json
 import re
 
 from django.db.models import OuterRef, QuerySet, Subquery, Sum
+from django.db.models.fields.json import KT
 
 from litigant_portal.app.models import ChatMessage, ChatThread, UserIdentity
 
@@ -20,7 +21,9 @@ def chat_thread_list(
         ChatThread.objects.filter(identity=identity, thread_type=thread_type)
         .annotate(
             last_message_at=Subquery(visible.values("created_at")[:1]),
-            snippet=Subquery(snippet_source.values("data__content")[:1]),
+            snippet=Subquery(
+                snippet_source.values(text=KT("data__content"))[:1]
+            ),
         )
         .order_by("-updated_at")
     )
