@@ -94,6 +94,15 @@ def test_signup_emails_a_confirm_link(client, court):
     assert "—" not in message.body
 
 
+def test_confirm_email_states_the_confirm_link_lifetime(client, settings):
+    settings.ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
+
+    _signup(client)
+
+    [message] = mail.outbox
+    assert "3 days" in message.body
+
+
 def test_signup_lands_on_the_check_your_email_page(client):
     page = client.get(_signup(client)["Location"])
 

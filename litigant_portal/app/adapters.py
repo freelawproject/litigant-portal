@@ -29,11 +29,15 @@ class AccountAdapter(DefaultAccountAdapter):
     def send_mail(self, template_prefix, email, context):
         # Mail renders without context processors.
         site = site_get()
+        if "email_confirmation" in template_prefix:
+            link_days = settings.ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS
+        else:
+            link_days = settings.PASSWORD_RESET_TIMEOUT // (24 * 60 * 60)
         context = {
             "court_name": site.branding_name
             or site.court_name
             or "Litigant Portal",
-            "link_days": settings.PASSWORD_RESET_TIMEOUT // (24 * 60 * 60),
+            "link_days": link_days,
             **context,
         }
         super().send_mail(template_prefix, email, context)
