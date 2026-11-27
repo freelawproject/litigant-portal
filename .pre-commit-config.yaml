@@ -30,7 +30,7 @@ repos:
         exclude: ^(corpus-sources/|scripts/agent_eval/references/)
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.3
+    rev: v0.17.6
     hooks:
       - id: ruff
         args: [--fix]
@@ -47,7 +47,7 @@ repos:
         additional_dependencies: ['prettier@3.8.1']
 
   - repo: https://github.com/djlint/djLint
-    rev: v1.48.1
+    rev: v1.54.0
     hooks:
       - id: djlint-django
 
