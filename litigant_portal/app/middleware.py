@@ -115,12 +115,26 @@ def _two_factor_exempt_paths() -> tuple[str, ...]:
 class StaffTwoFactorMiddleware:
     """Send a staff account with no two-factor to the setup page. The
     API answers 403 instead. Any other account gets a 404 on the
-    two-factor pages, unless it still has two-factor to turn off."""
+    two-factor pages, unless it still has two-factor to turn off.
+
+    Recovery codes that can no longer be decrypted are never shown: the
+    page says so instead."""
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
+        response = self._respond(request)
+        if getattr(
+            request, "two_factor_unreadable", False
+        ) and request.path in (
+            reverse("mfa_view_recovery_codes"),
+            reverse("mfa_download_recovery_codes"),
+        ):
+            return render(request, "mfa/recovery_codes/unreadable.html")
+        return response
+
+    def _respond(self, request):
         user = request.user
         if not user.is_authenticated:
             return self.get_response(request)

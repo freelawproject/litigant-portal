@@ -143,8 +143,10 @@ The pages live under `/accounts/2fa/`.
   using `TWO_FACTOR_KEY` on an instance that ran without it, put the
   `SECRET_KEY` value in `TWO_FACTOR_KEY_FALLBACKS`.
 - **After a lost key,** no code or recovery code matches, and the
-  recovery codes page shows codes that do not work. Reset two-factor for
-  every staff account (Users tab, or the shell command above).
+  recovery codes page says the codes cannot be read instead of showing
+  them. An account that is still signed in can turn two-factor off and
+  set it up again. Reset two-factor for every other staff account (Users
+  tab, or the shell command above).
 
 ## Users tab behavior
 

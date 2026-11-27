@@ -148,5 +148,9 @@ class MFAAdapter(DefaultMFAAdapter):
             )
         except InvalidToken:
             logger.error("Could not decrypt a two-factor secret")
+            # StaffTwoFactorMiddleware keeps the recovery code pages from
+            # showing codes made from the stand-in below.
+            if context.request is not None:
+                context.request.two_factor_unreadable = True
             # A new random secret matches no code.
             return generate_totp_secret()

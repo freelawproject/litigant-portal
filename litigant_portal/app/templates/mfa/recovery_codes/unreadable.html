@@ -1,0 +1,20 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Recovery Codes" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block auth_content %}
+  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "We cannot read your recovery codes" %}</h1>
+  <p class="text-greyscale-600 mb-6">{% trans "The codes saved for this account can no longer be read, so we cannot show them. Turn two-factor sign-in off, then set it up again to get new codes." %}</p>
+  <div class="space-y-4">
+    <c-atoms.button href="{% url 'mfa_deactivate_totp' %}" variant="primary" size="xl" full_width class="justify-center">
+    {% trans "Turn off two-factor sign-in" %}
+    </c-atoms.button>
+    <c-atoms.button href="{% url 'mfa_index' %}" variant="ghost" size="xl" full_width class="justify-center">
+    {% trans "Back" %}
+    </c-atoms.button>
+  </div>
+{% endblock auth_content %}

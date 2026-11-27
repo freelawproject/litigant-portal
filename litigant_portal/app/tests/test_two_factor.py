@@ -47,6 +47,8 @@ CONFIRM_BY_CODE_URL = "/accounts/2fa/reauthenticate/"
 OVERVIEW_URL = "/accounts/2fa/"
 TURN_OFF_URL = "/accounts/2fa/totp/deactivate/"
 NEW_CODES_URL = "/accounts/2fa/recovery-codes/generate/"
+CODES_URL = "/accounts/2fa/recovery-codes/"
+DOWNLOAD_CODES_URL = "/accounts/2fa/recovery-codes/download/"
 EMAIL = "staff@example.com"
 PASSWORD = "a-long-new-passphrase-42"
 
@@ -489,6 +491,65 @@ def test_new_recovery_codes_replace_the_old_ones(client):
     new_codes = recovery.wrap().get_unused_codes()
     assert len(new_codes) == 10
     assert not set(new_codes) & set(old_codes)
+
+
+def _shown_codes(page):
+    return re.findall(r"<code[^>]*>(\d{8})</code>", page.content.decode())
+
+
+def _signed_in_with_a_new_key(client, settings):
+    """Sign in and confirm access, then change the key with no fallback,
+    as a session that outlives a lost key."""
+    user, secret, _ = _two_factor_user()
+    _login_with_code(client, secret)
+    client.post(CONFIRM_ACCESS_URL, {"password": PASSWORD})
+    settings.TWO_FACTOR_KEY = "a-new-key"
+    return user
+
+
+@pytest.mark.parametrize(
+    "url", [CODES_URL, DOWNLOAD_CODES_URL], ids=["page", "download"]
+)
+def test_a_new_key_without_a_fallback_shows_no_recovery_codes(
+    client, settings, url
+):
+    _signed_in_with_a_new_key(client, settings)
+
+    page = client.get(url)
+
+    assert "mfa/recovery_codes/unreadable.html" in _templates(page)
+    assert "account/base.html" in _templates(page)
+    assert not _shown_codes(page)
+    assert "Content-Disposition" not in page.headers
+    assert f'href="{TURN_OFF_URL}"' in page.content.decode()
+
+
+def test_two_factor_can_be_turned_off_after_a_new_key(client, settings):
+    user = _signed_in_with_a_new_key(client, settings)
+
+    assert client.get(OVERVIEW_URL).status_code == 200
+    client.post(TURN_OFF_URL)
+
+    assert not Authenticator.objects.filter(user=user).exists()
+
+
+def test_recovery_codes_made_after_a_new_key_are_shown_and_sign_in(
+    client, settings
+):
+    _signed_in_with_a_new_key(client, settings)
+
+    assert client.get(NEW_CODES_URL).status_code == 200
+    page = client.post(NEW_CODES_URL, follow=True)
+
+    assert "mfa/recovery_codes/index.html" in _templates(page)
+    codes = _shown_codes(page)
+    assert len(set(codes)) == 10
+
+    client.logout()
+    _login(client)
+    client.post(CODE_URL, {"code": codes[0]})
+
+    assert _signed_in(client)
 
 
 @pytest.mark.parametrize(
