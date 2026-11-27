@@ -549,6 +549,27 @@ def test_the_fragment_sign_in_link_returns_to_the_chat_page(client, guest):
 
 @pytest.mark.postgres
 @pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("url_name", "query"),
+    [
+        ("pages:chat", "q=how do I change my name"),
+        ("pages:chat", "thread=11111111-1111-1111-1111-111111111111"),
+        ("pages:home", "a=1&b=2"),
+    ],
+    ids=["chat-question", "chat-thread", "home-two-params"],
+)
+def test_the_sign_in_link_returns_to_the_page_without_its_query(
+    client, url_name, query
+):
+    url = reverse(url_name)
+
+    content = client.get(f"{url}?{query}").content.decode()
+
+    assert SIGN_IN_LINK_RE.search(content).group(1) == url
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
 def test_a_first_time_visitor_sees_the_sign_in_state_and_gets_no_identity(
     client,
 ):

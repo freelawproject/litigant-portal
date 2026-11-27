@@ -1242,9 +1242,9 @@
             frame. Pages pass <code>signed_out</code> for an anonymous
             visitor: the panel then shows a sign-in link and no facts.
             <code>sign_in_next</code> sets where the link returns to (the
-            current page by default). A raw agent-state disclosure appears
-            at the bottom for users holding <code>manage_site</code> (FLP
-            Staff).
+            current page, without its query, by default). A raw agent-state
+            disclosure appears at the bottom for users holding
+            <code>manage_site</code> (FLP Staff).
           </p>
           <div class="border border-greyscale-200 rounded-lg overflow-hidden mb-6 max-w-sm flex flex-col">
             <c-organisms.briefcase-panel :groups="briefcase_groups" />
