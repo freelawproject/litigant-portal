@@ -52,6 +52,32 @@ class SecretKeySettingTests(SimpleTestCase):
         config = self._load({"DEBUG": "true"})
         self.assertEqual(len(config["SECRET_KEY"]), 50)
 
+    def test_two_factor_key_defaults_to_the_secret_key(self):
+        config = self._load({"DEBUG": "false", "SECRET_KEY": "from-env"})
+        self.assertEqual(config["TWO_FACTOR_KEY"], "from-env")
+
+    def test_two_factor_key_reads_environment(self):
+        config = self._load(
+            {
+                "DEBUG": "false",
+                "SECRET_KEY": "from-env",
+                "TWO_FACTOR_KEY": "its-own-key",
+            }
+        )
+        self.assertEqual(config["TWO_FACTOR_KEY"], "its-own-key")
+
+    def test_two_factor_fallback_keys_default_to_none(self):
+        config = self._load({"DEBUG": "true"})
+        self.assertEqual(config["TWO_FACTOR_KEY_FALLBACKS"], [])
+
+    def test_two_factor_fallback_keys_read_a_comma_separated_list(self):
+        config = self._load(
+            {"DEBUG": "true", "TWO_FACTOR_KEY_FALLBACKS": "old-one, old-two,"}
+        )
+        self.assertEqual(
+            config["TWO_FACTOR_KEY_FALLBACKS"], ["old-one", "old-two"]
+        )
+
 
 class BedrockSettingTests(SimpleTestCase):
     def test_region_defaults_to_us_east_1_and_preserves_overrides(self):
@@ -185,6 +211,7 @@ def test_verification_is_mandatory_when_real_mail_goes_out():
     config = _email_config(SMTP_ENV)
 
     assert config["ACCOUNT_EMAIL_VERIFICATION"] == "mandatory"
+    assert config["MFA_ALLOW_UNVERIFIED_EMAIL"] is True
 
 
 @pytest.mark.parametrize(
@@ -196,6 +223,7 @@ def test_verification_is_off_without_real_mail(environ):
     config = _email_config(environ)
 
     assert config["ACCOUNT_EMAIL_VERIFICATION"] == "none"
+    assert config["MFA_ALLOW_UNVERIFIED_EMAIL"] is True
 
 
 def test_from_address_reads_environment():
@@ -242,3 +270,28 @@ def test_email_environment_does_not_leak_into_deprecated_settings():
         }
         & config.keys()
     )
+
+
+@pytest.mark.parametrize(
+    ("environ", "required"),
+    [
+        ({}, True),
+        ({"DEBUG": "true"}, False),
+        ({"DEBUG": "true", "STAFF_TWO_FACTOR_REQUIRED": "true"}, True),
+        ({"STAFF_TWO_FACTOR_REQUIRED": "false"}, False),
+        ({"STAFF_TWO_FACTOR_REQUIRED": " False "}, False),
+        ({"STAFF_TWO_FACTOR_REQUIRED": "no"}, True),
+    ],
+    ids=[
+        "on-by-default",
+        "off-by-default-in-debug",
+        "true-wins-in-debug",
+        "false-wins-without-debug",
+        "case-and-spaces-are-ignored",
+        "other-values-keep-the-default",
+    ],
+)
+def test_staff_two_factor_rule_reads_environment(environ, required):
+    config = _email_config(environ)
+
+    assert config["STAFF_TWO_FACTOR_REQUIRED"] is required

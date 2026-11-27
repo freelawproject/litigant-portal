@@ -1,0 +1,28 @@
+{% extends "account/base.html" %}
+
+{% load i18n %}
+
+{% block title %}
+  {% trans "Sign-In Code" %} - {% trans "Litigant Portal" %}
+{% endblock title %}
+
+{% block auth_content %}
+  <h1 class="text-2xl font-semibold text-greyscale-900 mb-2">{% trans "Enter your sign-in code" %}</h1>
+  <p class="text-greyscale-600 mb-6">{% trans "Open your authenticator app and type the 6-digit code. If you do not have your phone, type one of your recovery codes." %}</p>
+  <c-molecules.form-errors :form="form" />
+  <form method="post" action="{% url 'mfa_authenticate' %}" class="space-y-4">
+    {% csrf_token %}
+    {% trans "Code" as code_label %}
+    <c-molecules.form-field label="{{ code_label }}" type="text" name="code" id="id_code" required autofocus autocomplete="one-time-code" inputmode="numeric" :errors="form.code.errors" />
+    <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
+    {% trans "Sign in" %}
+    </c-atoms.button>
+    <c-atoms.button type="submit" form="cancel-sign-in" variant="ghost" size="xl" full_width class="justify-center">
+    {% trans "Cancel" %}
+    </c-atoms.button>
+  </form>
+  <form id="cancel-sign-in" method="post" action="{% url 'account_logout' %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{% url 'account_login' %}">
+  </form>
+{% endblock auth_content %}

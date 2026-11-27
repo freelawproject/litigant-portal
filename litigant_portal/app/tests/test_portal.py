@@ -28,7 +28,15 @@ class DjangoSystemTests(SimpleTestCase):
 
     # docassemble.W002 reports the environment (no docassemble configured),
     # not the codebase — CI has none by design, so it would always fire here.
-    @override_settings(SILENCED_SYSTEM_CHECKS=["docassemble.W002"])
+    # two_factor.W001 does the same: tests start in DEBUG, with the rule off.
+    # So does two_factor.W002: the test env sets no TWO_FACTOR_KEY.
+    @override_settings(
+        SILENCED_SYSTEM_CHECKS=[
+            "docassemble.W002",
+            "two_factor.W001",
+            "two_factor.W002",
+        ]
+    )
     def test_system_checks_pass(self):
         """Django system checks should pass without warnings."""
         # This catches misconfigurations early

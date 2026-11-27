@@ -50,6 +50,7 @@ from litigant_portal.app.services.user import (
     user_password_link_send,
     user_password_set,
     user_role_set,
+    user_two_factor_reset,
 )
 from litigant_portal.app.views.utils import (
     ROLE_LABELS,
@@ -59,6 +60,7 @@ from litigant_portal.app.views.utils import (
     role_parse,
     role_value,
 )
+from litigant_portal.lp_logger import EVENTS, lp_logger
 
 logger = logging.getLogger(__name__)
 
@@ -255,6 +257,11 @@ def _user_payload(user: User, *, viewer: User, viewer_tier: Tier) -> dict:
     # A choice only when there's more than one role below the viewer, and
     # not behind the user_admin feature: user_role_view isn't either.
     can_set_role = viewer_tier > Tier.COURT_ADMIN and viewer_tier > tier
+    can_reset_two_factor = (
+        user.has_two_factor
+        and viewer_tier > tier
+        and viewer.has_perm("app.manage_site")
+    )
     return {
         "id": user.id,
         "email": user.email,
@@ -266,6 +273,8 @@ def _user_payload(user: User, *, viewer: User, viewer_tier: Tier) -> dict:
         "role_label": str(ROLE_LABELS[tier]),
         "can_manage": can_manage,
         "can_set_role": can_set_role,
+        "two_factor": user.has_two_factor,
+        "can_reset_two_factor": can_reset_two_factor,
     }
 
 
@@ -516,3 +525,30 @@ def user_role_view(request: HttpRequest, user_id: int) -> JsonResponse:
         return error_response
     user_role_set(user=target, role=role)
     return JsonResponse(_managed_user_payload(target, viewer=request.user))
+
+
+@require_POST
+@ratelimit(key="ip", rate="30/m", method="POST", block=True)
+@manage_site_required
+def user_two_factor_reset_view(
+    request: HttpRequest, user_id: int
+) -> JsonResponse:
+    """Remove an account's two-factor, for staff who lost their phone.
+    Open on every deploy, like the role change."""
+    target, error_response = _managed_user(request, user_id)
+    if error_response:
+        return error_response
+    user_two_factor_reset(user=target)
+    lp_logger(
+        type=EVENTS.info,
+        msg="Two-factor reset",
+        context={"actor_id": request.user.pk, "target_id": target.pk},
+        sanitize=False,
+    )
+    return JsonResponse(
+        {
+            **_managed_user_payload(target, viewer=request.user),
+            "notice": _("Two-factor reset for %(email)s")
+            % {"email": target.email},
+        }
+    )

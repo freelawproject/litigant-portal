@@ -2,6 +2,7 @@ import logging
 
 from allauth.account.forms import ResetPasswordForm
 from allauth.account.models import EmailAddress
+from allauth.mfa.models import Authenticator
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -32,7 +33,8 @@ _ROLE_GROUPS = {
 def user_role_set(*, user: User, role: Tier) -> None:
     """Put an account in exactly one role (#1135). FLP Staff also get
     Django admin staff access, which is how they read transcripts; every
-    other role loses it. Who may give which role is the view's check."""
+    other role loses it. An account made an app user loses its
+    two-factor. Who may give which role is the view's check."""
     if role == Tier.SUPERUSER:
         raise ValueError("Superuser is granted by infra, not assigned")
     user.groups.remove(*Group.objects.filter(name__in=_ROLE_GROUPS.values()))
@@ -40,6 +42,14 @@ def user_role_set(*, user: User, role: Tier) -> None:
         user.groups.add(Group.objects.get(name=_ROLE_GROUPS[role]))
     user.is_staff = role == Tier.FLP_STAFF
     user.save(update_fields=["is_staff"])
+    if role == Tier.APP_USER:
+        user_two_factor_reset(user=user)
+
+
+def user_two_factor_reset(*, user: User) -> None:
+    """Remove an account's two-factor: the authenticator and the
+    recovery codes. The next sign-in asks for no code."""
+    Authenticator.objects.filter(user=user).delete()
 
 
 @transaction.atomic

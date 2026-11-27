@@ -8,6 +8,7 @@
 {% trans "Set a new password" as password_title %}
 {% trans "Send a password link?" as password_link_title %}
 {% trans "Delete this account?" as delete_title %}
+{% trans "Reset two-factor?" as two_factor_reset_title %}
 {% trans "Role" as role_label %}
 
 <div class="max-w-4xl">
@@ -53,7 +54,7 @@
           <th class="px-4 py-2.5">{% trans "Email" %}</th>
           <th class="px-4 py-2.5">{% trans "Joined" %}</th>
           <th class="px-4 py-2.5">{% trans "Role" %}</th>
-          {% if features.user_admin and perms.app.manage_app_users %}
+          {% if perms.app.manage_site or features.user_admin and perms.app.manage_app_users %}
             <th class="px-4 py-2.5"><span class="sr-only">{% trans "Actions" %}</span></th>
           {% endif %}
         </tr>
@@ -65,6 +66,7 @@
               <span x-text="user.email"></span>
               <c-atoms.badge variant="neutral" class="ml-2" x-show="user.notActive">{% trans "Disabled" %}</c-atoms.badge>
               <c-atoms.badge variant="pending" class="ml-2" x-show="user.invited">{% trans "Invited" %}</c-atoms.badge>
+              <c-atoms.badge variant="completed" class="ml-2" x-show="user.two_factor">{% trans "Two-factor" %}</c-atoms.badge>
             </td>
             <td class="px-4 py-2.5 text-greyscale-500" x-text="user.joined"></td>
             <td class="px-4 py-2.5 text-greyscale-700">
@@ -78,17 +80,24 @@
               {% endif %}
               <span x-show="user.cannotSetRole" x-text="user.role_label"></span>
             </td>
-            {% if features.user_admin and perms.app.manage_app_users %}
+            {% if perms.app.manage_site or features.user_admin and perms.app.manage_app_users %}
               <td class="px-4 py-2.5">
-                <div x-show="user.can_manage" class="flex justify-end gap-1">
-                  {% if email_enabled %}
-                    <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserPasswordLink">{% trans "Send password link" %}</c-atoms.button>
-                  {% else %}
-                    <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserPassword">{% trans "Password" %}</c-atoms.button>
+                <div class="flex justify-end gap-1">
+                  {% if perms.app.manage_site %}
+                    <c-atoms.button variant="ghost" size="sm" x-show="user.can_reset_two_factor" x-bind:data-user-id="user.id" x-on:click="openUserTwoFactorReset">{% trans "Reset two-factor" %}</c-atoms.button>
                   {% endif %}
-                  <c-atoms.button variant="ghost" size="sm" x-show="user.canDisable" x-bind:data-user-id="user.id" x-on:click="disableUser">{% trans "Disable" %}</c-atoms.button>
-                  <c-atoms.button variant="ghost" size="sm" x-show="user.canEnable" x-bind:data-user-id="user.id" x-on:click="enableUser">{% trans "Enable" %}</c-atoms.button>
-                  <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserDelete">{% trans "Delete" %}</c-atoms.button>
+                  {% if features.user_admin and perms.app.manage_app_users %}
+                    <div x-show="user.can_manage" class="flex justify-end gap-1">
+                      {% if email_enabled %}
+                        <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserPasswordLink">{% trans "Send password link" %}</c-atoms.button>
+                      {% else %}
+                        <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserPassword">{% trans "Password" %}</c-atoms.button>
+                      {% endif %}
+                      <c-atoms.button variant="ghost" size="sm" x-show="user.canDisable" x-bind:data-user-id="user.id" x-on:click="disableUser">{% trans "Disable" %}</c-atoms.button>
+                      <c-atoms.button variant="ghost" size="sm" x-show="user.canEnable" x-bind:data-user-id="user.id" x-on:click="enableUser">{% trans "Enable" %}</c-atoms.button>
+                      <c-atoms.button variant="ghost" size="sm" x-bind:data-user-id="user.id" x-on:click="openUserDelete">{% trans "Delete" %}</c-atoms.button>
+                    </div>
+                  {% endif %}
                 </div>
               </td>
             {% endif %}
@@ -183,6 +192,20 @@
         <div class="flex justify-end gap-2">
           <c-atoms.button variant="outline" x-on:click="closeUserDialogs" autofocus>{% trans "Cancel" %}</c-atoms.button>
           <c-atoms.button variant="danger" x-on:click="deleteUser">{% trans "Delete account" %}</c-atoms.button>
+        </div>
+      </div>
+    </c-molecules.dialog>
+  {% endif %}
+
+  {% if perms.app.manage_site %}
+    <c-molecules.dialog id="user-two-factor-reset-dialog" title="{{ two_factor_reset_title }}" x-ref="userTwoFactorResetDialog">
+      <div class="space-y-4">
+        <p class="text-sm font-medium text-greyscale-900" x-text="userDialogEmail"></p>
+        <p class="text-sm text-greyscale-600">{% trans "This removes their authenticator app and their recovery codes. They sign in with their password and set up two-factor again." %}</p>
+        <p x-show="userDialogError" x-cloak x-text="userDialogError" class="text-sm text-red-600" role="alert"></p>
+        <div class="flex justify-end gap-2">
+          <c-atoms.button variant="outline" x-on:click="closeUserDialogs" autofocus>{% trans "Cancel" %}</c-atoms.button>
+          <c-atoms.button variant="danger" x-on:click="resetUserTwoFactor">{% trans "Reset two-factor" %}</c-atoms.button>
         </div>
       </div>
     </c-molecules.dialog>

@@ -1,0 +1,19 @@
+{% extends "account/reauthenticate.html" %}
+
+{% load i18n %}
+
+{% block confirm_text %}
+  {% trans "Type the 6-digit code from your authenticator app, or one of your recovery codes." %}
+{% endblock confirm_text %}
+
+{% block confirm_form %}
+  <form method="post" action="{% url 'mfa_reauthenticate' %}" class="space-y-4">
+    {% csrf_token %}
+    {{ redirect_field }}
+    {% trans "Code" as code_label %}
+    <c-molecules.form-field label="{{ code_label }}" type="text" name="code" id="id_code" required autofocus autocomplete="one-time-code" inputmode="numeric" :errors="form.code.errors" />
+    <c-atoms.button type="submit" variant="primary" size="xl" full_width class="justify-center">
+    {% trans "Continue" %}
+    </c-atoms.button>
+  </form>
+{% endblock confirm_form %}

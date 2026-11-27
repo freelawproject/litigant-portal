@@ -12,6 +12,7 @@
   <c-molecules.form-errors :form="form" />
   <form method="post" action="{% url 'account_login' %}" class="space-y-4">
     {% csrf_token %}
+    {{ redirect_field }}
     {% trans "Email address" as email_label %}
     {% trans "you@example.com" as email_placeholder %}
     <c-molecules.form-field label="{{ email_label }}" type="email" name="login" id="id_login" placeholder="{{ email_placeholder }}" required autocomplete="email" value="{{ form.login.value|default:'' }}" :errors="form.login.errors" />

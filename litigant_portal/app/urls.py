@@ -174,6 +174,11 @@ admin_api_patterns = [
         admin_views.user_role_view,
         name="user_role",
     ),
+    path(
+        "users/<int:user_id>/two-factor/reset/",
+        admin_views.user_two_factor_reset_view,
+        name="user_two_factor_reset",
+    ),
 ]
 
 urlpatterns = [

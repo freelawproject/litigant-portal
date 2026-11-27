@@ -1,3 +1,5 @@
+import time
+
 import pytest
 from django.core.cache import cache
 from django.test import TransactionTestCase, override_settings
@@ -64,6 +66,17 @@ def ratelimited(settings, monkeypatch):
     monkeypatch.setattr(
         "django_ratelimit.core._get_window", lambda value, period: 2**31
     )
+
+
+@pytest.fixture
+def frozen_clock(monkeypatch):
+    """Stop the clock at the test's start.
+
+    A sign-in code is good for one 30-second period only, so on the real
+    clock a code can expire between the test making it and posting it.
+    """
+    now = time.time()
+    monkeypatch.setattr(time, "time", lambda: now)
 
 
 @pytest.fixture

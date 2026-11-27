@@ -87,6 +87,14 @@ if not SECRET_KEY.strip():
     if not DEBUG:
         raise ImproperlyConfigured("SECRET_KEY must be set when DEBUG is off")
     SECRET_KEY = get_random_secret_key()
+# Encrypts two-factor secrets. Its own key, so SECRET_KEY can change
+# without it. Old keys, comma separated, still read what they encrypted.
+TWO_FACTOR_KEY = os.environ.get("TWO_FACTOR_KEY", "").strip() or SECRET_KEY
+TWO_FACTOR_KEY_FALLBACKS = [
+    key.strip()
+    for key in os.environ.get("TWO_FACTOR_KEY_FALLBACKS", "").split(",")
+    if key.strip()
+]
 
 # Temporary site-wide password gate; empty disables it. See
 # SitePasswordMiddleware.
@@ -120,6 +128,7 @@ INSTALLED_APPS = [
     # Third-party apps
     "allauth",
     "allauth.account",
+    "allauth.mfa",
     "allauth.socialaccount",
     "django_cotton",
     "django_linear_migrations",
@@ -137,6 +146,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "litigant_portal.app.middleware.StaffTwoFactorMiddleware",
     "litigant_portal.app.middleware.AnonymousSessionKeyMiddleware",
     "litigant_portal.app.middleware.IdentityMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
@@ -346,6 +356,18 @@ ACCOUNT_EMAIL_SUBJECT_PREFIX = ""  # Our subjects name the court
 # length in days.
 PASSWORD_RESET_TIMEOUT = 7 * 24 * 60 * 60
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7
+# Two-factor: authenticator app codes and recovery codes.
+MFA_ADAPTER = "litigant_portal.app.adapters.MFAAdapter"
+MFA_SUPPORTED_TYPES = ["totp", "recovery_codes"]
+# Staff accounts must set up two-factor before anything else opens.
+_staff_two_factor = (
+    os.environ.get("STAFF_TWO_FACTOR_REQUIRED", "").strip().lower()
+)
+STAFF_TWO_FACTOR_REQUIRED = (
+    _staff_two_factor == "true"
+    if _staff_two_factor in ("true", "false")
+    else not DEBUG
+)
 CSRF_FAILURE_VIEW = "litigant_portal.app.views.topic_flow.csrf_failure"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
@@ -381,6 +403,9 @@ EMAIL_ENABLED = DEBUG or bool(_email_host)
 ACCOUNT_EMAIL_VERIFICATION = (
     "mandatory" if _email_host and not DEBUG else "none"
 )
+# Sign-in already needs a confirmed address where confirming is possible.
+# An unconfirmed second address must not block two-factor setup.
+MFA_ALLOW_UNVERIFIED_EMAIL = True
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
 if not DEFAULT_FROM_EMAIL:
     if _email_host and not DEBUG:

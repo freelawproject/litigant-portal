@@ -7,10 +7,14 @@ class AppConfig(DjangoAppConfig):
     name = "litigant_portal.app"
 
     def ready(self):
+        from allauth.mfa.signals import authenticator_added
+
         import litigant_portal.app.checks.corpus  # noqa: F401
         import litigant_portal.app.checks.docassemble  # noqa: F401
+        import litigant_portal.app.checks.two_factor  # noqa: F401
         from litigant_portal.app import signals
 
         post_migrate.connect(signals.ensure_site_row, sender=self)
         post_migrate.connect(signals.ensure_permission_groups, sender=self)
         post_migrate.connect(signals.clear_data_model_cache, sender=self)
+        authenticator_added.connect(signals.record_two_factor_setup)

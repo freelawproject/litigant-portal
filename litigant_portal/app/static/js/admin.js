@@ -465,6 +465,7 @@ document.addEventListener('alpine:init', () => {
         'userPasswordDialog',
         'userPasswordLinkDialog',
         'userDeleteDialog',
+        'userTwoFactorResetDialog',
       ]) {
         if (this.$refs[ref]) this.$refs[ref].close()
       }
@@ -491,6 +492,13 @@ document.addEventListener('alpine:init', () => {
     openUserDelete(e) {
       this.openUserDialog(
         'userDeleteDialog',
+        this.findUser(e.currentTarget.dataset.userId)
+      )
+    },
+
+    openUserTwoFactorReset(e) {
+      this.openUserDialog(
+        'userTwoFactorResetDialog',
         this.findUser(e.currentTarget.dataset.userId)
       )
     },
@@ -535,6 +543,18 @@ document.addEventListener('alpine:init', () => {
       }
       this.closeUserDialogs()
       this.usersActionError = ''
+      this.usersActionNotice = data.notice
+    },
+
+    async resetUserTwoFactor() {
+      const userId = this.userDialogId
+      const { ok, data } = await this.postUserAction(userId, 'two-factor/reset')
+      if (!ok) {
+        this.userDialogError = data.error
+        return
+      }
+      this.closeUserDialogs()
+      this.patchUser(userId, data)
       this.usersActionNotice = data.notice
     },
 
