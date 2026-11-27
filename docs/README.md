@@ -30,6 +30,12 @@ The repo's reference shelf: material you reach for when you need it. Day-to-day 
 | ---------------------------------- | ------------------------------------------------------------- |
 | [docassemble.md](./docassemble.md) | docassemble: authoring gotchas, local docassemble, QA hosting |
 
+## Action inventories
+
+| Doc                                                         | Purpose                                                                        |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [nd-name-change.md](./action-inventories/nd-name-change.md) | Every action on North Dakota's adult name change path: route, built or MVP gap |
+
 ## Wiki
 
 | Doc                                                                   | Purpose                                                                                                           |
