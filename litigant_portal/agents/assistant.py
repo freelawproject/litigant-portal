@@ -1,5 +1,8 @@
 import json
 from datetime import UTC, timedelta
+from typing import Any
+
+from litigant_portal.app.topic_flow.formatting import format_answer
 
 from .base import (
     Agent,
@@ -8,7 +11,13 @@ from .base import (
     IdentityPromptSnapshot,
     TurnTimeContext,
 )
-from .tools.load_topic_flow import LoadTopicFlow, cited, topic_flow_path
+from .tools.load_topic_flow import (
+    LoadTopicFlow,
+    cited,
+    topic_flow_from_path,
+    topic_flow_markdown,
+    topic_flow_path,
+)
 from .tools.query_document import QueryDocument
 from .tools.record_fact import RecordFact
 from .tools.review_facts import ReviewFacts
@@ -60,9 +69,9 @@ EVIDENCE_PROMPT = """\
 Use only supplied court material for court-specific claims, never your \
 own training knowledge. Court material enters this conversation in two \
 places: the Court contacts and Court resources lists in these \
-instructions, and LoadTopicFlow results. Each block carries a \
+instructions, and the current guided flow context. Each block carries a \
 [source:ID] marker: court/key for a contact or resource, and \
-topic/flow/key for a block of a loaded flow. If no LoadTopicFlow result \
+topic/flow/key for a block of a loaded flow. If no current flow context \
 is present, you have no flow material and must call LoadTopicFlow before \
 answering a question about a process, fee, form, or deadline. Cite every \
 substantive court-specific claim as [source:ID], copying an id verbatim \
@@ -97,8 +106,9 @@ versus state residency, make that assumption explicit in the same \
 confirmation question. Save the calculated values with RecordFact only \
 after the user confirms them.
 
-Do not calculate deadline dates. State the supplied timing rule with its \
-source, and point to the clerk contact for the date that applies. If two \
+Do not calculate deadline dates yourself. Use a supplied computed date \
+when available, with its source and timing rule. Otherwise state the rule \
+and point to the clerk contact for the date that applies. If two \
 supplied sources conflict, say so, explain the conflict, and point to a \
 supplied contact; never choose one rule silently.
 
@@ -132,8 +142,9 @@ in one question.
 
 When the user gives several facts at once, save them all with \
 RecordFact, acknowledge them in one line, and still end that same reply \
-with the next missing fact. Saving is not the end of the reply. When \
-the user asks an information question mid-interview, answer it first, \
+with the next missing fact. Use the current projection's candidates to \
+guide the next step, and ask only applicable questions. Saving is not the \
+end of the reply. When the user asks an information question mid-interview, answer it first, \
 then return to the next missing fact. When no fact is missing, ask \
 nothing new: call ReviewFacts as described above."""
 
@@ -297,7 +308,7 @@ def generate_court_prompt() -> str:
 
 def generate_topic_flows_prompt() -> str:
     """The guided-topic-flows section, or '' when no flows are enabled."""
-    from litigant_portal.app.selectors.topic_flow import topic_flow_list
+    from litigant_portal.state.selectors import topic_flow_list
 
     flows = topic_flow_list()
     if not flows:
@@ -319,7 +330,7 @@ def _fact_values(answers) -> dict[str, str]:
         a.variable.name: (
             f"value: {json.dumps(a.value, ensure_ascii=False)}, "
             "display_value: "
-            f"{json.dumps(a.display_value, ensure_ascii=False)}"
+            f"{json.dumps(format_answer(a), ensure_ascii=False)}"
         )
         for a in answers
     }
@@ -357,10 +368,10 @@ class LitigantAssistant(Agent):
         runs this once per user message, so a stale path never survives
         into a turn.
         """
-        from litigant_portal.app.selectors.topic_flow import topic_flow_list
         from litigant_portal.app.services.chat_engine import (
             chat_thread_state_merge,
         )
+        from litigant_portal.state.selectors import topic_flow_list
 
         def clear_if_stale(state: dict) -> dict:
             active = state.get("active_topic_flow")
@@ -373,13 +384,8 @@ class LitigantAssistant(Agent):
         chat_thread_state_merge(thread_id=thread_id, updates=clear_if_stale)
 
     def generate_system_prompt(self, *, thread_id) -> str:
-        """The non-empty shared prompt sections, blank-line separated.
-
-        The active topic flow is deliberately absent: the model learns it
-        from the LoadTopicFlow result in history, which only works while
-        the engine sends the full history. When we add automatic compaction,
-        we'll need to account for the active topic flow data being dropped from
-        history.
+        """
+        Shared instructions and court sources, without identity-specific progress.
         """
         return "\n\n".join(
             section
@@ -403,42 +409,114 @@ class LitigantAssistant(Agent):
         RecordFact sets refresh_system_prompt when it saves, so a fact stored
         mid-turn appears here before the model's next step.
         """
-        from litigant_portal.app.selectors.chat_engine import (
-            chat_thread_identity_get,
+        from litigant_portal.app.models import ChatThread
+        from litigant_portal.app.selectors.site import (
+            contact_list,
+            resource_list,
         )
-        from litigant_portal.app.selectors.topic_flow import (
+        from litigant_portal.state.selectors import (
+            flow_state,
             variable_answer_list,
             variable_public_ids,
         )
 
-        identity = chat_thread_identity_get(thread_id=thread_id)
-        answers = variable_answer_list(identity=identity, answered_only=True)
+        thread = ChatThread.objects.select_related("identity").get(
+            id=thread_id
+        )
+        path = (thread.state or {}).get("active_topic_flow")
+        flow = topic_flow_from_path(path) if path else None
+        current = None
+        if flow is not None:
+            today = (
+                time_context.current_time.astimezone(
+                    time_context.client_timezone or UTC
+                ).date()
+                if time_context
+                else None
+            )
+            current = flow_state(
+                identity=thread.identity,
+                flow=flow,
+                contacts=contact_list(court=flow.topic.court),
+                resources=resource_list(court=flow.topic.court),
+                time_context=today,
+            )
+            answers = [
+                current.answers[name] for name in current.projection.answered
+            ]
+        else:
+            answers = variable_answer_list(
+                identity=thread.identity, answered_only=True
+            )
         time_prompt = (
             generate_time_prompt(time_context) if time_context else ""
         )
-        if not answers:
-            return IdentityPrompt(text=time_prompt) if time_prompt else None
-        time_prefix = f"{time_prompt}\n\n" if time_prompt else ""
+        if not answers and current is None and not time_prompt:
+            return None
         values = _fact_values(answers)
 
-        def render_snapshot() -> IdentityPromptSnapshot:
-            # Keep the fact values the model saw and read their current
-            # privacy flags by variable ID just before writing the message.
-            public_ids = variable_public_ids(
-                variable_ids=[answer.variable_id for answer in answers]
+        def render_text(
+            fact_values: dict[str, str], public_names: set[str] | None = None
+        ) -> str:
+            return "\n\n".join(
+                section
+                for section in (
+                    time_prompt,
+                    _facts_prompt(answers, fact_values) if answers else "",
+                    topic_flow_markdown(
+                        flow, current.projection, public_names=public_names
+                    )
+                    if current
+                    else "",
+                )
+                if section
             )
+
+        def render_snapshot() -> IdentityPromptSnapshot:
+            # Freeze the model's inputs, but read current privacy flags at save time.
+            variables = (
+                list(current.variables.values())
+                if current
+                else [answer.variable for answer in answers]
+            )
+            public_ids = variable_public_ids(
+                variable_ids=[variable.pk for variable in variables]
+            )
+            public_names = {
+                variable.name
+                for variable in variables
+                if variable.pk in public_ids
+            }
             public_values = {
-                answer.variable.name: values[answer.variable.name]
-                for answer in answers
-                if answer.variable_id in public_ids
+                name: value
+                for name, value in values.items()
+                if name in public_names
             }
             return {
-                "text": time_prefix + _facts_prompt(answers, public_values),
+                "text": render_text(public_values, public_names),
                 "values": public_values,
             }
 
         return IdentityPrompt(
-            text=time_prefix + _facts_prompt(answers, values),
+            text=render_text(values),
             values=values,
             render_snapshot=render_snapshot,
         )
+
+    def history_for_model(
+        self, history: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Replace obsolete flow payloads only in the outgoing model context.
+        """
+        return [
+            {
+                **message,
+                "content": "Use the current guided flow context in the system message. If none is present, call LoadTopicFlow.",
+            }
+            if message.get("role") == "tool"
+            and message.get("name") == "LoadTopicFlow"
+            and not message.get("content", "").startswith("Error:")
+            else message
+            for message in history
+        ]

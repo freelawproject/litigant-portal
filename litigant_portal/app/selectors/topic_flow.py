@@ -1,90 +1,5 @@
-from uuid import UUID
-
-from django.core.cache import cache
-
-from litigant_portal.app.cache import (
-    TOPIC_FLOW_LIST_CACHE_KEY,
-    TOPIC_LIST_CACHE_KEY,
-)
-from litigant_portal.app.models import (
-    Topic,
-    TopicFlow,
-    TopicFlowInterviewVariable,
-    Variable,
-    VariableAnswer,
-)
-
-
-def topic_list() -> list[Topic]:
-    """Topics in display order, served from cache."""
-    topics = cache.get(TOPIC_LIST_CACHE_KEY)
-    if topics is None:
-        topics = list(Topic.objects.all())
-        cache.set(TOPIC_LIST_CACHE_KEY, topics, timeout=None)
-    return topics
-
-
-def topic_court_find() -> str | None:
-    """The one court every topic belongs to, or None when the topics span
-    several courts or there are none (#886). Read from the rows, not the
-    cache: ``sync_corpus`` calls it at startup, before anything is cached.
-    A topic that predates its first sync has a blank court and is skipped."""
-    courts = set(
-        Topic.objects.exclude(court="")
-        .values_list("court", flat=True)
-        .distinct()
-    )
-    return courts.pop() if len(courts) == 1 else None
-
-
-def topic_get(*, topic_id) -> Topic:
-    """A single topic (raises Topic.DoesNotExist)."""
-    return Topic.objects.get(id=topic_id)
-
-
-def topic_flow_list() -> list[TopicFlow]:
-    """Enabled flows with their topics, in topic order then flow order,
-    served from cache."""
-    flows = cache.get(TOPIC_FLOW_LIST_CACHE_KEY)
-    if flows is None:
-        flows = list(
-            TopicFlow.objects.filter(enabled=True)
-            .select_related("topic")
-            .order_by(
-                "topic__order", "topic__created_at", "order", "created_at"
-            )
-        )
-        cache.set(TOPIC_FLOW_LIST_CACHE_KEY, flows, timeout=None)
-    return flows
-
-
-def topic_flow_find(
-    *,
-    topic_slug: str,
-    flow_slug: str,
-    court: str | None = None,
-    graph: bool = True,
-) -> TopicFlow | None:
-    """The enabled flow at (topic_slug, flow_slug), or None. With ``court``
-    the topic must carry that court too, for the page URL's check. With
-    ``graph`` its whole content graph is prefetched, for the page; without,
-    only the row and its topic, for a caller that reads a field or one
-    relation."""
-    flows = TopicFlow.objects.filter(
-        topic__slug=topic_slug, slug=flow_slug, enabled=True
-    ).select_related("topic")
-    if court is not None:
-        flows = flows.filter(topic__court=court)
-    if graph:
-        flows = flows.prefetch_related(
-            "sections",
-            "links",
-            "deadlines__offset_from",
-            "form_conditions__form",
-            "form_conditions__variable",
-            "interview_pages__variables__variable__asked_when",
-        )
-    return flows.first()
+from litigant_portal.state.models import TopicFlow, TopicFlowInterviewVariable
+from litigant_portal.state.selectors import variable_answer_list
 
 
 def topic_flow_url_kwargs(flow: TopicFlow) -> dict[str, str] | None:
@@ -100,123 +15,36 @@ def topic_flow_url_kwargs(flow: TopicFlow) -> dict[str, str] | None:
     }
 
 
-def variable_answer_list(
-    *, identity, answered_only: bool = False
-) -> list[VariableAnswer]:
-    """An identity's answers, ordered by variable name.
-
-    Answers to variables the corpus no longer names (``in_schema=False``)
-    are left out: sync keeps those rows so a migration can move them, but
-    no form references them, so no surface should show them.
-
-    ``answered_only`` drops cleared answers (``value`` None), matching
-    ``variable_answer_map``: a cleared fact is not a fact.
+def variable_answer_groups(*, identity, flow=None, answers=None) -> list[dict]:
     """
-    answers = VariableAnswer.objects.filter(
-        identity=identity, variable__in_schema=True
-    )
-    if answered_only:
-        answers = answers.filter(value__isnull=False)
-    return list(answers.select_related("variable").order_by("variable__name"))
+    An identity's answers, grouped for reading by interview page.
 
-
-def variable_public_ids(*, variable_ids: list[UUID]) -> set[UUID]:
-    """Return IDs that are still in the corpus and marked public."""
-    return set(
-        Variable.objects.filter(
-            pk__in=variable_ids, in_schema=True, is_private=False
-        )
-        .order_by()
-        .values_list("pk", flat=True)
-    )
-
-
-def variable_answer_map(
-    *, identity, names: list[str], reviewed_only: bool = False
-) -> dict:
-    """{variable_name: value} for the given names; names with no answer are omitted.
-
-    A cleared answer (value None) counts as no answer: this map feeds
-    prefill and templates, where an absent key must stay absent rather
-    than fill a blank. Excludes out-of-schema variables, as
-    ``variable_answer_list`` does.
-
-    ``reviewed_only`` drops answers no human has confirmed. The guided page
-    reads without it, since it is the surface where that confirmation
-    happens; the docassemble prefill reads with it, because a prefilled
-    variable skips its interview question and so never gets reviewed there.
-    """
-    answers = VariableAnswer.objects.filter(
-        identity=identity,
-        variable__name__in=names,
-        variable__in_schema=True,
-        value__isnull=False,
-    )
-    if reviewed_only:
-        answers = answers.filter(reviewed=True)
-    return dict(answers.values_list("variable__name", "value"))
-
-
-def variable_answer_cleared_names(*, identity, names: list[str]) -> list:
-    """The given names the identity has cleared (a row with value None).
-
-    The complement ``variable_answer_map`` leaves out: the guided page
-    shows a glossary default only for a variable never answered, and a
-    cleared one must render blank rather than offer the default again.
-    """
-    return sorted(
-        VariableAnswer.objects.filter(
-            identity=identity,
-            variable__name__in=names,
-            variable__in_schema=True,
-            value__isnull=True,
-        ).values_list("variable__name", flat=True)
-    )
-
-
-def variable_answer_unreviewed_names(*, identity, names: list[str]) -> list:
-    """The given names whose answer no human has confirmed yet, sorted.
-
-    Same exclusions as ``variable_answer_map``: cleared and out-of-schema
-    answers are not pending, since nothing shows them. Names with no
-    answer at all are left out too.
-    """
-    return sorted(
-        VariableAnswer.objects.filter(
-            identity=identity,
-            variable__name__in=names,
-            variable__in_schema=True,
-            value__isnull=False,
-            reviewed=False,
-        ).values_list("variable__name", flat=True)
-    )
-
-
-def variable_answer_groups(*, identity) -> list[dict]:
-    """An identity's answers, grouped for reading by interview page.
-
-    Grouping comes from each answered variable's own placement
-    (``TopicFlowInterviewVariable``), not from an active flow: the chat page
-    resolves no flow server-side, so placement is the only grouping available
-    without a model change. A variable placed on more than one page is grouped
-    under the first placement in (topic, flow, page, placement) order, which
-    keeps the grouping stable across requests.
+    With a flow, use its prefetched placements and the caller's projected
+    answers. Otherwise, load applicable stored answers and use the first
+    placement in (topic, flow, page, placement) order for stable grouping.
 
     Pages that place nothing this identity answered are skipped rather than
     rendered as empty headings, and answers with no placement collect in a
     final untitled group.
 
-    Cleared answers (``value`` None) and out-of-schema variables are left out,
-    matching ``variable_answer_map``: a cleared fact is not a fact, and no
-    surface should show a variable the corpus no longer names.
+    The answer selector excludes cleared and out-of-schema answers.
+    Flow callers supply answers already filtered by the projection.
     """
-    answers = variable_answer_list(identity=identity, answered_only=True)
+    if answers is None:
+        answers = variable_answer_list(identity=identity, answered_only=True)
     if not answers:
         return []
 
     answer_by_variable = {a.variable_id: a for a in answers}
     placements = (
-        TopicFlowInterviewVariable.objects.filter(
+        [
+            placement
+            for page in flow.interview_pages.all()
+            for placement in page.variables.all()
+            if placement.variable_id in answer_by_variable
+        ]
+        if flow is not None
+        else TopicFlowInterviewVariable.objects.filter(
             variable_id__in=answer_by_variable, page__flow__enabled=True
         )
         .select_related("page")

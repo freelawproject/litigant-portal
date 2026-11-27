@@ -1,7 +1,7 @@
 """Prefill payload tests: the row's handoff target and the rename. DB-free."""
 
 from litigant_portal.app.models import TopicFlow
-from litigant_portal.app.topic_flow.prefill import (
+from litigant_portal.state.docassemble import (
     flow_interview_target,
     prefill_variables,
 )

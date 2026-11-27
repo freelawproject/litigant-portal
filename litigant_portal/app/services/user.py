@@ -127,19 +127,29 @@ def user_identity_merge(
 ) -> None:
     """Fold ``source`` into ``target``, then delete ``source``.
 
-    All chat threads and uploads migrate, as do variable answers the target
-    hasn't answered itself. Runs in a single transaction, with ``source``
-    locked so a delete in another request waits or has already won.
+    All chat threads and uploads migrate, as do variable answers and flow
+    views the target does not have. Lock both owners so state writes and
+    deletion cannot race with the transfer.
     """
-    if not _identities_lock(
-        UserIdentity.objects.filter(pk=source_identity.pk)
-    ):
+    locked = _identities_lock(
+        UserIdentity.objects.filter(
+            pk__in=[source_identity.pk, target_identity.pk]
+        )
+    )
+    if source_identity.pk not in locked:
         return
+    if target_identity.pk not in locked:
+        raise UserIdentity.DoesNotExist(
+            "The target identity no longer exists."
+        )
     threads = source_identity.chat_threads.update(identity=target_identity)
     uploads = source_identity.uploads.update(identity=target_identity)
     answers = _variable_answers_migrate(
         source_identity=source_identity, target_identity=target_identity
     )
+    source_identity.flow_views.exclude(
+        flow_id__in=target_identity.flow_views.values("flow_id")
+    ).update(identity=target_identity)
 
     source_identity.delete()
 
@@ -225,9 +235,12 @@ def user_identity_reset(*, identity: UserIdentity) -> None:
     to no identity, so it stays. The identity row stays too, so the session
     or signed-in user keeps working.
     """
+    if not _identities_lock(UserIdentity.objects.filter(pk=identity.pk)):
+        return
     _uploads_delete(identity.uploads.all())
     identity.chat_threads.all().delete()
     identity.variable_answers.all().delete()
+    identity.flow_views.all().delete()
 
 
 @transaction.atomic
@@ -251,7 +264,11 @@ def user_identities_delete(
 def _identities_lock(identities: QuerySet[UserIdentity]) -> list:
     """Lock the identities and their threads, so new uploads, threads and
     messages for them wait on the commit. Returns the identity pks."""
-    pks = list(identities.select_for_update().values_list("pk", flat=True))
+    pks = list(
+        identities.order_by("pk")
+        .select_for_update()
+        .values_list("pk", flat=True)
+    )
     threads = ChatThread.objects.filter(identity__in=pks).select_for_update()
     list(threads.values_list("pk", flat=True))
     return pks

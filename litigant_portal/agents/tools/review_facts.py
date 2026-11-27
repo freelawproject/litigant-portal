@@ -2,23 +2,7 @@ from django.utils import timezone
 
 from litigant_portal.agents.base import Tool, ToolOutput
 from litigant_portal.agents.tools.load_topic_flow import topic_flow_from_path
-
-
-def _flow_variables(flow) -> list:
-    """The flow's interview variables in page order, without duplicates."""
-    seen = set()
-    variables = []
-    pages = flow.interview_pages.prefetch_related(
-        "variables__variable__asked_when"
-    )
-    for page in pages:
-        for placement in page.variables.all():
-            variable = placement.variable
-            if variable.name in seen:
-                continue
-            seen.add(variable.name)
-            variables.append(variable)
-    return variables
+from litigant_portal.app.topic_flow.formatting import format_answer
 
 
 class ReviewFacts(Tool):
@@ -38,25 +22,24 @@ class ReviewFacts(Tool):
 
     def __call__(self, *, thread_id) -> ToolOutput:
         from litigant_portal.app.models import ChatThread
-        from litigant_portal.app.selectors.chat_engine import (
-            chat_thread_identity_get,
+        from litigant_portal.app.selectors.site import (
+            contact_list,
+            resource_list,
         )
         from litigant_portal.app.selectors.topic_flow import (
             topic_flow_url_kwargs,
-            variable_answer_list,
         )
-        from litigant_portal.app.services.docassemble import (
+        from litigant_portal.state.docassemble import (
+            flow_interview_target,
             interview_launch_url,
         )
-        from litigant_portal.app.topic_flow.prefill import (
-            flow_interview_target,
-        )
+        from litigant_portal.state.selectors import flow_state
 
-        thread = ChatThread.objects.get(id=thread_id)
+        thread = ChatThread.objects.select_related("identity").get(
+            id=thread_id
+        )
         path = (thread.state or {}).get("active_topic_flow")
-        # The card reads the interview pages and a few row fields;
-        # _flow_variables fetches the pages itself.
-        flow = topic_flow_from_path(path, graph=False) if path else None
+        flow = topic_flow_from_path(path) if path else None
         if flow is None:
             return ToolOutput(
                 result=(
@@ -65,39 +48,32 @@ class ReviewFacts(Tool):
                 )
             )
 
-        identity = chat_thread_identity_get(thread_id=thread_id)
         # Stamped before the read: the confirm endpoint refuses rows written
         # after it, so a value this card never showed cannot be confirmed.
         as_of = timezone.now()
-        answers = {
-            a.variable.name: a
-            for a in variable_answer_list(
-                identity=identity, answered_only=True
-            )
-        }
-        values = {name: a.value for name, a in answers.items()}
-
+        current = flow_state(
+            identity=thread.identity,
+            flow=flow,
+            contacts=contact_list(court=flow.topic.court),
+            resources=resource_list(court=flow.topic.court),
+        )
         facts = []
-        missing = []
-        for variable in _flow_variables(flow):
-            answer = answers.get(variable.name)
-            if answer is not None:
-                facts.append(
-                    {
-                        "name": variable.name,
-                        "label": variable.label or variable.name,
-                        "display_value": answer.display_value,
-                        "reviewed": answer.reviewed,
-                        "evidence": answer.evidence,
-                    }
-                )
-            elif variable.required and variable.is_asked(values):
-                missing.append(
-                    {
-                        "name": variable.name,
-                        "label": variable.label or variable.name,
-                    }
-                )
+        for name in current.projection.answered:
+            variable = current.variables[name]
+            answer = current.answers[name]
+            facts.append(
+                {
+                    "name": name,
+                    "label": variable.label or name,
+                    "display_value": format_answer(answer),
+                    "reviewed": answer.reviewed,
+                    "evidence": answer.evidence,
+                }
+            )
+        missing = [
+            {"name": name, "label": current.variables[name].label or name}
+            for name in current.projection.missing_required
+        ]
 
         # Same launch check as the guided page's packet section; no page
         # means no interview to launch from it.

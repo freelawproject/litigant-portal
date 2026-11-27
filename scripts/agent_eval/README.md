@@ -69,6 +69,8 @@ The chat engine calls the site's fast model to generate a chat title. `legacy_fa
 
 Keep cases, references, and the rubric unchanged across comparable runs. Production corpus updates do not require updating this snapshot or rerunning the baseline. A deliberate benchmark change requires updated provenance and a new benchmark version; preserve earlier run directories and report incompatible versions separately. New runs hash every reference file as bytes, including PDFs and images, except Finder's `.DS_Store` metadata. Verification ignores unlisted `.DS_Store` files but still checks any recorded in older manifests. Historical manifests retain their original text-hash verification.
 
+The loader removes the retired `on_page` presentation flag from a temporary corpus copy before synchronization. Frozen source files remain unchanged, and the copy retains every question, condition, source ID, and form. The application under evaluation uses its current projection behavior; this adapter does not change cases, references, or grading.
+
 A case may carry `history`: user turns sent on the same thread before `question`. Their replies are recorded in the attempt's `detail.transcript` and shown to the judge as context; only the final answer is graded. Both application modes continue one chat thread across turns and clear the evaluation identity's stored facts before each case, recording what the agent stored as `detail.stored_facts`. Raw replays the turns as a message list. Timing covers all turns of the case. The conversation cases (`nd-convo-*`) follow the personas in `docs/ai-tooling/qa-scripts/ai-agent-testing-script-nd-name-change.md`.
 
 A case may set `expects_one_question: true` when its final turn lands

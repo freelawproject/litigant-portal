@@ -15,11 +15,11 @@ from pathlib import Path
 import pytest
 import yaml
 
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.corpus import (
     corpus_load_flows,
     corpus_load_variables,
 )
+from litigant_portal.state.models import VariableDataType
 
 INTERVIEW_DIR = Path(__file__).resolve().parents[3] / "docassemble"
 

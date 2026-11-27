@@ -20,12 +20,12 @@ from litigant_portal.agents.assistant import LitigantAssistant
 
 TOOLS_DIR = Path(inspect.getsourcefile(LitigantAssistant)).parent / "tools"
 FORBIDDEN = re.compile(r"reviewed\s*=\s*True|variable_answer_confirm")
-# The one write a tool may make: it stores reviewed=False and resets a
-# confirmation on rewrite. Anything else from the services module, or any
+# The batch write has no reviewed argument; validation performs no writes.
+# Anything else from the services module, or any
 # ORM write, could set reviewed by a path the regex above does not see
 # (``reviewed=flag``, ``.update(reviewed=...)``).
 ANSWER_SERVICES = "litigant_portal.app.services.topic_flow"
-ALLOWED_SERVICE_NAMES = {"variable_answer_set"}
+ALLOWED_SERVICE_NAMES = {"variable_answers_record", "variable_value_validate"}
 ORM_WRITE_METHODS = {
     "save",
     "update",

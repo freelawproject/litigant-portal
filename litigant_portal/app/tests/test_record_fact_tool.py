@@ -15,12 +15,12 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.models.choices import VariableDataType
-from litigant_portal.app.selectors.topic_flow import variable_answer_list
 from litigant_portal.app.services.topic_flow import (
     variable_answer_confirm,
     variable_answer_set,
 )
+from litigant_portal.state.models import VariableDataType
+from litigant_portal.state.selectors import variable_answer_list
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
@@ -82,8 +82,8 @@ def test_hallucinated_reviewed_arg_is_ignored_and_save_stays_unconfirmed(
     thread, county
 ):
     # extra="allow" keeps the stray argument as an instance attribute; the
-    # save stays unconfirmed because __call__ passes a literal
-    # reviewed=False and never reads self.reviewed.
+    # batch service always uses assistant authority and never reads
+    # self.reviewed.
     output = RecordFact(facts={"county": "burleigh"}, reviewed=True)(
         thread_id=thread.id
     )

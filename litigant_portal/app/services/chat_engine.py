@@ -271,10 +271,12 @@ def _to_llm_message(msg: dict[str, Any]) -> dict[str, Any]:
 def _supplied_citation_ids(
     system_prompt: str, history: list[dict[str, Any]]
 ) -> set[str]:
-    """The source ids this thread has actually seen: the system prompt's
-    plus every LoadTopicFlow result in its history. The thread's own view,
-    never the live corpus, so a content edit after the flow loaded does not
-    turn an honest citation into an unknown one."""
+    """
+    Source IDs supplied in this model request's system and flow messages.
+
+    Inspect the outgoing context, after the agent adapts history, rather
+    than querying corpus content that the model might not have received.
+    """
     ids = set(citation_ids(system_prompt))
     for msg in history:
         if msg.get("role") == "tool" and msg.get("name") == "LoadTopicFlow":
@@ -627,7 +629,7 @@ def chat_stream(
                     "api_key": settings.BEDROCK_API_KEY,
                     "messages": _messages_for_llm(
                         _system_prompt_text(system_prompt, identity_prompt),
-                        history,
+                        agent.history_for_model(history),
                         attachment_cache=attachment_cache,
                         capabilities=target.capabilities,
                     ),
@@ -712,7 +714,10 @@ def chat_stream(
                     assistant_msg["tool_calls"] = tool_calls
                 unknown = citation_ids_unknown(
                     assistant_msg["content"],
-                    _supplied_citation_ids(system_prompt, history),
+                    _supplied_citation_ids(
+                        call_args["messages"][0]["content"],
+                        call_args["messages"][1:],
+                    ),
                 )
                 if unknown:
                     assistant_msg["unknown_citations"] = unknown

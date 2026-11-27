@@ -31,12 +31,13 @@ from litigant_portal.app.models import (
     UserIdentity,
     Variable,
 )
-from litigant_portal.app.models.choices import VariableDataType
-from litigant_portal.app.selectors.topic_flow import (
+from litigant_portal.app.services.site import site_update
+from litigant_portal.state.models import VariableDataType
+from litigant_portal.state.selectors import (
+    flow_state,
     topic_flow_find,
     topic_flow_list,
 )
-from litigant_portal.app.services.site import site_update
 
 
 def _eviction_flow() -> TopicFlow:
@@ -134,8 +135,7 @@ class TopicFlowMarkdownTests(TestCase):
             name="lease_end",
             question="When does your lease end?",
             data_type=VariableDataType.DATE,
-            asked_when=county,
-            asked_when_value="cass",
+            asked_when={"variable": county.name, "value": "cass"},
         )
         page = TopicFlowInterviewPage.objects.create(
             flow=flow, title="About your case"
@@ -149,7 +149,9 @@ class TopicFlowMarkdownTests(TestCase):
         TopicFlowFormCondition.objects.create(flow=flow, form=form)
         fee_waiver = Form.objects.create(slug="fee-waiver", name="Fee Waiver")
         TopicFlowFormCondition.objects.create(
-            flow=flow, form=fee_waiver, variable=county, value="cass"
+            flow=flow,
+            form=fee_waiver,
+            when={"variable": county.name, "value": "cass"},
         )
         TopicFlowLink.objects.create(
             flow=flow,
@@ -158,9 +160,11 @@ class TopicFlowMarkdownTests(TestCase):
             url="https://example.com/court",
         )
 
-        markdown = topic_flow_markdown(
-            topic_flow_find(topic_slug="eviction", flow_slug="tenant")
+        flow = topic_flow_find(topic_slug="eviction", flow_slug="tenant")
+        current = flow_state(
+            identity=None, flow=flow, contacts=[], resources=[]
         )
+        markdown = topic_flow_markdown(flow, current.projection)
 
         self.assertIn("# Responding to an Eviction", markdown)
         self.assertIn("Topic: Eviction", markdown)
@@ -177,11 +181,7 @@ class TopicFlowMarkdownTests(TestCase):
         self.assertIn(
             "- [source:eviction/tenant/answer] Answer Form", markdown
         )
-        self.assertIn(
-            "- [source:eviction/tenant/fee-waiver] Fee Waiver (included when "
-            'county equals "cass")',
-            markdown,
-        )
+        self.assertNotIn("[source:eviction/tenant/fee-waiver]", markdown)
         self.assertIn("### About your case", markdown)
         self.assertIn(
             "- date_served (date): Date you were served\n"
@@ -192,11 +192,7 @@ class TopicFlowMarkdownTests(TestCase):
             "- county (choice): What county do you live in? [choices: cass]",
             markdown,
         )
-        self.assertIn(
-            "- lease_end (date): When does your lease end? "
-            '(asked when county = "cass")',
-            markdown,
-        )
+        self.assertNotIn("- lease_end", markdown)
         self.assertIn(
             "- [source:eviction/tenant/court_site] Court site: "
             "https://example.com/court",
@@ -216,18 +212,22 @@ class TopicFlowMarkdownTests(TestCase):
         TopicFlowLink.objects.create(
             flow=flow, name="Court site", url="https://example.com/court"
         )
-        markdown = topic_flow_markdown(
-            topic_flow_find(topic_slug="eviction", flow_slug="tenant")
+        flow = topic_flow_find(topic_slug="eviction", flow_slug="tenant")
+        current = flow_state(
+            identity=None, flow=flow, contacts=[], resources=[]
         )
+        markdown = topic_flow_markdown(flow, current.projection)
         self.assertIn("\n## First steps\nRead the notice.", markdown)
         self.assertIn("\n- Court site: https://example.com/court", markdown)
         self.assertNotIn("[source:", markdown)
 
     def test_markdown_omits_empty_sections(self):
         _eviction_flow()
-        markdown = topic_flow_markdown(
-            topic_flow_find(topic_slug="eviction", flow_slug="tenant")
+        flow = topic_flow_find(topic_slug="eviction", flow_slug="tenant")
+        current = flow_state(
+            identity=None, flow=flow, contacts=[], resources=[]
         )
+        markdown = topic_flow_markdown(flow, current.projection)
         for heading in ("## Deadlines", "## Form packet", "## Links"):
             self.assertNotIn(heading, markdown)
 
@@ -238,7 +238,7 @@ class LoadTopicFlowToolTests(TestCase):
         self.thread = _thread()
         self.flow = _eviction_flow()
 
-    def test_result_names_the_active_flow_then_gives_its_markdown(self):
+    def test_selecting_a_flow_requests_current_context_refresh(self):
         output = LoadTopicFlow(topic_flow="eviction/tenant")(
             thread_id=self.thread.id
         )
@@ -248,8 +248,7 @@ class LoadTopicFlowToolTests(TestCase):
                 "(Responding to an Eviction)."
             )
         )
-        self.assertIn("# Responding to an Eviction", output.result)
-        self.assertFalse(output.refresh_system_prompt)
+        self.assertTrue(output.refresh_system_prompt)
         self.assertEqual(output.render_data["topic_flow"], "eviction/tenant")
         self.thread.refresh_from_db()
         state = LitigantAssistantState.model_validate(self.thread.state)

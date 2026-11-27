@@ -12,9 +12,9 @@ from django.urls import resolve, reverse
 from django.utils import timezone
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.views import topic_flow as topic_flow_views
+from litigant_portal.state.models import VariableDataType
 
 URL = "/facts/confirm/"
 
@@ -115,6 +115,24 @@ def test_an_answer_changed_after_the_card_was_shown_is_not_confirmed(
     response = _post(client, ["first_name", "county"], as_of=shown_at)
     assert response.json() == {"confirmed": 1, "pending": ["county"]}
     assert _reviewed(client, "first_name") is True
+    assert _reviewed(client, "county") is False
+
+
+@pytest.mark.postgres
+@pytest.mark.django_db
+def test_a_now_hidden_answer_keeps_its_old_card_from_claiming_confirmation(
+    variables,
+):
+    Variable.objects.filter(name="county").update(
+        asked_when={"variable": "first_name", "value": "Sandra"}
+    )
+    client = _session_client()
+    _store(client, "first_name", "Sandra")
+    _store(client, "county", "Cass")
+    shown_at = timezone.now()
+    _store(client, "first_name", "Jane")
+    response = _post(client, ["county"], as_of=shown_at)
+    assert response.json() == {"confirmed": 0, "pending": ["county"]}
     assert _reviewed(client, "county") is False
 
 

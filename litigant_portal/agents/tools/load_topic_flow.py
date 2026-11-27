@@ -1,6 +1,7 @@
 import json
 
 from litigant_portal.agents.base import Field, Tool, ToolOutput
+from litigant_portal.state.types import ProjectionType
 
 
 def topic_flow_path(flow) -> str:
@@ -11,7 +12,7 @@ def topic_flow_path(flow) -> str:
 def topic_flow_from_path(path: str, *, graph: bool = True):
     """The enabled TopicFlow at ``path`` (topic-slug/flow-slug), or None.
     ``graph`` is passed to ``topic_flow_find``."""
-    from litigant_portal.app.selectors.topic_flow import topic_flow_find
+    from litigant_portal.state.selectors import topic_flow_find
 
     topic_slug, sep, flow_slug = path.partition("/")
     if not (sep and topic_slug and flow_slug):
@@ -29,11 +30,8 @@ def _variable_line(variable) -> str:
     if variable.choices:
         values = ", ".join(c["value"] for c in variable.choices)
         line += f" [choices: {values}]"
-    if variable.asked_when:
-        line += (
-            f" (asked when {variable.asked_when.name} = "
-            f"{json.dumps(variable.asked_when_value)})"
-        )
+    if variable.asked_when is not None:
+        line += f" (asked when {json.dumps(variable.asked_when)})"
     if help_text := variable.help_text.strip():
         line += f"\n  Help: {help_text}"
     return line
@@ -52,22 +50,37 @@ def cited(marker: str, text: str) -> str:
     return f"{marker} {text}" if marker else text
 
 
-def topic_flow_markdown(flow) -> str:
-    """Everything the assistant should know about ``flow``, as markdown.
+def topic_flow_markdown(
+    flow, projection: ProjectionType, *, public_names: set[str] | None = None
+) -> str:
+    """
+    Applicable authored content and computed progress for this identity.
 
-    Every court-specific block carries its source marker; the interview
-    facts do not, since they describe what we ask, not what the court
-    says."""
+    Public names are supplied only for the stored prompt snapshot, where
+    dates derived from private source facts must also be masked.
+    """
     lines = [f"# {flow.name}", f"Topic: {flow.topic.title}"]
+    components = {
+        component.id: component for component in projection.components
+    }
 
-    for section in flow.sections.all():
+    for number, section in enumerate(flow.sections.all(), 1):
+        if (section.key or f"section-{number}") not in components:
+            continue
         heading = f"## {section.heading}"
         marker = source_marker(flow, section.key)
         if marker:
             heading += f" {marker}"
         lines += ["", heading, section.content.strip()]
 
-    deadlines = list(flow.deadlines.all())
+    resolved = {
+        deadline.id: deadline.date for deadline in projection.deadlines
+    }
+    deadlines = [
+        deadline
+        for deadline in flow.deadlines.all()
+        if deadline.ref in resolved
+    ]
     if deadlines:
         lines += ["", "## Deadlines"]
         for d in deadlines:
@@ -81,30 +94,41 @@ def topic_flow_markdown(flow) -> str:
             line += f"{when} {anchor}"
             if d.description:
                 line += f". {d.description}"
-            lines.append(line)
-
-    conditions = list(flow.form_conditions.all())
-    if conditions:
-        lines += ["", "## Form packet"]
-        for c in conditions:
-            line = f"- {cited(source_marker(flow, c.form.slug), c.form.name)}"
-            if c.variable:
-                line += (
-                    f" (included when {c.variable.name} {c.operator} "
-                    f"{json.dumps(c.value)})"
+            if resolved[d.ref] is not None:
+                computed = (
+                    resolved[d.ref].isoformat()
+                    if public_names is None
+                    or d.offset_from.name in public_names
+                    else "[private]"
                 )
+                line += f". Computed date: {computed}"
             lines.append(line)
 
-    pages = list(flow.interview_pages.all())
+    forms = {
+        entry.form.slug: entry.form for entry in flow.form_conditions.all()
+    }
+    if projection.forms:
+        lines += ["", "## Form packet"]
+        for slug in projection.forms:
+            form = forms[slug]
+            lines.append(f"- {cited(source_marker(flow, slug), form.name)}")
+
+    pages = [
+        (page, components[f"interview-{number}"])
+        for number, page in enumerate(flow.interview_pages.all(), 1)
+        if f"interview-{number}" in components
+    ]
     if pages:
         lines += ["", "## Facts the guided interview collects"]
-        for page in pages:
+        for page, component in pages:
             if page.title:
                 lines += ["", f"### {page.title}"]
             if page.description:
                 lines.append(page.description.strip())
             lines += [
-                _variable_line(pv.variable) for pv in page.variables.all()
+                _variable_line(placement.variable)
+                for placement in page.variables.all()
+                if placement.variable.name in component.variables
             ]
 
     links = list(flow.links.all())
@@ -115,18 +139,26 @@ def topic_flow_markdown(flow) -> str:
             for link in links
         ]
 
+    progress = projection.model_dump(
+        mode="json", exclude={"flow_id", "components", "forms", "deadlines"}
+    )
+    progress["components"] = [
+        {"id": component.id, "complete": component.complete}
+        for component in projection.components
+    ]
+    lines += ["", "## Current flow progress", json.dumps(progress)]
     return "\n".join(lines)
 
 
 class LoadTopicFlow(Tool):
-    """Load a guided topic flow and make it this conversation's active flow.
+    """
+    Load a guided topic flow and make it this conversation's active flow.
 
     Call this as soon as the user's situation matches one of the available
-    topic flows listed in your instructions. The result contains the flow's
-    full content (its guidance, deadlines, forms, and the facts it
-    collects); ground your answers in that content while the flow is
-    active. Each block of guidance carries a [source:ID] marker, the id to
-    cite when you rely on that block.
+    topic flows listed in your instructions. Selecting a flow refreshes
+    the current flow context with its applicable guidance, facts, forms,
+    deadlines, and next components. Ground your answers in that context.
+    Each block of guidance carries a [source:ID] marker for citations.
     """
 
     topic_flow: str = Field(
@@ -138,12 +170,12 @@ class LoadTopicFlow(Tool):
     )
 
     def __call__(self, *, thread_id) -> ToolOutput:
-        from litigant_portal.app.selectors.topic_flow import topic_flow_list
         from litigant_portal.app.services.chat_engine import (
             chat_thread_state_merge,
         )
+        from litigant_portal.state.selectors import topic_flow_list
 
-        flow = topic_flow_from_path(self.topic_flow)
+        flow = topic_flow_from_path(self.topic_flow, graph=False)
         if flow is None:
             available = (
                 ", ".join(topic_flow_path(f) for f in topic_flow_list())
@@ -164,8 +196,9 @@ class LoadTopicFlow(Tool):
         return ToolOutput(
             result=(
                 f"The active topic flow is now {topic_flow_path(flow)} "
-                f"({flow.name}).\n\n{topic_flow_markdown(flow)}"
+                f"({flow.name}). Use the refreshed current flow context."
             ),
+            refresh_system_prompt=True,
             render_data={
                 "topic_flow": topic_flow_path(flow),
                 "name": flow.name,

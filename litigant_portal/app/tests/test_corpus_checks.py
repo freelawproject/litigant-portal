@@ -143,15 +143,16 @@ _GLOSSARY = {
 
 
 def _flow(*pages):
-    """A flow with one page per ``(variables, on_page)`` and a deadline
-    counted from ``adopted_on``."""
+    """
+    A flow with the given question groups and an adoption-date deadline.
+    """
     return FlowSchema.model_validate(
         {
             "name": "Pets",
             "sections": [{"id": "start", "heading": "Start", "content": "C"}],
             "interview": [
-                {"title": "Page", "variables": variables, "on_page": on_page}
-                for variables, on_page in pages
+                {"title": "Page", "variables": variables}
+                for variables in pages
             ],
             "deadlines": [
                 {
@@ -176,27 +177,25 @@ def test_shipped_corpus_asks_every_decision_variable():
     assert check_corpus_asks_decision_variables(None) == []
 
 
-def test_an_unmarked_deadline_source_warns_naming_the_flow_and_variable(
+def test_an_unplaced_deadline_source_warns_naming_the_flow_and_variable(
     monkeypatch,
 ):
-    _corpus(monkeypatch, _flow((["adopted_on"], False)))
+    _corpus(monkeypatch, _flow(["adopted"]))
     (warning,) = check_corpus_asks_decision_variables(None)
     assert warning.id == "corpus.W001"
     assert "alpha/pets/standard" in warning.msg
     assert "adopted_on" in warning.msg
 
 
-def test_a_marked_deadline_source_does_not_warn(monkeypatch):
-    _corpus(monkeypatch, _flow((["adopted_on"], True)))
+def test_a_placed_deadline_source_does_not_warn(monkeypatch):
+    _corpus(monkeypatch, _flow(["adopted_on"]))
     assert check_corpus_asks_decision_variables(None) == []
 
 
-def test_an_unmarked_gate_of_a_marked_question_warns(monkeypatch):
+def test_an_unplaced_gate_warns(monkeypatch):
     _corpus(
         monkeypatch,
-        _flow(
-            (["adopted_on", "adopted"], False), (["adoption_shelter"], True)
-        ),
+        _flow(["adoption_shelter"]),
     )
     (warning,) = check_corpus_asks_decision_variables(None)
     assert "adopted, adopted_on" in warning.msg

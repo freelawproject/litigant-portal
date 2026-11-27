@@ -5,8 +5,8 @@ from django.core.management.base import BaseCommand, CommandError
 
 from litigant_portal.app.features import features
 from litigant_portal.app.selectors.corpus import corpus_load_courts
-from litigant_portal.app.selectors.topic_flow import topic_court_find
 from litigant_portal.app.services.corpus import corpus_sync
+from litigant_portal.state.selectors import topic_court_find
 
 logger = logging.getLogger(__name__)
 

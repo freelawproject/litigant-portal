@@ -1,165 +1,222 @@
 import logging
 
 from django.contrib import messages
-from django.http import Http404, HttpResponse, JsonResponse
+from django.http import (
+    Http404,
+    HttpResponse,
+    HttpResponseBadRequest,
+    JsonResponse,
+)
 from django.shortcuts import redirect, render
-from django.urls import Resolver404, resolve, reverse
+from django.urls import Resolver404, resolve
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.utils.translation import gettext as _
 from django.views.csrf import csrf_failure as _django_csrf_failure
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_http_methods, require_POST
 
 from litigant_portal.app.selectors.site import contact_list, resource_list
-from litigant_portal.app.selectors.topic_flow import (
-    variable_answer_unreviewed_names,
-)
-from litigant_portal.app.services.docassemble import (
-    DocassembleError,
-    docassemble_session_create,
-    interview_launch_url,
-)
 from litigant_portal.app.services.topic_flow import (
+    topic_flow_section_viewed,
     variable_answer_confirm,
     variable_answer_set_many,
 )
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.contacts import contact_dicts
 from litigant_portal.app.topic_flow.downloads import ics_artifact, vcf_artifact
-from litigant_portal.app.topic_flow.prefill import (
-    flow_interview_target,
-    prefill_variables,
-)
 from litigant_portal.app.views.utils import (
     briefcase_answers,
     has_identity,
-    topic_flow_reviewed_answers,
-    topic_flow_row_answers,
-    topic_flow_row_cleared_names,
     topic_flow_row_get,
+)
+from litigant_portal.state.docassemble import (
+    DocassembleError,
+    docassemble_session_create,
+    flow_interview_target,
+    interview_launch_url,
+    prefill_variables,
+)
+from litigant_portal.state.selectors import (
+    flow_pages,
+    flow_state,
+    variable_answer_unreviewed_names,
 )
 
 logger = logging.getLogger(__name__)
 
 
+@require_http_methods(["GET", "POST"])
 def topic_flow(request, court, topic, role):
-    """The guided page at /t/{court}/{topic}/{role}/, built from the TopicFlow
-    rows ``sync_corpus`` writes (404 on miss).
-
-    GET renders the flow's layout with the visitor's stored answers, so the
-    interview fields prefill. POST persists the submitted answers as
-    VariableAnswer rows and redirects (PRG) so a reload re-GETs rather than
-    re-submits; the whole flow works with JS off. The view stays thin: the
-    row-to-section work lives in rows.py, deadline math in deadlines.py.
-
-    Saving marks answers ``reviewed=True``: this page is where a human
-    confirms what the assistant guessed, and only reviewed answers may
-    reach the docassemble prefill.
+    """
+    Show projected guidance and accept human saves or Continue actions.
     """
     flow = topic_flow_row_get(court, topic, role)
-    sections = list(flow.sections.all())
-    pages = rows.flow_pages(flow)
-    form_conditions = list(flow.form_conditions.all())
-    deadlines = list(flow.deadlines.all())
-    names = rows.flow_variable_names(pages, form_conditions, deadlines)
-    answers = topic_flow_row_answers(request, names)
-    cleared = topic_flow_row_cleared_names(request, names)
-    # The output blocks' rows (the URL's court's whole contact and resource
-    # lists, not a per-flow pick) and the URL parts their links need.
-    block_rows = {
-        "form_conditions": form_conditions,
-        "deadlines": deadlines,
-        "contacts": contact_list(court=court),
-        "resources": resource_list(court=court),
-        "court": court,
-        "topic": topic,
-        "role": role,
-    }
-
+    contacts = contact_list(court=court)
+    resources = resource_list(court=court)
+    identity = (
+        request.identity
+        if request.method == "POST" or has_identity(request)
+        else None
+    )
+    current = flow_state(
+        identity=identity, flow=flow, contacts=contacts, resources=resources
+    )
+    selected = (
+        request.POST.get("component", "")
+        if request.method == "POST"
+        else request.GET.get("component", "")
+    )
+    component = next(
+        (c for c in current.projection.components if c.id == selected), None
+    )
+    if selected and component is None:
+        raise Http404("This section is not currently applicable.")
+    errors = {}
     if request.method == "POST":
-        # Only currently asked variables are read, so a gated field whose
-        # gate is unmet is ignored even if posted. A stored private field
-        # renders blank, so a blank there is "keep", not "missing".
-        variables = {v.name: v for _page, placed in pages for v in placed}
-        asked = rows.asked_names(pages, answers)
-        private = rows.private_names(pages)
-        keep = {n for n in asked if n in private and n in answers}
-        submitted, errors, valid = _accepted_answers(
-            request.POST,
-            asked,
-            lambda s: rows.validate_answers(variables.values(), s, keep),
-            lambda name, raw: rows.coerce_value(variables[name], raw),
-            private,
-        )
-        # An untouched field retains its stored value, not the form's
-        # narrower string of it (a datetime's zone, a float's type).
-        valid = rows.restore_unchanged(variables, submitted, answers, valid)
-        # A gated answer whose gate stops matching is cleared with the save,
-        # so the briefcase and the prefill agree with the page.
-        for name in rows.stale_gated_names(pages, answers, valid):
-            valid[name] = None
-        revealed = []
-        if valid:
-            variable_answer_set_many(
-                identity=request.identity, values=valid, reviewed=True
-            )
-            # Re-read: a gate just saved decides which fields show next,
-            # and the ones it uncovered get the toast and the anchor.
-            answers = topic_flow_row_answers(request, names)
-            cleared = topic_flow_row_cleared_names(request, names)
-            asked_after = rows.asked_names(pages, answers)
-            revealed = [name for name in asked_after if name not in asked]
-            # A gate flipped by this save hides its dependents, so an error
-            # on one has no field to land on: drop it rather than re-render
-            # a page that shows no message.
-            errors = {
-                name: found
-                for name, found in errors.items()
-                if name in asked_after
-            }
-        if errors:
-            # Soft-gate: re-render in place (no PRG) with inline errors so the
-            # litigant can fix and resubmit. Render from the stored answers
-            # (not the raw submission), so a rejected value can't leak into
-            # the page while the form flags it.
-            return _render_flow_page(
+        action = request.POST.get("action")
+        if component is None or action not in {"save", "continue"}:
+            return HttpResponseBadRequest(_("Choose a section action."))
+        if request.POST.get("signature") != component.signature:
+            messages.info(
                 request,
-                flow.name,
-                rows.render_flow(
-                    flow,
-                    sections,
-                    pages,
-                    answers,
-                    errors,
-                    cleared,
-                    **block_rows,
+                _(
+                    "This section has changed. Please review it before continuing."
                 ),
             )
-        if valid:
-            _flash_saved(request, valid, private, revealed)
-        # PRG back to the place just saved so the litigant keeps their place
-        # and sees the recomputed deadlines, instead of the browser jumping
-        # to the top of the page on the redirected GET.
-        url = reverse(
-            "pages:topic_flow",
-            kwargs={"court": court, "topic": topic, "role": role},
-        )
-        # Field ids are variable names, so landing on the first revealed
-        # question puts focus in it; otherwise back to the section saved.
-        anchor = (
-            revealed[0]
-            if revealed
-            else rows.submitted_section_anchor(pages, submitted)
-        )
-        if anchor:
-            url = f"{url}#{anchor}"
-        return redirect(url)
+            return redirect(
+                f"{request.path}?component={component.id}#{component.id}"
+            )
+        if action == "continue":
+            if not component.can_continue:
+                messages.info(
+                    request,
+                    _(
+                        "Answer and confirm the required questions before continuing."
+                    ),
+                )
+                return redirect(
+                    f"{request.path}?component={component.id}#{component.id}"
+                )
+        else:
+            if not component.variables:
+                return HttpResponseBadRequest(
+                    _("This section has no questions.")
+                )
+            variables = {n: current.variables[n] for n in component.variables}
+            answers = {
+                n: current.state.facts[n].value
+                for n in current.projection.answered
+            }
+            private = {n for n, v in variables.items() if v.is_private}
+            keep = private & answers.keys()
+            posted = {n: request.POST.get(n, "") for n in variables}
+            posted.update(
+                {
+                    f"{n}__clear": "on"
+                    for n in private
+                    if f"{n}__clear" in request.POST
+                }
+            )
+            submitted, errors, valid = _accepted_answers(
+                posted,
+                variables,
+                lambda s: rows.validate_answers(variables.values(), s, keep),
+                lambda name, raw: rows.coerce_value(variables[name], raw),
+                private,
+            )
+            valid = rows.restore_unchanged(
+                variables, submitted, answers, valid
+            )
+            if valid:
+                asked_before = set(current.projection.applicable_variables)
+                variable_answer_set_many(
+                    identity=identity, values=valid, reviewed=True
+                )
+                current = flow_state(
+                    identity=identity,
+                    flow=flow,
+                    contacts=contacts,
+                    resources=resources,
+                )
+                errors = {
+                    n: found
+                    for n, found in errors.items()
+                    if n in current.projection.applicable_variables
+                }
+                revealed = (
+                    set(current.projection.applicable_variables) - asked_before
+                )
+                _flash_saved(request, valid, private, revealed)
+        if not errors:
+            # Keep the signature of what the human saw. A save can reveal
+            # new questions, whose different signature still needs a view.
+            topic_flow_section_viewed(
+                identity=identity,
+                flow=flow,
+                component_id=component.id,
+                signature=component.signature,
+            )
+            return redirect(request.path)
+    return _projected_page(
+        request, flow, current, contacts, resources, selected, errors
+    )
 
+
+def _projected_page(
+    request, flow, current, contacts, resources, selected, errors
+):
+    projection = current.projection
+    rendered = rows.render_flow(
+        flow,
+        list(flow.sections.all()),
+        flow_pages(flow),
+        {
+            name: current.state.facts[name].value
+            for name in projection.answered
+        },
+        errors,
+        {
+            name
+            for name, fact in current.state.facts.items()
+            if fact.value is None
+        },
+        projection=projection,
+        form_conditions=list(flow.form_conditions.all()),
+        deadlines=list(flow.deadlines.all()),
+        contacts=contacts,
+        resources=resources,
+        court=flow.topic.court,
+        topic=flow.topic.slug,
+        role=flow.slug,
+    )
+    components = {c.id: c for c in projection.components}
+    visible = (
+        [selected]
+        if selected in components
+        else [c.component_id for c in projection.candidates]
+    )
+    by_id = {section.anchor_id: section for section in rendered}
+    for section in rendered:
+        component = components[section.anchor_id]
+        section.context.update(
+            signature=component.signature,
+            can_continue=component.can_continue,
+        )
     return _render_flow_page(
         request,
         flow.name,
-        rows.render_flow(
-            flow, sections, pages, answers, cleared=cleared, **block_rows
+        [by_id[name] for name in visible],
+        section_links=[
+            {
+                "anchor": s.anchor_id,
+                "heading": s.heading,
+                "complete": components[s.anchor_id].complete,
+            }
+            for s in rendered
+        ],
+        flow_complete=not projection.candidates,
+        briefcase_groups=briefcase_answers(
+            request, flow=flow, current=current
         ),
     )
 
@@ -218,7 +275,9 @@ def _flash_saved(request, valid, protected, revealed=()):
 def _render_flow_page(request, page_title, rendered_sections, **extra):
     """Render ``pages/topic_flow.html`` from an ordered ``RenderedSection``
     list."""
-    briefcase_groups = briefcase_answers(request)
+    briefcase_groups = extra.pop("briefcase_groups", None)
+    if briefcase_groups is None:
+        briefcase_groups = briefcase_answers(request)
     evidence_by_name = {
         answer.variable.name: answer.evidence
         for group in briefcase_groups
@@ -278,15 +337,19 @@ def _row_download(request, court, topic, role, output_id):
     the visitor's stored answers, or the ``contacts`` block as a ``.vcf``
     from the URL's court's Contact rows. Any other id is 404. The UID
     segment is the block name."""
-    flow = topic_flow_row_get(court, topic, role, graph=False)
+    flow = topic_flow_row_get(court, topic, role)
     uid_prefix = f"{court}-{topic}-{role}-{output_id}"
     if output_id == "calendar":
-        deadlines = list(flow.deadlines.select_related("offset_from"))
-        names = rows.flow_variable_names([], deadlines=deadlines)
+        current = flow_state(
+            identity=request.identity if has_identity(request) else None,
+            flow=flow,
+            contacts=[],
+            resources=[],
+        )
+        if not any(c.id == "calendar" for c in current.projection.components):
+            raise Http404("This calendar is not currently applicable.")
         return ics_artifact(
-            rows.flow_deadlines(
-                deadlines, topic_flow_row_answers(request, names)
-            ),
+            rows.projected_deadlines(flow.deadlines.all(), current.projection),
             uid_prefix=uid_prefix,
             filename="calendar.ics",
         )
@@ -310,10 +373,11 @@ def topic_flow_interview(request, court, topic, role):
     Any failure redirects to the plain interview link instead. Unprefilled is a
     worse handoff than prefilled, but a dead button is worse than both.
     """
-    target = _interview_target(court, topic, role)
+    flow = topic_flow_row_get(court, topic, role)
+    target = flow_interview_target(flow)
     if target is None:
         raise Http404(f"No interview handoff for {court}/{topic}/{role}")
-    return _interview_redirect(request, court, topic, role, target)
+    return _interview_redirect(request, court, topic, role, target, flow)
 
 
 def _interview_target(court, topic, role):
@@ -324,7 +388,7 @@ def _interview_target(court, topic, role):
     )
 
 
-def _interview_redirect(request, court, topic, role, target):
+def _interview_redirect(request, court, topic, role, target, flow):
     interview, mapping = target
     launch_url = interview_launch_url(interview)
     if launch_url is None:
@@ -332,10 +396,17 @@ def _interview_redirect(request, court, topic, role, target):
         # hides the button, so only a stale or hand-built POST lands here.
         raise Http404(f"No docassemble configured for {court}/{topic}/{role}")
 
-    variables = prefill_variables(
-        mapping=mapping,
-        answers=topic_flow_reviewed_answers(request, list(mapping)),
-    )
+    answers = {}
+    if has_identity(request):
+        current = flow_state(
+            identity=request.identity, flow=flow, contacts=[], resources=[]
+        )
+        answers = {
+            name: current.state.facts[name].value
+            for name in current.projection.answered
+            if current.state.facts[name].reviewed
+        }
+    variables = prefill_variables(mapping=mapping, answers=answers)
     if not variables:
         # Nothing to prefill: a session would cost three API calls and an
         # unencrypted multi_user session holding nothing, for the same

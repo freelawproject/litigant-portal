@@ -14,7 +14,9 @@
     <ul class="list-none pl-0 py-2">
       {% for item in section_links %}
         <li>
-          <c-atoms.link href="#{{ item.anchor }}" variant="unstyled" class="block px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100">{{ item.heading }}</c-atoms.link>
+          <c-atoms.link href="?component={{ item.anchor }}#{{ item.anchor }}" variant="unstyled" class="block px-4 py-2 text-sm text-greyscale-700 hover:bg-greyscale-100">
+            {{ item.heading }}{% if item.complete %}<span class="sr-only"> ({% trans "Complete" %})</span>{% endif %}
+          </c-atoms.link>
         </li>
       {% endfor %}
     </ul>
@@ -39,7 +41,21 @@
     <h2 id="{{ section.anchor_id }}-heading" class="mb-3 text-lg font-semibold text-greyscale-900">{{ section.heading }}</h2>
     {% endif %}
     {% include section.template with ctx=section.context anchor_id=section.anchor_id heading=section.heading %}
+    {% if section.context.can_continue %}
+    <form method="post" class="mt-4">
+      {% csrf_token %}
+      <input type="hidden" name="component" value="{{ section.anchor_id }}">
+      <input type="hidden" name="signature" value="{{ section.context.signature }}">
+      <c-atoms.button type="submit" name="action" value="continue" variant="outline">
+        {% if section.context.questions %}{% trans "Skip optional questions" %}{% else %}{% trans "Continue" %}{% endif %}
+      </c-atoms.button>
+    </form>
+    {% endif %}
   </section>
+  {% empty %}
+    {% if flow_complete %}
+    <p role="status">{% trans "You have finished reviewing this guide. You can revisit any section using the navigation." %}</p>
+    {% endif %}
   {% endfor %}
 </div>
 {% endblock content %}

@@ -8,6 +8,7 @@ import shutil
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import yaml
 
@@ -67,7 +68,8 @@ def snapshot_current() -> dict:
         topic_flow_markdown,
     )
     from litigant_portal.app.selectors.site import site_get
-    from litigant_portal.app.selectors.topic_flow import (
+    from litigant_portal.state.selectors import (
+        flow_state,
         topic_flow_find,
         topic_flow_list,
     )
@@ -76,10 +78,13 @@ def snapshot_current() -> dict:
     flows = []
     for flow in topic_flow_list():
         full = topic_flow_find(topic_slug=flow.topic.slug, flow_slug=flow.slug)
+        current = flow_state(
+            identity=None, flow=full, contacts=[], resources=[]
+        )
         flows.append(
             {
                 "path": f"{flow.topic.slug}/{flow.slug}",
-                "content": topic_flow_markdown(full),
+                "content": topic_flow_markdown(full, current.projection),
             }
         )
     return {
@@ -126,7 +131,21 @@ def fixture_root(run: Path, variant: str) -> Path:
 def install_fixture(root: Path, court: str) -> None:
     from litigant_portal.app.services.corpus import corpus_sync
 
-    corpus_sync(root=root, court=court, strict=True)
+    # The frozen benchmark still carries the retired presentation flag.
+    # Adapt a disposable copy without changing its content or source hashes.
+    with TemporaryDirectory(prefix="agent-eval-corpus-") as directory:
+        prepared = Path(directory) / "corpus"
+        shutil.copytree(root, prepared)
+        for path in (prepared / "courts").glob("*/topics/*/flows/*.yml"):
+            flow = yaml.safe_load(path.read_text())
+            pages = flow.get("interview", [])
+            if any("on_page" in page for page in pages):
+                for page in pages:
+                    page.pop("on_page", None)
+                path.write_text(
+                    yaml.safe_dump(flow, allow_unicode=True, sort_keys=False)
+                )
+        corpus_sync(root=prepared, court=court, strict=True)
 
 
 @contextmanager

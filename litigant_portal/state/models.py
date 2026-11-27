@@ -1,18 +1,25 @@
 import uuid
 
-from django.core.exceptions import ObjectDoesNotExist
 from django.core.validators import RegexValidator
 from django.db import models
-from django.utils import formats
-from django.utils.dateparse import parse_date, parse_datetime
-from django.utils.translation import gettext_lazy as _
 
-from litigant_portal.app.formatting import format_long_date
-
-from .base import BaseModel
-from .choices import TopicFlowFormConditionOperator, VariableDataType
+from litigant_portal.app.models.base import BaseModel
+from litigant_portal.state.rules import (
+    condition_matches,
+    parse_condition,
+)
+from litigant_portal.state.types import ConditionType
 
 SNAKE_CASE_PATTERN = r"^[a-z][a-z0-9_]*$"
+
+
+class VariableDataType(models.TextChoices):
+    TEXT = "text", "Text"
+    DATE = "date", "Date"
+    DATETIME = "datetime", "Datetime"
+    NUMBER = "number", "Number"
+    CHOICE = "choice", "Choice"
+    BOOLEAN = "boolean", "Boolean"
 
 
 class Topic(BaseModel):
@@ -30,6 +37,7 @@ class Topic(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
 
@@ -51,6 +59,7 @@ class TopicFlow(BaseModel):
     interview_prefill = models.JSONField(default=dict, blank=True)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
@@ -71,10 +80,32 @@ class TopicFlowSection(BaseModel):
     key = models.SlugField(max_length=64, blank=True, default="")
     heading = models.CharField(max_length=255)
     content = models.TextField(blank=True)
+    when = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
+
+
+class FlowViewState(BaseModel):
+    """
+    Viewed component signatures, separate from an identity's case facts.
+    """
+
+    identity = models.ForeignKey(
+        "UserIdentity", on_delete=models.CASCADE, related_name="flow_views"
+    )
+    flow = models.ForeignKey(TopicFlow, on_delete=models.CASCADE)
+    viewed = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        app_label = "app"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["identity", "flow"], name="unique_identity_flow_view"
+            )
+        ]
 
 
 class Variable(BaseModel):
@@ -100,62 +131,27 @@ class Variable(BaseModel):
     is_global = models.BooleanField(default=False)
     is_private = models.BooleanField(default=False)
     in_schema = models.BooleanField(default=True)
-    asked_when = models.ForeignKey(
-        "self",
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="gated_variables",
-    )
-    asked_when_value = models.JSONField(null=True, blank=True)
+    asked_when = models.JSONField(null=True, blank=True)
 
     class Meta:
+        app_label = "app"
         ordering = ["name"]
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(name__regex=SNAKE_CASE_PATTERN),
                 name="variable_name_snake_case",
             ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(asked_when__isnull=False)
-                    | models.Q(asked_when_value__isnull=True)
-                ),
-                name="variable_gate_value_requires_gate",
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(asked_when__isnull=True)
-                    | models.Q(asked_when_value__isnull=False)
-                ),
-                name="variable_gate_requires_value",
-            ),
         ]
 
+    @property
+    def condition(self) -> ConditionType | None:
+        return parse_condition(self.asked_when)
+
     def is_asked(self, answers: dict) -> bool:
-        """Whether this variable's question currently applies, given
-        ``{name: value}`` answers. Callers prefetch ``asked_when``."""
-        if self.asked_when is None:
-            return True
-        return condition_holds(
-            answers, self.asked_when.name, self.asked_when_value
-        )
-
-
-def condition_holds(
-    answers: dict,
-    name: str,
-    value,
-    operator=TopicFlowFormConditionOperator.EQUALS,
-) -> bool:
-    """Whether a ``{variable, operator, value}`` rule holds against
-    ``{name: value}`` answers: ``equals`` when the stored answer is the
-    value, ``not_equals`` when it is anything else, unanswered included.
-    The one evaluator for a gate, a packet condition and a checkbox rule."""
-    matches = answers.get(name) == value
-    if operator == TopicFlowFormConditionOperator.NOT_EQUALS:
-        return not matches
-    return matches
+        """
+        Whether this question applies to the current applicable answers.
+        """
+        return condition_matches(self.condition, answers)
 
 
 class VariableAnswer(BaseModel):
@@ -176,57 +172,8 @@ class VariableAnswer(BaseModel):
     reviewed = models.BooleanField(default=False)
     evidence = models.JSONField(null=True, blank=True)
 
-    @property
-    def display_value(self) -> str:
-        """The stored value rendered for reading.
-
-        ``value`` is jsonb, so a multi-choice answer arrives as a list, a
-        boolean as a bool, and a date as an ISO string. Handing any of those
-        straight to a template shows the litigant a Python repr or a raw
-        `2026-09-09`, so the shaping lives here rather than in the template.
-        """
-        if isinstance(self.value, bool):
-            return str(_("Yes")) if self.value else str(_("No"))
-        if isinstance(self.value, list):
-            return ", ".join(str(item) for item in self.value)
-        if self.value is None:
-            return ""
-        return self._formatted_value_from_data_type()
-
-    def _formatted_value_from_data_type(self) -> str:
-        raw = str(self.value)
-
-        try:
-            data_type = self.variable.data_type
-        except ObjectDoesNotExist:
-            return raw
-
-        if data_type == VariableDataType.CHOICE:
-            return self._formatted_choice()
-        elif data_type == VariableDataType.DATE:
-            parsed = parse_date(raw)
-            # Same shape the flow page's deadlines use, so a litigant sees one
-            # date format across both surfaces.
-            return format_long_date(parsed) if parsed else raw
-        elif data_type == VariableDataType.DATETIME:
-            parsed = parse_datetime(raw)
-            if parsed is None:
-                return raw
-            return formats.date_format(parsed, "DATETIME_FORMAT")
-        return raw
-
-    def _formatted_choice(self) -> str:
-        # A stored answer can outlive its choice when the corpus changes.
-        return next(
-            (
-                choice["label"]
-                for choice in self.variable.choices
-                if choice["value"] == self.value
-            ),
-            str(self.value),
-        )
-
     class Meta:
+        app_label = "app"
         constraints = [
             models.UniqueConstraint(
                 fields=["identity", "variable"],
@@ -245,6 +192,7 @@ class Form(BaseModel):
     url = models.URLField(max_length=500, blank=True)
 
     class Meta:
+        app_label = "app"
         ordering = ["slug"]
 
 
@@ -261,33 +209,13 @@ class FormField(BaseModel):
     pdf_field = models.CharField(max_length=255)
     template = models.TextField(blank=True)
     checked = models.BooleanField(null=True, blank=True)
-    checked_when = models.ForeignKey(
-        Variable,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="checkbox_fields",
-    )
-    checked_when_value = models.JSONField(null=True, blank=True)
+    checked_when = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
         constraints = [
-            models.CheckConstraint(
-                condition=(
-                    models.Q(checked_when__isnull=False)
-                    | models.Q(checked_when_value__isnull=True)
-                ),
-                name="formfield_condition_value_requires_condition",
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(checked_when__isnull=True)
-                    | models.Q(checked_when_value__isnull=False)
-                ),
-                name="formfield_condition_requires_value",
-            ),
             models.CheckConstraint(
                 condition=(
                     models.Q(checked__isnull=True)
@@ -326,46 +254,18 @@ class TopicFlowFormCondition(BaseModel):
         on_delete=models.CASCADE,
         related_name="flow_conditions",
     )
-    variable = models.ForeignKey(
-        Variable,
-        on_delete=models.PROTECT,
-        null=True,
-        blank=True,
-        related_name="form_conditions",
-    )
-    operator = models.CharField(
-        max_length=32,
-        choices=TopicFlowFormConditionOperator.choices,
-        default=TopicFlowFormConditionOperator.EQUALS,
-    )
-    value = models.JSONField(null=True, blank=True)
+    when = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
-        constraints = [
-            models.CheckConstraint(
-                condition=(
-                    models.Q(variable__isnull=False)
-                    | models.Q(value__isnull=True)
-                ),
-                name="form_condition_value_requires_variable",
-            ),
-            models.CheckConstraint(
-                condition=(
-                    models.Q(variable__isnull=True)
-                    | models.Q(value__isnull=False)
-                ),
-                name="form_condition_variable_requires_value",
-            ),
-        ]
 
 
 class TopicFlowInterviewPage(BaseModel):
-    """A page of a flow's guided interview: a grouping of its variables.
-
-    ``on_page`` marks a page the guided page asks; the chat and the
-    docassemble handoff use every page."""
+    """
+    A question group whose applicability is computed from stored facts.
+    """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     flow = models.ForeignKey(
@@ -375,10 +275,11 @@ class TopicFlowInterviewPage(BaseModel):
     )
     title = models.CharField(max_length=255, blank=True)
     description = models.TextField(blank=True)
-    on_page = models.BooleanField(default=False)
+    when = models.JSONField(null=True, blank=True)
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
 
@@ -399,6 +300,7 @@ class TopicFlowInterviewVariable(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
         constraints = [
             models.UniqueConstraint(
@@ -423,6 +325,7 @@ class TopicFlowLink(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
 
@@ -438,6 +341,7 @@ class TopicFlowDeadline(BaseModel):
     key = models.SlugField(max_length=64, blank=True, default="")
     label = models.CharField(max_length=255)
     description = models.TextField(blank=True)
+    when = models.JSONField(null=True, blank=True)
     offset_days = models.IntegerField(default=0)
     offset_from = models.ForeignKey(
         Variable,
@@ -447,6 +351,7 @@ class TopicFlowDeadline(BaseModel):
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
+        app_label = "app"
         ordering = ["order", "created_at"]
 
     @property

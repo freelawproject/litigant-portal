@@ -782,6 +782,7 @@ document.addEventListener('alpine:init', () => {
       this.messages = []
       this.conversationEmpty = true
       this.setState({})
+      this.refreshBriefcase()
       this.clearInput()
       this.clearAttachments()
       this.markActive()
@@ -862,6 +863,7 @@ document.addEventListener('alpine:init', () => {
       if (live && live.threadId === threadId) {
         const row = this.threads.find((t) => t.id === threadId)
         this.threadId = threadId
+        this.refreshBriefcase()
         this.threadTitle = (row && row.title) || NEW_CHAT_TITLE
         this.messages = live.messages
         this.conversationEmpty = false
@@ -884,6 +886,7 @@ document.addEventListener('alpine:init', () => {
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         const data = await res.json()
         this.threadId = data.id
+        this.refreshBriefcase()
         this.threadTitle = data.description || NEW_CHAT_TITLE
         this.messages = placeCardsAfterReply((data.items || []).map(buildItem))
         this.setState(data.state)
@@ -1081,13 +1084,22 @@ document.addEventListener('alpine:init', () => {
     async refreshBriefcase() {
       if (!this.briefcaseUrl) return
       const fetchId = ++this.briefcaseFetches
+      const threadId = this.threadId
       try {
-        const res = await fetch(this.briefcaseUrl)
+        const url = threadId
+          ? this.briefcaseUrl + '?thread_id=' + encodeURIComponent(threadId)
+          : this.briefcaseUrl
+        const res = await fetch(url)
         if (!res.ok) throw new Error('Request failed: ' + res.status)
         const fresh = new DOMParser()
           .parseFromString(await res.text(), 'text/html')
           .querySelector('[data-briefcase-facts]')
-        if (!fresh || fetchId !== this.briefcaseFetches) return
+        if (
+          !fresh ||
+          fetchId !== this.briefcaseFetches ||
+          threadId !== this.threadId
+        )
+          return
         this.$root.querySelectorAll('[data-briefcase-facts]').forEach((el) => {
           el.replaceWith(fresh.cloneNode(true))
         })
@@ -1164,7 +1176,7 @@ document.addEventListener('alpine:init', () => {
       } else if (event.type === 'state') {
         if (this.attached(stream)) this.setState(event.state)
       } else if (event.type === 'briefcase_changed') {
-        // Session-scoped, not thread-scoped: refresh even for a detached stream.
+        // Facts are shared, but applicability follows the thread being viewed.
         this.refreshBriefcase()
       } else if (event.type === 'error') {
         this.failStream(stream, event)

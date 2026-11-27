@@ -28,9 +28,9 @@ from litigant_portal.app.models import (
 from litigant_portal.app.selectors.corpus import CorpusSchema
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
-from litigant_portal.app.services.docassemble import DocassembleError
 from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.views import topic_flow as topic_flow_views
+from litigant_portal.state.docassemble import DocassembleError
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
@@ -85,11 +85,12 @@ LAYOUT = [
     "resources",
 ]
 # The anchors the layout renders as: the interview block is one section
-# per page marked on_page, numbered in page order.
+# per applicable question group, numbered in authored order.
 ANCHORS = [
     "fees",
     "interview-1",
     "interview-2",
+    "interview-3",
     "overview",
     "packet",
     "calendar",
@@ -161,13 +162,11 @@ def _corpus():
     interview = [
         {
             "title": "About you",
-            "on_page": True,
             "variables": ["first_name", "full_name"],
         },
         {
             "title": "About your pet",
             "description": "A few facts the license needs.",
-            "on_page": True,
             "variables": [
                 "pet_kind",
                 "licensed",
@@ -176,7 +175,6 @@ def _corpus():
                 "license_date",
             ],
         },
-        # Not marked on_page: the chat asks it, the page does not.
         {"title": "Your vet", "variables": ["vet_name"]},
     ]
     # A form with the court's PDF url and one without; the checklist joins
@@ -399,10 +397,10 @@ def test_each_interview_page_renders_a_post_form_with_a_field_per_variable(
 
 
 @pytest.mark.postgres
-def test_a_page_not_marked_on_page_is_not_rendered(client, synced):
-    flat = _flat(client.get(URL))
-    assert "Your vet" not in flat
-    assert not _field_tag(flat, "vet_name")
+def test_any_applicable_question_group_can_be_selected(client, synced):
+    flat = _flat(client.get(URL, {"component": "interview-3"}))
+    assert "Your vet" in flat
+    assert _field_tag(flat, "vet_name")
 
 
 @pytest.mark.postgres
@@ -1165,10 +1163,20 @@ def test_a_save_that_reveals_a_question_redirects_to_that_field(
 
 
 @pytest.mark.postgres
-def test_post_ignores_a_variable_from_a_page_not_marked_on_page(
-    client, synced
-):
-    response = client.post(URL, {**PET_PAGE, "vet_name": "Dr. Vet"})
+def test_post_ignores_a_variable_from_another_question_group(client, synced):
+    selected = client.get(URL, {"component": "interview-2"})
+    response = client.post(
+        URL,
+        {
+            **PET_PAGE,
+            "vet_name": "Dr. Vet",
+            "component": "interview-2",
+            "action": "save",
+            "signature": selected.context["rendered_sections"][0].context[
+                "signature"
+            ],
+        },
+    )
     assert response.status_code == 302
     assert "vet_name" not in _values()
 
@@ -1258,24 +1266,25 @@ def _briefcase_names(client):
 
 
 @pytest.mark.postgres
-def test_flipping_a_gate_on_a_later_save_clears_the_gated_answer(
-    client, synced
-):
+def test_flipping_a_gate_retains_hides_and_restores_the_answer(client, synced):
     client.post(URL, {"licensed": "true"})
     client.post(URL, {"licensed": "true", "vaccinated": "true"})
     assert "vaccinated" in _briefcase_names(client)
     client.post(URL, {"licensed": "false"})
-    assert _values() == {"licensed": False, "vaccinated": None}
+    assert _values() == {"licensed": False, "vaccinated": True}
     assert "vaccinated" not in _briefcase_names(client)
+    client.post(URL, {"licensed": "true"})
+    assert "vaccinated" in _briefcase_names(client)
+    assert _values()["vaccinated"] is True
 
 
 @pytest.mark.postgres
-def test_flipping_a_gate_and_posting_the_gated_field_together_clears_it(
+def test_flipping_a_gate_keeps_a_dependent_posted_in_the_same_save(
     client, synced
 ):
     client.post(URL, {"licensed": "true", "vaccinated": "true"})
     client.post(URL, {"licensed": "false", "vaccinated": "true"})
-    assert _values() == {"licensed": False, "vaccinated": None}
+    assert _values() == {"licensed": False, "vaccinated": True}
     assert "vaccinated" not in _briefcase_names(client)
 
 

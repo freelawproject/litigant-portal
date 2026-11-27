@@ -1,4 +1,5 @@
-"""docassemble API client: start a prefilled interview session.
+"""
+Docassemble prefill mapping and session handoff.
 
 Three calls, in order: create a session, set its variables, mint a one-time
 resume URL for the litigant's browser. Answers travel in a POST body, never
@@ -7,13 +8,23 @@ in a URL, and the API key travels in a header.
 The target interview must set ``multi_user = True`` from an ``initial`` code
 block, or its session is encrypted per-browser and the resume URL cannot
 decrypt it.
+
+The separate request_interview lifecycle entrypoint remains a no-op.
 """
 
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING
 from urllib.parse import urlencode, urlparse, urlunparse
 
 import requests
 from django.conf import settings
+
+from litigant_portal.state.types import StateType
+
+if TYPE_CHECKING:
+    from litigant_portal.state.models import TopicFlow
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +35,8 @@ _RESUME_EXPIRY_SECONDS = 600
 
 
 class DocassembleError(Exception):
-    """A session could not be created.
+    """
+    A session could not be created.
 
     Callers fall back to the plain interview link: unprefilled beats a dead
     button.
@@ -32,7 +44,8 @@ class DocassembleError(Exception):
 
 
 def docassemble_configured() -> bool:
-    """Whether this environment has a docassemble to hand off to.
+    """
+    Whether this environment has a docassemble to hand off to.
 
     The single rule behind the launch link and the deploy-time check: either
     base is enough for the plain link, so the button renders.
@@ -43,12 +56,12 @@ def docassemble_configured() -> bool:
 
 
 def interview_launch_url(interview: str) -> str | None:
-    """The litigant-facing launch link for an interview reference.
+    """
+    The litigant-facing launch link for an interview reference.
 
     Built from configuration, never from content: the public base when LP
     reaches docassemble at an address litigants cannot, else the API base.
-    ``None`` means no docassemble in this environment — callers hide the
-    handoff.
+    ``None`` means no Docassemble is configured; callers hide the handoff.
     """
     if not docassemble_configured():
         return None
@@ -57,7 +70,8 @@ def interview_launch_url(interview: str) -> str | None:
 
 
 def docassemble_session_create(*, interview: str, variables: dict) -> str:
-    """Return a one-time URL onto a new session prefilled with ``variables``.
+    """
+    Return a one-time URL onto a new session prefilled with ``variables``.
 
     ``interview`` is the reference from the corpus packet section (the ``?i=``
     value); where it is sent comes from settings alone. Keys in ``variables``
@@ -103,7 +117,8 @@ def _session_delete(
 
 
 def _public(resume_url: str) -> str:
-    """Swap in the litigant-facing base, keeping docassemble's path and query.
+    """
+    Swap in the litigant-facing base, keeping docassemble's path and query.
 
     docassemble builds the launch URL from the host we called it on, which on
     a deployment is an internal address no browser can reach. The public URL's
@@ -128,7 +143,9 @@ def _public(resume_url: str) -> str:
     )
 
 
-def _call(*, method: str, api_root: str, path: str, api_key: str, **kwargs):
+def _call(
+    *, method: str, api_root: str, path: str, api_key: str, **kwargs
+) -> requests.Response:
     url = f"{api_root}/api/{path}"
     try:
         response = requests.request(
@@ -205,3 +222,38 @@ def _resume_url(
     if not isinstance(url, str) or not url:
         raise DocassembleError("No URL in resume_url response")
     return url
+
+
+def flow_interview_target(
+    flow: TopicFlow,
+) -> tuple[str, dict[str, str]] | None:
+    """
+    Return the interview reference and mapping, or None without a reference.
+    """
+    if not flow.interview_reference:
+        return None
+    return flow.interview_reference, dict(flow.interview_prefill)
+
+
+def prefill_variables(*, mapping: dict[str, str], answers: dict) -> dict:
+    """
+    Rename the caller's confirmed, applicable answers for the interview.
+
+    An unanswered question is absent rather than blank, so the interview asks
+    it. Values pass through untouched: a stored date is already the ISO string
+    docassemble parses back into a date object.
+    """
+    return {
+        variable: answers[question_id]
+        for question_id, variable in mapping.items()
+        if question_id in answers
+    }
+
+
+def request_interview(state: StateType, interview_reference: str) -> None:
+    """
+    Reserve the lifecycle handoff boundary without executing an operation.
+
+    Phase 1 deliberately produces no session, result, or completion state.
+    User-initiated launches use docassemble_session_create separately.
+    """

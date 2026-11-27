@@ -30,7 +30,6 @@ from litigant_portal.app.models import (
     TopicFlowSection,
     Variable,
 )
-from litigant_portal.app.models.choices import TopicFlowFormConditionOperator
 from litigant_portal.app.selectors.corpus import (
     COURTS_DIR,
     FORMS_DIR,
@@ -56,7 +55,11 @@ def _apply(row, schema, *, exclude: set[str] = frozenset()) -> None:
 def _source_row(schema, **fields):
     """Schema fields plus the authored ``id``, stored as ``key`` because
     ``id`` is the row's UUID."""
-    return {"key": schema.id, **schema.model_dump(exclude={"id"}), **fields}
+    return {
+        "key": schema.id,
+        **schema.model_dump(by_alias=True, exclude={"id"}),
+        **fields,
+    }
 
 
 def _warn_removed_keys(scope: str, stored, authored) -> None:
@@ -74,38 +77,22 @@ def _warn_removed_keys(scope: str, stored, authored) -> None:
 
 
 def _sync_variables(corpus: CorpusSchema) -> dict[str, Variable]:
-    """Upsert every variable by name. Two passes: rows first, then gates,
-    so a gate can point at a variable created in the same sync."""
+    """
+    Upsert each variable with its validated condition expression.
+    """
     rows = {v.name: v for v in Variable.objects.all()}
     for name, schema in corpus.variables.items():
         row = rows.get(name) or Variable(name=name)
         _apply(row, schema, exclude={"asked_when"})
+        row.asked_when = (
+            schema.asked_when.model_dump(by_alias=True)
+            if schema.asked_when
+            else None
+        )
         row.in_schema = True
         row.save()
         rows[name] = row
-    for name, schema in corpus.variables.items():
-        row = rows[name]
-        gate = schema.asked_when
-        row.asked_when = rows[gate.variable] if gate else None
-        row.asked_when_value = gate.value if gate else None
-        row.save(
-            update_fields=["asked_when", "asked_when_value", "updated_at"]
-        )
     return rows
-
-
-def _form_field(
-    form: Form, order: int, mapping, variables: dict[str, Variable]
-) -> FormField:
-    """Build one FormField row, resolving checked_when to its Variable."""
-    when = mapping.checked_when
-    return FormField(
-        form=form,
-        order=order,
-        checked_when=variables[when.variable] if when else None,
-        checked_when_value=when.value if when else None,
-        **mapping.model_dump(exclude={"checked_when"}),
-    )
 
 
 def _file_replace(field_file, name: str, content: bytes) -> None:
@@ -122,9 +109,7 @@ def _file_replace(field_file, name: str, content: bytes) -> None:
     field_file.save(name, ContentFile(content), save=False)
 
 
-def _sync_forms(
-    corpus: CorpusSchema, variables: dict[str, Variable], forms_dir: Path
-) -> dict[str, Form]:
+def _sync_forms(corpus: CorpusSchema, forms_dir: Path) -> dict[str, Form]:
     """Upsert every form by slug, rewriting its stored PDF and replacing
     its field mappings wholesale."""
     rows = {f.slug: f for f in Form.objects.all()}
@@ -139,7 +124,9 @@ def _sync_forms(
         form.save()
         form.fields.all().delete()
         FormField.objects.bulk_create(
-            _form_field(form, order, mapping, variables)
+            FormField(
+                form=form, order=order, **mapping.model_dump(by_alias=True)
+            )
             for order, mapping in enumerate(schema.fields)
         )
         rows[slug] = form
@@ -318,7 +305,9 @@ def _sync_flow(
     flow.interview_pages.all().delete()
     for order, page in enumerate(schema.interview):
         row = TopicFlowInterviewPage.objects.create(
-            flow=flow, order=order, **page.model_dump(exclude={"variables"})
+            flow=flow,
+            order=order,
+            **page.model_dump(by_alias=True, exclude={"variables"}),
         )
         TopicFlowInterviewVariable.objects.bulk_create(
             TopicFlowInterviewVariable(
@@ -332,13 +321,7 @@ def _sync_flow(
         TopicFlowFormCondition.objects.create(
             flow=flow,
             form=forms[entry.form],
-            variable=variables[when.variable] if when else None,
-            operator=(
-                when.operator
-                if when
-                else TopicFlowFormConditionOperator.EQUALS
-            ),
-            value=when.value if when else None,
+            when=when.model_dump(by_alias=True) if when is not None else None,
             order=order,
         )
     flow.deadlines.all().delete()
@@ -389,7 +372,6 @@ def corpus_sync(
         variables = _sync_variables(corpus)
         forms = _sync_forms(
             corpus,
-            variables,
             root / "forms" if root is not None else FORMS_DIR,
         )
         topics: dict[str, Topic] = {}

@@ -1,25 +1,8 @@
-"""Build the guided page from TopicFlow rows.
+"""
+Render projected components using authored rows and existing templates.
 
-Reads the rows ``sync_corpus`` writes and produces the ``RenderedSection``
-list the page template renders. Pure: callers pass the prefetched rows in,
-and nothing here touches the database or the request.
-
-The flow's ``layout`` orders the page. A section key renders as an info
-section anchored on that key, so chat citations can link to it. The
-``interview`` block renders one fact-gather form per page marked ``on_page``,
-anchored ``interview-1``, ``interview-2``, ... in page order; the chat and the
-docassemble handoff keep using every page. The ``packet`` block
-lists the flow's forms whose condition holds against the stored answers,
-with the docassemble handoff when the flow has one and the environment
-serves it; the ``calendar`` block its deadlines, each computed from the
-stored answer to its source variable; the ``contacts`` and ``resources``
-blocks list the court's whole ``Contact`` and ``Resource`` lists in stored
-order. A block with nothing to show is skipped.
-
-A gated variable (``asked_when``) is asked only while the stored answer to
-its gate matches, the same rule the review-facts tool applies. There is no
-client-side show/hide: the litigant saves the gate, the page reloads, and the
-gated fields appear.
+The projector owns applicability and computed outputs. This module formats
+their content and preserves the guided forms' validation and privacy rules.
 """
 
 import math
@@ -31,17 +14,17 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from litigant_portal.app.models.choices import VariableDataType
-from litigant_portal.app.models.topic_flow import condition_holds
-from litigant_portal.app.selectors.corpus import default_layout
-from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.app.topic_flow.contacts import contact_dicts
-from litigant_portal.app.topic_flow.deadlines import (
-    deadline_date,
-    deadline_display,
-)
+from litigant_portal.app.topic_flow.deadlines import deadline_display
 from litigant_portal.app.topic_flow.resources import resource_dicts
+from litigant_portal.state.docassemble import interview_launch_url
+from litigant_portal.state.models import VariableDataType
+from litigant_portal.state.rules import (
+    condition_names,
+)
+from litigant_portal.state.selectors import interview_anchor, section_anchor
+from litigant_portal.state.types import ProjectionType
 
 
 @dataclass(frozen=True)
@@ -96,131 +79,6 @@ BLOCK_HEADINGS = {
 GATE_HINT = _(
     "Depending on your answer, more questions may appear after you save."
 )
-
-
-def section_anchor(section, number: int) -> str:
-    """The section's key, or ``section-N`` for a row without one (the schema
-    requires a key, but an older or admin-edited row may lack it)."""
-    return section.key or f"section-{number}"
-
-
-def flow_layout(flow, sections) -> list[str]:
-    """The stored layout, or every section key then the blocks when empty."""
-    return list(flow.layout) or default_layout(
-        section_anchor(section, number)
-        for number, section in enumerate(sections, 1)
-    )
-
-
-def flow_pages(flow) -> list[tuple]:
-    """``[(page, [variable, ...]), ...]`` for the pages marked ``on_page``,
-    in page then placement order, read from the rows ``topic_flow_find``
-    prefetched. The one list every page-side helper reads: anchors,
-    ``asked_names``, ``private_names``, ``gate_names``."""
-    return [
-        (page, [placed.variable for placed in page.variables.all()])
-        for page in flow.interview_pages.all()
-        if page.on_page
-    ]
-
-
-def private_names(pages) -> set[str]:
-    """The placed variables the glossary marks private: the page's protected
-    set, rendered blank whatever is stored."""
-    return {
-        variable.name
-        for _page, variables in pages
-        for variable in variables
-        if variable.is_private
-    }
-
-
-def flow_variable_names(pages, form_conditions=(), deadlines=()) -> list[str]:
-    """Every variable the pages place, plus the gates they depend on, the
-    variables the packet's conditions read and the deadlines' source dates:
-    the names whose answers the page needs to decide what to show. A
-    condition's or a deadline's variable may be asked on no page of this
-    flow and stored by the chat."""
-    names = []
-    for _page, variables in pages:
-        for variable in variables:
-            names.append(variable.name)
-            if variable.asked_when is not None:
-                names.append(variable.asked_when.name)
-    for condition in form_conditions:
-        if condition.variable is not None:
-            names.append(condition.variable.name)
-    names.extend(deadline.offset_from.name for deadline in deadlines)
-    return list(dict.fromkeys(names))
-
-
-def flow_deadlines(deadlines, answers) -> list[dict]:
-    """``{id, label, description, date}`` per TopicFlowDeadline row, in
-    stored order, the shape ``deadline_display`` and ``ics_artifact`` take.
-    ``id`` is the row's ``ref`` (its authored key)."""
-    return [
-        {
-            "id": deadline.ref,
-            "label": deadline.label,
-            "description": deadline.description,
-            "date": deadline_date(
-                deadline.offset_days, deadline.offset_from.name, answers
-            ),
-        }
-        for deadline in deadlines
-    ]
-
-
-def form_condition_holds(condition, answers) -> bool:
-    """Whether a packet entry shows: always without a variable; ``equals``
-    when the stored answer is the value; ``not_equals`` when it is anything
-    else, unanswered included."""
-    if condition.variable is None:
-        return True
-    return condition_holds(
-        answers, condition.variable.name, condition.value, condition.operator
-    )
-
-
-def packet_forms(form_conditions, answers) -> list[dict]:
-    """``{name, url}`` per form whose condition holds, in stored order."""
-    return [
-        {"name": condition.form.name, "url": condition.form.url}
-        for condition in form_conditions
-        if form_condition_holds(condition, answers)
-    ]
-
-
-def asked_names(pages, answers) -> list[str]:
-    """Every variable currently asked, across all pages in order. The POST
-    keys the entry view accepts."""
-    return [
-        variable.name
-        for _page, variables in pages
-        for variable in variables
-        if variable.is_asked(answers)
-    ]
-
-
-def stale_gated_names(pages, answers, valid) -> list[str]:
-    """Gated variables whose gate is written by ``valid`` and will not match
-    afterwards, and that have an answer to clear. A gate this POST does not
-    touch leaves its dependents alone: the assistant may store a dependent
-    before the gate is answered, and an unrelated save must not erase it."""
-    after = {
-        name: value
-        for name, value in {**answers, **valid}.items()
-        if value is not None
-    }
-    return [
-        variable.name
-        for _page, variables in pages
-        for variable in variables
-        if variable.asked_when is not None
-        and variable.asked_when.name in valid
-        and not variable.is_asked(after)
-        and variable.name in after
-    ]
 
 
 def _form_value(variable, value) -> str:
@@ -284,10 +142,10 @@ def gate_names(pages) -> set[str]:
     """The variables that gate another one, across every page: a gate's
     dependents may sit on a later page than the gate itself."""
     return {
-        variable.asked_when.name
+        name
         for _page, variables in pages
         for variable in variables
-        if variable.asked_when is not None
+        for name in condition_names(variable.condition)
     }
 
 
@@ -302,8 +160,6 @@ def page_questions(
     # reloads, so the gate question says so (WCAG 3.3.2).
     questions = []
     for variable in variables:
-        if not variable.is_asked(answers):
-            continue
         name = variable.name
         protected = variable.is_private
         saved = protected and name in answers
@@ -356,6 +212,7 @@ def render_flow(
     errors=None,
     cleared=frozenset(),
     *,
+    projection: ProjectionType,
     form_conditions=(),
     deadlines=(),
     contacts=(),
@@ -364,47 +221,66 @@ def render_flow(
     topic="",
     role="",
 ) -> list[RenderedSection]:
-    """One ``RenderedSection`` per layout entry, in layout order; the
-    ``interview`` entry expands to one per page. ``cleared`` is passed to
-    ``page_questions``. ``form_conditions`` and ``deadlines`` are the flow's
-    rows, ``contacts`` and ``resources`` the court's; the URL parts name the
-    flow for the download and interview links."""
+    """
+    Format every applicable component; the view selects which to display.
+    """
     by_key = {
         section_anchor(section, number): section
         for number, section in enumerate(sections, 1)
     }
     gates = gate_names(pages)
+    page_by_id = {
+        interview_anchor(n): (n, page, variables)
+        for n, (page, variables) in enumerate(pages, 1)
+    }
+    form_by_slug = {entry.form.slug: entry.form for entry in form_conditions}
     rendered = []
-    for name in flow_layout(flow, sections):
+    for component in projection.components:
+        name = component.id
         if name in by_key:
             rendered.append(_render_info(name, by_key[name]))
-        elif name == "interview":
-            rendered.extend(
-                _render_page(number, page, variables, answers, gates, cleared)
-                for number, (page, variables) in enumerate(pages, 1)
+        elif name in page_by_id:
+            number, page, variables = page_by_id[name]
+            rendered.append(
+                _render_page(
+                    number,
+                    page,
+                    [v for v in variables if v.name in component.variables],
+                    answers,
+                    gates,
+                    cleared,
+                )
             )
         elif name == "packet":
-            forms = packet_forms(form_conditions, answers)
+            forms = [
+                {
+                    "name": form_by_slug[slug].name,
+                    "url": form_by_slug[slug].url,
+                }
+                for slug in projection.forms
+            ]
             # The row's handoff AND a configured docassemble, else a plain
             # form list.
             interview = bool(
                 flow.interview_reference
                 and interview_launch_url(flow.interview_reference)
             )
-            if forms or interview:
-                rendered.append(
-                    _render_packet(forms, interview, court, topic, role)
-                )
-        elif name == "calendar" and deadlines:
             rendered.append(
-                _render_calendar(deadlines, answers, court, topic, role)
+                _render_packet(forms, interview, court, topic, role)
             )
-        elif name == "contacts" and contacts:
+        elif name == "calendar":
+            rendered.append(
+                _render_calendar(
+                    projected_deadlines(deadlines, projection),
+                    court,
+                    topic,
+                    role,
+                )
+            )
+        elif name == "contacts":
             rendered.append(_render_contacts(contacts, court, topic, role))
-        elif name == "resources" and resources:
+        elif name == "resources":
             rendered.append(_render_resources(resources))
-        # else: a block with no rows, or a name the schema would have
-        # rejected; leave it out
     if errors:
         _apply_errors(rendered, errors)
     return rendered
@@ -425,7 +301,7 @@ def _apply_errors(rendered, errors):
 
 def _render_page(number, page, variables, answers, gates, cleared):
     return RenderedSection(
-        anchor_id=f"interview-{number}",
+        anchor_id=interview_anchor(number),
         heading=page.title,
         template=f"{_TEMPLATE_DIR}/flow_section_fact_gather.html",
         context={
@@ -485,11 +361,25 @@ def _render_resources(resources):
     )
 
 
-def _render_calendar(deadlines, answers, court, topic, role):
-    # has_dates gates the download link, since an empty calendar is no use.
-    resolved = [
-        deadline_display(d) for d in flow_deadlines(deadlines, answers)
+def projected_deadlines(deadlines, projection: ProjectionType) -> list[dict]:
+    """
+    Join authored labels to the dates shared by the page and download.
+    """
+    by_id = {deadline.ref: deadline for deadline in deadlines}
+    return [
+        {
+            "id": d.id,
+            "label": by_id[d.id].label,
+            "description": by_id[d.id].description,
+            "date": d.date,
+        }
+        for d in projection.deadlines
     ]
+
+
+def _render_calendar(deadlines, court, topic, role):
+    # has_dates gates the download link, since an empty calendar is no use.
+    resolved = [deadline_display(d) for d in deadlines]
     return RenderedSection(
         anchor_id="calendar",
         heading=BLOCK_HEADINGS["calendar"],
@@ -573,13 +463,3 @@ def _type_error(data_type):
     if data_type in (VariableDataType.DATE, VariableDataType.DATETIME):
         return INVALID_DATE_ERROR
     return INVALID_CHOICE_ERROR
-
-
-def submitted_section_anchor(pages, submitted_names) -> str | None:
-    """The ``interview-N`` anchor of the page that owns the submitted
-    answers, for the redirect after POST; None when nothing matches."""
-    submitted = set(submitted_names)
-    for number, (_page, variables) in enumerate(pages, 1):
-        if any(variable.name in submitted for variable in variables):
-            return f"interview-{number}"
-    return None

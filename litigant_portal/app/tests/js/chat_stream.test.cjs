@@ -888,11 +888,12 @@ test('briefcase_changed swaps in the fetched fragment, even for a detached strea
   const panel = mountBriefcase(app, context)
   const stream = newStream(app)
   app.messages = []
+  app.threadId = 'viewed-thread'
 
   app.handleEvent(stream, { type: 'briefcase_changed' })
   for (let index = 0; index < 10; index++) await Promise.resolve()
 
-  assert.deepEqual(requested, ['/chat/briefcase/'])
+  assert.deepEqual(requested, ['/chat/briefcase/?thread_id=viewed-thread'])
   assert.deepEqual(panel.replaced, [
     '<div data-briefcase-facts>County: Cass</div>',
   ])
@@ -921,7 +922,9 @@ test('only the latest briefcase fetch swaps the panel', async () => {
   const panel = mountBriefcase(app, context)
 
   // Two refreshes in flight; the earlier request resolves last.
+  app.threadId = 'first-thread'
   const first = app.refreshBriefcase()
+  app.threadId = 'second-thread'
   const second = app.refreshBriefcase()
   pending[1]('<div data-briefcase-facts>Burleigh</div>')
   await second

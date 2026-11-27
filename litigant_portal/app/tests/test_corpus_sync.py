@@ -32,14 +32,14 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.selectors.corpus import CorpusSchema
+from litigant_portal.app.selectors.corpus import CorpusSchema, VariableSchema
 from litigant_portal.app.selectors.site import contact_list, resource_list
-from litigant_portal.app.selectors.topic_flow import topic_flow_list
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import (
     corpus_court_switch,
     corpus_sync,
 )
+from litigant_portal.state.selectors import topic_flow_list
 
 START_SECTION = {"id": "start", "heading": "Start", "content": "Read."}
 
@@ -53,7 +53,6 @@ def _make_corpus(
     alpha_handoff=None,
     alpha_contacts=None,
     alpha_branding=None,
-    alpha_on_page=False,
 ):
     """A small valid corpus: two courts, two forms, one gated variable."""
     variables = {
@@ -135,7 +134,6 @@ def _make_corpus(
                 {
                     "title": "About your pet",
                     "variables": ["full_name", "pet_kind", "licensed"],
-                    "on_page": alpha_on_page,
                 }
             ],
             "packet": [{"form": "license"}],
@@ -255,10 +253,25 @@ class IdempotencyTests(CorpusSyncTests):
         self.assertEqual(urls["addendum"], "")
 
     def test_gate_wiring(self):
-        self._sync(_make_corpus(), court=None)
+        corpus = _make_corpus()
+        condition = {
+            "not": {
+                "variable": "licensed",
+                "value": False,
+                "operator": "equals",
+            }
+        }
+        corpus.variables["vaccinated"] = VariableSchema.model_validate(
+            {
+                **corpus.variables["vaccinated"].model_dump(by_alias=True),
+                "asked_when": condition,
+            }
+        )
+        self._sync(corpus, court=None)
         vaccinated = Variable.objects.get(name="vaccinated")
-        self.assertEqual(vaccinated.asked_when.name, "licensed")
-        self.assertIs(vaccinated.asked_when_value, True)
+        self.assertEqual(vaccinated.asked_when, condition)
+        self.assertFalse(vaccinated.is_asked({}))
+        self.assertTrue(vaccinated.is_asked({"licensed": True}))
 
     def test_checkbox_wiring(self):
         self._sync(_make_corpus(), court=None)
@@ -268,8 +281,10 @@ class IdempotencyTests(CorpusSyncTests):
             for row in FormField.objects.filter(form__slug="license")
         }
         conditional = fields["Check Box1"]
-        self.assertEqual(conditional.checked_when.name, "pet_kind")
-        self.assertEqual(conditional.checked_when_value, "dog")
+        self.assertEqual(
+            conditional.checked_when,
+            {"variable": "pet_kind", "value": "dog", "operator": "equals"},
+        )
         self.assertIs(fields["Check Box2"].checked, True)
         self.assertIsNone(fields["Name"].checked)
         self.assertIsNone(fields["Name"].checked_when)
@@ -461,16 +476,13 @@ class LayoutSyncTests(CorpusSyncTests):
 
     def test_an_authored_layout_is_stored_as_written(self):
         layout = ["packet", "start", "interview"]
-        self._sync(
-            _make_corpus(alpha_layout=layout, alpha_on_page=True), court=None
-        )
+        self._sync(_make_corpus(alpha_layout=layout), court=None)
         self.assertEqual(self._alpha_layout(), layout)
 
     def test_dropping_the_layout_restores_the_default_order(self):
         self._sync(
             _make_corpus(
                 alpha_layout=["packet", "start", "interview"],
-                alpha_on_page=True,
             ),
             court=None,
         )
@@ -508,26 +520,6 @@ class HandoffSyncTests(CorpusSyncTests):
         flow = self._alpha()
         self.assertEqual(flow.interview_reference, "")
         self.assertEqual(flow.interview_prefill, {})
-
-
-@pytest.mark.postgres
-class InterviewPageSyncTests(CorpusSyncTests):
-    def _alpha_page(self):
-        flow = TopicFlow.objects.get(topic__slug="pets", slug="standard")
-        return flow.interview_pages.get()
-
-    def test_a_marked_page_is_stored_as_on_page(self):
-        self._sync(_make_corpus(alpha_on_page=True), court=None)
-        self.assertTrue(self._alpha_page().on_page)
-
-    def test_an_unmarked_page_is_stored_as_off_the_page(self):
-        self._sync(_make_corpus(), court=None)
-        self.assertFalse(self._alpha_page().on_page)
-
-    def test_dropping_the_mark_clears_it(self):
-        self._sync(_make_corpus(alpha_on_page=True), court=None)
-        self._sync(_make_corpus(), court=None)
-        self.assertFalse(self._alpha_page().on_page)
 
 
 @pytest.mark.postgres

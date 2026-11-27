@@ -1,6 +1,5 @@
-from .chat_engine import ChatMessage, ChatThread, PromptArtifact
-from .site import Contact, Resource, Site
-from .topic_flow import (
+from litigant_portal.state.models import (
+    FlowViewState,
     Form,
     FormField,
     Topic,
@@ -14,10 +13,14 @@ from .topic_flow import (
     Variable,
     VariableAnswer,
 )
+
+from .chat_engine import ChatMessage, ChatThread, PromptArtifact
+from .site import Contact, Resource, Site
 from .upload import UserUpload
 from .user import UserIdentity, UserProfile
 
 __all__ = [
+    "FlowViewState",
     "ChatMessage",
     "ChatThread",
     "PromptArtifact",

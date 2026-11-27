@@ -12,6 +12,7 @@ briefcase fragment; they are postgres-marked like the context tests.
 import re
 
 import pytest
+from django.template.loader import render_to_string
 from django.test import SimpleTestCase, TestCase
 from django.urls import reverse
 
@@ -24,9 +25,10 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.models.choices import VariableDataType
 from litigant_portal.app.selectors.topic_flow import variable_answer_groups
+from litigant_portal.app.topic_flow.formatting import format_answer
 from litigant_portal.app.views.design_system import _briefcase_sample
+from litigant_portal.state.models import VariableDataType
 
 
 def _place(page, variable, order):
@@ -246,14 +248,16 @@ class BriefcaseChatContextTests(TestCase):
 
 
 class DisplayValueTests(SimpleTestCase):
-    """``VariableAnswer.display_value`` shapes jsonb for reading. No DB —
-    the property only touches in-memory objects, so SimpleTestCase keeps it
-    out of the suite's database path."""
+    """
+    Answer formatting uses in-memory models without database access.
+    """
 
     def _value(self, value, data_type=VariableDataType.TEXT):
-        return VariableAnswer(
-            variable=Variable(name="v", data_type=data_type), value=value
-        ).display_value
+        return format_answer(
+            VariableAnswer(
+                variable=Variable(name="v", data_type=data_type), value=value
+            )
+        )
 
     def test_list_renders_as_a_comma_separated_string(self):
         # A multi-choice answer is stored as a list; str() would print
@@ -310,10 +314,10 @@ class DisplayValueTests(SimpleTestCase):
         )
 
     def test_an_answer_with_no_variable_still_renders(self):
-        self.assertEqual(VariableAnswer(value="Jamie").display_value, "Jamie")
+        self.assertEqual(format_answer(VariableAnswer(value="Jamie")), "Jamie")
 
     def test_a_cleared_answer_renders_empty_not_none(self):
-        self.assertEqual(VariableAnswer(value=None).display_value, "")
+        self.assertEqual(format_answer(VariableAnswer(value=None)), "")
 
     def test_choice_renders_its_label(self):
         citizen_label = "US citizen"
@@ -328,7 +332,7 @@ class DisplayValueTests(SimpleTestCase):
             ],
         )
         self.assertEqual(
-            VariableAnswer(value="citizen", variable=variable).display_value,
+            format_answer(VariableAnswer(value="citizen", variable=variable)),
             citizen_label,
         )
 
@@ -344,9 +348,9 @@ class DisplayValueTests(SimpleTestCase):
             ],
         )
         self.assertEqual(
-            VariableAnswer(
-                value="invalid_value", variable=variable
-            ).display_value,
+            format_answer(
+                VariableAnswer(value="invalid_value", variable=variable)
+            ),
             "invalid_value",
         )
 
@@ -366,13 +370,14 @@ class BriefcaseSampleTests(SimpleTestCase):
         # Without a data_type the variable defaults to TEXT, so the sample
         # shows a raw ISO string where a real briefcase shows a long date, and
         # the style guide then documents output the panel never produces.
-        self.assertEqual(
-            self._fact("received_date").display_value,
-            "Tuesday, September 1, 2026",
+        rendered = render_to_string(
+            "cotton/molecules/briefcase_fact.html",
+            {"answer": self._fact("received_date")},
         )
+        self.assertIn("Tuesday, September 1, 2026", rendered)
 
     def test_a_plain_text_fact_is_untouched(self):
-        self.assertEqual(self._fact("tenant_first").display_value, "Jamie")
+        self.assertEqual(format_answer(self._fact("tenant_first")), "Jamie")
 
     def test_the_sample_has_a_private_fact_so_the_masked_row_is_shown(self):
         self.assertTrue(self._fact("tenant_dob").variable.is_private)

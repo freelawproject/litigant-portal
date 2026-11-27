@@ -203,7 +203,10 @@ can **read and manipulate state**.
 
 For example, [`LoadTopicFlow`](../../litigant_portal/agents/tools/load_topic_flow.py)
 accepts a `topic_flow` path, validates that the flow exists, updates the
-thread's `active_topic_flow`, and returns the flow's content to the model.
+thread's `active_topic_flow`, and requests an identity-prompt refresh. The
+refreshed context contains the flow's currently applicable guidance and
+computed progress. The assistant's `history_for_model` hook replaces older
+successful flow payloads in the outgoing request, preserving stored history.
 
 The engine auto-generates the function schema from the model (`get_schema()`),
 dispatches calls by class name, and runs the loop. You never write loop code.

@@ -153,10 +153,8 @@ sections:
 
       You can also get one free report a year from each of the three main credit bureaus (Equifax, Experian, and TransUnion) at annualcreditreport.com. A court order removing your name does not make a credit company remove the eviction, but it can support your dispute.
 
-# The guided page asks only the pages marked `on_page` (#1046).
 interview:
   - title: 'Your decision, judgment, and red tag dates'
-    on_page: true
     variables:
       - eviction_magistrate_decision_date
       - eviction_judgment_date

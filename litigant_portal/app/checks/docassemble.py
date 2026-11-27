@@ -12,7 +12,7 @@ from django.conf import settings
 from django.core.checks import Tags, Warning, register
 
 from litigant_portal.app.selectors.corpus import corpus_load_flows
-from litigant_portal.app.services.docassemble import docassemble_configured
+from litigant_portal.state.docassemble import docassemble_configured
 
 
 @register(Tags.compatibility)

@@ -49,33 +49,16 @@ conditions, deadlines and links.
 
 ## Layer 4: run time
 
-**Guided pages.** The topic flow page renders the `TopicFlow` row and its graph through
-`app/topic_flow/rows.py`. It asks only the interview pages marked `on_page`, while the
-chat and the docassemble handoff see every page. Saving a section writes the litigant's
-answers as `VariableAnswer` rows marked `reviewed`: this page is where a person confirms
-a fact.
+**Guided pages.** `app/selectors/state.py` adapts the `TopicFlow` graph and stored facts into the shared state projection. Every authored question group participates according to its conditions. The page renders the next unfinished component through `app/topic_flow/rows.py` and provides navigation to all applicable components. Saving writes reviewed facts through the reducer; Continue records the displayed content signature. Hidden answers stay stored and reappear when their conditions apply again.
 
-**Chat.** The assistant (`agents/assistant.py`) builds its system prompt each turn from
-four parts: `BASE_PROMPT`, the court (from the site's config), the list of available
-flows (from the `TopicFlow` rows), and the litigant's stored facts (from
-`VariableAnswer`, each marked confirmed or unconfirmed). When a conversation matches a
-situation, the `LoadTopicFlow` tool loads that flow's sections into the conversation,
-and the flow stays active for the thread. The `RecordFact` tool writes facts the
-litigant states in chat as `VariableAnswer` rows marked unreviewed (#947).
+**Chat.** The assistant (`agents/assistant.py`) separates shared instructions and court sources from the identity prompt. `LoadTopicFlow` selects the thread's active flow and refreshes the identity prompt with its projected guidance, applicable facts, and progress. `RecordFact` writes unreviewed facts through the same reducer and requests another refresh. `ReviewFacts` displays applicable answers for human confirmation.
 
-**docassemble prefill** sends only reviewed answers, so a fact the chat recorded
-reaches a court form only after a person confirms it.
+**Docassemble prefill** sends only applicable, reviewed answers, so a fact the chat recorded reaches a court form only after a person confirms it.
 
 ## Known gaps
 
 - No contract or tooling between source documents and `corpus/`, and no coverage check.
-- No statute text in `corpus-sources/`, and no decision-tree document. The decision tree
-  exists only as the split between flow files.
-- Chat answers don't cite the corpus yet (#949).
-- Facts the chat records can't be confirmed from the chat yet, so they never reach the
-  docassemble prefill (#948).
-- The stored-facts prompt lists every answer in every conversation, whatever the topic
-  (#962).
+- No statute text in `corpus-sources/`, and no separate decision-tree document. Flow selection and authored conditions define the available paths.
 - No fallback to the guided flow when the AI is unavailable (#950).
 - `docs/wiki/ai-tone-guide.md` is the cross-court tone guide in prose. It is not wired
   into any prompt layer.

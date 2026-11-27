@@ -141,6 +141,14 @@ class Agent:
         """
         return None
 
+    def history_for_model(
+        self, history: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """
+        Adapt outgoing history without modifying the stored conversation.
+        """
+        return history
+
     @property
     def tools_by_name(self) -> dict[str, type[Tool]]:
         """Map tool name -> tool class for dispatching tool calls."""
