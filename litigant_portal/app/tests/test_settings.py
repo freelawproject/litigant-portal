@@ -181,6 +181,23 @@ def test_missing_host_drops_mail_and_disables_email(host):
     assert config["EMAIL_ENABLED"] is False
 
 
+def test_verification_is_mandatory_when_real_mail_goes_out():
+    config = _email_config(SMTP_ENV)
+
+    assert config["ACCOUNT_EMAIL_VERIFICATION"] == "mandatory"
+
+
+@pytest.mark.parametrize(
+    "environ",
+    [{}, {"DEBUG": "true"}, {"DEBUG": "true", **SMTP_ENV}],
+    ids=["no-host", "debug", "debug-with-host"],
+)
+def test_verification_is_off_without_real_mail(environ):
+    config = _email_config(environ)
+
+    assert config["ACCOUNT_EMAIL_VERIFICATION"] == "none"
+
+
 def test_from_address_reads_environment():
     config = _email_config({"DEFAULT_FROM_EMAIL": "Portal <no-reply@x.org>"})
 

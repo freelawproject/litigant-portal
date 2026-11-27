@@ -336,13 +336,16 @@ ACCOUNT_SIGNUP_FIELDS = [
     "password1*",
     "password2*",
 ]  # Required fields
-ACCOUNT_EMAIL_VERIFICATION = "none"  # Disable email verification for now
+# The confirm click signs in, in the browser that signed up.
+ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 ACCOUNT_LOGOUT_ON_GET = False  # Require POST for CSRF protection
 # No mail to addresses without an account: anyone could make us send it.
 ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""  # Our subjects name the court
-# Reset and invite links. The emails state the length in days.
+# Reset and invite links, then confirm links. Each email states its own
+# length in days.
 PASSWORD_RESET_TIMEOUT = 7 * 24 * 60 * 60
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 7
 CSRF_FAILURE_VIEW = "litigant_portal.app.views.topic_flow.csrf_failure"
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
@@ -374,6 +377,10 @@ else:
     _mailer = {"BACKEND": "django.core.mail.backends.dummy.EmailBackend"}
 MAILERS = {"default": _mailer}
 EMAIL_ENABLED = DEBUG or bool(_email_host)
+# New accounts confirm their address wherever real mail goes out.
+ACCOUNT_EMAIL_VERIFICATION = (
+    "mandatory" if _email_host and not DEBUG else "none"
+)
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "").strip()
 if not DEFAULT_FROM_EMAIL:
     if _email_host and not DEBUG:

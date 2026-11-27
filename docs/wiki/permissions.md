@@ -104,6 +104,15 @@ Admin asks FLP Staff, and FLP Staff ask a superuser.
   allauth's reset email (`ResetPasswordForm`), with the invite text chosen
   by `AccountAdapter.send_password_reset_mail`. Links last 7 days
   (`PASSWORD_RESET_TIMEOUT`). The admin never sees a password.
+- **Email on: confirmed addresses.** With `EMAIL_HOST` set and `DEBUG`
+  off, `ACCOUNT_EMAIL_VERIFICATION` is `mandatory`: a person who signs up
+  gets a confirm link and can't sign in until they use it. A sign-in
+  before that sends the link again, at most once every 3 minutes. The
+  link lasts 7 days (`ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS`). Accounts
+  added on the Users tab or by `bootstrap_superuser` are recorded as
+  confirmed and skip this. An account with no confirmed address (an older
+  signup, `createsuperuser`, Django admin) gets the link at its next
+  sign-in.
 - **Email off: passwords.** Without `EMAIL_HOST`, whoever adds or resets an
   account sets the password, entered twice, and shares it directly. This
   flow goes away once every instance can send email.
