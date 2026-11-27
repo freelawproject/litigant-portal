@@ -308,7 +308,7 @@ def generate_court_prompt() -> str:
 
 def generate_topic_flows_prompt() -> str:
     """The guided-topic-flows section, or '' when no flows are enabled."""
-    from litigant_portal.app.selectors.topic_flow import topic_flow_list
+    from litigant_portal.state.selectors import topic_flow_list
 
     flows = topic_flow_list()
     if not flows:
@@ -368,10 +368,10 @@ class LitigantAssistant(Agent):
         runs this once per user message, so a stale path never survives
         into a turn.
         """
-        from litigant_portal.app.selectors.topic_flow import topic_flow_list
         from litigant_portal.app.services.chat_engine import (
             chat_thread_state_merge,
         )
+        from litigant_portal.state.selectors import topic_flow_list
 
         def clear_if_stale(state: dict) -> dict:
             active = state.get("active_topic_flow")
@@ -414,11 +414,11 @@ class LitigantAssistant(Agent):
             contact_list,
             resource_list,
         )
-        from litigant_portal.app.selectors.topic_flow import (
+        from litigant_portal.state.selectors import (
+            flow_state,
             variable_answer_list,
             variable_public_ids,
         )
-        from litigant_portal.state.selectors import flow_state
 
         thread = ChatThread.objects.select_related("identity").get(
             id=thread_id

@@ -12,7 +12,7 @@ def topic_flow_path(flow) -> str:
 def topic_flow_from_path(path: str, *, graph: bool = True):
     """The enabled TopicFlow at ``path`` (topic-slug/flow-slug), or None.
     ``graph`` is passed to ``topic_flow_find``."""
-    from litigant_portal.app.selectors.topic_flow import topic_flow_find
+    from litigant_portal.state.selectors import topic_flow_find
 
     topic_slug, sep, flow_slug = path.partition("/")
     if not (sep and topic_slug and flow_slug):
@@ -170,10 +170,10 @@ class LoadTopicFlow(Tool):
     )
 
     def __call__(self, *, thread_id) -> ToolOutput:
-        from litigant_portal.app.selectors.topic_flow import topic_flow_list
         from litigant_portal.app.services.chat_engine import (
             chat_thread_state_merge,
         )
+        from litigant_portal.state.selectors import topic_flow_list
 
         flow = topic_flow_from_path(self.topic_flow, graph=False)
         if flow is None:

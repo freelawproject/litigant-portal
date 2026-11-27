@@ -34,12 +34,12 @@ from litigant_portal.app.models import (
 )
 from litigant_portal.app.selectors.corpus import CorpusSchema, VariableSchema
 from litigant_portal.app.selectors.site import contact_list, resource_list
-from litigant_portal.app.selectors.topic_flow import topic_flow_list
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import (
     corpus_court_switch,
     corpus_sync,
 )
+from litigant_portal.state.selectors import topic_flow_list
 
 START_SECTION = {"id": "start", "heading": "Start", "content": "Read."}
 

@@ -15,12 +15,12 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.selectors.topic_flow import variable_answer_list
 from litigant_portal.app.services.topic_flow import (
     variable_answer_confirm,
     variable_answer_set,
 )
 from litigant_portal.state.models import VariableDataType
+from litigant_portal.state.selectors import variable_answer_list
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 

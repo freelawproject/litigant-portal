@@ -102,7 +102,7 @@ def chat_flow(monkeypatch):
     )
     public_ids = Mock(return_value={gate.pk, started.pk})
     monkeypatch.setattr(
-        "litigant_portal.app.selectors.topic_flow.variable_public_ids",
+        "litigant_portal.state.selectors.variable_public_ids",
         public_ids,
     )
 

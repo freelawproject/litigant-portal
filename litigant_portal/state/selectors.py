@@ -2,14 +2,21 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
+from uuid import UUID
 
+from django.core.cache import cache
 from django.forms.models import model_to_dict
 from django.utils import timezone
 
+from litigant_portal.app.cache import (
+    TOPIC_FLOW_LIST_CACHE_KEY,
+    TOPIC_LIST_CACHE_KEY,
+)
 from litigant_portal.app.models import Contact, Resource, UserIdentity
 from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.state.models import (
     FlowViewState,
+    Topic,
     TopicFlow,
     TopicFlowInterviewPage,
     TopicFlowSection,
@@ -17,7 +24,11 @@ from litigant_portal.state.models import (
     VariableAnswer,
 )
 from litigant_portal.state.projector import project
-from litigant_portal.state.rules import default_layout, parse_condition
+from litigant_portal.state.rules import (
+    applicable_facts,
+    default_layout,
+    parse_condition,
+)
 from litigant_portal.state.types import (
     CalendarRuleType,
     ComponentRuleType,
@@ -316,4 +327,152 @@ def court_rules(
             if variable.in_schema
         },
         components=tuple(components),
+    )
+
+
+def topic_list() -> list[Topic]:
+    """
+    Topics in display order, served from cache.
+    """
+    topics = cache.get(TOPIC_LIST_CACHE_KEY)
+    if topics is None:
+        topics = list(Topic.objects.all())
+        cache.set(TOPIC_LIST_CACHE_KEY, topics, timeout=None)
+    return topics
+
+
+def topic_court_find() -> str | None:
+    """
+    The one court every topic belongs to, or None when the topics span
+    several courts or there are none (#886). Read from the rows, not the
+    cache: ``sync_corpus`` calls it at startup, before anything is cached.
+    A topic that predates its first sync has a blank court and is skipped.
+    """
+    courts = set(
+        Topic.objects.exclude(court="")
+        .values_list("court", flat=True)
+        .distinct()
+    )
+    return courts.pop() if len(courts) == 1 else None
+
+
+def topic_get(*, topic_id: UUID) -> Topic:
+    """
+    A single topic (raises Topic.DoesNotExist).
+    """
+    return Topic.objects.get(id=topic_id)
+
+
+def topic_flow_list() -> list[TopicFlow]:
+    """
+    Enabled flows with their topics, in topic order then flow order,
+    served from cache.
+    """
+    flows = cache.get(TOPIC_FLOW_LIST_CACHE_KEY)
+    if flows is None:
+        flows = list(
+            TopicFlow.objects.filter(enabled=True)
+            .select_related("topic")
+            .order_by(
+                "topic__order", "topic__created_at", "order", "created_at"
+            )
+        )
+        cache.set(TOPIC_FLOW_LIST_CACHE_KEY, flows, timeout=None)
+    return flows
+
+
+def topic_flow_find(
+    *,
+    topic_slug: str,
+    flow_slug: str,
+    court: str | None = None,
+    graph: bool = True,
+) -> TopicFlow | None:
+    """
+    The enabled flow at (topic_slug, flow_slug), or None. With ``court``
+    the topic must carry that court too, for the page URL's check. With
+    ``graph`` its whole content graph is prefetched, for the page; without,
+    only the row and its topic, for a caller that reads a field or one
+    relation.
+    """
+    flows = TopicFlow.objects.filter(
+        topic__slug=topic_slug, slug=flow_slug, enabled=True
+    ).select_related("topic")
+    if court is not None:
+        flows = flows.filter(topic__court=court)
+    if graph:
+        flows = flows.prefetch_related(
+            "sections",
+            "links",
+            "deadlines__offset_from",
+            "form_conditions__form",
+            "interview_pages__variables__variable",
+        )
+    return flows.first()
+
+
+def variable_answer_list(
+    *, identity: UserIdentity, answered_only: bool = False
+) -> list[VariableAnswer]:
+    """
+    An identity's answers, ordered by variable name.
+
+    Answers to variables the corpus no longer names (``in_schema=False``)
+    are left out: sync keeps those rows so a migration can move them, but
+    no form references them, so no surface should show them.
+
+    Inapplicable answers stay stored but are excluded, including when a
+    prerequisite is itself inapplicable. Conditions use the whole identity
+    snapshot before callers narrow to a flow or confirmed answers.
+
+    ``answered_only`` drops cleared answers (``value`` None).
+    """
+    answers = VariableAnswer.objects.filter(
+        identity=identity, variable__in_schema=True
+    )
+    if answered_only:
+        answers = answers.filter(value__isnull=False)
+    answers = list(
+        answers.select_related("variable").order_by("variable__name")
+    )
+    applicable = applicable_facts(
+        {a.variable.name: a.value for a in answers},
+        {a.variable.name: a.variable.condition for a in answers},
+    )
+    return [a for a in answers if a.variable.is_asked(applicable)]
+
+
+def variable_public_ids(*, variable_ids: list[UUID]) -> set[UUID]:
+    """
+    Return IDs that are still in the corpus and marked public.
+    """
+    return set(
+        Variable.objects.filter(
+            pk__in=variable_ids, in_schema=True, is_private=False
+        )
+        .order_by()
+        .values_list("pk", flat=True)
+    )
+
+
+def variable_answer_unreviewed_names(
+    *, identity: UserIdentity, names: list[str]
+) -> list[str]:
+    """
+    The given names whose answer no human has confirmed yet, sorted.
+
+    Cleared and out-of-schema answers are not pending. Names with no
+    answer at all are left out too.
+
+    Include currently hidden answers named by an older card, so it cannot
+    report successful confirmation of an answer the write boundary refused.
+    """
+    return sorted(
+        VariableAnswer.objects.filter(
+            identity=identity,
+            variable__name__in=names,
+            variable__in_schema=True,
+            value__isnull=False,
+            reviewed=False,
+        ).values_list("variable__name", flat=True)
     )

@@ -13,9 +13,9 @@ import re
 import pytest
 
 from litigant_portal.app.models import UserIdentity, Variable, VariableAnswer
-from litigant_portal.app.selectors.topic_flow import topic_flow_list
 from litigant_portal.app.services.corpus import corpus_sync
 from litigant_portal.app.services.topic_flow import variable_answer_set
+from litigant_portal.state.selectors import topic_flow_list
 
 
 @pytest.mark.postgres

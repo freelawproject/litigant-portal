@@ -9,17 +9,14 @@ from litigant_portal.app.cache import COURT_SWITCHER_CHOICES_CACHE_KEY
 from litigant_portal.app.features import features
 from litigant_portal.app.selectors.corpus import corpus_load_courts
 from litigant_portal.app.selectors.site import site_get
-from litigant_portal.app.selectors.topic_flow import (
-    topic_court_find,
-    topic_flow_list,
-    topic_flow_url_kwargs,
-)
+from litigant_portal.app.selectors.topic_flow import topic_flow_url_kwargs
 from litigant_portal.app.views.utils import (
     ALL_COURTS,
     BRANDING_FIELDS,
     admin_tabs,
     password_rule,
 )
+from litigant_portal.state.selectors import topic_court_find, topic_flow_list
 
 
 def _tester_flow_links(court: str | None) -> list[dict]:

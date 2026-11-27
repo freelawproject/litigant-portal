@@ -25,7 +25,6 @@ from litigant_portal.app.selectors.bedrock import (
     bedrock_model_choices,
 )
 from litigant_portal.app.selectors.site import site_get
-from litigant_portal.app.selectors.topic_flow import topic_get, topic_list
 from litigant_portal.app.selectors.user import (
     user_assignable_roles,
     user_email_taken,
@@ -55,6 +54,7 @@ from litigant_portal.app.views.utils import (
     role_parse,
     role_value,
 )
+from litigant_portal.state.selectors import topic_get, topic_list
 
 USERS_PER_PAGE = 20
 

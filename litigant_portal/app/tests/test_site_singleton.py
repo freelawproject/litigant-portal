@@ -46,12 +46,9 @@ from litigant_portal.app.selectors.site import (
     site_get,
     site_get_model_target,
 )
-from litigant_portal.app.selectors.topic_flow import (
-    topic_flow_list,
-    topic_list,
-)
 from litigant_portal.app.services.site import site_update
 from litigant_portal.app.services.topic_flow import topic_create, topic_delete
+from litigant_portal.state.selectors import topic_flow_list, topic_list
 
 MODEL_CHOICES = model_choices()
 

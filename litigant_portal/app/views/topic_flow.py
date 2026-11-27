@@ -16,9 +16,6 @@ from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_http_methods, require_POST
 
 from litigant_portal.app.selectors.site import contact_list, resource_list
-from litigant_portal.app.selectors.topic_flow import (
-    variable_answer_unreviewed_names,
-)
 from litigant_portal.app.services.docassemble import (
     DocassembleError,
     docassemble_session_create,
@@ -41,7 +38,11 @@ from litigant_portal.app.views.utils import (
     has_identity,
     topic_flow_row_get,
 )
-from litigant_portal.state.selectors import flow_pages, flow_state
+from litigant_portal.state.selectors import (
+    flow_pages,
+    flow_state,
+    variable_answer_unreviewed_names,
+)
 
 logger = logging.getLogger(__name__)
 

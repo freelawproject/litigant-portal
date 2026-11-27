@@ -24,17 +24,14 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.selectors.topic_flow import (
-    variable_answer_groups,
-    variable_answer_map,
-    variable_answer_unreviewed_names,
-)
+from litigant_portal.app.selectors.topic_flow import variable_answer_groups
 from litigant_portal.app.services.chat_engine import chat_thread_state_merge
 from litigant_portal.app.services.topic_flow import (
     variable_answer_confirm,
     variable_answer_set,
 )
 from litigant_portal.state.models import VariableDataType
+from litigant_portal.state.selectors import variable_answer_unreviewed_names
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
@@ -224,12 +221,6 @@ def test_hidden_answers_stay_stored_and_agree_across_consumers(
             for a in group["answers"]
         }
         assert ("alias" in grouped_names) is gate
-        prefill = variable_answer_map(
-            identity=thread.identity, names=["alias"], reviewed_only=True
-        )
-        assert prefill == (
-            {"alias": "Earlier name"} if gate and reviewed else {}
-        )
         pending = variable_answer_unreviewed_names(
             identity=thread.identity, names=["alias"]
         )

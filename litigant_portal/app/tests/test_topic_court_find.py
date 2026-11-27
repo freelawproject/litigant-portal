@@ -5,7 +5,7 @@ so a restart or deploy that keeps the database keeps the switched court."""
 import pytest
 
 from litigant_portal.app.models import Topic
-from litigant_portal.app.selectors.topic_flow import topic_court_find
+from litigant_portal.state.selectors import topic_court_find
 
 pytestmark = [pytest.mark.postgres, pytest.mark.django_db]
 
