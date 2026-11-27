@@ -674,6 +674,7 @@ document.addEventListener('alpine:init', () => {
 
     init() {
       this.base = this.$root.dataset.agentBase
+      this.chatUrl = this.$root.dataset.chatUrl
       this.reviewWarningText = this.$root.dataset.reviewWarning
       this.briefcaseUrl = this.$root.dataset.briefcaseUrl
       setCitationChips(this.$root.dataset.citationChips === 'true')
@@ -727,9 +728,11 @@ document.addEventListener('alpine:init', () => {
         const data = await res.json()
         this.threads = (data.threads || []).map((thread) => ({
           ...thread,
+          href: this.chatUrl + '?thread=' + encodeURIComponent(thread.id),
           title: thread.description || NEW_CHAT_TITLE,
           relativeTime: timeSince(thread.last_at),
           rowClass: threadRowClass(thread.id, this.threadId),
+          ariaCurrent: thread.id === this.threadId ? 'page' : null,
           dotClass: this.threadDotClass(thread.id),
         }))
         // Pick up a freshly generated description for the active thread.
@@ -745,6 +748,7 @@ document.addEventListener('alpine:init', () => {
     markActive() {
       this.threads.forEach((t) => {
         t.rowClass = threadRowClass(t.id, this.threadId)
+        t.ariaCurrent = t.id === this.threadId ? 'page' : null
       })
     },
 
@@ -844,7 +848,12 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Click handler for a history row — the thread id rides on the element.
+    // The row is a link for keyboard users and no-JS fallback; a plain click
+    // switches thread in place, while modified clicks keep native behaviour.
     selectThread(e) {
+      if (e.defaultPrevented) return
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+      e.preventDefault()
       this.closeDrawers()
       this.openThread(e.currentTarget.dataset.threadId)
     },
