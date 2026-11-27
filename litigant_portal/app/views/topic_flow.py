@@ -16,7 +16,6 @@ from django.views.csrf import csrf_failure as _django_csrf_failure
 from django.views.decorators.http import require_http_methods, require_POST
 
 from litigant_portal.app.selectors.site import contact_list, resource_list
-from litigant_portal.app.selectors.state import FlowStateType, flow_state
 from litigant_portal.app.selectors.topic_flow import (
     variable_answer_unreviewed_names,
 )
@@ -42,6 +41,7 @@ from litigant_portal.app.views.utils import (
     has_identity,
     topic_flow_row_get,
 )
+from litigant_portal.state.selectors import flow_pages, flow_state
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ def topic_flow(request, court, topic, role):
                 f"{request.path}?component={component.id}#{component.id}"
             )
         if action == "continue":
-            if not _can_continue(current, component):
+            if not component.can_continue:
                 messages.info(
                     request,
                     _(
@@ -163,15 +163,6 @@ def topic_flow(request, court, topic, role):
     )
 
 
-def _can_continue(current: FlowStateType, component) -> bool:
-    pending = set(current.projection.missing_required) | {
-        name
-        for name in current.projection.unconfirmed
-        if current.variables[name].required
-    }
-    return not pending.intersection(component.variables)
-
-
 def _projected_page(
     request, flow, current, contacts, resources, selected, errors
 ):
@@ -179,7 +170,7 @@ def _projected_page(
     rendered = rows.render_flow(
         flow,
         list(flow.sections.all()),
-        rows.flow_pages(flow),
+        flow_pages(flow),
         {
             name: current.state.facts[name].value
             for name in projection.answered
@@ -210,7 +201,7 @@ def _projected_page(
         component = components[section.anchor_id]
         section.context.update(
             signature=component.signature,
-            can_continue=_can_continue(current, component),
+            can_continue=component.can_continue,
         )
     return _render_flow_page(
         request,

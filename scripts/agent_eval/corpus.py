@@ -68,11 +68,11 @@ def snapshot_current() -> dict:
         topic_flow_markdown,
     )
     from litigant_portal.app.selectors.site import site_get
-    from litigant_portal.app.selectors.state import flow_state
     from litigant_portal.app.selectors.topic_flow import (
         topic_flow_find,
         topic_flow_list,
     )
+    from litigant_portal.state.selectors import flow_state
 
     site = site_get()
     flows = []

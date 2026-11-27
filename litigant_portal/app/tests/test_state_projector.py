@@ -110,6 +110,7 @@ def test_viewing_skips_optional_questions_but_cannot_complete_required_ones(
     rules,
 ):
     state = _state(needs_extra=True)
+    state.facts["started_on"] = FactType(value="2026-11-01", updated_at=NOW)
     view = project(state, rules, TODAY, limit=3)
     assert [c.component_id for c in view.candidates] == [
         "intro",
@@ -118,18 +119,25 @@ def test_viewing_skips_optional_questions_but_cannot_complete_required_ones(
     ]
     assert all(c.score is None for c in view.candidates)
     assert view.missing_required == ("detail",)
+    assert {c.id for c in view.components if not c.can_continue} == {
+        "questions"
+    }
     state.viewed.update({c.id: c.signature for c in view.components})
     view = project(state, rules, TODAY)
     assert [c.component_id for c in view.candidates] == ["questions"]
 
     state.facts["detail"] = FactType(value="Answer", updated_at=NOW)
-    assert (
-        project(state, rules, TODAY).candidates[0].component_id == "questions"
-    )
+    view = project(state, rules, TODAY)
+    assert view.candidates[0].component_id == "questions"
+    assert not next(
+        c for c in view.components if c.id == "questions"
+    ).can_continue
     state.facts["detail"] = FactType(
         value="Answer", reviewed=True, updated_at=NOW
     )
-    assert project(state, rules, TODAY).candidates == ()
+    view = project(state, rules, TODAY)
+    assert view.candidates == ()
+    assert all(c.can_continue for c in view.components)
 
 
 def test_view_signatures_track_authored_content_and_resolved_outputs(rules):

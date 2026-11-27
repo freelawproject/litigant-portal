@@ -24,17 +24,17 @@ from litigant_portal.app.models import (
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.selectors import state as selectors
-from litigant_portal.app.selectors.state import (
-    FlowStateType,
-    court_rules,
-    state_snapshot,
-)
 from litigant_portal.app.services import chat_engine
 from litigant_portal.app.views import assistant as assistant_views
 from litigant_portal.app.views import topic_flow as flow_views
 from litigant_portal.app.views import utils as view_utils
+from litigant_portal.state import selectors
 from litigant_portal.state.projector import project
+from litigant_portal.state.selectors import (
+    FlowStateType,
+    court_rules,
+    state_snapshot,
+)
 
 
 @pytest.fixture
@@ -129,7 +129,6 @@ def chat_flow(monkeypatch):
         )
         current = FlowStateType(
             state,
-            rules,
             project(state, rules, date(2026, 11, 25)),
             {v.name: v for v in (gate, started)},
             answers,

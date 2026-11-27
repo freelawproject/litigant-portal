@@ -6,20 +6,18 @@ from datetime import date
 from django.forms.models import model_to_dict
 from django.utils import timezone
 
-from litigant_portal.app.models import (
-    Contact,
+from litigant_portal.app.models import Contact, Resource, UserIdentity
+from litigant_portal.app.services.docassemble import interview_launch_url
+from litigant_portal.state.models import (
     FlowViewState,
-    Resource,
     TopicFlow,
-    UserIdentity,
+    TopicFlowInterviewPage,
+    TopicFlowSection,
     Variable,
     VariableAnswer,
 )
-from litigant_portal.app.services.docassemble import interview_launch_url
-from litigant_portal.app.topic_flow.contacts import contact_dicts
-from litigant_portal.app.topic_flow.resources import resource_dicts
 from litigant_portal.state.projector import project
-from litigant_portal.state.rules import parse_condition
+from litigant_portal.state.rules import default_layout, parse_condition
 from litigant_portal.state.types import (
     CalendarRuleType,
     ComponentRuleType,
@@ -39,7 +37,6 @@ from litigant_portal.state.types import (
 @dataclass(frozen=True)
 class FlowStateType:
     state: StateType
-    rules: CourtRulesType
     projection: ProjectionType
     variables: dict[str, Variable]
     answers: dict[str, VariableAnswer]
@@ -90,7 +87,6 @@ def flow_state(
     )
     return FlowStateType(
         state,
-        rules,
         project(state, rules, time_context or timezone.localdate(), limit),
         variables,
         answers,
@@ -123,6 +119,44 @@ def state_snapshot(
     )
 
 
+def section_anchor(section: TopicFlowSection, number: int) -> str:
+    """
+    Preserve positional anchors for older rows without an authored key.
+    """
+    return section.key or f"section-{number}"
+
+
+def interview_anchor(number: int) -> str:
+    """
+    Identify a question group by its authored page position.
+    """
+    return f"interview-{number}"
+
+
+def flow_layout(
+    flow: TopicFlow, sections: Iterable[TopicFlowSection]
+) -> list[str]:
+    """
+    Use authored order, falling back to sections followed by output blocks.
+    """
+    return list(flow.layout) or default_layout(
+        section_anchor(section, number)
+        for number, section in enumerate(sections, 1)
+    )
+
+
+def flow_pages(
+    flow: TopicFlow,
+) -> list[tuple[TopicFlowInterviewPage, list[Variable]]]:
+    """
+    Read question groups in their authored page and placement order.
+    """
+    return [
+        (page, [placed.variable for placed in page.variables.all()])
+        for page in flow.interview_pages.all()
+    ]
+
+
 def court_rules(
     *,
     flow: TopicFlow,
@@ -137,11 +171,6 @@ def court_rules(
     Keeping it in the rules gives both projectors the same source material
     and invalidates viewed signatures when that material changes.
     """
-    from litigant_portal.app.topic_flow.rows import (
-        flow_layout,
-        section_anchor,
-    )
-
     sections = list(flow.sections.all())
     by_key = {
         section_anchor(section, number): section
@@ -163,7 +192,7 @@ def court_rules(
                 placed = [p.variable for p in page.variables.all()]
                 components.append(
                     QuestionsRuleType(
-                        id=f"interview-{number}",
+                        id=interview_anchor(number),
                         content=json.dumps(
                             {
                                 "title": page.title,
@@ -243,13 +272,36 @@ def court_rules(
                 )
             )
         elif key == "contacts":
-            content = contact_dicts(contacts, id_attr="ref")
+            content = [
+                {
+                    "id": contact.ref,
+                    **model_to_dict(
+                        contact,
+                        fields=(
+                            "name",
+                            "phone",
+                            "email",
+                            "url",
+                            "address",
+                            "hours",
+                            "note",
+                        ),
+                    ),
+                }
+                for contact in contacts
+            ]
             if content:
                 components.append(
                     InformationRuleType(id=key, content=json.dumps(content))
                 )
         elif key == "resources":
-            content = resource_dicts(resources, id_attr="ref")
+            content = [
+                {
+                    "id": resource.ref,
+                    **model_to_dict(resource, fields=("label", "url", "note")),
+                }
+                for resource in resources
+            ]
             if content:
                 components.append(
                     InformationRuleType(id=key, content=json.dumps(content))

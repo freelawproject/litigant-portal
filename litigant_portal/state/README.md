@@ -1,6 +1,6 @@
 # State reduction and projection
 
-This package owns database-free state transitions and computed progress. Django services own identity resolution, glossary validation, transactions, persistence, and external operations.
+This package owns state models, snapshot loading, database-free transitions, and computed progress. Application services still own identity resolution, glossary validation, transactions, persistence, and external operations.
 
 The current checkpoint includes the domain layer, shared corpus conditions, stored-row adapters, guided selection and Continue actions, chat integration, and corpus cleanup. The optional System One backend is scaffolded only. The application is intentionally incomplete; the single feature migration, database rebuild, and live verification come during final assembly.
 
@@ -51,9 +51,9 @@ Variables retain `asked_when`, components and packet entries use `when`, and che
 
 `project(state, court_rules, time_context, limit=1)` accepts a flow-scoped snapshot, validated rules, and the explicit local calendar date. Components arrive in authored layout order. Their `content` is authored source text, including question wording and choices, supplied by the selector; candidates reference that content by component ID.
 
-`app/selectors/state.py` adapts already-loaded answer rows into snapshots and the prefetched flow graph into court rules. The write service uses the snapshot adapter inside its existing identity lock. The rules adapter includes every authored interview page and preserves layout order, conditions, question wording, forms, and deadline metadata without embedding identity answers.
+`state/selectors.py` adapts already-loaded answer rows into snapshots and the prefetched flow graph into court rules. The write service uses the snapshot adapter inside its existing identity lock. The rules adapter includes every authored interview page and preserves layout order, conditions, question wording, forms, and deadline metadata without embedding identity answers.
 
-The result contains applicable variables in question order, answered and unconfirmed variables, missing required answers, applicable components, selected form references, resolved deadlines, and the next N unfinished components. Python candidates have no fit score. Empty question groups, packets without forms or an available interview, and calendars without applicable deadlines are omitted.
+The result contains applicable variables in question order, answered and unconfirmed variables, missing required answers, applicable components with completion and `can_continue` status, selected form references, resolved deadlines, and the next N unfinished components. Python candidates have no fit score. Empty question groups, packets without forms or an available interview, and calendars without applicable deadlines are omitted.
 
 Required questions remain unfinished until answered and confirmed. Optional questions can be skipped by viewing the component. Information and output components finish when their current content signature is viewed. Signatures incorporate authored content, applicable question definitions, selected forms, and computed deadlines, so a previously viewed output can become unfinished when its contents change.
 

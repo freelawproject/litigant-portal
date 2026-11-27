@@ -27,8 +27,10 @@ from litigant_portal.app.models.choices import (
 from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.state.models import VariableDataType
 from litigant_portal.state.rules import (
+    LAYOUT_BLOCKS,
     condition_leaves,
     condition_names,
+    default_layout,
 )
 from litigant_portal.state.types import ConditionType
 
@@ -466,15 +468,6 @@ class HandoffSchema(BaseSchema):
     _prefill_none = field_validator("interview_prefill", mode="before")(
         _none_is_empty(dict)
     )
-
-
-LAYOUT_BLOCKS = ("interview", "packet", "calendar", "contacts", "resources")
-
-
-def default_layout(section_keys) -> list[str]:
-    """Every section in order, then the output blocks: the page order when
-    a flow authors no layout."""
-    return [*section_keys, *LAYOUT_BLOCKS]
 
 
 class FlowSchema(BaseSchema):

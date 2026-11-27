@@ -26,7 +26,6 @@ class ReviewFacts(Tool):
             contact_list,
             resource_list,
         )
-        from litigant_portal.app.selectors.state import flow_state
         from litigant_portal.app.selectors.topic_flow import (
             topic_flow_url_kwargs,
         )
@@ -36,6 +35,7 @@ class ReviewFacts(Tool):
         from litigant_portal.app.topic_flow.prefill import (
             flow_interview_target,
         )
+        from litigant_portal.state.selectors import flow_state
 
         thread = ChatThread.objects.select_related("identity").get(
             id=thread_id

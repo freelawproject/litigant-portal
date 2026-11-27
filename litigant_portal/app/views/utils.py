@@ -20,7 +20,6 @@ from litigant_portal.app.features import features
 from litigant_portal.app.models.chat_engine import USER_CHAT_THREAD_TYPE
 from litigant_portal.app.permissions import Tier
 from litigant_portal.app.selectors.chat_engine import chat_thread_list
-from litigant_portal.app.selectors.state import FlowStateType, flow_state
 from litigant_portal.app.selectors.topic_flow import (
     topic_flow_find,
     topic_flow_list,
@@ -28,6 +27,7 @@ from litigant_portal.app.selectors.topic_flow import (
     variable_answer_groups,
 )
 from litigant_portal.app.selectors.user import user_assignable_roles
+from litigant_portal.state.selectors import FlowStateType, flow_state
 
 # The court switcher's value for "every court" (#886); the service takes it
 # as ``court=None``.

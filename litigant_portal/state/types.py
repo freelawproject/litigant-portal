@@ -153,6 +153,7 @@ class ComponentProjectionType(StateModelType):
     id: str
     signature: str
     complete: bool
+    can_continue: bool
     variables: tuple[str, ...] = ()
 
 

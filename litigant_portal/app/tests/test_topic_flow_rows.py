@@ -22,14 +22,14 @@ from litigant_portal.app.models import (
     TopicFlowSection,
     Variable,
 )
-from litigant_portal.app.selectors.corpus import LAYOUT_BLOCKS
-from litigant_portal.app.selectors.state import court_rules
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.topic_flow.rows import RenderedSection
 from litigant_portal.state.models import (
     VariableDataType,
 )
 from litigant_portal.state.projector import project
+from litigant_portal.state.rules import LAYOUT_BLOCKS
+from litigant_portal.state.selectors import court_rules, flow_layout
 from litigant_portal.state.types import FactType, StateType
 
 FACT_GATHER = "cotton/molecules/flow_section_fact_gather.html"
@@ -112,7 +112,7 @@ VACCINATED = _variable(
 
 def test_layout_falls_back_to_sections_then_blocks_when_empty():
     flow = TopicFlow(layout=[])
-    assert rows.flow_layout(flow, SECTIONS) == [
+    assert flow_layout(flow, SECTIONS) == [
         "overview",
         "fees",
         *LAYOUT_BLOCKS,
@@ -122,7 +122,7 @@ def test_layout_falls_back_to_sections_then_blocks_when_empty():
 def test_layout_is_used_as_stored_when_present():
     layout = ["packet", "fees", "interview", "overview"]
     flow = TopicFlow(layout=layout)
-    assert rows.flow_layout(flow, SECTIONS) == layout
+    assert flow_layout(flow, SECTIONS) == layout
 
 
 # --- render_flow ------------------------------------------------------------
@@ -407,7 +407,7 @@ def test_section_without_a_key_gets_a_positional_anchor():
     # The schema requires a key, but an older or admin-edited row may lack
     # one; an empty id would send the left-region link to the page top.
     sections = [*SECTIONS, _section("", "Untitled", "Anything.")]
-    assert rows.flow_layout(TopicFlow(layout=[]), sections)[:3] == [
+    assert flow_layout(TopicFlow(layout=[]), sections)[:3] == [
         "overview",
         "fees",
         "section-3",

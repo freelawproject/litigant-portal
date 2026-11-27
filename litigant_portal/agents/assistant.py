@@ -414,11 +414,11 @@ class LitigantAssistant(Agent):
             contact_list,
             resource_list,
         )
-        from litigant_portal.app.selectors.state import flow_state
         from litigant_portal.app.selectors.topic_flow import (
             variable_answer_list,
             variable_public_ids,
         )
+        from litigant_portal.state.selectors import flow_state
 
         thread = ChatThread.objects.select_related("identity").get(
             id=thread_id

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping
 from graphlib import TopologicalSorter
 from typing import assert_never
 
@@ -15,6 +15,15 @@ from litigant_portal.state.types import (
 )
 
 _condition_adapter = TypeAdapter(ConditionType | None)
+
+LAYOUT_BLOCKS = ("interview", "packet", "calendar", "contacts", "resources")
+
+
+def default_layout(section_keys: Iterable[str]) -> list[str]:
+    """
+    Default to authored sections followed by the standard output blocks.
+    """
+    return [*section_keys, *LAYOUT_BLOCKS]
 
 
 def parse_condition(value: JsonValue) -> ConditionType | None:

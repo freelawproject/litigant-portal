@@ -154,13 +154,15 @@ def project(
             resolved_deadlines,
         )
         complete = state.viewed.get(component.id) == signature
+        can_continue = True
         if isinstance(component, QuestionsRuleType):
             required = {
                 name
                 for name in variables
                 if court_rules.variables[name].required
             }
-            complete = required <= confirmed and (
+            can_continue = required <= confirmed
+            complete = can_continue and (
                 complete or set(variables) <= confirmed
             )
         components.append(
@@ -168,6 +170,7 @@ def project(
                 id=component.id,
                 signature=signature,
                 complete=complete,
+                can_continue=can_continue,
                 variables=variables,
             )
         )

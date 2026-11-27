@@ -14,7 +14,6 @@ from decimal import Decimal
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from litigant_portal.app.selectors.corpus import default_layout
 from litigant_portal.app.services.docassemble import interview_launch_url
 from litigant_portal.app.services.topic_flow import variable_value_validate
 from litigant_portal.app.topic_flow.contacts import contact_dicts
@@ -24,6 +23,7 @@ from litigant_portal.state.models import VariableDataType
 from litigant_portal.state.rules import (
     condition_names,
 )
+from litigant_portal.state.selectors import interview_anchor, section_anchor
 from litigant_portal.state.types import ProjectionType
 
 
@@ -79,30 +79,6 @@ BLOCK_HEADINGS = {
 GATE_HINT = _(
     "Depending on your answer, more questions may appear after you save."
 )
-
-
-def section_anchor(section, number: int) -> str:
-    """The section's key, or ``section-N`` for a row without one (the schema
-    requires a key, but an older or admin-edited row may lack it)."""
-    return section.key or f"section-{number}"
-
-
-def flow_layout(flow, sections) -> list[str]:
-    """The stored layout, or every section key then the blocks when empty."""
-    return list(flow.layout) or default_layout(
-        section_anchor(section, number)
-        for number, section in enumerate(sections, 1)
-    )
-
-
-def flow_pages(flow) -> list[tuple]:
-    """
-    All authored question groups in page and placement order.
-    """
-    return [
-        (page, [placed.variable for placed in page.variables.all()])
-        for page in flow.interview_pages.all()
-    ]
 
 
 def _form_value(variable, value) -> str:
@@ -254,7 +230,7 @@ def render_flow(
     }
     gates = gate_names(pages)
     page_by_id = {
-        f"interview-{n}": (n, page, variables)
+        interview_anchor(n): (n, page, variables)
         for n, (page, variables) in enumerate(pages, 1)
     }
     form_by_slug = {entry.form.slug: entry.form for entry in form_conditions}
@@ -325,7 +301,7 @@ def _apply_errors(rendered, errors):
 
 def _render_page(number, page, variables, answers, gates, cleared):
     return RenderedSection(
-        anchor_id=f"interview-{number}",
+        anchor_id=interview_anchor(number),
         heading=page.title,
         template=f"{_TEMPLATE_DIR}/flow_section_fact_gather.html",
         context={

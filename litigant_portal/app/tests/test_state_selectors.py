@@ -18,15 +18,16 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.selectors.corpus import corpus_load
-from litigant_portal.app.selectors.state import (
-    FlowStateType,
-    court_rules,
-    state_snapshot,
-)
 from litigant_portal.app.topic_flow import rows
 from litigant_portal.app.views import topic_flow as views
 from litigant_portal.state.projector import project
 from litigant_portal.state.reducer import reduce
+from litigant_portal.state.selectors import (
+    FlowStateType,
+    court_rules,
+    flow_pages,
+    state_snapshot,
+)
 from litigant_portal.state.types import FactInputType, SetFactsActionType
 
 
@@ -207,7 +208,7 @@ def test_stored_graph_projects_all_pages_and_invalidates_edited_content(
     rendered = rows.render_flow(
         flow,
         [section],
-        rows.flow_pages(flow),
+        flow_pages(flow),
         {a.variable.name: a.value for a in answers},
         projection=projection,
         form_conditions=flow.form_conditions.all(),
@@ -276,7 +277,6 @@ def test_guided_selection_and_human_actions(
     )
     current = FlowStateType(
         state,
-        rules,
         project(state, rules, date(2026, 11, 25)),
         {v.name: v for v in (gate, started)},
         {},
