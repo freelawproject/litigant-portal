@@ -26,12 +26,14 @@ from litigant_portal.app.models import (
     VariableAnswer,
 )
 from litigant_portal.app.selectors.corpus import CorpusSchema
+from litigant_portal.app.selectors.topic_flow import variable_answer_groups
 from litigant_portal.app.services import corpus as services
 from litigant_portal.app.services.corpus import corpus_sync
 from litigant_portal.app.services.docassemble import DocassembleError
 from litigant_portal.app.services.topic_flow import variable_answer_set
 from litigant_portal.app.services.user import user_identity_ensure
 from litigant_portal.app.views import topic_flow as topic_flow_views
+from litigant_portal.app.views import utils as views_utils
 
 COURT, TOPIC, ROLE = "alpha", "pets", "standard"
 URL = f"/t/{COURT}/{TOPIC}/{ROLE}/"
@@ -1325,6 +1327,20 @@ def test_a_guest_sees_the_briefcase_sign_in_state_not_saved_facts(
     assert "Sign in to see your saved answers in one place." in flat
     assert f'href="/accounts/login/?next={URL}"' in flat
     assert "Sandra" not in flat
+
+
+@pytest.mark.postgres
+def test_a_signed_in_page_load_reads_the_answer_groups_once(
+    client, synced, signed_in
+):
+    # The view and the briefcase helper each import the selector.
+    spy = mock.Mock(wraps=variable_answer_groups)
+    with (
+        mock.patch.object(topic_flow_views, "variable_answer_groups", spy),
+        mock.patch.object(views_utils, "variable_answer_groups", spy),
+    ):
+        client.get(URL)
+    assert spy.call_count == 1
 
 
 @pytest.mark.postgres

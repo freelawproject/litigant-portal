@@ -32,7 +32,6 @@ from litigant_portal.app.topic_flow.prefill import (
     prefill_variables,
 )
 from litigant_portal.app.views.utils import (
-    briefcase_answers,
     has_identity,
     topic_flow_reviewed_answers,
     topic_flow_row_answers,
@@ -257,7 +256,10 @@ def _render_flow_page(request, page_title, rendered_sections, **extra):
             "section_links": section_links,
             "frame_left_label": _("Sections"),
             "frame_left_icon": "list-bullet",
-            "briefcase_groups": briefcase_answers(request),
+            # The briefcase does wait.
+            "briefcase_groups": (
+                answer_groups if request.user.is_authenticated else []
+            ),
             **extra,
         },
     )
